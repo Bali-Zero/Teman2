@@ -87,106 +87,64 @@ class HierarchicalIndexer:
         chunks_to_index = []
         parent_documents = []  # BAB completi per retrieval
 
-        # 2. Processa ogni BAB
-        for bab in structure.get("batang_tubuh", []):
-            bab_id = f"{document_id}_BAB_{bab['number']}"
-            bab_title = f"BAB {bab['number']} - {bab['title']}"
-            bab_full_text = bab.get("text", "")  # Ensure text exists
+        # 2. Processa ogni BAB (se presenti)
+        if structure.get("batang_tubuh"):
+            for bab in structure.get("batang_tubuh", []):
+                bab_id = f"{document_id}_BAB_{bab['number']}"
+                bab_title = f"BAB {bab['number']} - {bab['title']}"
+                bab_full_text = bab.get("text", "")  # Ensure text exists
 
-            # If text is empty, try to reconstruct from pasals
-            if not bab_full_text and bab.get("pasal"):
-                bab_full_text = f"{bab_title}\n\n" + "\n\n".join([p["text"] for p in bab["pasal"]])
+                # If text is empty, try to reconstruct from pasals
+                if not bab_full_text and bab.get("pasal"):
+                    bab_full_text = f"{bab_title}\n\n" + "\n\n".join([p["text"] for p in bab["pasal"]])
 
-            # Quality assessment for BAB
-            bab_quality = assess_document_quality(bab_full_text)
+                # Quality assessment for BAB
+                bab_quality = assess_document_quality(bab_full_text)
 
-            # Salva BAB completo come parent document con quality metadata
-            parent_documents.append(
-                {
-                    "id": bab_id,
-                    "type": "parent_chapter",
-                    "document_id": document_id,
-                    "title": bab_title,
-                    "full_text": bab_full_text,
-                    "pasal_count": len(bab.get("pasal", [])),
-                    "char_count": len(bab_full_text),
-                    "metadata": metadata,
-                    # Quality metadata
-                    "text_fingerprint": bab_quality["text_fingerprint"],
-                    "is_incomplete": bab_quality["is_incomplete"],
-                    "ocr_quality_score": bab_quality["ocr_quality_score"],
-                    "needs_reextract": bab_quality["needs_reextract"],
-                }
-            )
-
-            # 3. Processa ogni Pasal nel BAB
-            for pasal in bab.get("pasal", []):
-                pasal_id = f"{document_id}_Pasal_{pasal['number']}"
-                hierarchy_path = f"{document_id}/BAB_{bab['number']}/Pasal_{pasal['number']}"
-
-                # SAFE SPLITTING: If Pasal is too large, split it using the chunker
-                char_limit = 4000 # ~1000 tokens
-                pasal_text = pasal["text"]
-                
-                if len(pasal_text) > char_limit and self.chunker:
-                    logger.info(f"Pasal {pasal['number']} is too large ({len(pasal_text)} chars). Splitting...")
-                    # Create sub-metadata for chunker
-                    sub_metadata = {**metadata, "pasal_number": pasal["number"]}
-                    sub_chunks = self.chunker.chunk(pasal_text, sub_metadata)
-                    
-                    for i, sc in enumerate(sub_chunks):
-                        sc_id = f"{pasal_id}_{i}"
-                        chunk = HierarchicalChunk(
-                            chunk_id=sc_id,
-                            text=sc["text"],
-                            document_id=document_id,
-                            chapter_id=bab_id,
-                            section_id=None,
-                            article_id=pasal_id,
-                            hierarchy_path=f"{hierarchy_path}/{i}",
-                            hierarchy_level=3,
-                            parent_chunk_ids=[bab_id, document_id],
-                            sibling_chunk_ids=[],
-                            bab_title=bab_title,
-                            bab_full_text=None,
-                            metadata=sc
-                        )
-                        chunks_to_index.append(chunk)
-                    continue
-
-                # Standard processing for small Pasal
-                # Extract and validate ayat from Pasal text
-                ayat_numbers = extract_ayat_numbers(pasal_text)
-                ayat_validation = validate_ayat_sequence(ayat_numbers)
-
-                chunk = HierarchicalChunk(
-                    chunk_id=pasal_id,
-                    text=pasal["text"],
-                    document_id=document_id,
-                    chapter_id=bab_id,
-                    section_id=None,
-                    article_id=pasal_id,
-                    hierarchy_path=hierarchy_path,
-                    hierarchy_level=3,  # Pasal level
-                    parent_chunk_ids=[bab_id, document_id],
-                    sibling_chunk_ids=[],  # Popolato dopo
-                    bab_title=bab_title,
-                    bab_full_text=None,  # Non duplicare, usa bab_id per retrieval
-                    metadata={
-                        **metadata,
-                        "pasal_number": pasal["number"],
-                        # Ayat validation (use detected values, not parser's count)
-                        "ayat_count": ayat_validation["ayat_count_detected"],
-                        "ayat_max": ayat_validation["ayat_max_detected"],
-                        "ayat_numbers": ayat_validation["ayat_numbers"],
-                        "ayat_sequence_valid": ayat_validation["ayat_sequence_valid"],
-                        "ayat_validation_error": ayat_validation["ayat_validation_error"],
-                        "has_ayat": len(ayat_numbers) > 0,
-                    },
+                # Salva BAB completo come parent document con quality metadata
+                parent_documents.append(
+                    {
+                        "id": bab_id,
+                        "type": "parent_chapter",
+                        "document_id": document_id,
+                        "title": bab_title,
+                        "full_text": bab_full_text,
+                        "pasal_count": len(bab.get("pasal", [])),
+                        "char_count": len(bab_full_text),
+                        "metadata": metadata,
+                        # Quality metadata
+                        "text_fingerprint": bab_quality["text_fingerprint"],
+                        "is_incomplete": bab_quality["is_incomplete"],
+                        "ocr_quality_score": bab_quality["ocr_quality_score"],
+                        "needs_reextract": bab_quality["needs_reextract"],
+                    }
                 )
-                chunks_to_index.append(chunk)
 
-        # Fallback for unstructured text (if no chunks created from structure)
+                # 3. Processa ogni Pasal nel BAB
+                for pasal in bab.get("pasal", []):
+                    self._add_pasal_to_chunks(
+                        pasal=pasal,
+                        document_id=document_id,
+                        bab_id=bab_id,
+                        bab_title=bab_title,
+                        metadata=metadata,
+                        chunks_to_index=chunks_to_index
+                    )
+        
+        # 4. Fallback per documenti senza BAB ma con Pasal (es: leggi di modifica)
+        elif structure.get("pasal_list"):
+            logger.info(f"No BAB found for {document_id}, but found {len(structure['pasal_list'])} Pasals. Processing as root Pasals.")
+            for pasal in structure.get("pasal_list", []):
+                self._add_pasal_to_chunks(
+                    pasal=pasal,
+                    document_id=document_id,
+                    bab_id=None,
+                    bab_title=None,
+                    metadata=metadata,
+                    chunks_to_index=chunks_to_index
+                )
+
+        # 5. Fallback for unstructured text (if no chunks created from structure)
         if not chunks_to_index and self.chunker:
             logger.info(f"No structure found for {document_id}. Using fallback chunking.")
             flat_chunks = self.chunker.chunk(document_text, metadata)
@@ -210,15 +168,15 @@ class HierarchicalIndexer:
                 )
                 chunks_to_index.append(h_chunk)
 
-        # 4. Genera embeddings solo per i chunk (Pasal)
+        # 6. Genera embeddings solo per i chunk (Pasal)
         if chunks_to_index:
             chunk_texts = [c.text for c in chunks_to_index]
             embeddings = self.embeddings.generate_embeddings(chunk_texts)
 
-            # 5. Upsert chunks con struttura gerarchica
+            # 7. Upsert chunks con struttura gerarchica
             await self._upsert_hierarchical_chunks(chunks_to_index, embeddings)
 
-        # 6. Upsert parent documents (BAB completi) - NO embedding, solo storage
+        # 8. Upsert parent documents (BAB completi) - NO embedding, solo storage
         if parent_documents:
             await self._upsert_parent_documents(parent_documents)
 
@@ -229,6 +187,75 @@ class HierarchicalIndexer:
             "total_bab": len(structure.get("batang_tubuh", [])),
             "total_pasal": len(structure.get("pasal_list", [])),
         }
+
+    def _add_pasal_to_chunks(self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index):
+        """Helper to process a single Pasal and add it to chunks list"""
+        pasal_id = f"{document_id}_Pasal_{pasal['number']}"
+        
+        if bab_id:
+            hierarchy_path = f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/Pasal_{pasal['number']}"
+        else:
+            hierarchy_path = f"{document_id}/Pasal_{pasal['number']}"
+
+        # SAFE SPLITTING: If Pasal is too large, split it using the chunker
+        char_limit = 4000 # ~1000 tokens
+        pasal_text = pasal["text"]
+        
+        if len(pasal_text) > char_limit and self.chunker:
+            logger.info(f"Pasal {pasal['number']} is too large ({len(pasal_text)} chars). Splitting...")
+            # Create sub-metadata for chunker
+            sub_metadata = {**metadata, "pasal_number": pasal["number"]}
+            sub_chunks = self.chunker.chunk(pasal_text, sub_metadata)
+            
+            for i, sc in enumerate(sub_chunks):
+                sc_id = f"{pasal_id}_{i}"
+                chunk = HierarchicalChunk(
+                    chunk_id=sc_id,
+                    text=sc["text"],
+                    document_id=document_id,
+                    chapter_id=bab_id,
+                    section_id=None,
+                    article_id=pasal_id,
+                    hierarchy_path=f"{hierarchy_path}/{i}",
+                    hierarchy_level=3,
+                    parent_chunk_ids=[bab_id, document_id] if bab_id else [document_id],
+                    sibling_chunk_ids=[],
+                    bab_title=bab_title,
+                    bab_full_text=None,
+                    metadata=sc
+                )
+                chunks_to_index.append(chunk)
+            return
+
+        # Standard processing for small Pasal
+        ayat_numbers = extract_ayat_numbers(pasal_text)
+        ayat_validation = validate_ayat_sequence(ayat_numbers)
+
+        chunk = HierarchicalChunk(
+            chunk_id=pasal_id,
+            text=pasal["text"],
+            document_id=document_id,
+            chapter_id=bab_id,
+            section_id=None,
+            article_id=pasal_id,
+            hierarchy_path=hierarchy_path,
+            hierarchy_level=3,  # Pasal level
+            parent_chunk_ids=[bab_id, document_id] if bab_id else [document_id],
+            sibling_chunk_ids=[],
+            bab_title=bab_title,
+            bab_full_text=None,
+            metadata={
+                **metadata,
+                "pasal_number": pasal["number"],
+                "ayat_count": ayat_validation["ayat_count_detected"],
+                "ayat_max": ayat_validation["ayat_max_detected"],
+                "ayat_numbers": ayat_validation["ayat_numbers"],
+                "ayat_sequence_valid": ayat_validation["ayat_sequence_valid"],
+                "ayat_validation_error": ayat_validation["ayat_validation_error"],
+                "has_ayat": len(ayat_numbers) > 0,
+            },
+        )
+        chunks_to_index.append(chunk)
 
     async def _upsert_hierarchical_chunks(self, chunks: list[HierarchicalChunk], embeddings):
         """Upsert chunks con payload gerarchico"""
