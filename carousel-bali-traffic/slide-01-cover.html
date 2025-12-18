@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1080px;
+      height: 1350px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #EAEAEA;
+      position: relative;
+      overflow: hidden;
+    }
+    .bg-image {
+      position: absolute;
+      inset: 0;
+      background: url('images/cover-traffic.png') center/cover;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(42,43,46,0.5) 0%, rgba(31,32,35,0.7) 100%);
+    }
+    .content {
+      position: relative;
+      z-index: 10;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 60px;
+      padding-bottom: 120px;
+    }
+    .header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 40px 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      background: #D4AF37;
+      border-radius: 50%;
+      box-shadow: 0 0 12px rgba(212,175,55,0.6);
+    }
+    .logo-text {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.8);
+    }
+    .slide-num {
+      font-size: 12px;
+      font-family: monospace;
+      color: rgba(255,255,255,0.3);
+    }
+    .badge {
+      display: inline-block;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: white;
+      margin-bottom: 30px;
+      width: fit-content;
+    }
+    .headline {
+      font-size: 68px;
+      font-weight: 900;
+      color: white;
+      line-height: 0.95;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: #D4AF37;
+      margin-bottom: 20px;
+    }
+    .subhead {
+      font-size: 22px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.9);
+    }
+    .footer {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 40px 60px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+    .instagram {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.4);
+      font-size: 12px;
+    }
+    .progress {
+      width: 60px;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      width: 11%;
+      height: 100%;
+      background: #D4AF37;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-image"></div>
+  <div class="overlay"></div>
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <span class="logo-text">Bali Zero</span>
+    </div>
+    <span class="slide-num">1/9</span>
+  </div>
+
+  <div class="content">
+    <div class="badge">BREAKING UPDATE</div>
+    <h1 class="headline">BALI'S TRAFFIC<br>EXPERIMENT</h1>
+    <div class="divider"></div>
+    <h2 class="subhead">BOLD TIMING OR PURE CHAOS?</h2>
+  </div>
+
+  <div class="footer">
+    <div class="instagram">@balizero0</div>
+    <div class="progress"><div class="progress-bar"></div></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,2967 @@
+{
+  "stats": {
+    "total_files_found": 739,
+    "unique_files": 321,
+    "duplicates_ignored": 418,
+    "by_category": {
+      "legal": 0,
+      "pricing": 0,
+      "knowledge": 0
+    }
+  },
+  "items": [
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_FULL.pdf",
+      "filename": "PP_28_2025_FULL.pdf",
+      "category": "general",
+      "size_kb": 20372.81,
+      "duplicates": [
+        "apps/kb/data/04_aziende/PP Nomor 28 Tahun 2025_20251122_163034_d4557b.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/PP Nomor 28 Tahun 2025_20251122_163034_d4557b.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU-11-2020_20251122_163034_38bf40.pdf",
+      "filename": "UU-11-2020_20251122_163034_38bf40.pdf",
+      "category": "04_aziende",
+      "size_kb": 333.2,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU-11-2020_20251122_163034_38bf40.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU Nomor 25 Tahun 2007_20251122_163034_6c0809.pdf",
+      "filename": "UU Nomor 25 Tahun 2007_20251122_163034_6c0809.pdf",
+      "category": "04_aziende",
+      "size_kb": 64.11,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/UU Nomor 25 Tahun 2007_20251122_163034_6c0809.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Industri Pertahanan.pdf",
+      "filename": "Industri Pertahanan.pdf",
+      "category": "04_aziende",
+      "size_kb": 245.22,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Industri Pertahanan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Industri Pertahanan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/correspondence-table-kbli-2020---kbli-2015.pdf",
+      "filename": "correspondence-table-kbli-2020---kbli-2015.pdf",
+      "category": "04_aziende",
+      "size_kb": 3336.68,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/PRICE LIST 2025 INTERNAL - PRICE SELLING-2.pdf",
+      "filename": "PRICE LIST 2025 INTERNAL - PRICE SELLING-2.pdf",
+      "category": "04_aziende",
+      "size_kb": 72.7,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/PRICE LIST 2025 INTERNAL - PRICE SELLING-2.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/PP-18-2021_20251122_163034_943449.pdf",
+      "filename": "PP-18-2021_20251122_163034_943449.pdf",
+      "category": "04_aziende",
+      "size_kb": 290.71,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Istruzione/PP-18-2021_20251122_163034_943449.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Pengesahan ASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang Perdagangan Melalui Sistem Elektronik).pdf",
+      "filename": "Pengesahan ASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang Perdagangan Melalui Sistem Elektronik).pdf",
+      "category": "04_aziende",
+      "size_kb": 424.17,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Pengesahan ASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang Perdagangan Melalui Sistem Elektronik).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan ASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang Perdagangan Melalui Sistem Elektronik).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Perusahaan Pertambangan Minyak dan Gas Bumi Negara.pdf",
+      "filename": "Perusahaan Pertambangan Minyak dan Gas Bumi Negara.pdf",
+      "category": "04_aziende",
+      "size_kb": 90.07,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perusahaan Pertambangan Minyak dan Gas Bumi Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perusahaan Pertambangan Minyak dan Gas Bumi Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Perkoperasian.pdf",
+      "filename": "Perkoperasian.pdf",
+      "category": "04_aziende",
+      "size_kb": 334.01,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perkoperasian.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perkoperasian.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU_6_2023_Cipta_Kerja_20251122_163034_956903.pdf",
+      "filename": "UU_6_2023_Cipta_Kerja_20251122_163034_956903.pdf",
+      "category": "04_aziende",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_6_2023_Cipta_Kerja_20251122_163034_956903.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/2025Permeninvesthil005-.pdf",
+      "filename": "2025Permeninvesthil005-.pdf",
+      "category": "04_aziende",
+      "size_kb": 7535.77,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/2025Permeninvesthil005-.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/PP_28_2025_PBBR_20251122_163034_adc4d5.pdf",
+      "filename": "PP_28_2025_PBBR_20251122_163034_adc4d5.pdf",
+      "category": "04_aziende",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/PP_28_2025_PBBR_20251122_163034_adc4d5.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Perubahan Ketiga atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf",
+      "filename": "Perubahan Ketiga atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf",
+      "category": "04_aziende",
+      "size_kb": 9501.91,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perubahan Ketiga atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Ketiga atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU_40_2007_PT_PMA_20251122_163034_5c2c11.pdf",
+      "filename": "UU_40_2007_PT_PMA_20251122_163034_5c2c11.pdf",
+      "category": "04_aziende",
+      "size_kb": 100.39,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_40_2007_PT_PMA_20251122_163034_5c2c11.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU_6_2023_Cipta_Kerja_20251122_163034_739044.pdf",
+      "filename": "UU_6_2023_Cipta_Kerja_20251122_163034_739044.pdf",
+      "category": "04_aziende",
+      "size_kb": 5403.25,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_6_2023_Cipta_Kerja_20251122_163034_739044.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Pengesahan Asean Convention Against Trafficking In Persons Especially Women and Children (Konvensi Asean Menentang Perdagangan Orang Terutama Perempuan dan Anak).pdf",
+      "filename": "Pengesahan Asean Convention Against Trafficking In Persons Especially Women and Children (Konvensi Asean Menentang Perdagangan Orang Terutama Perempuan dan Anak).pdf",
+      "category": "04_aziende",
+      "size_kb": 657.81,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Pengesahan Asean Convention Against Trafficking In Persons Especially Women and Children (Konvensi Asean Menentang Perdagangan Orang Terutama Perempuan dan Anak).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Asean Convention Against Trafficking In Persons Especially Women and Children (Konvensi Asean Menentang Perdagangan Orang Terutama Perempuan dan Anak).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Cipta Kerja.pdf",
+      "filename": "Cipta Kerja.pdf",
+      "category": "04_aziende",
+      "size_kb": 14603.86,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Cipta Kerja.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Cipta Kerja.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/PP_5_2021_OSS_20251122_163034_da02eb.pdf",
+      "filename": "PP_5_2021_OSS_20251122_163034_da02eb.pdf",
+      "category": "04_aziende",
+      "size_kb": 108.02,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/PP_5_2021_OSS_20251122_163034_da02eb.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Badan Usaha Milik Negara.pdf",
+      "filename": "Badan Usaha Milik Negara.pdf",
+      "category": "04_aziende",
+      "size_kb": 859.74,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Badan Usaha Milik Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Badan Usaha Milik Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU_25_2007_Penanaman_Modal_20251122_163034_a901ce.pdf",
+      "filename": "UU_25_2007_Penanaman_Modal_20251122_163034_a901ce.pdf",
+      "category": "04_aziende",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_25_2007_Penanaman_Modal_20251122_163034_a901ce.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Pengesahan Protocol Amending The Marrakesh Agreement Establishing The World Trade Organization (Protokol Perubahan Persetujuan Marrakesh Mengenai Pembentukan Organisasi Perdagangan Dunia).pdf",
+      "filename": "Pengesahan Protocol Amending The Marrakesh Agreement Establishing The World Trade Organization (Protokol Perubahan Persetujuan Marrakesh Mengenai Pembentukan Organisasi Perdagangan Dunia).pdf",
+      "category": "04_aziende",
+      "size_kb": 736.7,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Pengesahan Protocol Amending The Marrakesh Agreement Establishing The World Trade Organization (Protokol Perubahan Persetujuan Marrakesh Mengenai Pembentukan Organisasi Perdagangan Dunia).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Protocol Amending The Marrakesh Agreement Establishing The World Trade Organization (Protokol Perubahan Persetujuan Marrakesh Mengenai Pembentukan Organisasi Perdagangan Dunia).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU_25_2007_Investment_20251122_163034_96c848.pdf",
+      "filename": "UU_25_2007_Investment_20251122_163034_96c848.pdf",
+      "category": "04_aziende",
+      "size_kb": 1317.5,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_25_2007_Investment_20251122_163034_96c848.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja menjadi Undang-Undang.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja menjadi Undang-Undang.pdf",
+      "category": "04_aziende",
+      "size_kb": 83353.89,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja menjadi Undang-Undang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/Perubahan Keempat atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf",
+      "filename": "Perubahan Keempat atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf",
+      "category": "04_aziende",
+      "size_kb": 4358.72,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perubahan Keempat atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Keempat atas Undang-Undang Nomor 19 Tahun 2003 tentang Badan Usaha Milik Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/PP Nomor 71 Tahun 2019.pdf",
+      "filename": "PP Nomor 71 Tahun 2019.pdf",
+      "category": "04_aziende",
+      "size_kb": 5219.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/PP Nomor 71 Tahun 2019.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/04_aziende/UU_11_2020_Omnibus_Law_20251122_163034_f2e57f.pdf",
+      "filename": "UU_11_2020_Omnibus_Law_20251122_163034_f2e57f.pdf",
+      "category": "04_aziende",
+      "size_kb": 23.32,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_11_2020_Omnibus_Law_20251122_163034_f2e57f.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/17_tecnologia/Perubahan Kedua atas Undang-Undang Nomor 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik.pdf",
+      "filename": "Perubahan Kedua atas Undang-Undang Nomor 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik.pdf",
+      "category": "17_tecnologia",
+      "size_kb": 2127.31,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Perubahan Kedua atas Undang-Undang Nomor 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua atas Undang-Undang Nomor 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/17_tecnologia/Perubahan Atas Undang-Undang Nomor 11 Tahun 2008 Tentang Informasi Dan Transaksi Elektronik.pdf",
+      "filename": "Perubahan Atas Undang-Undang Nomor 11 Tahun 2008 Tentang Informasi Dan Transaksi Elektronik.pdf",
+      "category": "17_tecnologia",
+      "size_kb": 1586.94,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/UU Nomor  19 Tahun 2016.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/17_tecnologia/UU_19_2016_ITE_20251122_163034_f5277a.pdf",
+      "filename": "UU_19_2016_ITE_20251122_163034_f5277a.pdf",
+      "category": "17_tecnologia",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/UU_19_2016_ITE_20251122_163034_f5277a.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/17_tecnologia/Informasi dan Transaksi Elektronik.pdf",
+      "filename": "Informasi dan Transaksi Elektronik.pdf",
+      "category": "17_tecnologia",
+      "size_kb": 267.55,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Informasi dan Transaksi Elektronik.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Informasi dan Transaksi Elektronik.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/14_internazionale/Pengesahan Persetujuan antara Republik Indonesia dan Republik Rakyat China tentang Ekstradisi (Treaty Between The Republic of Indonesia and The Peoples Republic of China on Extradition).pdf",
+      "filename": "Pengesahan Persetujuan antara Republik Indonesia dan Republik Rakyat China tentang Ekstradisi (Treaty Between The Republic of Indonesia and The Peoples Republic of China on Extradition).pdf",
+      "category": "14_internazionale",
+      "size_kb": 632.9,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Pengesahan Persetujuan antara Republik Indonesia dan Republik Rakyat China tentang Ekstradisi (Treaty Between The Republic of Indonesia and The Peoples Republic of China on Extradition).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Persetujuan antara Republik Indonesia dan Republik Rakyat China tentang Ekstradisi (Treaty Between The Republic of Indonesia and The Peoples Republic of China on Extradition).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/14_internazionale/Pengesahan International Covenant on Civil and Political Rights (Kovenan Internasional Tentang Hak-Hak Sipil dan Politik).pdf",
+      "filename": "Pengesahan International Covenant on Civil and Political Rights (Kovenan Internasional Tentang Hak-Hak Sipil dan Politik).pdf",
+      "category": "14_internazionale",
+      "size_kb": 104.17,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Pengesahan International Covenant on Civil and Political Rights (Kovenan Internasional Tentang Hak-Hak Sipil dan Politik).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan International Covenant on Civil and Political Rights (Kovenan Internasional Tentang Hak-Hak Sipil dan Politik).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/14_internazionale/Pengesahan Comprehensive Economic Partnership Agreement Between The Republic of Indonesia and The EFTA States (Persetujuan Kemitraan Ekonomi Komprehensif antara Republik Indonesia dan Negara-Negara.pdf",
+      "filename": "Pengesahan Comprehensive Economic Partnership Agreement Between The Republic of Indonesia and The EFTA States (Persetujuan Kemitraan Ekonomi Komprehensif antara Republik Indonesia dan Negara-Negara.pdf",
+      "category": "14_internazionale",
+      "size_kb": 566.8,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Pengesahan Comprehensive Economic Partnership Agreement Between The Republic of Indonesia and The EFTA States (Persetujuan Kemitraan Ekonomi Komprehensif antara Republik Indonesia dan Negara-Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Comprehensive Economic Partnership Agreement Between The Republic of Indonesia and The EFTA States (Persetujuan Kemitraan Ekonomi Komprehensif antara Republik Indonesia dan Negara-Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/14_internazionale/Pengesahan ASEAN Agreement on Transboundary Haze Pollution (Persetujuan ASEAN Tentang Pencemaran Asap Lintas Batas).pdf",
+      "filename": "Pengesahan ASEAN Agreement on Transboundary Haze Pollution (Persetujuan ASEAN Tentang Pencemaran Asap Lintas Batas).pdf",
+      "category": "14_internazionale",
+      "size_kb": 10127.69,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Pengesahan ASEAN Agreement on Transboundary Haze Pollution (Persetujuan ASEAN Tentang Pencemaran Asap Lintas Batas).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan ASEAN Agreement on Transboundary Haze Pollution (Persetujuan ASEAN Tentang Pencemaran Asap Lintas Batas).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/14_internazionale/Pengesahan Treaty on the Prohibition of Nuclear Weapons (Traktat mengenai Pelarangan Senjata Nuklir).pdf",
+      "filename": "Pengesahan Treaty on the Prohibition of Nuclear Weapons (Traktat mengenai Pelarangan Senjata Nuklir).pdf",
+      "category": "14_internazionale",
+      "size_kb": 1081.58,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Pengesahan Treaty on the Prohibition of Nuclear Weapons (Traktat mengenai Pelarangan Senjata Nuklir).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Treaty on the Prohibition of Nuclear Weapons (Traktat mengenai Pelarangan Senjata Nuklir).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/14_internazionale/Pengesahan Charter of The Association of Southeast Asian Nations (Piagam Perhimpunan Bangsa-Bangsa Asia Tenggara).pdf",
+      "filename": "Pengesahan Charter of The Association of Southeast Asian Nations (Piagam Perhimpunan Bangsa-Bangsa Asia Tenggara).pdf",
+      "category": "14_internazionale",
+      "size_kb": 58.11,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Pengesahan Charter of The Association of Southeast Asian Nations (Piagam Perhimpunan Bangsa-Bangsa Asia Tenggara).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Charter of The Association of Southeast Asian Nations (Piagam Perhimpunan Bangsa-Bangsa Asia Tenggara).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/14_internazionale/Pengesahan International Covenant on Economic Social and Cultural Rights (Kovenan Internasional tentang Hak-Hak Ekonomi Sosial dan Budaya).pdf",
+      "filename": "Pengesahan International Covenant on Economic Social and Cultural Rights (Kovenan Internasional tentang Hak-Hak Ekonomi Sosial dan Budaya).pdf",
+      "category": "14_internazionale",
+      "size_kb": 101.11,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Pengesahan International Covenant on Economic Social and Cultural Rights (Kovenan Internasional tentang Hak-Hak Ekonomi Sosial dan Budaya).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan International Covenant on Economic Social and Cultural Rights (Kovenan Internasional tentang Hak-Hak Ekonomi Sosial dan Budaya).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/UUD_1945_Amd3_20251122_163034_2ea2aa.pdf",
+      "filename": "UUD_1945_Amd3_20251122_163034_2ea2aa.pdf",
+      "category": "09_codici",
+      "size_kb": 25.6,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Istruzione/UUD_1945_Amd3_20251122_163034_2ea2aa.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/Kitab Undang-Undang Hukum Pidana.pdf",
+      "filename": "Kitab Undang-Undang Hukum Pidana.pdf",
+      "category": "09_codici",
+      "size_kb": 24212.74,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Kitab Undang-Undang Hukum Pidana.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kitab Undang-Undang Hukum Pidana.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/UUD_1945_Amd2_20251122_163034_7476b5.pdf",
+      "filename": "UUD_1945_Amd2_20251122_163034_7476b5.pdf",
+      "category": "09_codici",
+      "size_kb": 22.73,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Istruzione/UUD_1945_Amd2_20251122_163034_7476b5.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/KUHP_2025_New.pdf",
+      "filename": "KUHP_2025_New.pdf",
+      "category": "09_codici",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/KUHP_2025_New.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/Pengesahan Perjanjian antara Republik Indonesia dan Federasi Rusia tentang Bantuan Hukum Timbal Balik dalam Masalah Pidana (Treaty Between the Republic of Indonesia and the Russian Federation on.pdf",
+      "filename": "Pengesahan Perjanjian antara Republik Indonesia dan Federasi Rusia tentang Bantuan Hukum Timbal Balik dalam Masalah Pidana (Treaty Between the Republic of Indonesia and the Russian Federation on.pdf",
+      "category": "09_codici",
+      "size_kb": 314.78,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Perjanjian antara Republik Indonesia dan Federasi Rusia tentang Bantuan Hukum Timbal Balik dalam Masalah Pidana (Treaty Between the Republic of Indonesia and the Russian Federation on.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/UUD_1945_Amd1_20251122_163034_a0d9f2.pdf",
+      "filename": "UUD_1945_Amd1_20251122_163034_a0d9f2.pdf",
+      "category": "09_codici",
+      "size_kb": 15.55,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Istruzione/UUD_1945_Amd1_20251122_163034_a0d9f2.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/UUD_1945_Amd4_20251122_163034_eb7c5a.pdf",
+      "filename": "UUD_1945_Amd4_20251122_163034_eb7c5a.pdf",
+      "category": "09_codici",
+      "size_kb": 19.54,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Istruzione/UUD_1945_Amd4_20251122_163034_eb7c5a.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/KUHP_2025_New_Penal_Code.pdf",
+      "filename": "KUHP_2025_New_Penal_Code.pdf",
+      "category": "09_codici",
+      "size_kb": 2717.19,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/KUHP_2025_New_Penal_Code.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/UUD 1945 dan Amandemen.pdf",
+      "filename": "UUD 1945 dan Amandemen.pdf",
+      "category": "09_codici",
+      "size_kb": 29.8,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/UUD 1945 dan Amandemen.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/Pengadilan Tindak Pidana Korupsi.pdf",
+      "filename": "Pengadilan Tindak Pidana Korupsi.pdf",
+      "category": "09_codici",
+      "size_kb": 114.62,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Pengadilan Tindak Pidana Korupsi.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengadilan Tindak Pidana Korupsi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/09_codici/Civil Code.pdf",
+      "filename": "Civil Code.pdf",
+      "category": "09_codici",
+      "size_kb": 1196.02,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Civil Code.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Jaminan Produk Halal.pdf",
+      "filename": "Jaminan Produk Halal.pdf",
+      "category": "06_sanita",
+      "size_kb": 322.23,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Jaminan Produk Halal.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Jaminan Produk Halal.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/UU_29_2004_Praktik_Kedokteran_20251122_163034_ca7a95.pdf",
+      "filename": "UU_29_2004_Praktik_Kedokteran_20251122_163034_ca7a95.pdf",
+      "category": "06_sanita",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_29_2004_Praktik_Kedokteran_20251122_163034_ca7a95.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Pembentukan Kabupaten Pangandaran di Provinsi Jawa Barat.pdf",
+      "filename": "Pembentukan Kabupaten Pangandaran di Provinsi Jawa Barat.pdf",
+      "category": "06_sanita",
+      "size_kb": 392.95,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Pangandaran di Provinsi Jawa Barat.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Kesehatan Jiwa.pdf",
+      "filename": "Kesehatan Jiwa.pdf",
+      "category": "06_sanita",
+      "size_kb": 397.05,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Kesehatan Jiwa.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Tenaga Kesehatan.pdf",
+      "filename": "Tenaga Kesehatan.pdf",
+      "category": "06_sanita",
+      "size_kb": 2825.04,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Tenaga Kesehatan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/UU_24_2011_BPJS_20251122_163034_756588.pdf",
+      "filename": "UU_24_2011_BPJS_20251122_163034_756588.pdf",
+      "category": "06_sanita",
+      "size_kb": 108.46,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_24_2011_BPJS_20251122_163034_756588.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/UU_36_2009_Health_20251122_163034_4f61bb.pdf",
+      "filename": "UU_36_2009_Health_20251122_163034_4f61bb.pdf",
+      "category": "06_sanita",
+      "size_kb": 213.99,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/UU_36_2009_Health_20251122_163034_4f61bb.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Rumah Sakit.pdf",
+      "filename": "Rumah Sakit.pdf",
+      "category": "06_sanita",
+      "size_kb": 188.04,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Rumah Sakit.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Rumah Sakit.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Kesehatan.pdf",
+      "filename": "Kesehatan.pdf",
+      "category": "06_sanita",
+      "size_kb": 18738.98,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Kesehatan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Kekarantinaan Kesehatan.pdf",
+      "filename": "Kekarantinaan Kesehatan.pdf",
+      "category": "06_sanita",
+      "size_kb": 2980.7,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Kekarantinaan Kesehatan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/UU_44_2009_Rumah_Sakit_20251122_163034_2f914b.pdf",
+      "filename": "UU_44_2009_Rumah_Sakit_20251122_163034_2f914b.pdf",
+      "category": "06_sanita",
+      "size_kb": 177.09,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/UU_44_2009_Rumah_Sakit_20251122_163034_2f914b.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Pangan.pdf",
+      "filename": "Pangan.pdf",
+      "category": "06_sanita",
+      "size_kb": 438.47,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Pangan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pangan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Kebidanan.pdf",
+      "filename": "Kebidanan.pdf",
+      "category": "06_sanita",
+      "size_kb": 1755.1,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Kebidanan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Keperawatan.pdf",
+      "filename": "Keperawatan.pdf",
+      "category": "06_sanita",
+      "size_kb": 1427.53,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Keperawatan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/Kesejahteraan Ibu dan Anak pada Fase Seribu Hari Pertama Kehidupan.pdf",
+      "filename": "Kesejahteraan Ibu dan Anak pada Fase Seribu Hari Pertama Kehidupan.pdf",
+      "category": "06_sanita",
+      "size_kb": 3443.77,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Kesejahteraan Ibu dan Anak pada Fase Seribu Hari Pertama Kehidupan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kesejahteraan Ibu dan Anak pada Fase Seribu Hari Pertama Kehidupan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/06_sanita/UU_29_2004_Medical_Practice_20251122_163034_3e8d7c.pdf",
+      "filename": "UU_29_2004_Medical_Practice_20251122_163034_3e8d7c.pdf",
+      "category": "06_sanita",
+      "size_kb": 5369.65,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/UU_29_2004_Medical_Practice_20251122_163034_3e8d7c.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_C.pdf",
+      "filename": "Lampiran_I_C.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 5065.3,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_B.pdf",
+      "filename": "Lampiran_I_B.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 22771.56,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_8.pdf",
+      "filename": "Lampiran_I_F_8.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 15882.68,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_A.pdf",
+      "filename": "Lampiran_I_A.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 12485.63,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_E.pdf",
+      "filename": "Lampiran_I_E.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 5244.75,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_Q_to_V.pdf",
+      "filename": "Lampiran_I_Q_to_V.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 7651.05,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_D.pdf",
+      "filename": "Lampiran_I_D.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 29334.67,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_G.pdf",
+      "filename": "Lampiran_I_G.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 10545.57,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/KBLI_2020_REFERENCE.pdf",
+      "filename": "KBLI_2020_REFERENCE.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 3828.67,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_II.pdf",
+      "filename": "Lampiran_II.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 24573.56,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_IV.pdf",
+      "filename": "Lampiran_IV.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 407.67,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_III.pdf",
+      "filename": "Lampiran_III.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 1188.82,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_1.pdf",
+      "filename": "Lampiran_I_F_1.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 20792.95,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_3.pdf",
+      "filename": "Lampiran_I_F_3.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 24133.82,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_I.pdf",
+      "filename": "Lampiran_I_I.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 12247.03,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_H.pdf",
+      "filename": "Lampiran_I_H.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 17643.0,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_2.pdf",
+      "filename": "Lampiran_I_F_2.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 22494.08,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_6.pdf",
+      "filename": "Lampiran_I_F_6.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 28821.04,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_J_to_P.pdf",
+      "filename": "Lampiran_I_J_to_P.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 13409.71,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_7.pdf",
+      "filename": "Lampiran_I_F_7.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 25965.11,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_5.pdf",
+      "filename": "Lampiran_I_F_5.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 26476.34,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/PP_28_2025_LAMPIRAN/Lampiran_I_F_4.pdf",
+      "filename": "Lampiran_I_F_4.pdf",
+      "category": "PP_28_2025_LAMPIRAN",
+      "size_kb": 26490.07,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Kelautan.pdf",
+      "filename": "Kelautan.pdf",
+      "category": "05_ambiente",
+      "size_kb": 2741.69,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Kelautan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kelautan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/UU_31_2004_Perikanan_20251122_163034_6aff88.pdf",
+      "filename": "UU_31_2004_Perikanan_20251122_163034_6aff88.pdf",
+      "category": "05_ambiente",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_31_2004_Perikanan_20251122_163034_6aff88.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Perikanan.pdf",
+      "filename": "Perikanan.pdf",
+      "category": "05_ambiente",
+      "size_kb": 392.05,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Perikanan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perikanan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Keolahragaan.pdf",
+      "filename": "Keolahragaan.pdf",
+      "category": "05_ambiente",
+      "size_kb": 4630.95,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Keolahragaan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Keolahragaan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Minyak dan Gas Bumi.pdf",
+      "filename": "Minyak dan Gas Bumi.pdf",
+      "category": "05_ambiente",
+      "size_kb": 176.98,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Minyak dan Gas Bumi.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Minyak dan Gas Bumi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/PP_22_2021_Environment_Protection_20251122_163034_a5e9af.pdf",
+      "filename": "PP_22_2021_Environment_Protection_20251122_163034_a5e9af.pdf",
+      "category": "05_ambiente",
+      "size_kb": 159.79,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/PP_22_2021_Environment_Protection_20251122_163034_a5e9af.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Perlindungan Saksi dan Korban.pdf",
+      "filename": "Perlindungan Saksi dan Korban.pdf",
+      "category": "05_ambiente",
+      "size_kb": 36.07,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Perlindungan Saksi dan Korban.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perlindungan Saksi dan Korban.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/UU_32_2009_Lingkungan_Hidup_20251122_163034_74a018.pdf",
+      "filename": "UU_32_2009_Lingkungan_Hidup_20251122_163034_74a018.pdf",
+      "category": "05_ambiente",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_32_2009_Lingkungan_Hidup_20251122_163034_74a018.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/UU_18_2008_Persampahan_20251122_163034_06aac1.pdf",
+      "filename": "UU_18_2008_Persampahan_20251122_163034_06aac1.pdf",
+      "category": "05_ambiente",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/UU_18_2008_Persampahan_20251122_163034_06aac1.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/UU_31_2004_Fisheries_20251122_163034_2049d6.pdf",
+      "filename": "UU_31_2004_Fisheries_20251122_163034_2049d6.pdf",
+      "category": "05_ambiente",
+      "size_kb": 2500.01,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/UU_31_2004_Fisheries_20251122_163034_2049d6.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Energi.pdf",
+      "filename": "Energi.pdf",
+      "category": "05_ambiente",
+      "size_kb": 916.14,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Energi.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Energi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Pengesahan Minamata Convention On Mercury (Konvensi Minamata Mengenai Merkuri).pdf",
+      "filename": "Pengesahan Minamata Convention On Mercury (Konvensi Minamata Mengenai Merkuri).pdf",
+      "category": "05_ambiente",
+      "size_kb": 1203.53,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Pengesahan Minamata Convention On Mercury (Konvensi Minamata Mengenai Merkuri).pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Minamata Convention On Mercury (Konvensi Minamata Mengenai Merkuri).pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Perairan Indonesia.pdf",
+      "filename": "Perairan Indonesia.pdf",
+      "category": "05_ambiente",
+      "size_kb": 94.77,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Perairan Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perairan Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/UU_32_2009_Environment_20251122_163034_8c7441.pdf",
+      "filename": "UU_32_2009_Environment_20251122_163034_8c7441.pdf",
+      "category": "05_ambiente",
+      "size_kb": 84.91,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_32_2009_Environment_20251122_163034_8c7441.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Perubahan Atas Undang-Undang Nomor 31 Tahun 2004 Tentang Perikanan.pdf",
+      "filename": "Perubahan Atas Undang-Undang Nomor 31 Tahun 2004 Tentang Perikanan.pdf",
+      "category": "05_ambiente",
+      "size_kb": 183.39,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Perubahan Atas Undang-Undang Nomor 31 Tahun 2004 Tentang Perikanan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Atas Undang-Undang Nomor 31 Tahun 2004 Tentang Perikanan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Perubahan atas Undang-Undang Nomor 13 Tahun 2006 Tentang Perlindungan Saksi dan Korban.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 13 Tahun 2006 Tentang Perlindungan Saksi dan Korban.pdf",
+      "category": "05_ambiente",
+      "size_kb": 353.66,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Perubahan atas Undang-Undang Nomor 13 Tahun 2006 Tentang Perlindungan Saksi dan Korban.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 13 Tahun 2006 Tentang Perlindungan Saksi dan Korban.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf",
+      "filename": "Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf",
+      "category": "05_ambiente",
+      "size_kb": 64.42,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Perubahan atas Undang-Undang Nomor 27 Tahun 2007 Tentang Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 27 Tahun 2007 Tentang Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf",
+      "category": "05_ambiente",
+      "size_kb": 428.83,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Perubahan atas Undang-Undang Nomor 27 Tahun 2007 Tentang Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 27 Tahun 2007 Tentang Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Panas Bumi.pdf",
+      "filename": "Panas Bumi.pdf",
+      "category": "05_ambiente",
+      "size_kb": 70.61,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Panas Bumi.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Panas Bumi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Sistem Keolahragaan Nasional.pdf",
+      "filename": "Sistem Keolahragaan Nasional.pdf",
+      "category": "05_ambiente",
+      "size_kb": 316.79,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Sistem Keolahragaan Nasional.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Sistem Keolahragaan Nasional.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Pembentukan Daerah Otonom Kabupaten-Kabupaten Dalam Lingkungan Daerah Propinsi Sumatera Utara.pdf",
+      "filename": "Pembentukan Daerah Otonom Kabupaten-Kabupaten Dalam Lingkungan Daerah Propinsi Sumatera Utara.pdf",
+      "category": "05_ambiente",
+      "size_kb": 100.58,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Daerah Otonom Kabupaten-Kabupaten Dalam Lingkungan Daerah Propinsi Sumatera Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/05_ambiente/Pembentukan Daerah Otonom Kota-Kota Besar Dalam Lingkungan Daerah Propinsi Sumatera Utara.pdf",
+      "filename": "Pembentukan Daerah Otonom Kota-Kota Besar Dalam Lingkungan Daerah Propinsi Sumatera Utara.pdf",
+      "category": "05_ambiente",
+      "size_kb": 105.45,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Daerah Otonom Kota-Kota Besar Dalam Lingkungan Daerah Propinsi Sumatera Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/18_religione/Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 2019 tentang Ibadah Haji dan Umrah.pdf",
+      "filename": "Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 2019 tentang Ibadah Haji dan Umrah.pdf",
+      "category": "18_religione",
+      "size_kb": 5044.55,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 2019 tentang Ibadah Haji dan Umrah.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 2019 tentang Ibadah Haji dan Umrah.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/18_religione/Penyelenggaraan Ibadah Haji dan Umrah.pdf",
+      "filename": "Penyelenggaraan Ibadah Haji dan Umrah.pdf",
+      "category": "18_religione",
+      "size_kb": 3247.77,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Penyelenggaraan Ibadah Haji dan Umrah.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penyelenggaraan Ibadah Haji dan Umrah.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/15_proprieta_intellettuale/Hak Cipta.pdf",
+      "filename": "Hak Cipta.pdf",
+      "category": "15_proprieta_intellettuale",
+      "size_kb": 2503.67,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Hak Cipta.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Hak Cipta.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/15_proprieta_intellettuale/Perubahan Ketiga atas Undang-Undang Nomor 13 Tahun 2016 tentang Paten.pdf",
+      "filename": "Perubahan Ketiga atas Undang-Undang Nomor 13 Tahun 2016 tentang Paten.pdf",
+      "category": "15_proprieta_intellettuale",
+      "size_kb": 90242.11,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perubahan Ketiga atas Undang-Undang Nomor 13 Tahun 2016 tentang Paten.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Ketiga atas Undang-Undang Nomor 13 Tahun 2016 tentang Paten.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 2011 tentan Keimigrasian.pdf",
+      "filename": "Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 2011 tentan Keimigrasian.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 984.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/UU-63-2024_20251122_163034_69f2f0.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/PP Nomor 31 Tahun 2013_20251122_163034_f60006.pdf",
+      "filename": "PP Nomor 31 Tahun 2013_20251122_163034_f60006.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 687.78,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/PP Nomor 31 Tahun 2013_20251122_163034_f60006.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/SEDJ_IMIG_IMI417GR0101_2025.pdf",
+      "filename": "SEDJ_IMIG_IMI417GR0101_2025.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 331.2,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/UU_6_2011_Immigration_20251122_163034_1244ae.pdf",
+      "filename": "UU_6_2011_Immigration_20251122_163034_1244ae.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 179.85,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/UU_6_2011_Immigration_20251122_163034_1244ae.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/Kitas giga 2.pdf",
+      "filename": "Kitas giga 2.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 404.98,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Kitas giga 2.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/imigrasi_file_77.pdf",
+      "filename": "imigrasi_file_77.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 125.58,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/imigrasi_file_77.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/PP_48_2021_Perubahan_Ketiga_PP31_2013_20251122_163034_911628.pdf",
+      "filename": "PP_48_2021_Perubahan_Ketiga_PP31_2013_20251122_163034_911628.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 66.59,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/PP_48_2021_Perubahan_Ketiga_PP31_2013_20251122_163034_911628.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/PP_31_2013_Immigration_Detail_20251122_163034_e71d38.pdf",
+      "filename": "PP_31_2013_Immigration_Detail_20251122_163034_e71d38.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 36.82,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/PP_31_2013_Immigration_Detail_20251122_163034_e71d38.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/imigrasi_file_75.pdf",
+      "filename": "imigrasi_file_75.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 1362.39,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/imigrasi_file_75.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/PP-40-2023_20251122_163034_db097b.pdf",
+      "filename": "PP-40-2023_20251122_163034_db097b.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 8032.61,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/PP-40-2023_20251122_163034_db097b.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/PP_51_2020_Perubahan_Kedua_PP31_2013_20251122_163034_929447.pdf",
+      "filename": "PP_51_2020_Perubahan_Kedua_PP31_2013_20251122_163034_929447.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 18643.69,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/PP_51_2020_Perubahan_Kedua_PP31_2013_20251122_163034_929447.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/PP_40_2023_Perubahan_Keempat_PP31_2013_20251122_163034_1db697.pdf",
+      "filename": "PP_40_2023_Perubahan_Keempat_PP31_2013_20251122_163034_1db697.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 8689.31,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/PP_40_2023_Perubahan_Keempat_PP31_2013_20251122_163034_1db697.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/imigrasi_file_80.pdf",
+      "filename": "imigrasi_file_80.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 1767.94,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/imigrasi_file_80.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/SE-DIRJEN-IMIGRASI-IMI-941-GR-01-01-2024.pdf",
+      "filename": "SE-DIRJEN-IMIGRASI-IMI-941-GR-01-01-2024.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 38.99,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/imigrasi_file_78.pdf",
+      "filename": "imigrasi_file_78.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 170.82,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/imigrasi_file_78.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/imigrasi_file_79.pdf",
+      "filename": "imigrasi_file_79.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 654.45,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Permenkumham Nomor 11 Tahun 2024.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/imigrasi_file_79.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/Permen Imipas Nomor 3 Tahun 2024.pdf",
+      "filename": "Permen Imipas Nomor 3 Tahun 2024.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 186.31,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Permen Imipas Nomor 3 Tahun 2024.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/PP Nomor 45 Tahun 2019_20251122_163034_335ccc.pdf",
+      "filename": "PP Nomor 45 Tahun 2019_20251122_163034_335ccc.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 481.39,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/PP Nomor 45 Tahun 2019_20251122_163034_335ccc.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/Permen Imipas 8 Tahun 2025.pdf",
+      "filename": "Permen Imipas 8 Tahun 2025.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 638.49,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Permen Imipas 8 Tahun 2025.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/UU_6_2011_Keimigrasian_20251122_163034_123521.pdf",
+      "filename": "UU_6_2011_Keimigrasian_20251122_163034_123521.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/UU_6_2011_Keimigrasian_20251122_163034_123521.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/01_immigrazione/Keimigrasian.pdf",
+      "filename": "Keimigrasian.pdf",
+      "category": "01_immigrazione",
+      "size_kb": 439.99,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Keimigrasian.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Keimigrasian.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/Perubahan atas Undang-Undang Nomor 15 Tahun 2002 tentang Tindak Pidana Pencucian Uang.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 15 Tahun 2002 tentang Tindak Pidana Pencucian Uang.pdf",
+      "category": "07_finanza",
+      "size_kb": 44.34,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Settore_Finanziario/Perubahan atas Undang-Undang Nomor 15 Tahun 2002 tentang Tindak Pidana Pencucian Uang.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 15 Tahun 2002 tentang Tindak Pidana Pencucian Uang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/UU_21_2008_Sharia_Banking_20251122_163034_a8f533.pdf",
+      "filename": "UU_21_2008_Sharia_Banking_20251122_163034_a8f533.pdf",
+      "category": "07_finanza",
+      "size_kb": 931.79,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_21_2008_Sharia_Banking_20251122_163034_a8f533.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/UU_7_1992_Banking_20251122_163034_1ca21a.pdf",
+      "filename": "UU_7_1992_Banking_20251122_163034_1ca21a.pdf",
+      "category": "07_finanza",
+      "size_kb": 318.1,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_7_1992_Banking_20251122_163034_1ca21a.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/UU_7_1992_Perbankan_20251122_163034_76ad5b.pdf",
+      "filename": "UU_7_1992_Perbankan_20251122_163034_76ad5b.pdf",
+      "category": "07_finanza",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_7_1992_Perbankan_20251122_163034_76ad5b.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/UU_4_2023_PPSK_20251122_163034_2aad03.pdf",
+      "filename": "UU_4_2023_PPSK_20251122_163034_2aad03.pdf",
+      "category": "07_finanza",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_4_2023_PPSK_20251122_163034_2aad03.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/Tindak Pidana Pencucian Uang.pdf",
+      "filename": "Tindak Pidana Pencucian Uang.pdf",
+      "category": "07_finanza",
+      "size_kb": 114.78,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Settore_Finanziario/Tindak Pidana Pencucian Uang.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Tindak Pidana Pencucian Uang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/UU_4_2023_Financial_Sector_Dev_20251122_163034_e8880d.pdf",
+      "filename": "UU_4_2023_Financial_Sector_Dev_20251122_163034_e8880d.pdf",
+      "category": "07_finanza",
+      "size_kb": 371.73,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_4_2023_Financial_Sector_Dev_20251122_163034_e8880d.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/Pengelolaan Keuangan Haji.pdf",
+      "filename": "Pengelolaan Keuangan Haji.pdf",
+      "category": "07_finanza",
+      "size_kb": 349.76,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Settore_Finanziario/Pengelolaan Keuangan Haji.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengelolaan Keuangan Haji.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/07_finanza/UU_21_2011_OJK_20251122_163034_2aad03.pdf",
+      "filename": "UU_21_2011_OJK_20251122_163034_2aad03.pdf",
+      "category": "07_finanza",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Settore_Finanziario/UU_21_2011_OJK_20251122_163034_2aad03.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/PP_35_2021_PKWT_20251122_163034_2610c8.pdf",
+      "filename": "PP_35_2021_PKWT_20251122_163034_2610c8.pdf",
+      "category": "03_lavoro",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/PP_35_2021_PKWT_20251122_163034_2610c8.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/PP Nomor 35 Tahun 2021.pdf",
+      "filename": "PP Nomor 35 Tahun 2021.pdf",
+      "category": "03_lavoro",
+      "size_kb": 2458.01,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/PP Nomor 35 Tahun 2021.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/UU_20_2016_TKA_20251122_163034_fe6a34.pdf",
+      "filename": "UU_20_2016_TKA_20251122_163034_fe6a34.pdf",
+      "category": "03_lavoro",
+      "size_kb": 249.32,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/UU_20_2016_TKA_20251122_163034_fe6a34.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/Kemnaker_2023UU06_Klaster_Ketenagakerjaan.pdf",
+      "filename": "Kemnaker_2023UU06_Klaster_Ketenagakerjaan.pdf",
+      "category": "03_lavoro",
+      "size_kb": 11010.96,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Kemnaker_2023UU06_Klaster_Ketenagakerjaan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/UU_13_2003_Manpower_20251122_163034_aba4f9.pdf",
+      "filename": "UU_13_2003_Manpower_20251122_163034_aba4f9.pdf",
+      "category": "03_lavoro",
+      "size_kb": 31.83,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_13_2003_Manpower_20251122_163034_aba4f9.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/Ketenagakerjaan.pdf",
+      "filename": "Ketenagakerjaan.pdf",
+      "category": "03_lavoro",
+      "size_kb": 290.53,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/Ketenagakerjaan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Ketenagakerjaan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/Permenaker_No._15_Tahun_2022.pdf",
+      "filename": "Permenaker_No._15_Tahun_2022.pdf",
+      "category": "03_lavoro",
+      "size_kb": 300.18,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Permenaker_No._15_Tahun_2022.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/Permenaker_No._20_Tahun_2019.pdf",
+      "filename": "Permenaker_No._20_Tahun_2019.pdf",
+      "category": "03_lavoro",
+      "size_kb": 1888.17,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Permenaker_No._20_Tahun_2019.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/Penempatan dan Perlindungan Tenaga Kerja Indonesia di Luar Negeri.pdf",
+      "filename": "Penempatan dan Perlindungan Tenaga Kerja Indonesia di Luar Negeri.pdf",
+      "category": "03_lavoro",
+      "size_kb": 207.32,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/Penempatan dan Perlindungan Tenaga Kerja Indonesia di Luar Negeri.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penempatan dan Perlindungan Tenaga Kerja Indonesia di Luar Negeri.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/UU_13_2003_Ketenagakerjaan_20251122_163034_5ff27c.pdf",
+      "filename": "UU_13_2003_Ketenagakerjaan_20251122_163034_5ff27c.pdf",
+      "category": "03_lavoro",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_13_2003_Ketenagakerjaan_20251122_163034_5ff27c.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/03_lavoro/Pelindungan Pekerja Migran Indonesia.pdf",
+      "filename": "Pelindungan Pekerja Migran Indonesia.pdf",
+      "category": "03_lavoro",
+      "size_kb": 4125.37,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/Pelindungan Pekerja Migran Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pelindungan Pekerja Migran Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/11_istruzione/UU_20_2003_Education_System_20251122_163034_b0724e.pdf",
+      "filename": "UU_20_2003_Education_System_20251122_163034_b0724e.pdf",
+      "category": "11_istruzione",
+      "size_kb": 98.09,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Istruzione/UU_20_2003_Education_System_20251122_163034_b0724e.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/11_istruzione/UU Nomor 12 Tahun 2012.pdf",
+      "filename": "UU Nomor 12 Tahun 2012.pdf",
+      "category": "11_istruzione",
+      "size_kb": 322.25,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/UU Nomor 12 Tahun 2012.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/11_istruzione/UU_12_2012_Pendidikan_Tinggi_20251122_163034_760137.pdf",
+      "filename": "UU_12_2012_Pendidikan_Tinggi_20251122_163034_760137.pdf",
+      "category": "11_istruzione",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_12_2012_Pendidikan_Tinggi_20251122_163034_760137.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf",
+      "filename": "Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf",
+      "category": "13_difesa",
+      "size_kb": 125.38,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Kepolisian Negara Republik Indonesia.pdf",
+      "filename": "Kepolisian Negara Republik Indonesia.pdf",
+      "category": "13_difesa",
+      "size_kb": 170.08,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Kepolisian Negara Republik Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kepolisian Negara Republik Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Hukum Disiplin Militer.pdf",
+      "filename": "Hukum Disiplin Militer.pdf",
+      "category": "13_difesa",
+      "size_kb": 258.27,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Hukum Disiplin Militer.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Hukum Disiplin Militer.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Perubahan atas Undang-Undang Nomor 20 Tahun 1982 tentang Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 20 Tahun 1982 tentang Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf",
+      "category": "13_difesa",
+      "size_kb": 54.84,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Perubahan atas Undang-Undang Nomor 20 Tahun 1982 tentang Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 20 Tahun 1982 tentang Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Penghapusan Diskriminasi Ras dan Etnis.pdf",
+      "filename": "Penghapusan Diskriminasi Ras dan Etnis.pdf",
+      "category": "13_difesa",
+      "size_kb": 105.78,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Penghapusan Diskriminasi Ras dan Etnis.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penghapusan Diskriminasi Ras dan Etnis.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Veteran Republik Indonesia.pdf",
+      "filename": "Veteran Republik Indonesia.pdf",
+      "category": "13_difesa",
+      "size_kb": 211.98,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Veteran Republik Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Veteran Republik Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Hukum Disiplin Prajurit Angkatan Bersenjata Republik Indonesia.pdf",
+      "filename": "Hukum Disiplin Prajurit Angkatan Bersenjata Republik Indonesia.pdf",
+      "category": "13_difesa",
+      "size_kb": 82.87,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Hukum Disiplin Prajurit Angkatan Bersenjata Republik Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Hukum Disiplin Prajurit Angkatan Bersenjata Republik Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/13_difesa/Pertahanan Negara.pdf",
+      "filename": "Pertahanan Negara.pdf",
+      "category": "13_difesa",
+      "size_kb": 144.61,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Pertahanan Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pertahanan Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/16_sentenze/putusan_24_k_pdt.sus-pailit_2025_20251207023420.pdf",
+      "filename": "putusan_24_k_pdt.sus-pailit_2025_20251207023420.pdf",
+      "category": "16_sentenze",
+      "size_kb": 400.84,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/16_sentenze/putusan_3289_pk_pid.sus_2025_20251207023343.pdf",
+      "filename": "putusan_3289_pk_pid.sus_2025_20251207023343.pdf",
+      "category": "16_sentenze",
+      "size_kb": 116.78,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/16_sentenze/putusan_1264_pdt.g_2024_pn_dps_20251207023625.pdf",
+      "filename": "putusan_1264_pdt.g_2024_pn_dps_20251207023625.pdf",
+      "category": "16_sentenze",
+      "size_kb": 241.38,
+      "duplicates": []
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/PP_14_2021_Housing_20251122_163034_0c909f.pdf",
+      "filename": "PP_14_2021_Housing_20251122_163034_0c909f.pdf",
+      "category": "08_edilizia",
+      "size_kb": 78.88,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/PP_14_2021_Housing_20251122_163034_0c909f.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/UU_2_2017_Jasa_Konstruksi_20251122_163034_490b7b.pdf",
+      "filename": "UU_2_2017_Jasa_Konstruksi_20251122_163034_490b7b.pdf",
+      "category": "08_edilizia",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_2_2017_Jasa_Konstruksi_20251122_163034_490b7b.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/UU_2_2017_Construction_20251122_163034_b08088.pdf",
+      "filename": "UU_2_2017_Construction_20251122_163034_b08088.pdf",
+      "category": "08_edilizia",
+      "size_kb": 90.76,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/UU_2_2017_Construction_20251122_163034_b08088.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/UU_5_1960_UUPA_20251122_163034_fbf36b.pdf",
+      "filename": "UU_5_1960_UUPA_20251122_163034_fbf36b.pdf",
+      "category": "08_edilizia",
+      "size_kb": 153.52,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/UU_5_1960_UUPA_20251122_163034_fbf36b.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2005 tentang Badan Rehabilitasi dan Rekonstruksi Wilayah dan Kehidupan Masyarakat Provinsi Nanggroe Aceh Darussalam dan Kepulauan.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2005 tentang Badan Rehabilitasi dan Rekonstruksi Wilayah dan Kehidupan Masyarakat Provinsi Nanggroe Aceh Darussalam dan Kepulauan.pdf",
+      "category": "08_edilizia",
+      "size_kb": 59.35,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2005 tentang Badan Rehabilitasi dan Rekonstruksi Wilayah dan Kehidupan Masyarakat Provinsi Nanggroe Aceh Darussalam dan Kepulauan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/UU_5_1960_Real_Estate_20251122_163034_4b5f11.pdf",
+      "filename": "UU_5_1960_Real_Estate_20251122_163034_4b5f11.pdf",
+      "category": "08_edilizia",
+      "size_kb": 172.63,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/UU_5_1960_Real_Estate_20251122_163034_4b5f11.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/UU_1_2011_Perumahan_20251122_163034_d92bb0.pdf",
+      "filename": "UU_1_2011_Perumahan_20251122_163034_d92bb0.pdf",
+      "category": "08_edilizia",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_1_2011_Perumahan_20251122_163034_d92bb0.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/Penataan Ruang.pdf",
+      "filename": "Penataan Ruang.pdf",
+      "category": "08_edilizia",
+      "size_kb": 148.81,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Penataan Ruang.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penataan Ruang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/08_edilizia/Rencana Pembangunan Jangka Panjang Nasional Tahun 2025-2045.pdf",
+      "filename": "Rencana Pembangunan Jangka Panjang Nasional Tahun 2025-2045.pdf",
+      "category": "08_edilizia",
+      "size_kb": 67227.14,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Rencana Pembangunan Jangka Panjang Nasional Tahun 2025-2045.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Rencana Pembangunan Jangka Panjang Nasional Tahun 2025-2045.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/10_trasporti/Pelayaran.pdf",
+      "filename": "Pelayaran.pdf",
+      "category": "10_trasporti",
+      "size_kb": 653.36,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Pelayaran.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pelayaran.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/10_trasporti/UU_17_2008_Pelayaran_20251122_163034_6aff88.pdf",
+      "filename": "UU_17_2008_Pelayaran_20251122_163034_6aff88.pdf",
+      "category": "10_trasporti",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_17_2008_Pelayaran_20251122_163034_6aff88.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/10_trasporti/UU_17_2008_Shipping_20251122_163034_34831e.pdf",
+      "filename": "UU_17_2008_Shipping_20251122_163034_34831e.pdf",
+      "category": "10_trasporti",
+      "size_kb": 2339.4,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU_17_2008_Shipping_20251122_163034_34831e.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/10_trasporti/Perubahan Ketiga atas Undang-Undang Nomor 17 Tahun 2008 tentang Pelayaran.pdf",
+      "filename": "Perubahan Ketiga atas Undang-Undang Nomor 17 Tahun 2008 tentang Pelayaran.pdf",
+      "category": "10_trasporti",
+      "size_kb": 76244.66,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perubahan Ketiga atas Undang-Undang Nomor 17 Tahun 2008 tentang Pelayaran.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Ketiga atas Undang-Undang Nomor 17 Tahun 2008 tentang Pelayaran.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Aceh Besar di Aceh.pdf",
+      "filename": "Kabupaten Aceh Besar di Aceh.pdf",
+      "category": "12_governo",
+      "size_kb": 646.27,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Aceh Besar di Aceh.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pemerintahan Provinsi Daerah Khusus Ibukota Jakarta sebagai Ibukota Negara Kesatuan Republik Indonesia.pdf",
+      "filename": "Pemerintahan Provinsi Daerah Khusus Ibukota Jakarta sebagai Ibukota Negara Kesatuan Republik Indonesia.pdf",
+      "category": "12_governo",
+      "size_kb": 44.2,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pemerintahan Provinsi Daerah Khusus Ibukota Jakarta sebagai Ibukota Negara Kesatuan Republik Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pemerintahan Propinsi Daerah Khusus Ibukota Negara Republik Indonesia Jakarta.pdf",
+      "filename": "Pemerintahan Propinsi Daerah Khusus Ibukota Negara Republik Indonesia Jakarta.pdf",
+      "category": "12_governo",
+      "size_kb": 87.75,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pemerintahan Propinsi Daerah Khusus Ibukota Negara Republik Indonesia Jakarta.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan Kedua Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf",
+      "filename": "Perubahan Kedua Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 125.42,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perubahan Kedua Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kota Serang Di Provinsi Banten.pdf",
+      "filename": "Pembentukan Kota Serang Di Provinsi Banten.pdf",
+      "category": "12_governo",
+      "size_kb": 142.21,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kota Serang Di Provinsi Banten.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2008 tentang Perubahan atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus Bagi Provinsi Papua Menjadi Undang-Undang.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2008 tentang Perubahan atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus Bagi Provinsi Papua Menjadi Undang-Undang.pdf",
+      "category": "12_governo",
+      "size_kb": 64.48,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2008 tentang Perubahan atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus Bagi Provinsi Papua Menjadi Undang-Undang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Tojo Una-Una Di Provinsi Sulawesi Tengah.pdf",
+      "filename": "Pembentukan Kabupaten Tojo Una-Una Di Provinsi Sulawesi Tengah.pdf",
+      "category": "12_governo",
+      "size_kb": 60.16,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Tojo Una-Una Di Provinsi Sulawesi Tengah.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kota Manado di Provinsi Sulawesi Utara.pdf",
+      "filename": "Kota Manado di Provinsi Sulawesi Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 864.18,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kota Manado di Provinsi Sulawesi Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Aceh Tengah di Aceh.pdf",
+      "filename": "Kabupaten Aceh Tengah di Aceh.pdf",
+      "category": "12_governo",
+      "size_kb": 678.99,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Aceh Tengah di Aceh.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/UU Nomor 15 Tahun 2019.pdf",
+      "filename": "UU Nomor 15 Tahun 2019.pdf",
+      "category": "12_governo",
+      "size_kb": 784.13,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/UU Nomor 15 Tahun 2019.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Kubu Raya Di Provinsi Kalimantan Barat.pdf",
+      "filename": "Pembentukan Kabupaten Kubu Raya Di Provinsi Kalimantan Barat.pdf",
+      "category": "12_governo",
+      "size_kb": 126.23,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Kubu Raya Di Provinsi Kalimantan Barat.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Wilayah Negara.pdf",
+      "filename": "Wilayah Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 101.31,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Wilayah Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Wilayah Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kota Tual di Provinsi Maluku.pdf",
+      "filename": "Pembentukan Kota Tual di Provinsi Maluku.pdf",
+      "category": "12_governo",
+      "size_kb": 111.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kota Tual di Provinsi Maluku.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Nias Utara di Provinsi Sumatera Utara.pdf",
+      "filename": "Pembentukan Kabupaten Nias Utara di Provinsi Sumatera Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 97.89,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Nias Utara di Provinsi Sumatera Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/PP-58-2023_20251122_163034_11e13c.pdf",
+      "filename": "PP-58-2023_20251122_163034_11e13c.pdf",
+      "category": "12_governo",
+      "size_kb": 5758.16,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/PP-58-2023_20251122_163034_11e13c.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Aceh Barat Daya Kabupaten Gayo Lues Kabupaten Aceh Jaya Kabupaten Nagan Raya dan Kabupaten Aceh Tamiang Di Provinsi Nanggroe Aceh Darussalam.pdf",
+      "filename": "Pembentukan Kabupaten Aceh Barat Daya Kabupaten Gayo Lues Kabupaten Aceh Jaya Kabupaten Nagan Raya dan Kabupaten Aceh Tamiang Di Provinsi Nanggroe Aceh Darussalam.pdf",
+      "category": "12_governo",
+      "size_kb": 140.28,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Aceh Barat Daya Kabupaten Gayo Lues Kabupaten Aceh Jaya Kabupaten Nagan Raya dan Kabupaten Aceh Tamiang Di Provinsi Nanggroe Aceh Darussalam.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India tentang Kegiatan Kerja Sama di Bidang Pertahanan (Agreement Between The Government of The Republic of.pdf",
+      "filename": "Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India tentang Kegiatan Kerja Sama di Bidang Pertahanan (Agreement Between The Government of The Republic of.pdf",
+      "category": "12_governo",
+      "size_kb": 10.79,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India tentang Kegiatan Kerja Sama di Bidang Pertahanan (Agreement Between The Government of The Republic of.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India tentang Kegiatan Kerja Sama di Bidang Pertahanan (Agreement Between The Government of The Republic of.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Pengadilan Tinggi Agama Kepulauan Bangka Belitung.pdf",
+      "filename": "Pembentukan Pengadilan Tinggi Agama Kepulauan Bangka Belitung.pdf",
+      "category": "12_governo",
+      "size_kb": 71.16,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Pembentukan Pengadilan Tinggi Agama Kepulauan Bangka Belitung.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Pengadilan Tinggi Agama Kepulauan Bangka Belitung.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Pengadilan Tinggi Tata Usaha Negara Palembang Pengadilan Tinggi Tata Usaha Negara Banjarmasin Pengadilan Tinggi Tata Usaha Negara Mataram dan Pengadilan Tinggi Tata Usaha Negara Manado.pdf",
+      "filename": "Pembentukan Pengadilan Tinggi Tata Usaha Negara Palembang Pengadilan Tinggi Tata Usaha Negara Banjarmasin Pengadilan Tinggi Tata Usaha Negara Mataram dan Pengadilan Tinggi Tata Usaha Negara Manado.pdf",
+      "category": "12_governo",
+      "size_kb": 815.01,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Pengadilan Tinggi Tata Usaha Negara Palembang Pengadilan Tinggi Tata Usaha Negara Banjarmasin Pengadilan Tinggi Tata Usaha Negara Mataram dan Pengadilan Tinggi Tata Usaha Negara Manado.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Nias Barat di Provinsi Sumatera Utara.pdf",
+      "filename": "Pembentukan Kabupaten Nias Barat di Provinsi Sumatera Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 98.19,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Nias Barat di Provinsi Sumatera Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Otonomi Khusus Bagi Provinsi Papua.pdf",
+      "filename": "Otonomi Khusus Bagi Provinsi Papua.pdf",
+      "category": "12_governo",
+      "size_kb": 199.13,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Otonomi Khusus Bagi Provinsi Papua.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Pesawaran Di Provinsi Lampung.pdf",
+      "filename": "Pembentukan Kabupaten Pesawaran Di Provinsi Lampung.pdf",
+      "category": "12_governo",
+      "size_kb": 127.78,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Pesawaran Di Provinsi Lampung.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Keistimewaan Daerah Istimewa Yogyakarta.pdf",
+      "filename": "Keistimewaan Daerah Istimewa Yogyakarta.pdf",
+      "category": "12_governo",
+      "size_kb": 415.91,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Keistimewaan Daerah Istimewa Yogyakarta.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/UU_1_1974_Perkawinan_20251122_163034_58faec.pdf",
+      "filename": "UU_1_1974_Perkawinan_20251122_163034_58faec.pdf",
+      "category": "12_governo",
+      "size_kb": 88.19,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/UU_1_1974_Perkawinan_20251122_163034_58faec.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Ibu Kota Negara.pdf",
+      "filename": "Ibu Kota Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 3181.94,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Ibu Kota Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Dewan Pertimbangan Presiden.pdf",
+      "filename": "Dewan Pertimbangan Presiden.pdf",
+      "category": "12_governo",
+      "size_kb": 17.73,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Dewan Pertimbangan Presiden.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Dewan Pertimbangan Presiden.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Tana Tidung Di Provinsi Kalimantan Timur.pdf",
+      "filename": "Pembentukan Kabupaten Tana Tidung Di Provinsi Kalimantan Timur.pdf",
+      "category": "12_governo",
+      "size_kb": 160.09,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Tana Tidung Di Provinsi Kalimantan Timur.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Provinsi Daerah Khusus Jakarta.pdf",
+      "filename": "Provinsi Daerah Khusus Jakarta.pdf",
+      "category": "12_governo",
+      "size_kb": 6098.57,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Provinsi Daerah Khusus Jakarta.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Minahasa Utara di Provinsi Sulawesi Utara.pdf",
+      "filename": "Pembentukan Kabupaten Minahasa Utara di Provinsi Sulawesi Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 59.45,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Minahasa Utara di Provinsi Sulawesi Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Bolaang Mongondow di Provinsi Sulawesi Utara.pdf",
+      "filename": "Kabupaten Bolaang Mongondow di Provinsi Sulawesi Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 965.59,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Bolaang Mongondow di Provinsi Sulawesi Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Pidie di Aceh.pdf",
+      "filename": "Kabupaten Pidie di Aceh.pdf",
+      "category": "12_governo",
+      "size_kb": 780.37,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Pidie di Aceh.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/UU_24_2013_Adminduk_Amendment_20251122_163034_34c5f0.pdf",
+      "filename": "UU_24_2013_Adminduk_Amendment_20251122_163034_34c5f0.pdf",
+      "category": "12_governo",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/UU_24_2013_Adminduk_Amendment_20251122_163034_34c5f0.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kota Banda Aceh di Aceh.pdf",
+      "filename": "Kota Banda Aceh di Aceh.pdf",
+      "category": "12_governo",
+      "size_kb": 740.18,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kota Banda Aceh di Aceh.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 2014 tentang Desa.pdf",
+      "filename": "Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 2014 tentang Desa.pdf",
+      "category": "12_governo",
+      "size_kb": 2355.71,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 2014 tentang Desa.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 2014 tentang Desa.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan Kedua atas Undang-Undang Nomor 7 Tahun 1989 tentang Peradilan Agama.pdf",
+      "filename": "Perubahan Kedua atas Undang-Undang Nomor 7 Tahun 1989 tentang Peradilan Agama.pdf",
+      "category": "12_governo",
+      "size_kb": 117.12,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Perubahan Kedua atas Undang-Undang Nomor 7 Tahun 1989 tentang Peradilan Agama.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua atas Undang-Undang Nomor 7 Tahun 1989 tentang Peradilan Agama.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Pengadilan Tinggi Papua Barat Pengadilan Tinggi Kepulauan Riau Pengadilan Tinggi Sulawesi Barat dan Pengadilan Tinggi Kalimantan Utara.pdf",
+      "filename": "Pembentukan Pengadilan Tinggi Papua Barat Pengadilan Tinggi Kepulauan Riau Pengadilan Tinggi Sulawesi Barat dan Pengadilan Tinggi Kalimantan Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 560.49,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Pengadilan Tinggi Papua Barat Pengadilan Tinggi Kepulauan Riau Pengadilan Tinggi Sulawesi Barat dan Pengadilan Tinggi Kalimantan Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/UU-27-2022_20251122_163035_07f926.pdf",
+      "filename": "UU-27-2022_20251122_163035_07f926.pdf",
+      "category": "12_governo",
+      "size_kb": 2713.36,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/UU-27-2022_20251122_163035_07f926.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Pengadilan Tinggi Agama Bali Pengadilan Tinggi Agama Papua Barat Pengadilan Tinggi Agama Kepulauan Riau Pengadilan Tinggi Agama Sulawesi Barat dan Pengadilan Tinggi Agama Kalimantan Utara.pdf",
+      "filename": "Pembentukan Pengadilan Tinggi Agama Bali Pengadilan Tinggi Agama Papua Barat Pengadilan Tinggi Agama Kepulauan Riau Pengadilan Tinggi Agama Sulawesi Barat dan Pengadilan Tinggi Agama Kalimantan Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 699.04,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Pengadilan Tinggi Agama Bali Pengadilan Tinggi Agama Papua Barat Pengadilan Tinggi Agama Kepulauan Riau Pengadilan Tinggi Agama Sulawesi Barat dan Pengadilan Tinggi Agama Kalimantan Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Pesisir Barat di Provinsi Lampung.pdf",
+      "filename": "Pembentukan Kabupaten Pesisir Barat di Provinsi Lampung.pdf",
+      "category": "12_governo",
+      "size_kb": 408.55,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Pesisir Barat di Provinsi Lampung.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Ketentuan Pokok Kearsipan.pdf",
+      "filename": "Ketentuan Pokok Kearsipan.pdf",
+      "category": "12_governo",
+      "size_kb": 47.91,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Ketentuan Pokok Kearsipan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Ketentuan Pokok Kearsipan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Bombana Kabupaten Wakatobi dan Kabupaten Kolaka Utara di Provinsi Sulawesi Tenggara.pdf",
+      "filename": "Pembentukan Kabupaten Bombana Kabupaten Wakatobi dan Kabupaten Kolaka Utara di Provinsi Sulawesi Tenggara.pdf",
+      "category": "12_governo",
+      "size_kb": 54.47,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Bombana Kabupaten Wakatobi dan Kabupaten Kolaka Utara di Provinsi Sulawesi Tenggara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pemutakhiran Rencana Kerja Pemerintah Tahun 2025.pdf",
+      "filename": "Pemutakhiran Rencana Kerja Pemerintah Tahun 2025.pdf",
+      "category": "12_governo",
+      "size_kb": 1152.89,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/Pemutakhiran Rencana Kerja Pemerintah Tahun 2025.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan atas Undang-Undang Nomor 2 Tahun 2024 tentang Provinsi Daerah Khusus Jakarta.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 2 Tahun 2024 tentang Provinsi Daerah Khusus Jakarta.pdf",
+      "category": "12_governo",
+      "size_kb": 434.58,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 2 Tahun 2024 tentang Provinsi Daerah Khusus Jakarta.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf",
+      "filename": "Perubahan Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 125.16,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Perubahan Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Atas Undang-Undang Nomor 5 Tahun 1986 tentang Peradilan Tata Usaha Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan Kedua Atas Undang-Undang Nomor 2 Tahun 1986 Tentang Peradilan Umum.pdf",
+      "filename": "Perubahan Kedua Atas Undang-Undang Nomor 2 Tahun 1986 Tentang Peradilan Umum.pdf",
+      "category": "12_governo",
+      "size_kb": 116.7,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Perubahan Kedua Atas Undang-Undang Nomor 2 Tahun 1986 Tentang Peradilan Umum.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua Atas Undang-Undang Nomor 2 Tahun 1986 Tentang Peradilan Umum.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Pengadilan Tinggi Agama Gorontalo.pdf",
+      "filename": "Pembentukan Pengadilan Tinggi Agama Gorontalo.pdf",
+      "category": "12_governo",
+      "size_kb": 70.46,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Pengadilan Tinggi Agama Gorontalo.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 605.83,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Pengadilan Tinggi Agama Maluku Utara.pdf",
+      "filename": "Pembentukan Pengadilan Tinggi Agama Maluku Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 71.31,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Pengadilan Tinggi Agama Maluku Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kearsipan.pdf",
+      "filename": "Kearsipan.pdf",
+      "category": "12_governo",
+      "size_kb": 224.47,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Kearsipan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kearsipan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/UU Nomor 20 Tahun 2016_20251122_163034_90407b.pdf",
+      "filename": "UU Nomor 20 Tahun 2016_20251122_163034_90407b.pdf",
+      "category": "12_governo",
+      "size_kb": 7145.41,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/UU Nomor 20 Tahun 2016_20251122_163034_90407b.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kementerian Negara.pdf",
+      "filename": "Kementerian Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 71.49,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Kementerian Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kementerian Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Daerah Tingkat II Di Sulawesi.pdf",
+      "filename": "Pembentukan Daerah Tingkat II Di Sulawesi.pdf",
+      "category": "12_governo",
+      "size_kb": 80.68,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Daerah Tingkat II Di Sulawesi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 3 Tahun 2005 tentang Perubahan atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah Menjadi Undang-Undang.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 3 Tahun 2005 tentang Perubahan atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah Menjadi Undang-Undang.pdf",
+      "category": "12_governo",
+      "size_kb": 64.33,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 3 Tahun 2005 tentang Perubahan atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah Menjadi Undang-Undang.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 3 Tahun 2005 tentang Perubahan atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah Menjadi Undang-Undang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pencarian dan Pertolongan.pdf",
+      "filename": "Pencarian dan Pertolongan.pdf",
+      "category": "12_governo",
+      "size_kb": 418.21,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Ambiente/Pencarian dan Pertolongan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pencarian dan Pertolongan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2017 tentang Perubahan atas Undang-Undang Nomor 17 Tahun 2013 tentang Organisasi Kemasyarakatan Menjadi Undang-Undang.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2017 tentang Perubahan atas Undang-Undang Nomor 17 Tahun 2013 tentang Organisasi Kemasyarakatan Menjadi Undang-Undang.pdf",
+      "category": "12_governo",
+      "size_kb": 2223.72,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2017 tentang Perubahan atas Undang-Undang Nomor 17 Tahun 2013 tentang Organisasi Kemasyarakatan Menjadi Undang-Undang.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2017 tentang Perubahan atas Undang-Undang Nomor 17 Tahun 2013 tentang Organisasi Kemasyarakatan Menjadi Undang-Undang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik Federatif Brasil tentang Kerja Sama Terkait Pertahanan (Agreement between the Government of the Republic of.pdf",
+      "filename": "Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik Federatif Brasil tentang Kerja Sama Terkait Pertahanan (Agreement between the Government of the Republic of.pdf",
+      "category": "12_governo",
+      "size_kb": 664.22,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik Federatif Brasil tentang Kerja Sama Terkait Pertahanan (Agreement between the Government of the Republic of.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik Federatif Brasil tentang Kerja Sama Terkait Pertahanan (Agreement between the Government of the Republic of.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Konawe di Provinsi Sulawesi Tenggara.pdf",
+      "filename": "Kabupaten Konawe di Provinsi Sulawesi Tenggara.pdf",
+      "category": "12_governo",
+      "size_kb": 430.93,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Konawe di Provinsi Sulawesi Tenggara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan Kedua atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus bagi Provinsi Papua.pdf",
+      "filename": "Perubahan Kedua atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus bagi Provinsi Papua.pdf",
+      "category": "12_governo",
+      "size_kb": 1993.06,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus bagi Provinsi Papua.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Aparatur Sipil Negara.pdf",
+      "filename": "Aparatur Sipil Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 3709.37,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/Aparatur Sipil Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Melawi Dan Kabupaten Sekadau Di Provinsi Kalimantan Barat.pdf",
+      "filename": "Pembentukan Kabupaten Melawi Dan Kabupaten Sekadau Di Provinsi Kalimantan Barat.pdf",
+      "category": "12_governo",
+      "size_kb": 64.28,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Melawi Dan Kabupaten Sekadau Di Provinsi Kalimantan Barat.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kekuasaan Kehakiman.pdf",
+      "filename": "Kekuasaan Kehakiman.pdf",
+      "category": "12_governo",
+      "size_kb": 127.51,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Kekuasaan Kehakiman.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kekuasaan Kehakiman.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Minahasa di Provinsi Sulawesi Utara.pdf",
+      "filename": "Kabupaten Minahasa di Provinsi Sulawesi Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 399.55,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Minahasa di Provinsi Sulawesi Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Peradilan Tata Usaha Negara.pdf",
+      "filename": "Peradilan Tata Usaha Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 136.45,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Company&Licenses/Peradilan Tata Usaha Negara.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Peradilan Tata Usaha Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/No 8 Tahun 2021.pdf",
+      "filename": "No 8 Tahun 2021.pdf",
+      "category": "12_governo",
+      "size_kb": 1927.47,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/No 8 Tahun 2021.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Pengadilan Tinggi Agama Banten.pdf",
+      "filename": "Pembentukan Pengadilan Tinggi Agama Banten.pdf",
+      "category": "12_governo",
+      "size_kb": 71.25,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Pengadilan Tinggi Agama Banten.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan Kedua atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah.pdf",
+      "filename": "Perubahan Kedua atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah.pdf",
+      "category": "12_governo",
+      "size_kb": 147.13,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Perubahan Kedua atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/UU_1_2022_Relations_Central_Regional_20251122_163034_2449fe.pdf",
+      "filename": "UU_1_2022_Relations_Central_Regional_20251122_163034_2449fe.pdf",
+      "category": "12_governo",
+      "size_kb": 603.93,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/UU_1_2022_Relations_Central_Regional_20251122_163034_2449fe.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan atas Undang-Undang Nomor 19 Tahun 2006 tentang Dewan Pertimbangan Presiden.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 19 Tahun 2006 tentang Dewan Pertimbangan Presiden.pdf",
+      "category": "12_governo",
+      "size_kb": 517.71,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Perubahan atas Undang-Undang Nomor 19 Tahun 2006 tentang Dewan Pertimbangan Presiden.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 19 Tahun 2006 tentang Dewan Pertimbangan Presiden.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Peradilan Agama.pdf",
+      "filename": "Peradilan Agama.pdf",
+      "category": "12_governo",
+      "size_kb": 123.74,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Peradilan Agama.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Peradilan Agama.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Sumbawa Barat Di Provinsi Nusa Tenggara Barat.pdf",
+      "filename": "Pembentukan Kabupaten Sumbawa Barat Di Provinsi Nusa Tenggara Barat.pdf",
+      "category": "12_governo",
+      "size_kb": 46.0,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Sumbawa Barat Di Provinsi Nusa Tenggara Barat.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pornografi.pdf",
+      "filename": "Pornografi.pdf",
+      "category": "12_governo",
+      "size_kb": 93.47,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Pornografi.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pornografi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pemilihan Umum Presiden dan Wakil Presiden.pdf",
+      "filename": "Pemilihan Umum Presiden dan Wakil Presiden.pdf",
+      "category": "12_governo",
+      "size_kb": 331.21,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Pemilihan Umum Presiden dan Wakil Presiden.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pemilihan Umum Presiden dan Wakil Presiden.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Peradilan Umum.pdf",
+      "filename": "Peradilan Umum.pdf",
+      "category": "12_governo",
+      "size_kb": 113.32,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Peradilan Umum.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Peradilan Umum.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Lingga di Provinsi Kepulauan Riau.pdf",
+      "filename": "Pembentukan Kabupaten Lingga di Provinsi Kepulauan Riau.pdf",
+      "category": "12_governo",
+      "size_kb": 56.83,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Lingga di Provinsi Kepulauan Riau.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pemilihan Umum.pdf",
+      "filename": "Pemilihan Umum.pdf",
+      "category": "12_governo",
+      "size_kb": 12556.12,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Pemilihan Umum.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pemilihan Umum.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Negara Merdeka Papua Nugini tentang Kegiatan Kerja Sama di Bidang Pertahanan (Agreement Between The Government of The.pdf",
+      "filename": "Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Negara Merdeka Papua Nugini tentang Kegiatan Kerja Sama di Bidang Pertahanan (Agreement Between The Government of The.pdf",
+      "category": "12_governo",
+      "size_kb": 597.6,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Negara Merdeka Papua Nugini tentang Kegiatan Kerja Sama di Bidang Pertahanan (Agreement Between The Government of The.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pemerintahan Daerah.pdf",
+      "filename": "Pemerintahan Daerah.pdf",
+      "category": "12_governo",
+      "size_kb": 1781.63,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Edilizia_Urbanistica/Pemerintahan Daerah.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pemerintahan Daerah.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kabupaten Katingan Kabupaten Seruyan Kabupaten Sukamara Kabupaten Lamandau Kabupaten Gunung Mas Kabupaten Pulang Pisau Kabupaten Murung Raya Dan Kabupaten Barito Timur Di Provinsi.pdf",
+      "filename": "Pembentukan Kabupaten Katingan Kabupaten Seruyan Kabupaten Sukamara Kabupaten Lamandau Kabupaten Gunung Mas Kabupaten Pulang Pisau Kabupaten Murung Raya Dan Kabupaten Barito Timur Di Provinsi.pdf",
+      "category": "12_governo",
+      "size_kb": 149.52,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kabupaten Katingan Kabupaten Seruyan Kabupaten Sukamara Kabupaten Lamandau Kabupaten Gunung Mas Kabupaten Pulang Pisau Kabupaten Murung Raya Dan Kabupaten Barito Timur Di Provinsi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Perubahan atas Undang-Undang Nomor 3 Tahun 2022 tentang Ibu Kota Negara.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 3 Tahun 2022 tentang Ibu Kota Negara.pdf",
+      "category": "12_governo",
+      "size_kb": 6341.5,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 3 Tahun 2022 tentang Ibu Kota Negara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Kota Gunungsitoli di Provinsi Sumatera Utara.pdf",
+      "filename": "Pembentukan Kota Gunungsitoli di Provinsi Sumatera Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 95.21,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Kota Gunungsitoli di Provinsi Sumatera Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Muna di Provinsi Sulawesi Tenggara.pdf",
+      "filename": "Kabupaten Muna di Provinsi Sulawesi Tenggara.pdf",
+      "category": "12_governo",
+      "size_kb": 395.11,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Muna di Provinsi Sulawesi Tenggara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Kabupaten Kepulauan Sangihe di Provinsi Sulawesi Utara.pdf",
+      "filename": "Kabupaten Kepulauan Sangihe di Provinsi Sulawesi Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 958.25,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kabupaten Kepulauan Sangihe di Provinsi Sulawesi Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Administrasi Pemerintahan.pdf",
+      "filename": "Administrasi Pemerintahan.pdf",
+      "category": "12_governo",
+      "size_kb": 514.6,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Lavoro/Administrasi Pemerintahan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Administrasi Pemerintahan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pembentukan Provinsi Kalimantan Utara.pdf",
+      "filename": "Pembentukan Provinsi Kalimantan Utara.pdf",
+      "category": "12_governo",
+      "size_kb": 625.16,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pembentukan Provinsi Kalimantan Utara.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/12_governo/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India mengenai Kerja Sama dalam Bidang Pertahanan (Agreement between the Government of the Republic of Indonesia.pdf",
+      "filename": "Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India mengenai Kerja Sama dalam Bidang Pertahanan (Agreement between the Government of the Republic of Indonesia.pdf",
+      "category": "12_governo",
+      "size_kb": 627.83,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India mengenai Kerja Sama dalam Bidang Pertahanan (Agreement between the Government of the Republic of Indonesia.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik India mengenai Kerja Sama dalam Bidang Pertahanan (Agreement between the Government of the Republic of Indonesia.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan atas Undang-Undang Nomor 47 Tahun 2009 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 47 Tahun 2009 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf",
+      "category": "02_tasse",
+      "size_kb": 262.31,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan atas Undang-Undang Nomor 47 Tahun 2009 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 47 Tahun 2009 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/PP Nomor 44 Tahun 2022.pdf",
+      "filename": "PP Nomor 44 Tahun 2022.pdf",
+      "category": "02_tasse",
+      "size_kb": 5333.86,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/PP Nomor 44 Tahun 2022.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/UU Nomor 28 Tahun 2007 _penjelasan_20251122_163034_d39945.pdf",
+      "filename": "UU Nomor 28 Tahun 2007 _penjelasan_20251122_163034_d39945.pdf",
+      "category": "02_tasse",
+      "size_kb": 106.07,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/UU Nomor 28 Tahun 2007 _penjelasan_20251122_163034_d39945.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "filename": "Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "category": "02_tasse",
+      "size_kb": 94.75,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/UU Nomor 28 Tahun 2007_20251122_163034_1301b8.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Akses Informasi Keuangan Untuk Kepentingan Perpajakan.pdf",
+      "filename": "Akses Informasi Keuangan Untuk Kepentingan Perpajakan.pdf",
+      "category": "02_tasse",
+      "size_kb": 1498.88,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Akses Informasi Keuangan Untuk Kepentingan Perpajakan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Akses Informasi Keuangan Untuk Kepentingan Perpajakan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan atas Undang-Undang Nomor 28 Tahun 2003 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2004.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 28 Tahun 2003 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2004.pdf",
+      "category": "02_tasse",
+      "size_kb": 215.84,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan atas Undang-Undang Nomor 28 Tahun 2003 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2004.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 28 Tahun 2003 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2004.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/PMK-81-2024.pdf",
+      "filename": "PMK-81-2024.pdf",
+      "category": "02_tasse",
+      "size_kb": 11484.33,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/PMK-81-2024.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan atas Undang-Undang Nomor 11 Tahun 1995 tentang Cukai.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 11 Tahun 1995 tentang Cukai.pdf",
+      "category": "02_tasse",
+      "size_kb": 235.77,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan atas Undang-Undang Nomor 11 Tahun 1995 tentang Cukai.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 11 Tahun 1995 tentang Cukai.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2003.pdf",
+      "filename": "Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2003.pdf",
+      "category": "02_tasse",
+      "size_kb": 99.7,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2003.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2003.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Pertanggungjawaban Atas Pelaksanaan Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2016.pdf",
+      "filename": "Pertanggungjawaban Atas Pelaksanaan Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2016.pdf",
+      "category": "02_tasse",
+      "size_kb": 215.92,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Pertanggungjawaban Atas Pelaksanaan Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2016.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pertanggungjawaban Atas Pelaksanaan Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2016.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf",
+      "filename": "Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf",
+      "category": "02_tasse",
+      "size_kb": 101.15,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/PP Nomor 55 Tahun 2022.pdf",
+      "filename": "PP Nomor 55 Tahun 2022.pdf",
+      "category": "02_tasse",
+      "size_kb": 12709.7,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/PP Nomor 55 Tahun 2022.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2015.pdf",
+      "filename": "Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2015.pdf",
+      "category": "02_tasse",
+      "size_kb": 422.43,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2015.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2015.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf",
+      "category": "02_tasse",
+      "size_kb": 69.43,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+      "category": "02_tasse",
+      "size_kb": 139.28,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2011.pdf",
+      "filename": "Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2011.pdf",
+      "category": "02_tasse",
+      "size_kb": 317.2,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2011.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2011.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf",
+      "category": "02_tasse",
+      "size_kb": 257.44,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2004.pdf",
+      "filename": "Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2004.pdf",
+      "category": "02_tasse",
+      "size_kb": 56.51,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2004.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2004.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2017 Tentang Akses Informasi Keuangan Untuk Kepentingan Perpajakan Menjadi Undang-Undang.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2017 Tentang Akses Informasi Keuangan Untuk Kepentingan Perpajakan Menjadi Undang-Undang.pdf",
+      "category": "02_tasse",
+      "size_kb": 342.49,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2017 Tentang Akses Informasi Keuangan Untuk Kepentingan Perpajakan Menjadi Undang-Undang.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2017 Tentang Akses Informasi Keuangan Untuk Kepentingan Perpajakan Menjadi Undang-Undang.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan atas Undang-Undang Nomor 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf",
+      "category": "02_tasse",
+      "size_kb": 287.44,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan atas Undang-Undang Nomor 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan atas Barang Mewah.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2013.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2013.pdf",
+      "category": "02_tasse",
+      "size_kb": 423.32,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2013.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2013.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan Atas Undang-Undang Nomor 29 Tahun 2002 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2003.pdf",
+      "filename": "Perubahan Atas Undang-Undang Nomor 29 Tahun 2002 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2003.pdf",
+      "category": "02_tasse",
+      "size_kb": 44.28,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan Atas Undang-Undang Nomor 29 Tahun 2002 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2003.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Atas Undang-Undang Nomor 29 Tahun 2002 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2003.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/UU Nomor 42 Tahun 2009_20251122_163034_4f4466.pdf",
+      "filename": "UU Nomor 42 Tahun 2009_20251122_163034_4f4466.pdf",
+      "category": "02_tasse",
+      "size_kb": 256.84,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/UU Nomor 42 Tahun 2009_20251122_163034_4f4466.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/UU PPh No 36 Th 2008_20251122_163034_b3e4cb.pdf",
+      "filename": "UU PPh No 36 Th 2008_20251122_163034_b3e4cb.pdf",
+      "category": "02_tasse",
+      "size_kb": 690.37,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/UU PPh No 36 Th 2008_20251122_163034_b3e4cb.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2023.pdf",
+      "filename": "Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2023.pdf",
+      "category": "02_tasse",
+      "size_kb": 2909.13,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2023.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2023.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun 2022.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun 2022.pdf",
+      "category": "02_tasse",
+      "size_kb": 4787.17,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun 2022.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun 2022.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2009.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2009.pdf",
+      "category": "02_tasse",
+      "size_kb": 248.77,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2009.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2009.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Harmonisasi Peraturan Perpajakan.pdf",
+      "filename": "Harmonisasi Peraturan Perpajakan.pdf",
+      "category": "02_tasse",
+      "size_kb": 11842.24,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Harmonisasi Peraturan Perpajakan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Harmonisasi Peraturan Perpajakan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2020.pdf",
+      "filename": "Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2020.pdf",
+      "category": "02_tasse",
+      "size_kb": 1898.12,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2020.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2020.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/UU-42-2009_20251122_163034_b66d40.pdf",
+      "filename": "UU-42-2009_20251122_163034_b66d40.pdf",
+      "category": "02_tasse",
+      "size_kb": 98.53,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/UU-42-2009_20251122_163034_b66d40.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2018.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2018.pdf",
+      "category": "02_tasse",
+      "size_kb": 5365.45,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2018.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2018.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "filename": "Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "category": "02_tasse",
+      "size_kb": 212.76,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2024.pdf",
+      "filename": "Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2024.pdf",
+      "category": "02_tasse",
+      "size_kb": 2044.72,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2024.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2024.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2025.pdf",
+      "filename": "Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2025.pdf",
+      "category": "02_tasse",
+      "size_kb": 9091.8,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2025.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2025.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+      "category": "02_tasse",
+      "size_kb": 43.44,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019 (COVID-19) danatau dalam Rangka Menghadapi Ancaman yang Membahayakan Perekonomian Nasional.pdf",
+      "filename": "Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019 (COVID-19) danatau dalam Rangka Menghadapi Ancaman yang Membahayakan Perekonomian Nasional.pdf",
+      "category": "02_tasse",
+      "size_kb": 2414.28,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Settore_Finanziario/Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019 (COVID-19) danatau dalam Rangka Menghadapi Ancaman yang Membahayakan Perekonomian Nasional.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019 (COVID-19) danatau dalam Rangka Menghadapi Ancaman yang Membahayakan Perekonomian Nasional.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan Atas Undang-Undang Nomor 27 Tahun 2014 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2015.pdf",
+      "filename": "Perubahan Atas Undang-Undang Nomor 27 Tahun 2014 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2015.pdf",
+      "category": "02_tasse",
+      "size_kb": 394.94,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan Atas Undang-Undang Nomor 27 Tahun 2014 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2015.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Atas Undang-Undang Nomor 27 Tahun 2014 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2015.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2020 tentang Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2020 tentang Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019.pdf",
+      "category": "02_tasse",
+      "size_kb": 2811.43,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Settore_Finanziario/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2020 tentang Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2020 tentang Kebijakan Keuangan Negara dan Stabilitas Sistem Keuangan untuk Penanganan Pandemi Corona Virus Disease 2019.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan atas Undang-Undang Nomor 35 Tahun 2000 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 35 Tahun 2000 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf",
+      "category": "02_tasse",
+      "size_kb": 134.06,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan atas Undang-Undang Nomor 35 Tahun 2000 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 35 Tahun 2000 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "filename": "Perubahan atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "category": "02_tasse",
+      "size_kb": 190.36,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/PMK-131-2024_20251122_163034_9efae0.pdf",
+      "filename": "PMK-131-2024_20251122_163034_9efae0.pdf",
+      "category": "02_tasse",
+      "size_kb": 388.97,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/PMK-131-2024_20251122_163034_9efae0.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan Kedua atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+      "filename": "Perubahan Kedua atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+      "category": "02_tasse",
+      "size_kb": 193.25,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan Kedua atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Kedua atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Perubahan Keempat Atas Undang-Undang Nomor 7 Tahun 1983 tentang Pajak Penghasilan.pdf",
+      "filename": "Perubahan Keempat Atas Undang-Undang Nomor 7 Tahun 1983 tentang Pajak Penghasilan.pdf",
+      "category": "02_tasse",
+      "size_kb": 175.18,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Perubahan Keempat Atas Undang-Undang Nomor 7 Tahun 1983 tentang Pajak Penghasilan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Perubahan Keempat Atas Undang-Undang Nomor 7 Tahun 1983 tentang Pajak Penghasilan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Pajak Penghasilan.pdf",
+      "filename": "Pajak Penghasilan.pdf",
+      "category": "02_tasse",
+      "size_kb": 254.82,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Pajak Penghasilan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Pajak Penghasilan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/68_PMK.03_2022.pdf",
+      "filename": "68_PMK.03_2022.pdf",
+      "category": "02_tasse",
+      "size_kb": 2881.38,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/68_PMK.03_2022.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 5 Tahun 2008 Tentang Perubahan Keempat Atas Undang-Undang Nomor 6 Tahun 1983 Tentang Ketentuan Umum dan Tata Cara Perpajakan Menjadi.pdf",
+      "filename": "Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 5 Tahun 2008 Tentang Perubahan Keempat Atas Undang-Undang Nomor 6 Tahun 1983 Tentang Ketentuan Umum dan Tata Cara Perpajakan Menjadi.pdf",
+      "category": "02_tasse",
+      "size_kb": 64.47,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 5 Tahun 2008 Tentang Perubahan Keempat Atas Undang-Undang Nomor 6 Tahun 1983 Tentang Ketentuan Umum dan Tata Cara Perpajakan Menjadi.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 5 Tahun 2008 Tentang Perubahan Keempat Atas Undang-Undang Nomor 6 Tahun 1983 Tentang Ketentuan Umum dan Tata Cara Perpajakan Menjadi.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/UU_36_2008_PPh_20251122_163034_388292.pdf",
+      "filename": "UU_36_2008_PPh_20251122_163034_388292.pdf",
+      "category": "02_tasse",
+      "size_kb": 78.26,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/UU_36_2008_PPh_20251122_163034_388292.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "filename": "Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+      "category": "02_tasse",
+      "size_kb": 151.49,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Ketentuan Umum dan Tata Cara Perpajakan.pdf",
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Ketentuan Umum dan Tata Cara Perpajakan.pdf"
+      ]
+    },
+    {
+      "primary_path": "apps/kb/data/02_tasse/2023pmkeuangan066.pdf",
+      "filename": "2023pmkeuangan066.pdf",
+      "category": "02_tasse",
+      "size_kb": 1796.53,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/2023pmkeuangan066.pdf"
+      ]
+    },
+    {
+      "primary_path": "nuzantara_laws/apps/scraper/data/raw_laws_local/Sanita/Beranda Subjek Jenis Tahun Glosarium Tematik Perwakilan.pdf",
+      "filename": "Beranda Subjek Jenis Tahun Glosarium Tematik Perwakilan.pdf",
+      "category": "Sanita",
+      "size_kb": 4694.21,
+      "duplicates": [
+        "nuzantara_laws/apps/scraper/data/raw_laws_local/raw_laws/Beranda Subjek Jenis Tahun Glosarium Tematik Perwakilan.pdf"
+      ]
+    },
+    {
+      "primary_path": "nuzantara_laws/apps/scraper/data/raw_laws_local/Immigrazione/Surat Undangan Klarifikasi ke 1 (1).pdf",
+      "filename": "Surat Undangan Klarifikasi ke 1 (1).pdf",
+      "category": "Immigrazione",
+      "size_kb": 249.84,
+      "duplicates": []
+    },
+    {
+      "primary_path": "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/runpod-invoice-2025-10-13.pdf",
+      "filename": "runpod-invoice-2025-10-13.pdf",
+      "category": "Tasse",
+      "size_kb": 12.75,
+      "duplicates": []
+    },
+    {
+      "primary_path": "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/runpod-invoice-2025-10-14.pdf",
+      "filename": "runpod-invoice-2025-10-14.pdf",
+      "category": "Tasse",
+      "size_kb": 12.4,
+      "duplicates": []
+    },
+    {
+      "primary_path": "nuzantara_laws/apps/scraper/data/raw_laws_local/Tasse/Refund-3509-6917.pdf",
+      "filename": "Refund-3509-6917.pdf",
+      "category": "Tasse",
+      "size_kb": 34.21,
+      "duplicates": []
+    },
+    {
+      "primary_path": "nuzantara_laws/apps/scraper/data/raw_laws_local/Codici_e_Codificazioni/Resume Sarah Sendouw.pdf (1).pdf",
+      "filename": "Resume Sarah Sendouw.pdf (1).pdf",
+      "category": "Codici_e_Codificazioni",
+      "size_kb": 59.12,
+      "duplicates": []
+    }
+  ]
+}

@@ -1,0 +1,2088 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="description" content="">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- The above 4 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+
+
+
+    <meta name="title" content="JDIH - Jaringan Dokumentasi dan Informasi Hukum Kementerian Pekerjaan Umum">
+    <meta name="description" content="Website resmi Jaringan Dokumentasi dan informasi hukum, membantu kamu mencari peraturan di Pekerjaan Umum">
+    <meta name="keywords" content="JDIH Pekerjaan Umum">
+    <meta name="url" content="https://jdih.pu.go.id/detail-dokumen/1270">
+    <meta name="image" content="https://jdih.pu.go.id/assets/img/core-img/logopupr2.png">
+    <meta name="og:type" content="website">
+    <meta name="og:title" content="JDIH - Jaringan Dokumentasi dan Informasi Hukum Kementerian Pekerjaan Umum">
+    <meta name="og:description" content="Website resmi Jaringan Dokumentasi dan informasi hukum, membantu kamu mencari peraturan di Pekerjaan Umum">
+    <meta name="og:url" content="https://jdih.pu.go.id/detail-dokumen/1270">
+    <meta name="og:image" content="https://jdih.pu.go.id/assets/img/core-img/logopupr2.png">
+
+
+    <!-- Title  -->
+    <title>JDIH - Jaringan Dokumentasi dan Informasi Hukum PU</title>
+
+    <!-- Favicon  -->
+    <link rel="icon" href="https://jdih.pu.go.id/assets/img/core-img/favicon.ico">
+
+    <!-- Style CSS -->
+    <link rel="stylesheet" href="https://jdih.pu.go.id/assets/style.css">
+    <link rel="stylesheet" href="https://jdih.pu.go.id/internal/assets/plugins/datatables/jquery.dataTables.css">
+    <!-- <link rel="stylesheet" href="https://jdih.pu.go.id/internal/assets/font-awesome-4.7.0/css/font-awesome.min.css"> -->
+
+    <link rel="stylesheet" href="https://jdih.pu.go.id/internal/assets/font-awesome-5.15.4/css/all.min.css">
+    <script src="https://jdih.pu.go.id/internal/assets/plugins/datatables/jquery-3.5.1.min.js"></script>
+    <!-- Loading Overlay -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-loading-overlay/2.1.7/loadingoverlay.min.js" integrity="sha512-hktawXAt9BdIaDoaO9DlLp6LYhbHMi5A36LcXQeHgVKUH6kJMOQsAtIw2kmQ9RERDpnSTlafajo6USh9JUXckw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://jdih.pu.go.id/internal/assets/plugins/datatables/jquery.dataTables.js"></script>
+    <script src='https://www.google.com/recaptcha/api.js'></script>
+    <script src="https://jdih.pu.go.id/assets/js/valdo.js"></script>
+    <link rel="stylesheet" href="https://jdih.pu.go.id/assets/css/valdo.css">
+
+    <style>
+        .logo_jdih {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .logo_jdih {
+                display: none;
+            }
+        }
+
+
+        #worldNav {
+            background-color: #45678d;
+        }
+
+        #example2_paginate {
+            text-align: center;
+            margin-top: 20px;
+            max-width: 100%;
+        }
+
+        .pagination {
+            display: inline-flex;
+            list-style: none;
+            padding-left: 0;
+            margin: 0 auto;
+
+        }
+
+        .pagination li {
+            display: inline-block;
+            margin: 0 5px;
+        }
+
+        .pagination li a {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .pagination li.active a {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+
+        @media (min-width: 1024px) {
+            .pagination {
+                max-width: 680px;
+                justify-content: center;
+            }
+        }
+
+
+        @media (max-width: 768px) {
+
+            .pagination li a {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+
+
+            .pagination {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .pagination li {
+                margin: 0 2px;
+            }
+
+
+            .pagination li#example2_ellipsis {
+                display: none;
+            }
+
+
+            .pagination li.disabled {
+                display: none;
+            }
+
+
+            .pagination li a {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+        }
+
+
+        @media (max-width: 480px) {
+
+            .pagination li a {
+                padding: 5px 10px;
+                font-size: 12px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+    <!-- Preloader Start -->
+    <div id="preloader">
+        <div class="preload-content">
+            <div id="world-load"></div>
+        </div>
+    </div>
+    <!-- Preloader End -->
+
+    <!-- ***** Header Area Start ***** -->
+
+    <header class="header-area fixed-con" style="background-color: #45678d;margin-top:0;box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15); border-color: #45678d;font-size:12px;">
+        <div align="right" style="color:#fff;" class="mb-2 mt-2">
+            <div id="tgl"></div>
+        </div>
+        <center>
+            <div class="head1">
+
+                <div class="row">
+                    <div class="col-12">
+                        <nav class="navbar navbar-expand-lg ">
+                            <!-- Logo -->
+                            <!-- <a class="navbar-brand" href="http://jdihn.go.id/">
+                                <img src="https://jdih.pu.go.id/assets/img/core-img/logojdih.png" alt="Logo" class="logo_jdih" style="object-fit:cover;width:200px;height:50px">
+                            </a>
+                            <a class="navbar-brand" href="http://pu.go.id">
+                                <img src="https://jdih.pu.go.id/assets/img/core-img/logopupr2.png" alt="Logo" class="logo_pupr" style="object-fit:cover;width:200px;height:50px">
+                            </a>
+                            <a class="navbar-brand" href="http://jdihn.go.id/">
+                                <img src="https://jdih.pu.go.id/assets/img/core-img/logo_jdih_mini.png" alt="Logo" class="logo_jdih_mini" style="object-fit:cover">
+                            </a>
+                            <a class="navbar-brand" href="http://pu.go.id">
+                                <img src="https://jdih.pu.go.id/assets/img/core-img/logo_pu_mini.png" alt="Logo" class="logo_pupr_mini">
+                            </a> -->
+
+                            <a class="navbar-brand" href="http://jdihn.go.id/">
+                                <img src="https://jdih.pu.go.id/assets/img/core-img/logojdih.png" alt="Logo" class="logo_jdih" style="object-fit:cover;width:200px;height:50px">
+                            </a>
+                            <a class="navbar-brand" href="http://pu.go.id">
+                                <img src="https://jdih.pu.go.id/assets/img/core-img/logopupr2.png" alt="Logo" class="logo_pupr" style="object-fit:cover;width:200px;height:50px">
+                            </a>
+
+                            <!-- Navbar Toggler -->
+                            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#worldNav" aria-controls="worldNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+                            <!-- Navbar -->
+                            <div class="collapse navbar-collapse" id="worldNav">
+                                <ul class="navbar-nav ml-auto">
+                                    <li class="nav-item ">
+                                        <a class="nav-link translatable" href="https://jdih.pu.go.id/">Beranda</a>
+                                    </li>
+                                    <li class="nav-item dropdown active">
+                                        <a class="nav-link dropdown-toggle translatable" href="https://jdih.pu.go.id/" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Jenis Produk Hukum</a>
+                                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                            <a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/1" class="dropdown-item">Undang-Undang</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/2" class="dropdown-item">PP Pengganti Undang-Undang</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/3" class="dropdown-item">Peraturan Pemerintah</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/4" class="dropdown-item">Peraturan Presiden</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/5" class="dropdown-item">Keputusan Presiden</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/6" class="dropdown-item">Instruksi Presiden</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/8" class="dropdown-item">Peraturan Menteri</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/9" class="dropdown-item">Keputusan Menteri</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/11" class="dropdown-item">Surat Edaran Menteri</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/10" class="dropdown-item">Instruksi Menteri</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/23" class="dropdown-item">Keputusan Sekretaris Jenderal</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/12" class="dropdown-item">Surat Edaran Sekretaris Jenderal</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/54" class="dropdown-item">Terjemahan</a><a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/55" class="dropdown-item">Dokumen Langka</a>                                            <!--<a class="dropdown-item" href="">Peraturan Perundangan</a>
+                                                <a class="dropdown-item" href="index.html">Monografi</a>
+                                                <a class="dropdown-item" href="index.html">Artikel / Majalah</a>
+                                                <a class="dropdown-item" href="index.html">Putusan Pengadilan</a>
+                                            -->
+                                        </div>
+                                    </li>
+                                                                        <li class="nav-item dropdown  ">
+                                        <a class="nav-link dropdown-toggle translatable" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Informasi Hukum</a>
+                                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Monograf">Monografi</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Putusan">Putusan Pengadilan</a>
+                                            <a class="dropdown-item" href="http://sisuper.pu.go.id/">Sisuper</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Berita">Berita</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Artikel">Artikel</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Agenda">Agenda</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Konsultasipublik">Konsultasi Publik</a>
+                                        </div>
+                                    </li>
+
+                                    <li class="nav-item dropdown  ">
+                                        <a class="nav-link dropdown-toggle translatable" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">SiMPeL</a>
+                                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/SiMPeL/getData/5">Prolegnas RUU Prioritas Tahunan</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/SiMPeL/getData/1">Progsun PP/PERPRES</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/SiMPeL/getData/2">PROLEG PUPR</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/SiMPeL/getData/3">IP RPP/RPERPRES</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/SiMPeL/getData/4">IP RPERMEN</a>
+                                        </div>
+                                    </li>
+
+                                    <li class="nav-item  ">
+                                        <a class="nav-link translatable" href="https://jdih.pu.go.id/statistik">Statistik</a>
+                                    </li>
+                                    <li class="nav-item dropdown  ">
+                                        <a class="nav-link dropdown-toggle translatable" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Tentang JDIH</a>
+                                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Tentang-kami">Tentang Kami</a>
+                                            <!-- 9 Juni 2021 Menambah struktur organisasi  -->
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Struktur_organisasi">Struktur Organisasi</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Prasyarat">Prasyarat</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Infografis">Infografis</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Video">Video</a>
+                                            <a class="dropdown-item" href="https://jdih.pu.go.id/Kontak-kami">Kontak Kami</a>
+                                        </div>
+                                    </li>
+
+                                    <li class="nav-item">
+                                        <div class="nav-link font-weight-bold">
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-outline-light lang-button text-white" value="id" style="background-color: transparent;">ID</button>
+                                                <button class="btn btn-sm btn-outline-light lang-button text-white" value="en" style="background-color: transparent;">EN</button>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                                <!-- Search Form  -->
+                                <!-- <div id="search-wrapper">
+                                    <form action="#">
+                                        <input type="text" id="search" placeholder="Pencarian Cepat">
+                                        <div id="close-icon"></div>
+                                        <input class="d-none" type="submit" value="">
+                                    </form>
+                                </div> -->
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </center>
+    </header>
+    <!-- ***** Header Area End ***** -->
+
+    <script type="text/javascript">
+        $(document).ready(function() {
+            var d = new Date();
+            var tgl = formatDate(d, 1);
+            $("#tgl").empty();
+            $("#tgl").append("Senin,  " + tgl);
+        })
+
+        function formatDate(dateObj, format) {
+            var monthNames = ["Januari", "Februari", "Maret", "April", "Mai", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            var curr_date = dateObj.getDate();
+            var curr_month = dateObj.getMonth();
+            var bulan = monthNames[curr_month];
+            //alert(bulan)
+            curr_month = curr_month + 1;
+            var curr_year = dateObj.getFullYear();
+            var curr_min = dateObj.getMinutes();
+            var curr_hr = dateObj.getHours();
+            var curr_sc = dateObj.getSeconds();
+            if (curr_month.toString().length == 1)
+                curr_month = '0' + curr_month;
+            if (curr_date.toString().length == 1)
+                curr_date = '0' + curr_date;
+            if (curr_hr.toString().length == 1)
+                curr_hr = '0' + curr_hr;
+            if (curr_min.toString().length == 1)
+                curr_min = '0' + curr_min;
+
+            if (format == 1) //dd-mm-yyyy
+            {
+                return curr_date + " " + bulan + " " + curr_year + " " + curr_hr + ":" + curr_min;
+            } else if (format == 2) //yyyy-mm-dd
+            {
+                return curr_year + "" + curr_month + "" + curr_date;
+            } else if (format == 3) //dd/mm/yyyy
+            {
+                return curr_hr + "" + curr_min + "" + curr_sc;
+            } else if (format == 4) // MM/dd/yyyy HH:mm:ss
+            {
+                return curr_year + "" + curr_month + "" + curr_date + "" + curr_hr + "" + curr_min + "" + curr_sc;
+            } else if (format == 9) //dd/mm/yyyy
+            {
+                // return curr_year + "" + curr_month + "" + curr_date  + "" + curr_hr + "" +curr_min + "" + curr_sc;  
+            }
+        }
+    </script>
+
+    <script>
+        const baseUrl = 'https://jdih.pu.go.id/'
+    </script><br><br><br><br><style>
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        /* display: none; <- Crashes Chrome on hover */
+        -webkit-appearance: none;
+        margin: 0;
+        /* <-- Apparently some margin are still there even though it's hidden */
+    }
+
+    input[type=number] {
+        -moz-appearance: textfield;
+        /* Firefox */
+    }
+</style>
+<input type="hidden" id="tipecari" value="cepat">
+<section class="contact-area section-padding-20">
+    <div class="container">
+        <div class="row justify-content-center">
+            <!-- Contact Form Area -->
+            <div class="col-20 col-md-100 col-lg-40" id="div_cari_detail" style="display:none">
+                <div class="contact-form" style="background-color:#fff;border-radius:5px;">
+                    <div style="width:100%;border-bottom:2px solid #ffcc00;">
+                        <a href="#" class="linka translatable" style="color:black;" onclick="tampil_cari('2')">Pencarian Cepat</a>
+                        &nbsp; | &nbsp;
+                        <a href="#" style="color:#000;font-size:18px" onclick="tampil_cari('1')" class="translatable">Pencarian Detail</a>
+                    </div>
+                    <!-- Contact Form --><br>
+
+
+
+                    <div class="row">
+                        <div class="col-12 col-md-2" style="display: none;">
+                            <div class="group">
+                                <select class="form-control" id="tipe_dokumen" name="tipe_dokumen">
+                                    <option value="1" Selected>Peraturan Perundangan</option>
+                                <option value="2" >Monografi</option>
+                            <option value="3" >Artikel / Majalah</option>
+                        <option value="4" >Putusan Pengadilan</option>
+                    <option value="" Selected>Semua Tipe</option>
+            </select>
+
+        </div>
+    </div>
+
+    <div class="col-12 col-md-2">
+        <div class="group">
+            <select class="form-control" name="peraturan_category_id" id="peraturan_category_id">
+                <option value="">Semua Jenis</option>
+                <option value="1" >Undang-Undang</option>
+                <option value="2" >PP Pengganti Undang-Undang</option>
+                <option value="3" >Peraturan Pemerintah</option>
+                <option value="4" >Peraturan Presiden</option>
+                <option value="5" >Keputusan Presiden</option>
+                <option value="6" >Instruksi Presiden</option>
+                <option value="8" >Peraturan Menteri</option>
+                <option value="9" >Keputusan Menteri</option>
+                <option value="11" >Surat Edaran Menteri</option>
+                <option value="10" >Instruksi Menteri</option>
+                <option value="23" >Keputusan Sekretaris Jenderal</option>
+                <option value="12" >Surat Edaran Sekretaris Jenderal</option>
+                <option value="54" >Terjemahan</option>
+                <option value="55" >Dokumen Langka</option>
+                        </select>
+        <input type="hidden" id="peraturan_category_id_tmp" value="">
+    </div>
+</div>
+<div class="col-12 col-md-2">
+    <div class="group">
+        <select class="form-control" name="tag_id" id="tag_id">
+            <option value="">Pilih Substansi</option>
+            <option value="1" >air</option>
+            <option value="21" >air minum</option>
+            <option value="15" >asn</option>
+            <option value="2" >auditor</option>
+            <option value="3" >bangunan gedung</option>
+            <option value="27" >bendungan</option>
+            <option value="22" >bmn</option>
+            <option value="30" >Covid</option>
+            <option value="29" >Danau</option>
+            <option value="14" >hukum</option>
+            <option value="32" >IKN</option>
+            <option value="28" >infrastruktur</option>
+            <option value="37" >Irigasi</option>
+            <option value="31" >ITE</option>
+            <option value="4" >jalan</option>
+            <option value="18" >jalan tol</option>
+            <option value="5" >jembatan</option>
+            <option value="34" >kepatuhan intern</option>
+            <option value="20" >kepegawaian</option>
+            <option value="6" >keuangan</option>
+            <option value="7" >konstruksi</option>
+            <option value="35" >KPBU</option>
+            <option value="8" >lainnya</option>
+            <option value="23" >organisasi</option>
+            <option value="17" >pedoman</option>
+            <option value="9" >pembiayaan</option>
+            <option value="10" >penelitian</option>
+            <option value="16" >pengadaan b/j</option>
+            <option value="13" >pengawasan</option>
+            <option value="36" >Perizinan</option>
+            <option value="19" >permukiman</option>
+            <option value="12" >perumahan / rumah / rumah susun</option>
+            <option value="33" >tanggap bencana</option>
+                </select>
+    <input type="hidden" id="tag_id_tmp" value="">
+</div>
+</div>
+<div class="col-12 col-md-2">
+    <div class="group">
+        <select class="form-control" id="status" name="status">
+            <option value="">Semua Status</option>
+            <option value="0" >Masih Berlaku</option>
+        <option value="1" >Tidak Berlaku</option>
+</select>
+<input type="hidden" id="status_tmp" value="">
+<input type="hidden" id="tipe_dokumen_tmp" value="">
+</div>
+</div>
+
+<div class="col-12 col-md-2">
+    <div class="group">
+        <input type="text" name="noperaturan" id="noperaturan" value="" class="form-control" placeholder="nomor" onkeypress="return runScript(event,'2')">
+        <input type="hidden" name="dept_id" id="dept_id" value="" class="form-control" placeholder="dept_id" onkeypress="return runScript(event,'2')">
+    </div>
+</div>
+<div class="col-12 col-md-1">
+    <div class="group">
+        <input type="number" name="tahun" id="tahun" value="" class="form-control" placeholder="tahun" style="100%" onkeypress="return runScript(event,'2')">
+
+    </div>
+</div>
+<div class="col-12 col-md-3">
+    <div class="group">
+        <input type="text" name="judul" id="judul" class="form-control" value="" placeholder="judul" onkeypress="return runScript(event,'2')">
+
+    </div>
+</div>
+
+<br>
+<div align="right" style="width:100%">
+    <button class="btn btn-primary" style="width:200px" onclick="get_data('caridetail')"><i class="fa fa-search"></i> <span class="translatable">CARI</span></button>
+</div>
+</div>
+
+</div>
+</div>
+
+<div id="div_cari_cepat" style="display:block;width:100%">
+    <div class="contact-form" style="background-color:#fff;border-radius:5px;">
+        <div style="width:100%;border-bottom:3px solid #ffcc00;">
+            <a href="#" style="color:#000;font-size:18px" onclick="tampil_cari('2')" class="translatable">Pencarian Cepat</a> &nbsp; | &nbsp; <a href="#" class="linka translatable" style="color:black;" onclick="tampil_cari('1')">Pencarian Detail</a>
+
+        </div>
+        <!-- Contact Form --><br>
+
+        <div class="row">
+            <div class="col-10">
+                <div class="group">
+                                        <input type="text" name="tcari" id="tcari" placeholder="masukan kata pencarian" class="form-control translatable_placeholder" value="" onkeypress="return runScript(event,'1')">
+
+                </div>
+            </div>
+
+            <div class="col">
+                <button class="btn btn-primary" style="width:100%" onclick="get_data('cepat')"><i class="fa fa-search"></i> <span class="translatable">CARI</span></button>
+            </div>
+        </div>
+
+
+    </div>
+
+
+</div>
+</div>
+</section>
+<script>
+    $(document).ready(function() {
+        if (document.getElementById("tipecari").value == "detail") {
+            tampil_cari("1");
+        } else {
+            tampil_cari("2");
+        }
+
+    })
+</script><script src="https://jdih.pu.go.id//assets/js/owl.js"></script>
+<script src="https://jdih.pu.go.id//assets/js/bootstraphome.js"></script>
+
+<!-- ********** End Form Pencarian Detail dan Pencarian cepat ********** -->
+
+<div class="main-content-wrapper section-padding-20">
+    <div class="container">
+        <div class="row justify-content-center">
+            <!-- ============= Post Content Area Start ============= -->
+            <div class="col-12 col-lg-8" style="background-color:#fff;">
+                            </div>
+
+            <!-- ========== Sidebar Area ========== -->
+            <div class="col-12  col-lg-4" style="width:100%">
+                <div style="width:100%">
+                    <style>
+	/* unvisited link */
+	.panel a:link {
+		color: #000;
+	}
+
+	/* visited link */
+	.panel a:visited {
+		color: #000;
+	}
+
+	/* mouse over link */
+	.panel a:hover {
+		color: #45678d;
+	}
+
+	/* selected link */
+	.panel a:active {
+		color: #45678d;
+	}
+</style>
+<div class="panel panel-default" style="border: 2px solid #D2D6DE;border-radius:5px;background-color:#fff;width:100%">
+	<div class="panel-heading" style="background-color: #45678d;height:50px;border-bottom:3px solid #fcfcfc;">
+		<center>
+			<label style="color: #fff;margin-top:10px">Jenis Produk Hukum</label>
+		</center>
+	</div>
+	<div class="panel-body" style="background-color:#fff;">
+		<div class="panel box box-primary">
+			<div class="box-header with-border" style="display:none;border-bottom: 1px solid #e8e8e8;">
+				<h4 class="box-title">
+					<a data-toggle="collapse" data-parent="#accordion" href="#collapse1" style="color:#000;margin-left:20px;">
+						Peraturan Perundangan <i class="fa fa-plus" style="float:right;margin-right:20px;margin-top:15px"></i>
+					</a>
+				</h4>
+			</div>
+			<div id="collapse1" class="panel-collapse">
+				<div class="box-body">
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/1" class="headline" title="Total : 172" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Undang-Undang								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/2" class="headline" title="Total : 3" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> PP Pengganti Undang-Undang								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/3" class="headline" title="Total : 215" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Peraturan Pemerintah								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/4" class="headline" title="Total : 184" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Peraturan Presiden								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/5" class="headline" title="Total : 168" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Keputusan Presiden								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/6" class="headline" title="Total : 42" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Instruksi Presiden								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/8" class="headline" title="Total : 501" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Peraturan Menteri								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/9" class="headline" title="Total : 306" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Keputusan Menteri								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/11" class="headline" title="Total : 155" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Surat Edaran Menteri								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/10" class="headline" title="Total : 20" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Instruksi Menteri								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/23" class="headline" title="Total : 19" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Keputusan Sekretaris Jenderal								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/12" class="headline" title="Total : 12" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Surat Edaran Sekretaris Jenderal								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/54" class="headline" title="Total : 3" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Terjemahan								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content" style="">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/1/55" class="headline" title="Total : 2" data-toggle="tooltip" data-placement="right">
+									<i class="fa fa-list"></i> Dokumen Langka								</a>
+							</div>
+						</div>
+									</div>
+			</div>
+		</div>
+
+		<div class="panel box box-primary" style="display:none">
+			<div class="box-header with-border" style="border-bottom: 1px solid #e8e8e8;">
+				<h4 class="box-title">
+					<a data-toggle="collapse" data-parent="#accordion" href="#collapse2" style="color:#000;margin-left:20px;">
+						Monografi<i class="fa fa-plus" style="float:right;margin-right:20px;margin-top:15px"></i>
+					</a>
+				</h4>
+			</div>
+			<div id="collapse2" class="panel-collapse collapse">
+				<div class="box-body">
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/2/25" class="headline">
+									<i class="fa fa-list"></i> Buku Hukum								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/2/26" class="headline">
+									<i class="fa fa-list"></i> Naskah Akademik								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/2/27" class="headline">
+									<i class="fa fa-list"></i> Peneliitan Hukum								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/2/28" class="headline">
+									<i class="fa fa-list"></i> Pengkajian Hukum								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/2/29" class="headline">
+									<i class="fa fa-list"></i> Kompendium Hukum								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/2/30" class="headline">
+									<i class="fa fa-list"></i> Laporan Kegiatan								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/2/31" class="headline">
+									<i class="fa fa-list"></i> Simposium								</a>
+							</div>
+						</div>
+									</div>
+			</div>
+		</div>
+
+		<div class="panel box box-primary" style="display:none">
+			<div class="box-header with-border" style="border-bottom: 1px solid #e8e8e8;">
+				<h4 class="box-title">
+					<a data-toggle="collapse" data-parent="#accordion" href="#collapse3" style="color:#000;margin-left:20px;">
+						Artikel / Majalah <i class="fa fa-plus" style="float:right;margin-right:20px;margin-top:15px"></i>
+					</a>
+				</h4>
+			</div>
+			<div id="collapse3" class="panel-collapse collapse">
+				<div class="box-body">
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/32" class="headline">
+									<i class="fa fa-list"></i> Majalah Hukum								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/33" class="headline">
+									<i class="fa fa-list"></i> Kliping								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/34" class="headline">
+									<i class="fa fa-list"></i> Jurnal Hukum								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/35" class="headline">
+									<i class="fa fa-list"></i> Artikel								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/36" class="headline">
+									<i class="fa fa-list"></i> Buletin								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/37" class="headline">
+									<i class="fa fa-list"></i> Seminar								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/38" class="headline">
+									<i class="fa fa-list"></i> Lokakarya								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/3/39" class="headline">
+									<i class="fa fa-list"></i> Warta								</a>
+							</div>
+						</div>
+									</div>
+			</div>
+		</div>
+
+		<div class="panel box box-primary" style="display:none">
+			<div class="box-header with-border" style="border-bottom: 1px solid #e8e8e8;">
+				<h4 class="box-title">
+					<a data-toggle="collapse" data-parent="#accordion" href="#collapse4" style="color:#000;margin-left:20px;">
+						Putusan Pengadilan<i class="fa fa-plus" style="float:right;margin-right:20px;margin-top:15px"></i>
+					</a>
+				</h4>
+			</div>
+			<div id="collapse4" class="panel-collapse collapse">
+				<div class="box-body">
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/40" class="headline">
+									<i class="fa fa-list"></i> Mahkamah Konstitusi								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/41" class="headline">
+									<i class="fa fa-list"></i> Mahkamah Agung								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/42" class="headline">
+									<i class="fa fa-list"></i> Pengadilan Tinggi								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/43" class="headline">
+									<i class="fa fa-list"></i> Pengadilan Negeri								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/44" class="headline">
+									<i class="fa fa-list"></i> Pengadilan Agama								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/45" class="headline">
+									<i class="fa fa-list"></i> Pengadilan Militer								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/46" class="headline">
+									<i class="fa fa-list"></i> Pengadilan Tata Usaha Negara								</a>
+							</div>
+						</div>
+											<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+							<!-- Post Content -->
+							<div class="post-content">
+								<a href="https://jdih.pu.go.id/Pencarian-produk-hukum/4/47" class="headline">
+									<i class="fa fa-list"></i> Pengadilan Pajak								</a>
+							</div>
+						</div>
+									</div>
+			</div>
+		</div>
+	</div>
+</div>
+<br>                                        <div class="panel panel-default" style="border: 2px solid #D2D6DE;border-radius:5px;background-color:#fff;width:100%">
+    <div class="panel-heading" style="background-color: #45678d;height:50px;border-bottom:3px solid #fcfcfc;">
+        <center>
+            <label style="color: #fff;margin-top:10px">Produk Hukum Terpopuler</label>
+        </center>
+    </div>
+    <div class="panel-body" style="background-color:#fff;">
+                    <div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+
+                <div class="post-content">
+                    <a href="https://jdih.pu.go.id/detail-dokumen/PermenPUPR-nomor-07-tahun-2019-Standar-dan-Pedoman-Pengadaan-Jasa-Konstruksi-Melalui-Penyedia" class="headline">
+                        Peraturan Menteri nomor 07/PRT/M/2019                        <i class="fa fa-download"> 654518 kali</i>
+                    </a>
+                </div>
+            </div>
+                    <div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+
+                <div class="post-content">
+                    <a href="https://jdih.pu.go.id/detail-dokumen/PermenPUPR-nomor-31-tahun-2015-Perubahan-Ketiga-Atas-Peraturan-Menteri-Pekerjaan-Umum-Nomor-07PRTM2011-tentang-Standar-dan-Pedoman-Pengadaan-Pekerjaan-Konstruksi-dan-Jasa-Konsultansi" class="headline">
+                        Peraturan Menteri nomor 31/PRT/M/2015                        <i class="fa fa-download"> 570906 kali</i>
+                    </a>
+                </div>
+            </div>
+                    <div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+
+                <div class="post-content">
+                    <a href="https://jdih.pu.go.id/detail-dokumen/PermenPUPR-nomor-22-tahun-2018-Peraturan-Menteri-Pekerjaan-Umum-Dan-Perumahan-Rakyat-Republik-Indonesia-Nomor-22PRTM2018-Tentang-Pembangunan-Bangunan-Gedung-Negara" class="headline">
+                        Peraturan Menteri nomor 22/PRT/M/2018                        <i class="fa fa-download"> 301188 kali</i>
+                    </a>
+                </div>
+            </div>
+                    <div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+
+                <div class="post-content">
+                    <a href="https://jdih.pu.go.id/detail-dokumen/SEMenteriPUPR-nomor-14-tahun-2018-Pemberlakuan-Standar-Dokumen-Pemilihan-Pengadaan-Jasa-Konstruksi-Tahun-Anggaran-2019" class="headline">
+                        Surat Edaran Menteri nomor 14/SE/M/2018                        <i class="fa fa-download"> 157728 kali</i>
+                    </a>
+                </div>
+            </div>
+                    <div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+
+                <div class="post-content">
+                    <a href="https://jdih.pu.go.id/detail-dokumen/PermenPUPR-nomor-45-tahun-2007-Pedoman-Teknis-Pembangunan-Bangunan-Gedung-Negara" class="headline">
+                        Peraturan Menteri nomor 45/PRT/M/2007                        <i class="fa fa-download"> 131454 kali</i>
+                    </a>
+                </div>
+            </div>
+            </div>
+</div>
+<br>                    <div class="panel panel-default" style="border: 2px solid #D2D6DE;border-radius:5px;background-color:#fff;width:100%">
+    <div class="panel-heading" style="background-color: #45678d;height:50px;border-bottom:3px solid #fcfcfc;">
+        <center>
+            <label style="color: #fff;margin-top:10px">Unit Organisasi</label>
+		</center>
+	</div>
+    <div class="panel-body" style="background-color:#fff;">
+                    <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/1" class="headline" title="Total : 1751" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Sekretariat Jenderal					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/2" class="headline" title="Total : 3" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Inspektorat Jenderal					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/3" class="headline" title="Total : 4" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Direktorat Jenderal Sumber Daya Air					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/4" class="headline" title="Total : 0" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Direktorat Jenderal Bina Marga					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/5" class="headline" title="Total : 2" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Direktorat Jenderal Cipta Karya					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/6" class="headline" title="Total : 2" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Direktorat Jenderal Perumahan					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/7" class="headline" title="Total : 15" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Direktorat Jenderal Bina Konstruksi					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/8" class="headline" title="Total : 18" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Direktorat Jenderal Pembiayaan Infrastruktur Pekerjaan Umum					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/9" class="headline" title="Total : 0" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Badan Pengembangan Infrastruktur Wilayah					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/11" class="headline" title="Total : 1" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Badan Pengembangan Sumber Daya Manusia					</a>
+				</div>
+			</div>
+		            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.pu.go.id/Pencarian-Unit-Organisasi/195" class="headline" title="Total : 0" data-toggle="tooltip" data-placement="right">
+                        <i class="fa fa-angle-double-right"></i> Direktorat Jenderal Prasarana Strategis					</a>
+				</div>
+			</div>
+			</div>
+</div>
+<br>                    <div class="panel panel-default" style="border: 2px solid #D2D6DE;border-radius:5px;background-color:#fff;width:100%">
+    <div class="panel-heading" style="background-color: #45678d;height:50px;border-bottom:3px solid #fcfcfc;">
+        <center>
+            <label style="color: #fff;margin-top:10px">Substansi</label>
+        </center>
+    </div>
+    <div class="panel-body" style="background-color:#fff;">
+		<div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+			<div class="post-content" >
+									
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/1" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								air							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/21" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								air minum							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/15" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								asn							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/2" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								auditor							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/3" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								bangunan gedung							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/27" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								bendungan							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/22" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								bmn							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/30" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								Covid							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/29" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								Danau							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/14" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								hukum							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/32" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								IKN							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/28" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								infrastruktur							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/37" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								Irigasi							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/31" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								ITE							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/4" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								jalan							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/18" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								jalan tol							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/5" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								jembatan							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/34" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								kepatuhan intern							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/20" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								kepegawaian							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/6" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								keuangan							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/7" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								konstruksi							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/35" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								KPBU							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/8" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								lainnya							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/23" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								organisasi							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/17" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								pedoman							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/9" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								pembiayaan							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/10" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								penelitian							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/16" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								pengadaan b/j							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/13" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								pengawasan							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/36" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								Perizinan							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/19" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								permukiman							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/12" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								perumahan / rumah / rumah susun							</a>
+						
+					
+							
+						<!-- Post Content -->
+						
+							<a href="https://jdih.pu.go.id/Pencarian-Unit-Substansi/33" class="btn btn-primary btn-xs" style="border:1px solid #45678d;background-color:#45678d;color:#fff;font-size:11px;margin-bottom:5px;margin-left:8px;">
+								tanggap bencana							</a>
+						
+					
+						 </div>
+		</div>
+    </div>
+</div>
+<br>
+
+                    <div class="panel panel-default" style="border: 2px solid #D2D6DE;border-radius:5px;background-color:#fff;width:100%">
+    <div class="panel-heading" style="background-color: #45678d;height:50px;border-bottom:3px solid #fcfcfc;">
+        <center>
+            <label style="color: #fff;margin-top:10px">Link Terkait</label>
+        </center>
+    </div>
+    <div class="panel-body" style="background-color:#fff;">
+                    <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://bphn.jdihn.go.id/" target="_blank">
+                        <i class="fa fa-link"></i> BPHN                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="http://jdihn.go.id/" target="_blank">
+                        <i class="fa fa-link"></i> JDIHN                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.maritim.go.id/" target="_blank">
+                        <i class="fa fa-link"></i> Kemenko Marves                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="http://jdih.dephub.go.id/" target="_blank">
+                        <i class="fa fa-link"></i> Kementerian Perhubungan                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.menlhk.go.id/new2/" target="_blank">
+                        <i class="fa fa-link"></i> Kementerian LHK                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://jdih.kemenparekraf.go.id/" target="_blank">
+                        <i class="fa fa-link"></i> Kementerian Parekraf                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="http://jdih.kkp.go.id/" target="_blank">
+                        <i class="fa fa-link"></i> Kementerian Kelautan & Perikanan                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="https://peraturan.bkpm.go.id/jdih/" target="_blank">
+                        <i class="fa fa-link"></i> BKPM                    </a>
+                </div>
+            </div>
+            <div class="container"  style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+                <!-- Post Content -->
+                <div class="post-content" >
+                    <a href="http://www.anri.go.id/" target="_blank">
+                        <i class="fa fa-link"></i> Arsip Nasional                    </a>
+                </div>
+            </div>
+    </div>
+</div>
+<br>
+
+                    <div class="panel panel-default" style="border: 2px solid #D2D6DE;border-radius:5px;background-color:#fff;width:100%">
+	<div class="panel-heading" style="background-color: #45678d;height:50px;border-bottom:3px solid #fcfcfc;">
+		<center>
+			<label style="color: #fff;margin-top:10px">Statistik Pengunjung</label>
+		</center>
+	</div>
+	<div class="panel-body" style="background-color:#fff;">
+		<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;" id="loadingToday">
+			<div class="post-content" id="pengunjungToday">
+				<i class="fa fa-bar-chart"></i> Hari ini : 1200
+			</div>
+		</div>
+		<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;" id="loadingYesterday">
+			<div class="post-content" id="pengunjungYesterday">
+				<i class="fa fa-bar-chart"></i> Kemarin : 19607
+			</div>
+		</div>
+		<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+			<div class="post-content">
+				<i class="fa fa-bar-chart"></i> Online : 234			</div>
+		</div>
+		<div class="container" style="min-height:35px;border-bottom: 1px solid #e8e8e8;margin-top:10px;color:#000;">
+			<div class="post-content">
+				<i class="fa fa-bar-chart"></i> Total Pengunjung * : 17,217,278				<br> <i>Sejak November 2019</i>
+			</div>
+		</div>
+	</div>
+</div>
+<br>
+
+<script>
+	$(document).ready(function() {
+
+		$("#loadingToday").LoadingOverlay("show", {
+			background: "rgba(0, 0, 0, 0.5)"
+		});
+
+		$("#loadingYesterday").LoadingOverlay("show", {
+			background: "rgba(0, 0, 0, 0.5)"
+		});
+
+		$.ajax({
+			url: "https://jdih.pu.go.id/Home/getDataPengunjungToday",
+			type: "POST",
+			dataType: "json",
+			success: function(res) {
+
+				if (res.code == 200) {
+					$("#pengunjungToday").html(`<i class="fa fa-bar-chart"></i> Hari ini : ` + res.data);
+				} else {
+					$("#pengunjungToday").html(`<i class="fa fa-bar-chart"></i> Hari ini : Error Load Data.!`);
+				}
+
+				$("#loadingToday").LoadingOverlay("hide");
+			},
+			error: function() {
+
+			}
+		});
+
+		$.ajax({
+			url: "https://jdih.pu.go.id/Home/getDataPengunjungYesterday",
+			type: "POST",
+			dataType: "json",
+			success: function(res) {
+
+				if (res.code == 200) {
+					$("#pengunjungYesterday").html(`<i class="fa fa-bar-chart"></i> Kemarin : ` + res.data);
+				} else {
+					$("#pengunjungYesterday").html(`<i class="fa fa-bar-chart"></i> Kemarin : Error Load Data.!`);
+				}
+
+				$("#loadingYesterday").LoadingOverlay("hide");
+			},
+			error: function() {
+
+			}
+		})
+
+
+
+	});
+</script>                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+
+<div id="Modal1" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:10px;">
+            <div class="modal-header">
+                <h4 class="modal-title">Kirim email </h4>
+            </div>
+            <div class="modal-body">
+                <div id="isi_email" style="display:block">
+                    <div class="group">
+                        <input type="text" name="name" id="nama" required>
+                        <span class="highlight"></span>
+                        <span class="bar"></span>
+                        <label>Nama Penerima</label>
+                    </div>
+
+                    <div class="group">
+                        <input type="text" name="email" id="email" required>
+                        <span class="highlight"></span>
+                        <span class="bar"></span>
+                        <label>Email Penerima</label>
+                    </div>
+                    <br>
+                    <label id="lblinfo" style="color:red;"></label>
+                </div>
+                <div id="result_email" style="display:none">
+                    <center>
+                        <img src="https://jdih.pu.go.id/assets/images/loading1.gif" id="img1">
+                        <label id="lblnotif"></label>
+                    </center>
+                </div>
+                <input type="hidden" id="peraturan_id" value="">
+                <input type="hidden" id="appi" value="">
+
+            </div>
+            <div class="modal-footer">
+
+                <p style="font-size:20px;text-align:left" id="lbl_modal1"></p>
+                <button type="button" id="btn1" class="btn btn-primary" data-dismiss="modal" style="width:120px;float:right;">Batal</button>&nbsp;&nbsp;
+                <button type="button" id="btn2" class="btn btn-primary" style="width:120px;float:right;" onclick="kirim_email();">Kirim Email</button>&nbsp;&nbsp;
+                <button type="button" id="btn3" class="btn btn-primary" data-dismiss="modal" style="width:120px;float:right;">Tutup</button>&nbsp;&nbsp;
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modal-abstrak">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Abstrak</h4>
+            </div>
+            <div class="modal-body">
+                <iframe src="https://jdih.pu.go.id/internal/assets/plugins/pdfjs/web/viewer.html?file=https://jdih.pu.go.id/internal/assets/assets/produk_abstrak////" style="width:100%; height:600px;" frameborder="0"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+        <!-- /.modal-content -->
+    </div>
+    <!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('#example2').dataTable({
+            "paging": true,
+            "ordering": false,
+            "searching": false,
+            dom: "<'row'<'col-sm-12'tr><'col-sm-4'l><'col-sm-8'p>>"
+        });
+
+
+        //window.location = '#div_cari_detail';
+
+
+
+    });
+
+    function kirim_email() {
+        var nama = document.getElementById("nama").value;
+        var email = document.getElementById("email").value;
+
+        var peraturan_id = document.getElementById("peraturan_id").value;
+        document.getElementById("lblnotif").innerHTML = '';
+        document.getElementById("lblinfo").innerHTML = '';
+
+        if (nama == "") {
+            document.getElementById("lblinfo").innerHTML = "Nama tidak boleh kosong";
+        } else if (email == "") {
+            document.getElementById("lblinfo").innerHTML = "Email tidak boleh kosong";
+        } else if ((email.indexOf('@', 0) == -1) || (email.indexOf('.', 0) == -1)) {
+            document.getElementById("lblinfo").innerHTML = "Format Email Salah";
+        } else {
+
+            document.getElementById("btn1").style.display = "none";
+            document.getElementById("btn2").style.display = "none";
+            document.getElementById("btn3").style.display = "none";
+
+            document.getElementById("isi_email").style.display = "none";
+            document.getElementById("result_email").style.display = "block";
+            document.getElementById("appi").value = "https://jdih.pu.go.id/internal/assets/api/kirim_email.php?email=" + email + "&nama=" + nama + "&peraturan_id=" + peraturan_id + "";
+            $.ajax({
+                url: "https://jdih.pu.go.id/produk_hukum/kirim_email",
+                dataType: "JSON",
+                type: "GET",
+                data: {
+                    email: email,
+                    nama: nama,
+                    peraturan_id: peraturan_id
+                },
+                success: function(result) {
+                    $.each(result, function(i, item) {
+                        if (item.respon == "ok") {
+                            document.getElementById("img1").style.display = "none";
+                            document.getElementById("lblnotif").innerHTML = 'Email berhasil Dikirim';
+                            document.getElementById("btn1").style.display = "none";
+                            document.getElementById("btn2").style.display = "none";
+                            document.getElementById("btn3").style.display = "block";
+
+                        } else {
+                            document.getElementById("img1").style.display = "none";
+                            document.getElementById("lblnotif").innerHTML = 'Email gagal kirim';
+                            document.getElementById("btn1").style.display = "none";
+                            document.getElementById("btn2").style.display = "none";
+                            document.getElementById("btn3").style.display = "block";
+                        }
+                    });
+                },
+                error: function() {
+                    document.getElementById("img1").style.display = "none";
+                    document.getElementById("lblnotif").innerHTML = 'Email gagal kirim';
+                    document.getElementById("btn1").style.display = "none";
+                    document.getElementById("btn2").style.display = "none";
+                    document.getElementById("btn3").style.display = "block";
+                }
+            })
+        }
+    }
+
+
+    function tampil_share() {
+        document.getElementById("isi_email").style.display = "block";
+        document.getElementById("result_email").style.display = "none";
+        document.getElementById("nama").value = "";
+        document.getElementById("email").value = "";
+
+        document.getElementById("btn1").style.display = "block";
+        document.getElementById("btn2").style.display = "block";
+        document.getElementById("btn3").style.display = "none";
+        // document.getElementById("peraturan_id").value = "";
+
+        $('#Modal1').modal({
+            backdrop: 'static',
+            keyboard: false
+        });
+    }
+</script>
+
+<style>
+    .chat-box {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        height: 700px;
+        overflow-y: auto;
+    padding: 32px 100px 32px 100px;
+        background: linear-gradient(135deg, #e0e7ff 0%, #f9fafb 100%);
+        border-radius: 18px;
+        box-shadow: 0 6px 32px 0 rgba(80, 80, 160, 0.10);
+        transition: background 0.4s;
+        max-width: 100%;
+    }
+
+/* Gaya untuk pesan */
+
+.message {
+    display: flex;
+    align-items: flex-end;
+    max-width: 100%;
+    transition: box-shadow 0.2s;
+}
+
+/* Gaya untuk pesan pengguna (di kanan) */
+
+.user-message {
+    justify-content: flex-end;
+    text-align: right;
+}
+
+/* Gaya untuk pesan AI (di kiri) */
+
+.ai-message {
+    justify-content: flex-start;
+    text-align: left;
+}
+
+/* Pesan pengguna */
+
+.user-message .message-content {
+    background: linear-gradient(135deg, #4f8cff 0%, #6fb1fc 100%);
+    color: #fff;
+    border-radius: 22px 22px 6px 22px;
+    padding: 14px 20px;
+    max-width: 75%;
+    box-shadow: 0 4px 18px 0 rgba(80, 120, 255, 0.13);
+    font-size: 15px;
+    position: relative;
+    margin-left: 48px;
+    margin-bottom: 2px;
+    transition: background 0.3s;
+}
+
+/* Pesan AI */
+
+.ai-message .message-content {
+    background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+    color: #222;
+    border-radius: 22px 22px 22px 6px;
+    padding: 14px 20px;
+    max-width: 75%;
+    box-shadow: 0 4px 18px 0 rgba(80, 80, 160, 0.10);
+    font-size: 15px;
+    position: relative;
+    margin-right: 48px;
+    margin-bottom: 2px;
+    transition: background 0.3s;
+}
+
+/* Avatar/icon untuk AI dan user */
+.ai-message::before {
+    content: '';
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    background: url('https://cdn-icons-png.flaticon.com/512/4712/4712035.png') no-repeat center/cover;
+    border-radius: 50%;
+    margin-right: 10px;
+    margin-bottom: 2px;
+}
+.user-message::after {
+    content: '';
+    display: inline-block;
+    width: 36px;
+    height: 36px;
+    background: url('https://cdn-icons-png.flaticon.com/512/3135/3135715.png') no-repeat center/cover;
+    border-radius: 50%;
+    margin-left: 10px;
+    margin-bottom: 2px;
+}
+
+/* Input dan tombol kirim */
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 15px;
+    background-color: #fff;
+    border-top: 1px solid #ddd;
+}
+
+#user-input {
+    width: 80%;
+    padding: 12px;
+    border-radius: 25px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+}
+
+#send-message {
+    padding: 12px 20px;
+    font-size: 14px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#send-message:hover {
+    background-color: #0056b3;
+}
+
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+
+#Modal_chat_ai .modal-dialog {
+    max-width: 1400px;
+    width: 99%;
+    margin-top: 40px;
+    margin-bottom: 40px;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px 0 rgba(80, 80, 160, 0.18);
+}
+
+
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    background: #f4f6fb;
+    border-top: 1px solid #e0e7ff;
+    border-radius: 0 0 18px 18px;
+}
+
+.input-group {
+    display: flex;
+    width: 100%; /* Memastikan elemen menggunakan seluruh lebar */
+}
+
+
+#user-input {
+    flex: 1;
+    border-radius: 22px;
+    border: 1.5px solid #bfcfff;
+    padding: 14px 18px;
+    font-size: 15px;
+    background: #f8faff;
+    margin-right: 12px;
+    box-shadow: 0 2px 8px 0 rgba(80, 120, 255, 0.04);
+    transition: border 0.2s;
+}
+
+#user-input:focus {
+    border: 1.5px solid #4f8cff;
+    outline: none;
+}
+
+#send-message {
+    margin-left: 0;
+    padding: 12px 28px;
+    font-size: 15px;
+    background: linear-gradient(135deg, #4f8cff 0%, #6fb1fc 100%);
+    color: #fff;
+    border: none;
+    border-radius: 22px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px 0 rgba(80, 120, 255, 0.10);
+    font-weight: 600;
+    transition: background 0.3s;
+}
+
+#send-message:hover {
+    background: linear-gradient(135deg, #3a6fd8 0%, #4f8cff 100%);
+}
+
+
+</style>
+
+<!-- Modal -->
+<div class="modal fade" id="Modal_chat_ai" tabindex="-1" role="dialog" aria-labelledby="ModalChatAI" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ModalChatAI">Chat with AI</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                <input type="hidden" id="urlDokumenAi" name="urlDokumenAi">
+
+                <!-- Container for chat messages -->
+                <div id="chat-box" class="chat-box">
+                    <!-- Placeholder messages -->
+
+                </div>
+            </div>
+            <div class="modal-footer">
+                <input type="text" id="user-input" class="form-control" placeholder="Type a message..." />
+                <button type="button" class="btn btn-primary text-left" id="send-message" onclick="sendMessageQuesion()">Send</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>  
+        </div>
+
+    </div>
+</div>
+</div>
+<!-- End Modal -->
+
+<!-- ***** Footer Area Start ***** -->
+<footer class="footer-area">
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="footer-single-widget">
+                    <a href="https://jdih.pu.go.id/"><img src="https://jdih.pu.go.id/assets/img/core-img/logo.png" alt=""></a>
+                    <div class="copywrite-text mt-30">
+                        <p>
+                            <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
+                            Hak Cipta © 2019<br>
+                            Biro Hukum, Sekretariat Jenderal <br>
+                            Kementerian Pekerjaan Umum<br>
+                            Jl. Pattimura No.20,<br>
+                            Rt.2/RW/1. Selon, Kby. Baru, <br>
+                            Kota Jakarta Selatan, DKI Jakarta 12110,<br>
+                            Indonesia,<br><br>
+                            P : (021) 739-6783 Ext: 1386, (021) 723-5216<br>
+                            E : jdih@pu.go.id
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-7">
+                <div class="footer-single-widget">
+                    <ul class="footer-menu d-flex justify-content-between">
+                        <li><a href="https://jdih.pu.go.id/">Beranda</a></li>
+                        <li><a href="https://jdih.pu.go.id/">Produk Hukum</a></li>
+                        <li><a href="https://jdih.pu.go.id/Statistik">Statistik</a></li>
+                        <li><a href="https://jdih.pu.go.id/Tentang-kami">Tentang Kami</a></li>
+                        <li><a href="https://jdih.pu.go.id/Prasyarat">Prasyarat</a></li>
+                        <li><a href="https://jdih.pu.go.id/Kontak-kami">Kontak Kami</a></li>
+                    </ul>
+                </div>
+                <div>
+
+                </div>
+            </div>
+
+            <div class="col mt-3">
+                <div class="hover01 column">
+                    <div>
+                        <figure><a href="https://play.google.com/store/apps/details?id=com.pupr.jdih" target="_blank"><img src="https://jdih.pu.go.id/assets/img/core-img/google-play-badge.png" alt=""></a></figure>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</footer>
+<style>
+    .hover01 figure img {
+        -webkit-transform: scale(1);
+        transform: scale(1);
+        -webkit-transition: .3s ease-in-out;
+        transition: .3s ease-in-out;
+    }
+
+    .hover01 figure:hover img {
+        -webkit-transform: scale(1.1);
+        transform: scale(1.1);
+    }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/wow/1.1.2/wow.min.js"></script>
+<script src="https://jdih.pu.go.id/assets/js/popper.min.js"></script>
+
+<script src="https://jdih.pu.go.id/assets/js/bootstrap.min.js"></script>
+<!--<script src="https://jdih.pu.go.id/assets/js/plugins.js"></script>-->
+<!-- Active js -->
+<script src="https://jdih.pu.go.id/assets/js/active.js"></script>
+
+<script src="https://jdih.pu.go.id//assets/js/translations.js"></script>
+
+<script type="text/javascript">
+    $( document ).ready(function() {
+
+        let konisi = 0;
+        $('#user-input').on('keypress', function(e) {
+            if (e.which == 13 && konisi == 0) { 
+                sendMessageQuesion();   
+            }
+        });
+
+
+
+        sendMessageQuesion = function () {
+    let question = $('#user-input').val().trim();
+    let urlDokumenAi = $('#urlDokumenAi').val();
+
+    if (!question) {
+        alert('Silahkan masukkan pertanyaan Anda pada kolom pesan!');
+        return;
+    }
+
+    // Filter pertanyaan kosong atau hanya simbol
+    if (/^[^a-zA-Z0-9]+$/.test(question)) {
+        alert('Pertanyaan tidak valid!');
+        return;
+    }
+
+    // Escape input user juga untuk keamanan
+    const escapeHtml = function (text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
+    // Tampilkan pertanyaan user
+    let questionUser = `
+        <div class="message user-message">
+            <div class="message-content">
+                <p><strong>You :</strong> ${escapeHtml(question)}</p>
+            </div>
+        </div>`;
+
+    $('#chat-box').append(questionUser);
+    scrollToLastMessageOfType('user-message');
+    $('#user-input').val('');
+    $('#send-message').prop('disabled', true).html(`<i class="fas fa-sync spinner" id="spinner-icon"></i>`);
+
+    let arrayHistory = [];
+
+    // Ambil semua isi pesan chat untuk history
+    $('.message').each(function () {
+        let content = $(this).find('.message-content').text().trim();
+        if (content) {
+            arrayHistory.push(content);
+        }
+    });
+
+    $.ajax({
+        url: 'https://jdih.pu.go.id/Home/ProesApi',
+        type: "POST",
+        dataType: 'json',
+        data: {
+            question: question,
+            urlDokumenAi: urlDokumenAi,
+            arrayHistory: arrayHistory
+        },
+        success: function (res) {
+            $('#send-message').prop('disabled', false).html(`Send`);
+
+            if (res.code !== 200 || !res.data || !res.data.candidates) {
+                t_error('Terjadi kesalahan dalam respon AI.');
+                return;
+            }
+
+            let balasanAi = res.data.candidates[0].content.parts[0].text;
+            // Jangan escape balasanAi agar HTML dari AI bisa dirender
+            let balasanAiStr = `
+                <div class="message ai-message">
+                    <div class="message-content">
+                        <strong>AI Bot :</strong> ${balasanAi}
+                    </div>
+                </div>`;
+
+            $('#chat-box').append(balasanAiStr);
+            scrollToLastMessageOfType('ai-message');
+        },
+        error: function (jqXHR, textStatus, errorThrown) {
+            $('#send-message').prop('disabled', false).html(`Send`);
+            console.error('AJAX Error:', errorThrown);
+            t_error('Gagal menghubungi server!');
+        }
+    });
+};
+
+
+
+
+        showModalChat = function (path) {
+
+
+            let startMessage = `<div class="message ai-message">
+            <div class="message-content">
+            <p><strong>AI Boot :</strong> Informasi yang disajikan dalam chat ini merupakan hasil analisis AI berdasarkan dokumen asli. Meskipun AI berusaha memberikan informasi yang akurat, kemungkinan masih terdapat ketidaktepatan. Oleh karena itu, hasil analisis ini tidak dapat dijadikan acuan yang sepenuhnya dapat dipertanggungjawabkan kebenarannya.</p>
+            </div>
+            </div>`;
+
+            let pertanyaanMessage = `<div class="message ai-message">
+            <div class="message-content">
+            <p><strong>AI Boot :</strong> Silakan ajukan pertanyaan mengenai produk hukum ini.</p>
+            </div>
+            </div>`;
+
+            $('#chat-box').html(startMessage);
+            $('#chat-box').append(pertanyaanMessage);
+            scrollToLastMessageOfType('ai-message');
+            $('#urlDokumenAi').val(path);
+
+
+
+            $("#Modal_chat_ai").modal('show');
+
+        }
+
+
+        function scrollToLastMessageOfType(messageType) {
+            let chatBox = document.getElementById('chat-box');
+
+            let messages = chatBox.getElementsByClassName(messageType);
+
+            if (messages.length > 0) {
+
+                let lastMessage = messages[messages.length - 1];
+
+                lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+
+
+    });
+</script>
+
+
+<script>
+    $.each(translations, function(indexInArray, valueOfElement) {
+        $(`label:contains('${indexInArray}')`).addClass("translatable");
+        $(`a:contains('${indexInArray}')`).addClass("translatable");
+    });
+
+
+    function translateText(textToTranslate, targetLanguage) {
+        if (translations[textToTranslate]) {
+            const translatedText = translations[textToTranslate][targetLanguage];
+            return translatedText || textToTranslate;
+        } else {
+            return textToTranslate;
+        }
+    }
+
+    function setLanguageLocalStorage(languageCode) {
+        localStorage.setItem('selectedLanguage', languageCode);
+    }
+
+
+    function getLanguageLocalStorage() {
+        return localStorage.getItem('selectedLanguage') || 'id';
+    }
+
+    function translateElements(targetLanguage) {
+        $('.translatable').each(function() {
+            const originalText = $(this).text();
+            const translatedText = translateText(originalText, targetLanguage);
+            $(this).text(translatedText);
+        });
+
+        $('.translatable_placeholder').each(function() {
+            const originalText = $(this).attr("placeholder");
+            const translatedText = translateText(originalText, targetLanguage);
+            $(this).attr("placeholder", translatedText);
+        });
+    }
+
+
+    $('.lang-button').click(function(e) {
+        const targetLanguage = e.target.value;
+        setLanguageLocalStorage(targetLanguage);
+        translateElements(targetLanguage);
+        window.location.reload()
+    });
+
+
+    $(document).ready(function() {
+        const savedLanguage = getLanguageLocalStorage();
+        $('#language-select').val(savedLanguage);
+        translateElements(savedLanguage);
+    });
+
+    $(document).on("draw.dt", function() {
+        const savedLanguage = getLanguageLocalStorage();
+        $('#language-select').val(savedLanguage);
+        translateElements(savedLanguage);
+    });
+</script>
+
+</body>
+
+</html>

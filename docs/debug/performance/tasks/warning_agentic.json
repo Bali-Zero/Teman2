@@ -1,0 +1,36 @@
+{
+  "priority": "warning",
+  "area": "agentic",
+  "score": 55,
+  "description": "Agentic Orchestrator optimization - Multi-step reasoning overhead",
+  "scope": [
+    "apps/backend-rag/backend/services/rag/agentic/orchestrator.py",
+    "apps/backend-rag/backend/services/rag/agentic/pipeline.py",
+    "apps/backend-rag/backend/services/rag/agentic/tool_executor.py"
+  ],
+  "metrics_to_collect": [
+    "reasoning_steps_count",
+    "tool_execution_time",
+    "early_exit_rate",
+    "total_reasoning_time",
+    "tool_success_rate"
+  ],
+  "key_issues": [
+    "Multi-step reasoning overhead",
+    "Tool execution time",
+    "No early exit optimization"
+  ],
+  "tasks": [
+    "Profile step-by-step reasoning process",
+    "Implement early exit for simple queries",
+    "Optimize tool execution batching",
+    "Add caching for repeated reasoning patterns",
+    "Reduce unnecessary tool calls"
+  ],
+  "expected_output": "docs/debug/performance/agentic_report.md",
+  "success_criteria": [
+    "Early exit implemented for 30%+ of queries",
+    "Tool execution time reduced by 20%+",
+    "Reasoning overhead reduced by 15%+"
+  ]
+}

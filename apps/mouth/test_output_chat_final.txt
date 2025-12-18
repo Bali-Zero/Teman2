@@ -1,0 +1,177 @@
+[WebServer]  [33m[1m⚠[22m[39m Warning: Next.js inferred your workspace root, but it may not be correct.
+[WebServer]  We detected multiple lockfiles and selected the directory of /Users/antonellosiano/pnpm-lock.yaml as the root directory.
+[WebServer]  To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[WebServer]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+[WebServer]  Detected additional lockfiles: 
+[WebServer]    * /Users/antonellosiano/Desktop/nuzantara/package-lock.json
+[WebServer] 
+[WebServer]  [33m[1m⚠[22m[39m metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Running 8 tests using 4 workers
+
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+  ✓  3 [Mobile Chrome] › e2e/chat/chat.spec.ts:29:7 › Chat Flow › should send text message and receive streaming response (14.3s)
+  ✓  2 [chromium] › e2e/chat/chat.spec.ts:29:7 › Chat Flow › should send text message and receive streaming response (14.7s)
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+  ✓  1 [webkit] › e2e/chat/chat.spec.ts:29:7 › Chat Flow › should send text message and receive streaming response (18.0s)
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+  ✓  4 [firefox] › e2e/chat/chat.spec.ts:29:7 › Chat Flow › should send text message and receive streaming response (16.3s)
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+  ✘  5 [Mobile Chrome] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (9.6s)
+  ✘  6 [chromium] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (9.2s)
+  ✘  7 [webkit] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (7.5s)
+  ✘  8 [firefox] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (7.6s)
+
+
+  1) [chromium] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ───────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Generate image: A cute cat')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('Generate image: A cute cat')[22m
+
+
+      74 |     
+      75 |     // Verify user message
+    > 76 |     await expect(page.getByText('Generate image: A cute cat')).toBeVisible();
+         |                                                                ^
+      77 |
+      78 |     // Verify text first
+      79 |     await expect(page.getByText('Here is your generated image:')).toBeVisible({ timeout: 10000 });
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/chat/chat.spec.ts:76:64
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/chat-chat-Chat-Flow-should-generate-image-chromium/error-context.md
+
+  2) [firefox] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Generate image: A cute cat')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('Generate image: A cute cat')[22m
+
+
+      74 |     
+      75 |     // Verify user message
+    > 76 |     await expect(page.getByText('Generate image: A cute cat')).toBeVisible();
+         |                                                                ^
+      77 |
+      78 |     // Verify text first
+      79 |     await expect(page.getByText('Here is your generated image:')).toBeVisible({ timeout: 10000 });
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/chat/chat.spec.ts:76:64
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/chat-chat-Chat-Flow-should-generate-image-firefox/error-context.md
+
+  3) [webkit] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ─────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Generate image: A cute cat')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('Generate image: A cute cat')[22m
+
+
+      74 |     
+      75 |     // Verify user message
+    > 76 |     await expect(page.getByText('Generate image: A cute cat')).toBeVisible();
+         |                                                                ^
+      77 |
+      78 |     // Verify text first
+      79 |     await expect(page.getByText('Here is your generated image:')).toBeVisible({ timeout: 10000 });
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/chat/chat.spec.ts:76:64
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/chat-chat-Chat-Flow-should-generate-image-webkit/error-context.md
+
+  4) [Mobile Chrome] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ──────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('Generate image: A cute cat')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('Generate image: A cute cat')[22m
+
+
+      74 |     
+      75 |     // Verify user message
+    > 76 |     await expect(page.getByText('Generate image: A cute cat')).toBeVisible();
+         |                                                                ^
+      77 |
+      78 |     // Verify text first
+      79 |     await expect(page.getByText('Here is your generated image:')).toBeVisible({ timeout: 10000 });
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/chat/chat.spec.ts:76:64
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/chat-chat-Chat-Flow-should-generate-image-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/chat-chat-Chat-Flow-should-generate-image-Mobile-Chrome/error-context.md
+
+  4 failed
+    [chromium] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ────────────────────
+    [firefox] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ─────────────────────
+    [webkit] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ──────────────────────
+    [Mobile Chrome] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image ───────────────
+  4 passed (42.5s)

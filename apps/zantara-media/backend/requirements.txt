@@ -1,0 +1,39 @@
+# ZANTARA MEDIA Backend
+# Python 3.11+
+
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+python-multipart==0.0.12
+
+# Database
+asyncpg==0.30.0
+sqlalchemy[asyncio]==2.0.35
+
+# Redis
+redis==5.0.0
+
+# HTTP Client
+httpx==0.28.0
+aiohttp==3.11.0
+
+# AI/ML
+openai==1.57.0
+google-generativeai==0.8.0
+
+# Scheduling
+apscheduler==3.10.4
+
+# Utilities
+python-dotenv==1.0.1
+pydantic==2.10.0
+pydantic-settings==2.6.0
+
+# Social Media APIs
+tweepy==4.14.0
+
+# Date/Time
+python-dateutil==2.9.0
+
+# Logging
+structlog==24.4.0

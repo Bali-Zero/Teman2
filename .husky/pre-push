@@ -1,0 +1,20 @@
+#!/bin/sh
+# 
+# Pre-push hook example for coverage gate
+# 
+# To enable: Copy this file to .husky/pre-push and make it executable
+# 
+# Note: This can slow down pushes (30-60 seconds). Consider running manually
+#       or only in CI instead.
+
+. "$(dirname "$0")/_/h"
+
+# Run coverage gate
+echo "🔒 Running coverage gate before push..."
+npm run coverage:gate || {
+    echo ""
+    echo "❌ Coverage gate failed. Please add tests for changed code."
+    echo "   Run 'npm run coverage:gate' manually to see details."
+    exit 1
+}
+

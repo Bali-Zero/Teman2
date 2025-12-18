@@ -1,0 +1,20 @@
+[
+    {
+        "question": "What do foreigners need in Indonesia?",
+        "answer": "Foreigners must have a residence permit while staying in Indonesia.",
+        "context_used": "(1) Orang Asing yang berada di Wilayah Indonesia wajib memiliki Izin Tinggal.",
+        "persona": "A confused foreigner"
+    },
+    {
+        "question": "How does a foreigner get a residence permit in Indonesia?",
+        "answer": "A residence permit for foreigners is given according to their visa type, as stated in Article (2).",
+        "context_used": "(2) Izin Tinggal sebagaimana dimaksud pada ayat (1) diberikan kepada Orang Asing sesuai dengan Visa yang dimilikinya.",
+        "persona": "A professional lawyer"
+    },
+    {
+        "question": "Yo, what's the deal with getting a stay permit in Indonesia? Can I just wing it or do I gotta apply for one?",
+        "answer": "Nah, you'll definitely need a stay permit if you're gonna be chillin' in Indonesia for a bit. Just make sure your visa matches up with the kind of permit they give ya.",
+        "context_used": "(1) Orang Asing yang berada di Wilayah Indonesia wajib memiliki Izin Tinggal.",
+        "persona": "A digital nomad"
+    }
+]

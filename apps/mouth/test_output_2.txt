@@ -1,0 +1,387 @@
+[WebServer]  [33m[1m⚠[22m[39m Warning: Next.js inferred your workspace root, but it may not be correct.
+[WebServer]  We detected multiple lockfiles and selected the directory of /Users/antonellosiano/pnpm-lock.yaml as the root directory.
+[WebServer]  To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[WebServer]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+[WebServer]  Detected additional lockfiles: 
+[WebServer]    * /Users/antonellosiano/Desktop/nuzantara/package-lock.json
+[WebServer] 
+[WebServer]  [33m[1m⚠[22m[39m metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Running 4 tests using 4 workers
+
+>> GET http://localhost:3000/login
+>> GET http://localhost:3000/login
+>> GET http://localhost:3000/login
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+>> GET http://localhost:3000/_next/static/media/797e433ab948586e-s.p.dbea232f.woff2
+>> GET http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.853070df.woff2
+>> GET http://localhost:3000/_next/static/media/797e433ab948586e-s.p.dbea232f.woff2
+>> GET http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.853070df.woff2
+>> GET http://localhost:3000/_next/image?url=%2Fimages%2Flogo_zan.png&w=128&q=75
+>> GET http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__794911ca._.css
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_92dec420._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-dom_cc793af3._.js
+>> GET http://localhost:3000/_next/image?url=%2Fimages%2Flogo_zan.png&w=256&q=75
+>> GET http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__794911ca._.css
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_92dec420._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-dom_cc793af3._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-server-dom-turbopack_7f2228ff._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_next-devtools_index_9520765a.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-server-dom-turbopack_7f2228ff._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_next-devtools_index_9520765a.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_117dfa8e._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_client_0d0d36ce._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_117dfa8e._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_client_0d0d36ce._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_fc627db5._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_%40swc_helpers_cjs_28610b39._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_fc627db5._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_%40swc_helpers_cjs_28610b39._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_a0ff3932._.js
+>> GET http://localhost:3000/_next/static/chunks/turbopack-Desktop_nuzantara_apps_mouth_d35fca6f._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_a0ff3932._.js
+>> GET http://localhost:3000/_next/static/chunks/turbopack-Desktop_nuzantara_apps_mouth_d35fca6f._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_f9c48585._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_favicon_ico_mjs_6b9b4efb._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_layout_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_6ffe12bb._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_f9c48585._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_favicon_ico_mjs_6b9b4efb._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_layout_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_3a7c100b._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_error_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_4ae70eff._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_not-found_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1c8b4ecf._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_d29ac0db._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_6ffe12bb._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_login_page_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1e08dc20._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_3a7c100b._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_error_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_4ae70eff._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_not-found_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1c8b4ecf._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_390f9b5c._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_d29ac0db._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_login_page_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1e08dc20._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_390f9b5c._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/static/media/797e433ab948586e-s.p.dbea232f.woff2
+>> GET http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.853070df.woff2
+>> GET http://localhost:3000/_next/image?url=%2Fimages%2Flogo_zan.png&w=256&q=75
+>> GET http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__794911ca._.css
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_92dec420._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-dom_cc793af3._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-server-dom-turbopack_7f2228ff._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_next-devtools_index_9520765a.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_117dfa8e._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_client_0d0d36ce._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_fc627db5._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_%40swc_helpers_cjs_28610b39._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_a0ff3932._.js
+>> GET http://localhost:3000/_next/static/chunks/turbopack-Desktop_nuzantara_apps_mouth_d35fca6f._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_f9c48585._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_favicon_ico_mjs_6b9b4efb._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_layout_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_6ffe12bb._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_3a7c100b._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_error_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_4ae70eff._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_not-found_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1c8b4ecf._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_d29ac0db._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_login_page_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1e08dc20._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_390f9b5c._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_d4634066._.js
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_d4634066._.js
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_d4634066._.js
+>> GET http://localhost:3000/__nextjs_font/geist-latin.woff2
+BROWSER LOG: [Fast Refresh] rebuilding
+>> GET http://localhost:3000/login
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /login. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+BROWSER LOG: [Fast Refresh] done in 592ms
+BROWSER LOG: [Fast Refresh] done in 592ms
+BROWSER LOG: [Fast Refresh] done in 560ms
+>> GET http://localhost:3000/_next/static/media/797e433ab948586e-s.p.dbea232f.woff2
+>> GET http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.853070df.woff2
+>> GET http://localhost:3000/_next/static/chunks/%5Broot-of-the-server%5D__794911ca._.css
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_92dec420._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-dom_cc793af3._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_react-server-dom-turbopack_7f2228ff._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_next-devtools_index_9520765a.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_compiled_117dfa8e._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_client_0d0d36ce._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_fc627db5._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_%40swc_helpers_cjs_28610b39._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_a0ff3932._.js
+>> GET http://localhost:3000/_next/static/chunks/turbopack-Desktop_nuzantara_apps_mouth_d35fca6f._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_f9c48585._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_favicon_ico_mjs_6b9b4efb._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_layout_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_6ffe12bb._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_3a7c100b._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_error_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_next_dist_4ae70eff._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_not-found_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1c8b4ecf._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_d29ac0db._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_login_page_tsx_4427f461._.js
+>> GET http://localhost:3000/_next/static/chunks/3066f_1e08dc20._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_390f9b5c._.js
+>> GET http://localhost:3000/_next/static/chunks/Desktop_nuzantara_apps_mouth_src_app_global-error_tsx_c6a51c1b._.js
+>> GET http://localhost:3000/_next/image?url=%2Fimages%2Flogo_zan.png&w=128&q=75
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c8c997ce._.js
+>> GET http://localhost:3000/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_d4634066._.js
+>> GET http://localhost:3000/_next/webpack-hmr?id=EuWInAN-zpGiuj7_ddCEt
+BROWSER LOG: Waiting for Paint
+BROWSER LOG: Root
+BROWSER LOG: ServerRoot
+BROWSER LOG: AppRouter
+BROWSER LOG: RootErrorBoundary
+BROWSER LOG: ErrorBoundary
+BROWSER LOG: ErrorBoundaryHandler
+BROWSER LOG: Router
+BROWSER LOG: HistoryUpdater
+BROWSER LOG: RuntimeStyles
+BROWSER LOG: HotReload
+BROWSER LOG: AppDevOverlayErrorBoundary
+BROWSER LOG: ReplaySsrOnlyErrors
+BROWSER LOG: DevRootHTTPAccessFallbackBoundary
+BROWSER LOG: HTTPAccessFallbackBoundary
+BROWSER LOG: HTTPAccessFallbackErrorBoundary
+BROWSER LOG: RedirectBoundary
+BROWSER LOG: RedirectErrorBoundary
+BROWSER LOG: Head
+BROWSER LOG: __next_viewport_boundary__
+BROWSER LOG: __next_root_layout_boundary__
+BROWSER LOG: SegmentViewNode
+BROWSER LOG: SegmentTrieNode
+BROWSER LOG: OuterLayoutRouter
+BROWSER LOG: SegmentStateProvider
+BROWSER LOG: RenderFromTemplateContext
+BROWSER LOG: SegmentViewNode
+BROWSER LOG: SegmentViewNode
+BROWSER LOG: SegmentViewNode
+BROWSER LOG: SegmentTrieNode
+BROWSER LOG: SegmentViewNode
+BROWSER LOG: AppRouterAnnouncer
+BROWSER LOG: AppRouterAnnouncer
+BROWSER LOG: Remaining Effects
+BROWSER LOG: Blocking Track
+BROWSER LOG: Transition Track
+BROWSER LOG: Suspense Track
+BROWSER LOG: Idle Track
+BROWSER LOG: Render
+BROWSER LOG: Blocking Track
+BROWSER LOG: Transition Track
+BROWSER LOG: Suspense Track
+BROWSER LOG: Idle Track
+BROWSER LOG: Render
+BROWSER LOG: Commit
+BROWSER LOG: Waiting for Paint
+BROWSER LOG: Blocking Track
+BROWSER LOG: Transition Track
+BROWSER LOG: Suspense Track
+BROWSER LOG: Idle Track
+>> GET http://localhost:3000/favicon.ico?favicon.0b3bf435.ico
+>> GET http://localhost:3000/favicon.ico?favicon.0b3bf435.ico
+BROWSER LOG: Server Requests Track
+BROWSER LOG: Server Components Track
+BROWSER LOG: ​Preloads
+BROWSER LOG: ​
+BROWSER LOG: ​FileQuestionMark
+BROWSER LOG: ​LinkComponent
+BROWSER LOG: ​Button
+BROWSER LOG: ​LinkComponent
+BROWSER LOG: ​Button
+BROWSER LOG: ​NotFound
+BROWSER LOG: ​RootLayout
+BROWSER LOG: ​Next.MetadataOutlet
+BROWSER LOG: ​
+BROWSER LOG: ​LoaderCircle
+BROWSER LOG: ​Loading
+BROWSER LOG: ​NonIndex
+BROWSER LOG: ​Next.Viewport
+BROWSER LOG: ​Next.Metadata
+BROWSER LOG: Blocked
+BROWSER LOG: Blocked
+BROWSER LOG: Blocked
+BROWSER LOG: Prepared
+BROWSER LOG: SegmentTrieNode
+BROWSER LOG: Commit
+BROWSER LOG: Waiting for Paint
+BROWSER LOG: IconMark
+BROWSER LOG: HTTPAccessFallbackBoundary
+BROWSER LOG: HTTPAccessFallbackErrorBoundary
+BROWSER LOG: RedirectBoundary
+BROWSER LOG: RedirectErrorBoundary
+BROWSER LOG: InnerLayoutRouter
+BROWSER LOG: OuterLayoutRouter
+BROWSER LOG: SegmentStateProvider
+BROWSER LOG: RenderFromTemplateContext
+BROWSER LOG: ScrollAndFocusHandler
+BROWSER LOG: InnerScrollAndFocusHandler
+BROWSER LOG: ErrorBoundary
+BROWSER LOG: LoadingBoundary
+BROWSER LOG: HTTPAccessFallbackBoundary
+BROWSER LOG: RedirectBoundary
+BROWSER LOG: RedirectErrorBoundary
+BROWSER LOG: InnerLayoutRouter
+BROWSER LOG: SegmentViewNode
+BROWSER LOG: SegmentTrieNode
+BROWSER LOG: ClientPageRoot
+BROWSER LOG: LoginPage
+BROWSER LOG: ForwardRef
+BROWSER LOG: ForwardRef
+BROWSER LOG: ImagePreload
+BROWSER LOG: Label
+BROWSER LOG: Input
+BROWSER LOG: Label
+BROWSER LOG: Input
+BROWSER LOG: Button
+BROWSER LOG: __next_outlet_boundary__
+BROWSER LOG: SegmentViewStateNode
+BROWSER LOG: Remaining Effects
+BROWSER LOG: Blocking Track
+BROWSER LOG: Transition Track
+BROWSER LOG: Suspense Track
+BROWSER LOG: Idle Track
+BROWSER LOG: Render
+BROWSER LOG: Blocking Track
+BROWSER LOG: Transition Track
+BROWSER LOG: Suspense Track
+BROWSER LOG: Idle Track
+BROWSER LOG: Prepared
+  ✘  3 [webkit] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat (13.9s)
+BROWSER LOG: [JavaScript Warning: "The resource at “http://localhost:3000/_next/static/media/797e433ab948586e-s.p.dbea232f.woff2” preloaded with link preload was not used within a few seconds. Make sure all attributes of the preload tag are set correctly." {file: "http://localhost:3000/login" line: 0}]
+BROWSER LOG: [JavaScript Warning: "The resource at “http://localhost:3000/_next/static/media/caa3a2e1cccd8315-s.p.853070df.woff2” preloaded with link preload was not used within a few seconds. Make sure all attributes of the preload tag are set correctly." {file: "http://localhost:3000/login" line: 0}]
+  ✘  4 [Mobile Chrome] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat (14.4s)
+  ✘  2 [chromium] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat (14.6s)
+  ✘  1 [firefox] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat (13.4s)
+
+
+  1) [chromium] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 
+
+    TimeoutError: page.fill: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[name="email"]')[22m
+
+
+      87 |     });
+      88 |
+    > 89 |     await page.fill('input[name="email"]', 'test@balizero.com');
+         |                ^
+      90 |     await page.fill('input[name="pin"]', '123456');
+      91 |     await page.click('button[type="submit"]');
+      92 |
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/auth/login.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-chromium/error-context.md
+
+  2) [firefox] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 
+
+    TimeoutError: page.fill: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[name="email"]')[22m
+
+
+      87 |     });
+      88 |
+    > 89 |     await page.fill('input[name="email"]', 'test@balizero.com');
+         |                ^
+      90 |     await page.fill('input[name="pin"]', '123456');
+      91 |     await page.click('button[type="submit"]');
+      92 |
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/auth/login.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-firefox/error-context.md
+
+  3) [webkit] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 
+
+    TimeoutError: page.fill: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[name="email"]')[22m
+
+
+      87 |     });
+      88 |
+    > 89 |     await page.fill('input[name="email"]', 'test@balizero.com');
+         |                ^
+      90 |     await page.fill('input[name="pin"]', '123456');
+      91 |     await page.click('button[type="submit"]');
+      92 |
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/auth/login.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-webkit/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-webkit/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-webkit/error-context.md
+
+  4) [Mobile Chrome] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 
+
+    TimeoutError: page.fill: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('input[name="email"]')[22m
+
+
+      87 |     });
+      88 |
+    > 89 |     await page.fill('input[name="email"]', 'test@balizero.com');
+         |                ^
+      90 |     await page.fill('input[name="pin"]', '123456');
+      91 |     await page.click('button[type="submit"]');
+      92 |
+        at /Users/antonellosiano/Desktop/nuzantara/apps/mouth/e2e/auth/login.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/auth-login-Authentication--111dd-sfully-and-redirect-to-chat-Mobile-Chrome/error-context.md
+
+  4 failed
+    [chromium] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 
+    [firefox] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 
+    [webkit] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 
+    [Mobile Chrome] › e2e/auth/login.spec.ts:60:7 › Authentication Flow › should login successfully and redirect to chat 

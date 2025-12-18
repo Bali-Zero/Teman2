@@ -1,0 +1,1143 @@
+
+================================================================================
+File 1/127: Administrasi Pemerintahan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Administrasi Pemerintahan.pdf
+Old Category: Non classificati
+New Category: Lavoro
+Confidence Score: 8
+Keywords found: administrasi pemerintahan(8)
+✅ MOVED: Administrasi Pemerintahan.pdf → Lavoro/
+
+================================================================================
+File 2/127: Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2003.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2003.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 57
+Keywords found: pajak(19), perpajakan(1), bea(3), cukai(1), penerimaan negara(7)
+✅ MOVED: Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2003.pdf → Tasse/
+
+================================================================================
+File 3/127: Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2004.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2004.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 47
+Keywords found: pajak(15), perpajakan(2), bea(2), cukai(1), penerimaan negara(6)
+✅ MOVED: Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2004.pdf → Tasse/
+
+================================================================================
+File 4/127: Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2015.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2015.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 47
+Keywords found: pajak(13), perpajakan(2), bea(2), cukai(1), penerimaan negara(4)
+✅ MOVED: Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2015.pdf → Tasse/
+
+================================================================================
+File 5/127: Anggaran Pendapatan dan Belanja Negara Tahun 2022.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun 2022.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 46
+Keywords found: pajak(12), perpajakan(2), bea(2), cukai(1), penerimaan negara(4)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun 2022.pdf → Tasse/
+
+================================================================================
+File 6/127: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 60
+Keywords found: pajak(19), perpajakan(2), bea(3), cukai(1), penerimaan negara(7)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf → Tasse/
+
+================================================================================
+File 7/127: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 37
+Keywords found: pajak(13), perpajakan(2), bea(1), cukai(1), penerimaan negara(1)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf → Tasse/
+
+================================================================================
+File 8/127: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2009.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2009.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 26
+Keywords found: pajak(4), bea(2), penerimaan negara(1), apbn(6), apbd(1)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2009.pdf → Tasse/
+
+================================================================================
+File 9/127: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 26
+Keywords found: pajak(4), bea(2), penerimaan negara(1), apbn(6), apbd(1)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf → Tasse/
+
+================================================================================
+File 10/127: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2013.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2013.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 45
+Keywords found: pajak(12), perpajakan(2), bea(2), cukai(1), penerimaan negara(3)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2013.pdf → Tasse/
+
+================================================================================
+File 11/127: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2018.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2018.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 41
+Keywords found: pajak(12), perpajakan(2), bea(2), cukai(1), penerimaan negara(3)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2018.pdf → Tasse/
+
+================================================================================
+File 12/127: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2025.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2025.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 46
+Keywords found: pajak(13), perpajakan(3), bea(2), cukai(1), penerimaan negara(3)
+✅ MOVED: Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2025.pdf → Tasse/
+
+================================================================================
+File 13/127: Beranda Subjek Jenis Tahun Glosarium Tematik Perwakilan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Beranda Subjek Jenis Tahun Glosarium Tematik Perwakilan.pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 5
+Keywords found: bidan(5)
+✅ MOVED: Beranda Subjek Jenis Tahun Glosarium Tematik Perwakilan.pdf → Sanita/
+
+================================================================================
+File 14/127: Dewan Pertimbangan Presiden.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Dewan Pertimbangan Presiden.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 4
+Keywords found: jalan(4)
+✅ MOVED: Dewan Pertimbangan Presiden.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 15/127: Energi.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Energi.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 11
+Keywords found: perusahaan(1), usaha(8), badan usaha(2)
+✅ MOVED: Energi.pdf → Company&Licenses/
+
+================================================================================
+File 16/127: Hak Cipta.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Hak Cipta.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 4
+Keywords found: hukum(4)
+✅ MOVED: Hak Cipta.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 17/127: Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT.pdf
+Old Category: Non classificati
+New Category: Immigrazione
+Confidence Score: 17
+Keywords found: imigras(7), keimigras(3), visa(3), asing(3), warga negara(1)
+✅ MOVED: Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT.pdf → Immigrazione/
+
+================================================================================
+File 18/127: Hukum Disiplin Militer.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Hukum Disiplin Militer.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 19
+Keywords found: hukum(19)
+✅ MOVED: Hukum Disiplin Militer.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 19/127: Hukum Disiplin Prajurit Angkatan Bersenjata Republik Indonesia.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Hukum Disiplin Prajurit Angkatan Bersenjata Republik Indonesia.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 5
+Keywords found: hidup(4), sampah(1)
+✅ MOVED: Hukum Disiplin Prajurit Angkatan Bersenjata Republik Indonesia.pdf → Ambiente/
+
+================================================================================
+File 20/127: Industri Pertahanan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Industri Pertahanan.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 4
+Keywords found: usaha(2), badan usaha(2)
+✅ MOVED: Industri Pertahanan.pdf → Company&Licenses/
+
+================================================================================
+File 21/127: Informasi dan Transaksi Elektronik.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Informasi dan Transaksi Elektronik.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 5
+Keywords found: hukum(5)
+✅ MOVED: Informasi dan Transaksi Elektronik.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 22/127: Jaminan Produk Halal.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Jaminan Produk Halal.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 5
+Keywords found: hukum(5)
+✅ MOVED: Jaminan Produk Halal.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 23/127: KUHP_2025_New_Penal_Code.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHP_2025_New_Penal_Code.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 46
+Keywords found: bangunan(1), kota(2), daerah(29), provinsi(2), kabupaten(12)
+✅ MOVED: KUHP_2025_New_Penal_Code.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 24/127: Kabupaten Aceh Besar di Aceh.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Aceh Besar di Aceh.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 33
+Keywords found: bangunan(2), kota(2), daerah(11), kabupaten(18)
+✅ MOVED: Kabupaten Aceh Besar di Aceh.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 25/127: Kabupaten Aceh Tengah di Aceh.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Aceh Tengah di Aceh.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 32
+Keywords found: bangunan(2), kota(1), daerah(11), kabupaten(18)
+✅ MOVED: Kabupaten Aceh Tengah di Aceh.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 26/127: Kabupaten Bolaang Mongondow di Provinsi Sulawesi Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Bolaang Mongondow di Provinsi Sulawesi Utara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 31
+Keywords found: bangunan(2), kota(1), daerah(7), provinsi(8), kabupaten(13)
+✅ MOVED: Kabupaten Bolaang Mongondow di Provinsi Sulawesi Utara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 27/127: Kabupaten Kepulauan Sangihe di Provinsi Sulawesi Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Kepulauan Sangihe di Provinsi Sulawesi Utara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 30
+Keywords found: bangunan(1), kota(1), daerah(7), provinsi(8), kabupaten(13)
+✅ MOVED: Kabupaten Kepulauan Sangihe di Provinsi Sulawesi Utara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 28/127: Kabupaten Konawe di Provinsi Sulawesi Tenggara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Konawe di Provinsi Sulawesi Tenggara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 34
+Keywords found: bangunan(2), kota(1), daerah(7), provinsi(8), kabupaten(16)
+✅ MOVED: Kabupaten Konawe di Provinsi Sulawesi Tenggara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 29/127: Kabupaten Minahasa di Provinsi Sulawesi Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Minahasa di Provinsi Sulawesi Utara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 31
+Keywords found: bangunan(2), kota(1), daerah(7), provinsi(8), kabupaten(13)
+✅ MOVED: Kabupaten Minahasa di Provinsi Sulawesi Utara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 30/127: Kabupaten Muna di Provinsi Sulawesi Tenggara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Muna di Provinsi Sulawesi Tenggara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 31
+Keywords found: bangunan(2), kota(1), daerah(7), provinsi(8), kabupaten(13)
+✅ MOVED: Kabupaten Muna di Provinsi Sulawesi Tenggara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 31/127: Kabupaten Pidie di Aceh.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kabupaten Pidie di Aceh.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 33
+Keywords found: bangunan(2), kota(2), daerah(11), kabupaten(18)
+✅ MOVED: Kabupaten Pidie di Aceh.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 32/127: Kearsipan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kearsipan.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 4
+Keywords found: perusahaan(2), usaha(2)
+✅ MOVED: Kearsipan.pdf → Company&Licenses/
+
+================================================================================
+File 33/127: Keistimewaan Daerah Istimewa Yogyakarta.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Keistimewaan Daerah Istimewa Yogyakarta.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 23
+Keywords found: daerah(22), provinsi(1)
+✅ MOVED: Keistimewaan Daerah Istimewa Yogyakarta.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 34/127: Kelautan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kelautan.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 14
+Keywords found: lingkungan(4), hidup(2), ekologi(1), konservasi(2), pencemaran(4)
+✅ MOVED: Kelautan.pdf → Ambiente/
+
+================================================================================
+File 35/127: Kementerian Negara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kementerian Negara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 7
+Keywords found: bangunan(2), kota(1), perumahan(1), jalan(1), kawasan(1)
+✅ MOVED: Kementerian Negara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 36/127: Keolahragaan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Keolahragaan.pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 5
+Keywords found: kesehatan(1), bidan(3), jiwa(1)
+✅ MOVED: Keolahragaan.pdf → Sanita/
+
+================================================================================
+File 37/127: Kepolisian Negara Republik Indonesia.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Kepolisian Negara Republik Indonesia.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 8
+Keywords found: hukum(8)
+✅ MOVED: Kepolisian Negara Republik Indonesia.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 38/127: Ketentuan Pokok Kearsipan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Ketentuan Pokok Kearsipan.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 5
+Keywords found: hidup(5)
+✅ MOVED: Ketentuan Pokok Kearsipan.pdf → Ambiente/
+
+================================================================================
+File 39/127: Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 4
+Keywords found: bidan(4)
+✅ MOVED: Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf → Sanita/
+
+================================================================================
+File 40/127: Minyak dan Gas Bumi.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Minyak dan Gas Bumi.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 20
+Keywords found: perusahaan(3), usaha(16), badan usaha(1)
+✅ MOVED: Minyak dan Gas Bumi.pdf → Company&Licenses/
+
+================================================================================
+File 41/127: Otonomi Khusus Bagi Provinsi Papua.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Otonomi Khusus Bagi Provinsi Papua.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 24
+Keywords found: bangunan(2), daerah(9), provinsi(11), kabupaten(2)
+✅ MOVED: Otonomi Khusus Bagi Provinsi Papua.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 42/127: Panas Bumi.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Panas Bumi.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 15
+Keywords found: usaha(11), izin usaha(1), badan usaha(2), koperasi(1)
+✅ MOVED: Panas Bumi.pdf → Company&Licenses/
+
+================================================================================
+File 43/127: Pangan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pangan.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 7
+Keywords found: kota(2), daerah(1), provinsi(2), kabupaten(2)
+✅ MOVED: Pangan.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 44/127: Pelayaran.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pelayaran.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 19
+Keywords found: perusahaan(4), usaha(14), izin usaha(1)
+✅ MOVED: Pelayaran.pdf → Company&Licenses/
+
+================================================================================
+File 45/127: Pembentukan Daerah Tingkat II Di Sulawesi.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Daerah Tingkat II Di Sulawesi.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 27
+Keywords found: kota(2), daerah(25)
+✅ MOVED: Pembentukan Daerah Tingkat II Di Sulawesi.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 46/127: Pembentukan Kabupaten Aceh Barat Daya Kabupaten Gayo Lues Kabupaten Aceh Jaya Kabupaten Nagan Raya dan Kabupaten Aceh Tamiang Di Provinsi Nanggroe Aceh Darussalam.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Aceh Barat Daya Kabupaten Gayo Lues Kabupaten Aceh Jaya Kabupaten Nagan Raya dan Kabupaten Aceh Tamiang Di Provinsi Nanggroe Aceh Darussalam.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 89
+Keywords found: bangunan(2), kota(1), penataan ruang(1), daerah(24), provinsi(9)
+✅ MOVED: Pembentukan Kabupaten Aceh Barat Daya Kabupaten Gayo Lues Kabupaten Aceh Jaya Kabupaten Nagan Raya dan Kabupaten Aceh Tamiang Di Provinsi Nanggroe Aceh Darussalam.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 47/127: Pembentukan Kabupaten Katingan Kabupaten Seruyan Kabupaten Sukamara Kabupaten Lamandau Kabupaten Gunung Mas Kabupaten Pulang Pisau Kabupaten Murung Raya Dan Kabupaten Barito Timur Di Provinsi.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Katingan Kabupaten Seruyan Kabupaten Sukamara Kabupaten Lamandau Kabupaten Gunung Mas Kabupaten Pulang Pisau Kabupaten Murung Raya Dan Kabupaten Barito Timur Di Provinsi.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 91
+Keywords found: bangunan(2), kota(6), penataan ruang(1), daerah(24), provinsi(4)
+✅ MOVED: Pembentukan Kabupaten Katingan Kabupaten Seruyan Kabupaten Sukamara Kabupaten Lamandau Kabupaten Gunung Mas Kabupaten Pulang Pisau Kabupaten Murung Raya Dan Kabupaten Barito Timur Di Provinsi.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 48/127: Pembentukan Kabupaten Kubu Raya Di Provinsi Kalimantan Barat.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Kubu Raya Di Provinsi Kalimantan Barat.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 29
+Keywords found: bangunan(3), daerah(14), provinsi(6), kabupaten(6)
+✅ MOVED: Pembentukan Kabupaten Kubu Raya Di Provinsi Kalimantan Barat.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 49/127: Pembentukan Kabupaten Lingga di Provinsi Kepulauan Riau.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Lingga di Provinsi Kepulauan Riau.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 38
+Keywords found: bangunan(2), kota(1), penataan ruang(1), daerah(16), provinsi(7)
+✅ MOVED: Pembentukan Kabupaten Lingga di Provinsi Kepulauan Riau.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 50/127: Pembentukan Kabupaten Melawi Dan Kabupaten Sekadau Di Provinsi Kalimantan Barat.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Melawi Dan Kabupaten Sekadau Di Provinsi Kalimantan Barat.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 39
+Keywords found: bangunan(2), penataan ruang(1), daerah(17), provinsi(4), kabupaten(15)
+✅ MOVED: Pembentukan Kabupaten Melawi Dan Kabupaten Sekadau Di Provinsi Kalimantan Barat.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 51/127: Pembentukan Kabupaten Minahasa Utara di Provinsi Sulawesi Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Minahasa Utara di Provinsi Sulawesi Utara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 36
+Keywords found: bangunan(2), penataan ruang(1), daerah(19), provinsi(6), kabupaten(8)
+✅ MOVED: Pembentukan Kabupaten Minahasa Utara di Provinsi Sulawesi Utara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 52/127: Pembentukan Kabupaten Nias Barat di Provinsi Sumatera Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Nias Barat di Provinsi Sumatera Utara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 39
+Keywords found: bangunan(3), daerah(19), provinsi(5), kabupaten(12)
+✅ MOVED: Pembentukan Kabupaten Nias Barat di Provinsi Sumatera Utara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 53/127: Pembentukan Kabupaten Nias Utara di Provinsi Sumatera Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Nias Utara di Provinsi Sumatera Utara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 39
+Keywords found: bangunan(3), daerah(19), provinsi(5), kabupaten(12)
+✅ MOVED: Pembentukan Kabupaten Nias Utara di Provinsi Sumatera Utara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 54/127: Pembentukan Kabupaten Pangandaran di Provinsi Jawa Barat.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Pangandaran di Provinsi Jawa Barat.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 41
+Keywords found: bangunan(3), kota(2), daerah(15), provinsi(9), kabupaten(12)
+✅ MOVED: Pembentukan Kabupaten Pangandaran di Provinsi Jawa Barat.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 55/127: Pembentukan Kabupaten Pesawaran Di Provinsi Lampung.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Pesawaran Di Provinsi Lampung.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 32
+Keywords found: bangunan(3), kota(1), daerah(15), provinsi(6), kabupaten(7)
+✅ MOVED: Pembentukan Kabupaten Pesawaran Di Provinsi Lampung.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 56/127: Pembentukan Kabupaten Pesisir Barat di Provinsi Lampung.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Pesisir Barat di Provinsi Lampung.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 34
+Keywords found: bangunan(3), kota(1), daerah(16), provinsi(6), kabupaten(8)
+✅ MOVED: Pembentukan Kabupaten Pesisir Barat di Provinsi Lampung.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 57/127: Pembentukan Kabupaten Sumbawa Barat Di Provinsi Nusa Tenggara Barat.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Sumbawa Barat Di Provinsi Nusa Tenggara Barat.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 43
+Keywords found: bangunan(2), kota(1), penataan ruang(1), daerah(23), provinsi(5)
+✅ MOVED: Pembentukan Kabupaten Sumbawa Barat Di Provinsi Nusa Tenggara Barat.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 58/127: Pembentukan Kabupaten Tana Tidung Di Provinsi Kalimantan Timur.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Tana Tidung Di Provinsi Kalimantan Timur.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 25
+Keywords found: bangunan(3), daerah(12), provinsi(4), kabupaten(6)
+✅ MOVED: Pembentukan Kabupaten Tana Tidung Di Provinsi Kalimantan Timur.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 59/127: Pembentukan Kabupaten Tojo Una-Una Di Provinsi Sulawesi Tengah.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Kabupaten Tojo Una-Una Di Provinsi Sulawesi Tengah.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 37
+Keywords found: bangunan(2), penataan ruang(1), daerah(20), provinsi(6), kabupaten(8)
+✅ MOVED: Pembentukan Kabupaten Tojo Una-Una Di Provinsi Sulawesi Tengah.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 60/127: Pembentukan Pengadilan Tinggi Agama Bali Pengadilan Tinggi Agama Papua Barat Pengadilan Tinggi Agama Kepulauan Riau Pengadilan Tinggi Agama Sulawesi Barat dan Pengadilan Tinggi Agama Kalimantan Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Pengadilan Tinggi Agama Bali Pengadilan Tinggi Agama Papua Barat Pengadilan Tinggi Agama Kepulauan Riau Pengadilan Tinggi Agama Sulawesi Barat dan Pengadilan Tinggi Agama Kalimantan Utara.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 34
+Keywords found: peradilan(7), mahkamah(1), hakim(1), hukum(2), pengadilan(23)
+✅ MOVED: Pembentukan Pengadilan Tinggi Agama Bali Pengadilan Tinggi Agama Papua Barat Pengadilan Tinggi Agama Kepulauan Riau Pengadilan Tinggi Agama Sulawesi Barat dan Pengadilan Tinggi Agama Kalimantan Utara.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 61/127: Pembentukan Pengadilan Tinggi Agama Banten.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Pengadilan Tinggi Agama Banten.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 35
+Keywords found: peradilan(3), mahkamah(1), hakim(1), hukum(8), pengadilan(22)
+✅ MOVED: Pembentukan Pengadilan Tinggi Agama Banten.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 62/127: Pembentukan Pengadilan Tinggi Agama Gorontalo.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Pengadilan Tinggi Agama Gorontalo.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 35
+Keywords found: peradilan(3), mahkamah(1), hakim(1), hukum(8), pengadilan(22)
+✅ MOVED: Pembentukan Pengadilan Tinggi Agama Gorontalo.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 63/127: Pembentukan Pengadilan Tinggi Agama Kepulauan Bangka Belitung.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Pengadilan Tinggi Agama Kepulauan Bangka Belitung.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 35
+Keywords found: peradilan(3), mahkamah(1), hakim(1), hukum(8), pengadilan(22)
+✅ MOVED: Pembentukan Pengadilan Tinggi Agama Kepulauan Bangka Belitung.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 64/127: Pembentukan Pengadilan Tinggi Agama Maluku Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Pengadilan Tinggi Agama Maluku Utara.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 35
+Keywords found: peradilan(3), mahkamah(1), hakim(1), hukum(8), pengadilan(22)
+✅ MOVED: Pembentukan Pengadilan Tinggi Agama Maluku Utara.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 65/127: Pembentukan Pengadilan Tinggi Papua Barat Pengadilan Tinggi Kepulauan Riau Pengadilan Tinggi Sulawesi Barat dan Pengadilan Tinggi Kalimantan Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Pengadilan Tinggi Papua Barat Pengadilan Tinggi Kepulauan Riau Pengadilan Tinggi Sulawesi Barat dan Pengadilan Tinggi Kalimantan Utara.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 63
+Keywords found: peradilan(7), mahkamah(1), hakim(1), hukum(12), pengadilan(42)
+✅ MOVED: Pembentukan Pengadilan Tinggi Papua Barat Pengadilan Tinggi Kepulauan Riau Pengadilan Tinggi Sulawesi Barat dan Pengadilan Tinggi Kalimantan Utara.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 66/127: Pembentukan Provinsi Kalimantan Utara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pembentukan Provinsi Kalimantan Utara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 45
+Keywords found: bangunan(3), kota(4), daerah(14), provinsi(10), kabupaten(14)
+✅ MOVED: Pembentukan Provinsi Kalimantan Utara.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 67/127: Pemerintahan Daerah.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pemerintahan Daerah.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 38
+Keywords found: kota(2), daerah(33), provinsi(2), kabupaten(1)
+✅ MOVED: Pemerintahan Daerah.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 68/127: Pemilihan Umum.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pemilihan Umum.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 13
+Keywords found: kota(1), daerah(11), kabupaten(1)
+✅ MOVED: Pemilihan Umum.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 69/127: Pemilihan Umum Presiden dan Wakil Presiden.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pemilihan Umum Presiden dan Wakil Presiden.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 15
+Keywords found: kota(5), daerah(2), provinsi(3), kabupaten(5)
+✅ MOVED: Pemilihan Umum Presiden dan Wakil Presiden.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 70/127: Penataan Ruang.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Penataan Ruang.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 31
+Keywords found: tata ruang(2), kota(1), jalan(1), kawasan(1), penataan ruang(17)
+✅ MOVED: Penataan Ruang.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 71/127: Pencarian dan Pertolongan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pencarian dan Pertolongan.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 4
+Keywords found: lingkungan(1), hidup(3)
+✅ MOVED: Pencarian dan Pertolongan.pdf → Ambiente/
+
+================================================================================
+File 72/127: Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2008 tentang Perubahan atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus Bagi Provinsi Papua Menjadi Undang-Undang.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2008 tentang Perubahan atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus Bagi Provinsi Papua Menjadi Undang-Undang.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 22
+Keywords found: bangunan(2), infrastruktur(1), daerah(3), provinsi(16)
+✅ MOVED: Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 1 Tahun 2008 tentang Perubahan atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus Bagi Provinsi Papua Menjadi Undang-Undang.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 73/127: Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2017 tentang Perubahan atas Undang-Undang Nomor 17 Tahun 2013 tentang Organisasi Kemasyarakatan Menjadi Undang-Undang.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2017 tentang Perubahan atas Undang-Undang Nomor 17 Tahun 2013 tentang Organisasi Kemasyarakatan Menjadi Undang-Undang.pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 2
+Keywords found: bidan(2)
+✅ MOVED: Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2017 tentang Perubahan atas Undang-Undang Nomor 17 Tahun 2013 tentang Organisasi Kemasyarakatan Menjadi Undang-Undang.pdf → Sanita/
+
+================================================================================
+File 74/127: Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 3 Tahun 2005 tentang Perubahan atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah Menjadi Undang-Undang.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 3 Tahun 2005 tentang Perubahan atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah Menjadi Undang-Undang.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 13
+Keywords found: daerah(13)
+✅ MOVED: Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 3 Tahun 2005 tentang Perubahan atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah Menjadi Undang-Undang.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 75/127: Pengadilan Tindak Pidana Korupsi.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengadilan Tindak Pidana Korupsi.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 28
+Keywords found: peradilan(3), mahkamah(4), hakim(9), konstitusi(1), hukum(3)
+✅ MOVED: Pengadilan Tindak Pidana Korupsi.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 76/127: Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 11
+Keywords found: bangunan(1), infrastruktur(1), kawasan(6), daerah(3)
+✅ MOVED: Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 77/127: Pengesahan ASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang Perdagangan Melalui Sistem Elektronik).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan ASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang Perdagangan Melalui Sistem Elektronik).pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 2
+Keywords found: bangunan(1), kawasan(1)
+✅ MOVED: Pengesahan ASEAN Agreement on Electronic Commerce (Persetujuan ASEAN tentang Perdagangan Melalui Sistem Elektronik).pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 78/127: Pengesahan Asean Convention Against Trafficking In Persons Especially Women and Children (Konvensi Asean Menentang Perdagangan Orang Terutama Perempuan dan Anak).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Asean Convention Against Trafficking In Persons Especially Women and Children (Konvensi Asean Menentang Perdagangan Orang Terutama Perempuan dan Anak).pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 1
+Keywords found: bidan(1)
+✅ MOVED: Pengesahan Asean Convention Against Trafficking In Persons Especially Women and Children (Konvensi Asean Menentang Perdagangan Orang Terutama Perempuan dan Anak).pdf → Sanita/
+
+================================================================================
+File 79/127: Pengesahan Charter of The Association of Southeast Asian Nations (Piagam Perhimpunan Bangsa-Bangsa Asia Tenggara).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Charter of The Association of Southeast Asian Nations (Piagam Perhimpunan Bangsa-Bangsa Asia Tenggara).pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 2
+Keywords found: bidan(2)
+✅ MOVED: Pengesahan Charter of The Association of Southeast Asian Nations (Piagam Perhimpunan Bangsa-Bangsa Asia Tenggara).pdf → Sanita/
+
+================================================================================
+File 80/127: Pengesahan Comprehensive Economic Partnership Agreement Between The Republic of Indonesia and The EFTA States (Persetujuan Kemitraan Ekonomi Komprehensif antara Republik Indonesia dan Negara-Negara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Comprehensive Economic Partnership Agreement Between The Republic of Indonesia and The EFTA States (Persetujuan Kemitraan Ekonomi Komprehensif antara Republik Indonesia dan Negara-Negara.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 1
+Keywords found: cipta kerja(1)
+✅ MOVED: Pengesahan Comprehensive Economic Partnership Agreement Between The Republic of Indonesia and The EFTA States (Persetujuan Kemitraan Ekonomi Komprehensif antara Republik Indonesia dan Negara-Negara.pdf → Company&Licenses/
+
+================================================================================
+File 81/127: Pengesahan International Covenant on Economic Social and Cultural Rights (Kovenan Internasional tentang Hak-Hak Ekonomi Sosial dan Budaya).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan International Covenant on Economic Social and Cultural Rights (Kovenan Internasional tentang Hak-Hak Ekonomi Sosial dan Budaya).pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 3
+Keywords found: hukum(2), pengadilan(1)
+✅ MOVED: Pengesahan International Covenant on Economic Social and Cultural Rights (Kovenan Internasional tentang Hak-Hak Ekonomi Sosial dan Budaya).pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 82/127: Pengesahan Minamata Convention On Mercury (Konvensi Minamata Mengenai Merkuri).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Minamata Convention On Mercury (Konvensi Minamata Mengenai Merkuri).pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 5
+Keywords found: lingkungan(2), hidup(3)
+✅ MOVED: Pengesahan Minamata Convention On Mercury (Konvensi Minamata Mengenai Merkuri).pdf → Ambiente/
+
+================================================================================
+File 83/127: Pengesahan Perjanjian antara Republik Indonesia dan Federasi Rusia tentang Bantuan Hukum Timbal Balik dalam Masalah Pidana (Treaty Between the Republic of Indonesia and the Russian Federation on.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Perjanjian antara Republik Indonesia dan Federasi Rusia tentang Bantuan Hukum Timbal Balik dalam Masalah Pidana (Treaty Between the Republic of Indonesia and the Russian Federation on.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 14
+Keywords found: criminal(3), hukum(6), legal(5)
+✅ MOVED: Pengesahan Perjanjian antara Republik Indonesia dan Federasi Rusia tentang Bantuan Hukum Timbal Balik dalam Masalah Pidana (Treaty Between the Republic of Indonesia and the Russian Federation on.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 84/127: Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik Federatif Brasil tentang Kerja Sama Terkait Pertahanan (Agreement between the Government of the Republic of.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik Federatif Brasil tentang Kerja Sama Terkait Pertahanan (Agreement between the Government of the Republic of.pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 2
+Keywords found: bidan(2)
+✅ MOVED: Pengesahan Persetujuan antara Pemerintah Republik Indonesia dan Pemerintah Republik Federatif Brasil tentang Kerja Sama Terkait Pertahanan (Agreement between the Government of the Republic of.pdf → Sanita/
+
+================================================================================
+File 85/127: Pengesahan Persetujuan antara Republik Indonesia dan Republik Rakyat China tentang Ekstradisi (Treaty Between The Republic of Indonesia and The Peoples Republic of China on Extradition).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Persetujuan antara Republik Indonesia dan Republik Rakyat China tentang Ekstradisi (Treaty Between The Republic of Indonesia and The Peoples Republic of China on Extradition).pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 1
+Keywords found: hidup(1)
+✅ MOVED: Pengesahan Persetujuan antara Republik Indonesia dan Republik Rakyat China tentang Ekstradisi (Treaty Between The Republic of Indonesia and The Peoples Republic of China on Extradition).pdf → Ambiente/
+
+================================================================================
+File 86/127: Pengesahan Protocol Amending The Marrakesh Agreement Establishing The World Trade Organization (Protokol Perubahan Persetujuan Marrakesh Mengenai Pembentukan Organisasi Perdagangan Dunia).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Protocol Amending The Marrakesh Agreement Establishing The World Trade Organization (Protokol Perubahan Persetujuan Marrakesh Mengenai Pembentukan Organisasi Perdagangan Dunia).pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 1
+Keywords found: bidan(1)
+✅ MOVED: Pengesahan Protocol Amending The Marrakesh Agreement Establishing The World Trade Organization (Protokol Perubahan Persetujuan Marrakesh Mengenai Pembentukan Organisasi Perdagangan Dunia).pdf → Sanita/
+
+================================================================================
+File 87/127: Pengesahan Treaty on the Prohibition of Nuclear Weapons (Traktat mengenai Pelarangan Senjata Nuklir).pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pengesahan Treaty on the Prohibition of Nuclear Weapons (Traktat mengenai Pelarangan Senjata Nuklir).pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 1
+Keywords found: bidan(1)
+✅ MOVED: Pengesahan Treaty on the Prohibition of Nuclear Weapons (Traktat mengenai Pelarangan Senjata Nuklir).pdf → Sanita/
+
+================================================================================
+File 88/127: Penghapusan Diskriminasi Ras dan Etnis.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Penghapusan Diskriminasi Ras dan Etnis.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 3
+Keywords found: hidup(3)
+✅ MOVED: Penghapusan Diskriminasi Ras dan Etnis.pdf → Ambiente/
+
+================================================================================
+File 89/127: Penyelenggaraan Ibadah Haji dan Umrah.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Penyelenggaraan Ibadah Haji dan Umrah.pdf
+Old Category: Non classificati
+New Category: Immigrazione
+Confidence Score: 5
+Keywords found: asing(2), warga negara(3)
+✅ MOVED: Penyelenggaraan Ibadah Haji dan Umrah.pdf → Immigrazione/
+
+================================================================================
+File 90/127: Perairan Indonesia.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perairan Indonesia.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 8
+Keywords found: hukum(8)
+✅ MOVED: Perairan Indonesia.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 91/127: Perikanan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perikanan.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 10
+Keywords found: lingkungan(5), hidup(4), konservasi(1)
+✅ MOVED: Perikanan.pdf → Ambiente/
+
+================================================================================
+File 92/127: Perkoperasian.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perkoperasian.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 55
+Keywords found: usaha(12), koperasi(43)
+✅ MOVED: Perkoperasian.pdf → Company&Licenses/
+
+================================================================================
+File 93/127: Perlindungan Saksi dan Korban.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perlindungan Saksi dan Korban.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 10
+Keywords found: peradilan(6), hukum(3), pengadilan(1)
+✅ MOVED: Perlindungan Saksi dan Korban.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 94/127: Pertahanan Negara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pertahanan Negara.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 13
+Keywords found: lingkungan(2), hidup(9), sumber daya alam(2)
+✅ MOVED: Pertahanan Negara.pdf → Ambiente/
+
+================================================================================
+File 95/127: Pertanggungjawaban Atas Pelaksanaan Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2016.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pertanggungjawaban Atas Pelaksanaan Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2016.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 43
+Keywords found: apbn(6), anggaran(24), belanja negara(9), keuangan negara(4)
+✅ MOVED: Pertanggungjawaban Atas Pelaksanaan Anggaran Pendapatan Dan Belanja Negara Tahun Anggaran 2016.pdf → Tasse/
+
+================================================================================
+File 96/127: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2011.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2011.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 31
+Keywords found: apbn(4), anggaran(17), belanja negara(5), keuangan negara(5)
+✅ MOVED: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2011.pdf → Tasse/
+
+================================================================================
+File 97/127: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2020.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2020.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 34
+Keywords found: anggaran(18), belanja negara(8), keuangan negara(8)
+✅ MOVED: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2020.pdf → Tasse/
+
+================================================================================
+File 98/127: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2023.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2023.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 38
+Keywords found: anggaran(27), belanja negara(8), keuangan negara(2), pendapatan negara(1)
+✅ MOVED: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2023.pdf → Tasse/
+
+================================================================================
+File 99/127: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2024.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2024.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 28
+Keywords found: anggaran(22), belanja negara(5), keuangan negara(1)
+✅ MOVED: Pertanggungjawaban atas Pelaksanaan Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2024.pdf → Tasse/
+
+================================================================================
+File 100/127: Perubahan Atas Undang-Undang Nomor 27 Tahun 2014 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2015.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Atas Undang-Undang Nomor 27 Tahun 2014 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2015.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 33
+Keywords found: pajak(1), perpajakan(1), anggaran(22), belanja negara(7), pendapatan negara(2)
+✅ MOVED: Perubahan Atas Undang-Undang Nomor 27 Tahun 2014 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2015.pdf → Tasse/
+
+================================================================================
+File 101/127: Perubahan Atas Undang-Undang Nomor 29 Tahun 2002 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2003.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Atas Undang-Undang Nomor 29 Tahun 2002 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2003.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 35
+Keywords found: pajak(4), perpajakan(2), penerimaan negara(2), apbn(1), anggaran(16)
+✅ MOVED: Perubahan Atas Undang-Undang Nomor 29 Tahun 2002 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2003.pdf → Tasse/
+
+================================================================================
+File 102/127: Perubahan Atas Undang-Undang Nomor 31 Tahun 2004 Tentang Perikanan.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Atas Undang-Undang Nomor 31 Tahun 2004 Tentang Perikanan.pdf
+Old Category: Non classificati
+New Category: Ambiente
+Confidence Score: 10
+Keywords found: lingkungan(4), hidup(5), konservasi(1)
+✅ MOVED: Perubahan Atas Undang-Undang Nomor 31 Tahun 2004 Tentang Perikanan.pdf → Ambiente/
+
+================================================================================
+File 103/127: Perubahan Kedua atas Undang-Undang Nomor 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Kedua atas Undang-Undang Nomor 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 5
+Keywords found: hukum(5)
+✅ MOVED: Perubahan Kedua atas Undang-Undang Nomor 11 Tahun 2008 tentang Informasi dan Transaksi Elektronik.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 104/127: Perubahan Kedua atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus bagi Provinsi Papua.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Kedua atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus bagi Provinsi Papua.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 24
+Keywords found: bangunan(2), daerah(6), provinsi(16)
+✅ MOVED: Perubahan Kedua atas Undang-Undang Nomor 21 Tahun 2001 tentang Otonomi Khusus bagi Provinsi Papua.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 105/127: Perubahan Kedua atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Kedua atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 40
+Keywords found: kota(2), daerah(35), provinsi(1), kabupaten(2)
+✅ MOVED: Perubahan Kedua atas Undang-Undang Nomor 32 Tahun 2004 tentang Pemerintahan Daerah.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 106/127: Perubahan Kedua atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Kedua atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 29
+Keywords found: apbn(4), anggaran(18), belanja negara(6), keuangan negara(1)
+✅ MOVED: Perubahan Kedua atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf → Tasse/
+
+================================================================================
+File 107/127: Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 2014 tentang Desa.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 2014 tentang Desa.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 3
+Keywords found: cipta kerja(3)
+✅ MOVED: Perubahan Kedua atas Undang-Undang Nomor 6 Tahun 2014 tentang Desa.pdf → Company&Licenses/
+
+================================================================================
+File 108/127: Perubahan Ketiga atas Undang-Undang Nomor 13 Tahun 2016 tentang Paten.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Ketiga atas Undang-Undang Nomor 13 Tahun 2016 tentang Paten.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 3
+Keywords found: cipta kerja(3)
+✅ MOVED: Perubahan Ketiga atas Undang-Undang Nomor 13 Tahun 2016 tentang Paten.pdf → Company&Licenses/
+
+================================================================================
+File 109/127: Perubahan Ketiga atas Undang-Undang Nomor 17 Tahun 2008 tentang Pelayaran.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Ketiga atas Undang-Undang Nomor 17 Tahun 2008 tentang Pelayaran.pdf
+Old Category: Non classificati
+New Category: Company&Licenses
+Confidence Score: 14
+Keywords found: perusahaan(2), usaha(8), cipta kerja(4)
+✅ MOVED: Perubahan Ketiga atas Undang-Undang Nomor 17 Tahun 2008 tentang Pelayaran.pdf → Company&Licenses/
+
+================================================================================
+File 110/127: Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 2019 tentang Ibadah Haji dan Umrah.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 2019 tentang Ibadah Haji dan Umrah.pdf
+Old Category: Non classificati
+New Category: Immigrazione
+Confidence Score: 3
+Keywords found: asing(2), warga negara(1)
+✅ MOVED: Perubahan Ketiga atas Undang-Undang Nomor 8 Tahun 2019 tentang Ibadah Haji dan Umrah.pdf → Immigrazione/
+
+================================================================================
+File 111/127: Perubahan atas Undang-Undang Nomor 13 Tahun 2006 Tentang Perlindungan Saksi dan Korban.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 13 Tahun 2006 Tentang Perlindungan Saksi dan Korban.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 7
+Keywords found: hukum acara(1), peradilan(2), hukum(3), pengadilan(1)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 13 Tahun 2006 Tentang Perlindungan Saksi dan Korban.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 112/127: Perubahan atas Undang-Undang Nomor 15 Tahun 2002 tentang Tindak Pidana Pencucian Uang.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 15 Tahun 2002 tentang Tindak Pidana Pencucian Uang.pdf
+Old Category: Non classificati
+New Category: Settore_Finanziario
+Confidence Score: 15
+Keywords found: bank(1), keuangan(12), asuransi(1), pembiayaan(1)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 15 Tahun 2002 tentang Tindak Pidana Pencucian Uang.pdf → Settore_Finanziario/
+
+================================================================================
+File 113/127: Perubahan atas Undang-Undang Nomor 19 Tahun 2006 tentang Dewan Pertimbangan Presiden.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 19 Tahun 2006 tentang Dewan Pertimbangan Presiden.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 3
+Keywords found: hukum(3)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 19 Tahun 2006 tentang Dewan Pertimbangan Presiden.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 114/127: Perubahan atas Undang-Undang Nomor 2 Tahun 2024 tentang Provinsi Daerah Khusus Jakarta.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 2 Tahun 2024 tentang Provinsi Daerah Khusus Jakarta.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 66
+Keywords found: kota(12), daerah(37), provinsi(17)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 2 Tahun 2024 tentang Provinsi Daerah Khusus Jakarta.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 115/127: Perubahan atas Undang-Undang Nomor 20 Tahun 1982 tentang Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 20 Tahun 1982 tentang Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf
+Old Category: Non classificati
+New Category: Immigrazione
+Confidence Score: 3
+Keywords found: warga negara(3)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 20 Tahun 1982 tentang Ketentuan-Ketentuan Pokok Pertahanan Keamanan Negara Republik Indonesia.pdf → Immigrazione/
+
+================================================================================
+File 116/127: Perubahan atas Undang-Undang Nomor 27 Tahun 2007 Tentang Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 27 Tahun 2007 Tentang Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 4
+Keywords found: infrastruktur(1), daerah(3)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 27 Tahun 2007 Tentang Pengelolaan Wilayah Pesisir dan Pulau-Pulau Kecil.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 117/127: Perubahan atas Undang-Undang Nomor 28 Tahun 2003 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2004.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 28 Tahun 2003 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2004.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 25
+Keywords found: pajak(2), perpajakan(1), penerimaan negara(1), anggaran(14), belanja negara(5)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 28 Tahun 2003 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2004.pdf → Tasse/
+
+================================================================================
+File 118/127: Perubahan atas Undang-Undang Nomor 35 Tahun 2000 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 35 Tahun 2000 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 34
+Keywords found: pajak(7), perpajakan(3), penerimaan negara(1), anggaran(15), belanja negara(6)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 35 Tahun 2000 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2001.pdf → Tasse/
+
+================================================================================
+File 119/127: Perubahan atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 44
+Keywords found: pajak(4), perpajakan(2), penerimaan negara(2), apbn(4), anggaran(20)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 36 Tahun 2004 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2005.pdf → Tasse/
+
+================================================================================
+File 120/127: Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara.pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 2
+Keywords found: bidan(2)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 39 Tahun 2008 tentang Kementerian Negara.pdf → Sanita/
+
+================================================================================
+File 121/127: Perubahan atas Undang-Undang Nomor 47 Tahun 2009 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Perubahan atas Undang-Undang Nomor 47 Tahun 2009 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf
+Old Category: Non classificati
+New Category: Tasse
+Confidence Score: 36
+Keywords found: apbn(4), anggaran(21), belanja negara(8), keuangan negara(1), pendapatan negara(2)
+✅ MOVED: Perubahan atas Undang-Undang Nomor 47 Tahun 2009 tentang Anggaran Pendapatan dan Belanja Negara Tahun Anggaran 2010.pdf → Tasse/
+
+================================================================================
+File 122/127: Pornografi.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Pornografi.pdf
+Old Category: Non classificati
+New Category: Codici_e_Codificazioni
+Confidence Score: 6
+Keywords found: hukum(6)
+✅ MOVED: Pornografi.pdf → Codici_e_Codificazioni/
+
+================================================================================
+File 123/127: Provinsi Daerah Khusus Jakarta.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Provinsi Daerah Khusus Jakarta.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 57
+Keywords found: kota(13), daerah(25), provinsi(17), kabupaten(2)
+✅ MOVED: Provinsi Daerah Khusus Jakarta.pdf → Edilizia_Urbanistica/
+
+================================================================================
+File 124/127: Sistem Keolahragaan Nasional.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Sistem Keolahragaan Nasional.pdf
+Old Category: Non classificati
+New Category: Sanita
+Confidence Score: 6
+Keywords found: kesehatan(3), bidan(3)
+✅ MOVED: Sistem Keolahragaan Nasional.pdf → Sanita/
+
+================================================================================
+File 125/127: Tindak Pidana Pencucian Uang.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Tindak Pidana Pencucian Uang.pdf
+Old Category: Non classificati
+New Category: Settore_Finanziario
+Confidence Score: 15
+Keywords found: bank(2), perbankan(1), keuangan(10), asuransi(1), pembiayaan(1)
+✅ MOVED: Tindak Pidana Pencucian Uang.pdf → Settore_Finanziario/
+
+================================================================================
+File 126/127: Veteran Republik Indonesia.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Veteran Republik Indonesia.pdf
+Old Category: Non classificati
+New Category: Immigrazione
+Confidence Score: 6
+Keywords found: warga negara(6)
+✅ MOVED: Veteran Republik Indonesia.pdf → Immigrazione/
+
+================================================================================
+File 127/127: Wilayah Negara.pdf
+Path: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Wilayah Negara.pdf
+Old Category: Non classificati
+New Category: Edilizia_Urbanistica
+Confidence Score: 8
+Keywords found: kota(1), kawasan(4), daerah(3)
+✅ MOVED: Wilayah Negara.pdf → Edilizia_Urbanistica/

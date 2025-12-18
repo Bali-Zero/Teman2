@@ -1,0 +1,106 @@
+@import 'tailwindcss';
+
+/* ZANTARA Dark Gray + Red Palette */
+:root {
+  /* Backgrounds - Charcoal Lightened (User Requested) */
+  --background: #202020;
+  --background-secondary: #2c2c2c;
+  --background-elevated: #454545;
+  --background-input: #202020;
+
+  /* Foreground - Text */
+  --foreground: #fafafa;
+  --foreground-secondary: #a1a1aa;
+  --foreground-muted: #71717a;
+
+  /* Accent - Vibrant Gradient */
+  --accent: #ef4444; /* Red 500 */
+  --accent-hover: #dc2626;
+  --accent-foreground: #ffffff;
+  --accent-gradient: linear-gradient(135deg, #ef4444 0%, #f97316 100%); /* Red to Orange */
+
+  /* Glassmorphism */
+  --glass-bg: rgba(24, 24, 27, 0.7); /* Zinc */
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  /* Borders */
+  --border: #27272a;
+  --border-hover: #3f3f46;
+
+  /* Status colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+
+  /* Radius */
+  --radius: 0.75rem; /* More rounded for modern feel */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-elevated: var(--background-elevated);
+  --color-background-input: var(--background-input);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-border: var(--border);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --background-image-accent-gradient: var(--accent-gradient);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Focus-visible - disabled */
+:focus-visible {
+  outline: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: none;
+}

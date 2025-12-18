@@ -1,0 +1,41 @@
+
+Running 4 tests using 1 worker
+
+
+[QUESTION 1]: Sono un nomade digitale con reddito 70k USD. Posso portare moglie e figlio col visto E33G? E posso convertirlo in KITAP dopo 5 anni?
+[ZANTARA ANSWER]:
+Ciao! Allora, vediamo.
+
+E33G e Famiglia: Sì, puoi portare moglie e figlio con un visto di ricongiungimento familiare (VITAS C317 che diventa KITAS). Il titolare del KITAS E33G deve fare da sponsor.
+E33G e KITAP: No, l'E33G non è direttamente convertibile in KITAP dopo 5 anni. Però ci sono altre opzioni per ottenere il KITAP (visto d'investimento, Golden Visa, ecc.).
+Reddito: I requisiti finanziari specifici per l'E33G possono variare, ma un reddito di 70k USD è un buon punto di partenza. Dovrai dimostrare di poter sostenere te stesso e la tua famiglia.
+
+Nah, per info più precise e personalizzate, ti consiglio di contattarci direttamente. Possiamo valutare la tua situazione nel dettaglio e trovare la soluzione migliore!
+-----------------------------------
+  ✓  1 [chromium] › e2e/zantara/benchmark.spec.ts:88:7 › Zantara Benchmark Challenge › Immigration: E33G Dependents & KITAP (16.6s)
+
+[QUESTION 2]: Voglio aprire un Glamping di lusso a Ubud con ristorante che serve alcolici. Quali KBLI mi servono? Posso avere il 100% delle quote come straniero?
+[ZANTARA ANSWER]:
+Giusto per essere chiari, per l'attività di glamping (KBLI 55900), l'investimento minimo richiesto è di 10 miliardi di IDR (circa 650.000 USD) per location, escluso il costo del terreno e degli edifici. Questo vale per ogni KBLI. Quindi, se hai più KBLI (glamping, ristorante, bar) l'investimento minimo si applica a ciascuno.
+-----------------------------------
+  ✓  2 [chromium] › e2e/zantara/benchmark.spec.ts:96:7 › Zantara Benchmark Challenge › KBLI: Glamping & Restaurant Ownership (16.6s)
+
+[QUESTION 3]: Ho una PT PMA. Se pago dividendi su conto estero (Italia), qual è la Withholding Tax esatta? Cambia se uso una holding a Singapore?
+[ZANTARA ANSWER]:
+La Withholding Tax sui dividendi pagati a un conto estero (Italia) da una PT PMA è del 20% senza un trattato fiscale. Se si utilizza una holding a Singapore, potrebbe esserci un'aliquota ridotta in base al trattato Indonesia-Singapore, ma serve un Certificate of Domicile (CoD). Senza CoD, si applica comunque il 20%.
+-----------------------------------
+  ✓  3 [chromium] › e2e/zantara/benchmark.spec.ts:104:7 › Zantara Benchmark Challenge › Tax: Dividends & Treaties (16.7s)
+
+[QUESTION 4]: Apro una scuola di surf a Canggu. 1. Posso usare un Virtual Office? 2. Che visto serve ai miei 2 istruttori australiani? 3. Capitale minimo versato?
+[ZANTARA ANSWER]:
+Ciao! Certo, ti aiuto con queste domande:
+
+Virtual Office: No, per una scuola di surf serve un ufficio fisico, non virtuale.
+Visto istruttori: I tuoi istruttori australiani hanno bisogno di un Working KITAS (E23). Offshore costa 34.500.000 IDR, onshore costa 36.000.000 IDR.
+Capitale minimo versato: Il capitale minimo versato è IDR 2.5B (2.5 miliardi di Rupie).
+
+Fammi sapere se hai altre domande!
+-----------------------------------
+  ✓  4 [chromium] › e2e/zantara/benchmark.spec.ts:112:7 › Zantara Benchmark Challenge › Multi: Surf School Setup (18.4s)
+
+  4 passed (1.2m)

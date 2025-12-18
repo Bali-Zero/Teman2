@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>New Traffic Rules Kerobokan - Bali (December 14, 2025)</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            background: rgba(10, 10, 10, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            color: white;
+            font-size: 12px;
+            max-width: 320px;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .legend h3 {
+            color: #CCFF00;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+        }
+        .legend-color {
+            width: 30px;
+            height: 6px;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
+        .legend-dashed {
+            width: 30px;
+            height: 0;
+            border-top: 3px dashed #CCFF00;
+            margin-right: 10px;
+        }
+        .legend-arrow {
+            width: 30px;
+            text-align: center;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        .title-box {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 10, 10, 0.95);
+            padding: 12px 25px;
+            border-radius: 12px;
+            color: white;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .title-box h1 {
+            font-size: 18px;
+            color: #CCFF00;
+        }
+        .title-box p {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            background: rgba(10, 10, 10, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            color: white;
+            font-size: 11px;
+            max-width: 280px;
+            z-index: 1000;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+        .info-panel h4 {
+            color: #CCFF00;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .rule {
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            border-left: 3px solid #CCFF00;
+        }
+        .rule.blocked {
+            border-left-color: #FF0033;
+        }
+        .rule strong {
+            color: #CCFF00;
+            font-size: 10px;
+        }
+        .rule.blocked strong {
+            color: #FF0033;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="title-box">
+        <h1>THE NEW KEROBOKAN MAZE</h1>
+        <p>New Traffic Rules - December 14, 2025 - Badung, Bali</p>
+    </div>
+
+    <div class="legend">
+        <h3>LEGEND</h3>
+        <div class="legend-item">
+            <div class="legend-dashed"></div>
+            <span>One-way (arrow direction)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FF0033;"></div>
+            <span>Road closed / No entry</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00BFFF;"></div>
+            <span>Left turn only</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-arrow">⭕</div>
+            <span>Main junction</span>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h4>9 NEW TRAFFIC RULES</h4>
+
+        <div class="rule">
+            <strong>1. JL. TANGKUBAN PERAHU</strong><br>
+            One-way EAST → WEST
+        </div>
+
+        <div class="rule">
+            <strong>2. JL. RAYA KEROBOKAN (North)</strong><br>
+            One-way towards SEMER ↑
+        </div>
+
+        <div class="rule">
+            <strong>3. JL. RAYA KEROBOKAN (South)</strong><br>
+            One-way towards OBEROI ↓
+        </div>
+
+        <div class="rule">
+            <strong>4. SIMPANG PETITENGET</strong><br>
+            No right turn from west
+        </div>
+
+        <div class="rule">
+            <strong>5. JL. MERTARSARI + MERTAGUNG</strong><br>
+            One-way SOUTH → NORTH
+        </div>
+
+        <div class="rule">
+            <strong>6. JL. KERANGAN-PENGUBENGAN</strong><br>
+            One-way NORTH → SOUTH
+        </div>
+
+        <div class="rule">
+            <strong>7. SIMPANG PENGUBENGAN KAUH</strong><br>
+            Left turn only
+        </div>
+
+        <div class="rule">
+            <strong>8. JL. MERTAMADI (Prison)</strong><br>
+            Left turn only
+        </div>
+
+        <div class="rule blocked">
+            <strong>9. JL. UMALAS 1 (GANG NOOK)</strong><br>
+            CLOSED at south end
+        </div>
+    </div>
+
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIza_REDACTED&callback=initMap" async defer></script>
+
+    <script>
+        // Accurate coordinates for Kerobokan roads - SHIFTED MORE WEST (towards sea)
+        const roads = {
+            // 1. Jl. Tangkuban Perahu - East to West (from Simpang Pengubengan Kangin)
+            tangkubanPerahu: [
+                { lat: -8.6795, lng: 115.1600 }, // East end (Pengubengan Kangin area)
+                { lat: -8.6795, lng: 115.1580 },
+                { lat: -8.6795, lng: 115.1560 },
+                { lat: -8.6795, lng: 115.1540 },
+                { lat: -8.6795, lng: 115.1520 },
+                { lat: -8.6795, lng: 115.1500 }, // Junction with Jl. Raya Kerobokan (Lio Square)
+            ],
+
+            // 2. Jl. Raya Kerobokan NORTH - from Simpang Petitenget to Simpang Semer
+            kerobokanNorth: [
+                { lat: -8.6795, lng: 115.1500 }, // Simpang Petitenget (Lio Square)
+                { lat: -8.6770, lng: 115.1500 },
+                { lat: -8.6745, lng: 115.1500 },
+                { lat: -8.6720, lng: 115.1500 },
+                { lat: -8.6695, lng: 115.1500 },
+                { lat: -8.6670, lng: 115.1500 }, // Simpang Semer
+            ],
+
+            // 3. Jl. Raya Kerobokan SOUTH - from Simpang Petitenget to Simpang Oberoi
+            kerobokanSouth: [
+                { lat: -8.6795, lng: 115.1500 }, // Simpang Petitenget (Lio Square)
+                { lat: -8.6820, lng: 115.1500 },
+                { lat: -8.6845, lng: 115.1500 },
+                { lat: -8.6870, lng: 115.1500 },
+                { lat: -8.6895, lng: 115.1500 },
+                { lat: -8.6920, lng: 115.1500 }, // Towards Oberoi
+            ],
+
+            // 5. Jl. Mertarsari + Mertagung - South to North (west of Jl. Raya Kerobokan)
+            mertarsari: [
+                { lat: -8.6870, lng: 115.1460 }, // South
+                { lat: -8.6845, lng: 115.1460 },
+                { lat: -8.6820, lng: 115.1460 },
+                { lat: -8.6795, lng: 115.1460 },
+                { lat: -8.6770, lng: 115.1460 }, // North
+            ],
+
+            // 6. Jl. Kerangan-Pengubengan Kauh - North to South
+            kerangan: [
+                { lat: -8.6750, lng: 115.1420 }, // North
+                { lat: -8.6775, lng: 115.1420 },
+                { lat: -8.6800, lng: 115.1420 },
+                { lat: -8.6825, lng: 115.1420 },
+                { lat: -8.6850, lng: 115.1420 }, // South (Simpang Pengubengan Kauh)
+            ],
+
+            // 8. Jl. Mertamadi (near Prison) - runs north-south east of main junction
+            mertamadi: [
+                { lat: -8.6720, lng: 115.1520 }, // North end near prison
+                { lat: -8.6745, lng: 115.1520 },
+                { lat: -8.6770, lng: 115.1520 }, // South to junction
+            ],
+
+            // 9. Gang Nook / Jl. Umalas 1 - CLOSED (west of Jl. Raya Kerobokan)
+            gangNook: [
+                { lat: -8.6720, lng: 115.1480 }, // North end
+                { lat: -8.6745, lng: 115.1480 },
+                { lat: -8.6770, lng: 115.1480 },
+                { lat: -8.6795, lng: 115.1480 }, // South end (CLOSED) near Petitenget
+            ],
+
+            // Jl. Mertanadi (reference only - west of Mertarsari)
+            mertanadi: [
+                { lat: -8.6770, lng: 115.1440 },
+                { lat: -8.6795, lng: 115.1440 },
+                { lat: -8.6820, lng: 115.1440 },
+                { lat: -8.6845, lng: 115.1440 },
+                { lat: -8.6870, lng: 115.1440 },
+            ],
+
+            // Jl. Petitenget (west from junction)
+            petitenget: [
+                { lat: -8.6795, lng: 115.1500 }, // Junction (Lio Square)
+                { lat: -8.6795, lng: 115.1480 },
+                { lat: -8.6795, lng: 115.1460 },
+                { lat: -8.6795, lng: 115.1440 },
+                { lat: -8.6795, lng: 115.1420 },
+            ],
+        };
+
+        // Key locations - SHIFTED MORE WEST (towards sea)
+        const junctions = {
+            simpangPetitenget: { lat: -8.6795, lng: 115.1500 }, // Lio Square
+            simpangSemer: { lat: -8.6670, lng: 115.1500 },
+            simpangOberoi: { lat: -8.6920, lng: 115.1500 },
+            lapasKerobokan: { lat: -8.6720, lng: 115.1520 },
+            gangNookClosed: { lat: -8.6795, lng: 115.1480 },
+            simpangPengubenganKauh: { lat: -8.6850, lng: 115.1420 },
+        };
+
+        function initMap() {
+            // Dark mode style
+            const darkStyle = [
+                { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
+                { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
+                { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+                { featureType: "road", elementType: "geometry", stylers: [{ color: "#2d2d44" }] },
+                { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+                { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3d3d5c" }] },
+                { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e1626" }] },
+                { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+                { featureType: "transit", stylers: [{ visibility: "off" }] },
+            ];
+
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 15,
+                center: junctions.simpangPetitenget,
+                styles: darkStyle,
+                mapTypeControl: false,
+                streetViewControl: false,
+            });
+
+            // Symbols for dashed line with arrows
+            const dashSymbol = {
+                path: 'M 0,-1 0,1',
+                strokeOpacity: 1,
+                scale: 3,
+            };
+
+            const arrowSymbol = {
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                scale: 3,
+                strokeColor: '#CCFF00',
+                fillColor: '#CCFF00',
+                fillOpacity: 1,
+            };
+
+            // Function to create dashed one-way line with multiple arrows
+            function createOneWayRoad(path, color = '#CCFF00') {
+                // Dashed line
+                new google.maps.Polyline({
+                    path: path,
+                    geodesic: true,
+                    strokeColor: color,
+                    strokeOpacity: 0,
+                    strokeWeight: 4,
+                    icons: [
+                        {
+                            icon: { ...dashSymbol, strokeColor: color },
+                            offset: '0',
+                            repeat: '15px'
+                        },
+                        {
+                            icon: { ...arrowSymbol, strokeColor: color, fillColor: color },
+                            offset: '20%',
+                            repeat: '0'
+                        },
+                        {
+                            icon: { ...arrowSymbol, strokeColor: color, fillColor: color },
+                            offset: '50%',
+                            repeat: '0'
+                        },
+                        {
+                            icon: { ...arrowSymbol, strokeColor: color, fillColor: color },
+                            offset: '80%',
+                            repeat: '0'
+                        }
+                    ],
+                    map: map,
+                });
+            }
+
+            // Function to create closed road
+            function createClosedRoad(path) {
+                new google.maps.Polyline({
+                    path: path,
+                    geodesic: true,
+                    strokeColor: '#FF0033',
+                    strokeOpacity: 0,
+                    strokeWeight: 6,
+                    icons: [
+                        {
+                            icon: { ...dashSymbol, strokeColor: '#FF0033' },
+                            offset: '0',
+                            repeat: '20px'
+                        }
+                    ],
+                    map: map,
+                });
+            }
+
+            // 1. Jl. Tangkuban Perahu - One-way EAST → WEST
+            createOneWayRoad(roads.tangkubanPerahu);
+
+            // 2. Jl. Raya Kerobokan NORTH - One-way towards Semer
+            createOneWayRoad(roads.kerobokanNorth);
+
+            // 3. Jl. Raya Kerobokan SOUTH - One-way towards Oberoi
+            createOneWayRoad(roads.kerobokanSouth);
+
+            // 5. Jl. Mertarsari/Mertagung - One-way SOUTH → NORTH
+            createOneWayRoad(roads.mertarsari);
+
+            // 6. Jl. Kerangan-Pengubengan - One-way NORTH → SOUTH
+            createOneWayRoad(roads.kerangan);
+
+            // 8. Jl. Mertamadi (left turn only indicator)
+            createOneWayRoad(roads.mertamadi, '#00BFFF');
+
+            // 9. Gang Nook - CLOSED
+            createClosedRoad(roads.gangNook);
+
+            // Jl. Mertanadi (reference - grey)
+            new google.maps.Polyline({
+                path: roads.mertanadi,
+                geodesic: true,
+                strokeColor: '#666666',
+                strokeOpacity: 0.5,
+                strokeWeight: 3,
+                map: map,
+            });
+
+            // Jl. Petitenget (west reference)
+            new google.maps.Polyline({
+                path: roads.petitenget,
+                geodesic: true,
+                strokeColor: '#666666',
+                strokeOpacity: 0.5,
+                strokeWeight: 3,
+                map: map,
+            });
+
+            // MARKERS
+
+            // Main junction - Simpang Petitenget
+            new google.maps.Marker({
+                position: junctions.simpangPetitenget,
+                map: map,
+                title: 'SIMPANG PETITENGET - Main Junction',
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 14,
+                    fillColor: '#CCFF00',
+                    fillOpacity: 1,
+                    strokeColor: '#000',
+                    strokeWeight: 3,
+                },
+            });
+
+            // Label for main junction
+            new google.maps.Marker({
+                position: { lat: junctions.simpangPetitenget.lat + 0.001, lng: junctions.simpangPetitenget.lng },
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: 'SIMPANG PETITENGET',
+                    color: '#CCFF00',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            // Simpang Semer
+            new google.maps.Marker({
+                position: junctions.simpangSemer,
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: '↑ SEMER',
+                    color: '#CCFF00',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            // Simpang Oberoi
+            new google.maps.Marker({
+                position: junctions.simpangOberoi,
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: '↓ OBEROI',
+                    color: '#CCFF00',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            // Gang Nook CLOSED marker
+            new google.maps.Marker({
+                position: junctions.gangNookClosed,
+                map: map,
+                title: 'Gang Nook - CLOSED',
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 18,
+                    fillColor: '#FF0033',
+                    fillOpacity: 0.9,
+                    strokeColor: '#FFF',
+                    strokeWeight: 3,
+                },
+            });
+
+            new google.maps.Marker({
+                position: junctions.gangNookClosed,
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: '✕',
+                    color: '#FFF',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            new google.maps.Marker({
+                position: { lat: junctions.gangNookClosed.lat + 0.0008, lng: junctions.gangNookClosed.lng },
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: 'GANG NOOK CLOSED',
+                    color: '#FF0033',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            // Lapas Kerobokan (Prison) - Left turn only
+            new google.maps.Marker({
+                position: junctions.lapasKerobokan,
+                map: map,
+                title: 'Lapas Kerobokan - Left turn only',
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 12,
+                    fillColor: '#00BFFF',
+                    fillOpacity: 0.9,
+                    strokeColor: '#FFF',
+                    strokeWeight: 2,
+                },
+            });
+
+            new google.maps.Marker({
+                position: junctions.lapasKerobokan,
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: '↰',
+                    color: '#FFF',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            new google.maps.Marker({
+                position: { lat: junctions.lapasKerobokan.lat - 0.0008, lng: junctions.lapasKerobokan.lng },
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: 'LAPAS (Left only)',
+                    color: '#00BFFF',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            // Simpang Pengubengan Kauh - Left turn only
+            new google.maps.Marker({
+                position: junctions.simpangPengubenganKauh,
+                map: map,
+                title: 'Simpang Pengubengan Kauh - Left turn only',
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: '#00BFFF',
+                    fillOpacity: 0.9,
+                    strokeColor: '#FFF',
+                    strokeWeight: 2,
+                },
+            });
+
+            new google.maps.Marker({
+                position: junctions.simpangPengubenganKauh,
+                map: map,
+                icon: {
+                    url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                },
+                label: {
+                    text: '↰',
+                    color: '#FFF',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                },
+            });
+
+            // Road name labels - shifted west
+            const roadLabels = [
+                { pos: { lat: -8.6795, lng: 115.1550 }, text: 'JL. TANGKUBAN PERAHU →' },
+                { pos: { lat: -8.6730, lng: 115.1495 }, text: 'JL. RAYA KEROBOKAN' },
+                { pos: { lat: -8.6820, lng: 115.1455 }, text: 'MERTARSARI' },
+                { pos: { lat: -8.6800, lng: 115.1415 }, text: 'KERANGAN' },
+                { pos: { lat: -8.6820, lng: 115.1435 }, text: 'MERTANADI' },
+            ];
+
+            roadLabels.forEach(label => {
+                new google.maps.Marker({
+                    position: label.pos,
+                    map: map,
+                    icon: {
+                        url: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>'),
+                    },
+                    label: {
+                        text: label.text,
+                        color: '#AAA',
+                        fontSize: '9px',
+                        fontWeight: 'normal',
+                    },
+                });
+            });
+        }
+    </script>
+</body>
+</html>

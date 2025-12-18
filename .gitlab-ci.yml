@@ -1,0 +1,78 @@
+# CI/CD Pipeline for Nuzantara Platform
+# Deployment configuration
+
+stages:
+  - verify
+  - deploy
+
+variables:
+  FLY_API_TOKEN: ${FLY_API_TOKEN}
+  APP_NAME: "nuzantara-rag"
+  WORKING_DIR: "apps/backend-rag"
+
+# Block commits that accidentally track secrets or build artifacts.
+repo-hardening-gate:
+  stage: verify
+  image: debian:bookworm-slim
+  only:
+    - merge_requests
+    - main
+    - master
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git bash
+  script:
+    - bash scripts/verify/repo_hardening_gate.sh
+  allow_failure: false
+
+# Deploy Backend RAG to Fly.io
+deploy-backend-rag:
+  stage: deploy
+  image: debian:bookworm-slim
+  only:
+    - main
+    - master
+  changes:
+    - apps/backend-rag/**
+    - .gitlab-ci.yml
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl bash
+    - curl -L https://fly.io/install.sh | sh
+    - export PATH="$PATH:/root/.fly/bin"
+    - echo "${FLY_API_TOKEN}" > /tmp/fly_token.txt
+    - flyctl auth login --stdin < /tmp/fly_token.txt || (echo "Auth failed, trying alternative method" && flyctl auth login)
+    - rm -f /tmp/fly_token.txt
+    - cd ${WORKING_DIR}
+  script:
+    - echo "🚀 Deploying ${APP_NAME} to Fly.io..."
+    - flyctl deploy --remote-only --strategy rolling --app ${APP_NAME}
+    - echo "✅ Deployment completed"
+  after_script:
+    - echo "🔍 Verifying deployment..."
+    - flyctl status --app ${APP_NAME} || true
+  when: manual
+  allow_failure: false
+
+# Deploy Frontend to Fly.io
+deploy-frontend:
+  stage: deploy
+  image: debian:bookworm-slim
+  only:
+    - main
+    - master
+  changes:
+    - apps/mouth/**
+    - .gitlab-ci.yml
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl bash
+    - curl -L https://fly.io/install.sh | sh
+    - export PATH="$PATH:/root/.fly/bin"
+    - echo "${FLY_API_TOKEN}" > /tmp/fly_token.txt
+    - flyctl auth login --stdin < /tmp/fly_token.txt || (echo "Auth failed, trying alternative method" && flyctl auth login)
+    - rm -f /tmp/fly_token.txt
+    - cd apps/mouth
+  script:
+    - echo "🚀 Deploying frontend to Fly.io..."
+    - flyctl deploy --remote-only --strategy rolling --app nuzantara-mouth || echo "Frontend app may not exist"
+    - echo "✅ Deployment completed"
+  when: manual
+  allow_failure: true

@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlmodel
+asyncpg
+qdrant-client
+sentence-transformers
+playwright
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]
+pytest
+pytest-asyncio
+httpx
+ruff
+python-dotenv
+aiohttp
+fake-useragent

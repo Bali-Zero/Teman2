@@ -1,0 +1,86 @@
+{
+  "version": "KBLI 2020",
+  "source": "BPS Regulation No. 2 of 2020",
+  "total_codes_estimated": 1790,
+  "categories": [
+    {"code": "A", "description": "Agriculture, Forestry and Fishing"},
+    {"code": "B", "description": "Mining and Quarrying"},
+    {"code": "C", "description": "Manufacturing"},
+    {"code": "D", "description": "Electricity, Gas, Steam and Air Conditioning Supply"},
+    {"code": "E", "description": "Water Supply; Sewerage, Waste Management"},
+    {"code": "F", "description": "Construction"},
+    {"code": "G", "description": "Wholesale and Retail Trade"},
+    {"code": "H", "description": "Transportation and Storage"},
+    {"code": "I", "description": "Accommodation and Food Service Activities"},
+    {"code": "J", "description": "Information and Communication"},
+    {"code": "K", "description": "Financial and Insurance Activities"},
+    {"code": "L", "description": "Real Estate Activities"},
+    {"code": "M", "description": "Professional, Scientific and Technical Activities"},
+    {"code": "N", "description": "Administrative and Support Service Activities"},
+    {"code": "O", "description": "Public Administration and Defence"},
+    {"code": "P", "description": "Education"},
+    {"code": "Q", "description": "Human Health and Social Work Activities"},
+    {"code": "R", "description": "Arts, Entertainment and Recreation"},
+    {"code": "S", "description": "Other Service Activities"},
+    {"code": "T", "description": "Activities of Households as Employers"},
+    {"code": "U", "description": "Activities of Extraterritorial Organizations"}
+  ],
+  "common_codes_bali": [
+    {
+      "code": "56101",
+      "title": "Restoran",
+      "description": "Restaurant and Mobile Food Service Activities",
+      "risk_level": "Medium-High",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    },
+    {
+      "code": "56104",
+      "title": "Kafe",
+      "description": "Cafe Activities",
+      "risk_level": "Medium-Low",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    },
+    {
+      "code": "56301",
+      "title": "Bar",
+      "description": "Beverage Serving Activities (Alcohol)",
+      "risk_level": "High",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    },
+    {
+      "code": "55101",
+      "title": "Hotel",
+      "description": "Hotel Activities (Star/Non-Star)",
+      "risk_level": "High",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    },
+    {
+      "code": "55130",
+      "title": "Akomodasi Villa",
+      "description": "Villa and Apartment Rental",
+      "risk_level": "Medium-High",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    },
+    {
+      "code": "70209",
+      "title": "Konsultan Manajemen",
+      "description": "Management Consulting Activities",
+      "risk_level": "Low",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    },
+    {
+      "code": "68111",
+      "title": "Kegiatan Real Estate",
+      "description": "Real Estate Activities with Own or Leased Property",
+      "risk_level": "Medium-High",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    },
+    {
+      "code": "93290",
+      "title": "Kegiatan Hiburan dan Rekreasi",
+      "description": "Recreation and Entertainment Activities (Beach Clubs)",
+      "risk_level": "Medium-High",
+      "capital_requirement": "IDR 10 Billion (PT PMA)"
+    }
+  ]
+}

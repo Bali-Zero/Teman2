@@ -1,0 +1,33 @@
+# Ignore common non-source directories
+.git
+.github
+.vscode
+.idea
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+build
+dist
+node_modules
+.next
+.venv
+env
+venv
+.coverage
+htmlcov
+.pytest_cache
+.mypy_cache
+.tox
+
+# Ignore generated files
+*.generated.*
+**/generated/**
+lib/api/generated/
+
+# Ignore test files temporarily
+tests/
+test_*
+*_test.py

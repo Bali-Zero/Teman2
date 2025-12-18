@@ -1,0 +1,41 @@
+{
+  "priority": "critical",
+  "area": "rag_pipeline",
+  "score": 100,
+  "description": "RAG Pipeline optimization - Core functionality, high frequency, CPU/IO intensive",
+  "scope": [
+    "apps/backend-rag/backend/services/search_service.py",
+    "apps/backend-rag/backend/services/rag/agentic/orchestrator.py",
+    "apps/backend-rag/backend/services/reranker_service.py",
+    "apps/backend-rag/backend/services/collection_manager.py"
+  ],
+  "metrics_to_collect": [
+    "embedding_generation_time",
+    "vector_search_time",
+    "reranking_time",
+    "cache_hit_rate",
+    "total_pipeline_time",
+    "concurrent_requests"
+  ],
+  "key_issues": [
+    "Embedding generation (CPU-bound)",
+    "Qdrant vector search (network I/O)",
+    "Reranking (CPU-bound)",
+    "Cache effectiveness"
+  ],
+  "tasks": [
+    "Profile each step of the RAG pipeline with detailed timing",
+    "Identify bottlenecks in embedding generation",
+    "Optimize Qdrant query patterns and batch processing",
+    "Improve cache hit rates for embeddings and search results",
+    "Implement batch processing for multiple queries",
+    "Add performance benchmarks before/after optimizations"
+  ],
+  "expected_output": "docs/debug/performance/rag_pipeline_report.md",
+  "success_criteria": [
+    "Embedding generation time reduced by 20%+",
+    "Vector search time reduced by 15%+",
+    "Cache hit rate improved to 60%+",
+    "Total pipeline time reduced by 25%+"
+  ]
+}

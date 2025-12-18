@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_c122a976b8ef368f7a341baa943bee46 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+
+            <style>html, body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            </style>
+
+            <style>#map {
+                position:absolute;
+                top:0;
+                bottom:0;
+                right:0;
+                left:0;
+                }
+            </style>
+
+            <script>
+                L_NO_TOUCH = false;
+                L_DISABLE_3D = false;
+            </script>
+
+        
+</head>
+<body>
+    
+    
+<div style="position: fixed; 
+            top: 10px; left: 50px; width: 300px; 
+            background-color: rgba(0,0,0,0.8); 
+            border-radius: 10px; padding: 10px;
+            z-index: 9999;">
+    <h3 style="color: white; margin: 0;">THE NEW KEROBOKAN MAZE</h3>
+    <p style="color: #CCFF00; margin: 5px 0 0 0; font-size: 11px;">
+        🟡 One-way directions<br>
+        🔴 Blocked shortcut
+    </p>
+</div>
+    
+            <div class="folium-map" id="map_c122a976b8ef368f7a341baa943bee46" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_c122a976b8ef368f7a341baa943bee46 = L.map(
+                "map_c122a976b8ef368f7a341baa943bee46",
+                {
+                    center: [-8.6775, 115.1615],
+                    crs: L.CRS.EPSG3857,
+                    ...{
+  "zoom": 16,
+  "zoomControl": true,
+  "preferCanvas": false,
+}
+
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_c32964ae74b7ecf81c86639805d076dc = L.tileLayer(
+                "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+                {
+  "minZoom": 0,
+  "maxZoom": 20,
+  "maxNativeZoom": 20,
+  "noWrap": false,
+  "attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors \u0026copy; \u003ca href=\"https://carto.com/attributions\"\u003eCARTO\u003c/a\u003e",
+  "subdomains": "abcd",
+  "detectRetina": false,
+  "tms": false,
+  "opacity": 1,
+}
+
+            );
+        
+    
+            tile_layer_c32964ae74b7ecf81c86639805d076dc.addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var marker_74637456919e7481edcf983cc66cdb79 = L.marker(
+                [-8.6775, 115.1615],
+                {
+}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var icon_a39170583c00a44855a41d4df9284c83 = L.AwesomeMarkers.icon(
+                {
+  "markerColor": "white",
+  "iconColor": "white",
+  "icon": "info-sign",
+  "prefix": "glyphicon",
+  "extraClasses": "fa-rotate-0",
+}
+            );
+        
+    
+        var popup_4596afdefd2ed4065dd5fc41da500431 = L.popup({
+  "maxWidth": "100%",
+});
+
+        
+            
+                var html_d968eaf15dea18f6fdcb294e66b467d5 = $(`<div id="html_d968eaf15dea18f6fdcb294e66b467d5" style="width: 100.0%; height: 100.0%;"><b>LIO JUNCTION</b><br>Incrocio principale</div>`)[0];
+                popup_4596afdefd2ed4065dd5fc41da500431.setContent(html_d968eaf15dea18f6fdcb294e66b467d5);
+            
+        
+
+        marker_74637456919e7481edcf983cc66cdb79.bindPopup(popup_4596afdefd2ed4065dd5fc41da500431)
+        ;
+
+        
+    
+    
+                marker_74637456919e7481edcf983cc66cdb79.setIcon(icon_a39170583c00a44855a41d4df9284c83);
+            
+    
+            var poly_line_f4931cfb9be9cf52f1b7d10c1f3772d3 = L.polyline(
+                [[-8.6775, 115.1665], [-8.6775, 115.1625]],
+                {"bubblingMouseEvents": true, "color": "#CCFF00", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#CCFF00", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 8}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var marker_d21b903a17ef6e77cc12f808128ee99a = L.marker(
+                [-8.6775, 115.1655],
+                {
+}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var div_icon_87c386b11797ea088b0771a08553912e = L.divIcon({
+  "html": "\u003cdiv style=\"font-size: 12px; color: #CCFF00; font-weight: bold; text-shadow: 2px 2px 4px black;\"\u003e\u2190 ONE WAY WEST\u003c/div\u003e",
+  "iconSize": [150, 36],
+  "iconAnchor": [75, 18],
+  "className": "empty",
+});
+        
+    
+                marker_d21b903a17ef6e77cc12f808128ee99a.setIcon(div_icon_87c386b11797ea088b0771a08553912e);
+            
+    
+            var poly_line_b58d79e0b303940eb069fb9e428c98fb = L.polyline(
+                [[-8.677, 115.1615], [-8.6735, 115.1615]],
+                {"bubblingMouseEvents": true, "color": "#CCFF00", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#CCFF00", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 8}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var marker_9a13ffd19b3b568db8a2a13c74ec1303 = L.marker(
+                [-8.6735, 115.1615],
+                {
+}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var div_icon_6647b1687a0f0ac7d65ed1a9d5a25cb9 = L.divIcon({
+  "html": "\u003cdiv style=\"font-size: 12px; color: #CCFF00; font-weight: bold; text-shadow: 2px 2px 4px black;\"\u003e\u2191 TO SEMER\u003c/div\u003e",
+  "iconSize": [120, 36],
+  "iconAnchor": [60, 18],
+  "className": "empty",
+});
+        
+    
+                marker_9a13ffd19b3b568db8a2a13c74ec1303.setIcon(div_icon_6647b1687a0f0ac7d65ed1a9d5a25cb9);
+            
+    
+            var poly_line_4dc50c0d2cd9f366c6a0befb99bd9e46 = L.polyline(
+                [[-8.678, 115.1615], [-8.6815, 115.1615]],
+                {"bubblingMouseEvents": true, "color": "#CCFF00", "dashArray": null, "dashOffset": null, "fill": false, "fillColor": "#CCFF00", "fillOpacity": 0.2, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.9, "smoothFactor": 1.0, "stroke": true, "weight": 8}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var marker_9f783cbfa63b8ec46dfc257fc175c9d9 = L.marker(
+                [-8.6815, 115.1615],
+                {
+}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var div_icon_5876728c6c05cb722c13407329dc300f = L.divIcon({
+  "html": "\u003cdiv style=\"font-size: 12px; color: #CCFF00; font-weight: bold; text-shadow: 2px 2px 4px black;\"\u003e\u2193 TO OBEROI\u003c/div\u003e",
+  "iconSize": [120, 36],
+  "iconAnchor": [60, 18],
+  "className": "empty",
+});
+        
+    
+                marker_9f783cbfa63b8ec46dfc257fc175c9d9.setIcon(div_icon_5876728c6c05cb722c13407329dc300f);
+            
+    
+            var marker_6b7e6caf4963a463cb1a095a67a54a41 = L.marker(
+                [-8.6745, 115.1575],
+                {
+}
+            ).addTo(map_c122a976b8ef368f7a341baa943bee46);
+        
+    
+            var div_icon_83e9f88aa999b97a979588e8621c251e = L.divIcon({
+  "html": "\u003cdiv style=\"font-size: 36px; color: #FF0033; font-weight: bold; text-shadow: 2px 2px 4px black;\"\u003e\u2716\u003c/div\u003e\u003cdiv style=\"font-size: 10px; color: #FF0033; font-weight: bold;\"\u003eSHORTCUT DEAD\u003c/div\u003e",
+  "iconSize": [150, 60],
+  "iconAnchor": [75, 30],
+  "className": "empty",
+});
+        
+    
+                marker_6b7e6caf4963a463cb1a095a67a54a41.setIcon(div_icon_83e9f88aa999b97a979588e8621c251e);
+            
+</script>
+</html>

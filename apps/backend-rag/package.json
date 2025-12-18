@@ -1,0 +1,20 @@
+{
+  "name": "@nuzantara/backend-rag",
+  "version": "5.2.0",
+  "private": true,
+  "description": "Python FastAPI RAG backend with Qdrant and re-ranker (AMD64)",
+  "scripts": {
+    "start": "cd backend && uvicorn app.main_cloud:app --host 0.0.0.0 --port 8000",
+    "dev": "cd backend && uvicorn app.main_cloud:app --reload",
+    "deploy": "gcloud run deploy zantara-rag-backend --source backend --platform linux/amd64",
+    "test": "cd backend && pytest",
+    "test:automation": "cd ../.. && bash scripts/test_automation/test_master.sh 90",
+    "test:quality": "cd ../.. && python3 scripts/test_automation/test_quality_checker.py apps/backend-rag/tests/unit",
+    "test:coverage": "cd ../.. && python3 scripts/test_automation/coverage_monitor.py 90",
+    "test:generate": "cd ../.. && python3 scripts/test_automation/test_generator.py"
+  },
+  "engines": {
+    "python": ">=3.11"
+  },
+  "dependencies": {}
+}

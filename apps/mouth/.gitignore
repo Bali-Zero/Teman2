@@ -1,0 +1,20 @@
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Playwright
+/playwright-report/
+/test-results/
+/playwright/.cache/
+e2e/.auth/
+
+# Environment variables (never commit!)
+.env.local
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+next-env.d.ts

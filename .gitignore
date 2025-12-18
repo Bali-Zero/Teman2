@@ -1,0 +1,157 @@
+# ========================================
+# NUZANTARA PRIME - ROOT .GITIGNORE
+# ========================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+test-results/
+test_results/
+testsprite_tests/tmp/
+
+# Next.js / Frontend
+.next/
+out/
+build/
+dist/
+.vercel/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Reports
+reports/
+*.md.report
+*.json.report
+sentinel-results/
+deep-analysis-results/
+
+# Environment (never commit real secrets)
+.env*
+!.env.example
+!.env.sample
+!.env.template
+.envrc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets & keys (never commit)
+*.pem
+*.key
+*.p12
+*.pfx
+*.der
+*.crt
+*.cer
+*.jwk
+*credentials*.json
+!*credentials*.example.json
+google_credentials.json
+
+# AI/dev tooling (local state)
+.cursor/
+.libs/
+**/.claude/settings.local.json
+**/.claude/locks/
+**/.claude/handovers/
+
+# Security scanners (local output)
+.scannerwork/
+
+# Local secrets directory (keep only docs)
+.secrets/*
+!.secrets/README.md
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+nuzantara.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Data & Artifacts
+data/temp/
+data/*.json
+data/*.log
+benchmark_results/
+carousel-bali-traffic/output/
+carousel-bali-traffic/images/
+
+# Large/local datasets (keep out of git)
+nuzantara_laws/apps/scraper/data/raw_laws_local/Unified_Knowledge_Base/
+
+# Node
+node_modules/
+.pnpm-store/
+.pnpm-debug.log
+
+# Docker
+# Misc
+*.tar.gz
+*.zip
+*.rar
+conv/generated/
+
+# CodeQL & Security Scans
+codeql-db/
+codeql-results/
+*.sarif
+
+# Model files (large)
+*.gguf
+*.safetensors
+*.bin
+models/
+ZANTARA_JAKSEL/models/
+
+# Generated documentation
+docs/*.log
+docs/*.json
+docs/generated/

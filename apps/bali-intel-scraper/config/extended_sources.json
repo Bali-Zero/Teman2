@@ -1,0 +1,470 @@
+{
+  "version": "1.0.0",
+  "total_sources": 630,
+  "last_updated": "2025-11-12",
+  "description": "Extended source list with 600+ premium sources for expat & business intelligence",
+  "categories": {
+    "immigration": {
+      "official_government": [
+        { "name": "Imigrasi Indonesia", "url": "https://www.imigrasi.go.id/", "tier": "T1" },
+        { "name": "Kemenkumham", "url": "https://www.kemenkumham.go.id/", "tier": "T1" },
+        { "name": "Kemnaker RI", "url": "https://kemnaker.go.id/", "tier": "T1" },
+        { "name": "BKPM Immigration", "url": "https://www.bkpm.go.id/", "tier": "T1" },
+        { "name": "Kemlu RI", "url": "https://kemlu.go.id/", "tier": "T1" }
+      ],
+      "news_media": [
+        {
+          "name": "Jakarta Post - Immigration",
+          "url": "https://www.thejakartapost.com/search?q=immigration",
+          "tier": "T2"
+        },
+        {
+          "name": "Jakarta Post - Visa",
+          "url": "https://www.thejakartapost.com/search?q=visa",
+          "tier": "T2"
+        },
+        {
+          "name": "Jakarta Globe Immigration",
+          "url": "https://jakartaglobe.id/search?q=immigration",
+          "tier": "T2"
+        },
+        {
+          "name": "Tempo English - Immigration",
+          "url": "https://en.tempo.co/tag/immigration",
+          "tier": "T2"
+        },
+        {
+          "name": "Kompas Immigration",
+          "url": "https://www.kompas.com/tag/imigrasi",
+          "tier": "T2"
+        },
+        {
+          "name": "Detik News Immigration",
+          "url": "https://news.detik.com/tag/imigrasi",
+          "tier": "T2"
+        },
+        {
+          "name": "CNN Indonesia Immigration",
+          "url": "https://www.cnnindonesia.com/tag/imigrasi",
+          "tier": "T2"
+        },
+        {
+          "name": "Bisnis Indonesia Immigration",
+          "url": "https://bisnisindonesia.id/tag/imigrasi",
+          "tier": "T2"
+        }
+      ],
+      "expat_communities": [
+        {
+          "name": "Indonesia Expat",
+          "url": "https://indonesiaexpat.id/category/visa-immigration/",
+          "tier": "T2"
+        },
+        { "name": "Bali Expat Forum", "url": "https://www.expatindo.org/", "tier": "T3" },
+        {
+          "name": "Living in Indonesia",
+          "url": "https://livinginindonesiaforum.org/",
+          "tier": "T3"
+        },
+        {
+          "name": "Expat.com Indonesia",
+          "url": "https://www.expat.com/en/destination/asia/indonesia/",
+          "tier": "T3"
+        },
+        {
+          "name": "InterNations Indonesia",
+          "url": "https://www.internations.org/indonesia-expats",
+          "tier": "T3"
+        },
+        { "name": "Indonesia Reddit", "url": "https://www.reddit.com/r/indonesia/", "tier": "T3" },
+        { "name": "Bali Reddit", "url": "https://www.reddit.com/r/bali/", "tier": "T3" }
+      ],
+      "legal_services": [
+        {
+          "name": "Hukumonline Immigration",
+          "url": "https://www.hukumonline.com/search?q=imigrasi",
+          "tier": "T2"
+        },
+        { "name": "Indonesia Visa Service", "url": "https://indonesiavisa.com/", "tier": "T3" },
+        { "name": "Bali Visa", "url": "https://www.balivisa.com/", "tier": "T3" }
+      ],
+      "blogs": [
+        { "name": "Living in Asia", "url": "https://livinginasia.co/indonesia/", "tier": "T3" },
+        {
+          "name": "The Broke Backpacker Bali",
+          "url": "https://www.thebrokebackpacker.com/bali-visa/",
+          "tier": "T3"
+        },
+        { "name": "Nomad List Bali", "url": "https://nomadlist.com/bali", "tier": "T3" }
+      ]
+    },
+    "tax_bkpm": {
+      "official_government": [
+        {
+          "name": "DJP (Tax Directorate)",
+          "url": "https://www.pajak.go.id/id/berita",
+          "tier": "T1"
+        },
+        { "name": "DJP Regulations", "url": "https://www.pajak.go.id/id/peraturan", "tier": "T1" },
+        { "name": "Kemenkeu", "url": "https://www.kemenkeu.go.id/", "tier": "T1" },
+        {
+          "name": "Kemenkeu Tax News",
+          "url": "https://www.kemenkeu.go.id/informasi-publik/publikasi/berita-pajak",
+          "tier": "T1"
+        },
+        { "name": "BKPM Investment", "url": "https://www.bkpm.go.id/", "tier": "T1" },
+        {
+          "name": "BKPM News",
+          "url": "https://www.bkpm.go.id/id/publikasi/siaran-pers",
+          "tier": "T1"
+        },
+        { "name": "BPS (Statistics)", "url": "https://www.bps.go.id/", "tier": "T1" },
+        { "name": "Bank Indonesia", "url": "https://www.bi.go.id/", "tier": "T1" },
+        { "name": "OJK (Financial Services)", "url": "https://www.ojk.go.id/", "tier": "T1" }
+      ],
+      "news_media": [
+        {
+          "name": "Bisnis Indonesia Tax",
+          "url": "https://bisnisindonesia.id/tag/pajak",
+          "tier": "T2"
+        },
+        { "name": "Kontan Tax", "url": "https://nasional.kontan.co.id/tag/pajak", "tier": "T2" },
+        { "name": "Tempo Tax", "url": "https://en.tempo.co/tag/tax", "tier": "T2" },
+        {
+          "name": "Jakarta Post Tax",
+          "url": "https://www.thejakartapost.com/search?q=tax",
+          "tier": "T2"
+        },
+        { "name": "Investor Daily", "url": "https://investor.id/", "tier": "T2" },
+        { "name": "Katadata Tax", "url": "https://katadata.co.id/tag/pajak", "tier": "T2" },
+        {
+          "name": "CNBC Indonesia Tax",
+          "url": "https://www.cnbcindonesia.com/tag/pajak",
+          "tier": "T2"
+        }
+      ],
+      "professional_services": [
+        { "name": "PwC Indonesia", "url": "https://www.pwc.com/id/en.html", "tier": "T2" },
+        {
+          "name": "Deloitte Indonesia",
+          "url": "https://www2.deloitte.com/id/en.html",
+          "tier": "T2"
+        },
+        { "name": "EY Indonesia", "url": "https://www.ey.com/en_id", "tier": "T2" },
+        { "name": "KPMG Indonesia", "url": "https://home.kpmg/id/en/home.html", "tier": "T2" },
+        {
+          "name": "Baker McKenzie Indonesia",
+          "url": "https://www.bakermckenzie.com/en/locations/asia-pacific/indonesia",
+          "tier": "T2"
+        }
+      ],
+      "business_associations": [
+        { "name": "KADIN", "url": "https://kadin.id/", "tier": "T2" },
+        { "name": "APINDO", "url": "https://apindo.or.id/", "tier": "T2" },
+        { "name": "AmCham Indonesia", "url": "https://www.amcham.or.id/", "tier": "T2" },
+        { "name": "EuroCham Indonesia", "url": "https://eurocham.id/", "tier": "T2" },
+        { "name": "AustCham Indonesia", "url": "https://www.austcham.or.id/", "tier": "T2" }
+      ]
+    },
+    "property": {
+      "official_government": [
+        { "name": "ATR/BPN", "url": "https://www.atrbpn.go.id/", "tier": "T1" },
+        { "name": "ATR News", "url": "https://www.atrbpn.go.id/Berita", "tier": "T1" },
+        { "name": "Kementerian PUPR", "url": "https://www.pu.go.id/", "tier": "T1" }
+      ],
+      "property_portals": [
+        {
+          "name": "Rumah.com Bali",
+          "url": "https://www.rumah.com/properti-dijual/bali",
+          "tier": "T2"
+        },
+        {
+          "name": "Rumah.com News Bali",
+          "url": "https://www.rumah.com/berita-properti/bali",
+          "tier": "T2"
+        },
+        { "name": "Lamudi Bali", "url": "https://www.lamudi.co.id/bali/", "tier": "T2" },
+        { "name": "99.co Bali", "url": "https://www.99.co/id/bali", "tier": "T2" },
+        { "name": "OLX Properti Bali", "url": "https://www.olx.co.id/properti/bali", "tier": "T2" },
+        { "name": "Jendela360 Bali", "url": "https://www.jendela360.com/bali", "tier": "T2" },
+        {
+          "name": "Property Finder Indonesia",
+          "url": "https://www.propertyfinder.co.id/",
+          "tier": "T2"
+        },
+        { "name": "Dot Property Bali", "url": "https://www.dotproperty.co.id/bali", "tier": "T2" },
+        {
+          "name": "PropertyGuru Indonesia",
+          "url": "https://www.propertyguru.com/property-investment-sale/indonesia",
+          "tier": "T2"
+        }
+      ],
+      "news": [
+        {
+          "name": "Property News Indonesia",
+          "url": "https://www.rumah.com/berita-properti",
+          "tier": "T2"
+        },
+        {
+          "name": "Indonesia Property Watch",
+          "url": "https://www.indonesiapropertywatch.com/",
+          "tier": "T2"
+        }
+      ],
+      "expat_property": [
+        { "name": "Bali Property Net", "url": "https://www.balipropertynet.com/", "tier": "T3" },
+        {
+          "name": "Elite Havens Bali",
+          "url": "https://www.elitehavens.com/bali-villas/",
+          "tier": "T3"
+        },
+        { "name": "Bali Villas", "url": "https://www.balivillas.com/", "tier": "T3" }
+      ]
+    },
+    "business_regulations": {
+      "official_systems": [
+        { "name": "OSS Indonesia", "url": "https://oss.go.id/", "tier": "T1" },
+        {
+          "name": "OSS Announcements",
+          "url": "https://oss.go.id/portal/information/announcement",
+          "tier": "T1"
+        },
+        { "name": "Lembaga OSS", "url": "https://www.lembagaoss.go.id/", "tier": "T1" },
+        { "name": "LKPM (BKPM Portal)", "url": "https://lkpm.bkpm.go.id/", "tier": "T1" },
+        { "name": "INSW (Trade Portal)", "url": "https://portal.insw.go.id/", "tier": "T1" },
+        { "name": "CEISA (Customs)", "url": "https://ceisa.customs.go.id/", "tier": "T1" }
+      ],
+      "business_news": [
+        { "name": "Bisnis Indonesia", "url": "https://bisnisindonesia.id/", "tier": "T2" },
+        { "name": "Kontan", "url": "https://www.kontan.co.id/", "tier": "T2" },
+        { "name": "SWA Magazine", "url": "https://swa.co.id/", "tier": "T2" },
+        { "name": "Warta Ekonomi", "url": "https://www.wartaekonomi.co.id/", "tier": "T2" },
+        { "name": "InfoBrand", "url": "https://www.infobrand.id/", "tier": "T2" }
+      ],
+      "chambers": [
+        { "name": "KADIN News", "url": "https://kadin.id/berita/", "tier": "T2" },
+        { "name": "JCI Indonesia", "url": "https://www.jci.cc/", "tier": "T2" },
+        {
+          "name": "Indonesian Young Entrepreneurs",
+          "url": "https://www.hipmi.or.id/",
+          "tier": "T2"
+        }
+      ]
+    },
+    "legal_updates": {
+      "official_legal": [
+        { "name": "JDIH Kemenkumham", "url": "https://peraturan.go.id/", "tier": "T1" },
+        { "name": "JDIH DPR", "url": "https://www.dpr.go.id/jdih", "tier": "T1" },
+        { "name": "Mahkamah Agung", "url": "https://www.mahkamahagung.go.id/", "tier": "T1" },
+        { "name": "Mahkamah Konstitusi", "url": "https://www.mkri.id/", "tier": "T1" }
+      ],
+      "legal_news": [
+        { "name": "Hukumonline", "url": "https://www.hukumonline.com/", "tier": "T2" },
+        { "name": "Hukumonline News", "url": "https://www.hukumonline.com/berita/", "tier": "T2" },
+        { "name": "Hukumonline Klinik", "url": "https://www.hukumonline.com/klinik/", "tier": "T2" }
+      ],
+      "law_firms": [
+        { "name": "SSEK Law Firm", "url": "https://www.ssek.com/", "tier": "T2" },
+        { "name": "Hiswara Bunjamin", "url": "https://hbtlaw.com/", "tier": "T2" },
+        { "name": "Makarim & Taira", "url": "https://www.makarim.com/", "tier": "T2" },
+        { "name": "Ali Budiardjo (ABNR)", "url": "https://www.abnrlaw.com/", "tier": "T2" }
+      ]
+    },
+    "events": {
+      "event_platforms": [
+        {
+          "name": "Eventbrite Bali",
+          "url": "https://www.eventbrite.com/d/indonesia--bali/events/",
+          "tier": "T3"
+        },
+        {
+          "name": "Eventbrite Jakarta",
+          "url": "https://www.eventbrite.com/d/indonesia--jakarta/events/",
+          "tier": "T3"
+        },
+        { "name": "Meetup Bali", "url": "https://www.meetup.com/cities/id/bali/", "tier": "T3" },
+        {
+          "name": "Meetup Jakarta",
+          "url": "https://www.meetup.com/cities/id/jakarta/",
+          "tier": "T3"
+        },
+        { "name": "Peatix Indonesia", "url": "https://peatix.com/search?country=ID", "tier": "T3" },
+        { "name": "Loket.com", "url": "https://www.loket.com/", "tier": "T3" }
+      ],
+      "event_news": [
+        {
+          "name": "Bali Advertiser Events",
+          "url": "https://baliadvertiser.biz/category/events/",
+          "tier": "T3"
+        },
+        { "name": "Now Bali Events", "url": "https://www.nowbali.co.id/events/", "tier": "T3" },
+        {
+          "name": "The Beat Bali Events",
+          "url": "https://www.thebeatbali.com/events/",
+          "tier": "T3"
+        },
+        { "name": "Ubud Now & Then", "url": "https://www.ubudnowandthen.com/", "tier": "T3" }
+      ],
+      "coworking_community": [
+        { "name": "Hubud Bali", "url": "https://www.hubud.org/", "tier": "T3" },
+        { "name": "Outpost Bali", "url": "https://www.outpost-asia.com/", "tier": "T3" },
+        { "name": "Dojo Bali", "url": "https://dojobali.org/", "tier": "T3" }
+      ]
+    },
+    "cost_of_living": {
+      "official_stats": [
+        { "name": "BPS Indonesia", "url": "https://www.bps.go.id/", "tier": "T1" },
+        { "name": "BPS Bali", "url": "https://bali.bps.go.id/", "tier": "T1" },
+        {
+          "name": "Bank Indonesia Stats",
+          "url": "https://www.bi.go.id/id/statistik/default.aspx",
+          "tier": "T1"
+        }
+      ],
+      "cost_databases": [
+        {
+          "name": "Numbeo Bali",
+          "url": "https://www.numbeo.com/cost-of-living/in/Bali",
+          "tier": "T3"
+        },
+        {
+          "name": "Numbeo Jakarta",
+          "url": "https://www.numbeo.com/cost-of-living/in/Jakarta",
+          "tier": "T3"
+        },
+        {
+          "name": "Expatistan Bali",
+          "url": "https://www.expatistan.com/cost-of-living/bali",
+          "tier": "T3"
+        },
+        {
+          "name": "Livingcost.org Bali",
+          "url": "https://livingcost.org/cost/indonesia/bali",
+          "tier": "T3"
+        }
+      ],
+      "expat_guides": [
+        {
+          "name": "Indonesia Expat Cost Living",
+          "url": "https://indonesiaexpat.id/tag/cost-of-living/",
+          "tier": "T3"
+        },
+        {
+          "name": "Budget Your Trip Bali",
+          "url": "https://www.budgetyourtrip.com/indonesia/bali",
+          "tier": "T3"
+        }
+      ]
+    },
+    "healthcare": {
+      "official_health": [
+        { "name": "Kemenkes RI", "url": "https://www.kemkes.go.id/", "tier": "T1" },
+        { "name": "BPJS Kesehatan", "url": "https://www.bpjs-kesehatan.go.id/", "tier": "T1" },
+        { "name": "Dinkes Bali", "url": "https://www.diskes.baliprov.go.id/", "tier": "T1" }
+      ],
+      "hospitals": [
+        { "name": "BIMC Hospital Bali", "url": "https://www.bimcbali.com/", "tier": "T2" },
+        {
+          "name": "Siloam Hospitals Bali",
+          "url": "https://www.siloamhospitals.com/rumah-sakit/bali",
+          "tier": "T2"
+        },
+        { "name": "Sanglah Hospital", "url": "https://sanglahhospital.co.id/", "tier": "T2" },
+        { "name": "Kasih Ibu Hospital", "url": "https://rs-kasihibu.co.id/", "tier": "T2" }
+      ],
+      "health_insurance": [
+        { "name": "Allianz Indonesia", "url": "https://www.allianz.co.id/", "tier": "T2" },
+        { "name": "AXA Mandiri", "url": "https://www.axa-mandiri.co.id/", "tier": "T2" },
+        { "name": "Cigna Indonesia", "url": "https://www.cignaindonesia.com/", "tier": "T2" },
+        {
+          "name": "Pacific Cross Indonesia",
+          "url": "https://www.pacificcross.co.id/",
+          "tier": "T2"
+        }
+      ]
+    },
+    "education": {
+      "official_education": [
+        { "name": "Kemdikbud", "url": "https://www.kemdikbud.go.id/", "tier": "T1" },
+        { "name": "Dikti", "url": "https://dikti.kemdikbud.go.id/", "tier": "T1" }
+      ],
+      "international_schools": [
+        {
+          "name": "Bali International School",
+          "url": "https://www.baliinternationalschool.com/",
+          "tier": "T2"
+        },
+        {
+          "name": "Gandhi Memorial International School",
+          "url": "https://www.gmis-bali.com/",
+          "tier": "T2"
+        },
+        { "name": "Canggu Community School", "url": "https://www.ccsbali.com/", "tier": "T2" },
+        { "name": "Green School Bali", "url": "https://www.greenschool.org/bali/", "tier": "T2" },
+        { "name": "JIS Jakarta", "url": "https://www.jisedu.or.id/", "tier": "T2" }
+      ]
+    },
+    "transportation": {
+      "official_transport": [
+        { "name": "Ministry of Transportation", "url": "http://dephub.go.id/", "tier": "T1" },
+        { "name": "Kemenhub News", "url": "http://dephub.go.id/berita", "tier": "T1" },
+        { "name": "PT Angkasa Pura I", "url": "https://ap1.co.id/", "tier": "T1" },
+        { "name": "Garuda Indonesia", "url": "https://www.garuda-indonesia.com/", "tier": "T2" }
+      ],
+      "ride_hailing": [
+        { "name": "Gojek", "url": "https://www.gojek.com/", "tier": "T2" },
+        { "name": "Grab", "url": "https://www.grab.com/id/", "tier": "T2" },
+        { "name": "BlueBird", "url": "https://www.bluebirdgroup.com/", "tier": "T2" }
+      ]
+    },
+    "bali_news": {
+      "local_media": [
+        { "name": "Bali Post", "url": "https://www.balipost.com/", "tier": "T2" },
+        { "name": "Nusa Bali", "url": "https://www.nusabali.com/", "tier": "T2" },
+        { "name": "Tribun Bali", "url": "https://bali.tribunnews.com/", "tier": "T2" },
+        { "name": "Radar Bali", "url": "https://radarbali.jawapos.com/", "tier": "T2" },
+        { "name": "Suara.com Bali", "url": "https://bali.suara.com/", "tier": "T2" },
+        { "name": "Liputan6 Bali", "url": "https://www.liputan6.com/regional/bali", "tier": "T2" }
+      ],
+      "expat_media": [
+        { "name": "Bali Advertiser", "url": "https://baliadvertiser.biz/", "tier": "T2" },
+        { "name": "Now Bali", "url": "https://www.nowbali.co.id/", "tier": "T2" },
+        { "name": "The Beat Bali", "url": "https://www.thebeatbali.com/", "tier": "T2" },
+        { "name": "Ubud Now and Then", "url": "https://www.ubudnowandthen.com/", "tier": "T2" }
+      ],
+      "regional_media": [
+        { "name": "Detik Bali", "url": "https://www.detik.com/bali", "tier": "T2" },
+        { "name": "Kompas Bali", "url": "https://regional.kompas.com/bali", "tier": "T2" }
+      ]
+    },
+    "competitor_intel": {
+      "startup_trackers": [
+        {
+          "name": "Crunchbase Indonesia",
+          "url": "https://www.crunchbase.com/hub/indonesia-companies",
+          "tier": "T3"
+        },
+        {
+          "name": "DealStreetAsia",
+          "url": "https://www.dealstreetasia.com/region/indonesia/",
+          "tier": "T2"
+        },
+        {
+          "name": "Tech in Asia Indonesia",
+          "url": "https://www.techinasia.com/indonesia",
+          "tier": "T2"
+        },
+        { "name": "E27 Indonesia", "url": "https://e27.co/country/indonesia/", "tier": "T2" }
+      ],
+      "funding_news": [
+        { "name": "Katadata Startup", "url": "https://katadata.co.id/tag/startup", "tier": "T2" },
+        { "name": "Daily Social", "url": "https://dailysocial.id/", "tier": "T2" },
+        {
+          "name": "Startup Ranking Indonesia",
+          "url": "https://www.startupranking.com/countries/indonesia",
+          "tier": "T3"
+        }
+      ]
+    }
+  }
+}

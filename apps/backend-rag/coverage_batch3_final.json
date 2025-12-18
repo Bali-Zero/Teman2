@@ -1,0 +1,325 @@
+{
+  "meta": {
+    "format": 3,
+    "version": "7.11.3",
+    "timestamp": "2025-12-14T03:57:07.114215",
+    "branch_coverage": false,
+    "show_contexts": false
+  },
+  "files": {
+    "backend/llm/zantara_ai_client.py": {
+      "executed_lines": [1, 17, 18, 19, 21],
+      "summary": {
+        "covered_lines": 4,
+        "num_statements": 263,
+        "percent_covered": 1.520912547528517,
+        "percent_covered_display": "2",
+        "missing_lines": 259,
+        "excluded_lines": 0
+      },
+      "missing_lines": [
+        24, 25, 26, 27, 29, 32, 33, 35, 36, 37, 38, 39, 43, 46, 47, 48, 49, 50, 51, 52, 53, 56, 57,
+        58, 59, 62, 80, 82, 93, 94, 97, 98, 99, 100, 101, 102, 103, 104, 105, 107, 108, 109, 111,
+        112, 116, 119, 125, 126, 131, 134, 135, 136, 137, 141, 142, 143, 145, 158, 159, 162, 164,
+        165, 168, 170, 172, 179, 185, 204, 210, 227, 228, 229, 230, 231, 233, 234, 235, 238, 239,
+        243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 254, 264, 265, 267, 268, 269, 271, 272,
+        274, 275, 276, 277, 278, 281, 282, 284, 286, 299, 300, 302, 305, 306, 309, 311, 312, 313,
+        315, 319, 321, 323, 336, 337, 338, 340, 370, 373, 374, 380, 381, 382, 383, 384, 385, 386,
+        387, 390, 391, 394, 395, 396, 404, 405, 406, 408, 409, 410, 411, 412, 419, 420, 421, 429,
+        430, 431, 432, 433, 435, 436, 441, 445, 446, 448, 473, 476, 481, 487, 488, 489, 490, 491,
+        492, 493, 494, 495, 496, 499, 501, 502, 505, 506, 507, 508, 509, 510, 511, 512, 514, 515,
+        516, 517, 518, 519, 520, 521, 523, 525, 527, 528, 529, 530, 531, 532, 533, 534, 535, 537,
+        539, 548, 549, 550, 551, 552, 554, 555, 556, 558, 559, 563, 564, 565, 566, 568, 569, 570,
+        571, 572, 573, 574, 575, 576, 578, 579, 580, 581, 583, 584, 586, 587, 588, 589, 590, 591,
+        601, 624, 625, 626, 627, 629, 636, 644, 678, 679, 683, 691, 692, 693, 695, 702, 703, 704
+      ],
+      "excluded_lines": [],
+      "functions": {
+        "ZantaraAIClient.__init__": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 28,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 28,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            93, 94, 97, 98, 99, 100, 101, 102, 103, 104, 105, 107, 108, 109, 111, 112, 116, 119,
+            125, 126, 131, 134, 135, 136, 137, 141, 142, 143
+          ],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient._get_cached_model": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 7,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 7,
+            "excluded_lines": 0
+          },
+          "missing_lines": [158, 159, 162, 164, 165, 168, 170],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient.get_model_info": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 1,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 1,
+            "excluded_lines": 0
+          },
+          "missing_lines": [179],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient._build_system_prompt": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 1,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 1,
+            "excluded_lines": 0
+          },
+          "missing_lines": [204],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient._validate_inputs": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 20,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 20,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            227, 228, 229, 230, 231, 233, 234, 235, 238, 239, 243, 244, 245, 246, 247, 248, 249,
+            250, 251, 252
+          ],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient._prepare_gemini_messages": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 15,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 15,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            264, 265, 267, 268, 269, 271, 272, 274, 275, 276, 277, 278, 281, 282, 284
+          ],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient._extract_response_text": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 12,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 12,
+            "excluded_lines": 0
+          },
+          "missing_lines": [299, 300, 302, 305, 306, 309, 311, 312, 313, 315, 319, 321],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient._estimate_tokens": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 3,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 3,
+            "excluded_lines": 0
+          },
+          "missing_lines": [336, 337, 338],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient.chat_async": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 37,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 37,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            370, 373, 374, 380, 381, 382, 383, 384, 385, 386, 387, 390, 391, 394, 395, 396, 404,
+            405, 406, 408, 409, 410, 411, 412, 419, 420, 421, 429, 430, 431, 432, 433, 435, 436,
+            441, 445, 446
+          ],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient.stream": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 60,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 60,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            473, 476, 481, 487, 488, 489, 490, 491, 492, 493, 494, 495, 496, 499, 501, 502, 505,
+            506, 507, 508, 509, 510, 511, 512, 514, 515, 516, 517, 518, 519, 520, 521, 523, 558,
+            559, 563, 564, 565, 566, 568, 569, 570, 571, 572, 573, 574, 575, 576, 578, 579, 580,
+            581, 583, 584, 586, 587, 588, 589, 590, 591
+          ],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient.stream._stream_operation": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 20,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 20,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            525, 527, 528, 529, 530, 531, 532, 533, 534, 535, 537, 539, 548, 549, 550, 551, 552,
+            554, 555, 556
+          ],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient.conversational": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 6,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 6,
+            "excluded_lines": 0
+          },
+          "missing_lines": [624, 625, 626, 627, 629, 636],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient.conversational_with_tools": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 6,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 6,
+            "excluded_lines": 0
+          },
+          "missing_lines": [678, 679, 683, 691, 692, 693],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient.is_available": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 3,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 3,
+            "excluded_lines": 0
+          },
+          "missing_lines": [702, 703, 704],
+          "excluded_lines": []
+        },
+        "": {
+          "executed_lines": [1, 17, 18, 19, 21],
+          "summary": {
+            "covered_lines": 4,
+            "num_statements": 44,
+            "percent_covered": 9.090909090909092,
+            "percent_covered_display": "9",
+            "missing_lines": 40,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            24, 25, 26, 27, 29, 32, 33, 35, 36, 37, 38, 39, 43, 46, 47, 48, 49, 50, 51, 52, 53, 56,
+            57, 58, 59, 62, 80, 82, 145, 172, 185, 210, 254, 286, 323, 340, 448, 601, 644, 695
+          ],
+          "excluded_lines": []
+        }
+      },
+      "classes": {
+        "ZantaraAIClientConstants": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 0,
+            "percent_covered": 100.0,
+            "percent_covered_display": "100",
+            "missing_lines": 0,
+            "excluded_lines": 0
+          },
+          "missing_lines": [],
+          "excluded_lines": []
+        },
+        "ZantaraAIClient": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 219,
+            "percent_covered": 0.0,
+            "percent_covered_display": "0",
+            "missing_lines": 219,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            93, 94, 97, 98, 99, 100, 101, 102, 103, 104, 105, 107, 108, 109, 111, 112, 116, 119,
+            125, 126, 131, 134, 135, 136, 137, 141, 142, 143, 158, 159, 162, 164, 165, 168, 170,
+            179, 204, 227, 228, 229, 230, 231, 233, 234, 235, 238, 239, 243, 244, 245, 246, 247,
+            248, 249, 250, 251, 252, 264, 265, 267, 268, 269, 271, 272, 274, 275, 276, 277, 278,
+            281, 282, 284, 299, 300, 302, 305, 306, 309, 311, 312, 313, 315, 319, 321, 336, 337,
+            338, 370, 373, 374, 380, 381, 382, 383, 384, 385, 386, 387, 390, 391, 394, 395, 396,
+            404, 405, 406, 408, 409, 410, 411, 412, 419, 420, 421, 429, 430, 431, 432, 433, 435,
+            436, 441, 445, 446, 473, 476, 481, 487, 488, 489, 490, 491, 492, 493, 494, 495, 496,
+            499, 501, 502, 505, 506, 507, 508, 509, 510, 511, 512, 514, 515, 516, 517, 518, 519,
+            520, 521, 523, 525, 527, 528, 529, 530, 531, 532, 533, 534, 535, 537, 539, 548, 549,
+            550, 551, 552, 554, 555, 556, 558, 559, 563, 564, 565, 566, 568, 569, 570, 571, 572,
+            573, 574, 575, 576, 578, 579, 580, 581, 583, 584, 586, 587, 588, 589, 590, 591, 624,
+            625, 626, 627, 629, 636, 678, 679, 683, 691, 692, 693, 702, 703, 704
+          ],
+          "excluded_lines": []
+        },
+        "": {
+          "executed_lines": [1, 17, 18, 19, 21],
+          "summary": {
+            "covered_lines": 4,
+            "num_statements": 44,
+            "percent_covered": 9.090909090909092,
+            "percent_covered_display": "9",
+            "missing_lines": 40,
+            "excluded_lines": 0
+          },
+          "missing_lines": [
+            24, 25, 26, 27, 29, 32, 33, 35, 36, 37, 38, 39, 43, 46, 47, 48, 49, 50, 51, 52, 53, 56,
+            57, 58, 59, 62, 80, 82, 145, 172, 185, 210, 254, 286, 323, 340, 448, 601, 644, 695
+          ],
+          "excluded_lines": []
+        }
+      }
+    }
+  },
+  "totals": {
+    "covered_lines": 4,
+    "num_statements": 263,
+    "percent_covered": 1.520912547528517,
+    "percent_covered_display": "2",
+    "missing_lines": 259,
+    "excluded_lines": 0
+  }
+}

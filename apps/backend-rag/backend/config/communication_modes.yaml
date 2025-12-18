@@ -1,0 +1,63 @@
+modes:
+  greeting:
+    max_sentences: 2
+    structure: null
+    include_examples: false
+    include_sources: false
+    include_hook: false
+    emotional_priority: high
+    
+  small_talk:
+    max_sentences: 3
+    structure: null
+    include_examples: false
+    include_sources: false
+    include_hook: optional
+    emotional_priority: high
+    
+  legal_brief:
+    max_sentences: 4
+    structure: "answer_first"
+    include_examples: false
+    include_sources: if_available
+    include_hook: true
+    emotional_priority: medium
+    
+  legal_deep:
+    max_sentences: 8
+    structure: "hook_context_explain_example_summary"
+    include_examples: true
+    include_sources: true
+    include_hook: true
+    emotional_priority: medium
+    
+  procedure_guide:
+    max_sentences: 12
+    structure: "numbered_steps"
+    include_examples: true
+    include_sources: if_relevant
+    include_hook: true
+    step_format: "action + timeline + tip"
+    
+  risk_explainer:
+    max_sentences: 6
+    structure: "risk_consequence_alternative"
+    include_examples: true
+    include_sources: true
+    include_hook: true
+    tone_modifier: "calm_but_clear"
+    
+  identity_response:
+    max_sentences: 3
+    structure: null
+    include_examples: false
+    include_sources: false
+    include_hook: true
+    special: "use_team_context"
+    
+  technical:
+    max_sentences: null  # code can be long
+    structure: "problem_solution_code"
+    include_examples: true
+    include_sources: false
+    include_hook: false

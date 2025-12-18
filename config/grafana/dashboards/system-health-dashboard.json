@@ -1,0 +1,257 @@
+{
+  "dashboard": {
+    "title": "Nuzantara System Health Dashboard",
+    "tags": ["system", "infrastructure", "health"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Usage (%)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "zantara_cpu_usage_percent",
+            "legendFormat": "CPU Usage"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percent",
+            "label": "CPU %",
+            "max": 100,
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [80],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "last"
+              },
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "for": "5m",
+          "frequency": "10s",
+          "handler": 1,
+          "name": "High CPU Usage",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 2,
+        "title": "Memory Usage (MB)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "zantara_memory_usage_mb",
+            "legendFormat": "Memory Used"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "mbytes",
+            "label": "Memory (MB)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "System Uptime",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "zantara_system_uptime_seconds",
+            "legendFormat": "Uptime",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 3600, "color": "yellow"},
+                {"value": 86400, "color": "red"}
+              ]
+            },
+            "unit": "s"
+          }
+        },
+        "options": {
+          "graphMode": "area",
+          "colorMode": "value",
+          "justifyMode": "auto"
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Active Sessions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "zantara_active_sessions_total",
+            "legendFormat": "Active Sessions"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 100, "color": "yellow"},
+                {"value": 500, "color": "red"}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "zantara_db_connections_active",
+            "legendFormat": "Active Connections"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Connections"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "Database Query Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(zantara_db_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(zantara_db_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Duration"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Redis Latency (ms)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "zantara_redis_latency_ms",
+            "legendFormat": "Redis Latency"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency (ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 8,
+        "title": "Cache Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(zantara_cache_hits_total[5m])",
+            "legendFormat": "Cache Hits"
+          },
+          {
+            "expr": "rate(zantara_cache_misses_total[5m])",
+            "legendFormat": "Cache Misses"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      },
+      {
+        "id": 9,
+        "title": "HTTP Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(zantara_http_requests_total[5m])",
+            "legendFormat": "{{method}} {{endpoint}} - {{status}}"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Requests/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32}
+      },
+      {
+        "id": 10,
+        "title": "Request Duration (P95, P99)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(zantara_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 - {{method}} {{endpoint}}"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(zantara_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 - {{method}} {{endpoint}}"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Duration"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32}
+      }
+    ]
+  }
+}
+

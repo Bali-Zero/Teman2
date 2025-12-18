@@ -1,0 +1,129 @@
+# JSON Exporter Configuration per Qdrant Metrics
+#
+# Questo file configura json_exporter per convertire le metrics JSON
+# dal endpoint /health/metrics/qdrant in formato Prometheus
+#
+# Usage:
+#   docker run -d \
+#     -p 7979:7979 \
+#     -v $(pwd)/config/prometheus/json_exporter_config.yml:/config.yml \
+#     quay.io/prometheuscommunity/json-exporter:latest \
+#     --config.file=/config.yml
+
+modules:
+  qdrant_metrics:
+    http:
+      # URL del backend endpoint
+      url: http://host.docker.internal:8000/health/metrics/qdrant
+      headers:
+        Accept: application/json
+      # Timeout per la richiesta
+      timeout: 5s
+      # Cache per evitare troppe richieste
+      cache_ttl: 30s
+
+    metrics:
+      # Search calls counter
+      - name: qdrant_search_calls
+        type: gauge
+        path: $.metrics.search_calls
+        help: 'Total number of Qdrant search operations'
+        labels:
+          component: 'qdrant'
+          operation: 'search'
+
+      # Search average latency
+      - name: qdrant_search_avg_time_ms
+        type: gauge
+        path: $.metrics.search_avg_time_ms
+        help: 'Average Qdrant search latency in milliseconds'
+        labels:
+          component: 'qdrant'
+          operation: 'search'
+
+      # Search total time
+      - name: qdrant_search_total_time
+        type: gauge
+        path: $.metrics.search_total_time
+        help: 'Total time spent on Qdrant search operations in seconds'
+        labels:
+          component: 'qdrant'
+          operation: 'search'
+
+      # Upsert calls counter
+      - name: qdrant_upsert_calls
+        type: gauge
+        path: $.metrics.upsert_calls
+        help: 'Total number of Qdrant upsert operations'
+        labels:
+          component: 'qdrant'
+          operation: 'upsert'
+
+      # Upsert average latency
+      - name: qdrant_upsert_avg_time_ms
+        type: gauge
+        path: $.metrics.upsert_avg_time_ms
+        help: 'Average Qdrant upsert latency in milliseconds'
+        labels:
+          component: 'qdrant'
+          operation: 'upsert'
+
+      # Upsert total time
+      - name: qdrant_upsert_total_time
+        type: gauge
+        path: $.metrics.upsert_total_time
+        help: 'Total time spent on Qdrant upsert operations in seconds'
+        labels:
+          component: 'qdrant'
+          operation: 'upsert'
+
+      # Upsert documents total
+      - name: qdrant_upsert_documents_total
+        type: counter
+        path: $.metrics.upsert_documents_total
+        help: 'Total number of documents upserted to Qdrant'
+        labels:
+          component: 'qdrant'
+          operation: 'upsert'
+
+      # Upsert average docs per call
+      - name: qdrant_upsert_avg_docs_per_call
+        type: gauge
+        path: $.metrics.upsert_avg_docs_per_call
+        help: 'Average number of documents per upsert operation'
+        labels:
+          component: 'qdrant'
+          operation: 'upsert'
+
+      # Retry count
+      - name: qdrant_retry_count
+        type: counter
+        path: $.metrics.retry_count
+        help: 'Total number of retries for Qdrant operations'
+        labels:
+          component: 'qdrant'
+
+      # Error count
+      - name: qdrant_errors
+        type: counter
+        path: $.metrics.errors
+        help: 'Total number of Qdrant operation errors'
+        labels:
+          component: 'qdrant'
+
+      # Endpoint status
+      - name: qdrant_metrics_endpoint_status
+        type: gauge
+        path: $.status
+        help: 'Qdrant metrics endpoint status (1=ok, 0=error)'
+        value: '{{ if eq . "ok" }}1{{ else }}0{{ end }}'
+        labels:
+          component: 'qdrant'
+          endpoint: 'metrics'
+
+
+
+
+
+
+

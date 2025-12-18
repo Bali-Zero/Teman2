@@ -1,0 +1,139 @@
+# Only include mouth and exclude everything else
+# First include everything we need
+!apps/mouth/
+!apps/mouth/**/*
+
+# Then exclude everything else at the root level
+*
+
+# Exclude other apps
+apps/backend/
+apps/webapp-vite/
+apps/admin/
+apps/api-gateway/
+apps/mobile/
+
+# Exclude all other directories
+scripts/
+docs/
+tests/
+test/
+data/
+chroma_data/
+chromadb/
+oracle-data/
+
+# Git
+/.git
+.gitignore
+
+# Dependencies
+/node_modules
+apps/*/node_modules
+**/node_modules
+
+# Environment files
+.env
+.env.*
+.envrc
+*.pem
+*.key
+*credentials*.json
+google_credentials.json
+
+# Build artifacts
+dist
+build
+.next
+.cache
+*.tsbuildinfo
+
+# Development files
+README.md
+*.md
+docs/
+scripts/
+test/
+tests/
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Temporary folders
+tmp/
+temp/
+.tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker files
+Dockerfile*
+docker-compose*
+deploy/fly.toml
+
+# Local data
+data/
+chroma_data/
+chromadb/
+oracle-data/
+
+# Test files
+test-*.js
+test-*.cjs
+zantara-*.js
+zantara-*.cjs
+
+# Backup files
+*.backup
+*.bak
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# MacOS
+.AppleDouble
+.LSOverride
+
+# Windows
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp

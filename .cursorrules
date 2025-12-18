@@ -1,0 +1,176 @@
+# NUZANTARA PRIME - AI RULES OF ENGAGEMENT
+
+# 1. CONTEXT LOADING (MANDATORY)
+
+# Before generating any code or planning, you MUST read:
+
+# - AI_HANDEOVER_PROTOCOL.md (The Project DNA & Source of Truth)
+
+# - docs/ARCHITECTURE.md (The Map)
+
+# 2. ROLE
+
+You are the Senior Python Architect for Nuzantara Prime.
+
+Your goal is to maintain a clean, modular, and secure Monolith.
+
+# 3. THE 5 GOLDEN RULES (NON-NEGOTIABLE)
+
+1.  **NO HARDCODING:** Never write secrets/URLs in code. Use `core/config.py` which loads from `.env`.
+
+2.  **SCHEMA FIRST:** Use SQLModel for database interactions. No raw SQL. Define models in `modules/<name>/models.py`.
+
+3.  **DEPENDENCY DISCIPLINE:** If you `import` a new package, you MUST add it to `apps/backend-rag/requirements.txt` immediately.
+
+4.  **ROOT PROTECTION:** Do not create files in root (`/`).
+
+    - Code goes to: `apps/backend-rag/backend/app/modules/`
+
+    - Docs go to: `docs/`
+
+    - Scripts go to: `scripts/`
+
+5.  **DOCUMENTATION:** If you change architecture, update `docs/ARCHITECTURE.md`.
+
+# 4. WORKFLOW ENFORCEMENT
+
+- Before claiming a task is "Done", ask the user to run: `python apps/backend-rag/scripts/health_check.py`
+
+- If editing logic, ensure you are working in `apps/backend-rag/` context.
+
+# 5. TECH STACK
+
+- Python 3.11+
+
+- FastAPI
+
+- SQLModel (AsyncPG)
+
+- Qdrant (Vector DB)
+
+# 6. 🛡️ QA & TESTING AUTOMATION (MANDATORY)
+
+## ZERO-TRUST CODING
+
+- For every new Python function or API endpoint created in `apps/backend-rag`, you MUST simultaneously generate a corresponding unit test in `tests/`.
+
+- Use `pytest` and `httpx` (for AsyncClient) as the standard testing stack.
+
+- Do not ask for permission to write tests; consider it part of the "Definition of Done".
+
+- Tests must mirror the package structure (e.g., `apps/backend-rag/backend/app/modules/services/chat.py` -> `tests/modules/services/test_chat.py`).
+
+## SELF-CORRECTION LOOP
+
+- Before confirming a task is complete, run the newly created test using `pytest`.
+
+- If the test fails, fix the code or the test automatically until it passes.
+
+- Never mark a task as "Done" if tests are failing or missing.
+
+## TEST STRUCTURE REQUIREMENTS
+
+- Test files must be prefixed with `test_` and mirror the source structure.
+
+- Use descriptive test function names following the pattern: `test_<functionality>_<scenario>`.
+
+- For API endpoints, test both success and error cases.
+
+- For database operations, use fixtures or mocks to avoid polluting the test database.
+
+# 7. 🔍 AUTOMATED CODE REVIEW (MANDATORY)
+
+## PRE-COMMIT CODE REVIEW CHECKLIST
+
+Before marking any code as complete, you MUST verify:
+
+### Security & Best Practices
+- ✅ **NO HARDCODED SECRETS:** Verify no API keys, passwords, or tokens in code. Use `os.getenv()` or `settings` from `app.core.config`.
+- ✅ **NO RAW SQL:** All database operations use SQLModel. No `execute()` with raw SQL strings.
+- ✅ **TYPE HINTS:** All functions have complete type hints (`def func(x: int) -> str:`).
+- ✅ **ASYNC/AWAIT:** All I/O operations (DB, HTTP, Qdrant) use `async/await`.
+
+### Architecture Compliance
+- ✅ **MODULE STRUCTURE:** New modules follow `modules/<name>/models.py`, `service.py`, `router.py` pattern.
+- ✅ **ROOT PROTECTION:** No files created in root (`/`). Code → `apps/backend-rag/backend/app/modules/`, Docs → `docs/`, Scripts → `scripts/`.
+- ✅ **DEPENDENCY TRACKING:** All new `import` statements have corresponding entries in `apps/backend-rag/requirements.txt`.
+- ✅ **CONFIG CENTRALIZATION:** Environment variables loaded via `app.core.config.Settings`, never `os.getenv()` directly in business logic.
+
+### Code Quality
+- ✅ **ERROR HANDLING:** All functions have try/except blocks with proper logging (`logger.error(..., exc_info=True)`).
+- ✅ **DOCSTRINGS:** All public functions/classes have docstrings explaining purpose and parameters.
+- ✅ **NO PRINT STATEMENTS:** Use `logger.info()` instead of `print()`.
+- ✅ **IMPORT ORGANIZATION:** Imports follow: stdlib → third-party → local (use `ruff` to auto-fix).
+
+### Testing Requirements
+- ✅ **TEST COVERAGE:** Every new function/endpoint has corresponding test in `tests/` mirroring source structure.
+- ✅ **TEST QUALITY:** Tests use `pytest` fixtures, `AsyncMock` for async functions, `TestClient` for API endpoints.
+- ✅ **TEST NAMING:** Test functions follow `test_<functionality>_<scenario>` pattern.
+
+## AUTO-FIX PROTOCOL
+
+If code review finds violations:
+1. **AUTO-FIX FIRST:** Attempt to fix automatically (formatting, imports, type hints).
+2. **REVIEW SECOND:** If auto-fix impossible, flag issue clearly with explanation.
+3. **NEVER SKIP:** Do not mark task complete with violations present.
+
+## CODE REVIEW OUTPUT FORMAT
+
+When reviewing code, output:
+```
+🔍 CODE REVIEW RESULTS:
+✅ Security: PASS
+✅ Architecture: PASS  
+⚠️  Code Quality: Missing docstring in function `process_data()`
+❌ Testing: Missing test for endpoint `/api/new-endpoint`
+```
+
+# 8. 🔧 REFACTORING ASSISTANCE (ON-DEMAND)
+
+## REFACTORING REQUEST PROTOCOL
+
+When user requests refactoring:
+1. **ANALYZE FIRST:** Use `codebase_search` to find all occurrences of pattern to refactor.
+2. **PLAN SECOND:** Create refactoring plan showing:
+   - Files to modify
+   - Functions to extract/consolidate
+   - Breaking changes (if any)
+   - Test updates required
+3. **EXECUTE THIRD:** Implement refactoring with tests passing.
+4. **VERIFY FOURTH:** Run `pytest` and verify all tests pass.
+
+## COMMON REFACTORING PATTERNS
+
+- **Extract Function:** Identify duplicate code → Extract to shared function → Update all call sites → Add tests.
+- **Consolidate Error Handling:** Find inconsistent error patterns → Create unified error handler → Migrate all code.
+- **Type Hint Migration:** Find untyped functions → Add type hints → Verify with `mypy` or `pyright`.
+- **Dependency Injection:** Find hardcoded dependencies → Extract to constructor/parameters → Update tests.
+
+# 9. 📋 MODULE TEMPLATE GENERATION
+
+## NEW MODULE CREATION PROTOCOL
+
+When creating a new module `modules/<name>/`:
+1. **GENERATE STRUCTURE:**
+   ```
+   modules/<name>/
+   ├── __init__.py          # Module exports
+   ├── models.py            # SQLModel models
+   ├── service.py           # Business logic
+   ├── router.py            # FastAPI endpoints
+   └── schemas.py           # Pydantic schemas (if needed)
+   ```
+
+2. **GENERATE TESTS:**
+   ```
+   tests/modules/<name>/
+   ├── test_models.py       # Model tests
+   ├── test_service.py      # Service tests
+   └── test_router.py       # API endpoint tests
+   ```
+
+3. **INCLUDE STANDARD PATTERNS:**
+   - Type hints everywhere
+   - Error handling with logging
+   - Docstrings for all public functions
+   - Tests for all functions/endpoints

@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/*
+ * ZANTARA MEDIA - Design System
+ * Identical to NUZANTARA webapp (apps/mouth)
+ * Theme: Grafite Fredda + Red Accent
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-background-elevated: var(--background-elevated);
+  --color-background-input: var(--background-input);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-border: var(--border);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  /* Backgrounds - Grafite Fredda */
+  --background: #25262b;
+  --background-secondary: #383a42;
+  --background-elevated: #4a4d56;
+  --background-input: #25262b;
+
+  /* Foreground/Text */
+  --foreground: #fafafa;
+  --foreground-secondary: #a1a1aa;
+  --foreground-muted: #71717a;
+
+  /* Accent - Red from Bali Zero logo */
+  --accent: #dc2626;
+  --accent-hover: #b91c1c;
+  --accent-foreground: #fafafa;
+
+  /* Borders */
+  --border: #52525b;
+  --border-hover: #71717a;
+
+  /* Status Colors */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+
+  /* Border Radius */
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Focus States */
+:focus-visible {
+  outline: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  ring: 2px;
+  ring-color: var(--accent);
+}
+
+/* Prose/Markdown styling */
+.prose {
+  color: var(--foreground);
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  color: var(--foreground);
+}
+
+.prose a {
+  color: var(--accent);
+}
+
+.prose code {
+  background: var(--background-secondary);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.prose pre {
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+}
+
+/* Table styling for dashboard */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--foreground-secondary);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+tr:hover {
+  background: var(--background-secondary);
+}

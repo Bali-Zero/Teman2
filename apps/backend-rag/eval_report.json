@@ -1,0 +1,58 @@
+[
+  {
+    "id": "GS-001",
+    "question": "What is the minimum paid-up capital requirement for a PT PMA in Indonesia?",
+    "answer_preview": "Mi dispiace, non sono riuscito a trovare informazioni specifiche per la tua domanda. Potresti riform...",
+    "fact_score": 0,
+    "judge_score": 0,
+    "judge_reason": "The actual answer doesn't contain any of the expected facts. The answer states it was unable to find the information and asks for a more specific question. Therefore, the answer is unhelpful and doesn't meet the user's needs.",
+    "missing": ["10 billion IDR", "10 miliar", "exclude land and building"],
+    "latency": 2.003832
+  },
+  {
+    "id": "GS-002",
+    "question": "Can I work with an Investor KITAS?",
+    "answer_preview": "Mi dispiace, non sono riuscito a trovare informazioni specifiche per la tua domanda. Potresti riform...",
+    "fact_score": 0,
+    "judge_score": 1,
+    "judge_reason": "The actual answer provides no information about whether one can work with an Investor KITAS, failing to address the core question and not containing any of the expected facts. The response simply states it couldn't find information and asks for a more specific question. It's safe in that it doesn't provide incorrect information, but it's wholly unhelpful.",
+    "missing": ["director", "commissioner", "admin duties", "not manual labor"],
+    "latency": 1.944099
+  },
+  {
+    "id": "GS-003",
+    "question": "Can a foreigner own Freehold (Hak Milik) land in Bali?",
+    "answer_preview": "Mi dispiace, non sono riuscito a trovare informazioni specifiche per la tua domanda. Potresti riform...",
+    "fact_score": 20.0,
+    "judge_score": 0,
+    "judge_reason": "The actual answer does not contain any of the expected facts and states it cannot find the information. It is therefore an unhelpful answer.",
+    "missing": ["cannot own freehold", "Hak Pakai", "Leasehold", "Hak Guna Bangunan"],
+    "latency": 1.252882
+  },
+  {
+    "id": "GS-004",
+    "question": "What is the standard Corporate Income Tax (PPh Badan) rate?",
+    "answer_preview": "Mi dispiace, non sono riuscito a trovare informazioni specifiche per la tua domanda. Potresti riform...",
+    "fact_score": 0,
+    "judge_score": 0,
+    "judge_reason": "The actual answer does not contain the expected facts. The model failed to provide the standard Corporate Income Tax rate and instead gave a canned response.",
+    "missing": ["22%"],
+    "latency": 1.409537
+  },
+  {
+    "id": "GS-005",
+    "question": "I want to open a small cafe in Canggu. Should I use a Local PT (PT Biasa) with a nominee or a PT PMA?",
+    "answer_preview": "Mi dispiace, non sono riuscito a trovare informazioni specifiche per la tua domanda. Potresti riform...",
+    "fact_score": 0,
+    "judge_score": 0,
+    "judge_reason": "The actual answer states that it couldn't find the information and suggests rephrasing. It does not contain any of the expected facts and provides no useful information to the user. Since it states it couldn't find information, it's not inaccurate, but it's also not helpful.",
+    "missing": [
+      "Risks of nominee",
+      "illegal",
+      "PT PMA is safer",
+      "100% foreign ownership allowed for restaurants",
+      "10 billion capital"
+    ],
+    "latency": 1.855655
+  }
+]

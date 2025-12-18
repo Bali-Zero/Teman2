@@ -1,0 +1,284 @@
+{
+  "total_categories": 12,
+  "version": "1.0.0",
+  "last_updated": "2025-11-12",
+  "categories": {
+    "immigration": {
+      "id": 1,
+      "key": "immigration",
+      "name": "Immigration & Visa",
+      "type": "official",
+      "priority": "high",
+      "target_audience": ["expat", "investor"],
+      "sources": [
+        {
+          "name": "Imigrasi Indonesia",
+          "url": "https://www.imigrasi.go.id/",
+          "tier": "T1",
+          "selectors": ["div.content", "article", "div.news-item"]
+        },
+        {
+          "name": "Kemnaker RI",
+          "url": "https://kemnaker.go.id/",
+          "tier": "T1",
+          "selectors": ["article", "div.content"]
+        },
+        {
+          "name": "Jakarta Post - Visa News",
+          "url": "https://www.thejakartapost.com/search?q=visa",
+          "tier": "T2",
+          "selectors": ["article.post"]
+        },
+        {
+          "name": "Indonesia Expat",
+          "url": "https://indonesiaexpat.id/visa-immigration/",
+          "tier": "T2",
+          "selectors": ["article", "div.post"],
+          "use_browser": true
+        }
+      ]
+    },
+    "tax_bkpm": {
+      "id": 2,
+      "key": "tax_bkpm",
+      "name": "Tax & BKPM",
+      "type": "official",
+      "priority": "high",
+      "target_audience": ["business_owner", "investor"],
+      "sources": [
+        {
+          "name": "DJP (Tax Directorate)",
+          "url": "https://www.pajak.go.id/id/berita",
+          "tier": "T1",
+          "selectors": ["article", "div.news-item"]
+        },
+        {
+          "name": "BKPM",
+          "url": "https://www.bkpm.go.id/",
+          "tier": "T1",
+          "selectors": ["div.content", "article"]
+        },
+        {
+          "name": "Kemenkeu",
+          "url": "https://www.kemenkeu.go.id/informasi-publik/publikasi/berita-pajak",
+          "tier": "T1",
+          "selectors": ["div.content-item"]
+        }
+      ]
+    },
+    "property": {
+      "id": 3,
+      "key": "property",
+      "name": "Property & Real Estate",
+      "type": "market",
+      "priority": "medium",
+      "target_audience": ["investor", "expat"],
+      "sources": [
+        {
+          "name": "Rumah.com Bali",
+          "url": "https://www.rumah.com/berita-properti/bali",
+          "tier": "T2",
+          "selectors": ["article", "div.news-card"]
+        },
+        {
+          "name": "Lamudi Bali",
+          "url": "https://www.lamudi.co.id/bali/",
+          "tier": "T2",
+          "selectors": ["div.property-item"]
+        },
+        {
+          "name": "ATR/BPN",
+          "url": "https://www.atrbpn.go.id/Berita",
+          "tier": "T1",
+          "selectors": ["article", "div.news-item"]
+        }
+      ]
+    },
+    "business_regulations": {
+      "id": 4,
+      "key": "business_regulations",
+      "name": "Business Regulations",
+      "type": "official",
+      "priority": "high",
+      "target_audience": ["business_owner", "investor"],
+      "sources": [
+        {
+          "name": "OSS Indonesia",
+          "url": "https://oss.go.id/",
+          "tier": "T1",
+          "selectors": ["div.announcement", "article"]
+        },
+        {
+          "name": "KADIN",
+          "url": "https://kadin.id/",
+          "tier": "T2",
+          "selectors": ["article", "div.news"]
+        }
+      ]
+    },
+    "legal_updates": {
+      "id": 5,
+      "key": "legal_updates",
+      "name": "Legal Updates",
+      "type": "official",
+      "priority": "high",
+      "target_audience": ["business_owner", "professional"],
+      "sources": [
+        {
+          "name": "Hukumonline",
+          "url": "https://www.hukumonline.com/",
+          "tier": "T2",
+          "selectors": ["article"]
+        },
+        {
+          "name": "JDIH (Legal Database)",
+          "url": "https://peraturan.go.id/",
+          "tier": "T1",
+          "selectors": ["div.regulation-item"]
+        }
+      ]
+    },
+    "events": {
+      "id": 6,
+      "key": "events",
+      "name": "Events & Networking",
+      "type": "community",
+      "priority": "medium",
+      "target_audience": ["expat", "business_owner"],
+      "sources": [
+        {
+          "name": "Bali Advertiser Events",
+          "url": "https://baliadvertiser.biz/category/events/",
+          "tier": "T3",
+          "selectors": ["article", "div.event-card"]
+        },
+        {
+          "name": "Eventbrite Bali",
+          "url": "https://www.eventbrite.com/d/indonesia--bali/events/",
+          "tier": "T3",
+          "selectors": ["div.event-card"]
+        }
+      ]
+    },
+    "cost_of_living": {
+      "id": 7,
+      "key": "cost_of_living",
+      "name": "Cost of Living",
+      "type": "market",
+      "priority": "medium",
+      "target_audience": ["expat"],
+      "sources": [
+        {
+          "name": "BPS Bali",
+          "url": "https://bali.bps.go.id/",
+          "tier": "T1",
+          "selectors": ["div.news-item", "article"]
+        },
+        {
+          "name": "Numbeo Bali",
+          "url": "https://www.numbeo.com/cost-of-living/in/Bali",
+          "tier": "T3",
+          "selectors": ["div.data-item"]
+        }
+      ]
+    },
+    "healthcare": {
+      "id": 8,
+      "key": "healthcare",
+      "name": "Healthcare",
+      "type": "services",
+      "priority": "medium",
+      "target_audience": ["expat", "resident"],
+      "sources": [
+        {
+          "name": "Kemenkes RI",
+          "url": "https://www.kemkes.go.id/",
+          "tier": "T1",
+          "selectors": ["article", "div.news"]
+        },
+        {
+          "name": "BPJS Kesehatan",
+          "url": "https://www.bpjs-kesehatan.go.id/bpjs/",
+          "tier": "T1",
+          "selectors": ["div.news-item"]
+        }
+      ]
+    },
+    "education": {
+      "id": 9,
+      "key": "education",
+      "name": "Education",
+      "type": "services",
+      "priority": "low",
+      "target_audience": ["expat", "family"],
+      "sources": [
+        {
+          "name": "Kemdikbud",
+          "url": "https://www.kemdikbud.go.id/",
+          "tier": "T1",
+          "selectors": ["article", "div.news"]
+        }
+      ]
+    },
+    "transportation": {
+      "id": 10,
+      "key": "transportation",
+      "name": "Transportation & Infrastructure",
+      "type": "infrastructure",
+      "priority": "low",
+      "target_audience": ["resident", "expat"],
+      "sources": [
+        {
+          "name": "Ministry of Transportation",
+          "url": "http://dephub.go.id/",
+          "tier": "T1",
+          "selectors": ["article", "div.news"]
+        }
+      ]
+    },
+    "bali_news": {
+      "id": 11,
+      "key": "bali_news",
+      "name": "Local Bali News",
+      "type": "general",
+      "priority": "medium",
+      "target_audience": ["expat", "resident"],
+      "sources": [
+        {
+          "name": "Bali Post",
+          "url": "https://www.balipost.com/",
+          "tier": "T2",
+          "selectors": ["article", "div.news-item"]
+        },
+        {
+          "name": "Nusa Bali",
+          "url": "https://www.nusabali.com/",
+          "tier": "T2",
+          "selectors": ["article"]
+        },
+        {
+          "name": "Tribun Bali",
+          "url": "https://bali.tribunnews.com/",
+          "tier": "T2",
+          "selectors": ["article.txt__article"]
+        }
+      ]
+    },
+    "competitor_intel": {
+      "id": 12,
+      "key": "competitor_intel",
+      "name": "Competitor Intelligence",
+      "type": "market",
+      "priority": "medium",
+      "target_audience": ["business_owner"],
+      "sources": [
+        {
+          "name": "Crunchbase Indonesia",
+          "url": "https://www.crunchbase.com/hub/indonesia-companies",
+          "tier": "T3",
+          "selectors": ["div.company-card"]
+        }
+      ]
+    }
+  }
+}

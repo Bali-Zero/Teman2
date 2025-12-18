@@ -1,0 +1,100 @@
+# Exclude EVERYTHING except backend folder
+!backend/
+*.md
+!*.txt
+!requirements.txt
+!Dockerfile
+!fly.toml
+!.dockerignore
+# EXCLUDE .env files from Docker image (use Fly secrets instead)
+.env*
+backend/.env*
+
+# Git
+.git
+.gitignore
+
+# Documentation
+docs/
+README*
+
+# Dependencies
+node_modules/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+env/
+venv/
+.venv/
+.env.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+cache/
+.pytest_cache/
+
+# Development
+tests/
+.pytest_cache/
+coverage/
+.coverage
+.tox/
+
+# Data files
+*.db
+*.sqlite
+*.sqlite3
+
+# Exclude all other directories
+../mouth
+../memory-service
+../bali-intel-scraper
+../packages
+../scripts
+!README.md
+!*.json
+!*.yml
+!*.yaml
+
+# Secrets (never include in images)
+google_credentials.json
+*credentials*.json
+*.pem
+*.key
+
+# Exclude unnecessary files
+media/
+uploads/
+static/
+temp/
+
+# Exclude large file patterns
+**/*.pdf
+**/*.docx
+**/*.xlsx
+**/*.zip
+**/*.tar.gz
+**/*.jpg
+**/*.png
+**/*.gif
+**/*.mp4
+**/*.mov

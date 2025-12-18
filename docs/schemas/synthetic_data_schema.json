@@ -1,0 +1,47 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Synthetic QA Pair",
+    "type": "object",
+    "properties": {
+        "question": {
+            "type": "string",
+            "description": "The user's question."
+        },
+        "answer": {
+            "type": "string",
+            "description": "The ideal answer based on the legal text."
+        },
+        "context_used": {
+            "type": "string",
+            "description": "The specific legal text snippet used to generate this pair."
+        },
+        "persona": {
+            "type": "string",
+            "enum": [
+                "foreigner",
+                "lawyer",
+                "digital_nomad",
+                "business_owner"
+            ],
+            "description": "The persona simulated for the question."
+        },
+        "language": {
+            "type": "string",
+            "description": "Language code (e.g., 'en', 'id')."
+        },
+        "difficulty": {
+            "type": "string",
+            "enum": [
+                "easy",
+                "medium",
+                "hard"
+            ],
+            "description": "Complexity of the question."
+        }
+    },
+    "required": [
+        "question",
+        "answer",
+        "context_used"
+    ]
+}

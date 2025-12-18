@@ -1,0 +1,6 @@
+packages:
+  - 'apps/backend-rag'
+  - 'apps/bali-intel-scraper'
+  - 'apps/mouth'
+  - 'apps/zantara-media/*'
+  - 'packages/*'

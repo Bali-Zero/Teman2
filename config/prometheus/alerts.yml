@@ -1,0 +1,183 @@
+# Prometheus Alerting Rules per Nuzantara Qdrant Metrics
+#
+# Usage: Aggiungere questo file alla configurazione Prometheus:
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+# rule_files:
+#   - 'alerts.yml'
+
+groups:
+  - name: qdrant_operations
+    interval: 30s
+    rules:
+      # High Error Rate
+      - alert: HighQdrantErrorRate
+        expr: |
+          rate(qdrant_errors[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          component: qdrant
+        annotations:
+          summary: 'High Qdrant error rate detected'
+          description: 'Qdrant error rate is {{ $value | humanizePercentage }} over the last 5 minutes'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-high-error-rate'
+
+      # Critical Error Rate
+      - alert: CriticalQdrantErrorRate
+        expr: |
+          rate(qdrant_errors[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: qdrant
+        annotations:
+          summary: 'CRITICAL: Very high Qdrant error rate'
+          description: 'Qdrant error rate is {{ $value | humanizePercentage }} over the last 5 minutes - immediate action required'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-critical-error-rate'
+
+      # Slow Search Latency
+      - alert: SlowQdrantSearch
+        expr: |
+          qdrant_search_avg_time_ms > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: qdrant
+          operation: search
+        annotations:
+          summary: 'Qdrant search latency above threshold'
+          description: 'Average Qdrant search latency is {{ $value }}ms (threshold: 500ms)'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-slow-search'
+
+      # Critical Search Latency
+      - alert: CriticalQdrantSearchLatency
+        expr: |
+          qdrant_search_avg_time_ms > 1000
+        for: 2m
+        labels:
+          severity: critical
+          component: qdrant
+          operation: search
+        annotations:
+          summary: 'CRITICAL: Qdrant search latency very high'
+          description: 'Average Qdrant search latency is {{ $value }}ms (threshold: 1000ms) - immediate action required'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-critical-search-latency'
+
+      # Slow Upsert Latency
+      - alert: SlowQdrantUpsert
+        expr: |
+          qdrant_upsert_avg_time_ms > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: qdrant
+          operation: upsert
+        annotations:
+          summary: 'Qdrant upsert latency above threshold'
+          description: 'Average Qdrant upsert latency is {{ $value }}ms (threshold: 1000ms)'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-slow-upsert'
+
+      # Critical Upsert Latency
+      - alert: CriticalQdrantUpsertLatency
+        expr: |
+          qdrant_upsert_avg_time_ms > 2000
+        for: 2m
+        labels:
+          severity: critical
+          component: qdrant
+          operation: upsert
+        annotations:
+          summary: 'CRITICAL: Qdrant upsert latency very high'
+          description: 'Average Qdrant upsert latency is {{ $value }}ms (threshold: 2000ms) - immediate action required'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-critical-upsert-latency'
+
+      # High Retry Rate
+      - alert: HighQdrantRetryRate
+        expr: |
+          rate(qdrant_retry_count[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: qdrant
+        annotations:
+          summary: 'High Qdrant retry rate detected'
+          description: 'Qdrant retry rate is {{ $value | humanize }} retries/second over the last 5 minutes - possible network issues'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-high-retry-rate'
+
+      # Critical Retry Rate
+      - alert: CriticalQdrantRetryRate
+        expr: |
+          rate(qdrant_retry_count[5m]) > 0.2
+        for: 2m
+        labels:
+          severity: critical
+          component: qdrant
+        annotations:
+          summary: 'CRITICAL: Very high Qdrant retry rate'
+          description: 'Qdrant retry rate is {{ $value | humanize }} retries/second - possible Qdrant server issues'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-critical-retry-rate'
+
+      # No Search Activity
+      - alert: NoQdrantSearchActivity
+        expr: |
+          increase(qdrant_search_calls[15m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+          component: qdrant
+        annotations:
+          summary: 'No Qdrant search activity detected'
+          description: 'No search operations in the last 15 minutes - possible service degradation'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-no-activity'
+
+      # Low Upsert Throughput
+      - alert: LowQdrantUpsertThroughput
+        expr: |
+          rate(qdrant_upsert_documents_total[10m]) < 0.1
+        for: 10m
+        labels:
+          severity: info
+          component: qdrant
+        annotations:
+          summary: 'Low Qdrant upsert throughput'
+          description: 'Upsert throughput is {{ $value | humanize }} documents/second - may indicate ingestion issues'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-low-throughput'
+
+  - name: qdrant_availability
+    interval: 30s
+    rules:
+      # Metrics Endpoint Down
+      - alert: QdrantMetricsEndpointDown
+        expr: |
+          up{job="nuzantara-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: qdrant
+        annotations:
+          summary: 'Qdrant metrics endpoint is down'
+          description: 'Cannot scrape Qdrant metrics from backend - service may be unavailable'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-endpoint-down'
+
+      # Metrics Endpoint Slow Response
+      - alert: QdrantMetricsEndpointSlow
+        expr: |
+          http_request_duration_seconds{endpoint="/health/metrics/qdrant"} > 1
+        for: 2m
+        labels:
+          severity: warning
+          component: qdrant
+        annotations:
+          summary: 'Qdrant metrics endpoint slow to respond'
+          description: 'Metrics endpoint response time is {{ $value }}s (threshold: 1s)'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-endpoint-slow'
+
+
+
+
+
+
+

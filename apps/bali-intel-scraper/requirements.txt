@@ -1,0 +1,33 @@
+# BALI ZERO INTEL SCRAPER - Requirements
+# Ultra-economico: Llama 4 Scout + Gemini 2.0 Flash + Claude Haiku fallback
+
+# API Framework
+fastapi==0.115.7
+uvicorn[standard]==0.34.0
+httpx==0.28.1
+
+# Web Scraping
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+playwright==1.48.0
+
+# AI Models
+anthropic==0.42.0
+google-generativeai==0.3.2
+openai==1.57.4
+
+# Utilities
+loguru==0.7.2
+python-dotenv==1.0.0
+schedule==1.2.0
+python-dateutil==2.8.2
+tenacity==8.2.3
+fake-useragent==1.4.0
+pyyaml==6.0.1
+
+# Database (PostgreSQL)
+psycopg2-binary==2.9.9
+
+# Data processing
+pydantic==2.5.3

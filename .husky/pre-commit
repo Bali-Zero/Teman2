@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Run lint-staged for staged files
+npx lint-staged
+
+# Run typecheck on the mouth app if any .ts/.tsx files are staged
+if git diff --cached --name-only | grep -q "apps/mouth/.*\.tsx\?$"; then
+  echo "Running typecheck on mouth app..."
+  cd apps/mouth && npm run typecheck
+fi

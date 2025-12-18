@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+    ports:
+      - '5433:5432' # Use different port to avoid conflicts
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U test']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    tmpfs:
+      - /var/lib/postgresql/data # Use tmpfs for faster tests
+
+  qdrant-test:
+    image: qdrant/qdrant:latest
+    ports:
+      - '6334:6333' # Use different port to avoid conflicts
+      - '6335:6334'
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:6333/health']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - '6380:6379' # Use different port to avoid conflicts
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    tmpfs:
+      - /data # Use tmpfs for faster tests
+
+volumes:
+  qdrant_storage:

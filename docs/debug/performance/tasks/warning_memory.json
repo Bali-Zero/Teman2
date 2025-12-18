@@ -1,0 +1,36 @@
+{
+  "priority": "warning",
+  "area": "memory",
+  "score": 60,
+  "description": "Memory Services optimization - Cache hit rate, query optimization",
+  "scope": [
+    "apps/backend-rag/backend/services/memory_service_postgres.py",
+    "apps/backend-rag/backend/services/collective_memory_service.py",
+    "apps/backend-rag/backend/services/semantic_cache.py"
+  ],
+  "metrics_to_collect": [
+    "cache_hit_rate",
+    "memory_query_time",
+    "cache_size",
+    "cache_eviction_rate",
+    "memory_fact_retrieval_time"
+  ],
+  "key_issues": [
+    "Cache hit rate analysis",
+    "PostgreSQL query optimization",
+    "Cache strategy improvements"
+  ],
+  "tasks": [
+    "Analyze cache hit rates and patterns",
+    "Optimize PostgreSQL queries for memory retrieval",
+    "Improve cache TTL and eviction strategies",
+    "Implement cache warming for frequently accessed data",
+    "Add cache metrics monitoring"
+  ],
+  "expected_output": "docs/debug/performance/memory_report.md",
+  "success_criteria": [
+    "Cache hit rate improved to 70%+",
+    "Memory query time reduced by 25%+",
+    "Cache strategy optimized"
+  ]
+}

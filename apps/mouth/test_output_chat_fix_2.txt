@@ -1,0 +1,43 @@
+[WebServer]  [33m[1m⚠[22m[39m Warning: Next.js inferred your workspace root, but it may not be correct.
+[WebServer]  We detected multiple lockfiles and selected the directory of /Users/antonellosiano/pnpm-lock.yaml as the root directory.
+[WebServer]  To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+[WebServer]    See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+[WebServer]  Detected additional lockfiles: 
+[WebServer]    * /Users/antonellosiano/Desktop/nuzantara/package-lock.json
+[WebServer] 
+[WebServer]  [33m[1m⚠[22m[39m metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+
+Running 4 tests using 4 workers
+
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[WebServer]  [33m[1m⚠[22m[39m Unsupported metadata viewport is configured in metadata export in /chat. Please move it to viewport export instead.
+[WebServer] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+Image generation API called!
+Welcome screen is NOT visible.
+Found 2 message bubbles.
+Image generation API called!
+Welcome screen is NOT visible.
+Found 2 message bubbles.
+[WebServer]  [31m[1m⨯[22m[39m The requested resource "https://placehold.co/600x400" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+Image generation API called!
+[WebServer]  [31m[1m⨯[22m[39m The requested resource "https://placehold.co/600x400" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+Welcome screen is NOT visible.
+Found 2 message bubbles.
+[WebServer]  [31m[1m⨯[22m[39m The requested resource "https://placehold.co/600x400" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+  ✓  4 [Mobile Chrome] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (24.6s)
+  ✓  1 [chromium] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (25.1s)
+Image generation API called!
+Welcome screen is NOT visible.
+Found 2 message bubbles.
+[WebServer]  [31m[1m⨯[22m[39m The requested resource "https://placehold.co/600x400" has type "image/svg+xml" but dangerouslyAllowSVG is disabled. Consider adding the "unoptimized" property to the <Image>.
+  ✓  2 [firefox] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (20.2s)
+  ✓  3 [webkit] › e2e/chat/chat.spec.ts:56:7 › Chat Flow › should generate image (27.5s)
+
+  4 passed (46.3s)

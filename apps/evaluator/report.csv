@@ -1,0 +1,111 @@
+user_input,retrieved_contexts,response,faithfulness,answer_relevancy
+Apa itu KITAS dan bagaimana cara mendapatkannya?,"['**Step 5: Receive KITAS**\n- Validity: 1 year or 2 years\n- Renewable annually\n\n#### Extension\n\n- Apply 30 days before expiry\n- Provide updated lease, helper contract, financial proof, BPJS proof\n- **SE IMI-417**: In-person photo + interview mandatory (since May 29, 2025)\n- Fee: IDR 3,500,000 - 5,000,000\n- Processing: 7-14 days\n\n#### Work Restrictions', '**Step 7: Receive KITAS**\n- Validity: 1 year (renewable)\n\n### 5.4 Extension\n\n**Annual Extension**:\n- Apply 30 days before expiry\n- Required documents:\n  - Current KITAS\n  - Updated enrollment letter (proof still enrolled)\n  - Academic transcript (showing progress)\n  - Sponsor guarantee (renewed by institution)\n  - BPJS payment proof\n- **SE IMI-417**: In-person photo + interview (since May 29, 2025)\n- Fee: IDR 1,000,000 - 1,500,000\n- Processing: 7-14 days', '↓\nStep 6: Convert to KITAS in Indonesia\n         - RPTKA + NIB documents required\n         ↓\nStep 7: Apply for IMTA (work permit notification)\n         - Issued automatically after KITAS approval\n```', '**Step 5: Convert to KITAS**\n- Within 7 days of arrival, apply for KITAS at local immigration office\n- Required documents:\n  - VITAS passport\n  - Sponsor guarantee letter\n  - All original supporting documents (marriage cert, birth cert, etc.)\n  - BPJS registration proof (if KITAS > 6 months)\n  - Address registration (landlord letter, rental contract)\n\n**Processing Time**: 3-5 business days\n**KITAS Fee**: IDR 3,500,000 - 5,000,000 depending on duration', ""### Family KITAS\n- **Sponsor**: Indonesian spouse (citizen)\n- **Validity**: 1-2 years (renewable)\n- **Can work**: NO (CANNOT work in Indonesia)\n- **Cost**: USD 500-1,000 (initial) + USD 400/year (renewals)\n- **Timeline**: 3-6 weeks\n- **Requirements**: Marriage certificate (legalized), spouse's KTP, proof of relationship""]","Based on the provided documents, here is an explanation of KITAS and how to obtain it:
+
+### What is KITAS?
+
+KITAS, or Kartu Izin Tinggal Terbatas (Temporary Stay Permit Card), is a permit that allows foreign nationals to reside in Indonesia for a specific period. It is typically issued for various purposes, including work, family reunification, or study.
+
+Key characteristics of KITAS include:
+*   **Validity**: KITAS can be valid for 1 year or 2 years, and is generally renewable annually (Document 1, Document 2, Document 5).
+*   **Sponsorship**: Obtaining a KITAS requires a sponsor, which can be an employer, an educational institution, or an Indonesian spouse (Document 2, Document 4, Document 5).
+*   **Work Eligibility**:
+    *   For work-related KITAS, an IMTA (work permit notification) is issued automatically after KITAS approval (Document 3).
+    *   A Family KITAS, sponsored by an Indonesian spouse, explicitly states that the holder **CANNOT** work in Indonesia (Document 5).
+
+### How to Obtain a KITAS
+
+The process of obtaining a KITAS involves an initial application, often as a conversion from a VITAS (Visa Izin Tinggal Terbatas), and subsequent extensions.
+
+#### 1. Initial Application (Conversion from VITAS)
+
+Foreign nationals typically apply for a KITAS at the local immigration office within 7 days of their arrival in Indonesia, after entering with a VITAS (Document 4).
+
+**Required Documents (General):**
+*   VITAS passport (Document 4)
+*   Sponsor guarantee letter (Document 4)
+*   All original supporting documents (e.g., marriage certificate, birth certificate, etc.) (Document 4)
+*   BPJS registration proof (if KITAS validity is more than 6 months) (Document 4)
+*   Address registration (e.g., landlord letter, rental contract) (Document 4)
+*   For work-related KITAS, RPTKA (Rencana Penggunaan Tenaga Kerja Asing) and NIB (Nomor Induk Berusaha) documents are also required (Document 3).
+
+**Fees and Processing Time:**
+*   **Fee**: IDR 3,500,000 - 5,000,000, depending on the duration (Document 4).
+*   **Processing Time**: 3-5 business days (Document 4).
+
+**Specifics for Family KITAS:**
+*   **Sponsor**: Indonesian spouse (citizen) (Document 5).
+*   **Validity**: 1-2 years, renewable (Document 5).
+*   **Cost**: USD 500-1,000 for the initial application (Document 5).
+*   **Timeline**: 3-6 weeks (Document 5).
+*   **Requirements**: Legalized marriage certificate, spouse's KTP (Indonesian ID card), and proof of relationship (Document 5).
+
+#### 2. KITAS Extension
+
+KITAS holders must apply for an extension before their current permit expires.
+
+**Application Timeline:**
+*   Apply 30 days before the expiry date of the current KITAS (Document 1, Document 2",0.8947368421052632,0.8515423913009891
+Bagaimana proses registrasi BPJS Kesehatan untuk expat?,"['**BPJS Kesehatan Registration**:\n\n**Step 1: Location**\n- Register at BPJS office in your city/province\n- Bali Example: BPJS office in Denpasar (opposite Immigration Office)\n- **Cannot use agents** - must register in person\n\n**Step 2: Required Documents**\n- Valid KITAS (minimum 6 months validity remaining)\n- Passport\n- NPWP (tax number) - if available\n- Proof of address in Indonesia (rental contract, utility bill)\n- Sponsor letter (from employer or guarantor)', '#### B. BPJS Ketenagakerjaan (Employment/Labor Insurance)\n- **Required For**: Foreign workers on C312 work visa KITAS\n- **Mandatory Components**:\n  - JKK (Work Accident Insurance)\n  - JKM (Death Insurance)\n  - JHT (Old Age Savings)\n  - JP (Pension Program)\n- **Employer Obligation**: Company must register and pay contributions\n\n### 2.4 Registration Process\n\n**BPJS Kesehatan Registration**:', '### 2.3 BPJS Types for Foreigners\n\n#### A. BPJS Kesehatan (Health Insurance)\n- **Required For**: All KITAS holders and their dependents\n- **Cost**: IDR 150,000/month for most expensive tier (as of 2025)\n- **Coverage**: Public hospitals (puskesmas, RSUD), tiered care system\n- **Individual Registration**: Each person registers individually', ""### 2.1 BPJS Overview\n\n**BPJS Kesehatan** (Badan Penyelenggara Jaminan Sosial Kesehatan)\n- Indonesia's national health insurance program\n- **MANDATORY** for all Indonesian residents (including foreigners) living 6+ months\n- **Enforcement**: Cannot extend KITAS without proof of BPJS payment compliance\n\n### 2.2 Eligibility Requirements"", 'ISSUE: BPJS rejected my registration\nSOLUTION:\n- BPJS registration must be done AFTER KITAS is issued (not before)\n- Company must register you via BPJS Ketenagakerjaan portal\n- If rejected: Check NIB, NPWP are active\n\n================================================================================\n11. FREQUENTLY ASKED QUESTIONS\n==========\n\nou via BPJS Ketenagakerjaan portal\n- If rejected: Check NIB, NPWP are active']","The registration process for BPJS Kesehatan for expatriates in Indonesia involves several key steps and requirements.
+
+**1. Mandatory Requirement**
+BPJS Kesehatan is mandatory for all foreign residents (including KITAS holders and their dependents) who reside in Indonesia for 6 months or longer. Proof of BPJS payment compliance is required for KITAS extension.
+*   *Source: Document 3 (A. BPJS Kesehatan), Document 4 (2.1 BPJS Overview)*
+
+**2. Registration Timing**
+Registration for BPJS Kesehatan must be completed *after* your KITAS has been issued.
+*   *Source: Document 5 (ISSUE: BPJS rejected my registration)*
+
+**3. Registration Location and Method**
+*   **Location**: You must register in person at a BPJS office in your city or province. For example, in Bali, this would be the BPJS office in Denpasar.
+*   **Method**: Registration must be done individually and in person; the use of agents is not permitted.
+*   *Source: Document 1 (Step 1: Location), Document 3 (Individual Registration)*
+
+**4. Required Documents**
+When registering, you will need to provide the following documents:
+*   Valid KITAS with a minimum of 6 months remaining validity.
+*   Passport.
+*   NPWP (Nomor Pokok Wajib Pajak / Tax Number), if available.
+*   Proof of address in Indonesia (e.g., a rental contract or utility bill).
+*   A sponsor letter from your employer or guarantor.
+*   *Source: Document 1 (Step 2: Required Documents)*
+
+**5. Cost**
+As of 2025, the cost for the most expensive tier of BPJS Kesehatan is IDR 150,000 per month.
+*   *Source: Document 3 (Cost)*
+
+**Important Clarification:**
+While Document 5 mentions that a company must register you via the BPJS Ketenagakerjaan portal, this typically refers to BPJS Ketenagakerjaan (Employment/Labor Insurance), which is a separate program. For BPJS Kesehatan (Health Insurance), the process outlined in Document 1 and 3 emphasizes individual, in-person registration.",0.8387096774193549,0.9103701273259949
+Apa persyaratan untuk mendirikan PT PMA di Indonesia?,"['========================== BUSINESS & LEGAL SERVICES ===========================\n\n22. SET UP COMPANY (PT PMA)\n    Description: Complete service for setting up a company in Indonesia. Includes \n    choosing the right business entity, meeting eligibility criteria, PT PMA \n    registration, obtaining business permits and licenses.\n    \n    PUBLIC PRICE: Starting from 20,000,000 IDR', '""ptpmaMinInvestment"": 10000000000,\n        ""ptpmaMinInvestmentFormatted"": ""IDR 10B (USD 650K) minimum PT PMA paid-up capital"",\n        ""shareholding"": ""No minimum shareholding % required"",\n        ""positionRequired"": ""Director, Commissioner, or Shareholder""\n      },\n      ""process"": {\n        ""step1"": ""Establish PT PMA with minimum IDR 10B paid-up capital"",\n        ""step2"": ""PT PMA sponsors investor for KITAS (as Director/Commissioner/Shareholder)"",', '3.2 COMPANY REQUIREMENTS\n=========================\n□ PT PMA registered with BKPM (Investment Coordinating Board)\n□ NIB (Nomor Induk Berusaha) - Business Identification Number active\n□ OSS approval showing foreign investment\n□ Akta Pendirian (Deed of Establishment) with capital structure\n□ SK Kemenkumham (Ministry of Law approval)\n□ NPWP Perusahaan (Company Tax ID)\n□ Office address (leas', 'ALLOWED:\n✅ Manage your PT PMA (Board of Directors, Commissioner role)\n✅ Conduct business activities related to investment\n✅ Receive salary/dividends from PT PMA\n✅ Travel in/out Indonesia freely (multiple entry)\n✅ Bring family (E31B Dependent KITAS)\n✅ Own property (through PT PMA or personal - see real estate guide)\n✅ Open Indonesian bank account (easier approval than E23)', '3.3 SPONSOR COMPANY REQUIREMENTS\n=================================\n□ PT or PT PMA registered in Indonesia\n□ Operational business (not shell company)\n□ Minimum Indonesian employees: 10 locals per 1 foreigner (ratio requirement)\n□ Financial capability (min 3x UMK salary for foreign employee)\n□ Office lease/ownership proof']","To establish a PT PMA (Perseroan Terbatas Penanaman Modal Asing - Foreign Investment Limited Liability Company) in Indonesia, the following key requirements must be met:
+
+### I. Capital Requirements
+
+*   **Minimum Paid-Up Capital:** A minimum paid-up capital of IDR 10 Billion (approximately USD 650K) is required for establishing a PT PMA.
+    *   *Citation:* Document 2 (""ptpmaMinInvestment"": 10000000000, ""ptpmaMinInvestmentFormatted"": ""IDR 10B (USD 650K) minimum PT PMA paid-up capital"", ""process"": {""step1"": ""Establish PT PMA with minimum IDR 10B paid-up capital""})
+
+### II. Legal and Registration Requirements
+
+The PT PMA must complete several registration and approval processes:
+
+*   **BKPM Registration:** The company must be registered with BKPM (Investment Coordinating Board).
+    *   *Citation:* Document 3 (""PT PMA registered with BKPM (Investment Coordinating Board)"")
+*   **NIB (Nomor Induk Berusaha):** An active Business Identification Number (NIB) is mandatory.
+    *   *Citation:* Document 3 (""NIB (Nomor Induk Berusaha) - Business Identification Number active"")
+*   **OSS Approval:** Approval from the Online Single Submission (OSS) system, explicitly showing foreign investment, is required.
+    *   *Citation:* Document 3 (""OSS approval showing foreign investment"")
+*   **Akta Pendirian:** A Deed of Establishment (Akta Pendirian) outlining the company's capital structure must be in place.
+    *   *Citation:* Document 3 (""Akta Pendirian (Deed of Establishment) with capital structure"")
+*   **SK Kemenkumham:** Approval from the Ministry of Law and Human Rights (SK Kemenkumham) is necessary.
+    *   *Citation:* Document 3 (""SK Kemenkumham (Ministry of Law approval)"")
+*   **NPWP Perusahaan:** The company must obtain a Company Tax ID (NPWP Perusahaan).
+    *   *Citation:* Document 3 (""NPWP Perusahaan (Company Tax ID)"")
+
+### III. Operational and Personnel Requirements
+
+*   **Office Address:** The PT PMA must have an office address (leased or owned).
+    *   *Citation:* Document 3 (""Office address (leas..."")
+*   **Key Positions:** The company requires individuals to fill positions such as Director, Commissioner, or Shareholder.
+    *   *Citation:* Document 2 (""positionRequired"": ""Director, Commissioner, or Shareholder"")
+*   **Shareholding:** There is no minimum shareholding percentage required for a PT PMA.
+    *   *Citation:* Document 2 (""shareholding"": ""No minimum shareholding % required"")
+
+These requirements ensure that the PT PMA is properly registered and compliant with Indonesian investment regulations, allowing it to conduct business activities related to its investment.",0.8484848484848485,0.8598526016802809

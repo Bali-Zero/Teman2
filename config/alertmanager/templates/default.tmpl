@@ -1,0 +1,49 @@
+{{ define "__subject" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "__description" }}
+{{ range .Alerts }}
+**Alert:** {{ .Annotations.summary }}
+**Description:** {{ .Annotations.description }}
+**Severity:** {{ .Labels.severity }}
+**Component:** {{ .Labels.component }}
+{{ if .Labels.operation }}**Operation:** {{ .Labels.operation }}{{ end }}
+**Runbook:** {{ .Annotations.runbook_url }}
+
+{{ end }}
+{{ end }}
+
+{{ define "email.default.html" }}
+{{ template "__subject" . }}
+{{ template "__description" . }}
+{{ end }}
+
+{{ define "slack.default.text" }}
+{{ range .Alerts }}
+*Alert:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+*Severity:* {{ .Labels.severity }}
+*Component:* {{ .Labels.component }}
+{{ if .Labels.operation }}*Operation:* {{ .Labels.operation }}{{ end }}
+*Runbook:* {{ .Annotations.runbook_url }}
+{{ end }}
+{{ end }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

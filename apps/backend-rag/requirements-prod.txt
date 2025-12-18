@@ -1,0 +1,75 @@
+# ZANTARA RAG Backend - PRODUCTION DEPENDENCIES (Optimized for <8GB)
+# Removes heavy ML packages that aren't used in production (OpenAI API for embeddings)
+# Last updated: 2025-12-04
+
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+python-multipart==0.0.6
+
+# Vector Database
+qdrant-client>=1.12.0
+
+# AI API Clients (lightweight - no local models)
+openai>=1.0.0,<2.0.0
+anthropic==0.7.8
+google-generativeai>=0.5.0
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-auth-httplib2>=0.1.1
+google-cloud-storage>=2.10.0
+langchain>=0.1.0
+langchain-core>=0.1.0
+langgraph>=0.0.1
+
+# Document Processing (lightweight)
+openpyxl==3.1.2
+email-validator==2.1.0
+pypdf==3.17.1
+PyPDF2==3.0.1
+beautifulsoup4==4.12.2
+pdfplumber>=0.11.0
+pdfminer.six>=20251107
+ebooklib>=0.18
+python-docx>=1.1.0
+
+# HTTP/Network
+httpx==0.27.2
+requests==2.31.0
+aiohttp>=3.10.0
+urllib3>=2.0.0
+
+# Authentication
+python-jose[cryptography]==3.3.0
+bcrypt==4.0.1
+passlib[bcrypt]==1.7.4
+
+# Database
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+redis==5.0.1
+sqlmodel==0.0.14
+
+# Utilities
+python-dotenv==1.0.0
+loguru==0.7.2
+pytz>=2024.2
+packaging>=23.2,<25
+
+# Observability
+prometheus-fastapi-instrumentator>=6.1.0
+
+# XML/HTML Processing
+lxml>=5.3.0
+
+# REMOVED FOR SIZE OPTIMIZATION:
+# - sentence-transformers (2GB+ with PyTorch) - using OpenAI API embeddings
+# - playwright (500MB+ with browsers) - not needed for API
+# - datasets (large with PyTorch dependencies)
+# - EbookLib (rarely used)
+# - fake-useragent (not needed)
+# - pre-commit, ruff, pytest (dev tools)
+# - pandas (large, optional for this app)

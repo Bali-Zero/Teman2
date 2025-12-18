@@ -1,0 +1,129 @@
+{
+  "dashboard": {
+    "title": "Nuzantara RAG Performance Dashboard",
+    "tags": ["rag", "performance", "slo"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "RAG Query Latency (P50, P95, P99)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(rag_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(rag_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(rag_query_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Latency"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "RAG Query Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(rag_queries_total[5m])",
+            "legendFormat": "{{collection}} - {{route_used}} - {{status}}"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Queries/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Cache Hit Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(rag_cache_hits_total[5m]) / (rate(rag_cache_hits_total[5m]) + rate(rag_cache_misses_total[5m]))",
+            "legendFormat": "{{collection}}"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "percentunit",
+            "label": "Hit Rate"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Tool Call Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(rag_tool_calls_total[5m])",
+            "legendFormat": "{{tool_name}} - {{status}}"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Calls/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Fallback Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(rag_fallback_count_total[5m])",
+            "legendFormat": "{{from_model}} -> {{to_model}}"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Fallbacks/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "Context Length Distribution",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(rag_context_length_tokens_bucket[5m]))",
+            "legendFormat": "P95 - {{collection}}"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "short",
+            "label": "Tokens"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,173 @@
+{
+  "dashboard": {
+    "title": "Nuzantara Qdrant Health Dashboard",
+    "tags": ["qdrant", "vector-db", "health"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Qdrant Collections Count",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qdrant_collections_total",
+            "legendFormat": "Collections"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 10, "color": "yellow"},
+                {"value": 20, "color": "red"}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Qdrant Total Documents",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "qdrant_documents_total",
+            "legendFormat": "Documents"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "green"},
+                {"value": 1000000, "color": "yellow"},
+                {"value": 5000000, "color": "red"}
+              ]
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Qdrant Search Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "qdrant_search_latency_ms",
+            "legendFormat": "Search Latency"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency (ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Qdrant Upsert Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "qdrant_upsert_latency_ms",
+            "legendFormat": "Upsert Latency"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "ms",
+            "label": "Latency (ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Qdrant Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(qdrant_errors_total[5m])",
+            "legendFormat": "Errors/sec"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Errors/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 6,
+        "title": "Qdrant Search Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(qdrant_search_operations_total[5m])",
+            "legendFormat": "Searches/sec"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Operations/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Qdrant Upsert Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(qdrant_upsert_operations_total[5m])",
+            "legendFormat": "Upserts/sec"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Operations/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 8,
+        "title": "Qdrant Retry Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(qdrant_retry_count_total[5m])",
+            "legendFormat": "Retries/sec"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "reqps",
+            "label": "Retries/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      }
+    ]
+  }
+}
+

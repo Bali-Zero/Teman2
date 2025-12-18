@@ -1,0 +1,40 @@
+{
+  "priority": "critical",
+  "area": "llm_api",
+  "score": 85,
+  "description": "LLM API calls optimization - External API calls, rate limiting, timeouts",
+  "scope": [
+    "apps/backend-rag/backend/services/intelligent_router.py",
+    "apps/backend-rag/backend/services/rag/agentic/llm_gateway.py",
+    "apps/backend-rag/backend/llm/zantara_ai_client.py"
+  ],
+  "metrics_to_collect": [
+    "api_call_latency",
+    "rate_limit_hits",
+    "timeout_rate",
+    "retry_count",
+    "async_vs_sync_ratio",
+    "batch_processing_efficiency"
+  ],
+  "key_issues": [
+    "Chiamate sincrone vs async",
+    "Rate limiting e retry logic",
+    "Timeout configuration",
+    "No batch processing"
+  ],
+  "tasks": [
+    "Convert synchronous calls to async batch processing",
+    "Implement circuit breaker pattern",
+    "Optimize retry logic with exponential backoff",
+    "Add request batching for multiple LLM calls",
+    "Monitor and tune timeout configurations",
+    "Implement request queuing for rate limit handling"
+  ],
+  "expected_output": "docs/debug/performance/llm_api_report.md",
+  "success_criteria": [
+    "All blocking calls converted to async",
+    "Circuit breaker implemented",
+    "API latency reduced by 20%+",
+    "Rate limit errors reduced by 50%+"
+  ]
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "id": "test_user_1",
+    "name": "Test User 1",
+    "email": "test1@example.com",
+    "role": "Developer",
+    "department": "engineering",
+    "team": "backend",
+    "age": 30,
+    "religion": "N/A",
+    "languages": ["en"],
+    "preferred_language": "en",
+    "expertise_level": "intermediate",
+    "pin": "123456",
+    "traits": ["collaborative", "technical"],
+    "notes": "Test user for CI/CD",
+    "location": "Remote",
+    "emotional_preferences": {
+      "tone": "professional",
+      "formality": "medium",
+      "humor": "light"
+    }
+  },
+  {
+    "id": "test_user_2",
+    "name": "Test User 2",
+    "email": "test2@example.com",
+    "role": "Manager",
+    "department": "management",
+    "team": "management",
+    "age": 35,
+    "religion": "N/A",
+    "languages": ["en"],
+    "preferred_language": "en",
+    "expertise_level": "expert",
+    "pin": "654321",
+    "traits": ["leadership", "strategic"],
+    "notes": "Test manager for CI/CD",
+    "location": "Remote",
+    "emotional_preferences": {
+      "tone": "authoritative",
+      "formality": "high",
+      "humor": "minimal"
+    }
+  }
+]

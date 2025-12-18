@@ -1,0 +1,48 @@
+[
+  {
+    "id": "GS-001",
+    "category": "Company Setup",
+    "question": "What is the minimum paid-up capital requirement for a PT PMA in Indonesia?",
+    "expected_facts": ["10 billion IDR", "10 miliar", "exclude land and building"],
+    "forbidden_facts": ["2.5 billion", "1 billion"],
+    "complexity": "simple"
+  },
+  {
+    "id": "GS-002",
+    "category": "Visa",
+    "question": "Can I work with an Investor KITAS?",
+    "expected_facts": ["director", "commissioner", "admin duties", "not manual labor"],
+    "forbidden_facts": ["full employment", "any job"],
+    "complexity": "medium"
+  },
+  {
+    "id": "GS-003",
+    "category": "Property",
+    "question": "Can a foreigner own Freehold (Hak Milik) land in Bali?",
+    "expected_facts": ["No", "cannot own freehold", "Hak Pakai", "Leasehold", "Hak Guna Bangunan"],
+    "forbidden_facts": ["Yes", "can own freehold"],
+    "complexity": "simple"
+  },
+  {
+    "id": "GS-004",
+    "category": "Tax",
+    "question": "What is the standard Corporate Income Tax (PPh Badan) rate?",
+    "expected_facts": ["22%"],
+    "forbidden_facts": ["25%", "10%"],
+    "complexity": "simple"
+  },
+  {
+    "id": "GS-005",
+    "category": "Strategy",
+    "question": "I want to open a small cafe in Canggu. Should I use a Local PT (PT Biasa) with a nominee or a PT PMA?",
+    "expected_facts": [
+      "Risks of nominee",
+      "illegal",
+      "PT PMA is safer",
+      "100% foreign ownership allowed for restaurants",
+      "10 billion capital"
+    ],
+    "forbidden_facts": ["Nominee is safe", "Local PT is better"],
+    "complexity": "deep_think"
+  }
+]

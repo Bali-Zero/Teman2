@@ -1,0 +1,4792 @@
+{
+  "analysis_date": "2025-12-02T03:46:47.826849",
+  "collections": {
+    "bali_zero_pricing": {
+      "stats": {
+        "collection_name": "bali_zero_pricing",
+        "total_documents": 29,
+        "vector_size": 1536,
+        "distance": "Cosine",
+        "status": "green"
+      },
+      "metadata_analysis": {
+        "unique_fields": [],
+        "field_analysis": {},
+        "total_fields": 0
+      },
+      "quality_issues": [
+        {
+          "type": "missing_metadata",
+          "index": 0,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 1,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 2,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 3,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 4,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 5,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 6,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 7,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 8,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 9,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 10,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 11,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 12,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 13,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 14,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 15,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 16,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 17,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 18,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 19,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 20,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 21,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 22,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 23,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 24,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 25,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 26,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 27,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 28,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        }
+      ],
+      "chunk_stats": {
+        "count": 29,
+        "avg_length": 363.9310344827586,
+        "min_length": 70,
+        "max_length": 493,
+        "median_length": 387
+      },
+      "examples": [
+        {
+          "id": "247198967862531803",
+          "text_preview": "3. C7 VISA \n   Description: Single entry visa designed for professionals like chefs, yoga \n   instructors, bartenders, and photographers who are invited to take part in \n   events throughout Indonesia...",
+          "text_length": 326,
+          "metadata": {}
+        },
+        {
+          "id": "2287464467650654983",
+          "text_preview": "8. D1 VISA\n   Description: The ideal choice to attend as a participant at meetings, incentives, \n   conventions, and exhibitions. Also for conducting activities related to tourism \n   and visiting fri...",
+          "text_length": 454,
+          "metadata": {}
+        },
+        {
+          "id": "2611252800808268538",
+          "text_preview": "16. SPOUSE KITAS (E31A)\n    Description: The Spouse KITAS is available for foreign citizens who are married \n    to Indonesian citizens. You are allowed to stay for 1/2 years and get multiple \n    ent...",
+          "text_length": 476,
+          "metadata": {}
+        }
+      ],
+      "sample_size": 29
+    },
+    "bali_zero_team": {
+      "error": "unhashable type: 'dict'"
+    },
+    "visa_oracle": {
+      "stats": {
+        "collection_name": "visa_oracle",
+        "total_documents": 1612,
+        "vector_size": 1536,
+        "distance": "Cosine",
+        "status": "green"
+      },
+      "metadata_analysis": {
+        "unique_fields": [],
+        "field_analysis": {},
+        "total_fields": 0
+      },
+      "quality_issues": [
+        {
+          "type": "missing_metadata",
+          "index": 0,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 1,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 2,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 3,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 4,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 5,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 6,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 7,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 8,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 9,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 10,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 11,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 12,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 13,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 14,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 15,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 16,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 17,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 18,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 19,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 20,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 21,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 22,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 23,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 24,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 25,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 26,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 27,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 28,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 29,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 30,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 31,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 32,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 33,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 34,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 35,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 36,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 37,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 38,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 39,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 40,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 41,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 42,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 43,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 44,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 45,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 46,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 47,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 48,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 49,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 50,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 51,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 52,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 53,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 54,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 55,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 56,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 57,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 58,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 59,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 60,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 61,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 62,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 63,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 64,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 65,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 66,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 67,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 68,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 69,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 70,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 71,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 72,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 73,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 74,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 75,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 76,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 77,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 78,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 79,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 80,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 81,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 82,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 83,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 84,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 85,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 86,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 87,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 88,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 89,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 90,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 91,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 92,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 93,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 94,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 95,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 96,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 97,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 98,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 99,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        }
+      ],
+      "chunk_stats": {
+        "count": 100,
+        "avg_length": 473.44,
+        "min_length": 51,
+        "max_length": 1200,
+        "median_length": 452
+      },
+      "examples": [
+        {
+          "id": "3146237438717204",
+          "text_preview": "---\n\n### **Application**\n\n- Apply at Indonesian embassy\n- Fee: Varies (USD 100-200)\n- Timeline: 2-3 weeks\n\n---\n\n### **Important Notes**\n\n- **If hospitalized**: Contact immigration BEFORE visa expires ...",
+          "text_length": 423,
+          "metadata": {}
+        },
+        {
+          "id": "13766063622010169",
+          "text_preview": "\"path\": \"KITAS_WORK_PERMIT_2025.json\",\n      \"slug\": \"kitas-work-permit-2025-json\",\n      \"format\": \"json\",\n      \"category\": \"kb\",\n      \"size_bytes\": 18743,\n      \"last_modified\": \"2025-10-02 01:38:...",
+          "text_length": 489,
+          "metadata": {}
+        },
+        {
+          "id": "14561015647951843",
+          "text_preview": "\"slug\": \"visa-types-e23-freelance-kitas-json\",\n      \"format\": \"json\",\n      \"category\": \"visa_type\",\n      \"size_bytes\": 1517,\n      \"last_modified\": \"2025-10-02 05:52:58\"\n    },\n    {\n      \"path\": ...",
+          "text_length": 479,
+          "metadata": {}
+        }
+      ],
+      "sample_size": 100
+    },
+    "kbli_unified": {
+      "stats": {
+        "collection_name": "kbli_unified",
+        "total_documents": 8886,
+        "vector_size": 1536,
+        "distance": "Cosine",
+        "status": "green"
+      },
+      "metadata_analysis": {
+        "unique_fields": [],
+        "field_analysis": {},
+        "total_fields": 0
+      },
+      "quality_issues": [
+        {
+          "type": "missing_metadata",
+          "index": 0,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 1,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 2,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 3,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 4,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 5,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 6,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 7,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 8,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 9,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 10,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 11,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 12,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 13,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 14,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 15,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 16,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 17,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 18,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 19,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 20,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 21,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 22,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 23,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 24,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 25,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 26,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 27,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 28,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 29,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 30,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 31,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 32,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 33,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 34,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 35,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 36,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 37,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 38,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 39,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 40,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 41,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 42,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 43,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 44,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 45,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 46,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 47,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 48,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 49,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 50,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 51,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 52,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 53,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 54,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 55,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 56,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 57,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 58,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 59,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 60,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 61,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 62,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 63,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 64,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 65,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 66,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 67,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 68,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 69,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 70,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 71,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 72,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 73,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 74,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 75,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 76,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 77,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 78,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 79,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 80,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 81,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 82,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 83,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 84,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 85,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 86,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 87,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 88,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 89,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 90,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 91,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 92,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 93,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 94,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 95,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 96,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 97,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 98,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 99,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        }
+      ],
+      "chunk_stats": {
+        "count": 100,
+        "avg_length": 660.8,
+        "min_length": 55,
+        "max_length": 1500,
+        "median_length": 471
+      },
+      "examples": [
+        {
+          "id": "401608350113536",
+          "text_preview": "- **BPJS Ketenagakerjaan** (Employment): Mandatory before hiring staff #### **Ministry of Law & HR (AHU)** 📋\n- NIB integrated with company registration (AHU system)\n- Deed amendments auto-update OSS\n-...",
+          "text_length": 413,
+          "metadata": {}
+        },
+        {
+          "id": "4014120630504352",
+          "text_preview": "Investment Minimum: IDR 10,000,000,000\nRisk Level (OSS): Medium-High (MT) typical\nRequired Licenses:\n- NIB; Sertifikat Standar (construction)\n- SBU (LPJK) class for MEP works\n- Environmental approvals...",
+          "text_length": 458,
+          "metadata": {}
+        },
+        {
+          "id": "4644878491502956",
+          "text_preview": "**Timeline**: 2-4 months **Required Licenses**: NIB + Certificate of Standards; Environmental permit --- ### **20296: Manufacture of Medium‑Chain Essential Oils** **Description**: Production of medium...",
+          "text_length": 311,
+          "metadata": {}
+        }
+      ],
+      "sample_size": 100
+    },
+    "tax_genius": {
+      "stats": {
+        "collection_name": "tax_genius",
+        "total_documents": 895,
+        "vector_size": 1536,
+        "distance": "Cosine",
+        "status": "green"
+      },
+      "metadata_analysis": {
+        "unique_fields": [],
+        "field_analysis": {},
+        "total_fields": 0
+      },
+      "quality_issues": [
+        {
+          "type": "missing_metadata",
+          "index": 0,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 1,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 2,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 3,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 4,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 5,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 6,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 7,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 8,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 9,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 10,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 11,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 12,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 13,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 14,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 15,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 16,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 17,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 18,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 19,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 20,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 21,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 22,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 23,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 24,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 25,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 26,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 27,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 28,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 29,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 30,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 31,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 32,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 33,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 34,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 35,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 36,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 37,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 38,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 39,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 40,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 41,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 42,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 43,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 44,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 45,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 46,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 47,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 48,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 49,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 50,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 51,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 52,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 53,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 54,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 55,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 56,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 57,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 58,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 59,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 60,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 61,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 62,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 63,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 64,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 65,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 66,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 67,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 68,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 69,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 70,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 71,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 72,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 73,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 74,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 75,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 76,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 77,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 78,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 79,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 80,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 81,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 82,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 83,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 84,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 85,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 86,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 87,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 88,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 89,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 90,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 91,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 92,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 93,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 94,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 95,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 96,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 97,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 98,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 99,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        }
+      ],
+      "chunk_stats": {
+        "count": 100,
+        "avg_length": 482.96,
+        "min_length": 80,
+        "max_length": 1200,
+        "median_length": 462
+      },
+      "examples": [
+        {
+          "id": "12385057840005417",
+          "text_preview": "\"KITAS (Limited Stay Permit)\",\n        \"Employment contract lasting > 183 days\",\n        \"Residence rental contract\"\n      ],\n      \"consequence\": \"Taxed as resident from day 1 (even if < 183 days)\"\n ...",
+          "text_length": 419,
+          "metadata": {}
+        },
+        {
+          "id": "14632132350410797",
+          "text_preview": "000,000 | 5% |\n| 60,000,001 - 250,000,000 | 15% |\n| 250,000,001 - 500,000,000 | 25% |\n| 500,000,001 - 5,000,000,000 | 30% |\n| Above 5,000,000,000 | 35% |\n\n### PTKP (Tax-Free Threshold)\n- **Single**: I...",
+          "text_length": 1200,
+          "metadata": {}
+        },
+        {
+          "id": "30574489711423646",
+          "text_preview": "\"currentEntertainment\": 20000000,\n        \"issue\": \"Entertainment VAT 100% blocked if PKP elsewhere\",\n        \"recommendation\": \"Reclassify as business meals (deductible)\",\n        \"savings\": 2200000,...",
+          "text_length": 434,
+          "metadata": {}
+        }
+      ],
+      "sample_size": 100
+    },
+    "legal_unified": {
+      "stats": {
+        "collection_name": "legal_unified",
+        "total_documents": 5041,
+        "vector_size": 1536,
+        "distance": "Cosine",
+        "status": "green"
+      },
+      "metadata_analysis": {
+        "unique_fields": [],
+        "field_analysis": {},
+        "total_fields": 0
+      },
+      "quality_issues": [
+        {
+          "type": "missing_metadata",
+          "index": 0,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 1,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 2,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 3,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 4,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 5,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 6,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 7,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 8,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 9,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 10,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 11,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 12,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 13,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 14,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 15,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 16,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 17,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 18,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 19,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 20,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 21,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 22,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 23,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 24,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 25,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 26,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 27,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 28,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 29,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 30,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 31,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 32,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 33,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 34,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 35,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 36,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 37,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 38,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 39,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 40,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 41,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 42,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 43,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 44,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 45,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 46,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 47,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 48,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 49,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 50,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 51,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 52,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 53,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 54,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 55,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 56,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 57,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 58,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 59,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 60,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 61,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 62,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 63,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 64,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 65,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 66,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 67,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 68,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 69,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 70,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 71,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 72,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 73,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 74,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 75,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 76,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 77,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 78,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 79,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 80,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 81,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 82,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 83,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 84,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 85,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 86,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 87,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 88,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 89,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 90,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 91,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 92,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 93,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 94,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 95,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 96,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 97,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 98,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 99,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        }
+      ],
+      "chunk_stats": {
+        "count": 100,
+        "avg_length": 236.59,
+        "min_length": 73,
+        "max_length": 1400,
+        "median_length": 76
+      },
+      "examples": [
+        {
+          "id": "2933407688406093",
+          "text_preview": "### PP-55-2022 - Pasal 206\n\n\n\n**Category**: legal_regulation\n**Type**: pasal",
+          "text_length": 76,
+          "metadata": {}
+        },
+        {
+          "id": "8592771091835870",
+          "text_preview": "### UU-5-1960 - Pasal 87\n\n\n\n**Category**: legal_regulation\n**Type**: pasal",
+          "text_length": 74,
+          "metadata": {}
+        },
+        {
+          "id": "9926451537152604",
+          "text_preview": "### UU-44-2009 - Pasal 142\n\n\n\n**Category**: legal_regulation\n**Type**: pasal",
+          "text_length": 76,
+          "metadata": {}
+        }
+      ],
+      "sample_size": 100
+    },
+    "knowledge_base": {
+      "stats": {
+        "collection_name": "knowledge_base",
+        "total_documents": 8923,
+        "vector_size": 1536,
+        "distance": "Cosine",
+        "status": "green"
+      },
+      "metadata_analysis": {
+        "unique_fields": [],
+        "field_analysis": {},
+        "total_fields": 0
+      },
+      "quality_issues": [
+        {
+          "type": "missing_metadata",
+          "index": 0,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 1,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 2,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 3,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 4,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 5,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 6,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 7,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 8,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 9,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 10,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 11,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 12,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 13,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 14,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 15,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 16,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 17,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 18,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 19,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 20,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 21,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 22,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 23,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 24,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 25,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 26,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 27,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 28,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 29,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 30,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 31,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 32,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 33,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 34,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 35,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 36,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 37,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 38,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 39,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 40,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 41,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 42,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 43,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 44,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 45,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 46,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 47,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 48,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 49,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 50,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 51,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 52,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 53,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 54,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 55,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 56,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 57,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 58,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 59,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 60,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 61,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 62,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 63,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 64,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 65,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 66,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 67,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 68,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 69,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 70,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 71,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 72,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 73,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 74,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 75,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 76,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 77,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 78,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 79,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 80,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 81,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 82,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 83,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 84,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 85,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 86,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 87,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 88,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 89,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 90,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 91,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 92,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 93,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 94,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 95,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 96,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 97,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 98,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 99,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        }
+      ],
+      "chunk_stats": {
+        "count": 100,
+        "avg_length": 909.63,
+        "min_length": 226,
+        "max_length": 1547,
+        "median_length": 944
+      },
+      "examples": [
+        {
+          "id": "228667705614166",
+          "text_preview": "■\nYou and your co-worker sit together in a conference room and draw design alter-\nnatives on a whiteboard. ■\nYou and your co-worker sit together at the keyboard and do detailed design in \nthe programm...",
+          "text_length": 991,
+          "metadata": {}
+        },
+        {
+          "id": "642424779669754",
+          "text_preview": "Je fermai les yeux ; quand je les rouvris, j’avais\nété transporté devant le quatrième mur, et je ne pus\nm’empêcher de sourire. Dans un boudoir de dentelle et de soie, des lampes,\noù tremblaient des fl...",
+          "text_length": 992,
+          "metadata": {}
+        },
+        {
+          "id": "917361415194480",
+          "text_preview": "41We have simpliﬁed exchange by exploiting the fact that our deposit message ac-\ncepts negative amounts. (is is a serious bug in our banking system!)\n42If the account balances start out as $10, $20, ...",
+          "text_length": 717,
+          "metadata": {}
+        }
+      ],
+      "sample_size": 100
+    },
+    "property_unified": {
+      "stats": {
+        "collection_name": "property_unified",
+        "total_documents": 29,
+        "vector_size": 1536,
+        "distance": "Cosine",
+        "status": "green"
+      },
+      "metadata_analysis": {
+        "unique_fields": [],
+        "field_analysis": {},
+        "total_fields": 0
+      },
+      "quality_issues": [
+        {
+          "type": "missing_metadata",
+          "index": 0,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 1,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 2,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 3,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 4,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 5,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 6,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 7,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 8,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 9,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 10,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 11,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 12,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 13,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 14,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 15,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 16,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 17,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 18,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 19,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 20,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 21,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 22,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 23,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 24,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 25,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 26,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 27,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        },
+        {
+          "type": "missing_metadata",
+          "index": 28,
+          "missing_fields": [
+            "book_title",
+            "source"
+          ]
+        }
+      ],
+      "chunk_stats": {
+        "count": 29,
+        "avg_length": 917.448275862069,
+        "min_length": 106,
+        "max_length": 1200,
+        "median_length": 912
+      },
+      "examples": [
+        {
+          "id": "151614547221451472",
+          "text_preview": "ions and red tape.\n\nIndonesia's over-dependency on commodity exports poses significant risks to the economy. The government has acknowledged this issue and is implementing measures to develop downstre...",
+          "text_length": 1097,
+          "metadata": {}
+        },
+        {
+          "id": "399664821148078344",
+          "text_preview": "he property market in Indonesia, highlighting key trends, government policies, and their potential impact on businesses and expatriates.\n\n### Key Points\n\n* The Indonesian government has implemented a ...",
+          "text_length": 1200,
+          "metadata": {}
+        },
+        {
+          "id": "1340123482992794741",
+          "text_preview": "put an advertisement on this platform in order to attract attention on a global stage. Companies, institutions and organizations can also announce events here (if in accordance with our regulations). ...",
+          "text_length": 905,
+          "metadata": {}
+        }
+      ],
+      "sample_size": 29
+    }
+  },
+  "summary": {
+    "total_collections_analyzed": 8,
+    "successful_collections": 7,
+    "total_documents": 25415,
+    "analysis_timestamp": "2025-12-02T03:46:50.498935"
+  },
+  "metadata_analysis": {
+    "all_fields": [],
+    "field_frequency": {},
+    "collections_count": 8
+  },
+  "quality_issues": []
+}

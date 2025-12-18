@@ -1,0 +1,40 @@
+{
+  "priority": "critical",
+  "area": "database",
+  "score": 100,
+  "description": "Database connection pools and query optimization - Connection pool issues, N+1 queries",
+  "scope": [
+    "apps/backend-rag/backend/services/memory_service_postgres.py",
+    "apps/backend-rag/backend/services/golden_answer_service.py",
+    "apps/backend-rag/backend/services/oracle_database.py"
+  ],
+  "metrics_to_collect": [
+    "connection_pool_utilization",
+    "query_execution_time",
+    "slow_queries_count",
+    "n_plus_one_patterns",
+    "connection_wait_time",
+    "query_timeout_rate"
+  ],
+  "key_issues": [
+    "Pool size configuration (min_size=5, max_size=50)",
+    "Query N+1 patterns (6 found)",
+    "Connection leaks",
+    "GoldenAnswerService pool too small (max=10)"
+  ],
+  "tasks": [
+    "Analyze connection pool usage patterns",
+    "Identify and fix N+1 query patterns",
+    "Optimize pool sizes based on actual usage",
+    "Add connection pool monitoring",
+    "Optimize slow queries",
+    "Implement query result caching where appropriate"
+  ],
+  "expected_output": "docs/debug/performance/database_report.md",
+  "success_criteria": [
+    "Connection pool utilization optimized",
+    "All N+1 patterns fixed",
+    "Query execution time reduced by 30%+",
+    "No connection leaks detected"
+  ]
+}

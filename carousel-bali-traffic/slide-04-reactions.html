@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1080px;
+      height: 1350px;
+      background: #1a1a1a;
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      color: white;
+      padding: 60px;
+      position: relative;
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #d4a84b;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    .headline {
+      font-size: 44px;
+      font-weight: 800;
+      color: #d4a84b;
+      margin-bottom: 45px;
+    }
+    .quote-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 25px;
+    }
+    .quote-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #d4a84b;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 15px;
+    }
+    .quote-text {
+      font-size: 22px;
+      line-height: 1.5;
+      font-style: italic;
+      color: rgba(255,255,255,0.95);
+      margin-bottom: 15px;
+    }
+    .quote-source {
+      font-size: 16px;
+      color: rgba(255,255,255,0.6);
+    }
+    .comedian-card {
+      background: rgba(212,168,75,0.1);
+      border: 1px solid rgba(212,168,75,0.3);
+    }
+    .comedian-card .quote-text {
+      font-style: normal;
+    }
+    .dialog {
+      margin-bottom: 10px;
+    }
+    .dialog-q {
+      color: rgba(255,255,255,0.7);
+    }
+    .dialog-a {
+      color: #d4a84b;
+      font-weight: 600;
+    }
+    .logo {
+      position: absolute;
+      bottom: 60px;
+      left: 60px;
+    }
+    .logo-icon {
+      width: 50px;
+      height: 50px;
+      background: #d4a84b;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 10px;
+      color: #1a1a1a;
+      text-align: center;
+      line-height: 1.1;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">THE REACTIONS</div>
+  <div class="headline">WHAT PEOPLE ARE SAYING</div>
+
+  <div class="quote-card">
+    <div class="quote-label">The Optimist</div>
+    <div class="quote-text">"If it's successful and there are no problems, we'll implement it permanently."</div>
+    <div class="quote-source">— Dishub Badung</div>
+  </div>
+
+  <div class="quote-card">
+    <div class="quote-label">The Realist</div>
+    <div class="quote-text">"It took me 1 hour to get from Umalas to Bintang. Normally 25 minutes. And 1h45 to get back."</div>
+    <div class="quote-source">— Local resident</div>
+  </div>
+
+  <div class="quote-card">
+    <div class="quote-label">The Philosopher</div>
+    <div class="quote-text">"That's all traffic in Bali has besides danger and chaos: hope and prayers."</div>
+    <div class="quote-source">— Bali Sun commenter</div>
+  </div>
+
+  <div class="quote-card comedian-card">
+    <div class="quote-label">The Comedian</div>
+    <div class="quote-text">
+      <div class="dialog"><span class="dialog-q">"Do you know when the metro is expected to be operational?"</span></div>
+      <div class="dialog"><span class="dialog-a">"You must be new around here."</span></div>
+    </div>
+  </div>
+
+  <div class="logo">
+    <div class="logo-icon">BALI<br>ZERO</div>
+  </div>
+</body>
+</html>

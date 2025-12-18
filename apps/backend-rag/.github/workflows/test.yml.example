@@ -1,0 +1,117 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+      
+      - name: Run unit tests
+        run: |
+          pytest tests/unit -v -m "not slow" --cov=backend --cov-report=xml
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+          - 6334:6334
+        options: >-
+          --health-cmd "curl -f http://localhost:6333/health || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+      
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          QDRANT_URL: http://localhost:6333
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars
+          API_KEYS: test_api_key_1,test_api_key_2
+          OPENAI_API_KEY: test_openai_api_key_for_testing
+          GOOGLE_API_KEY: test_google_api_key_for_testing
+        run: |
+          pytest tests/integration -v -m integration --cov=backend --cov-append
+
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+      
+      - name: Run API tests
+        env:
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars
+          API_KEYS: test_api_key_1,test_api_key_2
+          OPENAI_API_KEY: test_openai_api_key_for_testing
+          GOOGLE_API_KEY: test_google_api_key_for_testing
+          QDRANT_URL: http://localhost:6333
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: |
+          pytest tests/api -v -m api --cov=backend --cov-append
+

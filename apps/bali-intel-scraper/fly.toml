@@ -1,0 +1,38 @@
+# BALI INTEL SCRAPER - Fly.io Configuration
+# 630+ Source Scraping & AI Article Generation API
+
+app = "bali-intel-scraper"
+primary_region = "sin"  # Singapore (closest to Indonesian sources)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8002"
+
+[http_service]
+  internal_port = 8002
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Required secrets (set via: fly secrets set KEY=value)
+# - NUZANTARA_API_URL
+# - NUZANTARA_API_KEY
+# - OPENROUTER_API_KEY (for AI generation)
+# - GOOGLE_API_KEY (for AI generation)
+# - ANTHROPIC_API_KEY (optional fallback)

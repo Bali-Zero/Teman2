@@ -1,0 +1,36 @@
+{
+  "kbli_unified": [
+    {
+      "doc_id": "401608350113536",
+      "text_length": 413,
+      "existing_metadata_fields": 0,
+      "pattern_fields": 1,
+      "ml_fields": 0,
+      "hybrid_fields": 1,
+      "pattern_metadata": {
+        "kbli_description": "- **BPJS Ketenagakerjaan** (Employment): Mandatory before hiring staff #### **Ministry of Law & HR (AHU)** \ud83d\udccb"
+      },
+      "ml_metadata": {},
+      "hybrid_metadata": {
+        "kbli_description": "- **BPJS Ketenagakerjaan** (Employment): Mandatory before hiring staff #### **Ministry of Law & HR (AHU)** \ud83d\udccb"
+      }
+    },
+    {
+      "doc_id": "4014120630504352",
+      "text_length": 458,
+      "existing_metadata_fields": 0,
+      "pattern_fields": 2,
+      "ml_fields": 0,
+      "hybrid_fields": 2,
+      "pattern_metadata": {
+        "kbli_description": "Investment Minimum: IDR 10,000,000,000",
+        "risk_level": "MEDIUM"
+      },
+      "ml_metadata": {},
+      "hybrid_metadata": {
+        "kbli_description": "Investment Minimum: IDR 10,000,000,000",
+        "risk_level": "MEDIUM"
+      }
+    }
+  ]
+}

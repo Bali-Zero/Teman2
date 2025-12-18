@@ -1,0 +1,29 @@
+1. Authenticating...
+2. Authenticated. Token received.
+3. Sending Surf Camp Query (Stream)...
+4. Stream Connected. Reading Logic...
+==========================================
+[THINKING] Step 1: Thinking...
+
+[ERROR] content {
+}
+finish_reason: MALFORMED_FUNCTION_CALL
+index: 0
+
+[THINKING] Generating final answer...
+Ecco le risposte puntuali per aprire la tua scuola di surf a Canggu (Bali), basate sulle attuali normative indonesiane (OSS RBA e BKPM).
+
+### KBLI Corretto (Codice Attività)
+Per una scuola di surf, il codice **KBLI** primario è:
+*   **85410** – *Jasa Pendidikan Olahraga dan Rekreasi* (Servizi di educazione sportiva e ricreativa).
+
+---
+
+### 1. Posso usare un Virtual Office?
+**Risposta: No (per l'operatività).**
+
+*   **Tecnicamente:** Puoi registrare l'indirizzo legale della società (PT PMA) presso un Virtual Office per ottenere i documenti iniziali (NIB, Akta).
+*   **Operativamente:** Per ottenere la licenza operativa effettiva (*Sertifikat Standar*) per il KBLI 85410, il sistema OSS (Online Single Submission) richiede una **Verifica sul Campo**.
+*   **Requisito:** Devi avere una sede fisica (base camp, reception, deposito tavole) situata in una zona con zonizzazione (ITR) turistica o commerciale. Non puoi ottenere la licenza definitiva per una scuola di surf operando da un ufficio v...
+==========================================
+Done.

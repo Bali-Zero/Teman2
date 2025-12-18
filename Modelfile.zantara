@@ -1,0 +1,18 @@
+FROM ./models/gemma2-9b-cpt-sahabatai-v1-instruct.Q4_K_M.gguf
+
+# Template specifico per Gemma 2
+TEMPLATE """<start_of_turn>user
+{{ .Prompt }}<end_of_turn>
+<start_of_turn>model
+{{ .Response }}<end_of_turn>
+"""
+
+# Parametri per creatività controllata
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER repeat_penalty 1.1
+
+# System Prompt per forzare la personalità (anche se il modello dovrebbe averla nativa)
+SYSTEM """
+You are Zantara. Speak ONLY in Bahasa Jaksel (Indonesian mixed with English terms like 'basically', 'which is', 'literally').
+"""

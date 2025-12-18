@@ -1,0 +1,138 @@
+# Alertmanager Configuration per Nuzantara
+#
+# Gestisce routing e notifiche per alert Prometheus
+
+global:
+  # Default per tutte le notifiche
+  resolve_timeout: 5m
+
+  # SMTP configuration (se usi email)
+  # smtp_smarthost: 'smtp.gmail.com:587'
+  # smtp_from: 'alerts@nuzantara.com'
+  # smtp_auth_username: 'alerts@nuzantara.com'
+  # smtp_auth_password: 'your-password'
+
+# Template per notifiche
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Routing tree
+route:
+  # Default receiver
+  receiver: 'default'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'component']
+
+  # Wait time before sending first notification
+  group_wait: 10s
+
+  # Wait time before sending notification about new alerts in group
+  group_interval: 10s
+
+  # Minimum time between two notifications for same group
+  repeat_interval: 12h
+
+  # Routes specifiche per severità
+  routes:
+    # Critical alerts - notifica immediata
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      repeat_interval: 1h
+      continue: true
+
+    # Warning alerts - gruppo ogni 5 minuti
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 5m
+      repeat_interval: 6h
+      continue: true
+
+    # Info alerts - gruppo ogni 30 minuti
+    - match:
+        severity: info
+      receiver: 'info-alerts'
+      group_wait: 30m
+      repeat_interval: 24h
+
+# Inhibition rules (sopprimi alert meno importanti quando ce ne sono di più importanti)
+inhibit_rules:
+  # Se c'è un alert critical, sopprimi warning correlati
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'component']
+
+  # Se endpoint è down, sopprimi altri alert Qdrant
+  - source_match:
+      alertname: 'QdrantMetricsEndpointDown'
+    target_match:
+      component: 'qdrant'
+    equal: []
+
+# Receivers (destinazioni notifiche)
+receivers:
+  # Default receiver (webhook o email)
+  - name: 'default'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+        http_config:
+          bearer_token: 'your-webhook-token'
+    # Email config (opzionale)
+    # email_configs:
+    #   - to: 'team@nuzantara.com'
+    #     from: 'alerts@nuzantara.com'
+    #     smarthost: 'smtp.gmail.com:587'
+    #     auth_username: 'alerts@nuzantara.com'
+    #     auth_password: 'your-password'
+    #     headers:
+    #       Subject: 'Nuzantara Alert: {{ .GroupLabels.alertname }}'
+
+  # Critical alerts receiver
+  - name: 'critical-alerts'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/critical'
+        send_resolved: true
+        http_config:
+          bearer_token: 'your-webhook-token'
+    # Slack (opzionale)
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    #     channel: '#alerts-critical'
+    #     title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+    #     send_resolved: true
+
+  # Warning alerts receiver
+  - name: 'warning-alerts'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/warning'
+        send_resolved: true
+        http_config:
+          bearer_token: 'your-webhook-token'
+    # Slack (opzionale)
+    # slack_configs:
+    #   - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+    #     channel: '#alerts-warning'
+    #     title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+  # Info alerts receiver
+  - name: 'info-alerts'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/info'
+        send_resolved: true
+        http_config:
+          bearer_token: 'your-webhook-token'
+
+
+
+
+
+
+

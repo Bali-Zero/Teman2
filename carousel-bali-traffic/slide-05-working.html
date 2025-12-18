@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1080px;
+      height: 1350px;
+      background: #1a1a1a;
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      color: white;
+      padding: 60px;
+      position: relative;
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #d4a84b;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    .headline {
+      font-size: 42px;
+      font-weight: 800;
+      color: #d4a84b;
+      margin-bottom: 50px;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 25px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .status-label {
+      font-size: 20px;
+      color: rgba(255,255,255,0.7);
+    }
+    .status-value {
+      font-size: 22px;
+      font-weight: 600;
+      color: white;
+    }
+    .highlight {
+      color: #d4a84b;
+    }
+    .what-we-know {
+      margin-top: 40px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #d4a84b;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .checklist {
+      list-style: none;
+    }
+    .checklist li {
+      font-size: 22px;
+      line-height: 1.5;
+      margin-bottom: 18px;
+      padding-left: 35px;
+      position: relative;
+    }
+    .checklist li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #d4a84b;
+    }
+    .real-test {
+      background: rgba(212,168,75,0.15);
+      border-left: 4px solid #d4a84b;
+      padding: 25px 30px;
+      margin-top: 40px;
+      font-size: 22px;
+      line-height: 1.5;
+    }
+    .stay-tuned {
+      font-size: 28px;
+      font-weight: 700;
+      color: #d4a84b;
+      margin-top: 30px;
+      text-align: center;
+    }
+    .logo {
+      position: absolute;
+      bottom: 60px;
+      left: 60px;
+    }
+    .logo-icon {
+      width: 50px;
+      height: 50px;
+      background: #d4a84b;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 10px;
+      color: #1a1a1a;
+      text-align: center;
+      line-height: 1.1;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">THE MILLION DOLLAR QUESTION</div>
+  <div class="headline">IS IT WORKING?</div>
+
+  <div class="status-row">
+    <span class="status-label">Official status:</span>
+    <span class="status-value"><span class="highlight">1-month test</span> (Dec 14 – Jan 14)</span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">What "working" means:</span>
+    <span class="status-value">Nobody really knows.</span>
+  </div>
+
+  <div class="what-we-know">
+    <div class="section-title">What we know so far:</div>
+    <ul class="checklist">
+      <li>Weekend #1 was chaos</li>
+      <li>Traffic officers deployed at key points</li>
+      <li>Authorities say they'll "evaluate and adjust"</li>
+      <li>Everyone else is just winging it</li>
+    </ul>
+  </div>
+
+  <div class="real-test">
+    <strong>The real test:</strong> Can 2.8 million tourists figure out 9 new rules without Google Maps updates?
+  </div>
+
+  <div class="stay-tuned">Stay tuned.</div>
+
+  <div class="logo">
+    <div class="logo-icon">BALI<br>ZERO</div>
+  </div>
+</body>
+</html>

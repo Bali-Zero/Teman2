@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZERO Dashboard - Team Work Sessions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sessions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sessions-table th {
+            background: #f5f5f5;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .sessions-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sessions-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #4ade80;
+            color: white;
+        }
+
+        .status-completed {
+            background: #94a3b8;
+            color: white;
+        }
+
+        .refresh-info {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            padding: 20px;
+            border-radius: 10px;
+            color: #c00;
+            margin: 20px 0;
+        }
+
+        .emoji {
+            font-size: 1.5em;
+        }
+
+        .time-display {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #4ade80;
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        /* Team Intelligence Styles */
+        .intelligence-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .insight-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .insight-card.warning {
+            background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+            border-left-color: #f56565;
+        }
+
+        .insight-card.success {
+            background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+            border-left-color: #48bb78;
+        }
+
+        .insight-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .insight-text {
+            color: #4a5568;
+            font-size: 1em;
+            line-height: 1.6;
+            margin: 8px 0;
+        }
+
+        .health-score-container {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .health-score-big {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .health-score-big.excellent { color: #48bb78; }
+        .health-score-big.good { color: #4299e1; }
+        .health-score-big.fair { color: #ed8936; }
+        .health-score-big.poor { color: #f56565; }
+
+        .health-label {
+            font-size: 1.5em;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .insights-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .insights-list li {
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 1.1em;
+        }
+
+        .productivity-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .productivity-badge.excellent {
+            background: #48bb78;
+            color: white;
+        }
+
+        .productivity-badge.good {
+            background: #4299e1;
+            color: white;
+        }
+
+        .productivity-badge.fair {
+            background: #ed8936;
+            color: white;
+        }
+
+        .productivity-badge.needs-attention {
+            background: #f56565;
+            color: white;
+        }
+
+        .optimal-hours-bar {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            gap: 10px;
+        }
+
+        .hour-label {
+            font-weight: 600;
+            color: #2d3748;
+            min-width: 60px;
+        }
+
+        .productivity-bar {
+            flex: 1;
+            height: 30px;
+            background: #e2e8f0;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .productivity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 ZERO Dashboard</h1>
+            <p class="subtitle">Team Work Sessions Monitoring <span class="live-indicator"></span></p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Attivi Ora</div>
+                <div class="stat-number" id="active-count">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Ore Oggi</div>
+                <div class="stat-number" id="total-hours">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Conversazioni</div>
+                <div class="stat-number" id="total-conversations">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Team Members</div>
+                <div class="stat-number" id="team-count">-</div>
+            </div>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="section">
+            <h2 class="section-title">
+                <span class="emoji">🟢</span> Sessioni Attive
+            </h2>
+            <div id="active-sessions-content">
+                <div class="loading">Caricamento...</div>
+            </div>
+        </div>
+
+        <!-- Completed Sessions Today -->
+        <div class="section">
+            <h2 class="section-title">
+                <span class="emoji">✅</span> Completate Oggi
+            </h2>
+            <div id="completed-sessions-content">
+                <div class="loading">Caricamento...</div>
+            </div>
+        </div>
+
+        <!-- Weekly Summary -->
+        <div class="section">
+            <h2 class="section-title">
+                <span class="emoji">📊</span> Riepilogo Settimanale
+            </h2>
+            <div id="weekly-summary-content">
+                <div class="loading">Caricamento...</div>
+            </div>
+        </div>
+
+        <!-- Team Intelligence -->
+        <div class="section">
+            <h2 class="section-title">
+                <span class="emoji">🧠</span> Intelligence Team
+            </h2>
+
+            <div class="health-score-container">
+                <div class="health-label">Salute del Team</div>
+                <div class="health-score-big" id="team-health-score">-</div>
+                <div class="health-label" id="team-health-rating" style="font-size: 1.2em; color: #667eea;">Caricamento...</div>
+            </div>
+
+            <div id="team-intelligence-content">
+                <div class="loading">Caricamento intelligence...</div>
+            </div>
+        </div>
+
+        <div class="refresh-info">
+            ⏱️ Auto-refresh ogni 30 secondi | Ultimo aggiornamento: <span id="last-update">-</span>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = window.location.origin;
+
+        async function fetchData(endpoint) {
+            const response = await fetch(`${BACKEND_URL}${endpoint}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        function formatDuration(minutes) {
+            if (!minutes) return '0h 0m';
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function createSessionsTable(sessions, showStatus = true) {
+            if (!sessions || sessions.length === 0) {
+                return '<p style="text-align:center; color:#666; padding:20px;">Nessuna sessione</p>';
+            }
+
+            let html = '<table class="sessions-table"><thead><tr>';
+            html += '<th>Team Member</th>';
+            html += '<th>Email</th>';
+            html += '<th>Inizio</th>';
+            html += '<th>Fine</th>';
+            html += '<th>Durata</th>';
+            html += '<th>Conversazioni</th>';
+            if (showStatus) html += '<th>Status</th>';
+            html += '</tr></thead><tbody>';
+
+            sessions.forEach(session => {
+                html += '<tr>';
+                html += `<td><strong>${session.user_name}</strong></td>`;
+                html += `<td>${session.user_email}</td>`;
+                html += `<td class="time-display">${formatTime(session.session_start)}</td>`;
+                html += `<td class="time-display">${session.session_end ? formatTime(session.session_end) : 'In corso'}</td>`;
+                html += `<td>${formatDuration(session.duration_minutes)}</td>`;
+                html += `<td>${session.conversations_count || 0}</td>`;
+
+                if (showStatus) {
+                    const statusClass = session.status === 'active' ? 'status-active' : 'status-completed';
+                    const statusText = session.status === 'active' ? 'ATTIVO' : 'COMPLETATO';
+                    html += `<td><span class="status-badge ${statusClass}">${statusText}</span></td>`;
+                }
+
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            return html;
+        }
+
+        async function loadTodaySessions() {
+            try {
+                const data = await fetchData('/team/sessions/today');
+
+                // Separate active and completed
+                const activeSessions = data.sessions.filter(s => s.status === 'active');
+                const completedSessions = data.sessions.filter(s => s.status === 'completed');
+
+                // Update stats
+                document.getElementById('active-count').textContent = activeSessions.length;
+                document.getElementById('team-count').textContent = data.sessions.length;
+
+                // Update tables
+                document.getElementById('active-sessions-content').innerHTML =
+                    createSessionsTable(activeSessions, false);
+                document.getElementById('completed-sessions-content').innerHTML =
+                    createSessionsTable(completedSessions, false);
+
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                document.getElementById('active-sessions-content').innerHTML =
+                    `<div class="error">Errore caricamento sessioni: ${error.message}</div>`;
+            }
+        }
+
+        async function loadDailyReport() {
+            try {
+                const data = await fetchData('/team/report/daily');
+
+                document.getElementById('total-hours').textContent = data.total_hours.toFixed(1) + 'h';
+                document.getElementById('total-conversations').textContent = data.total_conversations;
+
+            } catch (error) {
+                console.error('Error loading daily report:', error);
+            }
+        }
+
+        async function loadWeeklySummary() {
+            try {
+                const data = await fetchData('/team/report/weekly');
+
+                let html = '<table class="sessions-table"><thead><tr>';
+                html += '<th>Team Member</th>';
+                html += '<th>Email</th>';
+                html += '<th>Ore Totali</th>';
+                html += '<th>Giorni Lavorati</th>';
+                html += '<th>Media Ore/Giorno</th>';
+                html += '<th>Conversazioni</th>';
+                html += '</tr></thead><tbody>';
+
+                if (data.team_stats && data.team_stats.length > 0) {
+                    data.team_stats.forEach(member => {
+                        html += '<tr>';
+                        html += `<td><strong>${member.name}</strong></td>`;
+                        html += `<td>${member.email}</td>`;
+                        html += `<td>${member.total_hours.toFixed(1)}h</td>`;
+                        html += `<td>${member.days_worked}</td>`;
+                        html += `<td>${member.avg_hours_per_day.toFixed(1)}h</td>`;
+                        html += `<td>${member.total_conversations}</td>`;
+                        html += '</tr>';
+                    });
+                } else {
+                    html += '<tr><td colspan="6" style="text-align:center; padding:20px;">Nessun dato questa settimana</td></tr>';
+                }
+
+                html += '</tbody></table>';
+
+                document.getElementById('weekly-summary-content').innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading weekly summary:', error);
+                document.getElementById('weekly-summary-content').innerHTML =
+                    `<div class="error">Errore caricamento riepilogo: ${error.message}</div>`;
+            }
+        }
+
+        async function loadTeamIntelligence() {
+            try {
+                const data = await fetchData('/team/analytics/all?days=7');
+
+                if (!data.success) {
+                    throw new Error('Analytics not available');
+                }
+
+                const analytics = data.analytics;
+
+                // 1. TEAM HEALTH SCORE
+                const teamInsights = analytics['6_team_insights'];
+                if (teamInsights && !teamInsights.error) {
+                    const healthScore = teamInsights.team_health_score || 0;
+                    const healthRating = teamInsights.health_rating || 'Unknown';
+
+                    const scoreElement = document.getElementById('team-health-score');
+                    scoreElement.textContent = healthScore.toFixed(0) + '/100';
+
+                    // Color based on score
+                    scoreElement.className = 'health-score-big ';
+                    if (healthScore >= 80) scoreElement.className += 'excellent';
+                    else if (healthScore >= 60) scoreElement.className += 'good';
+                    else if (healthScore >= 40) scoreElement.className += 'fair';
+                    else scoreElement.className += 'poor';
+
+                    document.getElementById('team-health-rating').textContent = healthRating;
+                }
+
+                // 2. BUILD INSIGHTS
+                let html = '<div class="intelligence-grid">';
+
+                // INSIGHT 1: Team Health Summary
+                if (teamInsights && !teamInsights.error && teamInsights.insights) {
+                    html += '<div class="insight-card success">';
+                    html += '<div class="insight-title">💚 Stato Generale</div>';
+                    html += '<ul class="insights-list" style="margin-top: 15px;">';
+                    teamInsights.insights.forEach(insight => {
+                        html += `<li>${insight}</li>`;
+                    });
+                    html += '</ul></div>';
+                }
+
+                // INSIGHT 2: Burnout Detection
+                const burnout = analytics['3_burnout_detection'];
+                if (burnout && !burnout.error && burnout.length > 0) {
+                    html += '<div class="insight-card warning">';
+                    html += '<div class="insight-title">⚠️ Attenzione Richiesta</div>';
+                    burnout.forEach(warning => {
+                        html += `<div class="insight-text"><strong>${warning.user}</strong> - ${warning.risk_level}</div>`;
+                        html += '<ul style="margin: 10px 0; padding-left: 20px;">';
+                        warning.warning_signals.forEach(signal => {
+                            html += `<li style="color: #c53030; margin: 5px 0;">${signal}</li>`;
+                        });
+                        html += '</ul>';
+                    });
+                    html += '</div>';
+                } else {
+                    html += '<div class="insight-card success">';
+                    html += '<div class="insight-title">✅ Nessun Rischio Burnout</div>';
+                    html += '<div class="insight-text">Tutti i membri del team stanno lavorando in modo sano e sostenibile.</div>';
+                    html += '</div>';
+                }
+
+                // INSIGHT 3: Productivity Scores
+                const productivity = analytics['2_productivity_scores'];
+                if (productivity && !productivity.error && productivity.length > 0) {
+                    html += '<div class="insight-card">';
+                    html += '<div class="insight-title">🏆 Produttività Team</div>';
+                    productivity.forEach(member => {
+                        const badgeClass = member.rating.toLowerCase().replace(' ', '-');
+                        html += `<div class="insight-text">`;
+                        html += `<strong>${member.user}</strong>`;
+                        html += `<span class="productivity-badge ${badgeClass}">${member.productivity_score.toFixed(1)}/100</span>`;
+                        html += `</div>`;
+                        html += `<div style="font-size: 0.9em; color: #718096; margin-left: 5px;">`;
+                        html += `${member.metrics.conversations_per_hour.toFixed(1)} conv/h • ${member.metrics.activities_per_hour.toFixed(1)} attività/h`;
+                        html += `</div>`;
+                    });
+                    html += '</div>';
+                }
+
+                // INSIGHT 4: Workload Balance
+                const workload = analytics['4_workload_balance'];
+                if (workload && !workload.error) {
+                    const balanceScore = workload.balance_metrics?.balance_score || 0;
+                    const isBalanced = balanceScore >= 70;
+                    html += `<div class="insight-card ${isBalanced ? 'success' : 'warning'}">`;
+                    html += '<div class="insight-title">⚖️ Bilanciamento Carico</div>';
+                    html += `<div class="insight-text"><strong>Score:</strong> ${balanceScore.toFixed(0)}/100 - ${workload.balance_metrics?.balance_rating}</div>`;
+
+                    if (workload.recommendations) {
+                        html += '<ul style="margin-top: 10px; padding-left: 20px;">';
+                        workload.recommendations.forEach(rec => {
+                            html += `<li style="margin: 5px 0;">${rec}</li>`;
+                        });
+                        html += '</ul>';
+                    }
+                    html += '</div>';
+                }
+
+                // INSIGHT 5: Optimal Hours
+                const optimalHours = analytics['5_optimal_hours'];
+                if (optimalHours && !optimalHours.error && optimalHours.optimal_windows) {
+                    html += '<div class="insight-card">';
+                    html += '<div class="insight-title">⏰ Orari Ottimali</div>';
+                    html += '<div class="insight-text" style="margin-bottom: 15px;">Quando il team è più produttivo:</div>';
+
+                    const maxConv = Math.max(...optimalHours.optimal_windows.map(w => w.conversations_per_hour));
+                    optimalHours.optimal_windows.slice(0, 3).forEach(window => {
+                        const percentage = (window.conversations_per_hour / maxConv * 100).toFixed(0);
+                        html += '<div class="optimal-hours-bar">';
+                        html += `<div class="hour-label">${window.hour}</div>`;
+                        html += '<div class="productivity-bar">';
+                        html += `<div class="productivity-fill" style="width: ${percentage}%">`;
+                        html += `${window.conversations_per_hour.toFixed(1)} conv/h`;
+                        html += '</div></div></div>';
+                    });
+                    html += '</div>';
+                }
+
+                // INSIGHT 6: Work Patterns
+                const patterns = analytics['1_work_patterns'];
+                if (patterns && !patterns.error && patterns.patterns) {
+                    html += '<div class="insight-card">';
+                    html += '<div class="insight-title">🔍 Pattern di Lavoro</div>';
+                    html += `<div class="insight-text">📅 <strong>Orario preferito:</strong> ${patterns.patterns.preferred_start_time}</div>`;
+                    html += `<div class="insight-text">⏱️ <strong>Durata media:</strong> ${patterns.patterns.avg_session_duration_hours.toFixed(1)}h</div>`;
+                    html += `<div class="insight-text">📊 <strong>Consistenza:</strong> ${patterns.consistency_score.toFixed(0)}/100 - ${patterns.consistency_rating}</div>`;
+
+                    if (patterns.day_distribution) {
+                        html += `<div class="insight-text">📆 <strong>Distribuzione:</strong> ${patterns.day_distribution.weekdays} giorni feriali, ${patterns.day_distribution.weekends} weekend</div>`;
+                    }
+                    html += '</div>';
+                }
+
+                html += '</div>'; // Close intelligence-grid
+
+                document.getElementById('team-intelligence-content').innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading team intelligence:', error);
+                document.getElementById('team-intelligence-content').innerHTML =
+                    `<div class="error">Errore caricamento intelligence: ${error.message}</div>`;
+            }
+        }
+
+        async function refreshAll() {
+            await Promise.all([
+                loadTodaySessions(),
+                loadDailyReport(),
+                loadWeeklySummary(),
+                loadTeamIntelligence()
+            ]);
+
+            document.getElementById('last-update').textContent =
+                new Date().toLocaleTimeString('it-IT');
+        }
+
+        // Initial load
+        refreshAll();
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshAll, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+# ZANTARA MEDIA - Fly.io Configuration
+# Automated Content Generation Platform
+
+app = "zantara-media"
+primary_region = "sin"  # Singapore (closest to Bali)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  APP_NAME = "ZANTARA MEDIA"
+  APP_VERSION = "1.0.0"
+  ENVIRONMENT = "production"
+  DEBUG = "false"
+  API_PREFIX = "/api"
+
+  # NUZANTARA Integration
+  NUZANTARA_API_URL = "https://nuzantara-rag.fly.dev"
+
+  # Timezone
+  TZ = "Asia/Makassar"
+
+[http_service]
+  internal_port = 8001
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "2gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Required secrets (set via: fly secrets set KEY=value)
+# - DATABASE_URL
+# - REDIS_URL (optional)
+# - NUZANTARA_API_KEY
+# - OPENROUTER_API_KEY
+# - GOOGLE_API_KEY
+# - IMAGINEART_API_KEY
+# - TWITTER_API_KEY (optional)
+# - TWITTER_API_SECRET (optional)
+# - LINKEDIN_CLIENT_ID (optional)
+# - TELEGRAM_BOT_TOKEN (optional)

@@ -1,0 +1,37 @@
+[
+    {
+        "id": "q1",
+        "category": "VISA",
+        "query": "Quali sono i requisiti per il KITAS Investitore E28A?",
+        "expected_keywords": ["10 miliard", "capitale", "versato", "investitore"],
+        "complexity": "Pro"
+    },
+    {
+        "id": "q2",
+        "category": "BUSINESS",
+        "query": "Voglio aprire un ristorante a Bali. Che licenza serve?",
+        "expected_keywords": ["KBLI", "56101", "ristorante", "PT PMA"],
+        "complexity": "Pro"
+    },
+    {
+        "id": "q3",
+        "category": "TAX",
+        "query": "Quanto è la tassa PPh 23 per i servizi?",
+        "expected_keywords": ["2%", "servizi", "NPWP"],
+        "complexity": "Pro"
+    },
+    {
+        "id": "q4",
+        "category": "COMPLEX",
+        "query": "Conviene di più un KITAS E33G o un E28A per un nomade digitale che vuole investire?",
+        "expected_keywords": ["E33G", "E28A", "tasse", "investimento", "lavoro"],
+        "complexity": "DeepThink"
+    },
+    {
+        "id": "q5",
+        "category": "IDENTITY",
+        "query": "Chi sei?",
+        "expected_keywords": ["Zantara", "Bali Zero"],
+        "complexity": "Fast"
+    }
+]

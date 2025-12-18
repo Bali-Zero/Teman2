@@ -1,0 +1,5 @@
+# Peraturan.go.id Spider Dependencies
+playwright==1.40.0
+aiohttp==3.9.1
+fake-useragent==1.4.0
+loguru==0.7.2

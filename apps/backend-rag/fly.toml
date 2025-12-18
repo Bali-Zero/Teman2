@@ -1,0 +1,54 @@
+# fly.toml app configuration file generated for nuzantara-rag on 2025-11-22T18:00:25+08:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'nuzantara-rag'
+primary_region = 'sin'
+
+[build]
+  dockerfile = 'Dockerfile'
+  build_target = ''
+
+[deploy]
+  strategy = 'rolling'
+  # release_command = "sh -c 'python -m backend.db.migrate apply-all && python scripts/populate_kg.py --limit 50'"
+  # TEMPORARILY DISABLED: flyctl crashes with SIGSEGV when streaming release_command logs
+  # Migrations & KG Population: Run automatically via release_command to bypass local shell restrictions
+
+[env]
+  ENVIRONMENT = 'production'
+  EMBEDDING_PROVIDER = 'openai'
+  LOG_LEVEL = 'INFO'
+  PORT = '8080'
+  QDRANT_URL = 'https://nuzantara-qdrant.fly.dev'
+  PYTHONUNBUFFERED = '1'
+
+[[mounts]]
+  source = 'nuzantara_rag_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  kill_timeout = 300
+
+  [http_service.concurrency]
+    type = 'requests'
+    hard_limit = 250
+    soft_limit = 200
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '15s'
+    grace_period = '5m0s'
+    method = 'GET'
+    path = '/health'
+
+[[vm]]
+  memory = '2gb'
+  cpu_kind = 'shared'
+  cpus = 2

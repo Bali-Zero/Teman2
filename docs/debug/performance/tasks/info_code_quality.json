@@ -1,0 +1,32 @@
+{
+  "priority": "info",
+  "area": "code_quality",
+  "score": 35,
+  "description": "Code Quality improvements - Auto-fix code quality issues",
+  "scope": ["apps/backend-rag/backend"],
+  "metrics_to_collect": [
+    "blocking_calls_count",
+    "sync_operations_in_async_count",
+    "large_loops_count",
+    "missing_type_hints_count"
+  ],
+  "key_issues": [
+    "5 blocking HTTP calls found",
+    "Type hints mancanti",
+    "Error handling inconsistente"
+  ],
+  "tasks": [
+    "Convert blocking HTTP calls to async (httpx)",
+    "Add missing type hints",
+    "Improve error handling consistency",
+    "Run watchdog auto-fix script",
+    "Fix code quality issues identified"
+  ],
+  "expected_output": "docs/debug/performance/code_quality_report.md",
+  "success_criteria": [
+    "All blocking calls converted to async",
+    "Type hints added to all public functions",
+    "Error handling standardized"
+  ],
+  "auto_fix_script": "apps/backend-rag/scripts/watchdog.py"
+}

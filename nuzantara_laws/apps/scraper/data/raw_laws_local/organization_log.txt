@@ -1,0 +1,257 @@
+Total laws in inventory: 119
+Categories: Ambiente, Codici_e_Codificazioni, Company&Licenses, Edilizia_Urbanistica, Immigrazione, Istruzione, Lavoro, Sanita, Settore_Finanziario, Tasse
+
+Total PDF files found: 352
+
+
+=== DUPLICATES BY FILE HASH ===
+Found 26 groups
+
+Hash: a5e30fe148f20e3a...
+  Files (5):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_78.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenkumham_19_2024.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_78_20251122_163034_6bc650.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenkumham_19_2024_20251122_163034_6bc650.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/imigrasi_file_78_20251122_163034_6bc650.pdf
+
+Hash: ecbbeccc196145f4...
+  Files (5):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_79.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenkumham_11_2024.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_79_20251122_163034_0e0326.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenkumham_11_2024_20251122_163034_0e0326.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/imigrasi_file_79_20251122_163034_0e0326.pdf
+
+Hash: 4d7d58e64a7dd5b5...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Kemnaker_2023UU06_Klaster_Ketenagakerjaan.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Kemnaker_2023UU06_Klaster_Ketenagakerjaan_20251122_163034_319966.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Company&Licenses/Kemnaker_2023UU06_Klaster_Ketenagakerjaan_20251122_163034_319966.pdf
+
+Hash: 19aea07bc238a3ee...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/PMK-81-2024.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/PMK-81-2024_20251122_163034_a6d446.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Tasse/PMK-81-2024_20251122_163034_a6d446.pdf
+
+Hash: c7eafca36e1ae4d2...
+  Files (7):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHP_2025_New.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHPerdata_Burgerlijk_Wetboek.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHP_2025_New_20251122_163034_528354.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHP_2025_New_20251122_163035_528354.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHPerdata_Burgerlijk_Wetboek_20251122_163034_528354.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHPerdata_Burgerlijk_Wetboek_20251122_163035_528354.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Company&Licenses/KUHPerdata_Burgerlijk_Wetboek_20251122_163034_528354.pdf
+
+Hash: 10a3b3723fd14953...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenaker_No._15_Tahun_2022.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenaker_No._15_Tahun_2022_20251122_163034_75979b.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Permenaker_No._15_Tahun_2022_20251122_163034_75979b.pdf
+
+Hash: b5d1b331396b4a11...
+  Files (4):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permen Imipas Nomor 3 Tahun 2024.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permen Imipas Nomor 3 Tahun 2024_20251122_163034_5414df.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permen Imipas Nomor 3 Tahun 2024_20251122_163035_5414df.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/Permen Imipas Nomor 3 Tahun 2024_20251122_163034_5414df.pdf
+
+Hash: 3b17a0a0a2ec06ff...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Kitas giga 2.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/Kitas giga 2.pdf
+
+Hash: a4a523589542ad0d...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_77.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_77_20251122_163034_e76df2.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/imigrasi_file_77_20251122_163034_e76df2.pdf
+
+Hash: f5c1da7d1d8a9592...
+  Files (6):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT (1).pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT (2).pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT (1).pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/Hasil klarifikasi Penjamin Keimigrasian - PT.  BALI NOL IMPRESARIAT (2).pdf
+
+Hash: d304c5bc45bd6062...
+  Files (4):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHP_2025_New_Penal_Code.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHP_2025_New_Penal_Code_20251122_163034_56698e.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/KUHP_2025_New_Penal_Code_20251122_163035_56698e.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Codici_e_Codificazioni/KUHP_2025_New_Penal_Code_20251122_163034_56698e.pdf
+
+Hash: 23b04167888d330b...
+  Files (4):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permen Imipas 8 Tahun 2025.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permen Imipas 8 Tahun 2025_20251122_163034_52d43b.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permen Imipas 8 Tahun 2025_20251122_163035_52d43b.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/Permen Imipas 8 Tahun 2025_20251122_163034_52d43b.pdf
+
+Hash: 36894a32d07d0669...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_75.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_75_20251122_163034_29e08d.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/imigrasi_file_75_20251122_163034_29e08d.pdf
+
+Hash: 38da20dec8c63159...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/2025Permeninvesthil005-.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Per BKPM No 5 Tahun 2025.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Company&Licenses/2025Permeninvesthil005-.pdf
+
+Hash: 42f8b1df98d23d6c...
+  Files (4):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/No 8 Tahun 2021.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/No 8 Tahun 2021_20251122_163034_16bcfe.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/No 8 Tahun 2021_20251122_163035_16bcfe.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/No 8 Tahun 2021_20251122_163034_16bcfe.pdf
+
+Hash: 8884e39df8816abf...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_80.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/imigrasi_file_80_20251122_163034_1bb317.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/imigrasi_file_80_20251122_163034_1bb317.pdf
+
+Hash: 43902efee0cc4cfd...
+  Files (3):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenaker_No._20_Tahun_2019.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Permenaker_No._20_Tahun_2019_20251122_163034_f6d9f2.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Permenaker_No._20_Tahun_2019_20251122_163034_f6d9f2.pdf
+
+Hash: dd00646cb9b57ff4...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Civil Code.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Codici_e_Codificazioni/Civil Code.pdf
+
+Hash: 3ae95ed2ff65770e...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/PT.  BAYU BALI NOL.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/PT.  BAYU BALI NOL (1).pdf
+
+Hash: 1ecbeed2f762355a...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/UU Nomor  19 Tahun 2016.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Perubahan Atas Undang-Undang Nomor 11 Tahun 2008 Tentang Informasi Dan Transaksi Elektronik.pdf
+
+Hash: c59c0fee8ceff7e5...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/UUD 1945 dan Amandemen.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/UUD_1945_20251122_163034_0e4f61.pdf
+
+Hash: 0d3868d19082be34...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Ketenagakerjaan.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/UU Nomor 13 Tahun 2003_20251122_163034_4ba99c.pdf
+
+Hash: 924daf24ae46894f...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/UU-63-2024_20251122_163034_69f2f0.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 2011 tentan Keimigrasian.pdf
+
+Hash: 63708ca9b50ac067...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Keimigrasian.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Immigrazione/UU 6 Tahun 2011_20251122_163034_c1e202.pdf
+
+Hash: 17bb1512014f0eda...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Tasse/UU Nomor 42 Tahun 2009_20251122_163034_4f4466.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Perubahan Ketiga Atas Undang-Undang Nomor 8 Tahun 1983 tentang Pajak Pertambahan Nilai Barang dan Jasa dan Pajak Penjualan Atas Barang Mewah.pdf
+
+Hash: 559d06446202b826...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Tasse/UU Nomor 28 Tahun 2007_20251122_163034_1301b8.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Perubahan Ketiga atas Undang-Undang Nomor 6 Tahun 1983 tentang Ketentuan Umum dan Tata Cara Perpajakan.pdf
+
+
+=== DUPLICATES BY CONTENT ===
+Found 26 groups
+
+Content Hash: 46022109354c34e4...
+  Files (4):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/Kemnaker_2023UU06_Klaster_Ketenagakerjaan.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Penetapan Peraturan Pemerintah Pengganti Undang-Undang Nomor 2 Tahun 2022 tentang Cipta Kerja menjadi Undang-Undang.pdf
+
+Content Hash: 387754a049b404af...
+  Files (2):
+  ✓ KEEP: /Users/antonellosiano/Desktop/Zantara_KB_Source/raw_laws/Harmonisasi Peraturan Perpajakan.pdf
+  ✗ DELETE: /Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/Salinan UU Nomor 7 Tahun 2021.pdf
+
+
+=== ORGANIZATION ===
+
+MOVED: UU-63-2024_20251122_163034_69f2f0.pdf → Immigrazione/
+MOVED: Kemnaker_2023UU06_Klaster_Ketenagakerjaan.pdf → Company&Licenses/
+MOVED: Aparatur Sipil Negara.pdf → Lavoro/
+MOVED: Kesehatan.pdf → Sanita/
+MOVED: Kebidanan.pdf → Sanita/
+MOVED: Keperawatan.pdf → Sanita/
+MOVED: UU Nomor 25 Tahun 2007_20251122_163034_6c0809.pdf → Edilizia_Urbanistica/
+MOVED: UU_1_1974_Perkawinan_20251122_163034_58faec.pdf → Codici_e_Codificazioni/
+MOVED: UUD_1945_Amd3_20251122_163034_2ea2aa.pdf → Istruzione/
+MOVED: UUD_1945_Amd2_20251122_163034_7476b5.pdf → Istruzione/
+MOVED: UUD_1945_Amd1_20251122_163034_a0d9f2.pdf → Istruzione/
+MOVED: UUD_1945_Amd4_20251122_163034_eb7c5a.pdf → Istruzione/
+ERROR moving UUD_1945_Amd3_20251122_163034_2ea2aa.pdf: [Errno 2] No such file or directory: '/Users/antonellosiano/Desktop/Zantara_KB_Source/Non classificati/UUD_1945_Amd3_20251122_163034_2ea2aa.pdf'
+MOVED: UUD 1945 dan Amandemen.pdf → Codici_e_Codificazioni/
+MOVED: UU_19_2016_ITE_20251122_163034_f5277a.pdf → Codici_e_Codificazioni/
+MOVED: UU_2_2017_Construction_20251122_163034_b08088.pdf → Edilizia_Urbanistica/
+MOVED: UU_24_2013_Adminduk_Amendment_20251122_163034_34c5f0.pdf → Codici_e_Codificazioni/
+MOVED: UU Nomor 12 Tahun 2012.pdf → Codici_e_Codificazioni/
+MOVED: UU_5_1960_Real_Estate_20251122_163034_4b5f11.pdf → Edilizia_Urbanistica/
+MOVED: UU_21_2011_OJK_20251122_163034_2aad03.pdf → Settore_Finanziario/
+MOVED: Civil Code.pdf → Codici_e_Codificazioni/
+MOVED: PP Nomor 44 Tahun 2022.pdf → Tasse/
+MOVED: UU_1_2022_Relations_Central_Regional_20251122_163034_2449fe.pdf → Lavoro/
+MOVED: UU Nomor 15 Tahun 2019.pdf → Edilizia_Urbanistica/
+MOVED: UU Nomor 20 Tahun 2016_20251122_163034_90407b.pdf → Company&Licenses/
+MOVED: UU Nomor  19 Tahun 2016.pdf → Codici_e_Codificazioni/
+MOVED: Tenaga Kesehatan.pdf → Sanita/
+MOVED: UU-27-2022_20251122_163035_07f926.pdf → Tasse/
+MOVED: PP Nomor 35 Tahun 2021.pdf → Company&Licenses/
+MOVED: UU_31_2004_Fisheries_20251122_163034_2049d6.pdf → Ambiente/
+MOVED: UU_29_2004_Medical_Practice_20251122_163034_3e8d7c.pdf → Sanita/
+MOVED: UU_5_1960_UUPA_20251122_163034_fbf36b.pdf → Ambiente/
+MOVED: Kesehatan Jiwa.pdf → Sanita/
+MOVED: Kekarantinaan Kesehatan.pdf → Sanita/
+MOVED: PP-58-2023_20251122_163034_11e13c.pdf → Tasse/
+MOVED: PP Nomor 28 Tahun 2025_20251122_163034_d4557b.pdf → Company&Licenses/
+MOVED: Pemutakhiran Rencana Kerja Pemerintah Tahun 2025.pdf → Lavoro/
+MOVED: PP Nomor 55 Tahun 2022.pdf → Tasse/
+MOVED: No 8 Tahun 2021.pdf → Lavoro/
+MOVED: PP-18-2021_20251122_163034_943449.pdf → Istruzione/
+MOVED: PP-40-2023_20251122_163034_db097b.pdf → Company&Licenses/
+MOVED: PP_14_2021_Housing_20251122_163034_0c909f.pdf → Ambiente/
+MOVED: PP Nomor 71 Tahun 2019.pdf → Codici_e_Codificazioni/
+MOVED: 2025Permeninvesthil005-.pdf → Company&Licenses/
+MOVED: Permen Imipas 8 Tahun 2025.pdf → Immigrazione/
+MOVED: imigrasi_file_78.pdf → Immigrazione/
+MOVED: imigrasi_file_79.pdf → Immigrazione/
+MOVED: Permen Imipas Nomor 3 Tahun 2024.pdf → Immigrazione/
+MOVED: Permenaker_No._15_Tahun_2022.pdf → Tasse/
+MOVED: Permenaker_No._20_Tahun_2019.pdf → Tasse/
+MOVED: KUHP_2025_New.pdf → Codici_e_Codificazioni/
+MOVED: PMK-81-2024.pdf → Tasse/
+MOVED: Kitas giga 2.pdf → Immigrazione/
+MOVED: PRICE LIST 2025 INTERNAL - PRICE SELLING-2.pdf → Immigrazione/
+MOVED: Property Dispute and Management Strategy in Bali (1).pdf → Tasse/
+MOVED: Surat Undangan Klarifikasi ke 1 (1).pdf → Immigrazione/
+MOVED: PT.  BAYU BALI NOL.pdf → Immigrazione/
+MOVED: runpod-invoice-2025-10-13.pdf → Tasse/
+MOVED: runpod-invoice-2025-10-14.pdf → Tasse/
+MOVED: Refund-3509-6917.pdf → Tasse/
+MOVED: imigrasi_file_80.pdf → Immigrazione/
+MOVED: imigrasi_file_77.pdf → Immigrazione/
+MOVED: imigrasi_file_75.pdf → Immigrazione/
+MOVED: Resume Sarah Sendouw.pdf (1).pdf → Codici_e_Codificazioni/
+
+==================================================
+SUMMARY
+==================================================
+Deleted duplicates: 59
+Moved/organized: 63

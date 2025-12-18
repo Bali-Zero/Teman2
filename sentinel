@@ -1,0 +1,28 @@
+#!/bin/bash
+# SENTINEL WRAPPER - Enhanced with Deep Analysis + Run Logging
+# Executes the enhanced Python Guardian script and captures output logs
+
+set -uo pipefail
+
+# Ensure we are in the project root
+cd "$(dirname "$0")"
+
+ROOT_DIR="$(pwd)"
+LOG_DIR="$ROOT_DIR/sentinel-results"
+mkdir -p "$LOG_DIR"
+TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+LOG_FILE="$LOG_DIR/sentinel-run-${TIMESTAMP}.log"
+
+echo "📒 Sentinel log: $LOG_FILE"
+
+if command -v semgrep &> /dev/null && command -v codeql &> /dev/null; then
+    echo "🚀 Enhanced Sentinel Mode - Deep Analysis Available"
+    CMD=(python3 apps/core/sentinel_enhanced.py "$@")
+else
+    echo "⚠️ Enhanced tools not found - Running Basic Sentinel"
+    echo "Run './scripts/setup-deep-analysis.sh' to enable full security scanning"
+    CMD=(python3 apps/core/sentinel.py "$@")
+fi
+
+"${CMD[@]}" 2>&1 | tee "$LOG_FILE"
+exit "${PIPESTATUS[0]}"

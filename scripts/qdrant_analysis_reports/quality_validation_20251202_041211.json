@@ -1,0 +1,148 @@
+{
+  "validation_date": "2025-12-02T04:12:08.688846",
+  "collections": {
+    "bali_zero_pricing": {
+      "collection": "bali_zero_pricing",
+      "stats": {
+        "total": 29,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 29,
+        "avg_length": 363.9310344827586,
+        "min_length": 70,
+        "max_length": 493
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 90.0,
+      "status": "good"
+    },
+    "bali_zero_team": {
+      "collection": "bali_zero_team",
+      "stats": {
+        "total": 43,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 0,
+        "avg_length": 261.6279069767442,
+        "min_length": 215,
+        "max_length": 315
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 100,
+      "status": "good"
+    },
+    "visa_oracle": {
+      "collection": "visa_oracle",
+      "stats": {
+        "total": 100,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 100,
+        "avg_length": 473.44,
+        "min_length": 51,
+        "max_length": 1200
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 90.0,
+      "status": "good"
+    },
+    "kbli_unified": {
+      "collection": "kbli_unified",
+      "stats": {
+        "total": 100,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 100,
+        "avg_length": 660.8,
+        "min_length": 55,
+        "max_length": 1500
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 90.0,
+      "status": "good"
+    },
+    "tax_genius": {
+      "collection": "tax_genius",
+      "stats": {
+        "total": 100,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 100,
+        "avg_length": 482.96,
+        "min_length": 80,
+        "max_length": 1200
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 90.0,
+      "status": "good"
+    },
+    "legal_unified": {
+      "collection": "legal_unified",
+      "stats": {
+        "total": 100,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 100,
+        "avg_length": 236.59,
+        "min_length": 73,
+        "max_length": 1400
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 90.0,
+      "status": "good"
+    },
+    "knowledge_base": {
+      "collection": "knowledge_base",
+      "stats": {
+        "total": 100,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 100,
+        "avg_length": 909.63,
+        "min_length": 226,
+        "max_length": 1547
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 90.0,
+      "status": "good"
+    },
+    "property_unified": {
+      "collection": "property_unified",
+      "stats": {
+        "total": 29,
+        "empty_chunks": 0,
+        "too_short_chunks": 0,
+        "too_long_chunks": 0,
+        "missing_metadata": 29,
+        "avg_length": 917.448275862069,
+        "min_length": 106,
+        "max_length": 1200
+      },
+      "issues": [],
+      "total_issues": 0,
+      "quality_score": 90.0,
+      "status": "good"
+    }
+  },
+  "summary": {
+    "total_collections": 8,
+    "total_documents_validated": 601,
+    "total_issues": 0,
+    "average_quality_score": 91.25,
+    "collections_with_issues": 0
+  }
+}

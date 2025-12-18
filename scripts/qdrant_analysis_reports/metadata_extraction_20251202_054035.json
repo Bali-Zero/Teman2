@@ -1,0 +1,236 @@
+{
+  "extraction_date": "2025-12-02T05:30:53.428879",
+  "collections": {
+    "visa_oracle": {
+      "total_processed": 1000,
+      "extracted_count": 780,
+      "updated_count": 780,
+      "examples": [
+        {
+          "id": "3146237438717204",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "duration": "3 weeks",
+            "fee_usd": 100.0,
+            "fee_idr": 1000000.0
+          },
+          "merged_metadata": {
+            "duration": "3 weeks",
+            "fee_usd": 100.0,
+            "fee_idr": 1000000.0
+          }
+        },
+        {
+          "id": "13766063622010169",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "visa_category": "official",
+            "last_updated": "2025-10-02"
+          },
+          "merged_metadata": {
+            "visa_category": "official",
+            "last_updated": "2025-10-02"
+          }
+        },
+        {
+          "id": "14561015647951843",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "visa_category": "visa_type",
+            "last_updated": "2025-10-02"
+          },
+          "merged_metadata": {
+            "visa_category": "visa_type",
+            "last_updated": "2025-10-02"
+          }
+        }
+      ]
+    },
+    "kbli_unified": {
+      "total_processed": 1000,
+      "extracted_count": 1000,
+      "updated_count": 1000,
+      "examples": [
+        {
+          "id": "401608350113536",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "kbli_description": "- **BPJS Ketenagakerjaan** (Employment): Mandatory before hiring staff #### **Ministry of Law & HR (AHU)** 📋"
+          },
+          "merged_metadata": {
+            "kbli_description": "- **BPJS Ketenagakerjaan** (Employment): Mandatory before hiring staff #### **Ministry of Law & HR (AHU)** 📋"
+          }
+        },
+        {
+          "id": "4014120630504352",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "kbli_description": "Investment Minimum: IDR 10,000,000,000",
+            "risk_level": "MEDIUM"
+          },
+          "merged_metadata": {
+            "kbli_description": "Investment Minimum: IDR 10,000,000,000",
+            "risk_level": "MEDIUM"
+          }
+        },
+        {
+          "id": "4644878491502956",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "kbli_code": "20296",
+            "kbli_description": "**Timeline**: 2-4 months **Required Licenses**: NIB + Certificate of Standards; Environmental permit --- ### **20296: Manufacture of Medium‑Chain Essential Oils** **Description**: Production of medium",
+            "risk_level": "MEDIUM"
+          },
+          "merged_metadata": {
+            "kbli_code": "20296",
+            "kbli_description": "**Timeline**: 2-4 months **Required Licenses**: NIB + Certificate of Standards; Environmental permit --- ### **20296: Manufacture of Medium‑Chain Essential Oils** **Description**: Production of medium",
+            "risk_level": "MEDIUM"
+          }
+        }
+      ]
+    },
+    "tax_genius": {
+      "total_processed": 895,
+      "extracted_count": 895,
+      "updated_count": 895,
+      "examples": [
+        {
+          "id": "12385057840005417",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "tax_type": "\"consequence\": \"Taxed",
+            "tax_rate": 20.0,
+            "source_document": "tax_genius"
+          },
+          "merged_metadata": {
+            "tax_type": "\"consequence\": \"Taxed",
+            "tax_rate": 20.0,
+            "source_document": "tax_genius"
+          }
+        },
+        {
+          "id": "14632132350410797",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "tax_type": "PTKP (Tax-Free",
+            "tax_rate": 5.0,
+            "source_document": "tax_genius"
+          },
+          "merged_metadata": {
+            "tax_type": "PTKP (Tax-Free",
+            "tax_rate": 5.0,
+            "source_document": "tax_genius"
+          }
+        },
+        {
+          "id": "30574489711423646",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "tax_rate": 100.0,
+            "source_document": "tax_genius"
+          },
+          "merged_metadata": {
+            "tax_rate": 100.0,
+            "source_document": "tax_genius"
+          }
+        }
+      ]
+    },
+    "legal_unified": {
+      "total_processed": 1000,
+      "extracted_count": 896,
+      "updated_count": 896,
+      "examples": [
+        {
+          "id": "2933407688406093",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "pasal": "206",
+            "year": 2022,
+            "law_title": "PP-55-2022 - Pasal 206"
+          },
+          "merged_metadata": {
+            "pasal": "206",
+            "year": 2022,
+            "law_title": "PP-55-2022 - Pasal 206"
+          }
+        },
+        {
+          "id": "8592771091835870",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "pasal": "87",
+            "year": 1960,
+            "law_title": "UU-5-1960 - Pasal 87"
+          },
+          "merged_metadata": {
+            "pasal": "87",
+            "year": 1960,
+            "law_title": "UU-5-1960 - Pasal 87"
+          }
+        },
+        {
+          "id": "9926451537152604",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "pasal": "142",
+            "year": 2009,
+            "law_title": "UU-44-2009 - Pasal 142"
+          },
+          "merged_metadata": {
+            "pasal": "142",
+            "year": 2009,
+            "law_title": "UU-44-2009 - Pasal 142"
+          }
+        }
+      ]
+    },
+    "bali_zero_pricing": {
+      "total_processed": 29,
+      "extracted_count": 29,
+      "updated_count": 29,
+      "examples": [
+        {
+          "id": "247198967862531803",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "service_name": "C7 VISA",
+            "service_type": "visa",
+            "source": "bali_zero_pricing"
+          },
+          "merged_metadata": {
+            "service_name": "C7 VISA",
+            "service_type": "visa",
+            "source": "bali_zero_pricing"
+          }
+        },
+        {
+          "id": "2287464467650654983",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "service_name": "D1 VISA",
+            "service_type": "visa",
+            "source": "bali_zero_pricing"
+          },
+          "merged_metadata": {
+            "service_name": "D1 VISA",
+            "service_type": "visa",
+            "source": "bali_zero_pricing"
+          }
+        },
+        {
+          "id": "2611252800808268538",
+          "old_metadata": {},
+          "extracted_metadata": {
+            "service_name": "",
+            "source": "bali_zero_pricing"
+          },
+          "merged_metadata": {
+            "service_name": "",
+            "source": "bali_zero_pricing"
+          }
+        }
+      ]
+    }
+  }
+}
