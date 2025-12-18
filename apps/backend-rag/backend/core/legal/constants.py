@@ -87,8 +87,10 @@ BAGIAN_PATTERN = re.compile(
 PARAGRAF_PATTERN = re.compile(r"^Paragraf\s+(\d+)\s+(.+?)(?=\n|$)", re.IGNORECASE | re.MULTILINE)
 
 # Pasal (Article) - CRITICAL UNIT
+# Supports "Pasal 1", "Pasal I", "Pasal 1A"
+# Relaxed start anchor to handle OCR artifacts
 PASAL_PATTERN = re.compile(
-    r"^Pasal\s+(\d+[A-Z]?)\s*(.+?)(?=^Pasal\s+\d+|^BAB\s+|^Penjelasan|\Z)",
+    r"(?:^|\n)\s*Pasal\s+([IVXLC]+|\d+[A-Z]?)\s*\n?\s*(.+?)(?=(?:^|\n)\s*Pasal\s+(?:[IVXLC]+|\d+[A-Z]?)|^\s*BAB\s+|^Penjelasan|\Z)",
     re.IGNORECASE | re.MULTILINE | re.DOTALL,
 )
 
