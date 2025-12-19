@@ -172,10 +172,18 @@ async def bali_zero_chat_stream(
                             yield f"data: {json.dumps({'type': 'metadata', 'data': chunk_data}, ensure_ascii=False)}\n\n"
                         elif chunk_type == "token":
                             yield f"data: {json.dumps({'type': 'token', 'data': chunk_data}, ensure_ascii=False)}\n\n"
+                        elif chunk_type == "sources":
+                            # Citation cards data for frontend
+                            yield f"data: {json.dumps({'type': 'sources', 'data': chunk_data}, ensure_ascii=False)}\n\n"
+                        elif chunk_type == "tool_start":
+                            yield f"data: {json.dumps({'type': 'tool_start', 'data': chunk_data}, ensure_ascii=False)}\n\n"
+                        elif chunk_type == "tool_end":
+                            yield f"data: {json.dumps({'type': 'tool_end', 'data': chunk_data}, ensure_ascii=False)}\n\n"
                         elif chunk_type == "done":
                             yield f"data: {json.dumps({'type': 'done', 'data': chunk_data}, ensure_ascii=False)}\n\n"
                         else:
-                            logger.warning(f"Unknown chunk type: {chunk_type}")
+                            # Pass through any other event types
+                            yield f"data: {json.dumps({'type': chunk_type, 'data': chunk_data}, ensure_ascii=False)}\n\n"
                     elif isinstance(chunk, str):
                         if chunk.startswith("[METADATA]"):
                             try:
