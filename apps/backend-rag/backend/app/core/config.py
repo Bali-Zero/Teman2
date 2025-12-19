@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     google_imagen_api_key: str | None = (
         None  # Set via GOOGLE_IMAGEN_API_KEY env var (for Imagen image generation)
     )
+    imagineart_api_key: str | None = None  # Set via IMAGINEART_API_KEY env var (for ImagineArt)
+    stability_api_key: str | None = None  # Set via STABILITY_API_KEY env var (for Stability AI)
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536  # Matches migrated collections
 
@@ -158,13 +160,13 @@ class Settings(BaseSettings):
     reranker_overfetch_count: int = 20
     reranker_return_count: int = 5
 
-    # Ze-Rank 2 Configuration (External API)
+    # ZeroEntropy Re-ranker Configuration (External API)
     zerank_api_key: str | None = Field(
-        default=None, description="Ze-Rank 2 API Key - Set via ZERANK_API_KEY env var"
+        default=None, description="ZeroEntropy API Key - Set via ZERANK_API_KEY env var"
     )
     zerank_api_url: str = Field(
-        default="https://api.zerank.com/v2/rerank",
-        description="Ze-Rank 2 API URL - Set via ZERANK_API_URL env var",
+        default="https://api.zeroentropy.dev/v1/models/rerank",
+        description="ZeroEntropy Re-ranker API URL - Set via ZERANK_API_URL env var",
     )
 
     # ========================================
@@ -175,6 +177,34 @@ class Settings(BaseSettings):
         description="Enable tier/exclude_repealed filters in SearchService.search() by default. "
         "Set via SEARCH_ENABLE_FILTERS env var. When False (default), filters are disabled "
         "for backward compatibility with chat path. Individual calls can override via apply_filters parameter.",
+    )
+
+    # ========================================
+    # BM25 HYBRID SEARCH CONFIGURATION
+    # ========================================
+    enable_bm25: bool = Field(
+        default=True,
+        description="Enable BM25 sparse vectors for hybrid search. Set via ENABLE_BM25 env var.",
+    )
+    bm25_vocab_size: int = Field(
+        default=30000,
+        description="Hash space size for BM25 token IDs. Set via BM25_VOCAB_SIZE env var.",
+    )
+    bm25_k1: float = Field(
+        default=1.5,
+        description="BM25 term frequency saturation parameter. Set via BM25_K1 env var.",
+    )
+    bm25_b: float = Field(
+        default=0.75,
+        description="BM25 document length normalization parameter. Set via BM25_B env var.",
+    )
+    hybrid_dense_weight: float = Field(
+        default=0.7,
+        description="Weight for dense vectors in hybrid search (0-1). Set via HYBRID_DENSE_WEIGHT env var.",
+    )
+    hybrid_sparse_weight: float = Field(
+        default=0.3,
+        description="Weight for sparse vectors in hybrid search (0-1). Set via HYBRID_SPARSE_WEIGHT env var.",
     )
 
     # ========================================

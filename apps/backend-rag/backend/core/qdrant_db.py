@@ -429,14 +429,16 @@ class QdrantClient:
         vector_size: int = DEFAULT_OPENAI_DIMENSIONS,
         distance: str = "Cosine",
         on_disk_payload: bool | None = None,
+        enable_sparse: bool = False,
     ) -> bool:
         """
-        Create a new collection.
+        Create a new collection with optional sparse vector support.
 
         Args:
-            vector_size: Size of the vectors (default 1536 for OpenAI)
+            vector_size: Size of the dense vectors (default 1536 for OpenAI)
             distance: Distance metric (Cosine, Euclidean, Dot)
-            on_disk_payload: Whether to store payload on disk (optional, for Qdrant compatibility)
+            on_disk_payload: Whether to store payload on disk (optional)
+            enable_sparse: Enable BM25 sparse vector support for hybrid search
 
         Returns:
             True if successful
@@ -445,7 +447,20 @@ class QdrantClient:
             client = await self._get_client()
             url = f"/collections/{self.collection_name}"
 
-            payload = {"vectors": {"size": vector_size, "distance": distance}}
+            # Use named vectors for hybrid search compatibility
+            if enable_sparse:
+                payload = {
+                    "vectors": {
+                        "dense": {"size": vector_size, "distance": distance}
+                    },
+                    "sparse_vectors": {
+                        "bm25": {"index": {"on_disk": False}}
+                    }
+                }
+                logger.info(f"Creating collection with sparse vector support (BM25)")
+            else:
+                payload = {"vectors": {"size": vector_size, "distance": distance}}
+
             if on_disk_payload is not None:
                 payload["on_disk_payload"] = on_disk_payload
 
@@ -725,3 +740,239 @@ class QdrantClient:
         except Exception as e:
             logger.error(f"Error peeking Qdrant collection: {e}")
             return {"ids": [], "documents": [], "metadatas": []}
+
+    async def hybrid_search(
+        self,
+        query_embedding: list[float],
+        query_sparse: dict[str, Any] | None = None,
+        filter: dict[str, Any] | None = None,
+        limit: int = 5,
+        prefetch_limit: int = 20,
+    ) -> dict[str, Any]:
+        """
+        Hybrid search combining dense and sparse (BM25) vectors with RRF fusion.
+
+        Uses Qdrant's prefetch + fusion API for optimal hybrid search.
+
+        Args:
+            query_embedding: Dense query embedding vector (1536 dims)
+            query_sparse: Sparse query vector {"indices": [...], "values": [...]}
+            filter: Metadata filter (simplified format)
+            limit: Maximum number of final results
+            prefetch_limit: Number of candidates to prefetch from each vector type
+
+        Returns:
+            Dictionary with search results in standard format
+        """
+        # If no sparse vector provided, fall back to dense-only search
+        if not query_sparse or not query_sparse.get("indices"):
+            return await self.search(query_embedding, filter=filter, limit=limit)
+
+        async def _do_hybrid_search():
+            client = await self._get_client()
+            url = f"/collections/{self.collection_name}/points/query"
+
+            # Build prefetch queries for both dense and sparse
+            prefetch = [
+                {
+                    "query": query_embedding,
+                    "using": "dense",
+                    "limit": prefetch_limit,
+                },
+                {
+                    "query": {
+                        "indices": query_sparse["indices"],
+                        "values": query_sparse["values"],
+                    },
+                    "using": "bm25",
+                    "limit": prefetch_limit,
+                },
+            ]
+
+            # Main query with RRF fusion
+            payload = {
+                "prefetch": prefetch,
+                "query": {"fusion": "rrf"},  # Reciprocal Rank Fusion
+                "limit": limit,
+                "with_payload": True,
+            }
+
+            # Add filter if provided
+            if filter:
+                qdrant_filter = self._convert_filter_to_qdrant_format(filter)
+                if qdrant_filter:
+                    payload["filter"] = qdrant_filter
+
+            try:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()
+
+                data = response.json()
+                results = data.get("result", {}).get("points", [])
+
+                # Transform results to standard format
+                formatted_results = {
+                    "ids": [str(r["id"]) for r in results],
+                    "documents": [r["payload"].get("text", "") for r in results],
+                    "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                    "distances": [1.0 - r.get("score", 0) for r in results],
+                    "scores": [r.get("score", 0) for r in results],
+                    "total_found": len(results),
+                    "search_type": "hybrid_rrf",
+                }
+
+                logger.debug(
+                    f"Hybrid search: collection={self.collection_name}, "
+                    f"found {len(results)} results (RRF fusion)"
+                )
+                return formatted_results
+
+            except httpx.HTTPStatusError as e:
+                error_text = e.response.text if hasattr(e.response, "text") else str(e.response)
+                # If hybrid search fails (e.g., collection doesn't have sparse vectors),
+                # fall back to dense-only search
+                if e.response.status_code == 400 and "sparse" in error_text.lower():
+                    logger.warning(
+                        f"Hybrid search not available (no sparse vectors), "
+                        f"falling back to dense search"
+                    )
+                    return await self.search(query_embedding, filter=filter, limit=limit)
+                logger.error(f"Qdrant hybrid search failed: {e.response.status_code} - {error_text}")
+                return {
+                    "ids": [],
+                    "documents": [],
+                    "metadatas": [],
+                    "distances": [],
+                    "scores": [],
+                    "total_found": 0,
+                    "search_type": "hybrid_rrf",
+                    "error": error_text,
+                }
+            except httpx.RequestError as e:
+                logger.error(f"Qdrant hybrid search request error: {e}")
+                raise ConnectionError(f"Qdrant connection error: {e}")
+
+        start_time = time.time()
+        try:
+            result = await _retry_with_backoff(_do_hybrid_search)
+            elapsed = time.time() - start_time
+            _qdrant_metrics["search_calls"] += 1
+            _qdrant_metrics["search_total_time"] += elapsed
+            logger.debug(f"Qdrant hybrid search completed in {elapsed * 1000:.2f}ms")
+            return result
+        except Exception as e:
+            elapsed = time.time() - start_time
+            _qdrant_metrics["errors"] += 1
+            logger.error(f"Qdrant hybrid search error after retries: {e}", exc_info=True)
+            # Fall back to dense search on error
+            return await self.search(query_embedding, filter=filter, limit=limit)
+
+    async def upsert_documents_with_sparse(
+        self,
+        chunks: list[str],
+        embeddings: list[list[float]],
+        sparse_vectors: list[dict[str, Any]],
+        metadatas: list[dict[str, Any]],
+        ids: list[str] | None = None,
+        batch_size: int = 500,
+    ) -> dict[str, Any]:
+        """
+        Insert or update documents with both dense and sparse vectors.
+
+        Args:
+            chunks: List of text chunks
+            embeddings: List of dense embedding vectors
+            sparse_vectors: List of sparse vectors [{"indices": [...], "values": [...]}]
+            metadatas: List of metadata dictionaries
+            ids: Optional list of document IDs
+            batch_size: Number of documents per batch
+
+        Returns:
+            Dictionary with operation results
+        """
+        start_time = time.time()
+        try:
+            client = await self._get_client()
+            url = f"/collections/{self.collection_name}/points"
+
+            # Generate IDs if not provided
+            if not ids:
+                import uuid
+                ids = [str(uuid.uuid4()) for _ in range(len(chunks))]
+
+            # Validate input lengths
+            if not (len(chunks) == len(embeddings) == len(sparse_vectors) == len(metadatas) == len(ids)):
+                raise ValueError(
+                    "chunks, embeddings, sparse_vectors, metadatas, and ids must have same length"
+                )
+
+            total = len(chunks)
+            total_added = 0
+            errors = []
+
+            for i in range(0, total, batch_size):
+                batch_chunks = chunks[i : i + batch_size]
+                batch_embeddings = embeddings[i : i + batch_size]
+                batch_sparse = sparse_vectors[i : i + batch_size]
+                batch_metadatas = metadatas[i : i + batch_size]
+                batch_ids = ids[i : i + batch_size]
+
+                # Build points array with named vectors
+                points = []
+                for j in range(len(batch_chunks)):
+                    point = {
+                        "id": batch_ids[j],
+                        "vector": {
+                            "dense": batch_embeddings[j],
+                            "bm25": batch_sparse[j],
+                        },
+                        "payload": {"text": batch_chunks[j], "metadata": batch_metadatas[j]},
+                    }
+                    points.append(point)
+
+                payload = {"points": points}
+                try:
+                    response = await client.put(url, json=payload, params={"wait": "true"})
+                    response.raise_for_status()
+
+                    total_added += len(batch_chunks)
+                    logger.info(
+                        f"Upserted batch {i // batch_size + 1}: {len(batch_chunks)}/{total} documents "
+                        f"with sparse vectors to '{self.collection_name}'"
+                    )
+                except httpx.HTTPStatusError as e:
+                    error_msg = f"HTTP {e.response.status_code}"
+                    if hasattr(e.response, "text"):
+                        error_msg += f": {e.response.text}"
+                    errors.append(error_msg)
+                    logger.error(f"Qdrant upsert batch failed: {error_msg}")
+                except httpx.RequestError as e:
+                    error_msg = f"Request error: {e}"
+                    errors.append(error_msg)
+                    logger.error(f"Qdrant upsert batch request error: {error_msg}")
+
+            if errors:
+                return {
+                    "success": False,
+                    "error": f"Some batches failed: {errors}",
+                    "documents_added": total_added,
+                    "collection": self.collection_name,
+                }
+
+            logger.info(
+                f"Successfully upserted {total_added} documents with sparse vectors to '{self.collection_name}'"
+            )
+            elapsed = time.time() - start_time
+            _qdrant_metrics["upsert_calls"] += 1
+            _qdrant_metrics["upsert_total_time"] += elapsed
+            _qdrant_metrics["upsert_documents_total"] += total_added
+            return {
+                "success": True,
+                "documents_added": total_added,
+                "collection": self.collection_name,
+                "has_sparse_vectors": True,
+            }
+
+        except Exception as e:
+            logger.error(f"Error upserting with sparse vectors: {e}", exc_info=True)
+            raise

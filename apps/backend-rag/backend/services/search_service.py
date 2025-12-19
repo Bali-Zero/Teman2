@@ -126,6 +126,20 @@ class SearchService:
             f"✅ EmbeddingsGenerator ready: {self.embedder.provider} ({self.embedder.dimensions} dims)"
         )
 
+        # Initialize BM25 vectorizer for hybrid search
+        self._bm25_vectorizer = None
+        if settings.enable_bm25:
+            try:
+                from core.bm25_vectorizer import BM25Vectorizer
+                self._bm25_vectorizer = BM25Vectorizer(
+                    vocab_size=settings.bm25_vocab_size,
+                    k1=settings.bm25_k1,
+                    b=settings.bm25_b,
+                )
+                logger.info("✅ BM25Vectorizer ready for hybrid search")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize BM25Vectorizer: {e}")
+
         # Get Qdrant URL from centralized config
         qdrant_url = settings.qdrant_url
         logger.info(f"🔄 Connecting to Qdrant: {qdrant_url}")
@@ -225,9 +239,9 @@ class SearchService:
         # Get vector DB client
         vector_db = self.collection_manager.get_collection(collection_name)
         if not vector_db:
-            logger.error(f"❌ Unknown collection: {collection_name}, defaulting to visa_oracle")
-            vector_db = self.collection_manager.get_collection("visa_oracle")
-            collection_name = "visa_oracle"
+            logger.error(f"❌ Unknown collection: {collection_name}, defaulting to legal_unified")
+            vector_db = self.collection_manager.get_collection("legal_unified")
+            collection_name = "legal_unified"
             if not vector_db:
                 raise ValueError("Failed to initialize default collection")
 
@@ -343,6 +357,7 @@ class SearchService:
             from core.reranker import ReRanker
 
             self._reranker = ReRanker()
+            logger.info(f"🔧 ReRanker initialized: enabled={self._reranker.enabled}, url={self._reranker.api_url}")
         return self._reranker
 
     async def search_with_reranking(
@@ -408,6 +423,7 @@ class SearchService:
             results["reranked"] = True
             results["early_exit"] = False
         else:
+            logger.warning(f"⚠️ ReRanker disabled - skipping rerank for query: '{query[:50]}'")
             results["reranked"] = False
             results["early_exit"] = False
             results["results"] = results["results"][:limit]
@@ -416,6 +432,188 @@ class SearchService:
         if METRICS_AVAILABLE and pipeline_start_time:
             rag_pipeline_duration.observe(time.time() - pipeline_start_time)
 
+        return results
+
+    async def hybrid_search(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] = None,
+        collection_override: str | None = None,
+        apply_filters: bool | None = None,
+    ) -> dict[str, Any]:
+        """
+        Hybrid search combining dense vectors and BM25 sparse vectors.
+
+        Uses Reciprocal Rank Fusion (RRF) to combine results from both
+        dense semantic search and BM25 keyword search for optimal retrieval.
+
+        Args:
+            query: Search query
+            user_level: User access level (0-3)
+            limit: Max results
+            tier_filter: Optional specific tier filter
+            collection_override: Force specific collection
+            apply_filters: If True, apply tier/exclude_repealed filters
+
+        Returns:
+            Search results with hybrid search metadata
+        """
+        try:
+            # Prepare search context (same as regular search)
+            embedding_start = time.time() if METRICS_AVAILABLE else None
+            query_embedding, collection_name, vector_db, chroma_filter, tier_values = (
+                self._prepare_search_context(
+                    query, user_level, tier_filter, collection_override, apply_filters
+                )
+            )
+            if METRICS_AVAILABLE and embedding_start:
+                rag_embedding_duration.observe(time.time() - embedding_start)
+
+            # Generate BM25 sparse vector
+            query_sparse = None
+            if self._bm25_vectorizer:
+                query_sparse = self._bm25_vectorizer.generate_query_sparse_vector(query)
+                logger.debug(
+                    f"Generated BM25 sparse vector: {len(query_sparse.get('indices', []))} tokens"
+                )
+
+            # Try hybrid search if available
+            search_start = time.time() if METRICS_AVAILABLE else None
+            if query_sparse and hasattr(vector_db, 'hybrid_search'):
+                raw_results = await vector_db.hybrid_search(
+                    query_embedding=query_embedding,
+                    query_sparse=query_sparse,
+                    filter=chroma_filter,
+                    limit=limit,
+                    prefetch_limit=limit * 3,  # Get more candidates for fusion
+                )
+                search_type = raw_results.get("search_type", "hybrid_rrf")
+            else:
+                # Fallback to dense-only search
+                raw_results = await vector_db.search(
+                    query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                )
+                search_type = "dense_only"
+
+            if METRICS_AVAILABLE and search_start:
+                rag_vector_search_duration.observe(time.time() - search_start)
+
+            # Format results
+            formatted_results = format_search_results(
+                raw_results, collection_name, primary_collection=None
+            )
+
+            # Record query for health monitoring
+            avg_score = (
+                sum(r["score"] for r in formatted_results) / len(formatted_results)
+                if formatted_results
+                else 0.0
+            )
+            self.health_monitor.record_query(
+                collection_name=collection_name,
+                had_results=len(formatted_results) > 0,
+                result_count=len(formatted_results),
+                avg_score=avg_score,
+            )
+
+            return {
+                "query": query,
+                "results": formatted_results,
+                "collection": collection_name,
+                "total_results": len(formatted_results),
+                "search_type": search_type,
+                "bm25_enabled": query_sparse is not None,
+            }
+
+        except Exception as e:
+            logger.error(f"Hybrid search error: {e}", exc_info=True)
+            # Fallback to regular search on error
+            return await self.search(
+                query=query,
+                user_level=user_level,
+                limit=limit,
+                tier_filter=tier_filter,
+                collection_override=collection_override,
+                apply_filters=apply_filters,
+            )
+
+    async def hybrid_search_with_reranking(
+        self,
+        query: str,
+        user_level: int,
+        limit: int = 5,
+        tier_filter: list[TierLevel] = None,
+        collection_override: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Full hybrid search pipeline: BM25 + Dense + RRF + Ze-Rank 2 reranking.
+
+        This is the most comprehensive search method combining:
+        1. Dense vector search (semantic)
+        2. BM25 sparse vector search (keyword)
+        3. Reciprocal Rank Fusion (combining both)
+        4. Ze-Rank 2 semantic reranking (final precision)
+
+        Args:
+            query: Search query
+            user_level: User access level (0-3)
+            limit: Max results (final count after all stages)
+            tier_filter: Optional specific tier filter
+            collection_override: Force specific collection
+
+        Returns:
+            Search results with full pipeline metadata
+        """
+        pipeline_start_time = time.time() if METRICS_AVAILABLE else None
+
+        # 1. Hybrid search with overfetch for reranking
+        initial_limit = limit * 3
+        results = await self.hybrid_search(
+            query=query,
+            user_level=user_level,
+            limit=initial_limit,
+            tier_filter=tier_filter,
+            collection_override=collection_override,
+            apply_filters=True,
+        )
+
+        # 2. Early exit for high-confidence results
+        if results["results"] and results["results"][0].get("score", 0) > 0.9:
+            logger.info(
+                f"⚡ Early exit: Top result score {results['results'][0]['score']:.3f} > 0.9"
+            )
+            if METRICS_AVAILABLE:
+                rag_early_exit_total.inc()
+            results["results"] = results["results"][:limit]
+            results["reranked"] = False
+            results["early_exit"] = True
+            return results
+
+        # 3. Re-rank with Ze-Rank 2
+        reranker = self._init_reranker()
+        if reranker.enabled:
+            logger.info(
+                f"🔍 Re-ranking {len(results['results'])} hybrid candidates for: '{query[:50]}'"
+            )
+            rerank_start = time.time() if METRICS_AVAILABLE else None
+            reranked_docs = await reranker.rerank(query, results["results"], top_k=limit)
+            if METRICS_AVAILABLE and rerank_start:
+                rag_reranking_duration.observe(time.time() - rerank_start)
+            results["results"] = reranked_docs
+            results["reranked"] = True
+            results["early_exit"] = False
+        else:
+            results["results"] = results["results"][:limit]
+            results["reranked"] = False
+            results["early_exit"] = False
+
+        # Track total pipeline duration
+        if METRICS_AVAILABLE and pipeline_start_time:
+            rag_pipeline_duration.observe(time.time() - pipeline_start_time)
+
+        results["pipeline"] = "hybrid_bm25_rrf_zerank2"
         return results
 
     @cached(ttl=300, prefix="rag_multi_search")
