@@ -177,8 +177,8 @@ class BM25Vectorizer:
         doc_length = len(tokens)
 
         # Calculate BM25 scores for each unique token
-        indices = []
-        values = []
+        # Use dict to handle hash collisions by summing scores
+        index_scores: dict[int, float] = {}
 
         for token, count in token_counts.items():
             token_id = self._hash_token(token)
@@ -186,18 +186,16 @@ class BM25Vectorizer:
 
             # Only include tokens with positive scores
             if tf_score > 0:
-                indices.append(token_id)
-                values.append(round(tf_score, 4))
+                # Sum scores for same index (hash collision handling)
+                if token_id in index_scores:
+                    index_scores[token_id] += tf_score
+                else:
+                    index_scores[token_id] = tf_score
 
-        # Sort by index for consistency
-        sorted_pairs = sorted(zip(indices, values), key=lambda x: x[0])
-        if sorted_pairs:
-            indices, values = zip(*sorted_pairs)
-            indices = list(indices)
-            values = list(values)
-        else:
-            indices = []
-            values = []
+        # Sort by index for consistency and ensure unique indices
+        sorted_items = sorted(index_scores.items(), key=lambda x: x[0])
+        indices = [item[0] for item in sorted_items]
+        values = [round(item[1], 4) for item in sorted_items]
 
         return {"indices": indices, "values": values}
 
@@ -222,25 +220,23 @@ class BM25Vectorizer:
         # For queries, use simple term frequency (no length normalization)
         token_counts = Counter(tokens)
 
-        indices = []
-        values = []
+        # Use dict to handle hash collisions by summing scores
+        index_scores: dict[int, float] = {}
 
         for token, count in token_counts.items():
             token_id = self._hash_token(token)
             # Simple TF for queries: log(1 + count) to dampen repeated terms
             score = math.log(1 + count)
-            indices.append(token_id)
-            values.append(round(score, 4))
+            # Sum scores for same index (hash collision handling)
+            if token_id in index_scores:
+                index_scores[token_id] += score
+            else:
+                index_scores[token_id] = score
 
-        # Sort by index
-        sorted_pairs = sorted(zip(indices, values), key=lambda x: x[0])
-        if sorted_pairs:
-            indices, values = zip(*sorted_pairs)
-            indices = list(indices)
-            values = list(values)
-        else:
-            indices = []
-            values = []
+        # Sort by index for consistency and ensure unique indices
+        sorted_items = sorted(index_scores.items(), key=lambda x: x[0])
+        indices = [item[0] for item in sorted_items]
+        values = [round(item[1], 4) for item in sorted_items]
 
         return {"indices": indices, "values": values}
 
