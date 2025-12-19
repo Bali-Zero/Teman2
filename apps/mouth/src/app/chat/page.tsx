@@ -53,6 +53,7 @@ export default function ChatPage() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMountedRef = useRef(true);
 
   // Custom Hooks
   const {
@@ -99,17 +100,33 @@ export default function ChatPage() {
 
   // Load User Profile
   const loadUserProfile = useCallback(async () => {
+    // Capture isMountedRef at the start to avoid stale closure
+    const isMounted = isMountedRef.current;
     try {
       const storedProfile = api.getUserProfile();
       if (storedProfile) {
-        setUserName(storedProfile.name || storedProfile.email.split('@')[0]);
+        if (isMounted && isMountedRef.current) {
+          setUserName(storedProfile.name || storedProfile.email.split('@')[0]);
+        }
         return;
       }
       const profile = await api.getProfile();
-      setUserName(profile.name || profile.email.split('@')[0]);
+      if (isMounted && isMountedRef.current) {
+        setUserName(profile.name || profile.email.split('@')[0]);
+      }
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      if (isMounted && isMountedRef.current) {
+        console.error('Failed to load profile:', error);
+      }
     }
+  }, []);
+
+  // Component mount/unmount tracking
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   // Initial Data Load
@@ -122,7 +139,9 @@ export default function ChatPage() {
     const loadInitialData = async () => {
       setIsInitialLoading(true);
       await Promise.all([loadConversationList(), loadClockStatus(), loadUserProfile()]);
-      setIsInitialLoading(false);
+      if (isMountedRef.current) {
+        setIsInitialLoading(false);
+      }
     };
     loadInitialData();
   }, [router, loadConversationList, loadClockStatus, loadUserProfile]);
@@ -131,7 +150,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedAvatar = localStorage.getItem('user_avatar');
-      if (savedAvatar) {
+      if (savedAvatar && isMountedRef.current) {
         setUserAvatar(savedAvatar);
       }
     }
@@ -151,7 +170,11 @@ export default function ChatPage() {
   // Toast auto-dismiss
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), TIMEOUTS.TOAST_AUTO_DISMISS);
+      const timer = setTimeout(() => {
+        if (isMountedRef.current) {
+          setToast(null);
+        }
+      }, TIMEOUTS.TOAST_AUTO_DISMISS);
       return () => clearTimeout(timer);
     }
   }, [toast]);
@@ -186,29 +209,44 @@ export default function ChatPage() {
     const processAudio = async () => {
       if (audioBlob) {
         try {
-          const originalPlaceholder = input;
+          // Capture current input value at the start
+          const currentInput = input;
+          if (!isMountedRef.current) return;
           setInput('Transcribing audio...');
 
           const text = await api.transcribeAudio(audioBlob, audioMimeType);
 
+          if (!isMountedRef.current) return;
+
           if (text) {
             setInput((prev) => {
+              // Only update if still showing transcription placeholder
               if (prev === 'Transcribing audio...') return text;
-              return prev.replace('Transcribing audio...', '') + text;
+              // Otherwise append to current value
+              return prev + text;
             });
           } else {
-            setInput(originalPlaceholder);
-            showToast('Could not transcribe audio', 'error');
+            // Restore original input if transcription failed
+            setInput(currentInput);
+            if (isMountedRef.current) {
+              showToast('Could not transcribe audio', 'error');
+            }
           }
         } catch (err) {
+          if (!isMountedRef.current) return;
           console.error('Transcription error:', err);
           showToast('Transcription failed', 'error');
-          setInput((prev) => prev.replace('Transcribing audio...', ''));
+          setInput((prev) => {
+            // Remove transcription placeholder, keep any other content
+            return prev.replace('Transcribing audio...', '');
+          });
         }
       }
     };
     processAudio();
-  }, [audioBlob, audioMimeType, setInput, showToast]);
+    // Remove 'input' from dependencies to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioBlob, audioMimeType, showToast]);
   // ------------------------------------------------
 
   const openSearchDocs = useCallback(() => {
@@ -236,6 +274,7 @@ export default function ChatPage() {
 
       // SECURITY: Validate actual file content (magic bytes) to prevent malicious file uploads
       const arrayBuffer = await file.arrayBuffer();
+      if (!isMountedRef.current) return;
       const uint8Array = new Uint8Array(arrayBuffer);
 
       // Check magic bytes for common image formats
@@ -273,8 +312,10 @@ export default function ChatPage() {
       // SECURITY: Validate image dimensions to prevent extremely large images
       const reader = new FileReader();
       reader.onloadend = () => {
+        if (!isMountedRef.current) return;
         const img = document.createElement('img');
         img.onload = () => {
+          if (!isMountedRef.current) return;
           // Validate dimensions
           if (
             img.width > FILE_LIMITS.MAX_IMAGE_DIMENSION ||
@@ -295,6 +336,7 @@ export default function ChatPage() {
           showToast('Avatar updated successfully', 'success');
         };
         img.onerror = () => {
+          if (!isMountedRef.current) return;
           showToast('Failed to load image. Please try another file.', 'error');
           event.target.value = '';
         };
@@ -791,6 +833,7 @@ export default function ChatPage() {
                     const file = e.target.files?.[0];
                     if (file) {
                       const result = await handleFileUpload(file);
+                      if (!isMountedRef.current) return;
                       if (result && result.success) {
                         const attachmentText = `\n[FILEUPLOAD] ${result.filename} (${result.url})`;
                         setInput((prev) => prev + attachmentText);
@@ -845,35 +888,6 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Quick Actions (hide on empty state to avoid duplicate with welcome) */}
-            {messages.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2 mt-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-xs"
-                  onClick={() => setInput('Summarize my tasks for today')}
-                >
-                  📋 My Tasks
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-xs"
-                  onClick={() => setInput('What can you help me with?')}
-                >
-                  💡 What can you do?
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-xs hidden sm:inline-flex"
-                  onClick={openSearchDocs}
-                >
-                  🔍 Search docs
-                </Button>
-              </div>
-            )}
             {/* Quick Actions (hide on empty state to avoid duplicate with welcome) */}
             {messages.length > 0 && (
               <div className="flex flex-wrap justify-center gap-2 mt-3">

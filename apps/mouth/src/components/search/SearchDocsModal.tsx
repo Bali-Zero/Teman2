@@ -54,6 +54,15 @@ export function SearchDocsModal({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -151,7 +160,13 @@ export function SearchDocsModal({
     try {
       await navigator.clipboard.writeText(text);
       setCopiedKey(key);
-      setTimeout(() => setCopiedKey(null), 1200);
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedKey(null);
+        copyTimeoutRef.current = null;
+      }, 1200);
     } catch {
       // ignore
     }

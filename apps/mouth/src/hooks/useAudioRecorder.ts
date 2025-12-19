@@ -17,6 +17,33 @@ export const useAudioRecorder = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // #region agent log
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'useAudioRecorder.ts:cleanup',
+          message: 'Component unmounted',
+          data: {
+            hasTimer: timerRef.current !== null,
+            isRecording: isRecording,
+            hasMediaRecorder: mediaRecorderRef.current !== null,
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'D',
+        }),
+      }).catch(() => {});
+    };
+  }, [isRecording]);
+  // #endregion
 
   const startRecording = useCallback(async () => {
     try {
@@ -57,6 +84,24 @@ export const useAudioRecorder = () => {
 
       // Start timer
       timerRef.current = setInterval(() => {
+        // #region agent log
+        if (!isMountedRef.current) {
+          fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              location: 'useAudioRecorder.ts:timer:unmounted',
+              message: 'Timer callback after unmount',
+              data: {},
+              timestamp: Date.now(),
+              sessionId: 'debug-session',
+              runId: 'run1',
+              hypothesisId: 'D',
+            }),
+          }).catch(() => {});
+          return;
+        }
+        // #endregion
         setRecordingTime((prev) => prev + 1);
       }, 1000);
     } catch (error) {
@@ -97,12 +142,43 @@ export const useAudioRecorder = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: 'useAudioRecorder.ts:cleanup:effect',
+          message: 'Cleanup effect running',
+          data: {
+            hasTimer: timerRef.current !== null,
+            isRecording: isRecording,
+            hasMediaRecorder: mediaRecorderRef.current !== null,
+            recorderState: mediaRecorderRef.current?.state,
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'D',
+        }),
+      }).catch(() => {});
+      // #endregion
+
+      isMountedRef.current = false;
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch (e) {
+          // Ignore errors if already stopped
+        }
         mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
       }
+      chunksRef.current = [];
     };
-  }, []);
+  }, [isRecording]);
 
   return {
     isRecording,

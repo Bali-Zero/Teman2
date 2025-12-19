@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { conversationMonitor } from '@/lib/monitoring';
 import { monitoringDashboard } from '@/lib/monitoring-dashboard';
 
@@ -20,6 +20,7 @@ export function MonitoringWidget() {
   const [stats, setStats] = useState<MonitoringStats | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [alerts, setAlerts] = useState<Array<{ type: string; count: number }>>([]);
+  const isMountedRef = useRef(true);
 
   const buildAlerts = (activeSessions: ReturnType<typeof conversationMonitor.getActiveSessions>) => {
     const alertCounts: Record<string, number> = {};
@@ -46,6 +47,8 @@ export function MonitoringWidget() {
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
+    
     // Only show in development or if explicitly enabled
     const showWidget = localStorage.getItem('showMonitoringWidget') === 'true';
 
@@ -55,12 +58,17 @@ export function MonitoringWidget() {
 
     setIsVisible(true);
     const initialSummary = conversationMonitor.getSummary();
-    setStats(initialSummary);
-    const initialSessions = conversationMonitor.getActiveSessions();
-    setAlerts(buildAlerts(initialSessions));
+    if (isMountedRef.current) {
+      setStats(initialSummary);
+      const initialSessions = conversationMonitor.getActiveSessions();
+      setAlerts(buildAlerts(initialSessions));
+    }
 
     // Update stats every 5 seconds
     const interval = setInterval(() => {
+      if (!isMountedRef.current) {
+        return;
+      }
       const summary = conversationMonitor.getSummary();
       setStats(summary);
 
@@ -70,6 +78,7 @@ export function MonitoringWidget() {
     }, 5000);
 
     return () => {
+      isMountedRef.current = false;
       clearInterval(interval);
     };
   }, []);

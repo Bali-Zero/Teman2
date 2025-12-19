@@ -1,167 +1,128 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { api } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
+import { ArrowRight, Lock, Mail } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
-
-    try {
-      await api.login(email, pin);
-      router.push('/chat');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setIsLoading(false);
-    }
+    // Simulate login delay
+    setTimeout(() => setIsLoading(false), 2000);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
-      <div className="w-full max-w-md p-8 relative">
-        {/* Monas Background - Centered & Blended */}
-        <div className="absolute inset-x-0 bottom-0 top-[10%] z-0 flex justify-center pointer-events-none opacity-40 md:opacity-50">
-          <div className="relative w-full h-full max-w-lg">
-            <Image
-              src="/images/monas-bg.jpg"
-              alt="Monas"
-              fill
-              className="object-contain object-bottom drop-shadow-2xl"
-              priority
-            />
-          </div>
+    <div className="relative min-h-screen w-full bg-[#202020] text-white overflow-hidden flex flex-col items-center justify-end font-sans">
+      
+      {/* BACKGROUND ASSET - CINEMATIC MONAS */}
+      <div className="absolute inset-0 z-0 select-none pointer-events-none">
+        <Image
+           src="/images/login_concept_cinematic_retry_1766114529510.png"
+           alt="Cinematic Monas Background"
+           fill
+           className="object-cover object-bottom opacity-90"
+           quality={100}
+           priority
+        />
+        {/* Overlay to ensure text readability if image is too bright */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#202020] via-transparent to-transparent opacity-80" />
+      </div>
+
+      {/* FLOATING TEXT - STAGGERED LAYOUT */}
+      <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-center items-center w-full h-full">
+         <div className="relative w-full max-w-7xl h-full mx-auto">
+            {/* UNLOCK INDONESIA - LEFT & HIGHER */}
+            <motion.h1 
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+              className="absolute left-8 top-[35%] lg:left-24 lg:top-[30%] text-4xl lg:text-7xl font-bold italic tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400 drop-shadow-2xl"
+            >
+              Unlock <br/> Indonesia
+            </motion.h1>
+
+            {/* UNLEASH POTENTIAL - RIGHT & LOWER */}
+            <motion.h1 
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1, delay: 0.8, ease: "easeOut" }}
+              className="absolute right-8 top-[50%] lg:right-24 lg:top-[45%] text-4xl lg:text-7xl font-bold italic tracking-wide text-right text-transparent bg-clip-text bg-gradient-to-l from-white to-gray-400 drop-shadow-2xl"
+            >
+              Unleash <br/> Potential
+            </motion.h1>
+         </div>
+      </div>
+
+      {/* LOGIN FORM - GLASSMORPHISM CARD AT BOTTOM */}
+      <motion.div 
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 1.2 }}
+        className="relative z-20 w-full max-w-md p-8 mb-12 lg:mb-24 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl ring-1 ring-white/10"
+      >
+        <div className="flex flex-col items-center mb-8">
+           {/* ZANTARA LOGO - Centered above form */}
+           <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-900 rounded-full flex items-center justify-center shadow-lg mb-4 ring-2 ring-red-500/50">
+             <span className="text-2xl font-bold text-white">Z</span>
+           </div>
+           <h2 className="text-xl font-medium tracking-widest text-gray-300 uppercase">Identify Yourself</h2>
         </div>
 
-        {/* Header Grid Section: Logo + Text */}
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4 items-center mb-8 w-full">
-          {/* Desktop Left: Unlock Indonesia */}
-          <div className="hidden md:block text-right">
-            <h1 className="text-sm md:text-base font-bold italic tracking-wide text-white whitespace-nowrap">
-              Unlock{' '}
-              <span className="text-[var(--accent)] drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]">
-                Indonesia
-              </span>
-            </h1>
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <div className="relative group">
+              <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-red-500 transition-colors" />
+              <input
+                type="email"
+                placeholder="Agent Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-all"
+                required
+              />
+            </div>
           </div>
-
-          {/* Center: Logo (Floating above flame) */}
-          <div className="flex justify-center">
-            <div className="relative w-28 h-28 md:w-36 md:h-36 group">
-              {/* Elegant White Backlight */}
-              <div className="absolute inset-0 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all duration-1000"></div>
-              <Image
-                src="/images/logo_zan.png"
-                alt="Zantara Logo"
-                fill
-                className="object-contain relative z-10 p-2"
-                priority
+          
+          <div className="space-y-2">
+             <div className="relative group">
+              <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400 group-focus-within:text-red-500 transition-colors" />
+              <input
+                type="password"
+                placeholder="Secure PIN"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-transparent transition-all"
+                required
               />
             </div>
           </div>
 
-          {/* Desktop Right: Unleash Potential */}
-          <div className="hidden md:block text-left pt-6">
-            <h2 className="text-sm md:text-base font-bold italic tracking-wide text-white/90 whitespace-nowrap">
-              Unleash Potential
-            </h2>
-          </div>
-
-          {/* Mobile Only: Stacked Text */}
-          <div className="md:hidden col-span-1 text-center space-y-1 mt-[-1rem]">
-            <h1 className="text-sm font-bold italic tracking-wide text-white">
-              Unlock{' '}
-              <span className="text-[var(--accent)] drop-shadow-[0_0_8px_rgba(239,68,68,0.4)]">
-                Indonesia
-              </span>
-            </h1>
-            <h2 className="text-xs font-bold italic tracking-wide text-white/90">
-              Unleash Potential
-            </h2>
-          </div>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="relative z-10 space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-white font-medium">
-              Email
-            </Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@balizero.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="bg-[#f5f5f5] text-black border-transparent placeholder:text-gray-400 focus-visible:ring-[var(--accent)] h-11"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="pin" className="text-white font-medium">
-              Pin
-            </Label>
-            <Input
-              id="pin"
-              name="pin"
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              placeholder="••••••"
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-              required
-              autoComplete="current-password"
-              maxLength={6}
-              className="bg-[#f5f5f5] text-black border-transparent placeholder:text-gray-400 focus-visible:ring-[var(--accent)] font-bold tracking-widest h-11"
-            />
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-md bg-[var(--error)]/10 border border-[var(--error)]/20">
-              <p className="text-sm text-[var(--error)]">{error}</p>
-            </div>
-          )}
-
-          <Button
+          <button
             type="submit"
-            className="w-full h-11 text-base font-medium"
-            disabled={isLoading || !email || pin.length !== 6}
-            aria-label={isLoading ? 'Signing in...' : 'Sign in to your account'}
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-bold py-3.5 rounded-lg shadow-lg transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
-              <>
-                <Loader2 className="animate-spin mr-2" />
-                Signing in...
-              </>
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              'Sign in'
+              <>
+                Initiate Sequence <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              </>
             )}
-          </Button>
+          </button>
         </form>
 
-        {/* Footer */}
-        <p className="relative z-10 mt-8 text-center text-sm text-[var(--foreground-muted)]">
-          Bali Zero @2020
-        </p>
-      </div>
+        <div className="text-center mt-6">
+          <p className="text-xs text-gray-500 font-mono">SECURE CONNECTION ESTABLISHED // V.5.4.0</p>
+        </div>
+      </motion.div>
+
     </div>
   );
 }
