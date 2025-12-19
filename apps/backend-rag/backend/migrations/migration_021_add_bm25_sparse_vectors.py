@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 SOURCE_COLLECTION = "legal_unified"
 TARGET_COLLECTION = "legal_unified_hybrid"
 BACKUP_COLLECTION = "legal_unified_backup"
-BATCH_SIZE = 100
+BATCH_SIZE = 500
 VECTOR_SIZE = 1536
 
 
@@ -81,6 +81,20 @@ async def run_migration():
 
         # Step 2: Create target collection with sparse vector support
         logger.info(f"\n🔧 Step 2: Creating target collection '{TARGET_COLLECTION}'...")
+
+        # Delete existing target collection if it exists
+        http_client = await target_client._get_client()
+        check_url = f"/collections/{TARGET_COLLECTION}"
+        check_response = await http_client.get(check_url)
+        if check_response.status_code == 200:
+            logger.info(f"   Target collection exists, deleting it first...")
+            delete_response = await http_client.delete(check_url)
+            if delete_response.status_code == 200:
+                logger.info(f"   ✅ Deleted existing target collection")
+            else:
+                logger.error(f"   Failed to delete: {delete_response.status_code}")
+                return
+
         created = await target_client.create_collection(
             vector_size=VECTOR_SIZE,
             distance="Cosine",
