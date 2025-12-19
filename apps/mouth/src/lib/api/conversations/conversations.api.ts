@@ -1,0 +1,112 @@
+import { ApiClientBase } from '../client';
+import { UserMemoryContext } from '@/types';
+import type {
+  ConversationHistoryResponse,
+  ConversationListResponse,
+  SingleConversationResponse,
+} from './conversations.types';
+
+/**
+ * Conversations API methods
+ */
+export class ConversationsApi {
+  constructor(private client: ApiClientBase) {}
+
+  // Get conversation history (returns messages from most recent conversation)
+  async getConversationHistory(sessionId?: string): Promise<ConversationHistoryResponse> {
+    const params = new URLSearchParams();
+    if (sessionId) params.append('session_id', sessionId);
+    params.append('limit', '50');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(
+      `/api/bali-zero/conversations/history?${params.toString()}`
+    ) as Promise<ConversationHistoryResponse>;
+  }
+
+  async saveConversation(
+    messages: Array<{
+      role: string;
+      content: string;
+      sources?: Array<{ title?: string; content?: string }>;
+      imageUrl?: string;
+    }>,
+    sessionId?: string,
+    metadata?: Record<string, unknown>
+  ): Promise<{ success: boolean; conversation_id: number; messages_saved: number }> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request('/api/bali-zero/conversations/save', {
+      method: 'POST',
+      body: JSON.stringify({
+        messages,
+        session_id: sessionId,
+        metadata,
+      }),
+    });
+  }
+
+  async clearConversations(
+    sessionId?: string
+  ): Promise<{ success: boolean; deleted_count: number }> {
+    const params = new URLSearchParams();
+    if (sessionId) params.append('session_id', sessionId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(`/api/bali-zero/conversations/clear?${params.toString()}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getConversationStats(): Promise<{
+    success: boolean;
+    user_email: string;
+    total_conversations: number;
+    total_messages: number;
+    last_conversation: string | null;
+  }> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request('/api/bali-zero/conversations/stats');
+  }
+
+  // List all conversations with title and preview
+  async listConversations(
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<ConversationListResponse> {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(
+      `/api/bali-zero/conversations/list?${params.toString()}`
+    ) as Promise<ConversationListResponse>;
+  }
+
+  // Get a single conversation by ID
+  async getConversation(conversationId: number): Promise<SingleConversationResponse> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(
+      `/api/bali-zero/conversations/${conversationId}`
+    ) as Promise<SingleConversationResponse>;
+  }
+
+  // Delete a single conversation by ID
+  async deleteConversation(
+    conversationId: number
+  ): Promise<{ success: boolean; deleted_id: number }> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(`/api/bali-zero/conversations/${conversationId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Get user memory context (profile facts, summary, counters)
+  async getUserMemoryContext(): Promise<UserMemoryContext> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(
+      '/api/bali-zero/conversations/memory/context'
+    ) as Promise<UserMemoryContext>;
+  }
+}
+
