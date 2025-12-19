@@ -43,7 +43,7 @@ class VectorSearchTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Search the legal document knowledge base. IMPORTANT: You MUST specify the 'collection' parameter based on the topic:\n- 'tax_genius' for Taxes, VAT, PPh, Finance.\n- 'visa_oracle' for Visas, Immigration, Stay Permits.\n- 'kbli_unified' for Business Classification (KBLI).\n- 'legal_unified' for General Law, Civil Code, Manpower, Criminal Law."
+        return "Search the legal document knowledge base. Available collections:\n- 'legal_unified' (DEFAULT): All laws, regulations, visas, immigration, taxes, business. Use this for most queries.\n- 'kbli_2025': Business classification codes (KBLI) for PT PMA setup."
 
     @property
     def parameters_schema(self) -> dict:
@@ -55,12 +55,9 @@ class VectorSearchTool(BaseTool):
                     "type": "string",
                     "enum": [
                         "legal_unified",
-                        "visa_oracle",
-                        "tax_genius",
-                        "kbli_unified",
-                        "litigation_oracle",
+                        "kbli_2025",
                     ],
-                    "description": "Specific collection to search. Use 'kbli_unified' for PT PMA, business setup, KBLI codes, company registration.",
+                    "description": "Collection to search. Default: 'legal_unified' for laws, visas, taxes. Use 'kbli_2025' only for KBLI business codes.",
                 },
                 "top_k": {
                     "type": "integer",
@@ -109,7 +106,11 @@ class VectorSearchTool(BaseTool):
 
             # Extract metadata for citation
             metadata = chunk.get("metadata", {})
-            title = metadata.get("title", f"Document {i+1}")
+            # Build title from legal document metadata fields if 'title' not present
+            title = metadata.get("title") or (
+                f"{metadata.get('type_abbrev', 'DOC')} {metadata.get('number', '')} "
+                f"Tahun {metadata.get('year', '')} - {metadata.get('topic', 'Unknown')}"
+            ).strip()
             url = metadata.get("url", metadata.get("source_url", ""))
 
             # Extract document ID for Deep Dive (Hybrid Brain)
@@ -129,7 +130,8 @@ class VectorSearchTool(BaseTool):
                     "title": title,
                     "url": url,
                     "score": chunk.get("score", 0.0),
-                    "category": metadata.get("category", collection or "general"),
+                    "collection": collection or metadata.get("category", "general"),
+                    "snippet": text[:200] if text else "",  # First 200 chars as preview
                     "doc_id": doc_id,  # Pass doc_id for potential UI use or debugging
                 }
             )
