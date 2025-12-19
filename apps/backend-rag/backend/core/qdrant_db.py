@@ -289,7 +289,8 @@ class QdrantClient:
         return result if result else None
 
     async def search(
-        self, query_embedding: list[float], filter: dict[str, Any] | None = None, limit: int = 5
+        self, query_embedding: list[float], filter: dict[str, Any] | None = None, limit: int = 5,
+        vector_name: str | None = None
     ) -> dict[str, Any]:
         """
         Search for similar documents.
@@ -298,6 +299,7 @@ class QdrantClient:
             query_embedding: Query embedding vector
             filter: Metadata filter (simplified format, converted to Qdrant format)
             limit: Maximum number of results
+            vector_name: Named vector to use (e.g., "dense" for hybrid collections)
 
         Returns:
             Dictionary with search results (compatible with Qdrant format)
@@ -312,7 +314,15 @@ class QdrantClient:
             client = await self._get_client()
             url = f"/collections/{self.collection_name}/points/search"
 
-            payload = {"vector": query_embedding, "limit": limit, "with_payload": True}
+            # Use named vector if specified, otherwise use default format
+            if vector_name:
+                payload = {
+                    "vector": {"name": vector_name, "vector": query_embedding},
+                    "limit": limit,
+                    "with_payload": True
+                }
+            else:
+                payload = {"vector": query_embedding, "limit": limit, "with_payload": True}
 
             # Add filter if provided (Qdrant filter format)
             if filter:
@@ -351,6 +361,25 @@ class QdrantClient:
                 # Raise exception for 5xx errors (transient) to trigger retry
                 if 500 <= e.response.status_code < 600:
                     raise Exception(f"Qdrant server error {e.response.status_code}: {error_text}")
+                # Auto-retry with named vector if collection uses named vectors
+                if e.response.status_code == 400 and "Vector params for" in error_text and not vector_name:
+                    logger.info("Collection uses named vectors, retrying with 'dense'")
+                    # Retry with named vector
+                    payload["vector"] = {"name": "dense", "vector": query_embedding}
+                    try:
+                        response = await client.post(url, json=payload)
+                        response.raise_for_status()
+                        data = response.json()
+                        results = data.get("result", [])
+                        return {
+                            "ids": [str(r["id"]) for r in results],
+                            "documents": [r["payload"].get("text", "") for r in results],
+                            "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                            "distances": [1.0 - r["score"] for r in results],
+                            "total_found": len(results),
+                        }
+                    except Exception as retry_err:
+                        logger.error(f"Retry with named vector failed: {retry_err}")
                 # For 4xx errors (client errors), return empty results
                 logger.error(f"Qdrant search failed: {e.response.status_code} - {error_text}")
                 return {
