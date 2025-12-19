@@ -1,11 +1,11 @@
 """
 Migration 021: Add BM25 Sparse Vectors for Hybrid Search
 
-This migration adds BM25 sparse vectors to the knowledge_base collection
+This migration adds BM25 sparse vectors to the legal_unified collection
 to enable hybrid search (dense + sparse) with Reciprocal Rank Fusion (RRF).
 
 Strategy:
-1. Create new collection with sparse vector support (knowledge_base_hybrid)
+1. Create new collection with sparse vector support (legal_unified_hybrid)
 2. Copy all documents from old collection, generating sparse vectors
 3. Rename collections (old -> _backup, new -> original name)
 
@@ -33,9 +33,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Migration configuration
-SOURCE_COLLECTION = "knowledge_base"
-TARGET_COLLECTION = "knowledge_base_hybrid"
-BACKUP_COLLECTION = "knowledge_base_backup"
+SOURCE_COLLECTION = "legal_unified"
+TARGET_COLLECTION = "legal_unified_hybrid"
+BACKUP_COLLECTION = "legal_unified_backup"
 BATCH_SIZE = 100
 VECTOR_SIZE = 1536
 
