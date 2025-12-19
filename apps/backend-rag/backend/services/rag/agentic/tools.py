@@ -68,6 +68,9 @@ class VectorSearchTool(BaseTool):
         }
 
     async def execute(self, query: str, collection: str = None, top_k: int = 5, **kwargs) -> str:
+        # Gemini sometimes passes top_k as float, ensure it's int
+        top_k = int(top_k) if top_k else 5
+
         # Use the new search_with_reranking method if available
         if hasattr(self.retriever, "search_with_reranking"):
             result = await self.retriever.search_with_reranking(
