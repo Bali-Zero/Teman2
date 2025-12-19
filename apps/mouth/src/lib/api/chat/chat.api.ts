@@ -63,10 +63,12 @@ export class ChatApi {
     // Combine abort signals: abort controller if external signal aborts
     let abortListener: (() => void) | null = null;
     let wasAbortedBeforeStart = false;
+    let requestAborted = false; // Track if request was aborted
     if (abortSignal) {
       // If external signal is already aborted, mark it but don't throw yet
       if (abortSignal.aborted) {
         wasAbortedBeforeStart = true;
+        requestAborted = true;
         controller.abort();
         clearTimeout(timeoutId);
       } else {
@@ -89,6 +91,7 @@ export class ChatApi {
             body: JSON.stringify(logData),
           }).catch(() => {});
           // #endregion
+          requestAborted = true; // Mark request as aborted
           controller.abort();
           clearTimeout(timeoutId);
         };
@@ -170,6 +173,7 @@ export class ChatApi {
       let sources: Array<{ title?: string; content?: string }> = [];
       let finalMetadata: Record<string, unknown> | undefined = undefined;
       let readerCancelled = false;
+      // requestAborted already declared above in function scope
 
       const cancelReader = async () => {
         if (!readerCancelled) {
@@ -188,7 +192,8 @@ export class ChatApi {
       try {
         while (true) {
           // Check if aborted before reading
-          if (signalToUse.aborted) {
+          if (signalToUse.aborted || requestAborted) {
+            requestAborted = true; // Ensure flag is set
             await cancelReader();
             throw new Error('Request aborted');
           }
@@ -197,7 +202,8 @@ export class ChatApi {
           if (done) break;
 
           // Check if aborted after reading
-          if (signalToUse.aborted) {
+          if (signalToUse.aborted || requestAborted) {
+            requestAborted = true; // Ensure flag is set
             await cancelReader();
             throw new Error('Request aborted');
           }
@@ -212,7 +218,8 @@ export class ChatApi {
 
           for (const rawLine of lines) {
             // Check if aborted during processing
-            if (signalToUse.aborted) {
+            if (signalToUse.aborted || requestAborted) {
+              requestAborted = true; // Ensure flag is set
               await cancelReader();
               throw new Error('Request aborted');
             }
@@ -245,7 +252,7 @@ export class ChatApi {
               fullResponse += text;
               // Only call callback if not aborted
               // Hypothesis C: AbortSignal not synchronized with isMountedRef
-              if (!signalToUse.aborted) {
+              if (!signalToUse.aborted && !requestAborted) {
                 // #region agent log
                 const logData = {
                   location: 'chat.api.ts:onChunk:called',
@@ -284,7 +291,7 @@ export class ChatApi {
                 // #endregion
               }
             } else if (data.type === 'status') {
-              if (onStep && typeof data.data === 'string' && !signalToUse.aborted) {
+              if (onStep && typeof data.data === 'string' && !signalToUse.aborted && !requestAborted) {
                 onStep({ type: 'status', data: data.data, timestamp: new Date() });
               }
             } else if (data.type === 'tool_start') {
@@ -293,7 +300,8 @@ export class ChatApi {
                 isRecord(data.data) &&
                 typeof data.data.name === 'string' &&
                 isRecord(data.data.args) &&
-                !signalToUse.aborted
+                !signalToUse.aborted &&
+                !requestAborted
               ) {
                 onStep({
                   type: 'tool_start',
@@ -302,7 +310,7 @@ export class ChatApi {
                 });
               }
             } else if (data.type === 'tool_end') {
-              if (onStep && isRecord(data.data) && typeof data.data.result === 'string' && !signalToUse.aborted) {
+              if (onStep && isRecord(data.data) && typeof data.data.result === 'string' && !signalToUse.aborted && !requestAborted) {
                 onStep({
                   type: 'tool_end',
                   data: { result: data.data.result },
@@ -334,7 +342,7 @@ export class ChatApi {
       }
 
       // Flush any remaining buffered line (best-effort), but only if not aborted
-      if (!signalToUse.aborted) {
+      if (!signalToUse.aborted && !requestAborted) {
         const remaining = sseBuffer.trim();
         if (remaining.startsWith('data:')) {
           try {
@@ -347,7 +355,7 @@ export class ChatApi {
                   (typeof data.data === 'string' && data.data) ||
                   '';
                 fullResponse += text;
-                if (!signalToUse.aborted) {
+                if (!signalToUse.aborted && !requestAborted) {
                   onChunk(text);
                 }
               } else if (isRecord(data) && data.type === 'sources') {
@@ -365,7 +373,7 @@ export class ChatApi {
 
         // Only call onDone if not aborted
         // Hypothesis C: AbortSignal not synchronized with isMountedRef
-        if (!signalToUse.aborted) {
+        if (!signalToUse.aborted && !requestAborted) {
           // #region agent log
           const logData = {
             location: 'chat.api.ts:onDone:called',
@@ -407,7 +415,7 @@ export class ChatApi {
     } catch (error) {
       // Only call onError if not aborted (abort is expected behavior)
       // Hypothesis C: AbortSignal not synchronized with isMountedRef
-      if (!signalToUse.aborted && !abortSignal?.aborted) {
+      if (!signalToUse.aborted && !abortSignal?.aborted && !requestAborted) {
         // #region agent log
         const logData = {
           location: 'chat.api.ts:onError:called',
