@@ -17,17 +17,14 @@ export class ChatApi {
   }> {
     const userProfile = this.client.getUserProfile();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (this.client as any).request(
-      '/api/agentic-rag/query',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          query: message,
-          user_id: userId || userProfile?.id || 'anonymous',
-          enable_vision: false,
-        }),
-      }
-    ) as AgenticQueryResponse;
+    const response = (await (this.client as any).request('/api/agentic-rag/query', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: message,
+        user_id: userId || userProfile?.id || 'anonymous',
+        enable_vision: false,
+      }),
+    })) as AgenticQueryResponse;
 
     return {
       response: response.answer,
@@ -59,7 +56,7 @@ export class ChatApi {
   ): Promise<void> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
+
     // Combine abort signals: abort controller if external signal aborts
     let abortListener: (() => void) | null = null;
     let wasAbortedBeforeStart = false;
@@ -74,23 +71,6 @@ export class ChatApi {
       } else {
         // Listen for external abort
         abortListener = () => {
-          // #region agent log
-          const logData = {
-            location: 'chat.api.ts:abortListener:called',
-            message: 'Abort listener called - external signal aborted',
-            data: { signalAborted: abortSignal.aborted, controllerAborted: controller.signal.aborted },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'C',
-          };
-          console.warn('[DEBUG]', logData);
-          fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(logData),
-          }).catch(() => {});
-          // #endregion
           requestAborted = true; // Mark request as aborted
           controller.abort();
           clearTimeout(timeoutId);
@@ -98,9 +78,9 @@ export class ChatApi {
         abortSignal.addEventListener('abort', abortListener);
       }
     }
-    
+
     const signalToUse = controller.signal;
-    
+
     // If aborted before start, return early without calling callbacks
     if (wasAbortedBeforeStart) {
       return;
@@ -251,47 +231,16 @@ export class ChatApi {
                 '';
               fullResponse += text;
               // Only call callback if not aborted
-              // Hypothesis C: AbortSignal not synchronized with isMountedRef
               if (!signalToUse.aborted && !requestAborted) {
-                // #region agent log
-                const logData = {
-                  location: 'chat.api.ts:onChunk:called',
-                  message: 'onChunk callback called from chat.api',
-                  data: { signalAborted: signalToUse.aborted, textLength: text.length },
-                  timestamp: Date.now(),
-                  sessionId: 'debug-session',
-                  runId: 'run1',
-                  hypothesisId: 'C',
-                };
-                console.warn('[DEBUG]', logData);
-                fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(logData),
-                }).catch(() => {});
-                // #endregion
                 onChunk(text);
-              } else {
-                // #region agent log
-                const logData = {
-                  location: 'chat.api.ts:onChunk:blocked',
-                  message: 'onChunk callback blocked due to abort signal',
-                  data: { signalAborted: signalToUse.aborted },
-                  timestamp: Date.now(),
-                  sessionId: 'debug-session',
-                  runId: 'run1',
-                  hypothesisId: 'C',
-                };
-                console.warn('[DEBUG]', logData);
-                fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(logData),
-                }).catch(() => {});
-                // #endregion
               }
             } else if (data.type === 'status') {
-              if (onStep && typeof data.data === 'string' && !signalToUse.aborted && !requestAborted) {
+              if (
+                onStep &&
+                typeof data.data === 'string' &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
                 onStep({ type: 'status', data: data.data, timestamp: new Date() });
               }
             } else if (data.type === 'tool_start') {
@@ -310,7 +259,13 @@ export class ChatApi {
                 });
               }
             } else if (data.type === 'tool_end') {
-              if (onStep && isRecord(data.data) && typeof data.data.result === 'string' && !signalToUse.aborted && !requestAborted) {
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                typeof data.data.result === 'string' &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
                 onStep({
                   type: 'tool_end',
                   data: { result: data.data.result },
@@ -372,73 +327,13 @@ export class ChatApi {
         }
 
         // Only call onDone if not aborted
-        // Hypothesis C: AbortSignal not synchronized with isMountedRef
         if (!signalToUse.aborted && !requestAborted) {
-          // #region agent log
-          const logData = {
-            location: 'chat.api.ts:onDone:called',
-            message: 'onDone callback called from chat.api',
-            data: { signalAborted: signalToUse.aborted, responseLength: fullResponse.length },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'C',
-          };
-          console.warn('[DEBUG]', logData);
-          fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(logData),
-          }).catch(() => {});
-          // #endregion
           onDone(fullResponse, sources, finalMetadata);
-        } else {
-          // #region agent log
-          const logData = {
-            location: 'chat.api.ts:onDone:blocked',
-            message: 'onDone callback blocked due to abort signal',
-            data: { signalAborted: signalToUse.aborted },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'C',
-          };
-          console.warn('[DEBUG]', logData);
-          fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(logData),
-          }).catch(() => {});
-          // #endregion
         }
       }
     } catch (error) {
       // Only call onError if not aborted (abort is expected behavior)
-      // Hypothesis C: AbortSignal not synchronized with isMountedRef
       if (!signalToUse.aborted && !abortSignal?.aborted && !requestAborted) {
-        // #region agent log
-        const logData = {
-          location: 'chat.api.ts:onError:called',
-          message: 'onError callback called from chat.api',
-          data: { 
-            signalAborted: signalToUse.aborted, 
-            abortSignalAborted: abortSignal?.aborted,
-            errorName: error instanceof Error ? error.name : 'Unknown',
-            errorMessage: error instanceof Error ? error.message : String(error),
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-        };
-        console.warn('[DEBUG]', logData);
-        fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(logData),
-        }).catch(() => {});
-        // #endregion
-        
         if (error instanceof Error && error.name === 'AbortError') {
           onError(new Error('Request timeout'));
         } else if (error instanceof Error && error.message === 'Request aborted') {
@@ -447,28 +342,6 @@ export class ChatApi {
         } else {
           onError(error instanceof Error ? error : new Error('Streaming failed'));
         }
-      } else {
-        // #region agent log
-        const logData = {
-          location: 'chat.api.ts:onError:blocked',
-          message: 'onError callback blocked due to abort signal',
-          data: { 
-            signalAborted: signalToUse.aborted, 
-            abortSignalAborted: abortSignal?.aborted,
-            errorName: error instanceof Error ? error.name : 'Unknown',
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-        };
-        console.warn('[DEBUG]', logData);
-        fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(logData),
-        }).catch(() => {});
-        // #endregion
       }
     } finally {
       // Clean up abort listener
@@ -479,4 +352,3 @@ export class ChatApi {
     }
   }
 }
-

@@ -1,5 +1,7 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { useSystemSound } from '@/hooks/useSystemSound';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
@@ -8,114 +10,247 @@ import Image from 'next/image';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loginStage, setLoginStage] = useState<'idle' | 'authenticating' | 'success' | 'denied'>(
+    'idle'
+  );
+  const router = useRouter();
+  const { play } = useSystemSound();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    // Simulate login
-    setTimeout(() => setIsLoading(false), 2000);
+    if (loginStage !== 'idle') return;
+
+    // 1. Sound: Authenticate Start
+    play('auth_start');
+    setLoginStage('authenticating');
+
+    // 2. Timeline Implementation
+    // Total duration ~700ms before decision
+
+    // Timeline Implementation: ~700ms sequence
+    setTimeout(() => {
+      const isSuccess = true;
+
+      if (isSuccess) {
+        setLoginStage('success');
+        play('access_granted');
+
+        // Cut to Dashboard
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
+      } else {
+        setLoginStage('denied');
+        play('access_denied');
+        // Reset after delay
+        setTimeout(() => {
+          setLoginStage('idle');
+        }, 2000);
+      }
+    }, 1500); // 700ms minimum + some network simulation
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[var(--background)] text-white font-sans selection:bg-red-500/30 relative isolate">
-      {/* Background Image (Low Opacity) - Same as /chat and /dashboard */}
-      <div className="fixed inset-0 z-[-1] opacity-[0.08] pointer-events-none">
-        <Image
-          src="/images/monas-bg.jpg"
-          alt="Background"
-          fill
-          className="object-cover object-center"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--background)]/80 via-transparent to-[var(--background)]" />
-      </div>
-      
-      {/* LEFT COLUMN DISINTEGRATED (Removed as per request) */}
-      
-      {/* RIGHT COLUMN - NOW CENTER STAGE */}
-      {/* "la colonna di destra non si tocca" -> Preserving the exact interior style of the right column */}
-      <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md p-8 flex flex-col items-center justify-center"
+    <div className="flex w-full min-h-screen bg-black overflow-hidden font-sans text-white selection:bg-cyan-500/30 relative">
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #212222 inset !important;
+            -webkit-text-fill-color: white !important;
+            caret-color: #CE1126 !important;
+        }
+      `,
+        }}
+      />
+
+      {/* ACCESS GRANTED OVERLAY */}
+      {loginStage === 'success' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.1 }}
+          className="absolute inset-0 z-50 bg-black flex items-center justify-center"
         >
-          {/* Header */}
-          <div className="w-full space-y-2 mb-10 text-center">
-             {/* Optional: Add Logo here since Left is gone? User said "Left disintegrates", didn't explicitly say "move logo". 
-                 But a login page usually needs a logo. I'll stick to the "Right column untouched" rule strictly first. 
-                 The Right column didn't have the big logo. It had "Access Portal". */}
-            <h3 className="text-2xl font-medium tracking-tight text-white">Access Portal</h3>
-            <p className="text-sm text-gray-500">Secure entry for authorized personnel only.</p>
+          <h1 className="text-4xl md:text-6xl font-mono font-bold text-white tracking-widest uppercase">
+            Access Granted
+          </h1>
+        </motion.div>
+      )}
+
+      {/* ACCESS DENIED OVERLAY */}
+      {loginStage === 'denied' && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.1 }}
+          className="absolute inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-sm"
+        >
+          <h1 className="text-4xl md:text-6xl font-mono font-bold text-[#CE1126] tracking-widest uppercase">
+            Access Denied
+          </h1>
+        </motion.div>
+      )}
+
+      {/* LEFT COLUMN - Brand, Identity & Access */}
+      <motion.div
+        initial={{ x: -50, opacity: 0 }}
+        animate={{
+          x: 0,
+          opacity: loginStage === 'authenticating' ? 0.5 : 1, // Dim on authenticating
+        }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="w-full lg:w-[35%] h-full min-h-screen bg-[#212222] relative z-20 flex flex-col px-12 lg:px-16 py-12"
+      >
+        {/* Top: Brand Identity */}
+        <div className="flex flex-col items-center w-full pt-8 mb-auto">
+          {/* Logo - Classic Metallic 3D */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{
+              opacity: 1,
+              scale: loginStage === 'authenticating' ? 1.015 : 1, // Logo Zoom on Auth
+            }}
+            transition={{ duration: loginStage === 'authenticating' ? 1 : 1 }}
+            className="relative w-32 md:w-40"
+          >
+            <Image
+              src="/assets/login/zantara-logo-classic.png"
+              alt="Zantara Classic Logo"
+              width={400}
+              height={400}
+              className="w-full h-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+              priority
+            />
+          </motion.div>
+        </div>
+
+        {/* Center: Generic Login Form */}
+        <div className="w-full max-w-sm mb-auto">
+          <div className="mb-8">
+            <p className="text-xs text-gray-500 mt-1 tracking-wider uppercase">
+              Authorized Personnel Only
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="w-full space-y-6">
-            
-            {/* Input Group 1 */}
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <label htmlFor="email" className="block text-xs font-medium text-gray-500 uppercase tracking-widest">
+              <label
+                htmlFor="email"
+                className="block text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] pl-1"
+              >
                 Identity
               </label>
-              <div className="relative">
-                 <input
-                  id="email"
-                  type="email"
-                  placeholder="user@zantara.id"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-transparent border-b border-white/20 py-3 text-white placeholder-gray-700 focus:outline-none focus:border-red-500 transition-colors rounded-none" 
-                />
-              </div>
-            </div>
-            
-            {/* Input Group 2 */}
-            <div className="space-y-2">
-              <label htmlFor="pin" className="block text-xs font-medium text-gray-500 uppercase tracking-widest">
-                Security Key
-              </label>
-              <div className="relative">
-                <input
-                  id="pin"
-                  type="password"
-                  placeholder="••••••••"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="w-full bg-transparent border-b border-white/20 py-3 text-white placeholder-gray-700 focus:outline-none focus:border-red-500 transition-colors rounded-none"
-                />
-              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="user@zantara.id"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={() => play('focus')}
+                disabled={loginStage !== 'idle'}
+                className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[#CE1126] focus:outline-none focus:border-[#CE1126] focus:shadow-[0_0_10px_rgba(206,17,38,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
+              />
             </div>
 
-            <div className="pt-6">
+            <div className="space-y-2">
+              <label
+                htmlFor="pin"
+                className="block text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em] pl-1"
+              >
+                Security Key
+              </label>
+              <input
+                id="pin"
+                name="pin"
+                type="password"
+                placeholder="••••••••"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                onFocus={() => play('focus')}
+                disabled={loginStage !== 'idle'}
+                className="w-full bg-black/20 border-b border-white/10 py-3 pl-0 text-red-50 placeholder-white/20 caret-[#CE1126] focus:outline-none focus:border-[#CE1126] focus:shadow-[0_0_10px_rgba(206,17,38,0.2)] focus:bg-white/[0.02] transition-colors duration-0 text-sm font-light tracking-wide rounded-none"
+              />
+            </div>
+
+            <div className="pt-8">
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full bg-white hover:bg-gray-200 text-black font-semibold py-4 rounded-sm transition-all flex items-center justify-center gap-3"
+                disabled={loginStage !== 'idle'}
+                className="w-full group relative overflow-hidden bg-white/5 hover:bg-[#CE1126] hover:border-[#CE1126] hover:shadow-[0_0_30px_rgba(206,17,38,0.4)] border border-white/10 text-white text-xs font-bold tracking-[0.2em] uppercase py-4 transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? (
-                  <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <span>Authenticate</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </>
+                <span className="opacity-80 group-hover:opacity-100 transition-opacity">
+                  Authenticate
+                </span>
+                <ArrowRight className="h-3 w-3 text-cyan-500 opacity-70 group-hover:text-white group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
+
+                {/* Glow Effect only on idle */}
+                {loginStage === 'idle' && (
+                  <div className="absolute bottom-0 left-0 h-[1px] w-full bg-gradient-to-r from-transparent via-white/50 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
                 )}
               </button>
             </div>
           </form>
-           
-          {/* Footer */}
-          <div className="w-full pt-12 mt-4 border-t border-white/5">
-            <div className="flex justify-between items-center text-xs text-gray-600 font-mono">
-               <span>V 5.4 ULTRA HYBRID</span>
-               <span className="text-green-900/40 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500/50"></span>
+        </div>
+
+        {/* Footer */}
+        <div className="w-full pt-8 border-t border-white/5">
+          <div className="flex justify-between items-end">
+            <div className="text-[10px] text-white/20 tracking-[0.2em] font-mono">SYSTEM v5.4</div>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-cyan-500/50 animate-pulse" />
+                <span className="text-[10px] text-cyan-500/40 tracking-wider font-mono">
                   ONLINE
-               </span>
+                </span>
+              </div>
             </div>
           </div>
-
+        </div>
       </motion.div>
+
+      {/* RIGHT COLUMN - Kintsugi Capital */}
+      <div className="hidden lg:block lg:w-[65%] relative z-0 h-screen bg-[#212222]">
+        <motion.div
+          className="relative w-full h-full"
+          animate={{
+            filter:
+              loginStage === 'authenticating'
+                ? 'brightness(1.2) contrast(1.1)'
+                : 'brightness(1) contrast(1)',
+          }}
+          transition={{ duration: 0.2 }} // Fast reaction to auth start
+        >
+          <Image
+            src="/assets/login/kintsugi-stone.png"
+            alt="Kintsugi Capital - Value from the Raw"
+            fill
+            className="object-cover object-center scale-110"
+            priority
+            quality={100}
+          />
+        </motion.div>
+
+        {/* Cinematic Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#212222] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#212222] via-transparent to-transparent opacity-90" />
+
+        {/* Kintsugi Text Overlay */}
+        <div className="absolute bottom-12 right-16 text-right max-w-md flex flex-col items-end">
+          <h2 className="text-3xl font-serif text-amber-100/90 leading-tight mb-2">
+            Order from the raw
+          </h2>
+          <div className="w-full h-px bg-[#D4AF37]/50 mb-3" />
+          <span className="text-[18px] uppercase tracking-[0.6em] text-[#D4AF37]/65 font-sans font-light">
+            N I L A I
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

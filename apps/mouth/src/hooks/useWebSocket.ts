@@ -62,32 +62,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
-  // #region agent log
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'useWebSocket.ts:cleanup',
-          message: 'Component unmounted',
-          data: {
-            hasReconnectTimeout: reconnectTimeoutRef.current !== null,
-            hasPingInterval: pingIntervalRef.current !== null,
-            reconnectAttempts: reconnectAttemptsRef.current,
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-        }),
-      }).catch(() => {});
-    };
-  }, []);
-  // #endregion
-
   const clearPingInterval = useCallback(() => {
     if (pingIntervalRef.current) {
       clearInterval(pingIntervalRef.current);
@@ -155,26 +129,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     };
 
     ws.onclose = () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'useWebSocket.ts:onclose',
-          message: 'WebSocket closed',
-          data: {
-            isMounted: isMountedRef.current,
-            reconnectAttempts: reconnectAttemptsRef.current,
-            maxReconnectAttempts,
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-        }),
-      }).catch(() => {});
-      // #endregion
-
       setIsConnected(false);
       setIsConnecting(false);
       clearPingInterval();
@@ -185,24 +139,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         reconnectAttemptsRef.current++;
         // Use ref to call the latest connect function
         reconnectTimeoutRef.current = setTimeout(() => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              location: 'useWebSocket.ts:reconnect',
-              message: 'Attempting reconnect',
-              data: {
-                isMounted: isMountedRef.current,
-                reconnectAttempts: reconnectAttemptsRef.current,
-              },
-              timestamp: Date.now(),
-              sessionId: 'debug-session',
-              runId: 'run1',
-              hypothesisId: 'C',
-            }),
-          }).catch(() => {});
-          // #endregion
           if (isMountedRef.current) {
             connectRef.current();
           }
@@ -227,25 +163,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, [connect]);
 
   const disconnect = useCallback(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        location: 'useWebSocket.ts:disconnect',
-        message: 'Disconnecting WebSocket',
-        data: {
-          hasReconnectTimeout: reconnectTimeoutRef.current !== null,
-          hasPingInterval: pingIntervalRef.current !== null,
-        },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'C',
-      }),
-    }).catch(() => {});
-    // #endregion
-
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -268,25 +185,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
   useEffect(() => {
     return () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/48de47fc-54d6-439e-b870-9304357bbf28', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          location: 'useWebSocket.ts:cleanup:effect',
-          message: 'Cleanup effect running',
-          data: {
-            hasReconnectTimeout: reconnectTimeoutRef.current !== null,
-            hasPingInterval: pingIntervalRef.current !== null,
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'C',
-        }),
-      }).catch(() => {});
-      // #endregion
-
       // Cleanup all timeouts and intervals
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);

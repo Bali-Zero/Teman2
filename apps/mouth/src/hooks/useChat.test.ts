@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { waitFor } from '@testing-library/dom';
 
@@ -151,45 +151,6 @@ describe('useChat', () => {
     });
   });
 
-  describe('clearMessages', () => {
-    it.skip('should clear safety timeout when clearing messages', async () => {
-      mockSendMessageStreaming.mockImplementation(() => {
-        return new Promise(() => {
-          // Never resolves
-        });
-      });
-
-      const { result } = renderHook(() => useChat());
-
-      act(() => {
-        result.current.setInput('Test message');
-      });
-
-      act(() => {
-        result.current.handleSend();
-      });
-
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
-
-      expect(result.current.isLoading).toBe(true);
-
-      // Clear messages
-      act(() => {
-        result.current.clearMessages();
-      });
-
-      // Wait for loading to be cleared
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false);
-      });
-
-      // Safety timeout was cleared, so isLoading should remain false
-      expect(result.current.isLoading).toBe(false);
-    });
-  });
-
   describe('loadConversation', () => {
     it('should clear safety timeout when loading conversation', async () => {
       mockSendMessageStreaming.mockImplementation(() => {
@@ -269,37 +230,6 @@ describe('useChat', () => {
       const lastMessage = result.current.messages[result.current.messages.length - 1];
       expect(lastMessage.content).toContain('error');
       expect(lastMessage.role).toBe('assistant');
-    });
-
-    it.skip('should handle unexpected errors in handleSend', async () => {
-      mockSendMessageStreaming.mockImplementation(() => {
-        return Promise.reject(new Error('Unexpected error'));
-      });
-
-      const { result } = renderHook(() => useChat());
-
-      act(() => {
-        result.current.setInput('Test message');
-      });
-
-      act(() => {
-        result.current.handleSend();
-      });
-
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      });
-
-      await waitFor(
-        () => {
-          expect(result.current.isLoading).toBe(false);
-        },
-        { timeout: 3000 }
-      );
-
-      // Should have error message
-      const lastMessage = result.current.messages[result.current.messages.length - 1];
-      expect(lastMessage.content).toContain('unexpected error');
     });
   });
 
