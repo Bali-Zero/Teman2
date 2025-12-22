@@ -29,7 +29,9 @@ export interface SearchResult {
 export interface SearchResponse {
   results: SearchResult[];
   total: number;
+  total_found?: number;
   query: string;
+  execution_time_ms?: number;
 }
 
 // Re-export with Knowledge prefix for consistency
