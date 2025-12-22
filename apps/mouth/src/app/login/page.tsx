@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
+import { api } from '@/lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -24,30 +25,28 @@ export default function LoginPage() {
     play('auth_start');
     setLoginStage('authenticating');
 
-    // 2. Timeline Implementation
-    // Total duration ~700ms before decision
+    try {
+      // 2. Real API call
+      await api.login(email, pin);
 
-    // Timeline Implementation: ~700ms sequence
-    setTimeout(() => {
-      const isSuccess = true;
+      // 3. Success
+      setLoginStage('success');
+      play('access_granted');
 
-      if (isSuccess) {
-        setLoginStage('success');
-        play('access_granted');
-
-        // Cut to Dashboard
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 1500);
-      } else {
-        setLoginStage('denied');
-        play('access_denied');
-        // Reset after delay
-        setTimeout(() => {
-          setLoginStage('idle');
-        }, 2000);
-      }
-    }, 1500); // 700ms minimum + some network simulation
+      // Cut to Dashboard
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
+    } catch (error) {
+      // 4. Failure
+      console.error('Login failed:', error);
+      setLoginStage('denied');
+      play('access_denied');
+      // Reset after delay
+      setTimeout(() => {
+        setLoginStage('idle');
+      }, 2000);
+    }
   };
 
   return (
