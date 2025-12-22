@@ -131,6 +131,7 @@ export default function LoginPage() {
               height={400}
               className="w-full h-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
               priority
+              unoptimized
             />
           </motion.div>
         </div>
@@ -239,6 +240,7 @@ export default function LoginPage() {
             className="object-cover object-center scale-110"
             priority
             quality={100}
+            unoptimized
           />
         </motion.div>
 
