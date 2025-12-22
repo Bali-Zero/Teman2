@@ -6,10 +6,12 @@ import type { BackendLoginResponse } from './auth.types';
 describe('AuthApi', () => {
   let authApi: AuthApi;
   let mockClient: ApiClientBase;
+  let mockRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    mockRequest = vi.fn();
     mockClient = {
-      request: vi.fn(),
+      request: mockRequest,
       setToken: vi.fn(),
       setUserProfile: vi.fn(),
       setCsrfToken: vi.fn(),
@@ -37,11 +39,11 @@ describe('AuthApi', () => {
         },
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await authApi.login('test@example.com', '1234');
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/auth/login', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email: 'test@example.com', pin: '1234' }),
       });
@@ -62,7 +64,7 @@ describe('AuthApi', () => {
         data: undefined as any,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await expect(authApi.login('test@example.com', 'wrong')).rejects.toThrow(
         'Invalid credentials'
@@ -86,7 +88,7 @@ describe('AuthApi', () => {
         },
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await authApi.login('test@example.com', '1234');
 
@@ -96,18 +98,18 @@ describe('AuthApi', () => {
 
   describe('logout', () => {
     it('should logout and clear token', async () => {
-      (mockClient.request as any).mockResolvedValueOnce({});
+      mockRequest.mockResolvedValueOnce({});
 
       await authApi.logout();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/auth/logout', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/auth/logout', {
         method: 'POST',
       });
       expect(mockClient.clearToken).toHaveBeenCalled();
     });
 
     it('should clear token even if logout request fails', async () => {
-      (mockClient.request as any).mockRejectedValueOnce(new Error('Network error'));
+      mockRequest.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(authApi.logout()).rejects.toThrow('Network error');
       expect(mockClient.clearToken).toHaveBeenCalled();
@@ -123,14 +125,13 @@ describe('AuthApi', () => {
         role: 'user',
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(profile);
+      mockRequest.mockResolvedValueOnce(profile);
 
       const result = await authApi.getProfile();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/auth/profile');
+      expect(mockRequest).toHaveBeenCalledWith('/api/auth/profile');
       expect(mockClient.setUserProfile).toHaveBeenCalledWith(profile);
       expect(result).toEqual(profile);
     });
   });
 });
-

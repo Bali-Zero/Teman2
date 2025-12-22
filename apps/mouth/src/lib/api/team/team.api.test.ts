@@ -6,10 +6,12 @@ import type { ClockResponse, UserStatusResponse } from './team.types';
 describe('TeamApi', () => {
   let teamApi: TeamApi;
   let mockClient: ApiClientBase;
+  let mockRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    mockRequest = vi.fn();
     mockClient = {
-      request: vi.fn(),
+      request: mockRequest,
       getUserProfile: vi.fn(),
     } as any;
     teamApi = new TeamApi(mockClient);
@@ -30,11 +32,11 @@ describe('TeamApi', () => {
       };
 
       (mockClient.getUserProfile as any).mockReturnValue(mockProfile);
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await teamApi.clockIn();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/clock-in', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/clock-in', {
         method: 'POST',
         body: JSON.stringify({
           user_id: '123',
@@ -69,11 +71,11 @@ describe('TeamApi', () => {
       };
 
       (mockClient.getUserProfile as any).mockReturnValue(mockProfile);
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await teamApi.clockOut();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/clock-out', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/clock-out', {
         method: 'POST',
         body: JSON.stringify({
           user_id: '123',
@@ -109,7 +111,7 @@ describe('TeamApi', () => {
       };
 
       (mockClient.getUserProfile as any).mockReturnValue(mockProfile);
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await teamApi.getClockStatus();
 
@@ -139,7 +141,7 @@ describe('TeamApi', () => {
       };
 
       (mockClient.getUserProfile as any).mockReturnValue(mockProfile);
-      (mockClient.request as any).mockRejectedValueOnce(new Error('Service unavailable'));
+      mockRequest.mockRejectedValueOnce(new Error('Service unavailable'));
 
       const result = await teamApi.getClockStatus();
 
@@ -151,4 +153,3 @@ describe('TeamApi', () => {
     });
   });
 });
-

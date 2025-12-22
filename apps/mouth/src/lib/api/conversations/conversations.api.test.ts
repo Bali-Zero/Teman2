@@ -11,10 +11,12 @@ import type {
 describe('ConversationsApi', () => {
   let conversationsApi: ConversationsApi;
   let mockClient: ApiClientBase;
+  let mockRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    mockRequest = vi.fn();
     mockClient = {
-      request: vi.fn(),
+      request: mockRequest,
     } as any;
     conversationsApi = new ConversationsApi(mockClient);
   });
@@ -31,11 +33,11 @@ describe('ConversationsApi', () => {
         session_id: 'session-123',
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await conversationsApi.getConversationHistory();
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         '/api/bali-zero/conversations/history?limit=50'
       );
       expect(result).toEqual(mockResponse);
@@ -49,11 +51,11 @@ describe('ConversationsApi', () => {
         session_id: 'session-123',
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await conversationsApi.getConversationHistory('session-123');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         '/api/bali-zero/conversations/history?session_id=session-123&limit=50'
       );
     });
@@ -67,7 +69,7 @@ describe('ConversationsApi', () => {
         messages_saved: 2,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const messages = [
         { role: 'user', content: 'Hello' },
@@ -76,7 +78,7 @@ describe('ConversationsApi', () => {
 
       const result = await conversationsApi.saveConversation(messages, 'session-123');
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/bali-zero/conversations/save', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/bali-zero/conversations/save', {
         method: 'POST',
         body: JSON.stringify({
           messages,
@@ -94,14 +96,14 @@ describe('ConversationsApi', () => {
         messages_saved: 2,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const messages = [{ role: 'user', content: 'Hello' }];
       const metadata = { execution_time: 1.5 };
 
       await conversationsApi.saveConversation(messages, 'session-123', metadata);
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           body: expect.stringContaining('"metadata"'),
@@ -117,11 +119,11 @@ describe('ConversationsApi', () => {
         deleted_count: 5,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await conversationsApi.clearConversations();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/bali-zero/conversations/clear?', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/bali-zero/conversations/clear?', {
         method: 'DELETE',
       });
       expect(result).toEqual(mockResponse);
@@ -133,11 +135,11 @@ describe('ConversationsApi', () => {
         deleted_count: 3,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await conversationsApi.clearConversations('session-123');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         '/api/bali-zero/conversations/clear?session_id=session-123',
         {
           method: 'DELETE',
@@ -156,11 +158,11 @@ describe('ConversationsApi', () => {
         last_conversation: '2024-01-01T00:00:00Z',
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await conversationsApi.getConversationStats();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/bali-zero/conversations/stats');
+      expect(mockRequest).toHaveBeenCalledWith('/api/bali-zero/conversations/stats');
       expect(result).toEqual(mockResponse);
     });
   });
@@ -173,11 +175,11 @@ describe('ConversationsApi', () => {
         total: 0,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await conversationsApi.listConversations();
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         '/api/bali-zero/conversations/list?limit=20&offset=0'
       );
       expect(result).toEqual(mockResponse);
@@ -190,11 +192,11 @@ describe('ConversationsApi', () => {
         total: 0,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await conversationsApi.listConversations(50, 10);
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         '/api/bali-zero/conversations/list?limit=50&offset=10'
       );
     });
@@ -214,11 +216,11 @@ describe('ConversationsApi', () => {
         session_id: 'session-123',
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await conversationsApi.getConversation(1);
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/bali-zero/conversations/1');
+      expect(mockRequest).toHaveBeenCalledWith('/api/bali-zero/conversations/1');
       expect(result).toEqual(mockResponse);
     });
   });
@@ -230,11 +232,11 @@ describe('ConversationsApi', () => {
         deleted_id: 1,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await conversationsApi.deleteConversation(1);
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/bali-zero/conversations/1', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/bali-zero/conversations/1', {
         method: 'DELETE',
       });
       expect(result).toEqual(mockResponse);
@@ -244,23 +246,25 @@ describe('ConversationsApi', () => {
   describe('getUserMemoryContext', () => {
     it('should get user memory context', async () => {
       const mockResponse: UserMemoryContext = {
+        success: true,
+        user_id: 'user-123',
         profile_facts: [],
         summary: 'Test summary',
         counters: {
           total_conversations: 10,
           total_messages: 50,
         },
+        has_data: true,
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await conversationsApi.getUserMemoryContext();
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         '/api/bali-zero/conversations/memory/context'
       );
       expect(result).toEqual(mockResponse);
     });
   });
 });
-

@@ -31,7 +31,9 @@ describe('ApiClient Unit Tests', () => {
 
   beforeEach(() => {
     localStorageMock.clear();
-    vi.clearAllMocks();
+    // Use restoreAllMocks to completely reset implementations and history
+    vi.restoreAllMocks();
+    mockFetch.mockReset(); // Explicitly reset the global fetch mock
     api = new ApiClient(baseUrl);
   });
 
@@ -76,10 +78,11 @@ describe('ApiClient Unit Tests', () => {
       const profile: UserProfile = {
         id: '123',
         email: 'test@example.com',
+        name: '',
         role: 'user',
       };
       api.setUserProfile(profile);
-      expect(api.getUserProfile()?.name).toBeUndefined();
+      expect(api.getUserProfile()?.name).toBe('');
     });
 
     it('should handle admin role check', () => {
@@ -453,4 +456,3 @@ describe('ApiClient Unit Tests', () => {
     });
   });
 });
-

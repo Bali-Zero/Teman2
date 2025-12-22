@@ -128,7 +128,10 @@ export class ApiClientBase {
         signal: controller.signal,
       });
 
-      if (!response.ok) {
+      console.log(`[ApiClient] ${method} ${endpoint} -> Status: ${response.status}, OK: ${response.ok}`);
+
+      // Allow 204 as success even if ok is false (defensive)
+      if (!response.ok && response.status !== 204) {
         const error = await response.json().catch(() => ({ detail: 'Request failed' }));
         throw new Error(error.detail || `HTTP ${response.status}`);
       }

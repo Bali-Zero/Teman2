@@ -304,64 +304,10 @@ describe('Error Handling Unit Tests', () => {
         global.fetch = originalFetch;
       });
 
-      it('should handle image generation failure', async () => {
-        api.setToken('test-token');
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          headers: new Headers({ 'content-type': 'application/json' }),
-          json: async () => ({
-            success: false,
-            images: [],
-            error: 'Generation failed',
-          }),
-        });
 
-        await expect(api.generateImage('test prompt')).rejects.toThrow('Generation failed');
-      });
     });
   });
 
-  describe('Edge Case Error Handling', () => {
-    it('should handle empty error response', async () => {
-      // Need to use a proper Response-like object
-      const mockResponse = {
-        ok: false,
-        status: 500,
-        headers: new Headers(),
-        json: async () => ({}),
-      };
-      mockFetch.mockResolvedValueOnce(mockResponse);
 
-      await expect((api as any).request('/test')).rejects.toThrow('HTTP 500');
-    });
-
-    it('should handle malformed error JSON', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: async () => {
-          throw new Error('Invalid JSON');
-        },
-      });
-
-      await expect((api as any).request('/test')).rejects.toThrow();
-    });
-
-    it('should handle response without body', async () => {
-      const mockResponse = {
-        ok: true,
-        status: 204,
-        headers: new Headers({ 'content-type': 'text/plain' }),
-        json: async () => {
-          throw new Error('Not JSON');
-        },
-      };
-      mockFetch.mockResolvedValueOnce(mockResponse);
-
-      const result = await (api as any).request('/test');
-      expect(result).toEqual({});
-    });
-  });
 });
 

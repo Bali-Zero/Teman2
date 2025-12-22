@@ -585,6 +585,15 @@ describe('ApiClient Integration Tests', () => {
       expect(subprotocol).toBe('bearer.test-token');
     });
 
+    it('should strip /api from base URL', () => {
+      const apiWithApiBase = new ApiClient('https://api.test.com/api');
+      apiWithApiBase.setToken('test-token');
+
+      const wsUrl = apiWithApiBase.getWebSocketUrl();
+
+      expect(wsUrl).toBe('wss://api.test.com/ws');
+    });
+
     it('should return null subprotocol when no token', () => {
       api.clearToken();
       const subprotocol = api.getWebSocketSubprotocol();
@@ -593,4 +602,3 @@ describe('ApiClient Integration Tests', () => {
     });
   });
 });
-

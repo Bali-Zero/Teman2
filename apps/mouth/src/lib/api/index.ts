@@ -19,7 +19,9 @@ import type {
   ConversationListResponse,
   SingleConversationResponse,
 } from './conversations/conversations.types';
-import type { KnowledgeChunkMetadata, KnowledgeSearchResult, KnowledgeSearchResponse, TierLevel } from './knowledge/knowledge.types';
+import type { KnowledgeChunkMetadata, KnowledgeSearchResult, KnowledgeSearchResponse } from './knowledge/knowledge.types';
+import { TierLevel } from './knowledge/knowledge.types';
+import type { Practice, Interaction, PracticeStats, InteractionStats } from './crm/crm.types';
 
 // Re-export ApiError type
 export interface ApiError extends Error {
@@ -28,24 +30,13 @@ export interface ApiError extends Error {
   message: string;
 }
 
-// Normalize API base URL
-function normalizeApiBaseUrl(url: string): string {
-  // Accept either https://host or https://host/api and normalize to https://host
-  return url.replace(/\/+$/, '').replace(/\/api$/, '');
-}
-
-const ENV_API_BASE_URL = normalizeApiBaseUrl(
-  process.env.NEXT_PUBLIC_API_URL || 'https://nuzantara-rag.fly.dev'
-);
+// In local dev, proxy `/api/*` through Next to avoid CORS and keep auth headers same-origin.
 
 // In local dev, proxy `/api/*` through Next to avoid CORS and keep auth headers same-origin.
-const API_BASE_URL =
-  typeof window !== 'undefined' &&
-  (window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.endsWith('.local'))
-    ? ''
-    : ENV_API_BASE_URL;
+// Always use relative path so requests go to Next.js API routes first.
+// This allows specific routes (like /api/crm/clients) to be intercepted by mocks,
+// while others fall through to the [...path] proxy to reach the real backend.
+const API_BASE_URL = '';
 
 // Create and export the API client instance (backward compatible)
 export const api = new ApiClient(API_BASE_URL);
@@ -61,6 +52,10 @@ export type {
   KnowledgeChunkMetadata,
   KnowledgeSearchResult,
   KnowledgeSearchResponse,
-  TierLevel,
+  Practice,
+  Interaction,
+  PracticeStats,
+  InteractionStats,
 };
 
+export { TierLevel };

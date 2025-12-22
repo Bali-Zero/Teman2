@@ -27,6 +27,23 @@ describe('WebSocketUtils', () => {
       expect(url).toBe('ws://localhost:3000/ws');
     });
 
+    it('should strip /api from base URL', () => {
+      (mockClient.getBaseUrl as any).mockReturnValue('https://api.test.com/api');
+      const url = wsUtils.getWebSocketUrl();
+      expect(url).toBe('wss://api.test.com/ws');
+    });
+
+    it('should fall back to NEXT_PUBLIC_API_URL when base URL is empty', () => {
+      const originalEnv = process.env.NEXT_PUBLIC_API_URL;
+      process.env.NEXT_PUBLIC_API_URL = 'https://env.test.com/api';
+      (mockClient.getBaseUrl as any).mockReturnValue('');
+
+      const url = wsUtils.getWebSocketUrl();
+      expect(url).toBe('wss://env.test.com/ws');
+
+      process.env.NEXT_PUBLIC_API_URL = originalEnv;
+    });
+
     it('should use window.location.origin as fallback', () => {
       (mockClient.getBaseUrl as any).mockReturnValue('');
       Object.defineProperty(window, 'location', {
@@ -61,4 +78,3 @@ describe('WebSocketUtils', () => {
     });
   });
 });
-

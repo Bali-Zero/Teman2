@@ -52,10 +52,37 @@ export class ChatApi {
     onStep?: (step: AgentStep) => void,
     timeoutMs: number = 120000,
     conversationHistory?: Array<{ role: string; content: string }>,
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
+    correlationId?: string,
+    idleTimeoutMs: number = 60000, // 60s idle timeout (reset on data)
+    maxTotalTimeMs: number = 600000 // 10min max total time
   ): Promise<void> {
+    console.log('ChatApi: sendMessageStreaming called', { correlationId, timeoutMs, idleTimeoutMs, maxTotalTimeMs });
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    let timedOut = false;
+    let userCancelled = false;
+    const startTime = Date.now();
+    let lastDataTime = Date.now();
+    
+    // Max total time budget
+    const maxTimeId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, maxTotalTimeMs);
+    
+    // Idle timeout (reset on data arrival)
+    let idleTimeoutId: NodeJS.Timeout | null = null;
+    const resetIdleTimeout = () => {
+      if (idleTimeoutId) {
+        clearTimeout(idleTimeoutId);
+      }
+      lastDataTime = Date.now();
+      idleTimeoutId = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, idleTimeoutMs);
+    };
+    resetIdleTimeout(); // Start idle timer
 
     // Combine abort signals: abort controller if external signal aborts
     let abortListener: (() => void) | null = null;
@@ -65,15 +92,19 @@ export class ChatApi {
       // If external signal is already aborted, mark it but don't throw yet
       if (abortSignal.aborted) {
         wasAbortedBeforeStart = true;
+        userCancelled = true;
         requestAborted = true;
         controller.abort();
-        clearTimeout(timeoutId);
+        if (idleTimeoutId) clearTimeout(idleTimeoutId);
+        clearTimeout(maxTimeId);
       } else {
-        // Listen for external abort
+        // Listen for external abort (user cancellation)
         abortListener = () => {
+          userCancelled = true;
           requestAborted = true; // Mark request as aborted
           controller.abort();
-          clearTimeout(timeoutId);
+          if (idleTimeoutId) clearTimeout(idleTimeoutId);
+          clearTimeout(maxTimeId);
         };
         abortSignal.addEventListener('abort', abortListener);
       }
@@ -81,8 +112,11 @@ export class ChatApi {
 
     const signalToUse = controller.signal;
 
-    // If aborted before start, return early without calling callbacks
+    // If aborted before start, call onError with appropriate message
     if (wasAbortedBeforeStart) {
+      const error = new Error('Request cancelled') as Error & { code?: string };
+      error.code = 'ABORTED';
+      onError(error);
       return;
     }
 
@@ -117,6 +151,11 @@ export class ChatApi {
         'Content-Type': 'application/json',
       };
 
+      // Add correlation ID for end-to-end tracing
+      if (correlationId) {
+        streamHeaders['X-Correlation-ID'] = correlationId;
+      }
+
       // Add CSRF token for cookie-based auth
       const csrf = this.client.getCsrfToken();
       if (csrf) {
@@ -130,6 +169,7 @@ export class ChatApi {
       }
 
       const baseUrl = this.client.getBaseUrl();
+      console.log('ChatApi: about to fetch', { baseUrl, url: `${baseUrl}/api/agentic-rag/stream` });
       const response = await fetch(`${baseUrl}/api/agentic-rag/stream`, {
         method: 'POST',
         headers: streamHeaders,
@@ -137,6 +177,7 @@ export class ChatApi {
         credentials: 'include', // Send httpOnly cookies
         signal: signalToUse,
       });
+      console.log('ChatApi: fetch returned', { status: response.status, ok: response.ok });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -188,6 +229,9 @@ export class ChatApi {
             throw new Error('Request aborted');
           }
 
+          // Reset idle timeout on data arrival
+          resetIdleTimeout();
+          
           sseBuffer += decoder.decode(value, { stream: true });
 
           // SSE frames can be split across network chunks; buffer until we have full lines.
@@ -230,11 +274,15 @@ export class ChatApi {
                 (typeof data.data === 'string' && data.data) ||
                 '';
               fullResponse += text;
+              // Reset idle timeout on token (data arrival)
+              resetIdleTimeout();
               // Only call callback if not aborted
               if (!signalToUse.aborted && !requestAborted) {
                 onChunk(text);
               }
             } else if (data.type === 'status') {
+              // Reset idle timeout on status update (data arrival)
+              resetIdleTimeout();
               if (
                 onStep &&
                 typeof data.data === 'string' &&
@@ -244,6 +292,8 @@ export class ChatApi {
                 onStep({ type: 'status', data: data.data, timestamp: new Date() });
               }
             } else if (data.type === 'tool_start') {
+              // Reset idle timeout on tool_start (data arrival)
+              resetIdleTimeout();
               if (
                 onStep &&
                 isRecord(data.data) &&
@@ -259,6 +309,8 @@ export class ChatApi {
                 });
               }
             } else if (data.type === 'tool_end') {
+              // Reset idle timeout on tool_end (data arrival)
+              resetIdleTimeout();
               if (
                 onStep &&
                 isRecord(data.data) &&
@@ -273,6 +325,8 @@ export class ChatApi {
                 });
               }
             } else if (data.type === 'sources') {
+              // Reset idle timeout on sources (data arrival)
+              resetIdleTimeout();
               sources = Array.isArray(data.data)
                 ? (data.data as Array<{ title?: string; content?: string }>)
                 : [];
@@ -332,23 +386,62 @@ export class ChatApi {
         }
       }
     } catch (error) {
-      // Only call onError if not aborted (abort is expected behavior)
-      if (!signalToUse.aborted && !abortSignal?.aborted && !requestAborted) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          onError(new Error('Request timeout'));
-        } else if (error instanceof Error && error.message === 'Request aborted') {
-          // Silently ignore abort - component was unmounted
-          // Don't call onError for expected aborts
+      // Check abortSignal state at catch time (may have changed since listener was set)
+      const isAbortSignalActive = abortSignal?.aborted === true;
+      const isUserCancel = isAbortSignalActive && !timedOut;
+      
+      // Always call onError for timeouts and user cancellations
+      // Only skip if component was unmounted (abortSignal.aborted but not timedOut/userCancelled)
+      if (timedOut) {
+        const timeoutError = new Error('Request timeout') as Error & { code?: string };
+        timeoutError.code = 'TIMEOUT';
+        onError(timeoutError);
+      } else if (isUserCancel || userCancelled) {
+        // User cancellation - call onError with ABORTED code
+        const abortError = new Error('Request cancelled') as Error & { code?: string };
+        abortError.code = 'ABORTED';
+        onError(abortError);
+      } else if (error instanceof Error && error.name === 'AbortError') {
+        // Generic abort (could be timeout or user cancel)
+        // Check abortSignal to determine if it was user-initiated
+        if (timedOut) {
+          const timeoutError = new Error('Request timeout') as Error & { code?: string };
+          timeoutError.code = 'TIMEOUT';
+          onError(timeoutError);
+        } else if (isAbortSignalActive || userCancelled) {
+          // User cancellation via abort signal
+          const abortError = new Error('Request cancelled') as Error & { code?: string };
+          abortError.code = 'ABORTED';
+          onError(abortError);
         } else {
-          onError(error instanceof Error ? error : new Error('Streaming failed'));
+          // Unmount scenario - don't call onError
         }
+      } else if (error instanceof Error && error.message === 'Request aborted') {
+        // Request was aborted - determine reason
+        if (timedOut) {
+          const timeoutError = new Error('Request timeout') as Error & { code?: string };
+          timeoutError.code = 'TIMEOUT';
+          onError(timeoutError);
+        } else if (userCancelled || isAbortSignalActive) {
+          const abortError = new Error('Request cancelled') as Error & { code?: string };
+          abortError.code = 'ABORTED';
+          onError(abortError);
+        }
+        // If neither timedOut nor userCancelled, it might be unmount - skip onError
+      } else {
+        // Other errors - always call onError
+        onError(error instanceof Error ? error : new Error('Streaming failed'));
       }
     } finally {
       // Clean up abort listener
       if (abortSignal && abortListener) {
         abortSignal.removeEventListener('abort', abortListener);
       }
-      clearTimeout(timeoutId);
+      // Clean up all timeouts
+      if (idleTimeoutId) {
+        clearTimeout(idleTimeoutId);
+      }
+      clearTimeout(maxTimeId);
     }
   }
 }

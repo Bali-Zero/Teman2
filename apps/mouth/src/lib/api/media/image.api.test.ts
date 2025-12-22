@@ -5,10 +5,12 @@ import { ApiClientBase } from '../client';
 describe('ImageApi', () => {
   let imageApi: ImageApi;
   let mockClient: ApiClientBase;
+  let mockRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    mockRequest = vi.fn();
     mockClient = {
-      request: vi.fn(),
+      request: mockRequest,
     } as any;
     imageApi = new ImageApi(mockClient);
   });
@@ -20,11 +22,11 @@ describe('ImageApi', () => {
         images: ['https://cdn.test.com/image.png'],
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await imageApi.generateImage('A beautiful sunset');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         '/api/v1/image/generate',
         {
           method: 'POST',
@@ -42,7 +44,7 @@ describe('ImageApi', () => {
         error: 'Generation failed',
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await expect(imageApi.generateImage('test')).rejects.toThrow('Generation failed');
     });
@@ -53,7 +55,7 @@ describe('ImageApi', () => {
         images: [],
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await expect(imageApi.generateImage('test')).rejects.toThrow('Failed to generate image');
     });
@@ -64,11 +66,11 @@ describe('ImageApi', () => {
         images: ['https://cdn.test.com/image.png'],
       };
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await imageApi.generateImage('test');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(Object),
         60000
@@ -76,4 +78,3 @@ describe('ImageApi', () => {
     });
   });
 });
-

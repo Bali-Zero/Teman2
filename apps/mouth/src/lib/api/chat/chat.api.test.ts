@@ -6,10 +6,12 @@ import type { AgenticQueryResponse } from './chat.types';
 describe('ChatApi', () => {
   let chatApi: ChatApi;
   let mockClient: ApiClientBase;
+  let mockRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    mockRequest = vi.fn();
     mockClient = {
-      request: vi.fn(),
+      request: mockRequest,
       getUserProfile: vi.fn(),
       getToken: vi.fn(),
       getCsrfToken: vi.fn(),
@@ -32,11 +34,11 @@ describe('ChatApi', () => {
         id: '123',
         email: 'test@example.com',
       });
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await chatApi.sendMessage('Hello', 'user-123');
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/agentic-rag/query', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/agentic-rag/query', {
         method: 'POST',
         body: JSON.stringify({
           query: 'Hello',
@@ -60,11 +62,11 @@ describe('ChatApi', () => {
       };
 
       (mockClient.getUserProfile as any).mockReturnValue(null);
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await chatApi.sendMessage('Hello');
 
-      expect(mockClient.request).toHaveBeenCalledWith(
+      expect(mockRequest).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
           body: expect.stringContaining('"user_id":"anonymous"'),
@@ -274,6 +276,202 @@ describe('ChatApi', () => {
         })
       );
     });
+
+    it('should call onError with TIMEOUT code when timeout occurs', async () => {
+      const mockReader = {
+        read: vi.fn().mockImplementation(() => {
+          // Simulate slow stream that times out
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({ done: false, value: new TextEncoder().encode('data: {"type":"token","content":"Test"}\n') });
+            }, 100);
+          });
+        }),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      const onError = vi.fn();
+      const onDone = vi.fn();
+
+      // Use very short timeout (50ms) to trigger timeout
+      await chatApi.sendMessageStreaming(
+        'Hello',
+        undefined,
+        vi.fn(),
+        onDone,
+        onError,
+        undefined,
+        50, // 50ms timeout
+        undefined,
+        undefined,
+        undefined,
+        30, // 30ms idle timeout
+        100 // 100ms max time
+      );
+
+      // Wait for timeout
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      expect(onError).toHaveBeenCalled();
+      const errorCall = onError.mock.calls[0][0] as Error & { code?: string };
+      expect(errorCall.code).toBe('TIMEOUT');
+      expect(errorCall.message).toContain('timeout');
+      expect(onDone).not.toHaveBeenCalled();
+    });
+
+    it('should call onError with ABORTED code when user cancels', async () => {
+      const abortController = new AbortController();
+      const mockReader = {
+        read: vi.fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: {"type":"token","content":"Test"}\n'),
+          })
+          .mockImplementationOnce(() => {
+            // Simulate abort during second read
+            abortController.abort();
+            const abortError = new Error('AbortError');
+            abortError.name = 'AbortError';
+            return Promise.reject(abortError);
+          }),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      const onError = vi.fn();
+      const onDone = vi.fn();
+
+      // Start streaming
+      const streamPromise = chatApi.sendMessageStreaming(
+        'Hello',
+        undefined,
+        vi.fn(),
+        onDone,
+        onError,
+        undefined,
+        120000,
+        undefined,
+        abortController.signal
+      );
+
+      await streamPromise;
+
+      expect(onError).toHaveBeenCalled();
+      const errorCall = onError.mock.calls[0][0] as Error & { code?: string };
+      expect(errorCall.code).toBe('ABORTED');
+      expect(errorCall.message).toContain('cancelled');
+      expect(onDone).not.toHaveBeenCalled();
+      expect(mockReader.cancel).toHaveBeenCalled();
+    });
+
+    it('should reset idle timeout on data arrival', async () => {
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: {"type":"token","content":"Hello"}\n'),
+          })
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: {"type":"token","content":" World"}\n'),
+          })
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode('data: [DONE]\n'),
+          })
+          .mockResolvedValueOnce({ done: true }),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      const onChunk = vi.fn();
+      const onDone = vi.fn();
+      const onError = vi.fn();
+
+      // Use short idle timeout but data arrives frequently
+      await chatApi.sendMessageStreaming(
+        'Hello',
+        undefined,
+        onChunk,
+        onDone,
+        onError,
+        undefined,
+        120000,
+        undefined,
+        undefined,
+        undefined,
+        1000, // 1s idle timeout (should not trigger with frequent data)
+        10000 // 10s max time
+      );
+
+      expect(onChunk).toHaveBeenCalledWith('Hello');
+      expect(onChunk).toHaveBeenCalledWith(' World');
+      expect(onDone).toHaveBeenCalled();
+      expect(onError).not.toHaveBeenCalled();
+    });
+
+    it('should include correlation ID in headers when provided', async () => {
+      const mockReader = {
+        read: vi.fn().mockResolvedValueOnce({ done: true }),
+        cancel: vi.fn(),
+      };
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      };
+
+      (global.fetch as any).mockResolvedValueOnce(mockResponse);
+
+      await chatApi.sendMessageStreaming(
+        'Hello',
+        undefined,
+        vi.fn(),
+        vi.fn(),
+        vi.fn(),
+        undefined,
+        120000,
+        undefined,
+        undefined,
+        'test-correlation-id-123'
+      );
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Correlation-ID': 'test-correlation-id-123',
+          }),
+        })
+      );
+    });
   });
 });
-

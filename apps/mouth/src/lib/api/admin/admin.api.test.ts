@@ -5,10 +5,12 @@ import { ApiClientBase } from '../client';
 describe('AdminApi', () => {
   let adminApi: AdminApi;
   let mockClient: ApiClientBase;
+  let mockRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    mockRequest = vi.fn();
     mockClient = {
-      request: vi.fn(),
+      request: mockRequest,
       getAdminHeaders: vi.fn(() => ({ 'X-User-Email': 'admin@example.com' })),
       getToken: vi.fn(() => 'admin-token'),
       getBaseUrl: vi.fn(() => 'https://api.test.com'),
@@ -28,11 +30,11 @@ describe('AdminApi', () => {
         },
       ];
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await adminApi.getTeamStatus();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/status', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/status', {
         headers: { 'X-User-Email': 'admin@example.com' },
       });
       expect(result).toEqual(mockResponse);
@@ -52,11 +54,11 @@ describe('AdminApi', () => {
         },
       ];
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await adminApi.getDailyHours();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/hours?', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/hours?', {
         headers: { 'X-User-Email': 'admin@example.com' },
       });
       expect(result).toEqual(mockResponse);
@@ -64,11 +66,11 @@ describe('AdminApi', () => {
 
     it('should get daily hours with date', async () => {
       const mockResponse: any[] = [];
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await adminApi.getDailyHours('2024-01-01');
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/hours?date=2024-01-01', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/hours?date=2024-01-01', {
         headers: { 'X-User-Email': 'admin@example.com' },
       });
     });
@@ -87,11 +89,11 @@ describe('AdminApi', () => {
         },
       ];
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await adminApi.getWeeklySummary();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/activity/weekly?', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/activity/weekly?', {
         headers: { 'X-User-Email': 'admin@example.com' },
       });
       expect(result).toEqual(mockResponse);
@@ -99,11 +101,11 @@ describe('AdminApi', () => {
 
     it('should get weekly summary with weekStart', async () => {
       const mockResponse: any[] = [];
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await adminApi.getWeeklySummary('2024-01-01');
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/activity/weekly?week_start=2024-01-01', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/activity/weekly?week_start=2024-01-01', {
         headers: { 'X-User-Email': 'admin@example.com' },
       });
     });
@@ -122,11 +124,11 @@ describe('AdminApi', () => {
         },
       ];
 
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       const result = await adminApi.getMonthlySummary();
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/activity/monthly?', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/activity/monthly?', {
         headers: { 'X-User-Email': 'admin@example.com' },
       });
       expect(result).toEqual(mockResponse);
@@ -134,11 +136,11 @@ describe('AdminApi', () => {
 
     it('should get monthly summary with monthStart', async () => {
       const mockResponse: any[] = [];
-      (mockClient.request as any).mockResolvedValueOnce(mockResponse);
+      mockRequest.mockResolvedValueOnce(mockResponse);
 
       await adminApi.getMonthlySummary('2024-01-01');
 
-      expect(mockClient.request).toHaveBeenCalledWith('/api/team/activity/monthly?month_start=2024-01-01', {
+      expect(mockRequest).toHaveBeenCalledWith('/api/team/activity/monthly?month_start=2024-01-01', {
         headers: { 'X-User-Email': 'admin@example.com' },
       });
     });
@@ -183,4 +185,3 @@ describe('AdminApi', () => {
     });
   });
 });
-

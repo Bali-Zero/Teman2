@@ -98,7 +98,7 @@ describe('AudioApi', () => {
             Authorization: 'Bearer auth-token',
             'X-CSRF-Token': 'csrf-token',
           },
-          body: JSON.stringify({ input: 'Hello world', voice: 'alloy' }),
+          body: JSON.stringify({ text: 'Hello world', voice: 'alloy' }),
           credentials: 'include',
         })
       );

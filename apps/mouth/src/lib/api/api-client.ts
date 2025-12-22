@@ -8,6 +8,7 @@ import { AdminApi } from './admin/admin.api';
 import { UploadApi } from './media/upload.api';
 import { AudioApi } from './media/audio.api';
 import { ImageApi } from './media/image.api';
+import { CrmApi } from './crm/crm.api';
 import { WebSocketUtils } from './websocket/websocket.utils';
 import { UserProfile, UserMemoryContext, AgentStep } from '@/types';
 import type { LoginResponse } from './auth/auth.types';
@@ -35,6 +36,7 @@ export class ApiClient extends ApiClientBase {
   private uploadApi: UploadApi;
   private audioApi: AudioApi;
   private imageApi: ImageApi;
+  private crmApi: CrmApi;
   private wsUtils: WebSocketUtils;
 
   constructor(baseUrl: string) {
@@ -48,7 +50,28 @@ export class ApiClient extends ApiClientBase {
     this.uploadApi = new UploadApi(this);
     this.audioApi = new AudioApi(this);
     this.imageApi = new ImageApi(this);
+    this.crmApi = new CrmApi(this);
     this.wsUtils = new WebSocketUtils(this);
+  }
+
+  // ============================================================================
+  // CRM (exposed directly)
+  // ============================================================================
+  
+  public get crm(): CrmApi {
+    return this.crmApi;
+  }
+
+  // ============================================================================
+  // Knowledge + Conversations (backward compatibility)
+  // ============================================================================
+
+  public get knowledge(): KnowledgeApi {
+    return this.knowledgeApi;
+  }
+
+  public get conversations(): ConversationsApi {
+    return this.conversationsApi;
   }
 
   // ============================================================================
@@ -100,7 +123,8 @@ export class ApiClient extends ApiClientBase {
     onStep?: (step: AgentStep) => void,
     timeoutMs: number = 120000,
     conversationHistory?: Array<{ role: string; content: string }>,
-    abortSignal?: AbortSignal
+    abortSignal?: AbortSignal,
+    correlationId?: string
   ): Promise<void> {
     return this.chatApi.sendMessageStreaming(
       message,
@@ -111,7 +135,8 @@ export class ApiClient extends ApiClientBase {
       onStep,
       timeoutMs,
       conversationHistory,
-      abortSignal
+      abortSignal,
+      correlationId
     );
   }
 
@@ -303,4 +328,3 @@ export class ApiClient extends ApiClientBase {
     return this.wsUtils.getWebSocketSubprotocol();
   }
 }
-
