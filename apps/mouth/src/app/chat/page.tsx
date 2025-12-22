@@ -499,9 +499,9 @@ export default function ChatPage() {
               <Image
                 src="/images/logo_zan.png"
                 alt="Zantara"
-                width={48}
-                height={48}
-                className="drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]"
+                width={64}
+                height={64}
+                className="drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] hover:scale-110 transition-transform duration-300"
               />
             </div>
 
@@ -634,15 +634,14 @@ export default function ChatPage() {
                 transition={{ duration: 0.8, ease: 'easeOut' }}
                 className="relative mb-8"
               >
-                {/* Mystical Glow */}
-                <div className="absolute inset-0 bg-white/20 blur-[50px] rounded-full animate-pulse-slow" />
+                {/* PURE LOGO: No Glow, No Background */}
                 <Image
                   src="/images/logo_zan.png"
                   alt="Zantara Logo"
-                  width={120}
-                  height={120}
+                  width={140}
+                  height={140}
                   priority
-                  className="relative z-10 drop-shadow-[0_0_25px_rgba(255,255,255,0.3)] opacity-90"
+                  className="relative z-10 drop-shadow-[0_0_30px_rgba(100,100,255,0.3)] opacity-100"
                 />
               </motion.div>
 
