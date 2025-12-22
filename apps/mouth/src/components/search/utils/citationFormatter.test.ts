@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { formatCitation, buildSourcesBlock } from './citationFormatter';
 import type { KnowledgeSearchResult } from '@/lib/api';
+import { TierLevel } from '@/lib/api';
 
 describe('citationFormatter', () => {
   describe('formatCitation', () => {
@@ -11,9 +12,12 @@ describe('citationFormatter', () => {
         metadata: {
           book_title: 'Test Book',
           book_author: 'Test Author',
-          tier: 'A',
+          tier: TierLevel.A,
+          min_level: 1,
+          chunk_index: 0,
           page_number: 42,
           file_path: '/path/to/file.pdf',
+          total_chunks: 100,
         },
       };
 
@@ -33,6 +37,12 @@ describe('citationFormatter', () => {
         similarity_score: 0.8,
         metadata: {
           book_title: 'Test Book',
+          book_author: 'Unknown Author',
+          tier: TierLevel.C,
+          min_level: 1,
+          chunk_index: 0,
+          file_path: '/path/to/test.pdf',
+          total_chunks: 1,
         },
       };
 
@@ -51,6 +61,12 @@ describe('citationFormatter', () => {
         similarity_score: NaN,
         metadata: {
           book_title: 'Test',
+          book_author: 'Test Author',
+          tier: TierLevel.C,
+          min_level: 1,
+          chunk_index: 0,
+          file_path: '/path/to/test.pdf',
+          total_chunks: 1,
         },
       };
 
@@ -68,8 +84,12 @@ describe('citationFormatter', () => {
           metadata: {
             book_title: 'Book 1',
             book_author: 'Author 1',
-            tier: 'A',
+            tier: TierLevel.A,
+            min_level: 1,
+            chunk_index: 0,
             page_number: 1,
+            file_path: '/path/to/book1.pdf',
+            total_chunks: 100,
           },
         },
         {
@@ -78,8 +98,12 @@ describe('citationFormatter', () => {
           metadata: {
             book_title: 'Book 2',
             book_author: 'Author 2',
-            tier: 'B',
+            tier: TierLevel.B,
+            min_level: 1,
+            chunk_index: 0,
             page_number: 2,
+            file_path: '/path/to/book2.pdf',
+            total_chunks: 50,
           },
         },
       ];
@@ -104,17 +128,41 @@ describe('citationFormatter', () => {
         {
           text: 'First',
           similarity_score: 0.9,
-          metadata: { book_title: 'Book 1' },
+          metadata: {
+            book_title: 'Book 1',
+            book_author: 'Author 1',
+            tier: TierLevel.A,
+            min_level: 1,
+            chunk_index: 0,
+            file_path: '/path/to/book1.pdf',
+            total_chunks: 100,
+          },
         },
         {
           text: 'Second',
           similarity_score: 0.8,
-          metadata: { book_title: 'Book 2' },
+          metadata: {
+            book_title: 'Book 2',
+            book_author: 'Author 2',
+            tier: TierLevel.B,
+            min_level: 1,
+            chunk_index: 0,
+            file_path: '/path/to/book2.pdf',
+            total_chunks: 50,
+          },
         },
         {
           text: 'Third',
           similarity_score: 0.7,
-          metadata: { book_title: 'Book 3' },
+          metadata: {
+            book_title: 'Book 3',
+            book_author: 'Author 3',
+            tier: TierLevel.C,
+            min_level: 1,
+            chunk_index: 0,
+            file_path: '/path/to/book3.pdf',
+            total_chunks: 75,
+          },
         },
       ];
 
@@ -126,4 +174,3 @@ describe('citationFormatter', () => {
     });
   });
 });
-

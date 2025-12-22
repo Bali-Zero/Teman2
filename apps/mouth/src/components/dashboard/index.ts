@@ -4,3 +4,5 @@ export type { PraticaPreview } from './PratichePreview';
 export { WhatsAppPreview } from './WhatsAppPreview';
 export type { WhatsAppMessage } from './WhatsAppPreview';
 export { ComplianceWidget } from './ComplianceWidget';
+export { AiPulseWidget } from './AiPulseWidget';
+export { FinancialRealityWidget } from './FinancialRealityWidget';

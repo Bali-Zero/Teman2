@@ -6,27 +6,65 @@ import {
 } from './avatarValidation';
 import { FILE_LIMITS } from '@/constants';
 
-// Mock FileReader class
-class MockFileReader {
+// Mock FileReader class - implements minimal FileReader interface for tests
+class MockFileReader implements Partial<FileReader> {
   result: ArrayBuffer | string | null = null;
+  error: DOMException | null = null;
+  readyState: FileReader['readyState'] = FileReader.EMPTY;
   onloadend: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+  onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+  onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+  onabort: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+  onloadstart: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
+  onprogress: ((this: FileReader, ev: ProgressEvent<FileReader>) => void) | null = null;
 
   readAsArrayBuffer(_file: File) {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
+    this.readyState = FileReader.LOADING;
     setTimeout(() => {
+      this.readyState = FileReader.DONE;
       if (this.onloadend) {
-        this.onloadend(new ProgressEvent('loadend') as ProgressEvent<FileReader>);
+        this.onloadend.call(
+          this as unknown as FileReader,
+          new ProgressEvent('loadend') as ProgressEvent<FileReader>
+        );
       }
     }, 0);
   }
 
   readAsDataURL(_file: File) {
-    // eslint-disable-line @typescript-eslint/no-unused-vars
+    this.readyState = FileReader.LOADING;
     setTimeout(() => {
+      this.readyState = FileReader.DONE;
       if (this.onloadend) {
-        this.onloadend(new ProgressEvent('loadend') as ProgressEvent<FileReader>);
+        this.onloadend.call(
+          this as unknown as FileReader,
+          new ProgressEvent('loadend') as ProgressEvent<FileReader>
+        );
       }
     }, 0);
+  }
+
+  readAsText(_file: File, _encoding?: string) {
+    this.readyState = FileReader.LOADING;
+    setTimeout(() => {
+      this.readyState = FileReader.DONE;
+      if (this.onloadend) {
+        this.onloadend.call(
+          this as unknown as FileReader,
+          new ProgressEvent('loadend') as ProgressEvent<FileReader>
+        );
+      }
+    }, 0);
+  }
+
+  abort() {
+    this.readyState = FileReader.DONE;
+    if (this.onabort) {
+      this.onabort.call(
+        this as unknown as FileReader,
+        new ProgressEvent('abort') as ProgressEvent<FileReader>
+      );
+    }
   }
 }
 
@@ -49,7 +87,7 @@ describe('avatarValidation', () => {
       const FileReaderConstructor = function (this: FileReader) {
         Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const result = await validateImageMagicBytes(file);
@@ -64,12 +102,9 @@ describe('avatarValidation', () => {
       mockReader.result = pngBytes.buffer;
 
       const FileReaderConstructor = function (this: FileReader) {
-        this.result = mockReader.result;
-        this.onloadend = mockReader.onloadend;
-        this.readAsArrayBuffer = mockReader.readAsArrayBuffer.bind(this);
-        this.readAsDataURL = mockReader.readAsDataURL.bind(this);
+        Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const result = await validateImageMagicBytes(file);
@@ -86,7 +121,7 @@ describe('avatarValidation', () => {
       const FileReaderConstructor = function (this: FileReader) {
         Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const result = await validateImageMagicBytes(file);
@@ -105,7 +140,7 @@ describe('avatarValidation', () => {
       const FileReaderConstructor = function (this: FileReader) {
         Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const result = await validateImageMagicBytes(file);
@@ -122,7 +157,7 @@ describe('avatarValidation', () => {
       const FileReaderConstructor = function (this: FileReader) {
         Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const result = await validateImageMagicBytes(file);
@@ -138,12 +173,9 @@ describe('avatarValidation', () => {
       mockReader.result = 'data:image/jpeg;base64,test';
 
       const FileReaderConstructor = function (this: FileReader) {
-        this.result = mockReader.result;
-        this.onloadend = mockReader.onloadend;
-        this.readAsArrayBuffer = mockReader.readAsArrayBuffer.bind(this);
-        this.readAsDataURL = mockReader.readAsDataURL.bind(this);
+        Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const mockImage = {
@@ -159,9 +191,14 @@ describe('avatarValidation', () => {
       document.createElement = vi.fn((tagName: string) => {
         if (tagName === 'img') {
           setTimeout(() => {
-            if (mockImage.onload) mockImage.onload(new Event('load') as Event);
+            if (mockImage.onload) {
+              mockImage.onload.call(
+                mockImage as unknown as HTMLImageElement,
+                new Event('load') as Event
+              );
+            }
           }, 0);
-          return mockImage as HTMLImageElement;
+          return mockImage as unknown as HTMLImageElement;
         }
         return originalCreateElement.call(document, tagName);
       });
@@ -180,12 +217,9 @@ describe('avatarValidation', () => {
       mockReader.result = 'data:image/jpeg;base64,test';
 
       const FileReaderConstructor = function (this: FileReader) {
-        this.result = mockReader.result;
-        this.onloadend = mockReader.onloadend;
-        this.readAsArrayBuffer = mockReader.readAsArrayBuffer.bind(this);
-        this.readAsDataURL = mockReader.readAsDataURL.bind(this);
+        Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const mockImage = {
@@ -201,9 +235,14 @@ describe('avatarValidation', () => {
       document.createElement = vi.fn((tagName: string) => {
         if (tagName === 'img') {
           setTimeout(() => {
-            if (mockImage.onload) mockImage.onload(new Event('load') as Event);
+            if (mockImage.onload) {
+              mockImage.onload.call(
+                mockImage as unknown as HTMLImageElement,
+                new Event('load') as Event
+              );
+            }
           }, 0);
-          return mockImage as HTMLImageElement;
+          return mockImage as unknown as HTMLImageElement;
         }
         return originalCreateElement.call(document, tagName);
       });
@@ -226,12 +265,9 @@ describe('avatarValidation', () => {
       mockReader.result = jpegBytes.buffer;
 
       const FileReaderConstructor = function (this: FileReader) {
-        this.result = mockReader.result;
-        this.onloadend = mockReader.onloadend;
-        this.readAsArrayBuffer = mockReader.readAsArrayBuffer.bind(this);
-        this.readAsDataURL = mockReader.readAsDataURL.bind(this);
+        Object.assign(this, mockReader);
       } as unknown as typeof FileReader;
-      FileReaderConstructor.prototype = MockFileReader.prototype;
+      FileReaderConstructor.prototype = MockFileReader.prototype as unknown as FileReader;
       vi.stubGlobal('FileReader', FileReaderConstructor);
 
       const mockImage = {
@@ -247,9 +283,14 @@ describe('avatarValidation', () => {
       document.createElement = vi.fn((tagName: string) => {
         if (tagName === 'img') {
           setTimeout(() => {
-            if (mockImage.onload) mockImage.onload(new Event('load') as Event);
+            if (mockImage.onload) {
+              mockImage.onload.call(
+                mockImage as unknown as HTMLImageElement,
+                new Event('load') as Event
+              );
+            }
           }, 0);
-          return mockImage as HTMLImageElement;
+          return mockImage as unknown as HTMLImageElement;
         }
         return originalCreateElement.call(document, tagName);
       });

@@ -95,11 +95,23 @@ export default function DashboardPage() {
         const practiceStats =
           results[0].status === 'fulfilled'
             ? (results[0].value as PracticeStats)
-            : (results[0].value as PracticeStats);
+            : ({
+                total_practices: 0,
+                active_practices: 0,
+                by_status: {},
+                by_type: [],
+                revenue: { total_revenue: 0, paid_revenue: 0, outstanding_revenue: 0 },
+              } as PracticeStats);
         const interactionStats =
           results[1].status === 'fulfilled'
             ? (results[1].value as InteractionStats)
-            : (results[1].value as InteractionStats);
+            : ({
+                total_interactions: 0,
+                last_7_days: 0,
+                by_type: {},
+                by_sentiment: {},
+                by_team_member: [],
+              } as InteractionStats);
         const activePractices =
           results[2].status === 'fulfilled' ? (results[2].value as Practice[]) : [];
         const recentInteractions =

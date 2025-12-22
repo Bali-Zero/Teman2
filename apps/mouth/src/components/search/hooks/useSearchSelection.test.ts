@@ -2,22 +2,47 @@ import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSearchSelection } from './useSearchSelection';
 import type { KnowledgeSearchResult } from '@/lib/api';
+import { TierLevel } from '@/lib/api';
 
 const mockResults: KnowledgeSearchResult[] = [
   {
     text: 'Result 1',
     similarity_score: 0.9,
-    metadata: { book_title: 'Book 1' },
+    metadata: {
+      book_title: 'Book 1',
+      book_author: 'Author 1',
+      tier: TierLevel.A,
+      min_level: 1,
+      chunk_index: 0,
+      file_path: '/path/to/book1.pdf',
+      total_chunks: 100,
+    },
   },
   {
     text: 'Result 2',
     similarity_score: 0.8,
-    metadata: { book_title: 'Book 2' },
+    metadata: {
+      book_title: 'Book 2',
+      book_author: 'Author 2',
+      tier: TierLevel.B,
+      min_level: 1,
+      chunk_index: 0,
+      file_path: '/path/to/book2.pdf',
+      total_chunks: 50,
+    },
   },
   {
     text: 'Result 3',
     similarity_score: 0.7,
-    metadata: { book_title: 'Book 3' },
+    metadata: {
+      book_title: 'Book 3',
+      book_author: 'Author 3',
+      tier: TierLevel.C,
+      min_level: 1,
+      chunk_index: 0,
+      file_path: '/path/to/book3.pdf',
+      total_chunks: 75,
+    },
   },
 ];
 
@@ -124,4 +149,3 @@ describe('useSearchSelection', () => {
     expect(result.current.selectedResults).toEqual([]);
   });
 });
-
