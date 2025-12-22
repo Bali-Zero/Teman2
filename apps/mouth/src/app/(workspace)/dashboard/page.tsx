@@ -10,6 +10,7 @@ import {
   WhatsAppMessage,
   AiPulseWidget,
   FinancialRealityWidget,
+  NusantaraHealthWidget,
 } from '@/components/dashboard';
 import { api } from '@/lib/api';
 import type {
@@ -187,15 +188,19 @@ export default function DashboardPage() {
 
       {/* Zero-Only Command Deck Widgets */}
       {isZero && !isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-          <AiPulseWidget
-            systemAppStatus={systemStatus}
-            oracleStatus={systemStatus === 'healthy' ? 'active' : 'inactive'}
-          />
-          {stats.revenue && (
-            <FinancialRealityWidget revenue={stats.revenue} growth={stats.growth || 0} />
-          )}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
+            <AiPulseWidget
+              systemAppStatus={systemStatus}
+              oracleStatus={systemStatus === 'healthy' ? 'active' : 'inactive'}
+            />
+            {stats.revenue && (
+              <FinancialRealityWidget revenue={stats.revenue} growth={stats.growth || 0} />
+            )}
+          </div>
+          {/* Nusantara System Health Map */}
+          <NusantaraHealthWidget className="animate-in fade-in slide-in-from-top-4 duration-700 delay-150" />
+        </>
       )}
 
       {/* Stats Cards */}
@@ -210,7 +215,7 @@ export default function DashboardPage() {
           title="Critical Deadlines"
           value={isLoading ? '-' : stats.criticalDeadlines}
           icon={AlertTriangle}
-          href="/pratiche/scadenze"
+          href="/pratiche"
           variant={stats.criticalDeadlines > 0 ? 'warning' : 'default'}
         />
         <StatsCard
@@ -224,7 +229,7 @@ export default function DashboardPage() {
           title="Session Time"
           value={isLoading ? '-' : stats.hoursWorked}
           icon={Clock}
-          href="/team/timesheet"
+          href="/team"
         />
       </div>
 
