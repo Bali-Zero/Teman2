@@ -39,8 +39,9 @@ export function FeedbackWidget({
       return;
     }
 
-    // Use a fallback if sessionId is missing (e.g. for anonymous feedback)
-    const activeSessionId = sessionId || 'anonymous-session';
+    // Generate a valid UUID if sessionId is missing
+    // Backend requires a valid UUID format for session_id
+    const activeSessionId = sessionId || crypto.randomUUID();
 
     setIsSubmitting(true);
 
@@ -59,6 +60,7 @@ export function FeedbackWidget({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // CRITICAL: Include cookies for authentication
         body: JSON.stringify({
           session_id: activeSessionId,
           rating: rating,

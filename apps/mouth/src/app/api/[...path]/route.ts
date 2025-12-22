@@ -38,6 +38,27 @@ async function proxy(req: NextRequest): Promise<Response> {
   headers.delete('connection');
   headers.delete('content-length');
 
+  // CRITICAL: Explicitly forward authentication cookies
+  // In server-side Next.js, credentials: 'include' doesn't automatically forward cookies
+  // We must extract cookies from the request and add them to headers
+  const cookies = req.cookies;
+  const authCookie = cookies.get('nz_access_token');
+  const csrfCookie = cookies.get('nz_csrf_token');
+
+  if (authCookie || csrfCookie) {
+    const cookieParts: string[] = [];
+    if (authCookie) {
+      cookieParts.push(`nz_access_token=${authCookie.value}`);
+    }
+    if (csrfCookie) {
+      cookieParts.push(`nz_csrf_token=${csrfCookie.value}`);
+    }
+
+    const existingCookie = headers.get('cookie') || '';
+    const newCookieValue = cookieParts.join('; ');
+    headers.set('cookie', existingCookie ? `${existingCookie}; ${newCookieValue}` : newCookieValue);
+  }
+
   let body: BodyInit | undefined = undefined;
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     const contentType = req.headers.get('content-type') || '';
@@ -56,6 +77,7 @@ async function proxy(req: NextRequest): Promise<Response> {
       headers,
       body,
       redirect: 'manual',
+      credentials: 'include', // CRITICAL: Pass httpOnly cookies to backend
     });
     const upstreamDuration = Date.now() - upstreamStartTime;
 

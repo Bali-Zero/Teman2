@@ -36,6 +36,7 @@ interface DashboardStats {
 export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [systemStatus, setSystemStatus] = useState<'healthy' | 'degraded'>('healthy');
   const [stats, setStats] = useState<DashboardStats>({
     activeCases: 0,
     criticalDeadlines: 0,
@@ -56,32 +57,28 @@ export default function DashboardPage() {
 
         const isZero = email === 'zero@balizero.com';
 
-        // Fetch real data in parallel
-        const results = await Promise.all([
-          api.crm
-            .getPracticeStats()
-            .catch(
-              () =>
-                ({
-                  total_practices: 0,
-                  active_practices: 0,
-                  by_status: {},
-                  by_type: [],
-                  revenue: { total_revenue: 0, paid_revenue: 0, outstanding_revenue: 0 },
-                }) as PracticeStats
-            ),
-          api.crm
-            .getInteractionStats()
-            .catch(
-              () =>
-                ({
-                  total_interactions: 0,
-                  last_7_days: 0,
-                  by_type: {},
-                  by_sentiment: {},
-                  by_team_member: [],
-                }) as InteractionStats
-            ),
+        // Fetch real data in parallel with error tracking
+        const results = await Promise.allSettled([
+          api.crm.getPracticeStats().catch(
+            () =>
+              ({
+                total_practices: 0,
+                active_practices: 0,
+                by_status: {},
+                by_type: [],
+                revenue: { total_revenue: 0, paid_revenue: 0, outstanding_revenue: 0 },
+              }) as PracticeStats
+          ),
+          api.crm.getInteractionStats().catch(
+            () =>
+              ({
+                total_interactions: 0,
+                last_7_days: 0,
+                by_type: {},
+                by_sentiment: {},
+                by_team_member: [],
+              }) as InteractionStats
+          ),
           api.crm.getPractices({ status: 'in_progress', limit: 5 }).catch(() => [] as Practice[]),
           api.crm
             .getInteractions({ interaction_type: 'whatsapp', limit: 5 })
@@ -91,13 +88,27 @@ export default function DashboardPage() {
           isZero ? api.crm.getRevenueGrowth().catch(() => null) : Promise.resolve(null),
         ]);
 
-        const practiceStats = results[0] as PracticeStats;
-        const interactionStats = results[1] as InteractionStats;
-        const activePractices = results[2] as Practice[];
-        const recentInteractions = results[3] as Interaction[];
-        const renewals = results[4] as RenewalAlert[];
-        const clockStatus = results[5];
-        const revenueGrowth = results[6];
+        // Check for failures to determine system status
+        const hasFailures = results.some((r) => r.status === 'rejected');
+        setSystemStatus(hasFailures ? 'degraded' : 'healthy');
+
+        const practiceStats =
+          results[0].status === 'fulfilled'
+            ? (results[0].value as PracticeStats)
+            : (results[0].value as PracticeStats);
+        const interactionStats =
+          results[1].status === 'fulfilled'
+            ? (results[1].value as InteractionStats)
+            : (results[1].value as InteractionStats);
+        const activePractices =
+          results[2].status === 'fulfilled' ? (results[2].value as Practice[]) : [];
+        const recentInteractions =
+          results[3].status === 'fulfilled' ? (results[3].value as Interaction[]) : [];
+        const renewals =
+          results[4].status === 'fulfilled' ? (results[4].value as RenewalAlert[]) : [];
+        const clockStatus =
+          results[5].status === 'fulfilled' ? results[5].value : { today_hours: 0 };
+        const revenueGrowth = results[6].status === 'fulfilled' ? results[6].value : null;
 
         // Transform Practices for UI
         const mappedCases: PraticaPreview[] = activePractices.map((p) => ({
@@ -119,7 +130,7 @@ export default function DashboardPage() {
             hour: '2-digit',
             minute: '2-digit',
           }),
-          isRead: i.sentiment !== 'urgent', // Proxy logic: urgent sentiment = attention needed
+          isRead: i.read_receipt === true, // Use real read_receipt field from database
           hasAiSuggestion: !!i.conversation_id,
           practiceId: i.practice_id,
         }));
@@ -149,10 +160,26 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* System Status Banner */}
+      {systemStatus === 'degraded' && (
+        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-yellow-500" />
+          <div>
+            <h3 className="font-semibold text-yellow-500">System Partial Outage</h3>
+            <p className="text-sm text-yellow-500/80">
+              Some data streams are currently unavailable. The dashboard is showing partial data.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Zero-Only Command Deck Widgets */}
       {isZero && !isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-          <AiPulseWidget systemAppStatus="healthy" oracleStatus="active" />
+          <AiPulseWidget
+            systemAppStatus={systemStatus}
+            oracleStatus={systemStatus === 'healthy' ? 'active' : 'inactive'}
+          />
           {stats.revenue && (
             <FinancialRealityWidget revenue={stats.revenue} growth={stats.growth || 0} />
           )}

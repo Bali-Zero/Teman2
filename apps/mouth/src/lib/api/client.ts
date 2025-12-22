@@ -57,7 +57,15 @@ export class ApiClientBase {
     }
   }
 
-  getToken() {
+  getToken(): string | null {
+    // Always read from localStorage to ensure we have the latest token
+    // This is critical for cases where login happens after ApiClient instantiation
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('auth_token');
+      if (storedToken !== this.token) {
+        this.token = storedToken;
+      }
+    }
     return this.token;
   }
 
@@ -76,7 +84,9 @@ export class ApiClientBase {
   }
 
   isAuthenticated(): boolean {
-    return this.token !== null && this.token.length > 0;
+    // Check token dynamically to ensure we have the latest state
+    const token = this.getToken();
+    return token !== null && token.length > 0;
   }
 
   isAdmin(): boolean {
@@ -113,8 +123,10 @@ export class ApiClientBase {
     }
 
     // Keep Authorization header for backward compatibility (WebSocket, mobile apps)
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    // Use getToken() to ensure we always have the latest token from localStorage
+    const currentToken = this.getToken();
+    if (currentToken) {
+      headers['Authorization'] = `Bearer ${currentToken}`;
     }
 
     const controller = new AbortController();
@@ -128,7 +140,29 @@ export class ApiClientBase {
         signal: controller.signal,
       });
 
-      console.log(`[ApiClient] ${method} ${endpoint} -> Status: ${response.status}, OK: ${response.ok}`);
+      console.log(
+        `[ApiClient] ${method} ${endpoint} -> Status: ${response.status}, OK: ${response.ok}`
+      );
+
+      // Handle 401 Unauthorized (token expired or invalid)
+      if (response.status === 401) {
+        // Clear token and redirect to login
+        this.clearToken();
+
+        // Only redirect if we're in the browser (not SSR)
+        if (typeof window !== 'undefined') {
+          // Avoid redirect loops by checking current path
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/login' && !currentPath.startsWith('/api/')) {
+            console.log('[ApiClient] Token expired or invalid, redirecting to login');
+            // Use replace to avoid adding to history
+            window.location.replace('/login?expired=true&reason=token_expired');
+          }
+        }
+
+        const error = await response.json().catch(() => ({ detail: 'Authentication required' }));
+        throw new Error(error.detail || 'Session expired. Please login again.');
+      }
 
       // Allow 204 as success even if ok is false (defensive)
       if (!response.ok && response.status !== 204) {
@@ -174,4 +208,3 @@ export class ApiClientBase {
     return this.csrfToken || this.getCsrfFromCookie();
   }
 }
-
