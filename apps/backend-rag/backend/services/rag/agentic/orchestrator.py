@@ -22,6 +22,7 @@ import json
 import logging
 import time
 from collections.abc import AsyncGenerator
+from dataclasses import asdict
 from typing import Any
 
 import asyncpg
@@ -39,12 +40,13 @@ from services.response.cleaner import (
 from services.semantic_cache import SemanticCache
 from services.tools.definitions import AgentState, AgentStep, BaseTool
 
-from .context_manager import get_user_context, search_memory_vector
+from .context_manager import get_user_context
 from .llm_gateway import LLMGateway
 from .pipeline import create_default_pipeline
 from .prompt_builder import SystemPromptBuilder
-from .reasoning import ReasoningEngine
+from .reasoning import ReasoningEngine, detect_team_query
 from .response_processor import post_process_response
+from .session_fact_extractor import SessionFactExtractor
 from .tool_executor import execute_tool, parse_tool_call
 
 logger = logging.getLogger(__name__)
@@ -209,6 +211,7 @@ class AgenticRAGOrchestrator:
         user_id: str | None = None,
         conversation_history: list[dict] | None = None,
         start_time=time.time(),
+        session_id: str | None = None,
     ):
         """Main entry point for non-streaming query processing with full agentic reasoning.
 
@@ -234,6 +237,7 @@ class AgenticRAGOrchestrator:
             user_id: User identifier (email/UUID) for personalization, or None for anonymous
             conversation_history: Previous conversation turns for context continuity
             start_time: Query start timestamp for latency tracking
+            session_id: Optional session ID to filter conversation history by specific session
 
         Returns:
             Dict containing:
@@ -274,7 +278,22 @@ class AgenticRAGOrchestrator:
         # Initialize tool execution counter for rate limiting
         tool_execution_counter = {"count": 0}
 
-        # 0. Check Identity / Hardcoded Patterns
+        # 0. Check Greetings (skip RAG for simple greetings)
+        greeting_response = self.prompt_builder.check_greetings(query)
+        if greeting_response:
+            logger.info("👋 [Greeting] Returning direct greeting response (skipping RAG)")
+            return {
+                "answer": greeting_response,
+                "sources": [],
+                "context_used": 0,
+                "execution_time": time.time() - start_time,
+                "route_used": "greeting-pattern",
+                "steps": [],
+                "tools_called": 0,
+                "total_steps": 0,
+            }
+
+        # 0.5 Check Identity / Hardcoded Patterns
         identity_response = self.prompt_builder.check_identity_questions(query)
         if identity_response:
             logger.info("🤖 [Identity] Returning hardcoded identity response")
@@ -342,23 +361,8 @@ class AgenticRAGOrchestrator:
         # 1. Retrieve User Context (with query for semantic collective memory retrieval)
         memory_orchestrator = await self._get_memory_orchestrator()
         user_context = await get_user_context(
-            self.db_pool, user_id, memory_orchestrator, query=query
+            self.db_pool, user_id, memory_orchestrator, query=query, session_id=session_id
         )
-
-        # 1.5. If intent is personal/team, enrich with memory vector search (Recall Assist)
-        intent_category = intent.get("category", "")
-        if intent_category in ("identity", "team_query"):
-            try:
-                memory_vector_context = await search_memory_vector(query, user_id)
-                if memory_vector_context:
-                    # Add as candidate context (not primary source)
-                    user_context["memory_vector_candidates"] = memory_vector_context
-                    logger.info(
-                        f"🧠 [Memory Vector] Added {len(memory_vector_context)} candidates for {intent_category} intent"
-                    )
-            except (httpx.HTTPError, ValueError) as e:
-                logger.warning(f"⚠️ Memory vector search failed: {e}", exc_info=True)
-                # Non-fatal: continue without memory vector
 
         # Use provided conversation_history if available, otherwise use from user_context
         history_to_use = (
@@ -381,13 +385,24 @@ class AgenticRAGOrchestrator:
         # Process conversation history with Advanced Context Window Manager
         processed_history = None
         history_text = ""
+        session_facts_block = ""
 
         if history_to_use:
+            # STEP 1: Extract session facts BEFORE any trimming (from original history)
+            try:
+                session_extractor = SessionFactExtractor()
+                session_facts = session_extractor.extract_from_history(history_to_use)
+                session_facts_block = session_facts.to_prompt_block()
+            except Exception as e:
+                logger.warning(f"⚠️ SessionFactExtractor failed: {e}", exc_info=True)
+                session_facts_block = ""
+
+            # STEP 2: Trim history with AdvancedContextWindowManager
             try:
                 # Initialize context manager
                 context_manager = AdvancedContextWindowManager(
-                    max_tokens=8000,
-                    recent_window_tokens=4000,
+                    max_tokens=12000,
+                    recent_window_tokens=6000,
                     summary_max_tokens=500,
                 )
 
@@ -445,8 +460,16 @@ class AgenticRAGOrchestrator:
             history_to_use=history_to_use, model_tier=model_tier
         )
 
-        initial_prompt = f"{system_prompt}\n\n### CONVERSATION HISTORY (FROM PREVIOUS TURNS):\n{history_text}\n### END HISTORY\n\nUser Query: {query}\n\nIMPORTANT: Do NOT start with philosophical statements about lacking context. If you need information, IMMEDIATELY call vector_search or other tools. Provide a direct answer or use tools right away."
-        logger.info(f"🐛 [DEBUG PROMPT] history_to_use (len={len(history_to_use)}): {json.dumps(history_to_use[:2])}...")
+        initial_prompt = f"""{system_prompt}
+
+{session_facts_block}### CONVERSATION HISTORY (FROM PREVIOUS TURNS):
+{history_text}
+### END HISTORY
+
+User Query: {query}
+
+IMPORTANT: Use the KEY FACTS above to answer questions about user's company, budget, location. Do NOT start with philosophical statements. If you need more info, use tools."""
+        logger.info(f"🐛 [DEBUG PROMPT] history_to_use (len={len(history_to_use)}), session_facts: {bool(session_facts_block)}")
         logger.info(f"🐛 [DEBUG PROMPT] initial_prompt (last 500 chars): {initial_prompt[-500:]}")
 
         # Execute ReAct loop using ReasoningEngine
@@ -560,6 +583,7 @@ class AgenticRAGOrchestrator:
         query: str,
         user_id: str = "anonymous",
         conversation_history: list[dict] | None = None,
+        session_id: str | None = None,
     ) -> AsyncGenerator[dict, None]:
         """Stream agentic reasoning process with real-time status updates.
 
@@ -581,6 +605,7 @@ class AgenticRAGOrchestrator:
             query: User's natural language query
             user_id: User identifier for personalization (default: "anonymous")
             conversation_history: Previous conversation turns for context
+            session_id: Optional session ID to filter conversation history by specific session
 
         Yields:
             Dict events with structure:
@@ -618,7 +643,18 @@ class AgenticRAGOrchestrator:
         # Initialize tool execution counter for rate limiting
         tool_execution_counter = {"count": 0}
 
-        # Check Out-of-Domain Questions first
+        # Check Greetings first (skip RAG for simple greetings)
+        greeting_response = self.prompt_builder.check_greetings(query)
+        if greeting_response:
+            logger.info("👋 [Greeting Stream] Returning direct greeting response (skipping RAG)")
+            yield {"type": "metadata", "data": {"status": "greeting", "route": "greeting-pattern"}}
+            for token in greeting_response.split():
+                yield {"type": "token", "data": token + " "}
+                await asyncio.sleep(0.01)
+            yield {"type": "done", "data": None}
+            return
+
+        # Check Out-of-Domain Questions
         out_of_domain, reason = is_out_of_domain(query)
         if out_of_domain and reason:
             logger.info(f"🚫 [Out-of-Domain Stream] Query rejected: {reason}")
@@ -655,7 +691,7 @@ class AgenticRAGOrchestrator:
         # 1. Retrieve User Context (with query for semantic collective memory retrieval)
         memory_orchestrator = await self._get_memory_orchestrator()
         user_context = await get_user_context(
-            self.db_pool, user_id, memory_orchestrator, query=query
+            self.db_pool, user_id, memory_orchestrator, query=query, session_id=session_id
         )
 
         # Use provided conversation_history if available, otherwise use from user_context
@@ -690,13 +726,24 @@ class AgenticRAGOrchestrator:
         # Process conversation history with Advanced Context Window Manager
         processed_history = None
         history_text = ""
+        session_facts_block = ""
 
         if history_to_use:
+            # STEP 1: Extract session facts BEFORE any trimming (from original history)
+            try:
+                session_extractor = SessionFactExtractor()
+                session_facts = session_extractor.extract_from_history(history_to_use)
+                session_facts_block = session_facts.to_prompt_block()
+            except Exception as e:
+                logger.warning(f"⚠️ SessionFactExtractor failed in stream: {e}", exc_info=True)
+                session_facts_block = ""
+
+            # STEP 2: Trim history with AdvancedContextWindowManager
             try:
                 # Initialize context manager
                 context_manager = AdvancedContextWindowManager(
-                    max_tokens=8000,
-                    recent_window_tokens=4000,
+                    max_tokens=12000,
+                    recent_window_tokens=6000,
                     summary_max_tokens=500,
                 )
 
@@ -753,7 +800,48 @@ class AgenticRAGOrchestrator:
         )
         logger.debug("Chat initialized")
 
-        initial_prompt = f"{system_prompt}\n{history_text}\nUser Query: {query}\n\nIMPORTANT: Do NOT start with philosophical statements about lacking context. If you need information, IMMEDIATELY call vector_search or other tools. Provide a direct answer or use tools right away."
+        initial_prompt = f"""{system_prompt}
+
+{session_facts_block}### CONVERSATION HISTORY (FROM PREVIOUS TURNS):
+{history_text}
+### END HISTORY
+
+User Query: {query}
+
+IMPORTANT: Use the KEY FACTS above to answer questions about user's company, budget, location. Do NOT start with philosophical statements. If you need more info, use tools."""
+
+        # ==================== TEAM QUERY PRE-ROUTING (STREAMING) ====================
+        # Force team_knowledge tool for CEO, founder, and team member queries
+        is_team_query, team_query_type, team_search_term = detect_team_query(query)
+        if is_team_query and "team_knowledge" in self.tool_map:
+            logger.info(f"🎯 [Stream Pre-Route] Forcing team_knowledge for: {team_query_type}={team_search_term}")
+            yield {"type": "status", "data": "Fetching team data..."}
+            try:
+                team_result = await execute_tool(
+                    self.tool_map,
+                    "team_knowledge",
+                    {"query_type": team_query_type, "search_term": team_search_term},
+                    user_id,
+                    tool_execution_counter,
+                )
+                # Inject team context into initial prompt
+                if team_result and len(team_result) > 20:
+                    initial_prompt = f"""TEAM CONTEXT (use this to answer):
+{team_result}
+
+{session_facts_block}### CONVERSATION HISTORY:
+{history_text}
+### END HISTORY
+
+User Query: {query}
+
+Use the team information above to answer. DO NOT call any tools.
+IMPORTANT: Start your response with "Final Answer:" followed by your answer.
+Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in management."
+"""
+                    logger.info(f"✅ [Stream Pre-Route] Team context injected ({len(team_result)} chars)")
+            except Exception as e:
+                logger.warning(f"[Stream Pre-Route] Failed to pre-fetch team data: {e}")
 
         # REACT LOOP (Streaming)
         while state.current_step < state.max_steps:
@@ -830,7 +918,11 @@ class AgenticRAGOrchestrator:
                             # Replace observation with just the retrieved content (not JSON envelope)
                             if isinstance(content, str) and content:
                                 tool_result = content
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as json_err:
+                        logger.error(
+                            f"JSONDecodeError in stream parsing: {str(json_err)}",
+                            exc_info=True
+                        )
                         pass
                     except (KeyError, ValueError, TypeError) as e:
                         logger.warning(
@@ -871,7 +963,8 @@ class AgenticRAGOrchestrator:
                     state.steps.append(step)
 
                     # Simulate token streaming for the final answer (only if we have content)
-                    if final_text and len(final_text) >= 50:
+                    # Use lower threshold (20 chars) to support short team answers like "X is the CEO"
+                    if final_text and len(final_text) >= 20:
                         import re
 
                         tokens = re.findall(r"\S+|\s+", final_text)
@@ -902,8 +995,8 @@ class AgenticRAGOrchestrator:
                 # Post-process response: clean and enforce communication rules
                 state.final_answer = post_process_response(raw_answer, query)
 
-                # Stream tokens only if we have substantial content
-                if state.final_answer and len(state.final_answer) >= 50:
+                # Stream tokens only if we have content (20 char min for short answers)
+                if state.final_answer and len(state.final_answer) >= 20:
                     import re
 
                     tokens = re.findall(r"\S+|\s+", state.final_answer)
@@ -1035,12 +1128,15 @@ class AgenticRAGOrchestrator:
              # Wait, the yield {"type": "done", "data": ...} happens below.
              pass
 
+        # Convert dataclass to dict (AgentState is a dataclass, not Pydantic)
+        state_dict = asdict(state)
+
         yield {
-            "type": "done", 
+            "type": "done",
             "data": {
-                **state.model_dump(), 
+                **state_dict,
                 "debug_info": {
-                    **state.model_dump().get("debug_info", {}),
+                    **state_dict.get("debug_info", {}),
                     "memory_save_result": memory_save_info
                 }
             }

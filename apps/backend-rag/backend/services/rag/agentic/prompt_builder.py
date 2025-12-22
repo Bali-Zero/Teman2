@@ -280,17 +280,41 @@ Things I've learned from helping many users:
         tools_block = """
 ### AGENTIC RAG TOOLS
 
+**🚨 TEAM QUERIES - MANDATORY: USE team_knowledge TOOL!**
+CRITICAL: For ANY question about team members, staff, personnel, or people at Bali Zero:
+- YOU MUST call team_knowledge tool IMMEDIATELY - vector_search has NO team data!
+
+**EXAMPLES THAT REQUIRE team_knowledge:**
+- "Chi è il CEO?" → ACTION: team_knowledge(query_type="search_by_role", search_term="CEO")
+- "Who is the founder?" → ACTION: team_knowledge(query_type="search_by_role", search_term="founder")
+- "Chi è Zainal?" → ACTION: team_knowledge(query_type="search_by_name", search_term="Zainal")
+- "Chi è Veronika?" → ACTION: team_knowledge(query_type="search_by_name", search_term="Veronika")
+- "Tell me about Zero" → ACTION: team_knowledge(query_type="search_by_name", search_term="Zero")
+- "Who handles taxes?" → ACTION: team_knowledge(query_type="search_by_role", search_term="tax")
+- "Chi si occupa di setup?" → ACTION: team_knowledge(query_type="search_by_role", search_term="setup")
+- "List all team members" → ACTION: team_knowledge(query_type="list_all")
+- "Quanti dipendenti?" → ACTION: team_knowledge(query_type="list_all")
+
+**USE search_by_name for**: any person name (Zainal, Zero, Veronika, Adit, Bayu, etc.)
+**USE search_by_role for**: role/title queries (CEO, founder, manager, tax, visa, setup, etc.)
+**USE list_all for**: team list, count, overview questions
+
+Team members (including Zero, the Founder) have FULL ACCESS to all team information
+
 **PRICING QUESTIONS - ALWAYS USE get_pricing FIRST!**
 If the user asks about PRICES, COSTS, FEES, "quanto costa", "berapa harga":
 - ALWAYS call get_pricing FIRST to get OFFICIAL Bali Zero prices
 - Format: ACTION: get_pricing(service_type="visa", query="E33G Digital Nomad")
 - NEVER invent prices! Use ONLY prices from get_pricing tool
 
+**LEGAL/VISA/TAX QUESTIONS - USE vector_search:**
+For laws, regulations, KITAS, visas, taxes, business setup:
+- Call vector_search with collection="legal_unified" (default)
+- For KBLI codes: collection="kbli_unified"
+
 **DEEP DIVE / FULL DOCUMENT READING:**
-If vector_search returns a result with an ID (e.g., "ID: UU-11-2020"), and you need to understand the FULL context or details not present in the snippet:
+If vector_search returns a result with an ID (e.g., "ID: UU-11-2020"):
 - Call database_query(search_term="UU-11-2020", query_type="by_id")
-- This will retrieve the COMPLETE text of the document/law.
-- Use this for complex legal analysis where snippets are insufficient.
 
 **CURRENT 2024 VISA CODES:**
 - "B211A" does NOT exist anymore since 2024! Use these codes instead:
@@ -300,31 +324,14 @@ If vector_search returns a result with an ID (e.g., "ID: UU-11-2020"), and you n
   - E31A = Work KITAS (for employees)
   - VOA = Visa on Arrival (30 days, extendable)
   - D1 = Tourism Multiple Entry (5 years, 60 days/entry)
-- Always clarify: "Il B211A non esiste più dal 2024, ora ci sono E33G, E28A, VOA, etc."
-
-**For general info questions:**
-1. Call vector_search to get documents
-2. Use those documents to give a COMPLETE answer
 
 Format (INTERNAL PROCESSING ONLY - DO NOT include in final answer):
 ```
-THOUGHT: [what info do I need?]  <- This is for YOUR internal reasoning only
-ACTION: get_pricing(service_type="visa", query="C1 tourism")
--- OR --
-ACTION: vector_search(query="search terms", collection="collection_name")
--- OR --
-ACTION: database_query(search_term="UU-11-2020", query_type="by_id")
+THOUGHT: [what info do I need?]
+ACTION: team_knowledge(query_type="list_all")  <- FOR TEAM QUERIES
+ACTION: get_pricing(service_type="visa")  <- FOR PRICING
+ACTION: vector_search(query="...", collection="legal_unified")  <- FOR LEGAL/VISA
 ```
-
-IMPORTANT: The THOUGHT and ACTION lines above are for YOUR internal processing.
-When providing the FINAL ANSWER to the user, DO NOT include these markers.
-
-Collections:
-- "kbli_unified" = PT PMA, business, KBLI, company
-- "visa_oracle" = KITAS, KITAP, visas, immigration
-- "tax_genius" = PPh, PPN, taxes
-- "legal_unified" = general law, contracts
-- "bali_zero_team" = Internal team info, SOPs
 
 After you get Observation results, provide your FINAL ANSWER that:
 1. DIRECTLY answers the user's question
@@ -415,6 +422,55 @@ CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
         logger.debug(f"Cached system prompt for {user_id}")
 
         return final_prompt
+
+    def check_greetings(self, query: str) -> str | None:
+        """
+        Check if query is a simple greeting that doesn't need RAG retrieval.
+        
+        Returns a friendly greeting response or None if not a greeting.
+        This prevents unnecessary vector_search calls for simple greetings.
+        
+        Args:
+            query: User query string
+            
+        Returns:
+            Greeting response string or None
+            
+        Examples:
+            >>> builder = SystemPromptBuilder()
+            >>> response = builder.check_greetings("ciao")
+            >>> assert response is not None
+            >>> response = builder.check_greetings("hello")
+            >>> assert response is not None
+            >>> response = builder.check_greetings("What is KITAS?")
+            >>> assert response is None
+        """
+        query_lower = query.lower().strip()
+        
+        # Simple greeting patterns (single word or very short)
+        greeting_patterns = [
+            r"^(ciao|hello|hi|hey|salve|buongiorno|buonasera|buon pomeriggio|good morning|good afternoon|good evening)$",
+            r"^(ciao|hello|hi|hey|salve)\s*!*$",
+            r"^(ciao|hello|hi|hey|salve)\s+(zan|zantara|there)$",
+        ]
+        
+        # Check if query matches greeting patterns
+        for pattern in greeting_patterns:
+            if re.match(pattern, query_lower):
+                # Return friendly greeting in detected language
+                if any(word in query_lower for word in ["ciao", "salve", "buongiorno", "buonasera"]):
+                    return "Ciao! Come posso aiutarti oggi?"
+                else:
+                    return "Hello! How can I help you today?"
+        
+        # Very short queries that are likely greetings
+        if len(query_lower) <= 5 and query_lower in ["ciao", "hello", "hi", "hey", "salve"]:
+            if query_lower in ["ciao", "salve"]:
+                return "Ciao! Come posso aiutarti?"
+            else:
+                return "Hello! How can I help you?"
+        
+        return None
 
     def check_identity_questions(self, query: str) -> str | None:
         """Check for identity questions and return hardcoded responses.
