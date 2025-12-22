@@ -729,16 +729,16 @@ export default function ChatPage() {
               </div>
             )}
             {/* Input Container */}
-            <div className="bg-[#f5f5f5] rounded-2xl shadow-2xl border border-white/20 p-2 relative overflow-hidden group">
+            <div className="bg-[#202225] rounded-2xl shadow-2xl border border-[#D8D6D0]/30 p-2 relative overflow-hidden group">
               {/* Subtle inner glow */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
               {/* Quick Media Bar */}
               <div className="flex items-center gap-1 px-2 pt-1 pb-1 mb-1 border-b border-[var(--border)]/50">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 rounded-full text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+                  className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
                   onClick={() => fileInputRef.current?.click()}
                   title="Upload File"
                 >
@@ -781,7 +781,7 @@ export default function ChatPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 rounded-full text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+                  className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
                   onClick={() => setShowImagePrompt(!showImagePrompt)}
                   title="Generate/Analyze Image"
                 >
@@ -854,7 +854,7 @@ export default function ChatPage() {
                   placeholder={showImagePrompt ? 'Describe your image...' : 'Type your message...'}
                   disabled={isChatLoading}
                   rows={1}
-                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-black placeholder:text-gray-500 font-medium"
+                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium"
                   style={{
                     height: 'auto',
                     overflowY: input.split('\n').length > 3 ? 'auto' : 'hidden',
