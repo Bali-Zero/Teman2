@@ -36,14 +36,16 @@ export default function LoginPage() {
       // Verify token is saved before redirect
       // Use window.location for full page reload to ensure clean state
       setTimeout(() => {
-        // Double-check token is saved
-        if (api.isAuthenticated()) {
+        // Double-check token is saved - read directly from localStorage to be sure
+        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+        if (token && token.length > 0) {
+          // Force full page reload to ensure clean state
           window.location.href = '/dashboard';
         } else {
           console.error('Token not saved after login');
           setLoginStage('idle');
         }
-      }, 1500);
+      }, 2000); // Increased delay to ensure token is fully saved
     } catch (error) {
       // 4. Failure
       console.error('Login failed:', error);

@@ -67,24 +67,38 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   // Check authentication and load data
   useEffect(() => {
-    // Small delay to ensure token is available after login redirect
+    // Add a small delay to ensure token is available after login redirect
+    // This prevents redirect loops when coming from login page
     const checkAuth = () => {
-      if (!api.isAuthenticated()) {
+      // Force re-read from localStorage to ensure we have the latest token
+      const token = api.getToken();
+      
+      if (!token) {
         router.push('/login');
         return;
       }
 
       const loadData = async () => {
         setIsLoading(true);
-        await Promise.all([loadUserProfile(), loadClockStatus()]);
-        setIsLoading(false);
+        try {
+          await Promise.all([loadUserProfile(), loadClockStatus()]);
+        } catch (error) {
+          // If profile load fails, might be auth issue - redirect to login
+          if (error instanceof Error && error.message.includes('401')) {
+            router.push('/login');
+            return;
+          }
+        } finally {
+          setIsLoading(false);
+        }
       };
 
       loadData();
     };
 
-    // Immediate check, but also allow a small window for token to be available
-    checkAuth();
+    // Small delay to ensure localStorage is fully available after page reload
+    const timeoutId = setTimeout(checkAuth, 100);
+    return () => clearTimeout(timeoutId);
   }, [router, loadUserProfile, loadClockStatus]);
 
   // Update isOnline based on clock status
