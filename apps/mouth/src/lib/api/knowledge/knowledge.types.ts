@@ -18,6 +18,10 @@ export interface ChunkMetadata {
   topics?: Array<string>;
   file_path: string;
   total_chunks: number;
+  collection?: string;
+  document_id?: string;
+  title?: string;
+  summary?: string;
 }
 
 export interface SearchResult {
