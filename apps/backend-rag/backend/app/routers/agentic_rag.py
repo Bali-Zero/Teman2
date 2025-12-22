@@ -69,6 +69,8 @@ class AgenticQueryResponse(BaseModel):
     context_length: int
     execution_time: float
     route_used: str | None
+    tools_called: int = 0
+    total_steps: int = 0
     debug_info: dict | None = None
 
 
@@ -122,6 +124,8 @@ async def query_agentic_rag(
             context_length=result["context_used"],
             execution_time=result["execution_time"],
             route_used=result["route_used"],
+            tools_called=result.get("tools_called", 0),
+            total_steps=result.get("total_steps", 0),
             debug_info=result.get("debug_info"),
         )
     except Exception as e:
