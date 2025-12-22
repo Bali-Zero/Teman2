@@ -303,12 +303,31 @@ async def create_and_start_scheduler(
             )
 
             async def run_conversation_trainer():
-                # Analyze last 7 days of high-rated conversations
-                result = await trainer.analyze_winning_patterns(days_back=7)
-                if result:
-                    logger.info(
-                        f"🎓 Conversation Trainer found {len(result.get('patterns', []))} patterns"
-                    )
+                # 1. Analyze last 7 days of high-rated conversations
+                analysis = await trainer.analyze_winning_patterns(days_back=7)
+                if not analysis:
+                    logger.info("No high-rated conversations found in last 7 days")
+                    return
+
+                logger.info(
+                    f"🎓 Conversation Trainer found {len(analysis.get('patterns', []))} patterns"
+                )
+
+                # 2. Generate improved prompt based on analysis
+                try:
+                    improved_prompt = await trainer.generate_prompt_update(analysis)
+                    if not improved_prompt:
+                        logger.warning("Failed to generate improved prompt")
+                        return
+
+                    logger.info("✅ Generated improved prompt from conversation analysis")
+
+                    # 3. Create PR with improvements
+                    pr_branch = await trainer.create_improvement_pr(improved_prompt, analysis)
+                    logger.info(f"✅ Conversation Trainer: PR {pr_branch} created")
+
+                except Exception as e:
+                    logger.error(f"Error in Conversation Trainer prompt generation/PR creation: {e}", exc_info=True)
 
             scheduler.register_task(
                 name="conversation_trainer",

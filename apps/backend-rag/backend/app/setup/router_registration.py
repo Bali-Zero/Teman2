@@ -20,13 +20,13 @@ from app.routers import (
     crm_shared_memory,
     debug,
     episodic_memory,
+    feedback,
     handlers,
     health,
     ingest,
     intel,
     legal_ingest,
     media,
-    memory_vector,
     oracle_ingest,
     oracle_universal,
     performance,
@@ -55,10 +55,10 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(health.router)
     api.include_router(handlers.router)
 
-    # Debug router (only in development/staging)
+    # Debug router (dev/staging always, production only if ADMIN_API_KEY is set)
     from app.core.config import settings
 
-    if settings.environment.lower() != "production":
+    if settings.environment.lower() != "production" or settings.admin_api_key:
         api.include_router(debug.router)
         # Include v1 debug endpoints for backward compatibility
         api.include_router(debug.v1_router)
@@ -70,10 +70,10 @@ def include_routers(api: FastAPI) -> None:
 
     # Conversation & Memory routers
     api.include_router(conversations.router)
-    api.include_router(memory_vector.router)
     api.include_router(session.router)
     api.include_router(collective_memory.router)
     api.include_router(episodic_memory.router)
+    api.include_router(feedback.router)
 
     # CRM routers
     api.include_router(crm_clients.router)

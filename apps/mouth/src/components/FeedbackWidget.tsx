@@ -39,26 +39,45 @@ export function FeedbackWidget({
       return;
     }
 
+    if (!sessionId) {
+      alert('Errore: session ID non disponibile. Impossibile salvare il feedback.');
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const feedback: FeedbackData = {
-      type: feedbackType,
-      message: message.trim(),
-      sessionId,
-      turnCount,
-      timestamp: new Date(),
-    };
-
     try {
-      // Log feedback (in production, send to backend)
-      // console.log('[USER FEEDBACK]', feedback);
+      // Map feedback type to rating (1-5 scale)
+      const ratingMap: Record<'positive' | 'negative' | 'issue', number> = {
+        positive: 5,
+        negative: 2,
+        issue: 3,
+      };
+      const rating = ratingMap[feedbackType];
 
-      // Store in localStorage for now (in production, send to API)
-      const existingFeedback = JSON.parse(localStorage.getItem('conversationFeedback') || '[]');
-      existingFeedback.push(feedback);
-      localStorage.setItem('conversationFeedback', JSON.stringify(existingFeedback));
+      // Send feedback to backend API
+      const response = await fetch('/api/feedback/rate-conversation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          rating: rating,
+          feedback_type: feedbackType,
+          feedback_text: message.trim(),
+          turn_count: turnCount,
+        }),
+      });
 
-      // Mark as submitted
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Mark as submitted (prevent showing widget again)
       localStorage.setItem('feedbackSubmitted', 'true');
 
       // Show success message
@@ -84,20 +103,20 @@ export function FeedbackWidget({
   }
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:max-w-sm bg-[var(--background-secondary)] border border-[var(--border)] rounded-lg p-4 shadow-lg z-50">
+    <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:max-w-sm bg-background-secondary border border-border rounded-lg p-4 shadow-lg z-50">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <MessageSquare className="w-4 h-4" />
             Come sta andando la conversazione?
           </h3>
-          <p className="text-xs text-[var(--foreground-muted)] mt-1">
+          <p className="text-xs text-foreground-muted mt-1">
             Hai fatto {turnCount} messaggi. Il tuo feedback ci aiuta a migliorare!
           </p>
         </div>
         <button
           onClick={handleDismiss}
-          className="text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+          className="text-foreground-muted hover:text-foreground"
           aria-label="Dismiss feedback"
         >
           <X className="w-4 h-4" />
@@ -137,7 +156,7 @@ export function FeedbackWidget({
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-[var(--foreground-muted)] block mb-1">
+            <label className="text-xs text-foreground-muted block mb-1">
               {feedbackType === 'positive' && 'Cosa ti è piaciuto?'}
               {feedbackType === 'negative' && 'Quali problemi hai riscontrato?'}
               {feedbackType === 'issue' && 'Descrivi il bug:'}
@@ -146,7 +165,7 @@ export function FeedbackWidget({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Scrivi qui..."
-              className="w-full p-2 text-sm bg-[var(--background)] border border-[var(--border)] rounded resize-none"
+              className="w-full p-2 text-sm bg-background border border-border rounded resize-none"
               rows={3}
             />
           </div>

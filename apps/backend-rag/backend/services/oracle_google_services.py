@@ -27,17 +27,24 @@ class GoogleServices:
     def _initialize_services(self) -> None:
         """Initialize Google Gemini and Drive services"""
         try:
-            # Initialize Gemini AI
-            genai.configure(api_key=oracle_config.google_api_key)
-            self._gemini_initialized = True
-            logger.info("✅ Google Gemini AI initialized successfully")
+            # Initialize Gemini AI (only if API key is available)
+            api_key = oracle_config.google_api_key
+            if api_key:
+                genai.configure(api_key=api_key)
+                self._gemini_initialized = True
+                logger.info("✅ Google Gemini AI initialized successfully")
+            else:
+                logger.warning("⚠️ GOOGLE_API_KEY not set - Gemini AI services disabled")
+                self._gemini_initialized = False
 
             # Initialize Drive Service
             self._initialize_drive_service()
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize Google services: {e}")
-            raise
+            logger.warning("⚠️ Continuing without Google services - some Oracle features may be unavailable")
+            self._gemini_initialized = False
+            self._drive_service = None
 
     def _initialize_drive_service(self) -> None:
         """Initialize Google Drive service using service account"""

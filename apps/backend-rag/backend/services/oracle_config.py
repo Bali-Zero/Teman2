@@ -31,7 +31,8 @@ class OracleConfiguration:
     def google_api_key(self) -> str:
         """Get Google API key"""
         if not settings.google_api_key:
-            raise ValueError("GOOGLE_API_KEY environment variable is required")
+            logger.warning("⚠️ GOOGLE_API_KEY not set - Oracle Google services will be disabled")
+            return ""  # Return empty string instead of raising error
         return settings.google_api_key
 
     @property

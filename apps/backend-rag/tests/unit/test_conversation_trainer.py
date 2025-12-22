@@ -29,7 +29,7 @@ class TestConversationTrainer:
             assert trainer.db_pool == mock_pool
             # GitHub token removed - platform agnostic
         # assert trainer.github_token == "test_token"
-            # db_url is no longer stored on the instance
+        # db_url is no longer stored on the instance
 
     @pytest.mark.asyncio
     async def test_analyze_winning_patterns_no_conversations(self):
@@ -101,9 +101,10 @@ class TestConversationTrainer:
 
             result = await trainer.analyze_winning_patterns(days_back=7)
 
-            # Verify DB was queried correctly
+            # Verify DB was queried correctly (should use v_rated_conversations view)
             mock_conn.fetch.assert_called_once()
             args = mock_conn.fetch.call_args
+            assert "v_rated_conversations" in args[0][0] or "FROM v_rated_conversations" in args[0][0]
             assert "rating >=" in args[0][0]
 
             # Verify result

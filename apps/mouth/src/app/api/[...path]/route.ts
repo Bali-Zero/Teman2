@@ -17,6 +17,22 @@ async function proxy(req: NextRequest): Promise<Response> {
   const url = new URL(req.url);
   const targetUrl = `${backendBase}${url.pathname}${url.search}`;
 
+  // Extract correlation ID for logging
+  const correlationId = req.headers.get('X-Correlation-ID') || 'unknown';
+  const isStreamingEndpoint = url.pathname.includes('/agentic-rag/stream');
+
+  // Log requests in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[Proxy] ${req.method} ${url.pathname} -> ${targetUrl}`);
+  }
+
+  // Log streaming requests
+  if (isStreamingEndpoint && process.env.NODE_ENV !== 'production') {
+    console.log(
+      `[Proxy] SSE request start: ${req.method} ${url.pathname} (correlation_id=${correlationId})`
+    );
+  }
+
   const headers = new Headers(req.headers);
   headers.delete('host');
   headers.delete('connection');
@@ -33,22 +49,52 @@ async function proxy(req: NextRequest): Promise<Response> {
     }
   }
 
-  const upstream = await fetch(targetUrl, {
-    method: req.method,
-    headers,
-    body,
-    redirect: 'manual',
-  });
+  const upstreamStartTime = Date.now();
+  try {
+    const upstream = await fetch(targetUrl, {
+      method: req.method,
+      headers,
+      body,
+      redirect: 'manual',
+    });
+    const upstreamDuration = Date.now() - upstreamStartTime;
 
-  const respHeaders = new Headers(upstream.headers);
-  respHeaders.delete('content-encoding');
-  respHeaders.delete('transfer-encoding');
+    // Log streaming response status
+    if (isStreamingEndpoint && process.env.NODE_ENV !== 'production') {
+      console.log(
+        `[Proxy] SSE upstream response: ${upstream.status} (correlation_id=${correlationId}, ` +
+          `duration_ms=${upstreamDuration})`
+      );
+    }
 
-  return new Response(upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers: respHeaders,
-  });
+    // Log errors in development
+    if (process.env.NODE_ENV !== 'production' && upstream.status >= 400) {
+      console.error(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`);
+    }
+
+    const respHeaders = new Headers(upstream.headers);
+    respHeaders.delete('content-encoding');
+    respHeaders.delete('transfer-encoding');
+
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: respHeaders,
+    });
+  } catch (error) {
+    console.error(`[Proxy] Fetch error for ${req.method} ${url.pathname}:`, error);
+    return new Response(
+      JSON.stringify({
+        error: 'Proxy error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        targetUrl,
+      }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -74,4 +120,3 @@ export async function DELETE(req: NextRequest) {
 export async function OPTIONS(req: NextRequest) {
   return proxy(req);
 }
-

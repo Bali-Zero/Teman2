@@ -25,13 +25,18 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
+    // In development, use the API route handler (apps/mouth/src/app/api/[...path]/route.ts)
+    // which reads NUZANTARA_API_URL from .env.local
+    // In production, use NEXT_PUBLIC_API_URL
+    const backendUrl =
+      process.env.NODE_ENV === 'development'
+        ? process.env.NUZANTARA_API_URL || 'http://localhost:8000'
+        : process.env.NEXT_PUBLIC_API_URL || 'https://nuzantara-rag.fly.dev';
+
     return [
       {
         source: '/api/:path*',
-        destination:
-          process.env.NODE_ENV === 'development'
-            ? 'http://127.0.0.1:8080/api/:path*'
-            : (process.env.NEXT_PUBLIC_API_URL || 'https://nuzantara-rag.fly.dev') + '/api/:path*',
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },

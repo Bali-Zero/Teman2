@@ -174,41 +174,64 @@ async def db_pool(postgres_container):
     # Create necessary tables if they don't exist
     async with pool.acquire() as conn:
         try:
-            # Create memory_facts table (from migration 002_memory_system_schema.sql)
+            # Create user_profiles table (from migration 023)
             await conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS memory_facts (
-                    id SERIAL PRIMARY KEY,
-                    user_id VARCHAR(255) NOT NULL,
-                    content TEXT NOT NULL,
-                    fact_type VARCHAR(50) DEFAULT 'profile_fact',
-                    confidence FLOAT DEFAULT 1.0,
-                    source VARCHAR(100) DEFAULT 'system',
-                    metadata TEXT DEFAULT '{}',
-                    created_at TIMESTAMP DEFAULT NOW()
+                CREATE TABLE IF NOT EXISTS user_profiles (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    email VARCHAR(255) UNIQUE NOT NULL,
+                    full_name VARCHAR(255),
+                    phone VARCHAR(50),
+                    user_type VARCHAR(20) NOT NULL DEFAULT 'client',
+                    status VARCHAR(20) DEFAULT 'active',
+                    synthesis TEXT,
+                    language_pref VARCHAR(10) DEFAULT 'id',
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
                 )
             """
             )
 
-            # Create user_stats table (from migration 002_memory_system_schema.sql)
+            # Create team_access table (from migration 023)
             await conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS user_stats (
-                    user_id VARCHAR(255) PRIMARY KEY,
-                    conversations_count INTEGER DEFAULT 0,
-                    searches_count INTEGER DEFAULT 0,
-                    summary TEXT DEFAULT '',
-                    updated_at TIMESTAMP DEFAULT NOW(),
-                    last_activity TIMESTAMP DEFAULT NOW()
+                CREATE TABLE IF NOT EXISTS team_access (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+                    pin_hash VARCHAR(255),
+                    role VARCHAR(50) DEFAULT 'member',
+                    permissions JSONB DEFAULT '[]',
+                    is_active BOOLEAN DEFAULT TRUE,
+                    last_login TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE(user_id)
                 )
             """
             )
 
-            # Create index for faster lookups
+            # Create user_facts table (from migration 023)
             await conn.execute(
                 """
-                CREATE INDEX IF NOT EXISTS idx_memory_facts_user_id ON memory_facts(user_id)
+                CREATE TABLE IF NOT EXISTS user_facts (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+                    fact_type VARCHAR(50) NOT NULL DEFAULT 'general',
+                    fact_key VARCHAR(100),
+                    fact_value TEXT NOT NULL,
+                    confidence FLOAT DEFAULT 0.8,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    learned_at TIMESTAMPTZ DEFAULT NOW()
+                )
             """
+            )
+
+            # Create indexes
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_user_profiles_email ON user_profiles(email)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_user_facts_user ON user_facts(user_id)"
             )
 
             # Create CRM tables (from migration 007_crm_system_schema.sql)
@@ -287,7 +310,7 @@ async def db_pool(postgres_container):
                 raise
 
             # Create other tables
-            # Create conversations table - simplified
+            # Create conversations table - simplified (for backward compatibility)
             try:
                 await conn.execute(
                     """
@@ -305,6 +328,64 @@ async def db_pool(postgres_container):
                 )
             except Exception as e:
                 logger.warning(f"Could not create conversations table: {e}")
+
+            # Create conversation_ratings table (for ConversationTrainer)
+            try:
+                await conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS conversation_ratings (
+                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                        session_id UUID NOT NULL,
+                        user_id UUID,
+                        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+                        feedback_type VARCHAR(20),
+                        feedback_text TEXT,
+                        turn_count INTEGER,
+                        created_at TIMESTAMPTZ DEFAULT NOW()
+                    )
+                """
+                )
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_conv_ratings_session 
+                    ON conversation_ratings(session_id)
+                """
+                )
+                await conn.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_conv_ratings_rating 
+                    ON conversation_ratings(rating) WHERE rating >= 4
+                """
+                )
+            except Exception as e:
+                logger.warning(f"Could not create conversation_ratings table: {e}")
+
+            # Create v_rated_conversations view (for ConversationTrainer)
+            try:
+                await conn.execute(
+                    """
+                    CREATE OR REPLACE VIEW v_rated_conversations AS
+                    SELECT 
+                        cr.session_id::text as conversation_id,
+                        cr.rating,
+                        cr.feedback_text as client_feedback,
+                        cr.created_at,
+                        (
+                            SELECT jsonb_agg(
+                                jsonb_build_object(
+                                    'role', ch.role,
+                                    'content', ch.content
+                                ) ORDER BY ch.created_at
+                            )
+                            FROM conversation_history ch 
+                            WHERE ch.session_id::text = cr.session_id::text
+                        ) as messages
+                    FROM conversation_ratings cr
+                    WHERE cr.rating >= 4
+                """
+                )
+            except Exception as e:
+                logger.warning(f"Could not create v_rated_conversations view: {e}")
 
             # Create shared_memory table - simplified
             try:
@@ -542,17 +623,14 @@ def qdrant_client(qdrant_container):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def memory_service(postgres_container):
+async def memory_orchestrator(postgres_container):
     """
-    Create MemoryServicePostgres with test database.
-    Also creates necessary tables if they don't exist.
+    Create MemoryOrchestrator with test database.
 
     Yields:
-        MemoryServicePostgres: Memory service connected to test database
+        MemoryOrchestrator: Memory orchestrator connected to test database
     """
-    import asyncpg
-
-    from services.memory_service_postgres import MemoryServicePostgres
+    from services.memory import MemoryOrchestrator
 
     # Use database URL from postgres_container fixture
     # Normalize URL (remove +psycopg2 if present, asyncpg doesn't support it)
@@ -560,69 +638,12 @@ async def memory_service(postgres_container):
     if database_url and "+" in database_url:
         database_url = database_url.replace("+psycopg2", "")
 
-    # Create tables before creating service
-    async with asyncpg.create_pool(database_url, min_size=1, max_size=1) as temp_pool:
-        async with temp_pool.acquire() as conn:
-            try:
-                # Create memory_facts table
-                await conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS memory_facts (
-                        id SERIAL PRIMARY KEY,
-                        user_id VARCHAR(255) NOT NULL,
-                        content TEXT NOT NULL,
-                        fact_type VARCHAR(100) DEFAULT 'general',
-                        confidence FLOAT DEFAULT 1.0,
-                        source VARCHAR(50) DEFAULT 'user',
-                        metadata JSONB DEFAULT '{}'::jsonb,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                    )
-                """
-                )
+    orchestrator = MemoryOrchestrator(database_url=database_url)
+    await orchestrator.initialize()
 
-                # Create unique index for deduplication (case-insensitive)
-                await conn.execute(
-                    """
-                    CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_facts_unique
-                    ON memory_facts(user_id, LOWER(content))
-                """
-                )
+    yield orchestrator
 
-                # Create user_stats table
-                await conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS user_stats (
-                        user_id VARCHAR(255) PRIMARY KEY,
-                        conversations_count INTEGER DEFAULT 0,
-                        searches_count INTEGER DEFAULT 0,
-                        tasks_count INTEGER DEFAULT 0,
-                        summary TEXT DEFAULT '',
-                        preferences JSONB DEFAULT '{}'::jsonb,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                        last_activity TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-                    )
-                """
-                )
-
-                # Create indexes
-                await conn.execute(
-                    """
-                    CREATE INDEX IF NOT EXISTS idx_memory_facts_user_id ON memory_facts(user_id)
-                """
-                )
-
-                logger.info("✅ Created memory tables for test")
-            except Exception as e:
-                logger.warning(f"⚠️ Could not create tables (might already exist): {e}")
-
-    service = MemoryServicePostgres(database_url=database_url)
-    await service.connect()
-
-    yield service
-
-    await service.close()
+    await orchestrator.close()
 
 
 @pytest.fixture(scope="function")
