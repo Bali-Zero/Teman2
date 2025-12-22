@@ -1,5 +1,4 @@
 import { UserProfile } from '@/types';
-import { NuzantaraClient } from '../../../lib/api/generated';
 
 /**
  * Base API client with token management and request handling.
@@ -10,7 +9,9 @@ export class ApiClientBase {
   protected token: string | null = null;
   protected csrfToken: string | null = null; // CSRF token for cookie-based auth
   protected userProfile: UserProfile | null = null;
-  public readonly client: NuzantaraClient;
+  // NuzantaraClient removed - was importing from non-existent generated file
+  // If needed, can be re-added when generated client is available
+  public readonly client: any = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -26,11 +27,8 @@ export class ApiClientBase {
       }
     }
 
-    // Generated OpenAPI client (used by some pages); token is resolved dynamically.
-    this.client = new NuzantaraClient({
-      BASE: this.baseUrl,
-      TOKEN: async () => this.token || '',
-    });
+    // Generated OpenAPI client removed - was importing from non-existent file
+    // If needed, can be re-added when generated client is available
   }
 
   setToken(token: string) {

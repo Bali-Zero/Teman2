@@ -67,18 +67,24 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   // Check authentication and load data
   useEffect(() => {
-    if (!api.isAuthenticated()) {
-      router.push('/login');
-      return;
-    }
+    // Small delay to ensure token is available after login redirect
+    const checkAuth = () => {
+      if (!api.isAuthenticated()) {
+        router.push('/login');
+        return;
+      }
 
-    const loadData = async () => {
-      setIsLoading(true);
-      await Promise.all([loadUserProfile(), loadClockStatus()]);
-      setIsLoading(false);
+      const loadData = async () => {
+        setIsLoading(true);
+        await Promise.all([loadUserProfile(), loadClockStatus()]);
+        setIsLoading(false);
+      };
+
+      loadData();
     };
 
-    loadData();
+    // Immediate check, but also allow a small window for token to be available
+    checkAuth();
   }, [router, loadUserProfile, loadClockStatus]);
 
   // Update isOnline based on clock status
