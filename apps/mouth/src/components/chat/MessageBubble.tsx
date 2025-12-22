@@ -225,7 +225,7 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
           flex-shrink-0 flex items-center justify-center
           ${
             isUser
-              ? 'w-8 h-8 rounded-full shadow-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)]'
+              ? 'w-10 h-10 rounded-full shadow-lg bg-[var(--background-secondary)] text-[var(--foreground)]' // Larger (25%), no border
               : 'w-14 h-14 -ml-2 bg-transparent border-0 shadow-none' // PURE LOGO. NO CONTAINER.
           }
         `}
