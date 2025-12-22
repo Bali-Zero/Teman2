@@ -1,8 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Users, Clock, Calendar, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
 
 // Mock team data
 const teamDepartments = [
@@ -15,6 +17,40 @@ const teamDepartments = [
 ];
 
 export default function TeamPage() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [totalMembers, setTotalMembers] = useState(23);
+
+  useEffect(() => {
+    const loadTeamStats = async () => {
+      setIsLoading(true);
+      try {
+        // Load clock status to get online count
+        const clockStatus = await api.getClockStatus().catch(() => null);
+        // For now, use mock data - real team API can be added later
+        setOnlineCount(0);
+        setTotalMembers(23);
+      } catch (error) {
+        console.error('Failed to load team stats:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTeamStats();
+  }, []);
+
+  const handleCalendar = () => {
+    // router.push('/team/calendar'); // TODO: Implement calendar page
+    router.push('/team');
+  };
+
+  const handleTimesheet = () => {
+    // router.push('/team/timesheet'); // TODO: Implement timesheet page
+    router.push('/team');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -22,15 +58,15 @@ export default function TeamPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)]">Team</h1>
           <p className="text-sm text-[var(--foreground-muted)]">
-            Gestione team, presenze e timesheet
+            Team management, attendance and timesheet
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleCalendar}>
             <Calendar className="w-4 h-4" />
-            Calendario
+            Calendar
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleTimesheet}>
             <Clock className="w-4 h-4" />
             Timesheet
           </Button>
@@ -41,18 +77,22 @@ export default function TeamPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
           <p className="text-sm text-[var(--foreground-muted)]">Team Members</p>
-          <p className="text-2xl font-bold text-[var(--foreground)]">23</p>
+          <p className="text-2xl font-bold text-[var(--foreground)]">
+            {isLoading ? '-' : totalMembers}
+          </p>
         </div>
         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
-          <p className="text-sm text-[var(--foreground-muted)]">Online Ora</p>
-          <p className="text-2xl font-bold text-[var(--success)]">0</p>
+          <p className="text-sm text-[var(--foreground-muted)]">Online Now</p>
+          <p className="text-2xl font-bold text-[var(--success)]">
+            {isLoading ? '-' : onlineCount}
+          </p>
         </div>
         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
-          <p className="text-sm text-[var(--foreground-muted)]">In Ferie</p>
+          <p className="text-sm text-[var(--foreground-muted)]">On Leave</p>
           <p className="text-2xl font-bold text-[var(--foreground)]">0</p>
         </div>
         <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]">
-          <p className="text-sm text-[var(--foreground-muted)]">Ore Oggi</p>
+          <p className="text-sm text-[var(--foreground-muted)]">Hours Today</p>
           <p className="text-2xl font-bold text-[var(--foreground)]">0h</p>
         </div>
       </div>
@@ -62,6 +102,10 @@ export default function TeamPage() {
         {teamDepartments.map((dept) => (
           <div
             key={dept.name}
+            onClick={() => {
+              // Filter team members by department - can be implemented with real API
+              console.log(`Filter by ${dept.name}`);
+            }}
             className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3 mb-3">
@@ -74,7 +118,7 @@ export default function TeamPage() {
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-[var(--foreground-muted)]" />
               <span className="text-sm text-[var(--foreground-muted)]">
-                {dept.members} membri
+                {dept.members} members
               </span>
             </div>
           </div>
@@ -89,7 +133,7 @@ export default function TeamPage() {
         <div className="p-8 text-center">
           <UserCircle className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
           <p className="text-sm text-[var(--foreground-muted)]">
-            Caricamento membri del team...
+            Loading team members...
           </p>
         </div>
       </div>
@@ -97,8 +141,8 @@ export default function TeamPage() {
       {/* Info Box */}
       <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
-          Gestisci il team Bali Zero con presenze, timesheet, ferie e permessi.
-          Visualizza chi è online e le ore lavorate.
+          Manage the Bali Zero team with attendance, timesheet, leave and permissions.
+          View who is online and hours worked.
         </p>
       </div>
     </div>
