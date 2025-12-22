@@ -7,6 +7,7 @@ primary_region = 'sin'
 [env]
   NODE_ENV = 'production'
   NEXT_PUBLIC_API_URL = 'https://nuzantara-rag.fly.dev'
+  NUZANTARA_INTERNAL_API_URL = 'http://nuzantara-rag.internal:8080'
   NEXT_PUBLIC_APP_URL = 'https://zantara.balizero.com'
 
 [http_service]
