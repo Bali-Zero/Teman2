@@ -109,7 +109,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
           />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-[var(--foreground)]">ZEROSPHERE</h1>
+          <h1 className="text-lg font-bold text-[var(--foreground)]">ZANTARA</h1>
         </div>
       </div>
 
