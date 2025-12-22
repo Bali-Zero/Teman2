@@ -5,7 +5,7 @@ import { useSystemSound } from '@/hooks/useSystemSound';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import Image from 'next/image';
+// Using regular img tag for static assets to avoid Next.js Image Optimization issues
 import { api } from '@/lib/api';
 
 export default function LoginPage() {
@@ -33,19 +33,18 @@ export default function LoginPage() {
       setLoginStage('success');
       play('access_granted');
 
-      // Verify token is saved before redirect
-      // Use window.location for full page reload to ensure clean state
+      // Verify token is saved immediately after login
+      // Read directly from localStorage to ensure we have the latest token
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      if (!token || token.length === 0) {
+        throw new Error('Token not saved after login');
+      }
+
+      // Use window.location.replace for a clean redirect without history entry
+      // This ensures a full page reload so the layout can properly read the token
       setTimeout(() => {
-        // Double-check token is saved - read directly from localStorage to be sure
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-        if (token && token.length > 0) {
-          // Force full page reload to ensure clean state
-          window.location.href = '/dashboard';
-        } else {
-          console.error('Token not saved after login');
-          setLoginStage('idle');
-        }
-      }, 2000); // Increased delay to ensure token is fully saved
+        window.location.replace('/dashboard');
+      }, 1500);
     } catch (error) {
       // 4. Failure
       console.error('Login failed:', error);
@@ -126,14 +125,11 @@ export default function LoginPage() {
             transition={{ duration: loginStage === 'authenticating' ? 1 : 1 }}
             className="relative w-32 md:w-40"
           >
-            <Image
+            <img
               src="/assets/login/zantara-logo-classic.png"
               alt="Zantara Classic Logo"
-              width={400}
-              height={400}
               className="w-full h-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
-              priority
-              unoptimized
+              loading="eager"
             />
           </motion.div>
         </div>
@@ -235,14 +231,11 @@ export default function LoginPage() {
           }}
           transition={{ duration: 0.2 }} // Fast reaction to auth start
         >
-          <Image
+          <img
             src="/assets/login/kintsugi-stone.png"
             alt="Kintsugi Capital - Value from the Raw"
-            fill
-            className="object-cover object-center scale-110"
-            priority
-            quality={100}
-            unoptimized
+            className="absolute inset-0 w-full h-full object-cover object-center scale-110"
+            loading="eager"
           />
         </motion.div>
 
