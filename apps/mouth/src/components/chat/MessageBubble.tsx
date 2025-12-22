@@ -226,7 +226,7 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
           ${
             isUser
               ? 'w-8 h-8 rounded-full shadow-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)]'
-              : 'w-10 h-10' // Larger, no border/bg/cirlce for Zantara
+              : 'w-14 h-14 -ml-2' // Much larger, negative margin to compensate visual weight
           }
         `}
         >
@@ -239,12 +239,12 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
               <User size={16} />
             )
           ) : (
-            <div className="relative w-full h-full p-0.5">
+            <div className="relative w-full h-full"> 
               <Image 
                 src="/images/logo_zan.png" 
                 alt="Zantara" 
                 fill 
-                className="object-contain brightness-125 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" 
+                className="object-contain brightness-125 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] scale-125" 
               />
             </div>
           )}
