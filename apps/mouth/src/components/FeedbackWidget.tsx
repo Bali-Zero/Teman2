@@ -39,10 +39,8 @@ export function FeedbackWidget({
       return;
     }
 
-    if (!sessionId) {
-      alert('Errore: session ID non disponibile. Impossibile salvare il feedback.');
-      return;
-    }
+    // Use a fallback if sessionId is missing (e.g. for anonymous feedback)
+    const activeSessionId = sessionId || 'anonymous-session';
 
     setIsSubmitting(true);
 
@@ -62,7 +60,7 @@ export function FeedbackWidget({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          session_id: sessionId,
+          session_id: activeSessionId,
           rating: rating,
           feedback_type: feedbackType,
           feedback_text: message.trim(),
@@ -75,7 +73,7 @@ export function FeedbackWidget({
         throw new Error(errorData.detail || `HTTP ${response.status}`);
       }
 
-      const result = await response.json();
+      await response.json(); // Consume body
 
       // Mark as submitted (prevent showing widget again)
       localStorage.setItem('feedbackSubmitted', 'true');
