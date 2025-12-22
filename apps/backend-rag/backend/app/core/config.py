@@ -29,6 +29,10 @@ class Settings(BaseSettings):
         description="OpenAI API key - REQUIRED for embeddings. Set via OPENAI_API_KEY env var",
     )
     google_api_key: str | None = None  # Set via GOOGLE_API_KEY env var (for Gemini AI)
+    google_credentials_json: str | None = Field(
+        default=None,
+        description="Google Service Account JSON credentials for Vertex AI. Set via GOOGLE_CREDENTIALS_JSON or GEMINI_SA_TOKEN env var",
+    )
     google_imagen_api_key: str | None = (
         None  # Set via GOOGLE_IMAGEN_API_KEY env var (for Imagen image generation)
     )
@@ -229,6 +233,7 @@ class Settings(BaseSettings):
             return False
 
         return bool(v) if v is not None else False
+
     log_file: str = "./data/zantara_rag.log"
 
     # ========================================
