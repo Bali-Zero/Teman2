@@ -33,9 +33,16 @@ export default function LoginPage() {
       setLoginStage('success');
       play('access_granted');
 
-      // Cut to Dashboard
+      // Verify token is saved before redirect
+      // Use window.location for full page reload to ensure clean state
       setTimeout(() => {
-        router.push('/dashboard');
+        // Double-check token is saved
+        if (api.isAuthenticated()) {
+          window.location.href = '/dashboard';
+        } else {
+          console.error('Token not saved after login');
+          setLoginStage('idle');
+        }
       }, 1500);
     } catch (error) {
       // 4. Failure
