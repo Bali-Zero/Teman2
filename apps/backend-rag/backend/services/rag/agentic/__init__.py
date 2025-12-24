@@ -136,7 +136,7 @@ def create_agentic_rag(
 
     logger.debug("create_agentic_rag: Instantiating AgenticRAGOrchestrator...")
     orchestrator = AgenticRAGOrchestrator(
-        tools=tools, db_pool=db_pool, semantic_cache=semantic_cache
+        tools=tools, db_pool=db_pool, semantic_cache=semantic_cache, retriever=retriever
     )
     logger.debug("create_agentic_rag: Orchestrator instantiated")
     return orchestrator

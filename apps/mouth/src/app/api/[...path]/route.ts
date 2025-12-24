@@ -94,9 +94,22 @@ async function proxy(req: NextRequest): Promise<Response> {
       console.error(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`);
     }
 
+    // Forward all headers from upstream, including content-encoding
+    // The browser will handle decompression automatically
+    // Only delete transfer-encoding as it's hop-by-hop
     const respHeaders = new Headers(upstream.headers);
-    respHeaders.delete('content-encoding');
     respHeaders.delete('transfer-encoding');
+
+    // CRITICAL: Rewrite Location header for redirects to prevent Mixed Content
+    // FastAPI may return redirects with http:// URLs when behind a proxy
+    const location = respHeaders.get('location');
+    if (location && upstream.status >= 300 && upstream.status < 400) {
+      // Rewrite backend URL to proxy URL
+      const rewrittenLocation = location
+        .replace(/^https?:\/\/nuzantara-rag\.fly\.dev/, '')
+        .replace(/^https?:\/\/[^/]+\.fly\.dev/, '');
+      respHeaders.set('location', rewrittenLocation);
+    }
 
     return new Response(upstream.body, {
       status: upstream.status,

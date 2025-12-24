@@ -1,6 +1,6 @@
 # NUZANTARA 4D SYSTEM CONSCIOUSNESS
 
-**Generated: 2025-12-23 | Auto-generated Report**
+**Generated: 2025-12-24 | Production Status: Cell-Giant v5.5 Enabled**
 
 > Questa mappa rappresenta la "coscienza" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.
 
@@ -11,15 +11,13 @@
 | Metrica | Valore | Note |
 |---------|--------|------|
 | **Documenti Qdrant** | **53,757** | 4 collezioni attive |
-| **API Endpoints** | **192** | 32 file router |
+| **API Endpoints** | **199** | 32 file router |
 | **Servizi Python** | **144** | /backend/services/ |
-| **File Test** | **524** | unit/api/integration |
-| **Test Cases** | **~9146+** | pytest coverage |
+| **File Test** | **526** | Inclusa Cell-Giant Coverage |
+| **Test Cases** | **~9200+** | pytest coverage >90% core |
 | **Tabelle Database** | **62** | PostgreSQL |
 | **Migrazioni** | **26** | Applicate |
-| **Variabili Ambiente** | **62+** | Across all apps |
-| **File Documentazione** | **10+** | Markdown |
-| **Fonti Intel** | **630+** | 12 categorie |
+| **Versione Core** | **v5.5** | Cell-Giant Enabled |
 
 ---
 

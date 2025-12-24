@@ -26,13 +26,11 @@ def get_cookie_domain() -> str | None:
     Return domain for cross-subdomain cookies.
 
     Returns:
-        - ".balizero.com" in production (allows zantara.balizero.com <-> api.balizero.com)
-        - None for localhost (browser handles it automatically)
+        - Configured domain if set (e.g. ".balizero.com")
+        - None otherwise (browser uses current host, safest for Fly.io/dev)
     """
-    if settings.environment == "production":
-        # Use configured domain or default to .balizero.com
-        return getattr(settings, "cookie_domain", None) or ".balizero.com"
-    return None  # localhost doesn't need domain
+    # Use explicit setting if available
+    return getattr(settings, "cookie_domain", None)
 
 
 def get_cookie_secure() -> bool:

@@ -82,6 +82,11 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
     -   `./scripts/fly-backend.sh <command>`
     -   `./scripts/fly-frontend.sh <command>`
 
+### 3.5 🚨 NO CI/CD DEPLOYMENT
+-   **DIVIETO ASSOLUTO:** Non usare MAI GitHub Actions o altri strumenti CI/CD per il deploy in produzione.
+-   **WORKFLOW:** Il deploy è **SOLO MANUALE** e **DA LOCALE** (Local-to-Fly).
+-   **MOTIVO:** Manteniamo il controllo totale sulla build e sui tempi di rilascio. GitHub serve solo come backup e storico.
+
 ---
 
 ## 4. 🧩 KEY FEATURES & MODULES

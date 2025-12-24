@@ -198,7 +198,8 @@ async def query_agentic_rag(
         tb = traceback.format_exc()
         logger.error(f"❌ Error in query_agentic_rag: {str(e)}\n{tb}")
         # Temporarily include traceback in response for debugging
-        raise HTTPException(status_code=500, detail=f"{str(e)}\n\nTRACEBACK:\n{tb}") from e
+        # Generic error message for production
+        raise HTTPException(status_code=500, detail="Internal Server Error: The request could not be processed.") from e
 
 
 async def get_conversation_history_for_agentic(
@@ -361,7 +362,8 @@ async def query_cell_giant(
 
         tb = traceback.format_exc()
         logger.error(f"❌ Error in query_cell_giant: {str(e)}\n{tb}")
-        raise HTTPException(status_code=500, detail=f"{str(e)}\n\nTRACEBACK:\n{tb}") from e
+        # Generic error message for production
+        raise HTTPException(status_code=500, detail="Internal Server Error: The request could not be processed.") from e
 
 
 @router.post("/stream/cell-giant")
@@ -484,7 +486,7 @@ async def stream_cell_giant(
             import traceback
             tb = traceback.format_exc()
             logger.error(f"❌ [Cell-Giant Stream] Error: {e}\n{tb}")
-            yield f"data: {json.dumps({'type': 'error', 'data': {'message': str(e)}})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'data': {'message': 'Internal Server Error'}})}\n\n"
 
         finally:
             duration = time.time() - start_time

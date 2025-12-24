@@ -38,11 +38,15 @@ nuzantara/
 - **Deployment**: Docker, Fly.io (Singapore region)
 - **Database**: PostgreSQL, Redis, Qdrant Vector DB
 
-### 🚀 Ultra Hybrid Features (v5.4)
+### 🚀 Ultra Hybrid Features (v5.5)
 
 The system now runs on the **Ultra Hybrid** architecture, featuring:
 
 - **🧠 Quality Routing**: Automatically routes queries to **Fast** (Flash), **Pro**, or **DeepThink** (Reasoning) tiers based on complexity.
+- **🧬 Cell-Giant Architecture**: A three-phase reasoning system:
+  1. **Giant**: Deep strategic reasoning powered by Gemini Pro.
+  2. **Cell**: Real-time legal verification and calibration using verified Bali Zero KB.
+  3. **Zantara**: Synthesis into a unique professional persona.
 - **🔎 Ultra Reranking**: Uses **ZeroEntropy** (zerank-2) for state-of-the-art document retrieval accuracy.
 - **📚 Evidence Pack**: All business answers include standard formatting and verified citations.
 - **🛡️ Privacy-by-Design**: Automated PII redaction in logs.
@@ -143,6 +147,9 @@ Nuzantara usa un **workflow completamente locale**:
 2. **Commit Locale**: `git commit` (solo locale, nessun push automatico)
 3. **Build Test**: Verifica build Docker localmente prima di deploy
 4. **Deployment Manuale**: Deploy su Fly.io usando gli script helper
+
+**🚨 ATTENZIONE: NO CI/CD DEPLOYMENT**
+Non configurare MAI GitHub Actions per il deploy automatico. Il repository GitHub serve esclusivamente come backup e storico. Il deploy deve rimanere **manuale e locale** per garantire il controllo totale.
 
 **Workflow Completo**: Vedi [docs/AI_ONBOARDING.md](docs/AI_ONBOARDING.md) per standards e procedure.
 

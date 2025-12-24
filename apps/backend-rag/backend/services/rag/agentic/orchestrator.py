@@ -84,8 +84,9 @@ class AgenticRAGOrchestrator:
         db_pool: Any = None,
         model_name: str = "gemini-1.5-pro",
         semantic_cache: SemanticCache = None,
+        retriever: Any = None,
     ):
-        """Initialize the Agentic RAG Orchestrator.
+        """Initialize the AgenticRAGOrchestrator.
 
         Sets up model clients, dependencies, and configuration for multi-tier
         agentic reasoning with automatic fallback handling.
@@ -95,6 +96,7 @@ class AgenticRAGOrchestrator:
             db_pool: Optional asyncpg connection pool for database operations
             model_name: Base model name (legacy, not actively used)
             semantic_cache: Optional semantic cache instance for query deduplication
+            retriever: SearchService or KnowledgeService instance for embeddings
 
         Note:
             - Initializes Gemini models (Pro, Flash, Flash-Lite) for cascade fallback
@@ -108,6 +110,7 @@ class AgenticRAGOrchestrator:
         self.db_pool = db_pool
         self.model_name = model_name
         self.semantic_cache = semantic_cache
+        self.retriever = retriever
 
         # Convert tools to Gemini function declarations for native calling
         self.gemini_tools = [tool.to_gemini_function_declaration() for tool in tools]
@@ -597,20 +600,41 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
         # OPTIMIZATION 3: Cache the result for future similar queries
         if self.semantic_cache and state.final_answer:
             try:
-                import hashlib
                 import numpy as np
 
-                # Fix: Create hash-based embedding for exact match caching
-                # Each unique query gets a unique embedding based on its hash
-                query_hash = hashlib.sha256(query.lower().strip().encode()).digest()
-                # Convert hash bytes to float32 array (32 bytes = 8 floats, pad to 384)
-                hash_floats = np.frombuffer(query_hash, dtype=np.float32)
-                query_embedding = np.zeros(384, dtype=np.float32)
-                query_embedding[:len(hash_floats)] = hash_floats
-                # Normalize to unit vector for cosine similarity
-                norm = np.linalg.norm(query_embedding)
-                if norm > 0:
-                    query_embedding = query_embedding / norm
+                query_embedding = None
+                
+                # Try to generate real semantic embedding first
+                if self.retriever and hasattr(self.retriever, "embedder"):
+                    try:
+                        # This should be async but usually the underlying call is sync or wrapped
+                        # If generate_query_embedding is async, we need await
+                        # Assuming synchronous for now based on common patterns, but check if await needed
+                        if asyncio.iscoroutinefunction(self.retriever.embedder.generate_query_embedding):
+                            query_embedding = await self.retriever.embedder.generate_query_embedding(query)
+                        else:
+                            query_embedding = self.retriever.embedder.generate_query_embedding(query)
+                        
+                        # Ensure it's a numpy array of float32
+                        if isinstance(query_embedding, list):
+                            query_embedding = np.array(query_embedding, dtype=np.float32)
+                    except Exception as e:
+                        logger.warning(f"Failed to generate semantic embedding: {e}")
+
+                # Fallback to hash-based embedding (exact match only) if semantic fails
+                if query_embedding is None:
+                    import hashlib
+                    logger.warning("⚠️ Using hash-based embedding for cache (Exact Match Only) - Semantic search degraded")
+                    # Create hash-based embedding for exact match caching
+                    query_hash = hashlib.sha256(query.lower().strip().encode()).digest()
+                    # Convert hash bytes to float32 array (32 bytes = 8 floats, pad to 384)
+                    hash_floats = np.frombuffer(query_hash, dtype=np.float32)
+                    query_embedding = np.zeros(384, dtype=np.float32)
+                    query_embedding[:len(hash_floats)] = hash_floats
+                    # Normalize to unit vector for cosine similarity
+                    norm = np.linalg.norm(query_embedding)
+                    if norm > 0:
+                        query_embedding = query_embedding / norm
 
                 await self.semantic_cache.cache_result(query, query_embedding, result)
                 logger.info("✅ [Cache Write] Result cached for future queries")
