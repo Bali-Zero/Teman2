@@ -75,8 +75,9 @@ class TestDebugAccess:
 
     def test_verify_debug_access_dev_with_token(self, mock_settings_dev):
         """Test debug access in development with valid token"""
-        from app.routers.debug import verify_debug_access
         from fastapi.security import HTTPAuthorizationCredentials
+
+        from app.routers.debug import verify_debug_access
 
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-admin-key")
         request = MagicMock()
@@ -87,9 +88,10 @@ class TestDebugAccess:
 
     def test_verify_debug_access_prod_denied(self, mock_settings_prod):
         """Test debug access denied in production"""
-        from app.routers.debug import verify_debug_access
         from fastapi import HTTPException
         from fastapi.security import HTTPAuthorizationCredentials
+
+        from app.routers.debug import verify_debug_access
 
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-admin-key")
         request = MagicMock()
@@ -111,9 +113,10 @@ class TestDebugAccess:
 
     def test_verify_debug_access_invalid_token(self, mock_settings_dev):
         """Test debug access with invalid token"""
-        from app.routers.debug import verify_debug_access
         from fastapi import HTTPException
         from fastapi.security import HTTPAuthorizationCredentials
+
+        from app.routers.debug import verify_debug_access
 
         credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid-key")
         request = MagicMock()
@@ -126,8 +129,9 @@ class TestDebugAccess:
 
     def test_verify_debug_access_no_header_no_credentials(self, mock_settings_dev):
         """Test debug access with no credentials and no header"""
-        from app.routers.debug import verify_debug_access
         from fastapi import HTTPException
+
+        from app.routers.debug import verify_debug_access
 
         request = MagicMock()
         request.headers = {}
@@ -328,9 +332,7 @@ class TestDatabaseDebugger:
             }
         ]
 
-        with patch.object(
-            DatabaseQueryDebugger, "get_recent_queries", return_value=recent_queries
-        ):
+        with patch.object(DatabaseQueryDebugger, "get_recent_queries", return_value=recent_queries):
             response = client.get(
                 "/api/debug/db/queries/recent?limit=100",
                 headers={"Authorization": "Bearer test-admin-key"},
@@ -350,9 +352,7 @@ class TestDatabaseDebugger:
             "slow_patterns": [],
         }
 
-        with patch.object(
-            DatabaseQueryDebugger, "analyze_query_patterns", return_value=analysis
-        ):
+        with patch.object(DatabaseQueryDebugger, "analyze_query_patterns", return_value=analysis):
             response = client.get(
                 "/api/debug/db/queries/analyze",
                 headers={"Authorization": "Bearer test-admin-key"},
@@ -370,7 +370,7 @@ class TestQdrantDebugger:
     @pytest.mark.asyncio
     async def test_get_collections_health(self, client, mock_settings_dev):
         """Test getting Qdrant collections health"""
-        from app.utils.qdrant_debugger import QdrantDebugger, CollectionHealth
+        from app.utils.qdrant_debugger import CollectionHealth, QdrantDebugger
 
         health_statuses = [
             CollectionHealth(
@@ -382,7 +382,9 @@ class TestQdrantDebugger:
             )
         ]
 
-        with patch.object(QdrantDebugger, "get_all_collections_health", return_value=health_statuses):
+        with patch.object(
+            QdrantDebugger, "get_all_collections_health", return_value=health_statuses
+        ):
             response = client.get(
                 "/api/debug/qdrant/collections/health",
                 headers={"Authorization": "Bearer test-admin-key"},
@@ -461,7 +463,10 @@ class TestPerformanceProfiling:
             mock_path_class.return_value = mock_path
 
             with patch("app.routers.debug.sys.path.insert"):
-                with patch("app.routers.debug.PerformanceProfiler", side_effect=ImportError("Module not found")):
+                with patch(
+                    "app.routers.debug.PerformanceProfiler",
+                    side_effect=ImportError("Module not found"),
+                ):
                     response = client.post(
                         "/api/debug/profile",
                         headers={"Authorization": "Bearer test-admin-key"},
@@ -487,7 +492,9 @@ class TestTraces:
             }
         ]
 
-        with patch("app.routers.debug.RequestTracingMiddleware.get_recent_traces", return_value=traces):
+        with patch(
+            "app.routers.debug.RequestTracingMiddleware.get_recent_traces", return_value=traces
+        ):
             response = client.get(
                 "/api/debug/traces/recent?limit=50",
                 headers={"Authorization": "Bearer test-admin-key"},
@@ -520,4 +527,3 @@ class TestTraces:
             data = response.json()
             assert data["success"] is True
             assert "Cleared" in data["message"]
-

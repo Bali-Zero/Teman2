@@ -53,4 +53,3 @@ def setup_observability(app: FastAPI) -> None:
     logger.info(
         "✅ Full Stack Observability: Prometheus + OpenTelemetry + ErrorMonitoring + RateLimiting"
     )
-

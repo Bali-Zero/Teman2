@@ -9,9 +9,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-RAW_LAWS_DIR = Path(
-    "/Users/antonellosiano/Desktop/nuzantara/apps/scraper/data/raw_laws_targeted"
-)
+RAW_LAWS_DIR = Path("/Users/antonellosiano/Desktop/kb/raw_laws_targeted")
 PRICING_KEYWORDS = ["Rp.", "Rp ", "IDR", "Biaya", "Harga", "Tarif", "PNBP"]
 
 

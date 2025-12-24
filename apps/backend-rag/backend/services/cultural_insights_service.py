@@ -183,12 +183,3 @@ class CulturalInsightsService:
             logger.error(f"❌ Failed to get cultural topics coverage: {e}")
             return {}
 
-
-
-
-
-
-
-
-
-

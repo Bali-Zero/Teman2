@@ -66,9 +66,7 @@ def format_search_results(
     formatted_results = []
 
     for i in range(len(raw_results.get("documents", []))):
-        distance = (
-            raw_results["distances"][i] if i < len(raw_results.get("distances", [])) else 1.0
-        )
+        distance = raw_results["distances"][i] if i < len(raw_results.get("distances", [])) else 1.0
         # Validate distance to avoid division by zero
         # Cosine distance should always be >= 0, but validate for safety
         if distance < 0:
@@ -81,9 +79,7 @@ def format_search_results(
 
         # Apply collection-specific boosts
         if primary_collection and collection_name == primary_collection:
-            score = min(
-                SearchConstants.MAX_SCORE, score * SearchConstants.PRIMARY_COLLECTION_BOOST
-            )
+            score = min(SearchConstants.MAX_SCORE, score * SearchConstants.PRIMARY_COLLECTION_BOOST)
 
         if collection_name == "bali_zero_pricing":
             score = min(SearchConstants.MAX_SCORE, score + SearchConstants.PRICING_SCORE_BOOST)
@@ -120,4 +116,3 @@ def format_search_results(
         )
 
     return formatted_results
-

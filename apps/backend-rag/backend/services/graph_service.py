@@ -10,26 +10,29 @@ Replaces the in-memory storage of KnowledgeGraphBuilder.
 
 import json
 import logging
-from typing import Any, List, Optional, Dict
+from typing import Any, Optional
 
 import asyncpg
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+
 class GraphEntity(BaseModel):
     id: str
     type: str
     name: str
     description: Optional[str] = None
-    properties: Dict[str, Any] = {}
+    properties: dict[str, Any] = {}
+
 
 class GraphRelation(BaseModel):
     source_id: str
     target_id: str
     type: str
-    properties: Dict[str, Any] = {}
+    properties: dict[str, Any] = {}
     strength: float = 1.0
+
 
 class GraphService:
     def __init__(self, db_pool: asyncpg.Pool):
@@ -49,12 +52,12 @@ class GraphService:
         """
         async with self.pool.acquire() as conn:
             return await conn.fetchval(
-                query, 
-                entity.id, 
-                entity.type, 
-                entity.name, 
-                entity.description, 
-                json.dumps(entity.properties)
+                query,
+                entity.id,
+                entity.type,
+                entity.name,
+                entity.description,
+                json.dumps(entity.properties),
             )
 
     async def add_relation(self, relation: GraphRelation) -> int:
@@ -74,14 +77,16 @@ class GraphService:
                 relation.target_id,
                 relation.type,
                 relation.strength,
-                json.dumps(relation.properties)
+                json.dumps(relation.properties),
             )
 
-    async def get_neighbors(self, entity_id: str, relation_type: Optional[str] = None) -> List[Dict]:
+    async def get_neighbors(
+        self, entity_id: str, relation_type: Optional[str] = None
+    ) -> list[dict]:
         """Get outgoing edges and target entities for a node."""
         query = """
-            SELECT 
-                r.relationship_type, 
+            SELECT
+                r.relationship_type,
                 r.strength,
                 e.id as target_id,
                 e.name as target_name,
@@ -95,12 +100,12 @@ class GraphService:
         if relation_type:
             query += " AND r.relationship_type = $2"
             params.append(relation_type)
-            
+
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query, *params)
             return [dict(row) for row in rows]
 
-    async def find_entity_by_name(self, name_query: str, limit: int = 5) -> List[GraphEntity]:
+    async def find_entity_by_name(self, name_query: str, limit: int = 5) -> list[GraphEntity]:
         """Fuzzy search for entities by name."""
         query = """
             SELECT id, type, name, description, properties
@@ -112,15 +117,18 @@ class GraphService:
             rows = await conn.fetch(query, f"%{name_query}%", limit)
             return [
                 GraphEntity(
-                    id=row['id'], 
-                    type=row['type'], 
-                    name=row['name'], 
-                    description=row['description'],
-                    properties=json.loads(row['properties']) if isinstance(row['properties'], str) else row['properties']
-                ) for row in rows
+                    id=row["id"],
+                    type=row["type"],
+                    name=row["name"],
+                    description=row["description"],
+                    properties=json.loads(row["properties"])
+                    if isinstance(row["properties"], str)
+                    else row["properties"],
+                )
+                for row in rows
             ]
 
-    async def traverse(self, start_id: str, max_depth: int = 2) -> Dict[str, Any]:
+    async def traverse(self, start_id: str, max_depth: int = 2) -> dict[str, Any]:
         """
         BFS Traversal from a starting node.
         Returns a subgraph (nodes and edges).
@@ -143,21 +151,24 @@ class GraphService:
                     continue
 
                 # Fetch outgoing edges
-                rows = await conn.fetch("""
+                rows = await conn.fetch(
+                    """
                     SELECT r.*, e.type as target_type, e.name as target_name, e.description as target_desc
                     FROM kg_relationships r
                     JOIN kg_entities e ON r.target_entity_id = e.id
                     WHERE r.source_entity_id = $1
-                """, current_id)
+                """,
+                    current_id,
+                )
 
                 for row in rows:
-                    target_id = row['target_entity_id']
-                    
+                    target_id = row["target_entity_id"]
+
                     edge = {
                         "source": current_id,
                         "target": target_id,
-                        "type": row['relationship_type'],
-                        "strength": row['strength']
+                        "type": row["relationship_type"],
+                        "strength": row["strength"],
                     }
                     edges.append(edge)
 
@@ -165,9 +176,9 @@ class GraphService:
                         visited.add(target_id)
                         nodes[target_id] = {
                             "id": target_id,
-                            "type": row['target_type'],
-                            "name": row['target_name'],
-                            "description": row['target_desc']
+                            "type": row["target_type"],
+                            "name": row["target_name"],
+                            "description": row["target_desc"],
                         }
                         queue.append((target_id, depth + 1))
 

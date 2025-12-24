@@ -333,13 +333,3 @@ class TestCrossComponentIntegration:
             await conn.execute("DELETE FROM notifications WHERE id = $1", notification_id)
             await conn.execute("DELETE FROM compliance_alerts WHERE id = $1", alert_id)
             await conn.execute("DELETE FROM clients WHERE id = $1", client_id)
-
-
-
-
-
-
-
-
-
-

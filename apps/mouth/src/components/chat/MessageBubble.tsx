@@ -9,7 +9,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  BrainCircuit,
   ShieldCheck,
   ShieldAlert,
   Shield,
@@ -20,6 +19,10 @@ import {
   HeartHandshake,
   HelpCircle,
   BookOpen,
+  Lightbulb,
+  Brain,
+  Star,
+  MessageSquarePlus,
 } from 'lucide-react';
 import { CitationCard } from '@/components/CitationCard';
 import Image from 'next/image';
@@ -34,6 +37,8 @@ import { TIMEOUTS, ANIMATION } from '@/constants';
 interface MessageBubbleProps {
   message: Message;
   userAvatar?: string | null;
+  isLast?: boolean;
+  onFollowUpClick?: (question: string) => void;
 }
 
 const VerificationBadge = ({ score }: { score: number }) => {
@@ -147,12 +152,15 @@ const EmotionalBadge = ({ emotion }: { emotion: string }) => {
   );
 };
 
-function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
+function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }: MessageBubbleProps) {
   const { role, content, sources, imageUrl, timestamp, steps, verification_score } = message;
   const isUser = role === 'user';
   const [copied, setCopied] = useState(false);
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
   const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Typewriter Effect State
+  const [displayedContent, setDisplayedContent] = useState(content);
 
   React.useEffect(() => {
     return () => {
@@ -161,6 +169,46 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
       }
     };
   }, []);
+
+  React.useEffect(() => {
+    // Only animate if:
+    // 1. It's the last message
+    // 2. It's from assistant
+    // 3. It's new (less than 10 seconds old) to avoid animating history on reload
+    // 4. Content is available
+    const isRecent = (Date.now() - timestamp.getTime()) < 10000;
+    const shouldAnimate = isLast && !isUser && isRecent && content;
+
+    if (shouldAnimate) {
+      setDisplayedContent('');
+      let currentIndex = 0;
+      const text = content;
+      let animationFrameId: number;
+      
+      const typeChar = () => {
+        if (currentIndex < text.length) {
+          // Dynamic speed: faster for longer texts, slower for short ones
+          // Base: 2 chars per frame (at 60fps = 120 chars/sec)
+          // Long text (>500 chars): 5 chars per frame (300 chars/sec)
+          const charsPerFrame = text.length > 500 ? 5 : 2;
+          
+          currentIndex += charsPerFrame;
+          if (currentIndex > text.length) currentIndex = text.length;
+          
+          setDisplayedContent(text.slice(0, currentIndex));
+          animationFrameId = requestAnimationFrame(typeChar);
+        } else {
+          setDisplayedContent(text);
+        }
+      };
+      
+      animationFrameId = requestAnimationFrame(typeChar);
+      
+      return () => cancelAnimationFrame(animationFrameId);
+    } else {
+      setDisplayedContent(content);
+    }
+  }, [content, isLast, isUser, timestamp]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content);
@@ -254,7 +302,7 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
         <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} min-w-0`}>
           <div
             className={`
-            relative px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed
+            relative px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed overflow-hidden
             ${
               isUser
                 ? 'bg-[var(--background-secondary)] text-[var(--foreground)] rounded-tr-sm'
@@ -263,7 +311,35 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
           `}
           >
             {/* Trust Header & Emotional Badge */}
-            {!isUser && message.metadata && <TrustHeader metadata={message.metadata} />}
+            {!isUser && message.metadata && (
+              <div className="flex flex-col gap-2 mb-3">
+                <TrustHeader metadata={message.metadata} />
+                
+                {/* Memory & Context Indicators */}
+                <div className="flex flex-wrap gap-2">
+                  {message.metadata.golden_answer_used && (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <Star size={10} className="fill-current" />
+                      <span>Golden Answer</span>
+                    </div>
+                  )}
+                  
+                  {(message.metadata.user_memory_facts?.length ?? 0) > 0 && (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" title={`${message.metadata.user_memory_facts?.length} personal facts used`}>
+                      <User size={10} />
+                      <span>Personalized</span>
+                    </div>
+                  )}
+
+                  {(message.metadata.collective_memory_facts?.length ?? 0) > 0 && (
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20" title={`${message.metadata.collective_memory_facts?.length} collective facts used`}>
+                      <Brain size={10} />
+                      <span>Collective Wisdom</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {!isUser && message.metadata?.emotional_state && (
               <EmotionalBadge emotion={message.metadata.emotional_state} />
             )}
@@ -275,7 +351,7 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
                   onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
                   className="flex items-center gap-2 text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors mb-2"
                 >
-                  <BrainCircuit className="w-3.5 h-3.5" />
+                  <Lightbulb className="w-3.5 h-3.5" />
                   <span>Thinking Process</span>
                   {isThinkingExpanded ? (
                     <ChevronDown className="w-3 h-3" />
@@ -316,6 +392,49 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
                             {step.type === 'tool_end' && (
                               <span className="text-emerald-400">Tool Completed</span>
                             )}
+
+                            {/* CELL-GIANT REASONING STEPS */}
+                            {step.type === 'reasoning_step' && (
+                              <div className="flex flex-col gap-1 mt-1 mb-2">
+                                <div className="flex items-center gap-1.5 font-medium">
+                                  {step.data.phase === 'giant' ? (
+                                    <BookOpen size={12} className="text-purple-400" />
+                                  ) : step.data.phase === 'cell' ? (
+                                    <ShieldCheck size={12} className="text-indigo-400" />
+                                  ) : (
+                                    <Sparkles size={12} className="text-pink-400" />
+                                  )}
+                                  <span className={
+                                    step.data.phase === 'giant' ? 'text-purple-400' :
+                                    step.data.phase === 'cell' ? 'text-indigo-400' : 'text-pink-400'
+                                  }>
+                                    {step.data.phase.charAt(0).toUpperCase() + step.data.phase.slice(1)}: {step.data.status}
+                                  </span>
+                                </div>
+                                {step.data.message && (
+                                  <span className="text-[10px] text-[var(--foreground-muted)] ml-4 italic">
+                                    "{step.data.message}"
+                                  </span>
+                                )}
+                                {/* Show details if available (e.g. corrections count) */}
+                                {step.data.details && (
+                                  <div className="ml-4 text-[10px]">
+                                    {(() => {
+                                      const details = step.data.details as { corrections?: unknown[] };
+                                      if (details.corrections && Array.isArray(details.corrections) && details.corrections.length > 0) {
+                                        return (
+                                          <div className="text-[var(--warning)] flex items-center gap-1">
+                                            <ShieldAlert size={10} />
+                                            {details.corrections.length} Corrections Applied
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -327,7 +446,7 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
 
             {/* Main Text Content */}
             <div className="prose prose-invert prose-sm max-w-none break-words">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayedContent}</ReactMarkdown>
             </div>
 
             {/* Verification Badge */}
@@ -340,6 +459,27 @@ function MessageBubbleComponent({ message, userAvatar }: MessageBubbleProps) {
 
             {/* Sources */}
             {!isUser && sources && sources.length > 0 && <CitationCard sources={sources} />}
+
+            {/* Follow-up Questions */}
+            {!isUser && message.metadata?.followup_questions && message.metadata.followup_questions.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-[var(--border)]/50">
+                <p className="text-[10px] font-medium text-[var(--foreground-muted)] mb-2 flex items-center gap-1.5">
+                  <MessageSquarePlus size={12} />
+                  SUGGESTED FOLLOW-UPS
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {message.metadata.followup_questions.map((question, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onFollowUpClick?.(question)}
+                      className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200"
+                    >
+                      {question}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Image */}
             {imageUrl && (

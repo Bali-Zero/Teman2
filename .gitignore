@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -148,7 +148,7 @@ codeql-results/
 *.gguf
 *.safetensors
 *.bin
-models/
+/models/
 ZANTARA_JAKSEL/models/
 
 # Generated documentation

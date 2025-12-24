@@ -112,5 +112,53 @@ export class AdminApi {
 
     return response.blob();
   }
+
+  // Get system health report
+  async getSystemHealth(): Promise<import('./admin.types').SystemHealthReport> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request('/api/admin/system-health', {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      headers: (this.client as any).getAdminHeaders(),
+    });
+  }
+
+  // ============================================================================
+  // Data Explorer
+  // ============================================================================
+
+  async getPostgresTables(): Promise<string[]> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request('/api/admin/postgres/tables', {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      headers: (this.client as any).getAdminHeaders(),
+    });
+  }
+
+  async getTableData(table: string, limit = 50, offset = 0): Promise<import('./admin.types').TableDataResponse> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(`/api/admin/postgres/data?table=${table}&limit=${limit}&offset=${offset}`, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      headers: (this.client as any).getAdminHeaders(),
+    });
+  }
+
+  async getQdrantCollections(): Promise<import('./admin.types').QdrantCollectionsResponse> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request('/api/admin/qdrant/collections', {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      headers: (this.client as any).getAdminHeaders(),
+    });
+  }
+
+  async getQdrantPoints(collection: string, limit = 20, offset?: string): Promise<import('./admin.types').QdrantPointsResponse> {
+    let url = `/api/admin/qdrant/points?collection=${collection}&limit=${limit}`;
+    if (offset) url += `&offset=${offset}`;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(url, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      headers: (this.client as any).getAdminHeaders(),
+    });
+  }
 }
 

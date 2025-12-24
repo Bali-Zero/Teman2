@@ -255,7 +255,7 @@ class FollowupService:
 
             # Call ZANTARA AI for fast follow-up generation
             ai_response = await self.zantara_client.chat_async(
-                messages=[{"role": "user", "content": prompt}], max_tokens=200
+                messages=[{"role": "user", "content": prompt}], max_tokens=8192
             )
 
             # Parse response (expecting numbered list)

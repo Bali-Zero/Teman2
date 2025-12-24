@@ -1,3 +1,10 @@
+"""
+Verify Soul Persona - Test script for Zantara personality
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
+"""
+
 import asyncio
 import logging
 import os
@@ -11,29 +18,31 @@ load_dotenv(override=True)
 # Add project root to sys.path
 sys.path.append(os.getcwd())
 
-import google.generativeai as genai
-
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 from services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Configure Gemini
+# Initialize GenAI client
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     raise ValueError("GOOGLE_API_KEY not found in .env")
-genai.configure(api_key=api_key)
+
+_genai_client = None
+if GENAI_AVAILABLE:
+    _genai_client = GenAIClient(api_key=api_key)
+    if not _genai_client.is_available:
+        raise RuntimeError("GenAI client initialization failed")
 
 
 async def test_soul_persona():
     logger.info("🔮 Testing The Soul of Zantara (Charisma Upgrade)...")
 
-    # Use the model defined in agentic.py
-    try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-    except Exception as e:
-        logger.warning("Fallback to gemini-1.5-pro due to: %s", e)
-        model = genai.GenerativeModel("gemini-1.5-pro")
+    if not _genai_client or not _genai_client.is_available:
+        raise RuntimeError("GenAI client not available")
+
+    model_name = "gemini-2.0-flash"
 
     orchestrator = AgenticRAGOrchestrator()
 
@@ -60,13 +69,18 @@ async def test_soul_persona():
     # If we just want to test the prompt tone, we can simple call the model with the system instruction.
 
     prompt = f"{SYSTEM_INSTRUCTION}\n\nUser: {user_query}\nZantara:"
-    response = model.generate_content(prompt)
+    result = await _genai_client.generate_content(
+        contents=prompt,
+        model=model_name,
+        max_output_tokens=8192,
+    )
+    response_text = result.get("text", "")
 
     logger.info("Zantara Response:")
-    logger.info(response.text)
+    logger.info(response_text)
     logger.info("--------------------------------------------------")
 
-    text = response.text.lower()
+    text = response_text.lower()
     markers = [
         "straight to",
         "but wait",

@@ -7,7 +7,7 @@ Copy the text below and paste it as the **System Prompt** or the **First Message
 ### 🚫 ROOT DIRECTORY PROTECTION (NO-FLY ZONE)
 1.  **DIVIETO ASSOLUTO:** Non creare MAI nuovi file nella root (`/`) senza permesso esplicito.
 2.  **DOVE METTERE I FILE:**
-    * Report, Audit, Analisi -> `docs/reports/`
+    * Report, Audit, Analisi -> `/Users/antonellosiano/Desktop/Archive/reports/`
     * Documentazione tecnica -> `docs/`
     * Script di utilità/manutenzione -> `scripts/`
     * Codice sorgente backend -> `apps/backend-rag/`

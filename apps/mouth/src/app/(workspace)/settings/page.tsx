@@ -1,56 +1,71 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Settings, User, Bell, Shield, Palette, Globe, Key, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import { Sparkles } from 'lucide-react';
+
 const settingsSections = [
   {
-    title: 'Profilo',
-    description: 'Gestisci le tue informazioni personali',
+    title: 'Profile',
+    description: 'Manage your personal information',
     icon: User,
     href: '/settings/profile',
   },
   {
-    title: 'Notifiche',
-    description: 'Configura le preferenze di notifica',
+    title: 'Notifications',
+    description: 'Configure notification preferences',
     icon: Bell,
     href: '/settings/notifications',
   },
   {
-    title: 'Sicurezza',
-    description: 'Password, 2FA e sessioni attive',
+    title: 'Security',
+    description: 'Password, 2FA and active sessions',
     icon: Shield,
     href: '/settings/security',
   },
   {
-    title: 'Aspetto',
-    description: 'Tema e preferenze visuali',
+    title: 'Appearance',
+    description: 'Theme and visual preferences',
     icon: Palette,
     href: '/settings/appearance',
   },
   {
-    title: 'Lingua & Regione',
-    description: 'Lingua, fuso orario e formato data',
+    title: 'Language & Region',
+    description: 'Language, timezone and date format',
     icon: Globe,
     href: '/settings/locale',
   },
   {
     title: 'API Keys',
-    description: 'Gestisci le chiavi API',
+    description: 'Manage API keys',
     icon: Key,
     href: '/settings/api',
+  },
+  {
+    title: 'AUTO CRM',
+    description: 'AI-powered CRM extraction settings and statistics',
+    icon: Sparkles,
+    href: '/settings/auto-crm',
   },
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
+
+  const handleSettingsClick = (href: string) => {
+    router.push(href);
+  };
+
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[var(--foreground)]">Impostazioni</h1>
+        <h1 className="text-2xl font-bold text-[var(--foreground)]">Settings</h1>
         <p className="text-sm text-[var(--foreground-muted)]">
-          Gestisci il tuo account e le preferenze
+          Manage your account and preferences
         </p>
       </div>
 
@@ -59,6 +74,7 @@ export default function SettingsPage() {
         {settingsSections.map((section) => (
           <div
             key={section.title}
+            onClick={() => handleSettingsClick(section.href)}
             className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors group"
           >
             <div className="flex items-start gap-4">
@@ -81,18 +97,18 @@ export default function SettingsPage() {
         <div className="p-4 border-b border-[var(--border)] bg-[var(--background-elevated)]/30">
           <div className="flex items-center gap-2">
             <Building className="w-5 h-5 text-[var(--accent)]" />
-            <h2 className="font-semibold text-[var(--foreground)]">Amministrazione</h2>
+            <h2 className="font-semibold text-[var(--foreground)]">Administration</h2>
           </div>
           <p className="text-sm text-[var(--foreground-muted)] mt-1">
-            Impostazioni riservate agli amministratori
+            Settings reserved for administrators
           </p>
         </div>
         <div className="p-4 space-y-3">
           {[
-            { label: 'Gestione Utenti', description: 'Aggiungi, modifica o rimuovi utenti' },
-            { label: 'Ruoli & Permessi', description: 'Configura i ruoli e i permessi' },
-            { label: 'Integrazioni', description: 'WhatsApp, Google Drive, altri servizi' },
-            { label: 'Backup & Export', description: 'Backup dati e export' },
+            { label: 'User Management', description: 'Add, modify or remove users' },
+            { label: 'Roles & Permissions', description: 'Configure roles and permissions' },
+            { label: 'Integrations', description: 'WhatsApp, Google Drive, other services' },
+            { label: 'Backup & Export', description: 'Data backup and export' },
           ].map((item) => (
             <div
               key={item.label}
@@ -102,8 +118,23 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium text-[var(--foreground)]">{item.label}</p>
                 <p className="text-xs text-[var(--foreground-muted)]">{item.description}</p>
               </div>
-              <Button variant="ghost" size="sm">
-                Configura
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (item.label === 'User Management') {
+                    router.push('/settings/users');
+                  } else if (item.label === 'Roles & Permissions') {
+                    router.push('/settings/roles');
+                  } else if (item.label === 'Integrations') {
+                    router.push('/settings/integrations');
+                  } else if (item.label === 'Backup & Export') {
+                    router.push('/settings/backup');
+                  }
+                }}
+              >
+                Configure
               </Button>
             </div>
           ))}
@@ -114,8 +145,8 @@ export default function SettingsPage() {
       <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-8 text-center">
         <Settings className="w-12 h-12 mx-auto text-[var(--foreground-muted)] mb-3 opacity-50" />
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto">
-          Centro impostazioni completo per gestire profilo, sicurezza,
-          notifiche e configurazioni amministrative.
+          Complete settings center to manage profile, security,
+          notifications and administrative configurations.
         </p>
       </div>
     </div>

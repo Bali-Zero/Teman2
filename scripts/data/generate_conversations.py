@@ -276,7 +276,7 @@ async def generate_conversation(topic: str, collection: str, code: str) -> str:
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=4000,
+        max_tokens=8192,
         messages=[{"role": "user", "content": prompt}],
     )
 

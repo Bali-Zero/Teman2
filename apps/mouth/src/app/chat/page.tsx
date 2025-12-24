@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { MessageBubble } from '@/components/chat/MessageBubble';
+import { ThinkingIndicator } from '@/components/chat/ThinkingIndicator';
 import { MonitoringWidget } from '@/components/MonitoringWidget';
 import { FeedbackWidget } from '@/components/FeedbackWidget';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -52,6 +53,7 @@ export default function ChatPage() {
   const attachMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [thinkingElapsedTime, setThinkingElapsedTime] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef(true);
 
@@ -160,6 +162,22 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Thinking elapsed time tracker
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isChatLoading) {
+      setThinkingElapsedTime(0);
+      interval = setInterval(() => {
+        setThinkingElapsedTime((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setThinkingElapsedTime(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isChatLoading]);
 
   // Audio Recording Hook - Logic moved down below showToast definition
 
@@ -389,6 +407,13 @@ export default function ChatPage() {
       router.push('/login');
     }
   };
+
+  const handleFollowUpClick = useCallback((question: string) => {
+    setInput(question);
+    // Use a small delay to allow state update to be visible if needed, 
+    // but handleSend uses current input from the hook's state
+    setTimeout(() => handleSend(), 10);
+  }, [handleSend, setInput]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -691,17 +716,40 @@ export default function ChatPage() {
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-              {messages.map((message) => (
-                <MessageBubble
-                  key={message.id || message.timestamp.getTime()}
-                  message={message}
-                  userAvatar={userAvatar}
+              {messages.map((message, index) => {
+                // Skip rendering empty assistant messages while loading (they're placeholder for streaming)
+                // The ThinkingIndicator will show instead
+                const isLastMessage = index === messages.length - 1;
+                const isEmptyAssistantPlaceholder =
+                  message.role === 'assistant' &&
+                  !message.content &&
+                  isLastMessage &&
+                  isChatLoading;
+
+                if (isEmptyAssistantPlaceholder) {
+                  return null;
+                }
+
+                return (
+                  <MessageBubble
+                    key={message.id || message.timestamp.getTime()}
+                    message={message}
+                    userAvatar={userAvatar}
+                    isLast={isLastMessage}
+                    onFollowUpClick={handleFollowUpClick}
+                  />
+                );
+              })}
+
+              {/* Thinking Indicator - Shows when backend is processing */}
+              {isChatLoading && (
+                <ThinkingIndicator
+                  isVisible={isChatLoading}
+                  currentStatus={messages[messages.length - 1]?.currentStatus}
+                  steps={messages[messages.length - 1]?.steps}
+                  elapsedTime={thinkingElapsedTime}
                 />
-              ))}
-
-              {/* Show loading dots when waiting for response */}
-
-              {/* Thinking Indicator - Shows when backend is processing but before stream starts */}
+              )}
 
               <div ref={messagesEndRef} />
             </div>
@@ -853,7 +901,7 @@ export default function ChatPage() {
                   placeholder={showImagePrompt ? 'Describe your image...' : 'Type your message...'}
                   disabled={isChatLoading}
                   rows={1}
-                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium"
+                  className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium outline-none ring-0"
                   style={{
                     height: 'auto',
                     overflowY: input.split('\n').length > 3 ? 'auto' : 'hidden',
@@ -887,35 +935,6 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* Quick Actions (hide on empty state to avoid duplicate with welcome) */}
-            {messages.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2 mt-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-xs"
-                  onClick={() => setInput('Summarize my tasks for today')}
-                >
-                  📋 My Tasks
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-xs"
-                  onClick={() => setInput('What can you help me with?')}
-                >
-                  💡 What can you do?
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-xs hidden sm:inline-flex"
-                  onClick={openSearchDocs}
-                >
-                  🔍 Search docs
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </main>

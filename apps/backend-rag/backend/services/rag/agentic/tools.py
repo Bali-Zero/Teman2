@@ -110,10 +110,13 @@ class VectorSearchTool(BaseTool):
             # Extract metadata for citation
             metadata = chunk.get("metadata", {})
             # Build title from legal document metadata fields if 'title' not present
-            title = metadata.get("title") or (
-                f"{metadata.get('type_abbrev', 'DOC')} {metadata.get('number', '')} "
-                f"Tahun {metadata.get('year', '')} - {metadata.get('topic', 'Unknown')}"
-            ).strip()
+            title = (
+                metadata.get("title")
+                or (
+                    f"{metadata.get('type_abbrev', 'DOC')} {metadata.get('number', '')} "
+                    f"Tahun {metadata.get('year', '')} - {metadata.get('topic', 'Unknown')}"
+                ).strip()
+            )
             url = metadata.get("url", metadata.get("source_url", ""))
 
             # Extract document ID for Deep Dive (Hybrid Brain)
@@ -123,9 +126,10 @@ class VectorSearchTool(BaseTool):
             )
 
             # Format text with ID for agent visibility
+            # Use full chunk text - no artificial truncation
             formatted_texts.append(
-                f"[{i + 1}] ID: {doc_id} | Title: {title}\n{text[:800]}"
-            )  # Increased context limit slightly
+                f"[{i + 1}] ID: {doc_id} | Title: {title}\n{text}"
+            )  # Full text - let the LLM context window handle limits
 
             sources_metadata.append(
                 {
@@ -134,8 +138,10 @@ class VectorSearchTool(BaseTool):
                     "url": url,
                     "score": chunk.get("score", 0.0),
                     "collection": collection or metadata.get("category", "general"),
-                    "snippet": text[:200] if text else "",  # First 200 chars as preview
+                    "snippet": text[:500] if text else "",  # Preview for UI
+                    "content": text if text else "",  # Full content - no truncation
                     "doc_id": doc_id,  # Pass doc_id for potential UI use or debugging
+                    "download_url": f"/api/documents/{doc_id}/download" if doc_id else None,
                 }
             )
 
@@ -482,3 +488,160 @@ class PricingTool(BaseTool):
         except (ValueError, KeyError, RuntimeError) as e:
             logger.error(f"Pricing lookup failed: {e}", exc_info=True)
             return f"Pricing lookup failed: {str(e)}"
+
+
+class TeamKnowledgeTool(BaseTool):
+    """Tool for Bali Zero team member information lookup"""
+
+    def __init__(self, db_pool=None):
+        self.db_pool = db_pool
+        self._team_data = None
+        self._data_file = None
+
+    def _get_data_file_path(self):
+        """Get path to team_members.json"""
+        if self._data_file is None:
+            from pathlib import Path
+            # Try multiple possible locations
+            possible_paths = [
+                Path(__file__).parent.parent.parent.parent / "data" / "team_members.json",
+                Path("/app/backend/data/team_members.json"),  # Docker/Fly.io
+            ]
+            for path in possible_paths:
+                if path.exists():
+                    self._data_file = path
+                    break
+        return self._data_file
+
+    def _load_team_data(self):
+        """Load team data from JSON file"""
+        if self._team_data is None:
+            data_file = self._get_data_file_path()
+            if data_file and data_file.exists():
+                import json as json_module
+                with open(data_file) as f:
+                    self._team_data = json_module.load(f)
+            else:
+                self._team_data = []
+                logger.warning("TeamKnowledgeTool: team_members.json not found")
+        return self._team_data
+
+    @property
+    def name(self) -> str:
+        return "team_knowledge"
+
+    @property
+    def description(self) -> str:
+        return """Get information about Bali Zero team members. Use this for questions about:
+- Who is the CEO/founder/manager
+- Team member names, roles, departments
+- Contact information (email)
+- Staff count and team structure"""
+
+    @property
+    def parameters_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "query_type": {
+                    "type": "string",
+                    "enum": ["list_all", "search_by_role", "search_by_name", "search_by_email"],
+                    "description": "Type of team query: list_all (all members), search_by_role (CEO, founder, tax, etc), search_by_name (person name), search_by_email",
+                },
+                "search_term": {
+                    "type": "string",
+                    "description": "The role, name, or email to search for (not needed for list_all)",
+                },
+            },
+            "required": ["query_type"],
+        }
+
+    async def execute(self, query_type: str = "list_all", search_term: str = "", **kwargs) -> str:
+        try:
+            team_data = self._load_team_data()
+            if not team_data:
+                return json.dumps({"error": "Team data not available", "members": []})
+
+            search_term_lower = search_term.lower().strip() if search_term else ""
+
+            if query_type == "list_all":
+                members = [
+                    {"name": m["name"], "role": m["role"], "department": m["department"], "email": m["email"]}
+                    for m in team_data
+                ]
+                return json.dumps({
+                    "total_members": len(members),
+                    "members": members
+                })
+
+            elif query_type == "search_by_role":
+                # Role mapping for common variations
+                role_map = {
+                    "ceo": ["ceo", "chief executive"],
+                    "founder": ["founder", "co-founder", "cofounder"],
+                    "tax": ["tax", "fiscal"],
+                    "setup": ["setup", "consultant"],
+                    "marketing": ["marketing"],
+                    "legal": ["legal", "advisor"],
+                }
+
+                # Get search terms for this role
+                search_terms = [search_term_lower]
+                for role, aliases in role_map.items():
+                    if search_term_lower in aliases or role == search_term_lower:
+                        search_terms = aliases
+                        break
+
+                matches = []
+                for m in team_data:
+                    role_lower = m.get("role", "").lower()
+                    dept_lower = m.get("department", "").lower()
+                    if any(term in role_lower or term in dept_lower for term in search_terms):
+                        matches.append({
+                            "name": m["name"],
+                            "role": m["role"],
+                            "department": m["department"],
+                            "email": m["email"],
+                            "notes": m.get("notes", "")
+                        })
+
+                if matches:
+                    return json.dumps({"matches": matches, "count": len(matches)})
+                return json.dumps({"matches": [], "count": 0, "message": f"No team members found with role: {search_term}"})
+
+            elif query_type == "search_by_name":
+                matches = []
+                for m in team_data:
+                    name_lower = m.get("name", "").lower()
+                    if search_term_lower in name_lower or name_lower in search_term_lower:
+                        matches.append({
+                            "name": m["name"],
+                            "role": m["role"],
+                            "department": m["department"],
+                            "email": m["email"],
+                            "notes": m.get("notes", ""),
+                            "location": m.get("location", "")
+                        })
+
+                if matches:
+                    return json.dumps({"matches": matches, "count": len(matches)})
+                return json.dumps({"matches": [], "count": 0, "message": f"No team member found with name: {search_term}"})
+
+            elif query_type == "search_by_email":
+                for m in team_data:
+                    if search_term_lower in m.get("email", "").lower():
+                        return json.dumps({
+                            "name": m["name"],
+                            "role": m["role"],
+                            "department": m["department"],
+                            "email": m["email"],
+                            "notes": m.get("notes", "")
+                        })
+                return json.dumps({"error": f"No team member found with email: {search_term}"})
+
+            else:
+                return json.dumps({"error": f"Unknown query_type: {query_type}"})
+
+        except Exception as e:
+            logger.error(f"TeamKnowledgeTool failed: {e}", exc_info=True)
+            return json.dumps({"error": str(e)})

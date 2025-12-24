@@ -178,7 +178,7 @@ class PostgreSQLDebugger:
         select_count = normalized.count("SELECT")
         if select_count > 1:
             return False, "Multiple statements not allowed"
-        
+
         # Also check for multiple semicolons (even without multiple SELECT)
         if normalized.count(";") > 1:
             return False, "Multiple statements not allowed"
@@ -257,7 +257,7 @@ class PostgreSQLDebugger:
             List of table information dictionaries
         """
         query = """
-            SELECT 
+            SELECT
                 table_name,
                 table_type
             FROM information_schema.tables
@@ -287,7 +287,7 @@ class PostgreSQLDebugger:
         try:
             # Get columns
             columns_query = """
-                SELECT 
+                SELECT
                     column_name,
                     data_type,
                     is_nullable,
@@ -315,7 +315,7 @@ class PostgreSQLDebugger:
 
             # Get indexes
             indexes_query = """
-                SELECT 
+                SELECT
                     i.indexname,
                     i.indexdef,
                     a.attname as column_name
@@ -323,7 +323,7 @@ class PostgreSQLDebugger:
                 LEFT JOIN pg_attribute a ON a.attrelid = (
                     SELECT oid FROM pg_class WHERE relname = i.tablename
                 ) AND a.attnum = ANY(
-                    SELECT unnest(ix.indkey) FROM pg_index ix 
+                    SELECT unnest(ix.indkey) FROM pg_index ix
                     WHERE ix.indexrelid = (
                         SELECT oid FROM pg_class WHERE relname = i.indexname
                     )
@@ -415,7 +415,7 @@ class PostgreSQLDebugger:
         """
         if table_name:
             query = """
-                SELECT 
+                SELECT
                     schemaname,
                     tablename,
                     indexname,
@@ -427,7 +427,7 @@ class PostgreSQLDebugger:
             params = (table_name,)
         else:
             query = """
-                SELECT 
+                SELECT
                     schemaname,
                     tablename,
                     indexname,
@@ -465,14 +465,14 @@ class PostgreSQLDebugger:
         """
         if table_name:
             query = """
-                SELECT 
+                SELECT
                     schemaname,
                     tablename,
                     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size,
                     pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) as table_size,
-                    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) - 
+                    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) -
                                    pg_relation_size(schemaname||'.'||tablename)) as indexes_size,
-                    (SELECT COUNT(*) FROM information_schema.statistics 
+                    (SELECT COUNT(*) FROM information_schema.statistics
                      WHERE table_schema = schemaname AND table_name = tablename) as index_count
                 FROM pg_tables
                 WHERE tablename = $1 AND schemaname = 'public'
@@ -480,14 +480,14 @@ class PostgreSQLDebugger:
             params = (table_name,)
         else:
             query = """
-                SELECT 
+                SELECT
                     schemaname,
                     tablename,
                     pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size,
                     pg_size_pretty(pg_relation_size(schemaname||'.'||tablename)) as table_size,
-                    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) - 
+                    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename) -
                                    pg_relation_size(schemaname||'.'||tablename)) as indexes_size,
-                    (SELECT COUNT(*) FROM information_schema.statistics 
+                    (SELECT COUNT(*) FROM information_schema.statistics
                      WHERE table_schema = schemaname AND table_name = tablename) as index_count
                 FROM pg_tables
                 WHERE schemaname = 'public'
@@ -547,7 +547,7 @@ class PostgreSQLDebugger:
             # Active connections
             active_conn = await conn.fetchval(
                 """
-                SELECT COUNT(*) FROM pg_stat_activity 
+                SELECT COUNT(*) FROM pg_stat_activity
                 WHERE datname = current_database() AND state = 'active'
                 """
             )
@@ -555,7 +555,7 @@ class PostgreSQLDebugger:
             # Idle connections
             idle_conn = await conn.fetchval(
                 """
-                SELECT COUNT(*) FROM pg_stat_activity 
+                SELECT COUNT(*) FROM pg_stat_activity
                 WHERE datname = current_database() AND state = 'idle'
                 """
             )
@@ -599,7 +599,7 @@ class PostgreSQLDebugger:
                 return []
 
             query = """
-                SELECT 
+                SELECT
                     query,
                     calls,
                     total_exec_time,
@@ -639,7 +639,7 @@ class PostgreSQLDebugger:
         conn = await self._get_connection()
         try:
             query = """
-                SELECT 
+                SELECT
                     locktype,
                     database,
                     relation::regclass as relation,
@@ -726,4 +726,3 @@ class PostgreSQLDebugger:
             }
         finally:
             await conn.close()
-

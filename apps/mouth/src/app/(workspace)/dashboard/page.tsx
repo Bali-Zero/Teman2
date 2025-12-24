@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FolderKanban, AlertTriangle, MessageCircle, Clock } from 'lucide-react';
+import Link from 'next/link';
+import { FolderKanban, AlertTriangle, MessageCircle, Clock, BarChart3 } from 'lucide-react';
 import {
   StatsCard,
   PratichePreview,
@@ -11,6 +12,7 @@ import {
   AiPulseWidget,
   FinancialRealityWidget,
   NusantaraHealthWidget,
+  AutoCRMWidget,
 } from '@/components/dashboard';
 import { api } from '@/lib/api';
 import type {
@@ -189,6 +191,27 @@ export default function DashboardPage() {
       {/* Zero-Only Command Deck Widgets */}
       {isZero && !isLoading && (
         <>
+          {/* Analytics Dashboard Button */}
+          <Link
+            href="/dashboard/analytics"
+            className="group flex items-center justify-between p-4 rounded-xl border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--accent)]/10 to-transparent hover:border-[var(--accent)] hover:from-[var(--accent)]/20 transition-all duration-300"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-lg bg-[var(--accent)]/20 group-hover:bg-[var(--accent)]/30 transition-colors">
+                <BarChart3 className="w-6 h-6 text-[var(--accent)]" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[var(--foreground)]">Analytics Dashboard</h3>
+                <p className="text-sm text-[var(--foreground-muted)]">
+                  Full system metrics, RAG pipeline, CRM analytics & more
+                </p>
+              </div>
+            </div>
+            <div className="text-[var(--accent)] group-hover:translate-x-1 transition-transform">
+              →
+            </div>
+          </Link>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
             <AiPulseWidget
               systemAppStatus={systemStatus}
@@ -198,9 +221,20 @@ export default function DashboardPage() {
               <FinancialRealityWidget revenue={stats.revenue} growth={stats.growth || 0} />
             )}
           </div>
+          {/* AUTO CRM Widget - Always visible for all users */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700 delay-100">
+            <AutoCRMWidget />
+          </div>
           {/* Nusantara System Health Map */}
           <NusantaraHealthWidget className="animate-in fade-in slide-in-from-top-4 duration-700 delay-150" />
         </>
+      )}
+
+      {/* AUTO CRM Widget for non-zero users */}
+      {!isZero && !isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
+          <AutoCRMWidget />
+        </div>
       )}
 
       {/* Stats Cards */}

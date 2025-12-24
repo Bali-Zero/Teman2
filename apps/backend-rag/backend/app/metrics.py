@@ -41,16 +41,28 @@ ai_tokens_used = Counter("zantara_ai_tokens_used_total", "Total AI tokens used",
 db_connections_active = Gauge("zantara_db_connections_active", "Active database connections")
 db_query_duration = Histogram("zantara_db_query_duration_seconds", "Database query duration")
 db_pool_size = Gauge("zantara_db_pool_size", "Database connection pool size", ["service"])
-db_pool_idle = Gauge("zantara_db_pool_idle", "Database connection pool idle connections", ["service"])
+db_pool_idle = Gauge(
+    "zantara_db_pool_idle", "Database connection pool idle connections", ["service"]
+)
 
 # RAG Pipeline Metrics (Performance Debug Phase 1)
-rag_embedding_duration = Histogram("zantara_rag_embedding_duration_seconds", "Embedding generation duration")
-rag_vector_search_duration = Histogram("zantara_rag_vector_search_duration_seconds", "Vector search duration")
+rag_embedding_duration = Histogram(
+    "zantara_rag_embedding_duration_seconds", "Embedding generation duration"
+)
+rag_vector_search_duration = Histogram(
+    "zantara_rag_vector_search_duration_seconds", "Vector search duration"
+)
 rag_reranking_duration = Histogram("zantara_rag_reranking_duration_seconds", "Reranking duration")
-rag_pipeline_duration = Histogram("zantara_rag_pipeline_duration_seconds", "Total RAG pipeline duration")
-rag_early_exit_total = Counter("zantara_rag_early_exit_total", "Total early exits (skipped reranking)")
+rag_pipeline_duration = Histogram(
+    "zantara_rag_pipeline_duration_seconds", "Total RAG pipeline duration"
+)
+rag_early_exit_total = Counter(
+    "zantara_rag_early_exit_total", "Total early exits (skipped reranking)"
+)
 rag_cache_hit_rate = Gauge("zantara_rag_cache_hit_rate", "RAG cache hit rate")
-rag_parallel_searches = Counter("zantara_rag_parallel_searches_total", "Parallel collection searches executed")
+rag_parallel_searches = Counter(
+    "zantara_rag_parallel_searches_total", "Parallel collection searches executed"
+)
 
 # Boot time tracking
 BOOT_TIME = time.time()

@@ -4,9 +4,10 @@ Unit tests to improve coverage for SearchService.
 Tests edge cases and error handling paths to reach >90% coverage.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import httpx
+import pytest
 
 from services.search_service import SearchService
 
@@ -75,7 +76,9 @@ class TestSearchServiceCoverage:
         return service
 
     @pytest.mark.asyncio
-    async def test_collection_not_found_fallback_fails(self, search_service, mock_collection_manager):
+    async def test_collection_not_found_fallback_fails(
+        self, search_service, mock_collection_manager
+    ):
         """Test when collection not found and fallback to visa_oracle also fails"""
         mock_manager, _ = mock_collection_manager
         mock_manager.get_collection.return_value = None  # Both collections fail
@@ -101,11 +104,12 @@ class TestSearchServiceCoverage:
         # Create a proper Qdrant exception
         # UnexpectedResponse requires: status_code, reason_phrase, content, headers
         import httpx
+
         exception = qdrant_exceptions.UnexpectedResponse(
             status_code=500,
             reason_phrase="Internal Server Error",
             content=b"Error",
-            headers=httpx.Headers()
+            headers=httpx.Headers(),
         )
         mock_collection.search.side_effect = exception
 
@@ -125,13 +129,14 @@ class TestSearchServiceCoverage:
     async def test_search_key_error(self, search_service, mock_collection_manager):
         """Test search method handles KeyError"""
         mock_manager, mock_collection = mock_collection_manager
+
         # Return dict that will cause KeyError when accessing results
         # format_search_results uses .get() so it won't raise KeyError
         # Instead, we need to make the search method itself raise KeyError
         # by accessing a key that doesn't exist in the return value
         def raise_keyerror(*args, **kwargs):
             raise KeyError("documents")
-        
+
         mock_collection.search.side_effect = raise_keyerror
 
         # The KeyError should be caught and re-raised
@@ -226,11 +231,12 @@ class TestSearchServiceCoverage:
         mock_manager, mock_collection = mock_collection_manager
 
         import httpx
+
         exception = qdrant_exceptions.UnexpectedResponse(
             status_code=500,
             reason_phrase="Internal Server Error",
             content=b"Error",
-            headers=httpx.Headers()
+            headers=httpx.Headers(),
         )
         mock_collection.search.side_effect = exception
 
@@ -292,9 +298,7 @@ class TestSearchServiceCoverage:
         assert result["results"] == []
 
     @pytest.mark.asyncio
-    async def test_search_collection_httpx_error(
-        self, search_service, mock_collection_manager
-    ):
+    async def test_search_collection_httpx_error(self, search_service, mock_collection_manager):
         """Test search_collection handles HTTP errors"""
         mock_manager, mock_collection = mock_collection_manager
         mock_collection.search.side_effect = httpx.HTTPError("Connection failed")
@@ -307,9 +311,7 @@ class TestSearchServiceCoverage:
         assert "error" in result
 
     @pytest.mark.asyncio
-    async def test_search_collection_key_error(
-        self, search_service, mock_collection_manager
-    ):
+    async def test_search_collection_key_error(self, search_service, mock_collection_manager):
         """Test search_collection handles KeyError"""
         mock_manager, mock_collection = mock_collection_manager
         # Return dict missing 'documents' key which will cause KeyError in format_search_results
@@ -327,4 +329,3 @@ class TestSearchServiceCoverage:
         assert result is not None
         # KeyError should be caught and return error dict
         assert "error" in result or "results" in result
-

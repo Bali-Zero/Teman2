@@ -9,12 +9,11 @@ Verifies that AlertService:
 """
 
 from unittest.mock import MagicMock
-from types import SimpleNamespace
 
 from fastapi import Request
+from middleware.error_monitoring import ErrorMonitoringMiddleware
 
 from app.main_cloud import app
-from middleware.error_monitoring import ErrorMonitoringMiddleware
 
 
 class TestAlertServiceInAppState:
@@ -66,6 +65,7 @@ class TestAlertServiceInAppState:
         # Create mock request without app.state.alert_service
         # Use a real object instead of MagicMock to avoid auto-attribute creation
         from types import SimpleNamespace
+
         mock_request = MagicMock(spec=Request)
         mock_request.app = SimpleNamespace()
         mock_request.app.state = SimpleNamespace()
@@ -74,4 +74,3 @@ class TestAlertServiceInAppState:
         # Resolve should return None (getattr with default)
         resolved = middleware._resolve_alert_service(mock_request)
         assert resolved is None
-

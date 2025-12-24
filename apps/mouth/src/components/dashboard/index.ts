@@ -6,3 +6,5 @@ export type { WhatsAppMessage } from './WhatsAppPreview';
 export { ComplianceWidget } from './ComplianceWidget';
 export { AiPulseWidget } from './AiPulseWidget';
 export { FinancialRealityWidget } from './FinancialRealityWidget';
+export { NusantaraHealthWidget } from './NusantaraHealthWidget';
+export { AutoCRMWidget } from './AutoCRMWidget';

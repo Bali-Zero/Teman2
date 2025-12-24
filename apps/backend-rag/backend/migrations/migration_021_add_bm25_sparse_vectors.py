@@ -17,7 +17,6 @@ import logging
 import os
 import sys
 import time
-from typing import Any
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -74,7 +73,7 @@ async def run_migration():
         total_docs = stats.get("total_documents", 0)
 
         if total_docs == 0:
-            logger.warning(f"Source collection is empty. Nothing to migrate.")
+            logger.warning("Source collection is empty. Nothing to migrate.")
             return
 
         logger.info(f"Found {total_docs} documents to migrate")
@@ -87,10 +86,10 @@ async def run_migration():
         check_url = f"/collections/{TARGET_COLLECTION}"
         check_response = await http_client.get(check_url)
         if check_response.status_code == 200:
-            logger.info(f"   Target collection exists, deleting it first...")
+            logger.info("   Target collection exists, deleting it first...")
             delete_response = await http_client.delete(check_url)
             if delete_response.status_code == 200:
-                logger.info(f"   ✅ Deleted existing target collection")
+                logger.info("   ✅ Deleted existing target collection")
             else:
                 logger.error(f"   Failed to delete: {delete_response.status_code}")
                 return
@@ -105,10 +104,10 @@ async def run_migration():
             logger.error("Failed to create target collection")
             return
 
-        logger.info(f"✅ Created collection with sparse vector support")
+        logger.info("✅ Created collection with sparse vector support")
 
         # Step 3: Migrate documents in batches
-        logger.info(f"\n📦 Step 3: Migrating documents with BM25 sparse vectors...")
+        logger.info("\n📦 Step 3: Migrating documents with BM25 sparse vectors...")
         start_time = time.time()
         total_migrated = 0
         offset = None
@@ -190,7 +189,7 @@ async def run_migration():
         logger.info(f"\n✅ Migration completed: {total_migrated} documents in {elapsed:.1f}s")
 
         # Step 4: Verify target collection
-        logger.info(f"\n🔍 Step 4: Verifying target collection...")
+        logger.info("\n🔍 Step 4: Verifying target collection...")
         target_stats = await target_client.get_collection_stats()
         target_docs = target_stats.get("total_documents", 0)
 
@@ -202,23 +201,29 @@ async def run_migration():
             )
 
         # Step 5: Instructions for swapping collections
-        logger.info(f"\n📝 Step 5: Next Steps")
+        logger.info("\n📝 Step 5: Next Steps")
         logger.info("=" * 70)
         logger.info("To complete the migration, run the following commands:")
         logger.info("")
         logger.info("1. Verify hybrid search works on the new collection:")
-        logger.info(f"   python -c \"import asyncio; from test_hybrid_search import test; asyncio.run(test())\"")
+        logger.info(
+            '   python -c "import asyncio; from test_hybrid_search import test; asyncio.run(test())"'
+        )
         logger.info("")
         logger.info("2. Swap collections (optional):")
-        logger.info(f"   # Rename old collection to backup")
+        logger.info("   # Rename old collection to backup")
         logger.info(f"   curl -X POST '{qdrant_url}/collections/{SOURCE_COLLECTION}/aliases' \\")
-        logger.info(f"        -H 'api-key: $QDRANT_API_KEY' -H 'Content-Type: application/json' \\")
-        logger.info(f"        -d '{{\"actions\": [{{\"rename_collection\": {{\"old_name\": \"{SOURCE_COLLECTION}\", \"new_name\": \"{BACKUP_COLLECTION}\"}}}}]}}'")
+        logger.info("        -H 'api-key: $QDRANT_API_KEY' -H 'Content-Type: application/json' \\")
+        logger.info(
+            f'        -d \'{{"actions": [{{"rename_collection": {{"old_name": "{SOURCE_COLLECTION}", "new_name": "{BACKUP_COLLECTION}"}}}}]}}\''
+        )
         logger.info("")
-        logger.info(f"   # Rename new collection to original name")
+        logger.info("   # Rename new collection to original name")
         logger.info(f"   curl -X POST '{qdrant_url}/collections/{TARGET_COLLECTION}/aliases' \\")
-        logger.info(f"        -H 'api-key: $QDRANT_API_KEY' -H 'Content-Type: application/json' \\")
-        logger.info(f"        -d '{{\"actions\": [{{\"rename_collection\": {{\"old_name\": \"{TARGET_COLLECTION}\", \"new_name\": \"{SOURCE_COLLECTION}\"}}}}]}}'")
+        logger.info("        -H 'api-key: $QDRANT_API_KEY' -H 'Content-Type: application/json' \\")
+        logger.info(
+            f'        -d \'{{"actions": [{{"rename_collection": {{"old_name": "{TARGET_COLLECTION}", "new_name": "{SOURCE_COLLECTION}"}}}}]}}\''
+        )
         logger.info("")
         logger.info("3. Or use the new collection directly:")
         logger.info(f"   Set QDRANT_COLLECTION_NAME={TARGET_COLLECTION} in your environment")

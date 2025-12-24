@@ -47,7 +47,14 @@ class Migration025(BaseMigration):
             return False
 
         # Check required columns exist
-        required_columns = ["id", "session_id", "rating", "feedback_type", "feedback_text", "created_at"]
+        required_columns = [
+            "id",
+            "session_id",
+            "rating",
+            "feedback_type",
+            "feedback_text",
+            "created_at",
+        ]
         for col in required_columns:
             col_exists = await conn.fetchval(
                 """
@@ -93,7 +100,9 @@ class Migration025(BaseMigration):
             logger.error("v_rated_conversations view not found")
             return False
 
-        logger.info("✅ Migration 025 verified: conversation_ratings table and v_rated_conversations view created")
+        logger.info(
+            "✅ Migration 025 verified: conversation_ratings table and v_rated_conversations view created"
+        )
         return True
 
 
@@ -122,4 +131,3 @@ if __name__ == "__main__":
 
     success = asyncio.run(main())
     sys.exit(0 if success else 1)
-

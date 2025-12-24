@@ -83,7 +83,7 @@ Be precise. Only extract clear entities."""
 
         try:
             analysis_text = await asyncio.wait_for(
-                self.ai_client.generate_text(prompt=prompt, max_tokens=2048, temperature=0.2),
+                self.ai_client.generate_text(prompt=prompt, max_tokens=8192, temperature=0.2),
                 timeout=timeout,
             )
 
@@ -163,7 +163,7 @@ Only include clear, meaningful relationships."""
 
         try:
             analysis_text = await asyncio.wait_for(
-                self.ai_client.generate_text(prompt=prompt, max_tokens=2048, temperature=0.2),
+                self.ai_client.generate_text(prompt=prompt, max_tokens=8192, temperature=0.2),
                 timeout=timeout,
             )
 
@@ -182,13 +182,4 @@ Only include clear, meaningful relationships."""
         except Exception as e:
             logger.error(f"Error extracting relationships: {e}", exc_info=True)
             return []
-
-
-
-
-
-
-
-
-
 

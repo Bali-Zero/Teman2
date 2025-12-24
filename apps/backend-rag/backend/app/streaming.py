@@ -17,8 +17,6 @@ from pydantic import BaseModel
 from app.auth.validation import validate_auth_mixed
 from app.utils.state_helpers import get_app_state, get_request_state
 from services.intelligent_router import IntelligentRouter
-from services.auto_crm_service import get_auto_crm_service
-from utils.response_sanitizer import sanitize_zantara_response
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +124,9 @@ async def bali_zero_chat_stream(
                     "summary": memory_obj.summary,
                     "counters": memory_obj.counters,
                 }
-                logger.info(f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts")
+                logger.info(
+                    f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts"
+                )
         except Exception as e:
             logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
 
@@ -197,18 +197,9 @@ async def bali_zero_chat_stream(
                     else:
                         logger.warning(f"Unexpected chunk type: {type(chunk)}")
 
-            # Background: Auto-CRM Processing
-            try:
-                crm_messages = [{"role": "user", "content": query}]
-                background_tasks.add_task(
-                    get_auto_crm_service().process_conversation,
-                    conversation_id=0,
-                    messages=crm_messages,
-                    user_email=user_email,
-                    team_member="system",
-                )
-            except Exception as e:
-                logger.error(f"⚠️ Auto-CRM background task failed: {e}")
+            # Note: Auto-CRM processing is handled by conversation_service.save_conversation()
+            # which is called after the conversation is saved (via POST /api/chat/stream or /api/conversations/save)
+            # This ensures AUTO CRM processes the full conversation history with the correct conversation_id
 
             # Background: Collective Memory Processing
             try:
@@ -229,7 +220,9 @@ async def bali_zero_chat_stream(
                     async def run_collective_memory(workflow, input_state):
                         try:
                             await workflow.ainvoke(input_state)
-                            logger.info(f"🧠 Collective Memory processed for {input_state['user_id']}")
+                            logger.info(
+                                f"🧠 Collective Memory processed for {input_state['user_id']}"
+                            )
                         except Exception as e:
                             logger.error(f"❌ Collective Memory failed: {e}")
 
@@ -306,7 +299,11 @@ async def chat_stream_post(
         session_id = f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
         logger.info(f"🆕 Generated new session_id: {session_id}")
 
-    if not conversation_history_list and session_id and hasattr(request.app.state, "conversation_service"):
+    if (
+        not conversation_history_list
+        and session_id
+        and hasattr(request.app.state, "conversation_service")
+    ):
         try:
             history_data = await request.app.state.conversation_service.get_history(
                 user_email=user_email, session_id=session_id, limit=20
@@ -342,7 +339,9 @@ async def chat_stream_post(
                     "summary": memory_obj.summary,
                     "counters": memory_obj.counters,
                 }
-                logger.info(f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts")
+                logger.info(
+                    f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts"
+                )
         except Exception as e:
             logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
 
@@ -494,4 +493,3 @@ async def chat_stream_post(
             "X-Accel-Buffering": "no",
         },
     )
-

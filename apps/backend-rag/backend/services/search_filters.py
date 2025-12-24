@@ -82,4 +82,3 @@ def build_search_filter(
             filters["status_vigensi"] = {"$ne": "dicabut"}
 
     return filters if filters else None
-

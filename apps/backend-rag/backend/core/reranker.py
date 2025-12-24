@@ -28,7 +28,7 @@ class ReRanker:
         """
         self.api_key = settings.zerank_api_key
         self.api_url = settings.zerank_api_url
-        self.model_name = model_name or "zerank-2-turbo"
+        self.model_name = model_name or "zerank-2"
         self.enabled = bool(self.api_key)
 
         if not self.enabled:

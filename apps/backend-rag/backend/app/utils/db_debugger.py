@@ -238,4 +238,3 @@ class QueryTraceContext:
             _slow_queries.pop(0)
 
         return False  # Don't suppress exceptions
-

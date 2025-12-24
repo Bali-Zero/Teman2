@@ -28,27 +28,31 @@ Example:
 
 Author: Nuzantara Team
 Date: 2025-12-17
-Version: 1.0.0
+Version: 1.2.0
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK (replaced deprecated google-generativeai)
+- Using GenAIClient wrapper for centralized client management
 """
 
 import json
 import logging
 from typing import Any
 
-import google.generativeai as genai
 import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE, types, get_genai_client
 from services.openrouter_client import ModelTier, OpenRouterClient
 
 logger = logging.getLogger(__name__)
 
 # Model Tier Constants
-TIER_FLASH = 0  # Fast, cost-effective (default)
-TIER_LITE = 1  # Ultra-light, highest throughput
-TIER_PRO = 2  # Most capable, highest quality
-TIER_OPENROUTER = 3  # Third-party fallback
+TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.5-flash
+TIER_LITE = 1  # Fallback tier - gemini-2.0-flash
+TIER_PRO = 2  # Most capable, highest quality - gemini-2.5-pro
+TIER_FALLBACK = 3  # Final Gemini fallback - gemini-2.0-flash
 
 
 class LLMGateway:
@@ -56,7 +60,7 @@ class LLMGateway:
     Unified gateway for LLM interactions with intelligent fallback routing.
 
     Responsibilities:
-    - Initialize and manage Gemini models (Pro, Flash, Flash-Lite)
+    - Initialize and manage Gemini models (Pro, Flash, Flash-Lite) via GenAIClient
     - Handle OpenRouter fallback for high availability
     - Route requests to appropriate model tier
     - Cascade fallback on quota/service errors: Flash → Flash-Lite → OpenRouter
@@ -69,14 +73,14 @@ class LLMGateway:
 
     Attributes:
         gemini_tools (list): Function declarations for native tool calling
-        model_pro (GenerativeModel): Gemini 2.5 Pro model instance
-        model_flash (GenerativeModel): Gemini 2.0 Flash model instance
-        model_flash_lite (GenerativeModel): Gemini 2.0 Flash-Lite model instance
+        _genai_client (GenAIClient): Centralized GenAI client instance
+        model_name_pro (str): Gemini 2.5 Pro model name
+        model_name_flash (str): Gemini 2.5 Flash model name
         _openrouter_client (OpenRouterClient): Lazy-loaded OpenRouter client
 
     Note:
-        OpenRouter client is lazy-loaded to avoid unnecessary initialization
-        when Gemini models are sufficient.
+        - Uses new google-genai SDK via GenAIClient wrapper
+        - OpenRouter client is lazy-loaded to avoid unnecessary initialization
     """
 
     def __init__(self, gemini_tools: list = None):
@@ -93,20 +97,35 @@ class LLMGateway:
         Note:
             - Requires GOOGLE_API_KEY in settings
             - OpenRouter client is initialized lazily on first use
-            - All Gemini models are initialized immediately
+            - GenAI client handles connection pooling
         """
         self.gemini_tools = gemini_tools or []
 
-        # Configure Gemini API
-        logger.debug("LLMGateway: Configuring Gemini API...")
-        genai.configure(api_key=settings.google_api_key)
+        # Initialize GenAI client (new SDK)
+        # Uses singleton client that supports both API Key and Service Account (Vertex AI)
+        logger.debug("LLMGateway: Initializing GenAI client...")
+        self._genai_client: GenAIClient | None = None
+        self._available = False
 
-        # Initialize Gemini models
-        self.model_pro = genai.GenerativeModel("models/gemini-2.5-pro")
-        self.model_flash = genai.GenerativeModel("models/gemini-2.0-flash")
-        self.model_flash_lite = genai.GenerativeModel("models/gemini-2.0-flash-lite")
+        if GENAI_AVAILABLE:
+            try:
+                # Use singleton client - it handles both API key and Service Account auth
+                self._genai_client = get_genai_client()
+                self._available = self._genai_client.is_available
+                if self._available:
+                    auth_method = getattr(self._genai_client, '_auth_method', 'unknown')
+                    logger.info(f"✅ LLMGateway: GenAI client initialized (auth: {auth_method})")
+                else:
+                    logger.warning("⚠️ LLMGateway: GenAI client not available - will use OpenRouter fallback")
+            except Exception as e:
+                logger.warning(f"Failed to initialize GenAI client: {e}")
 
-        logger.info("✅ LLMGateway: Gemini models initialized (Pro, Flash, Flash-Lite)")
+        # Model name constants - Gemini 2.5 (Vertex AI GA)
+        self.model_name_pro = "gemini-2.5-pro"  # Reasoning: high quality
+        self.model_name_flash = "gemini-2.5-flash"  # Standard: fast, cost-effective
+        self.model_name_fallback = "gemini-2.0-flash"  # Fallback: stable, reliable
+
+        logger.info("✅ LLMGateway: Model configuration ready (2.5-pro, 2.5-flash, 2.0-flash fallback)")
 
         # Lazy-loaded OpenRouter client (fallback)
         self._openrouter_client: OpenRouterClient | None = None
@@ -206,7 +225,7 @@ class LLMGateway:
         This ensures high availability while optimizing costs.
 
         Args:
-            chat: Active chat session (Gemini chat object or None)
+            chat: Active chat session (unused in new SDK, kept for API compatibility)
             message: User message or continuation prompt
             system_prompt: System instructions (used for OpenRouter fallback)
             model_tier: Requested tier (TIER_PRO=2, TIER_FLASH=0, TIER_LITE=1)
@@ -221,7 +240,7 @@ class LLMGateway:
             RuntimeError: If all models fail (including OpenRouter)
 
         Note:
-            - Automatically creates new chat session if model changes
+            - Uses new google-genai SDK with client.aio.models.generate_content
             - Logs all tier transitions for monitoring
             - Extracts user query from structured prompts for OpenRouter
             - Native function calling enabled for Gemini models
@@ -235,154 +254,134 @@ class LLMGateway:
             >>> print(f"Response from {model}: {response}")
         """
 
-        # 1. Try PRO Tier (if requested)
-        if model_tier == TIER_PRO and self.model_pro:
+        # Helper to build config with optional tools
+        def _build_config(with_tools: bool = False) -> Any:
+            """Build GenerateContentConfig with optional function calling tools."""
+            if not GENAI_AVAILABLE or types is None:
+                return None
+
+            config_kwargs = {
+                "max_output_tokens": 8192,
+                "temperature": 0.4,
+            }
+
+            if system_prompt:
+                config_kwargs["system_instruction"] = system_prompt
+
+            if with_tools and self.gemini_tools:
+                # Convert tool dicts to proper FunctionDeclaration format for new SDK
+                function_declarations = []
+                for tool_dict in self.gemini_tools:
+                    # Create FunctionDeclaration with correct Schema format
+                    params = tool_dict.get("parameters", {})
+                    func_decl = types.FunctionDeclaration(
+                        name=tool_dict["name"],
+                        description=tool_dict["description"],
+                        parameters=types.Schema(
+                            type=params.get("type", "OBJECT"),
+                            properties={
+                                k: types.Schema(
+                                    type=v.get("type", "STRING"),
+                                    description=v.get("description", "")
+                                )
+                                for k, v in params.get("properties", {}).items()
+                            },
+                            required=params.get("required", [])
+                        )
+                    )
+                    function_declarations.append(func_decl)
+
+                config_kwargs["tools"] = [types.Tool(function_declarations=function_declarations)]
+
+            return types.GenerateContentConfig(**config_kwargs)
+
+        # Helper to call model
+        async def _call_model(model_name: str, with_tools: bool = False) -> tuple[str, Any]:
+            """Call a specific model and return (text, response)."""
+            if not self._genai_client or not self._genai_client.is_available:
+                raise RuntimeError("GenAI client not available")
+
+            config = _build_config(with_tools)
+
+            response = await self._genai_client._client.aio.models.generate_content(
+                model=model_name,
+                contents=message,
+                config=config,
+            )
+
+            # Extract text, handling function call responses
             try:
-                # If chat is None or bound to a different model, create new session
-                if chat is None or (hasattr(chat, "model") and chat.model != self.model_pro):
-                    chat = self.model_pro.start_chat(history=[])
+                text_content = response.text if hasattr(response, "text") else ""
+            except ValueError:
+                # Function call detected - reasoning.py will extract it from response_obj
+                text_content = ""
 
-                # Use native function calling if enabled
-                if enable_function_calling and self.gemini_tools:
-                    response = await chat.send_message_async(message, tools=self.gemini_tools)
-                else:
-                    response = await chat.send_message_async(message)
+            return text_content, response
 
-                logger.debug("✅ LLMGateway: Gemini Pro response received")
-                # Handle function calling - response.text throws error when response contains function_call
-                try:
-                    text_content = response.text if hasattr(response, "text") else ""
-                except ValueError:
-                    # Function call detected - reasoning.py will extract it from response_obj
-                    text_content = ""
-                return (
-                    text_content,
-                    "gemini-2.5-pro",
-                    response,
+        # 1. Try PRO Tier (if requested) - gemini-2.5-pro
+        if model_tier == TIER_PRO and self._available:
+            try:
+                text_content, response = await _call_model(
+                    self.model_name_pro,
+                    with_tools=enable_function_calling,
                 )
+                logger.debug("✅ LLMGateway: Gemini 2.5 Pro response received")
+                return (text_content, "gemini-2.5-pro", response)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
                 logger.warning(
-                    f"⚠️ LLMGateway: Gemini Pro quota exceeded, falling back to Flash: {e}"
+                    f"⚠️ LLMGateway: Gemini 2.5 Pro quota exceeded, falling back to Flash: {e}"
                 )
                 model_tier = TIER_FLASH  # Fallback to Flash
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
-                    f"❌ LLMGateway: Gemini Pro error: {e}. Switching to OpenRouter.", exc_info=True
+                    f"❌ LLMGateway: Gemini 2.5 Pro error: {e}. Trying 2.0 fallback.", exc_info=True
                 )
-                # Direct fallback to OpenRouter instead of Flash if Pro fails hard (e.g. Auth error)
-                model_tier = TIER_OPENROUTER
+                model_tier = TIER_FALLBACK
 
-        # 2. Try Flash (Tier 0) - Primary or Fallback
-        if model_tier <= TIER_FLASH and self.model_flash:
+        # 2. Try Flash (Tier 0) - gemini-2.5-flash (Standard)
+        if model_tier <= TIER_FLASH and self._available:
             try:
-                if chat is None or (hasattr(chat, "model") and chat.model != self.model_flash):
-                    chat = self.model_flash.start_chat(history=[])
-
-                # Use native function calling if enabled
-                if enable_function_calling and self.gemini_tools:
-                    response = await chat.send_message_async(message, tools=self.gemini_tools)
-                else:
-                    response = await chat.send_message_async(message)
-
-                logger.debug("✅ LLMGateway: Gemini Flash response received")
-                # Handle function calling - response.text throws error when response contains function_call
-                try:
-                    text_content = response.text if hasattr(response, "text") else ""
-                except ValueError:
-                    # Function call detected - reasoning.py will extract it from response_obj
-                    text_content = ""
-                return (
-                    text_content,
-                    "gemini-2.0-flash",
-                    response,
+                text_content, response = await _call_model(
+                    self.model_name_flash,
+                    with_tools=enable_function_calling,
                 )
+                logger.debug("✅ LLMGateway: Gemini 2.5 Flash response received")
+                return (text_content, "gemini-2.5-flash", response)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.warning(f"⚠️ LLMGateway: Gemini Flash quota exceeded, trying Flash-Lite: {e}")
-                model_tier = TIER_LITE
+                logger.warning(f"⚠️ LLMGateway: Gemini 2.5 Flash quota exceeded, trying 2.0 fallback: {e}")
+                model_tier = TIER_FALLBACK
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
-                    f"❌ LLMGateway: Gemini Flash error: {e}. Switching to OpenRouter.",
+                    f"❌ LLMGateway: Gemini 2.5 Flash error: {e}. Trying 2.0 fallback.",
                     exc_info=True,
                 )
-                model_tier = TIER_OPENROUTER
+                model_tier = TIER_FALLBACK
 
-        # 3. Try Flash-Lite (Tier 1)
-        if model_tier == TIER_LITE and self.model_flash_lite:
+        # 3. Try Gemini 2.0 Flash (Fallback Tier) - gemini-2.0-flash
+        if model_tier in (TIER_LITE, TIER_FALLBACK) and self._available:
             try:
-                # Always new chat for lite fallback to avoid context issues
-                chat_lite = self.model_flash_lite.start_chat(history=[])
-
-                # Use native function calling if enabled
-                if enable_function_calling and self.gemini_tools:
-                    response = await chat_lite.send_message_async(message, tools=self.gemini_tools)
-                else:
-                    response = await chat_lite.send_message_async(message)
-
-                logger.debug("✅ LLMGateway: Gemini Flash-Lite response received")
-                # Handle function calling - response.text throws error when response contains function_call
-                try:
-                    text_content = response.text if hasattr(response, "text") else ""
-                except ValueError:
-                    # Function call detected - reasoning.py will extract it from response_obj
-                    text_content = ""
-                return (
-                    text_content,
-                    "gemini-2.0-flash-lite",
-                    response,
+                text_content, response = await _call_model(
+                    self.model_name_fallback,
+                    with_tools=enable_function_calling,
                 )
+                logger.debug("✅ LLMGateway: Gemini 2.0 Flash (fallback) response received")
+                return (text_content, "gemini-2.0-flash", response)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.warning(
-                    f"⚠️ LLMGateway: Gemini Flash-Lite quota exceeded, switching to OpenRouter: {e}"
+                logger.error(
+                    f"❌ LLMGateway: All Gemini models quota exceeded: {e}"
                 )
-                model_tier = TIER_OPENROUTER
+                raise RuntimeError(f"All Gemini models unavailable: {e}")
             except (ValueError, RuntimeError, AttributeError) as e:
-                if "429" in str(e) or "quota" in str(e).lower():
-                    logger.warning(
-                        f"⚠️ LLMGateway: Gemini Flash-Lite rate limited, switching to OpenRouter: {e}"
-                    )
-                    model_tier = TIER_OPENROUTER
-                else:
-                    logger.error(
-                        f"❌ LLMGateway: Gemini Flash-Lite unexpected error: {e}", exc_info=True
-                    )
-                    raise
-
-        # 4. Use OpenRouter fallback (Tier 3)
-        logger.info("🌐 LLMGateway: Using OpenRouter (final fallback - no native function calling)")
-
-        # Prepare messages for OpenRouter.
-        # `_call_openrouter` will add the system_prompt automatically.
-        # We need to extract just the user's current turn content.
-
-        user_turn_content = message
-        user_query_marker = "User Query:"
-
-        # Check if the message contains the initial prompt structure for a user query
-        if user_query_marker in message:
-            start_index = message.find(user_query_marker)
-            if start_index != -1:
-                user_turn_content = message[start_index + len(user_query_marker) :].strip()
-
-                # Remove any trailing "IMPORTANT: Do NOT start with philosophical statements..."
-                important_instruction_marker = (
-                    "IMPORTANT: Do NOT start with philosophical statements"
+                logger.error(
+                    f"❌ LLMGateway: Gemini 2.0 Flash error: {e}", exc_info=True
                 )
-                important_instruction_start = user_turn_content.find(important_instruction_marker)
-                if important_instruction_start != -1:
-                    user_turn_content = user_turn_content[:important_instruction_start].strip()
+                raise RuntimeError(f"Gemini fallback failed: {e}")
 
-        # If after stripping, the content is too short or empty, revert to the original message
-        if not user_turn_content or len(user_turn_content) < 10:
-            user_turn_content = message
-
-        messages_for_openrouter = [{"role": "user", "content": user_turn_content}]
-        result_text = await self._call_openrouter(messages_for_openrouter, system_prompt)
-
-        # Return None for response object since OpenRouter doesn't support function calling
-        return (result_text, "openrouter-fallback", None)
+        # 4. No models available - raise error
+        raise RuntimeError("No Gemini models available - check Service Account configuration")
 
     async def _call_openrouter(self, messages: list[dict], system_prompt: str) -> str:
         """Call OpenRouter as final fallback when Gemini models are unavailable.
@@ -430,26 +429,30 @@ class LLMGateway:
     def create_chat_with_history(
         self, history_to_use: list[dict] | None = None, model_tier: int = TIER_FLASH
     ) -> Any:
-        """Create a Gemini chat session with conversation history.
+        """Create a chat session with conversation history.
 
         Args:
             history_to_use: Conversation history in format [{"role": "user|assistant", "content": "..."}]
             model_tier: Model tier to use (TIER_PRO, TIER_FLASH, TIER_LITE)
 
         Returns:
-            Gemini chat session object or None
+            ChatSession object from genai_client or None
 
         Note:
             - Converts generic conversation history to Gemini format
             - Returns None if no suitable model is available
+            - Uses new google-genai SDK via GenAIClient wrapper
         """
-        # Select model based on tier
-        selected_model = self.model_flash  # Default
+        if not self._genai_client or not self._available:
+            logger.warning("⚠️ LLMGateway: GenAI client not available for chat creation")
+            return None
 
-        if model_tier == TIER_PRO and self.model_pro:
-            selected_model = self.model_pro
-        elif model_tier == TIER_LITE and self.model_flash_lite:
-            selected_model = self.model_flash_lite
+        # Select model name based on tier (all use gemini-2.5 series)
+        selected_model_name = self.model_name_flash  # Default: gemini-2.5-flash
+
+        if model_tier == TIER_PRO:
+            selected_model_name = self.model_name_pro  # gemini-2.5-pro
+        # TIER_LITE and TIER_FLASH both use model_name_flash
 
         # Convert conversation history to Gemini format
         gemini_history = []
@@ -470,17 +473,18 @@ class LLMGateway:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 if role == "user":
-                    gemini_history.append({"role": "user", "parts": [content]})
+                    gemini_history.append({"role": "user", "content": content})
                 elif role == "assistant":
-                    gemini_history.append({"role": "model", "parts": [content]})
+                    gemini_history.append({"role": "assistant", "content": content})
 
-        # Create and return chat session
-        if selected_model:
-            logger.debug(
-                f"LLMGateway: Created chat session with {len(gemini_history)} history messages"
-            )
-            return selected_model.start_chat(history=gemini_history)
-        return None
+        # Create and return chat session using GenAIClient wrapper
+        logger.debug(
+            f"LLMGateway: Created chat session with {len(gemini_history)} history messages"
+        )
+        return self._genai_client.create_chat(
+            model=selected_model_name,
+            history=gemini_history,
+        )
 
     async def health_check(self) -> dict[str, bool]:
         """Check health of all LLM providers.
@@ -511,35 +515,47 @@ class LLMGateway:
             "openrouter": False,
         }
 
-        # Test Gemini Flash (most commonly used)
-        try:
-            test_chat = self.model_flash.start_chat()
-            test_response = await test_chat.send_message_async("ping")
-            if test_response and hasattr(test_response, "text"):
-                status["gemini_flash"] = True
-                logger.debug("✅ LLMGateway Health: Gemini Flash is healthy")
-        except Exception as e:
-            logger.warning(f"⚠️ LLMGateway Health: Gemini Flash check failed: {e}")
+        if not self._genai_client or not self._available:
+            logger.warning("⚠️ LLMGateway Health: GenAI client not available")
+        else:
+            # Test Gemini Flash (most commonly used)
+            try:
+                result = await self._genai_client.generate_content(
+                    contents="ping",
+                    model=self.model_name_flash,
+                    max_output_tokens=8192,
+                )
+                if result and result.get("text"):
+                    status["gemini_flash"] = True
+                    logger.debug("✅ LLMGateway Health: Gemini Flash is healthy")
+            except Exception as e:
+                logger.warning(f"⚠️ LLMGateway Health: Gemini Flash check failed: {e}")
 
-        # Test Gemini Pro
-        try:
-            test_chat_pro = self.model_pro.start_chat()
-            test_response_pro = await test_chat_pro.send_message_async("ping")
-            if test_response_pro and hasattr(test_response_pro, "text"):
-                status["gemini_pro"] = True
-                logger.debug("✅ LLMGateway Health: Gemini Pro is healthy")
-        except Exception as e:
-            logger.warning(f"⚠️ LLMGateway Health: Gemini Pro check failed: {e}")
+            # Test Gemini Pro
+            try:
+                result_pro = await self._genai_client.generate_content(
+                    contents="ping",
+                    model=self.model_name_pro,
+                    max_output_tokens=8192,
+                )
+                if result_pro and result_pro.get("text"):
+                    status["gemini_pro"] = True
+                    logger.debug("✅ LLMGateway Health: Gemini Pro is healthy")
+            except Exception as e:
+                logger.warning(f"⚠️ LLMGateway Health: Gemini Pro check failed: {e}")
 
-        # Test Gemini Flash-Lite
-        try:
-            test_chat_lite = self.model_flash_lite.start_chat()
-            test_response_lite = await test_chat_lite.send_message_async("ping")
-            if test_response_lite and hasattr(test_response_lite, "text"):
-                status["gemini_flash_lite"] = True
-                logger.debug("✅ LLMGateway Health: Gemini Flash-Lite is healthy")
-        except Exception as e:
-            logger.warning(f"⚠️ LLMGateway Health: Gemini Flash-Lite check failed: {e}")
+            # Test Gemini Flash (2.5)
+            try:
+                result_flash = await self._genai_client.generate_content(
+                    contents="ping",
+                    model=self.model_name_flash,
+                    max_output_tokens=8192,
+                )
+                if result_flash and result_flash.get("text"):
+                    status["gemini_flash"] = True
+                    logger.debug("✅ LLMGateway Health: Gemini Flash is healthy")
+            except Exception as e:
+                logger.warning(f"⚠️ LLMGateway Health: Gemini Flash check failed: {e}")
 
         # Test OpenRouter (lazy init)
         client = self._get_openrouter_client()

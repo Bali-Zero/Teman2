@@ -8,7 +8,6 @@ import asyncio
 import json
 import logging
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -75,10 +74,7 @@ class DependencyWatcher:
                     if line.strip() and not line.startswith("#")
                 }
 
-                outdated_relevant = [
-                    pkg for pkg in outdated
-                    if pkg["name"].lower() in req_packages
-                ]
+                outdated_relevant = [pkg for pkg in outdated if pkg["name"].lower() in req_packages]
 
                 return {
                     "status": "ok",
@@ -111,7 +107,9 @@ class DependencyWatcher:
         if outdated.get("count", 0) > 0:
             pr_body.append(f"📦 **{outdated['count']} packages outdated**")
             for pkg in outdated.get("outdated", [])[:10]:
-                pr_body.append(f"- {pkg.get('name', 'unknown')}: {pkg.get('version', '?')} → {pkg.get('latest_version', '?')}")
+                pr_body.append(
+                    f"- {pkg.get('name', 'unknown')}: {pkg.get('version', '?')} → {pkg.get('latest_version', '?')}"
+                )
         else:
             pr_body.append("✅ All packages up to date")
 
@@ -154,5 +152,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

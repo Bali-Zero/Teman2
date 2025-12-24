@@ -1,17 +1,20 @@
 """
 Oracle Google Services
 Manages Google Gemini AI and Drive integration for Oracle endpoints
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
 import json
 import logging
 from typing import Any
 
-import google.generativeai as genai
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
 from services.oracle_config import oracle_config
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -22,19 +25,21 @@ class GoogleServices:
     def __init__(self):
         self._gemini_initialized = False
         self._drive_service = None
+        self._genai_client: GenAIClient | None = None
         self._initialize_services()
 
     def _initialize_services(self) -> None:
         """Initialize Google Gemini and Drive services"""
         try:
-            # Initialize Gemini AI (only if API key is available)
+            # Initialize GenAI client (only if API key is available)
             api_key = oracle_config.google_api_key
-            if api_key:
-                genai.configure(api_key=api_key)
-                self._gemini_initialized = True
-                logger.info("✅ Google Gemini AI initialized successfully")
+            if api_key and GENAI_AVAILABLE:
+                self._genai_client = GenAIClient(api_key=api_key)
+                self._gemini_initialized = self._genai_client.is_available
+                if self._gemini_initialized:
+                    logger.info("✅ Google Gemini AI initialized successfully (new SDK)")
             else:
-                logger.warning("⚠️ GOOGLE_API_KEY not set - Gemini AI services disabled")
+                logger.warning("⚠️ GOOGLE_API_KEY not set or SDK unavailable - Gemini AI services disabled")
                 self._gemini_initialized = False
 
             # Initialize Drive Service
@@ -42,7 +47,9 @@ class GoogleServices:
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize Google services: {e}")
-            logger.warning("⚠️ Continuing without Google services - some Oracle features may be unavailable")
+            logger.warning(
+                "⚠️ Continuing without Google services - some Oracle features may be unavailable"
+            )
             self._gemini_initialized = False
             self._drive_service = None
 
@@ -70,91 +77,73 @@ class GoogleServices:
         """Get Drive service instance"""
         return self._drive_service
 
-    def get_gemini_model(
-        self, model_name: str = "models/gemini-2.5-flash"
-    ) -> genai.GenerativeModel:
-        """Get Gemini model instance"""
+    @property
+    def genai_client(self) -> GenAIClient | None:
+        """Get the GenAI client instance for direct API calls"""
+        return self._genai_client
+
+    def get_model_name(self, model_name: str = "gemini-3-flash-preview") -> str:
+        """Get a valid model name, stripping 'models/' prefix if present.
+
+        Args:
+            model_name: Requested model name
+
+        Returns:
+            Normalized model name (without 'models/' prefix)
+        """
+        # Strip 'models/' prefix for new SDK compatibility
+        return model_name.replace("models/", "")
+
+    def get_gemini_model_name(
+        self, model_name: str = "gemini-3-flash-preview"
+    ) -> str:
+        """Get Gemini model name for use with GenAIClient.
+
+        Note: This method now returns a model name string instead of a model instance.
+        Use the genai_client property to make API calls with this model name.
+
+        Args:
+            model_name: Requested model name
+
+        Returns:
+            Normalized model name string
+        """
         if not self._gemini_initialized:
             raise RuntimeError("Gemini AI not initialized")
 
-        # Try alternative model names for API compatibility (2025 models)
-        # SOLO FLASH MODE - Illimitato e veloce per piano ULTRA
-        alternative_names = [
-            "models/gemini-2.5-flash",  # Primario: Illimitato!
-            "models/gemini-2.0-flash-001",
-            "models/gemini-flash-latest",
-            "models/gemini-pro-latest",  # Fallback solo se necessario
-        ]
+        return self.get_model_name(model_name)
 
-        # Try original name first
-        try:
-            return genai.GenerativeModel(model_name)
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to load model '{model_name}': {e}")
-
-            # Try alternative names
-            for alt_name in alternative_names:
-                try:
-                    logger.info(f"🔄 Trying alternative model name: {alt_name}")
-                    return genai.GenerativeModel(alt_name)
-                except Exception as e2:
-                    logger.warning(f"⚠️ Failed to load alternative model '{alt_name}': {e2}")
-                    continue
-
-            raise RuntimeError(
-                f"Could not load Gemini model '{model_name}' or any alternatives"
-            ) from None
-
-    def get_zantara_model(self, use_case: str = "legal_reasoning") -> genai.GenerativeModel:
+    def get_zantara_model_name(self, use_case: str = "legal_reasoning") -> str:
         """
-        Get the best Gemini model for specific ZANTARA use cases
+        Get the best Gemini model name for specific ZANTARA use cases.
+
+        Note: This method now returns a model name string instead of a model instance.
+        Use the genai_client property to make API calls with this model name.
 
         Args:
             use_case: Type of task
-                - "legal_reasoning": Complex legal analysis (use PRO)
-                - "personality_translation": Fast personality conversion (use Flash)
-                - "multilingual": Multi-language support (use 3 Pro)
-                - "document_analysis": Deep document understanding (use PRO)
+                - "legal_reasoning": Complex legal analysis
+                - "personality_translation": Fast personality conversion
+                - "multilingual": Multi-language support
+                - "document_analysis": Deep document understanding
+
+        Returns:
+            Model name string for use with GenAIClient
         """
         if not self._gemini_initialized:
             raise RuntimeError("Gemini AI not initialized")
 
-        # SOLO GEMINI 2.5 FLASH - Illimitato e performante per piano ULTRA
+        # Model recommendations by use case (all use Flash for unlimited quota)
         model_mapping = {
-            "legal_reasoning": [
-                "models/gemini-2.5-flash",  # Flash ce la fa benissimo!
-                "models/gemini-2.0-flash-001",
-                "models/gemini-flash-latest",
-            ],
-            "personality_translation": [
-                "models/gemini-2.5-flash",  # PERFETTO: Illimitato
-                "models/gemini-2.0-flash-001",
-                "models/gemini-flash-latest",
-            ],
-            "multilingual": [
-                "models/gemini-2.5-flash",  # Flash per tutto (unlimited)
-                "models/gemini-2.0-flash-001",
-                "models/gemini-flash-latest",
-            ],
-            "document_analysis": [
-                "models/gemini-2.5-flash",  # Flash per ogni analisi
-                "models/gemini-2.0-flash-001",
-                "models/gemini-flash-latest",
-            ],
+            "legal_reasoning": "gemini-3-flash-preview",
+            "personality_translation": "gemini-3-flash-preview",
+            "multilingual": "gemini-3-flash-preview",
+            "document_analysis": "gemini-3-flash-preview",
         }
 
-        models_to_try = model_mapping.get(use_case, model_mapping["legal_reasoning"])
-
-        for model_name in models_to_try:
-            try:
-                logger.info(f"🧠 Using {model_name} for {use_case}")
-                return genai.GenerativeModel(model_name)
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to load {model_name}: {e}")
-                continue
-
-        # Ultimate fallback
-        return self.get_gemini_model()
+        model_name = model_mapping.get(use_case, "gemini-3-flash-preview")
+        logger.info(f"🧠 Using {model_name} for {use_case}")
+        return model_name
 
 
 # Initialize Google services singleton

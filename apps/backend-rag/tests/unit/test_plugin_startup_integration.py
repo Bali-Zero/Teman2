@@ -114,12 +114,3 @@ async def test_initialize_plugins_finds_plugins_directory():
             # Should be called with plugins directory and package prefix
             assert "backend.plugins" in str(call_args)
 
-
-
-
-
-
-
-
-
-

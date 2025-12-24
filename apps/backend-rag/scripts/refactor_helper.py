@@ -28,7 +28,9 @@ class RefactoringAnalyzer:
             self.files = [self.target_path]
         elif self.target_path.is_dir():
             self.files = list(self.target_path.rglob("*.py"))
-            self.files = [f for f in self.files if "__pycache__" not in str(f) and "test" not in str(f)]
+            self.files = [
+                f for f in self.files if "__pycache__" not in str(f) and "test" not in str(f)
+            ]
         else:
             raise ValueError(f"Path not found: {target_path}")
 
@@ -47,12 +49,14 @@ class RefactoringAnalyzer:
                         # Normalize function body (remove names, keep structure)
                         body_str = ast.dump(node.body)
                         if body_str in function_bodies:
-                            duplicates.append({
-                                "file": str(file_path),
-                                "function": node.name,
-                                "line": node.lineno,
-                                "duplicate_of": function_bodies[body_str],
-                            })
+                            duplicates.append(
+                                {
+                                    "file": str(file_path),
+                                    "function": node.name,
+                                    "line": node.lineno,
+                                    "duplicate_of": function_bodies[body_str],
+                                }
+                            )
                         else:
                             function_bodies[body_str] = {
                                 "file": str(file_path),
@@ -81,13 +85,15 @@ class RefactoringAnalyzer:
                         has_param_types = all(arg.annotation is not None for arg in node.args.args)
 
                         if not has_return_type or not has_param_types:
-                            missing_hints.append({
-                                "file": str(file_path),
-                                "function": node.name,
-                                "line": node.lineno,
-                                "missing_return": not has_return_type,
-                                "missing_params": not has_param_types,
-                            })
+                            missing_hints.append(
+                                {
+                                    "file": str(file_path),
+                                    "function": node.name,
+                                    "line": node.lineno,
+                                    "missing_return": not has_return_type,
+                                    "missing_params": not has_param_types,
+                                }
+                            )
             except Exception as e:
                 logger.warning(f"Error analyzing {file_path}: {e}")
 
@@ -105,29 +111,29 @@ class RefactoringAnalyzer:
                 for node in ast.walk(tree):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         # Check if function has try/except
-                        has_try_except = any(
-                            isinstance(stmt, ast.Try) for stmt in node.body
-                        )
+                        has_try_except = any(isinstance(stmt, ast.Try) for stmt in node.body)
                         # Check if function uses logger
                         has_logger = "logger" in content or "logging" in content
 
                         # Functions that do I/O should have error handling
                         is_io_function = any(
-                            "async" in str(node.decorator_list) or
-                            "await" in ast.dump(node) or
-                            "db" in node.name.lower() or
-                            "api" in node.name.lower() or
-                            "http" in node.name.lower()
+                            "async" in str(node.decorator_list)
+                            or "await" in ast.dump(node)
+                            or "db" in node.name.lower()
+                            or "api" in node.name.lower()
+                            or "http" in node.name.lower()
                         )
 
                         if is_io_function and not has_try_except:
-                            inconsistent.append({
-                                "file": str(file_path),
-                                "function": node.name,
-                                "line": node.lineno,
-                                "issue": "Missing error handling",
-                                "has_logger": has_logger,
-                            })
+                            inconsistent.append(
+                                {
+                                    "file": str(file_path),
+                                    "function": node.name,
+                                    "line": node.lineno,
+                                    "issue": "Missing error handling",
+                                    "has_logger": has_logger,
+                                }
+                            )
             except Exception as e:
                 logger.warning(f"Error analyzing {file_path}: {e}")
 
@@ -147,21 +153,27 @@ class RefactoringAnalyzer:
                     if isinstance(node, ast.Constant) and isinstance(node.value, str):
                         value = node.value
                         if value.startswith(("http://", "https://")):
-                            hardcoded.append({
-                                "file": str(file_path),
-                                "line": node.lineno,
-                                "type": "URL",
-                                "value": value[:50] + "..." if len(value) > 50 else value,
-                            })
-                        # Check for magic numbers (long numeric strings)
-                        elif isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
-                            if abs(node.value) > 1000:  # Large numbers might be magic
-                                hardcoded.append({
+                            hardcoded.append(
+                                {
                                     "file": str(file_path),
                                     "line": node.lineno,
-                                    "type": "Magic Number",
-                                    "value": str(node.value),
-                                })
+                                    "type": "URL",
+                                    "value": value[:50] + "..." if len(value) > 50 else value,
+                                }
+                            )
+                        # Check for magic numbers (long numeric strings)
+                        elif isinstance(node, ast.Constant) and isinstance(
+                            node.value, (int, float)
+                        ):
+                            if abs(node.value) > 1000:  # Large numbers might be magic
+                                hardcoded.append(
+                                    {
+                                        "file": str(file_path),
+                                        "line": node.lineno,
+                                        "type": "Magic Number",
+                                        "value": str(node.value),
+                                    }
+                                )
             except Exception as e:
                 logger.warning(f"Error analyzing {file_path}: {e}")
 
@@ -179,11 +191,13 @@ class RefactoringAnalyzer:
                 for node in ast.walk(tree):
                     if isinstance(node, ast.Call):
                         if isinstance(node.func, ast.Name) and node.func.id == "print":
-                            print_statements.append({
-                                "file": str(file_path),
-                                "line": node.lineno,
-                                "statement": ast.unparse(node)[:100],
-                            })
+                            print_statements.append(
+                                {
+                                    "file": str(file_path),
+                                    "line": node.lineno,
+                                    "statement": ast.unparse(node)[:100],
+                                }
+                            )
             except Exception as e:
                 logger.warning(f"Error analyzing {file_path}: {e}")
 
@@ -204,7 +218,9 @@ class RefactoringAnalyzer:
             report.append(f"🔍 DUPLICATE CODE ({len(duplicates)} found):")
             for dup in duplicates[:10]:  # Limit output
                 report.append(f"  - {dup['file']}:{dup['line']} - {dup['function']}")
-                report.append(f"    Duplicate of: {dup['duplicate_of']['file']}:{dup['duplicate_of']['line']}")
+                report.append(
+                    f"    Duplicate of: {dup['duplicate_of']['file']}:{dup['duplicate_of']['line']}"
+                )
             report.append("")
 
         # Missing type hints
@@ -213,11 +229,13 @@ class RefactoringAnalyzer:
             report.append(f"📝 MISSING TYPE HINTS ({len(missing_hints)} found):")
             for hint in missing_hints[:20]:  # Limit output
                 issues = []
-                if hint['missing_return']:
+                if hint["missing_return"]:
                     issues.append("return type")
-                if hint['missing_params']:
+                if hint["missing_params"]:
                     issues.append("parameter types")
-                report.append(f"  - {hint['file']}:{hint['line']} - {hint['function']} (missing: {', '.join(issues)})")
+                report.append(
+                    f"  - {hint['file']}:{hint['line']} - {hint['function']} (missing: {', '.join(issues)})"
+                )
             report.append("")
 
         # Inconsistent error handling
@@ -225,7 +243,9 @@ class RefactoringAnalyzer:
         if inconsistent:
             report.append(f"⚠️  INCONSISTENT ERROR HANDLING ({len(inconsistent)} found):")
             for issue in inconsistent[:20]:
-                report.append(f"  - {issue['file']}:{issue['line']} - {issue['function']}: {issue['issue']}")
+                report.append(
+                    f"  - {issue['file']}:{issue['line']} - {issue['function']}: {issue['issue']}"
+                )
             report.append("")
 
         # Hardcoded values
@@ -245,7 +265,13 @@ class RefactoringAnalyzer:
             report.append("")
 
         # Summary
-        total_issues = len(duplicates) + len(missing_hints) + len(inconsistent) + len(hardcoded) + len(print_stmts)
+        total_issues = (
+            len(duplicates)
+            + len(missing_hints)
+            + len(inconsistent)
+            + len(hardcoded)
+            + len(print_stmts)
+        )
         report.append("=" * 70)
         report.append(f"SUMMARY: {total_issues} refactoring opportunities found")
         report.append("=" * 70)
@@ -281,4 +307,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

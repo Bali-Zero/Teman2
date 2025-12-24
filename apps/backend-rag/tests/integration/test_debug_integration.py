@@ -16,8 +16,9 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers import debug
 from middleware.request_tracing import RequestTracingMiddleware
+
+from app.routers import debug
 
 
 @pytest.fixture
@@ -51,7 +52,9 @@ class TestDebugEndpointsIntegration:
     def test_request_trace_end_to_end(self, client, mock_settings_dev):
         """Test complete request trace flow"""
         # Make a request to create a trace
-        response = client.get("/api/debug/state", headers={"Authorization": "Bearer test-admin-key"})
+        response = client.get(
+            "/api/debug/state", headers={"Authorization": "Bearer test-admin-key"}
+        )
         assert response.status_code == 200
 
         # Get correlation ID from response
@@ -306,4 +309,3 @@ class TestRequestTracingIntegration:
         custom_steps = [s for s in steps if s.get("name") == "custom_step"]
         assert len(custom_steps) > 0
         assert custom_steps[0]["duration_ms"] == 50.0
-

@@ -165,4 +165,3 @@ class TestFormatSearchResults:
         score_str = str(result[0]["score"])
         decimal_places = len(score_str.split(".")[1]) if "." in score_str else 0
         assert decimal_places <= 4
-

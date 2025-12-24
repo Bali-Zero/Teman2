@@ -1,5 +1,8 @@
 """
 Unit tests for Vision RAG Service
+
+UPDATED 2025-12-23:
+- Updated mocks for new google-genai SDK via GenAIClient wrapper
 """
 
 import sys
@@ -17,18 +20,25 @@ from services.rag.vision_rag import MultiModalDocument, VisionRAGService, Visual
 
 
 @pytest.fixture
-def mock_genai():
-    """Mock Google Generative AI"""
-    with patch("services.rag.vision_rag.genai") as mock:
-        mock_model = MagicMock()
-        mock_model.generate_content_async = AsyncMock()
-        mock.GenerativeModel.return_value = mock_model
-        yield mock
+def mock_genai_client():
+    """Mock GenAIClient from llm.genai_client"""
+    mock_client = MagicMock()
+    mock_client.is_available = True
+    mock_client.generate_content = AsyncMock(return_value={"text": "Test response"})
+    return mock_client
 
 
 @pytest.fixture
-def service(mock_genai):
-    return VisionRAGService()
+def service(mock_genai_client):
+    """Create VisionRAGService with mocked GenAIClient"""
+    with patch("services.rag.vision_rag.GENAI_AVAILABLE", True):
+        with patch("services.rag.vision_rag.GenAIClient", return_value=mock_genai_client):
+            with patch("services.rag.vision_rag.settings") as mock_settings:
+                mock_settings.google_api_key = "test-api-key"
+                svc = VisionRAGService()
+                svc._genai_client = mock_genai_client
+                svc._available = True
+                return svc
 
 
 @pytest.mark.asyncio
@@ -68,10 +78,6 @@ async def test_process_pdf_success(service):
         mock_fitz.open.return_value = mock_doc
 
         with patch.dict(sys.modules, {"fitz": mock_fitz}):
-            # Re-import or reload might be needed if service already imported 'fitz' as None?
-            # The service does "import fitz" inside the method.
-            # So patching sys.modules should work if the method re-imports or if it was None before.
-
             result = await service.process_pdf("test.pdf")
 
             assert len(result.visual_elements) >= 1
@@ -80,7 +86,7 @@ async def test_process_pdf_success(service):
 
 
 @pytest.mark.asyncio
-async def test_query_with_vision(service):
+async def test_query_with_vision(service, mock_genai_client):
     """Test querying with vision context"""
     documents = [
         MultiModalDocument(
@@ -101,9 +107,7 @@ async def test_query_with_vision(service):
     ]
 
     # Mock response
-    mock_response = MagicMock()
-    mock_response.text = "Analysis based on chart"
-    service.vision_model.generate_content_async.return_value = mock_response
+    mock_genai_client.generate_content.return_value = {"text": "Analysis based on chart"}
 
     # Mock Image.open to avoid actual image processing errors on dummy bytes
     with patch("services.rag.vision_rag.Image.open"):

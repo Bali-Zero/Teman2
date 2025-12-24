@@ -475,7 +475,7 @@ class TestGeminiAdapter95Percent:
 
             response = await adapter.generate(
                 prompt="Test prompt",
-                max_tokens=100,
+                max_tokens=8192,
             )
             assert response is not None
 
@@ -483,7 +483,7 @@ class TestGeminiAdapter95Percent:
         with patch.object(adapter, "client") as mock_client:
             mock_client.generate_content = AsyncMock(side_effect=Exception("API Error"))
             with pytest.raises(Exception):
-                await adapter.generate(prompt="Test", max_tokens=100)
+                await adapter.generate(prompt="Test", max_tokens=8192)
 
         # Test stream
         async def mock_stream():

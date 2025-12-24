@@ -14,10 +14,10 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from app.utils.db_debugger import DatabaseQueryDebugger
 from app.utils.debug_context import DebugContext, debug_mode
-from app.utils.rag_debugger import RAGPipelineDebugger, RAGPipelineStepContext
-from app.utils.db_debugger import DatabaseQueryDebugger, QueryTraceContext
-from app.utils.qdrant_debugger import QdrantDebugger, CollectionHealth
+from app.utils.qdrant_debugger import QdrantDebugger
+from app.utils.rag_debugger import RAGPipelineDebugger
 
 
 class TestDebugContext:
@@ -203,7 +203,7 @@ class TestDatabaseQueryDebugger:
         debugger = DatabaseQueryDebugger()
 
         # Add many queries
-        from app.utils.db_debugger import _query_log, MAX_QUERIES_TO_TRACK
+        from app.utils.db_debugger import MAX_QUERIES_TO_TRACK, _query_log
 
         DatabaseQueryDebugger.clear_logs()
 
@@ -537,4 +537,3 @@ class TestQdrantDebugger:
             document = await debugger.inspect_document("test_collection", "doc1")
 
             assert document is None
-

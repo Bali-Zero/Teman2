@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class DebugContext:
     """
     Context manager for enabling debug mode for specific operations.
-    
+
     Usage:
         with DebugContext(request_id="abc123"):
             # All operations here will have enhanced logging
@@ -146,4 +146,3 @@ def debug_mode(
         capture_api_calls=capture_api_calls,
     ) as ctx:
         yield ctx
-

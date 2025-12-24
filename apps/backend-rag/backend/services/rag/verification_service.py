@@ -2,6 +2,9 @@
 Verification Service
 Implements the "Draft -> Verify" pattern for Agentic RAG.
 Acts as a judge to evaluate if the generated answer is supported by the retrieved context.
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
 import json
@@ -9,10 +12,10 @@ import logging
 from enum import Enum
 from typing import Optional
 
-import google.generativeai as genai
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +43,18 @@ class VerificationService:
     """
 
     def __init__(self):
-        self.model = None
-        if settings.google_api_key:
+        self._genai_client: GenAIClient | None = None
+        self._available = False
+        self.model_name = "gemini-2.0-flash"  # Use Flash for verification (fast, good at reading)
+
+        if settings.google_api_key and GENAI_AVAILABLE:
             try:
-                # Use Flash for verification as it's fast and good at reading context
-                self.model = genai.GenerativeModel("gemini-2.0-flash")
-                logger.info("🛡️ [VerificationService] Initialized with Gemini Flash")
+                self._genai_client = GenAIClient(api_key=settings.google_api_key)
+                self._available = self._genai_client.is_available
+                if self._available:
+                    logger.info("🛡️ [VerificationService] Initialized with GenAI client")
             except Exception as e:
-                logger.warning(f"⚠️ [VerificationService] Failed to initialize model: {e}")
+                logger.warning(f"⚠️ [VerificationService] Failed to initialize client: {e}")
 
     async def verify_response(
         self, query: str, draft_answer: str, context_chunks: list[str]
@@ -55,7 +62,7 @@ class VerificationService:
         """
         Verify if the draft answer is supported by the context chunks.
         """
-        if not self.model:
+        if not self._available or not self._genai_client:
             # Fallback if no model: Assume valid but log warning
             return VerificationResult(
                 is_valid=True,
@@ -114,12 +121,14 @@ Return a JSON object with this exact structure:
 
         try:
             # Use low temperature for deterministic evaluation
-            response = await self.model.generate_content_async(
-                prompt,
-                generation_config={"response_mime_type": "application/json", "temperature": 0.0},
+            result = await self._genai_client.generate_content(
+                contents=prompt,
+                model=self.model_name,
+                temperature=0.0,
+                max_output_tokens=8192,
             )
 
-            result_json = json.loads(response.text)
+            result_json = json.loads(result.get("text", "{}"))
 
             status = VerificationStatus(result_json.get("status", "unverified"))
             score = float(result_json.get("score", 0.0))

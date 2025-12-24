@@ -224,7 +224,10 @@ class TestCRMStats503Regression:
         # Mock interaction stats queries
         mock_conn.fetch = AsyncMock(
             side_effect=[
-                [{"interaction_type": "whatsapp", "count": 10}, {"interaction_type": "email", "count": 5}],
+                [
+                    {"interaction_type": "whatsapp", "count": 10},
+                    {"interaction_type": "email", "count": 5},
+                ],
                 [{"sentiment": "positive", "count": 8}, {"sentiment": "neutral", "count": 7}],
                 [{"team_member": "zero@balizero.com", "count": 12}],
             ]
@@ -236,4 +239,3 @@ class TestCRMStats503Regression:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
         return mock_pool, mock_conn
-

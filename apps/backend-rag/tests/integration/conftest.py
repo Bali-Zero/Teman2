@@ -347,13 +347,13 @@ async def db_pool(postgres_container):
                 )
                 await conn.execute(
                     """
-                    CREATE INDEX IF NOT EXISTS idx_conv_ratings_session 
+                    CREATE INDEX IF NOT EXISTS idx_conv_ratings_session
                     ON conversation_ratings(session_id)
                 """
                 )
                 await conn.execute(
                     """
-                    CREATE INDEX IF NOT EXISTS idx_conv_ratings_rating 
+                    CREATE INDEX IF NOT EXISTS idx_conv_ratings_rating
                     ON conversation_ratings(rating) WHERE rating >= 4
                 """
                 )
@@ -365,7 +365,7 @@ async def db_pool(postgres_container):
                 await conn.execute(
                     """
                     CREATE OR REPLACE VIEW v_rated_conversations AS
-                    SELECT 
+                    SELECT
                         cr.session_id::text as conversation_id,
                         cr.rating,
                         cr.feedback_text as client_feedback,
@@ -377,7 +377,7 @@ async def db_pool(postgres_container):
                                     'content', ch.content
                                 ) ORDER BY ch.created_at
                             )
-                            FROM conversation_history ch 
+                            FROM conversation_history ch
                             WHERE ch.session_id::text = cr.session_id::text
                         ) as messages
                     FROM conversation_ratings cr

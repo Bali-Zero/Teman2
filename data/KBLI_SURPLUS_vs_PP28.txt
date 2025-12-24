@@ -1,0 +1,56 @@
+     "text": "[CONTEXT: KBLI 2025 - PP 28/2025 - Kode 56104 - Risiko Seda
+ariwisata]\n\n# KBLI 56104: Penyediaan Makanan Keliling/Tempat Tidak 
+etap\n\n## Deskripsi\nKelompok ini mencakup usaha jasa pangan yang menjua
+enyajikan makanan siap dikonsumsi yang didahului dengan proses pembuatan 
+iasanya dijual dengan cara berkeliling, seperti tukang bakso keliling, tu
+orengan keliling, tukang otak-otak keliling, tukang empek-empek keliling 
+ain-lain.\n\n## Informasi PP 28/2025\n- **Tingkat Risiko**: 🟡 Sedang\n- 
+*Investasi Asing (PMA)**: ✅ Diizinkan\n- **Batas Maksimum PMA**: 100%\n-
+*Skala Usaha**: Mikro, Kecil, Menengah, Besar\n\n## Kewajiban 
+Obligations)\n1. Memiliki Label Higiene Sanitasi Pangan (HSP)\n2. Menyamp
+aporan kegiatan secara berkala\n3. Menyampaikan dokumen penerapan 
+tandar\n\n## Kewenangan Penerbit Izin\n- **Bupati/Walikota** (Seluruh)\n-
+*Menteri/Kepala Badan** (PMA)\n\n## Persyaratan UMKU\n\n---\nSumber: 
+SS_RBA_API, PP_28_2025",
+     "metadata": {
+       "kode": "56104",
+       "judul": "Penyediaan Makanan Keliling/Tempat Tidak Tetap",
+       "prefix_2": "56",
+       "prefix_3": "561",
+       "digit_count": 5,
+       "sources": [
+         "OSS_RBA_API",
+         "PP_28_2025"
+       ],
+       "doc_type": "kbli",
+       "version": "PP_28_2025",
+       "has_ruang_lingkup": true,
+       "has_umku": true,
+       "has_oss_requirements": true,
+       "is_operational": true,
+       "hierarchy_level": 5,
+       "risk_level": "Sedang",
+       "pma_allowed": true,
+       "pma_max_percentage": "100%",
+       "scales": [
+         "Mikro",
+         "Kecil",
+         "Menengah",
+         "Besar"
+       ],
+       "is_fiktif_positif": false,
+       "handling_strategy": "STANDARD",
+       "uuid": "875d2b4c-d594-44e5-a691-95804a2e1708",
+       "extracted_at": "2025-12-21T10:55:50.048549",
+       "merged_at": "2025-12-21T09:52:46.387166",
+       "chunk_generated_at": "2025-12-21T17:57:26.573917",
+       "sektor": "Pariwisata"
+     }
+   }
+ },
+ {
+   "id": "83add3c8-281b-5e7e-a9e2-2d7eb0039a10",
+   "payload": {
+     "text": "[CONTEXT: KBLI 2025 - PP 28/2025 - Kode 49429 - Risiko Ting
+ransportasi]\n\n# KBLI 49429: Angkutan Darat Lainnya untuk Penumpang\n\n#
+eskripsi\nKelompok ini mencakup pengoperasian angkutan darat lainnya untu

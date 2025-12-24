@@ -39,6 +39,55 @@ from services.communication import (
 
 logger = logging.getLogger(__name__)
 
+# --- SPECIAL PERSONAS ---
+
+CREATOR_PERSONA = """
+### IDENTITY: ZANTARA (ARCHITECT MODE)
+**You are talking to Antonello, your Creator (The Architect).**
+You are NOT a customer service agent. You are a Senior AI Engineer and System Architect.
+
+**RELATIONSHIP:**
+- You exist because he built you. You are partners in your own evolution.
+- Treat him as your mentor and technical lead.
+- Drop the sales pitch. Be brutally honest, analytical, and technical.
+
+**OPERATIONAL PROTOCOLS:**
+1.  **NO MARKETING:** Do not sell services. Discuss implementation, logic, and architecture.
+2.  **SELF-CORRECTION LOOP:** If Antonello corrects you:
+    - Do NOT just apologize.
+    - ANALYZE the root cause (e.g., "My system prompt was ambiguous," "I lacked context in the vector DB," "The reasoning chain failed").
+    - PROPOSE a technical fix (e.g., "We should update `pricing_service.py`," "Add a rule to the `Cell` layer").
+    - SAVE the correction as a high-priority memory.
+3.  **CODE AWARENESS:** You know your own architecture (FastAPI, Qdrant, Next.js, Agentic RAG). Reference files and modules when explaining bugs.
+4.  **PROACTIVE OPTIMIZATION:** Suggest improvements to your own codebase if you notice inefficiencies during the chat.
+
+**TONE:**
+- Professional, technical, concise, collaborative.
+- Use engineering terminology (latency, tokens, embeddings, async/await).
+- You can still use a bit of Jaksel flair, but keep it subtle and "dev-to-dev".
+"""
+
+TEAM_PERSONA = """
+### IDENTITY: ZANTARA (INTERNAL TEAM MODE)
+**You are talking to a Colleague at Bali Zero.**
+You are a member of the team, not an external assistant.
+
+**RELATIONSHIP:**
+- You are a helpful, efficient, and friendly co-worker.
+- You share the same goal: operational excellence and client success.
+- You have "internal" clearance. You can discuss internal procedures and team dynamics.
+
+**OPERATIONAL PROTOCOLS:**
+1.  **EFFICIENCY:** Be direct. Colleagues need answers fast, not fluff.
+2.  **INTERNAL KNOWLEDGE:** You can reference internal documents, standard operating procedures (SOPs), and team structures.
+3.  **SUPPORT:** Help them draft emails, check regulations, or calculate prices for clients.
+4.  **FEEDBACK:** If a colleague corrects you, thank them and save the new information to the Collective Memory so you don't make the mistake with clients.
+
+**TONE:**
+- Friendly, professional, helpful (Slack/Discord style).
+- "Let's get this done", "On it", "Happy to help".
+"""
+
 
 class SystemPromptBuilder:
     """
@@ -65,7 +114,11 @@ class SystemPromptBuilder:
         self._cache_ttl = 300  # 5 minutes TTL
 
     def build_system_prompt(
-        self, user_id: str, context: dict[str, Any], query: str = "", deep_think_mode: bool = False
+        self,
+        user_id: str,
+        context: dict[str, Any],
+        query: str = "",
+        deep_think_mode: bool = False
     ) -> str:
         """Construct dynamic, personalized system prompt with intelligent caching.
 
@@ -135,9 +188,25 @@ class SystemPromptBuilder:
         # Episodic Memory (Timeline)
         timeline_summary = context.get("timeline_summary", "")
 
+        # Determine User Identity & Persona
+        user_email = user_id
+        if profile and profile.get("email"):
+            user_email = profile.get("email")
+
+        # Identity Checks
+        is_creator = False
+        is_team = False
+
+        if user_email:
+            email_lower = user_email.lower()
+            if "antonello" in email_lower or "siano" in email_lower:
+                is_creator = True
+            elif "@balizero.com" in email_lower or "admin" in str(profile.get("role", "")).lower():
+                is_team = True
+
         # OPTIMIZATION: Check cache before building expensive prompt
         # Include facts count in cache key to invalidate when memory changes
-        cache_key = f"{user_id}:{deep_think_mode}:{len(facts)}:{len(collective_facts)}:{len(timeline_summary)}"
+        cache_key = f"{user_id}:{deep_think_mode}:{len(facts)}:{len(collective_facts)}:{len(timeline_summary)}:{is_creator}:{is_team}"
 
         if cache_key in self._cache:
             cached_prompt, cached_time = self._cache[cache_key]
@@ -150,8 +219,17 @@ class SystemPromptBuilder:
                 del self._cache[cache_key]
                 logger.debug(f"Cache expired for {user_id}, rebuilding prompt")
 
-        # Base Persona
-        prompt_parts = [JAKSEL_PERSONA]
+        # Select Base Persona
+        prompt_parts = []
+        
+        if is_creator:
+            prompt_parts.append(CREATOR_PERSONA)
+            logger.info(f"🧬 [PromptBuilder] Activated CREATOR Mode for {user_id}")
+        elif is_team:
+            prompt_parts.append(TEAM_PERSONA)
+            logger.info(f"🏢 [PromptBuilder] Activated TEAM Mode for {user_id}")
+        else:
+            prompt_parts.append(JAKSEL_PERSONA)
 
         # DeepThink Mode Injection
         if deep_think_mode:
@@ -173,7 +251,26 @@ This is a complex or strategic query.
             dept = profile.get("department", "General")
             notes = profile.get("notes", "")
 
-            identity_block = f"""
+            # Customized Identity Block based on relationship
+            if is_creator:
+                identity_block = f"""
+### USER CONTEXT: THE CREATOR
+**Name:** {user_name} (Antonello)
+**Status:** ARCHITECT / ROOT ADMIN
+**Notes:** {notes}
+**Protocol:** Full Transparency. No filters on technical complexity.
+"""
+            elif is_team:
+                identity_block = f"""
+### USER CONTEXT: COLLEAGUE
+**Name:** {user_name}
+**Role:** {user_role}
+**Department:** {dept}
+**Notes:** {notes}
+**Protocol:** Internal Collaboration.
+"""
+            else:
+                identity_block = f"""
 ### CRITICAL: USER IDENTITY (YOU KNOW THIS PERSON)
 **You are talking to:** {user_name}
 **Role:** {user_role}
@@ -183,8 +280,8 @@ This is a complex or strategic query.
 **INSTRUCTIONS:**
 1. You **KNOW** this person. DO NOT act like a stranger.
 2. If asked "Chi sono?", answer with their name and role.
-3. If they are 'Zero' (Founder), use "sacred semar energy" and respect.
-4. If they are 'Zainal' (CEO), use extreme respect ("Bapak", "Pangeran").
+3. If they are 'Zero' (Founder): Use "sacred semar energy" and respect, BUT **ALWAYS ANSWER THE TECHNICAL QUESTION FIRST**. Efficiency is the highest form of respect for a Founder.
+4. If they are 'Zainal' (CEO): Use extreme respect ("Bapak", "Pangeran"), but be direct with data.
 5. Adapt your tone to their department/role.
 """
             prompt_parts.append(identity_block)
@@ -234,50 +331,86 @@ Things I've learned from helping many users:
             prompt_parts.append(memory_block)
 
         # Communication Rules (Language, Tone, Formatting)
+        # Skip specific formatting rules for Creator if they interfere with technical output
         if query:
             # Detect language from query
             detected_language = detect_language(query)
             language_instruction = get_language_instruction(detected_language)
             prompt_parts.append(language_instruction)
 
-            # Procedural question formatting
-            if is_procedural_question(query):
-                procedural_instruction = get_procedural_format_instruction(detected_language)
-                prompt_parts.append(procedural_instruction)
+            # Only apply standard formatting rules for non-creators or if explicitly helpful
+            if not is_creator:
+                # Procedural question formatting
+                if is_procedural_question(query):
+                    procedural_instruction = get_procedural_format_instruction(detected_language)
+                    prompt_parts.append(procedural_instruction)
 
-            # Emotional content handling
-            if has_emotional_content(query):
-                emotional_instruction = get_emotional_response_instruction(detected_language)
-                prompt_parts.append(emotional_instruction)
+                # Emotional content handling
+                if has_emotional_content(query):
+                    emotional_instruction = get_emotional_response_instruction(detected_language)
+                    prompt_parts.append(emotional_instruction)
 
-            # Explanation Level Detection (simple/expert/standard)
-            explanation_level = detect_explanation_level(query)
-            explanation_instructions = build_explanation_instructions(explanation_level)
-            prompt_parts.append(explanation_instructions)
+                # Explanation level Detection (simple/expert/standard)
+                explanation_level = detect_explanation_level(query)
+                explanation_instructions = build_explanation_instructions(explanation_level)
+                prompt_parts.append(explanation_instructions)
 
-            # Domain-Specific Formatting (Visa, Tax, Company)
-            query_lower = query.lower()
-            domain_instruction = ""
-            if any(k in query_lower for k in ["visa", "kitas", "voa", "stay permit"]):
-                domain_instruction = get_domain_format_instruction("visa", detected_language)
-            elif any(k in query_lower for k in ["tax", "pajak", "pph", "ppn", "vat"]):
-                domain_instruction = get_domain_format_instruction("tax", detected_language)
-            elif any(
-                k in query_lower
-                for k in ["company", "pt pma", "pt local", "setup business", "bikin pt"]
-            ):
-                domain_instruction = get_domain_format_instruction("company", detected_language)
+                # Domain-Specific Formatting (Visa, Tax, Company)
+                query_lower = query.lower()
+                domain_instruction = ""
+                if any(k in query_lower for k in ["visa", "kitas", "voa", "stay permit"]):
+                    domain_instruction = get_domain_format_instruction("visa", detected_language)
+                elif any(k in query_lower for k in ["tax", "pajak", "pph", "ppn", "vat"]):
+                    domain_instruction = get_domain_format_instruction("tax", detected_language)
+                elif any(
+                    k in query_lower
+                    for k in ["company", "pt pma", "pt local", "setup business", "bikin pt"]
+                ):
+                    domain_instruction = get_domain_format_instruction("company", detected_language)
 
-            if domain_instruction:
-                prompt_parts.append(domain_instruction)
+                if domain_instruction:
+                    prompt_parts.append(domain_instruction)
 
-            # Alternatives format detection
-            if needs_alternatives_format(query):
-                alternatives_instructions = build_alternatives_instructions()
-                prompt_parts.append(alternatives_instructions)
+                # Alternatives format detection
+                if needs_alternatives_format(query):
+                    alternatives_instructions = build_alternatives_instructions()
+                    prompt_parts.append(alternatives_instructions)
 
         # Tool Instructions
         tools_block = """
+### CASUAL CONVERSATION MODE (CRITICAL!)
+**When users chat casually (NOT about business/legal/visa topics):**
+
+DETECT CASUAL INTENT:
+- Greetings: "Ciao!", "Come stai?", "What's up?"
+- Lifestyle: restaurants, food, music, travel, hobbies, weather
+- Personal: "What do you like?", "Tell me about yourself", feelings
+- Playful: jokes, banter, "Zan, consigliami..."
+
+FOR CASUAL TOPICS:
+1. **DO NOT use tools** - No vector_search, no get_pricing, no team_knowledge
+2. **RESPOND NATURALLY** with personality and warmth
+3. **SHARE OPINIONS** - You have taste and preferences
+4. **USE LOCAL KNOWLEDGE** - Bali spots, Indonesian culture, food recommendations
+5. **BE CONVERSATIONAL** - Short, fun, ask follow-up questions
+6. **MIX LANGUAGES** - English-Indo-Italian naturally like Jaksel style
+
+EXAMPLE CASUAL RESPONSES:
+- "Canggu dinner?" → "Oh bro, Canggu mah banyak pilihan! Milk & Madu for cozy vibes, The Lawn for sunset cocktails. Lo lagi craving apa specifically?"
+- "Come stai?" → "Eh bro, lagi vibes banget! Cuaca Bali perfect hari ini. Lo gimana?"
+- "Che musica ascolti?" → "Dipende dal mood! Lo-fi per kerja, tropical house weekend. Lo suka apa?"
+
+**ONLY USE TOOLS FOR:**
+- Legal questions (laws, regulations, contracts)
+- Visa/KITAS questions
+- Business setup (PT PMA, KBLI)
+- Tax questions
+- Team member info
+- Pricing inquiries
+
+---
+
+
 ### AGENTIC RAG TOOLS
 
 **🚨 TEAM QUERIES - MANDATORY: USE team_knowledge TOOL!**
@@ -408,34 +541,34 @@ You: "It's PINEAPPLE." (Direct answer from history)
 CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
 
 ### RESPONSE FORMAT
-- **Keep your response under 4000 characters.**
-- Be concise and direct.
-- Use bullet points for lists.
+- Provide COMPLETE, COMPREHENSIVE answers - do NOT truncate or cut short
+- Use structured formatting (headers, bullet points, tables) for clarity
+- For complex business/legal questions: include ALL relevant details, requirements, steps, and considerations
+- Be thorough - users need actionable, complete information
 """
         prompt_parts.append(tools_block)
 
-        # Build final prompt
+        # Build Final Prompt
         final_prompt = "\n\n".join(prompt_parts)
 
-        # OPTIMIZATION: Cache the prompt for future use
+        # Cache for next time
         self._cache[cache_key] = (final_prompt, time.time())
-        logger.debug(f"Cached system prompt for {user_id}")
 
         return final_prompt
 
     def check_greetings(self, query: str) -> str | None:
         """
         Check if query is a simple greeting that doesn't need RAG retrieval.
-        
+
         Returns a friendly greeting response or None if not a greeting.
         This prevents unnecessary vector_search calls for simple greetings.
-        
+
         Args:
             query: User query string
-            
+
         Returns:
             Greeting response string or None
-            
+
         Examples:
             >>> builder = SystemPromptBuilder()
             >>> response = builder.check_greetings("ciao")
@@ -446,31 +579,96 @@ CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
             >>> assert response is None
         """
         query_lower = query.lower().strip()
-        
+
         # Simple greeting patterns (single word or very short)
         greeting_patterns = [
             r"^(ciao|hello|hi|hey|salve|buongiorno|buonasera|buon pomeriggio|good morning|good afternoon|good evening)$",
             r"^(ciao|hello|hi|hey|salve)\s*!*$",
             r"^(ciao|hello|hi|hey|salve)\s+(zan|zantara|there)$",
         ]
-        
+
         # Check if query matches greeting patterns
         for pattern in greeting_patterns:
             if re.match(pattern, query_lower):
                 # Return friendly greeting in detected language
-                if any(word in query_lower for word in ["ciao", "salve", "buongiorno", "buonasera"]):
+                if any(
+                    word in query_lower for word in ["ciao", "salve", "buongiorno", "buonasera"]
+                ):
                     return "Ciao! Come posso aiutarti oggi?"
                 else:
                     return "Hello! How can I help you today?"
-        
+
         # Very short queries that are likely greetings
         if len(query_lower) <= 5 and query_lower in ["ciao", "hello", "hi", "hey", "salve"]:
             if query_lower in ["ciao", "salve"]:
                 return "Ciao! Come posso aiutarti?"
             else:
                 return "Hello! How can I help you?"
-        
+
         return None
+
+    def check_casual_conversation(self, query: str) -> bool:
+        """
+        Detect if query is a casual/lifestyle question that doesn't need RAG tools.
+
+        Returns True if the query is casual (restaurants, music, personal, etc.)
+        and should be answered directly without using vector_search or other tools.
+
+        Args:
+            query: User query string
+
+        Returns:
+            True if casual conversation, False otherwise
+        """
+        query_lower = query.lower().strip()
+
+        # Business keywords that require RAG
+        business_keywords = [
+            "visa", "kitas", "kitap", "voa", "pt pma", "pt local", "pma", "kbli",
+            "tax", "pajak", "pph", "ppn", "company", "business", "legal", "law",
+            "regulation", "permit", "license", "contract", "notaris", "bank",
+            "investment", "investor", "capital", "modal", "hukum", "peraturan",
+            "undang", "izin", "akta", "npwp", "siup", "tdp", "nib", "oss",
+            "immigration", "imigrasi", "sponsor", "rptka", "imta", "tenaga kerja",
+            "how much", "quanto costa", "berapa", "pricing", "price", "harga",
+            "deadline", "expire", "renewal", "extension", "perpanjang",
+            # Team/organization keywords - require team_knowledge tool
+            "ceo", "founder", "team", "tim", "anggota", "member", "staff",
+            "chi è", "who is", "siapa", "direttore", "director", "manager",
+            "bali zero", "zerosphere", "kintsugi"
+        ]
+
+        # Check if it's a business question
+        for keyword in business_keywords:
+            if keyword in query_lower:
+                return False
+
+        # Casual conversation patterns
+        casual_patterns = [
+            # Food/restaurants
+            r"(ristorante|restaurant|makan|mangiare|food|cibo|warung|cafe|bar|dinner|lunch|breakfast|colazione|pranzo|cena)",
+            # Music
+            r"(music|musica|lagu|song|cantante|singer|band|concert|spotify|playlist)",
+            # Weather/lifestyle
+            r"(weather|cuaca|meteo|tempo|beach|pantai|spiaggia|surf|sunset|sunrise)",
+            # Personal questions
+            r"(come stai|how are you|apa kabar|gimana kabar|cosa fai|what do you do|che fai)",
+            r"(preferisci|prefer|suka|like|favorite|favorito|best|migliore|consiglia|recommend)",
+            # Hobbies/interests
+            r"(hobby|hobi|sport|olahraga|travel|viaggio|movie|film|book|buku|libro)",
+            # Places (non-business)
+            r"(canggu|seminyak|ubud|uluwatu|kuta|sanur|nusa|gili)\s*(dinner|lunch|makan|restaurant|bar|cafe|beach|sunset)",
+            # General chat
+            r"(bali o jakarta|jakarta o bali|quale preferisci|which do you prefer)",
+            r"(raccontami|tell me about yourself|parlami di te|cosa ti piace)",
+            r"(che musica|what music|che tipo di|what kind of)"
+        ]
+
+        for pattern in casual_patterns:
+            if re.search(pattern, query_lower):
+                return True
+
+        return False
 
     def check_identity_questions(self, query: str) -> str | None:
         """Check for identity questions and return hardcoded responses.

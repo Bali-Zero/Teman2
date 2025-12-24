@@ -17,6 +17,7 @@ Key features:
 
 import json
 import logging
+import re
 from typing import Any
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
@@ -306,3 +307,143 @@ Do not invent information. If the context is insufficient, admit it.
                 state.final_answer = post_process_response(state.final_answer, query)
 
         return state, model_used_name, conversation_messages
+
+
+def detect_team_query(query: str) -> tuple[bool, str, str]:
+    """
+    Heuristically detect if a user query is asking about the Bali Zero / Nuzantara team.
+
+    This helper is used by the AgenticRAGOrchestrator to optionally pre-route to the
+    `team_knowledge` tool (when available) before running the full ReAct loop.
+
+    Returns:
+        (is_team_query, query_type, search_term)
+
+    Supported query_type values (expected by the `team_knowledge` tool):
+        - "list_all": request to list all team members / employees
+        - "search_by_role": request by role/title (CEO, founder, tax, visa, etc.)
+        - "search_by_name": request by person name ("Chi è Zainal?", "Tell me about Zero")
+        - "search_by_email": request containing an email address
+    """
+    if not isinstance(query, str):
+        return False, "", ""
+
+    q = query.strip()
+    if not q:
+        return False, "", ""
+
+    ql = q.lower()
+
+    # 1) List-all team requests
+    list_all_markers = (
+        "list all team",
+        "list team",
+        "team members",
+        "membri del team",
+        "lista team",
+        "elenco team",
+        "tutti i membri",
+        "quanti dipendenti",
+        "dipendenti",
+        "staff",
+        "personale",
+    )
+    if any(marker in ql for marker in list_all_markers):
+        return True, "list_all", ""
+
+    # 2) Email lookup
+    email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", q)
+    if email_match:
+        return True, "search_by_email", email_match.group(0)
+
+    # 3) Role/title lookup - ONLY if user is explicitly asking about TEAM MEMBERS
+    # Must have team context like "chi si occupa", "who handles", "team", "staff", etc.
+    team_context_markers = (
+        "chi si occupa",
+        "chi gestisce",
+        "chi segue",
+        "chi è il",
+        "chi è la",
+        "who handles",
+        "who manages",
+        "who is the",
+        "who is your",
+        "your team",
+        "nel team",
+        "del team",
+        "in the team",
+        "team member",
+        "staff member",
+        "il vostro",
+        "la vostra",
+        "avete qualcuno",
+        "c'è qualcuno",
+        "esperto di",
+        "specialist",
+        "manager",
+        "responsabile",
+    )
+    has_team_context = any(marker in ql for marker in team_context_markers)
+
+    # Only check roles if there's explicit team context
+    if has_team_context:
+        role_map: dict[str, tuple[str, ...]] = {
+            "ceo": ("ceo", "chief executive", "amministratore delegato", "a.d.", "ad "),
+            "founder": ("founder", "cofounder", "co-founder", "fondatore", "fondatrice"),
+            "tax": ("tax", "tasse", "fiscale", "fiscal", "pajak"),
+            "visa": ("visa", "visti", "immigrazione", "immigration"),
+            "setup": ("setup", "set up", "onboarding"),
+            "legal": ("legal", "legale", "law", "avvocato"),
+            "property": ("property", "immobiliare", "real estate"),
+            "marketing": ("marketing", "social", "content"),
+            "support": ("support", "assistenza", "customer care"),
+        }
+        for role, keywords in role_map.items():
+            if any(k in ql for k in keywords):
+                return True, "search_by_role", role
+
+    # 4) Name lookup patterns (keep original casing from the original query)
+    # Handle Italian keyboard variations: è, e, e', e' (curly apostrophe)
+    name_patterns = (
+        # Italian "chi è" with all keyboard variations (accented, apostrophe, plain)
+        r"\bchi\s*[eè]['']?\s*(?P<term>[^?.,!;:\n]{1,64})",
+        # English patterns
+        r"\bwho\s+is\s+(?P<term>[^?.,!;:\n]{1,64})",
+        r"\btell\s+me\s+about\s+(?P<term>[^?.,!;:\n]{1,64})",
+        # Italian info/dimmi/parlami patterns
+        r"\binfo(?:rmazioni)?\s+su\s+(?P<term>[^?.,!;:\n]{1,64})",
+        r"\bdimmi\s+(?:di\s+)?(?P<term>[^?.,!;:\n]{1,64})",
+        r"\bparlami\s+di\s+(?P<term>[^?.,!;:\n]{1,64})",
+        r"\bconosci\s+(?P<term>[^?.,!;:\n]{1,64})",
+    )
+    for pat in name_patterns:
+        m = re.search(pat, q, flags=re.IGNORECASE)
+        if not m:
+            continue
+        raw_term = (m.group("term") or "").strip()
+        raw_term = re.sub(
+            r"^(il|lo|la|i|gli|le|the|a|an|un|uno|una)\s+",
+            "",
+            raw_term,
+            flags=re.IGNORECASE,
+        ).strip()
+        raw_term = raw_term.strip("\"'“”")
+        raw_term = " ".join(raw_term.split()[:3])  # keep short, stable search term
+        if raw_term:
+            return True, "search_by_name", raw_term
+
+    # 5) Generic "who handles X" / "chi si occupa di X"
+    handler_patterns = (
+        r"\bchi\s+si\s+occupa\s+di\s+(?P<term>[^?.,!;:\n]{1,64})",
+        r"\bwho\s+handles\s+(?P<term>[^?.,!;:\n]{1,64})",
+    )
+    for pat in handler_patterns:
+        m = re.search(pat, q, flags=re.IGNORECASE)
+        if not m:
+            continue
+        raw_term = (m.group("term") or "").strip().strip("\"'“”")
+        raw_term = " ".join(raw_term.split()[:3])
+        if raw_term:
+            return True, "search_by_role", raw_term.lower()
+
+    return False, "", ""

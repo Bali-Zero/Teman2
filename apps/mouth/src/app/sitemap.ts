@@ -1,7 +1,11 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://nuzantara-rag.fly.dev';
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof process !== 'undefined' && process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'https://zantara.balizero.com');
 
   return [
     {

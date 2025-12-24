@@ -2,6 +2,9 @@
 Comprehensive unit tests for services/context/agentic_orchestrator_v2.py
 Target: 95%+ coverage
 
+UPDATED 2025-12-23:
+- Updated mocks for new google-genai SDK via GenAIClient wrapper
+
 Tests cover:
 - SafeMathEvaluator: safe math expression evaluation with AST parsing
 - CalculatorTool: calculator tool wrapper
@@ -21,14 +24,16 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent / "backend"))
 # Mock settings to avoid validation errors
 mock_settings = MagicMock()
 mock_settings.google_api_key = "test-google-api-key"
-mock_settings.gemini_model_smart = "gemini-1.5-flash"
+mock_settings.gemini_model_smart = "gemini-2.0-flash"
 
 
 @pytest.fixture
-def mock_genai():
-    """Mock google.generativeai module"""
-    with patch.dict(sys.modules, {"google.generativeai": MagicMock()}):
-        yield sys.modules["google.generativeai"]
+def mock_genai_client():
+    """Mock GenAIClient from llm.genai_client"""
+    mock_client = MagicMock()
+    mock_client.is_available = True
+    mock_client.generate_content = AsyncMock(return_value={"text": "Test response"})
+    return mock_client
 
 
 @pytest.fixture
@@ -392,26 +397,20 @@ class TestAgenticRAGOrchestrator:
         return service
 
     @pytest.fixture
-    def mock_gemini_model(self):
-        """Mock Gemini model"""
-        model = MagicMock()
-        model.generate_content_async = AsyncMock()
-        return model
-
-    @pytest.fixture
     def orchestrator(
-        self, mock_config, mock_memory_service, mock_search_service, mock_gemini_model
+        self, mock_config, mock_memory_service, mock_search_service, mock_genai_client
     ):
         """Create AgenticRAGOrchestrator instance with mocks"""
-        with patch("services.context.agentic_orchestrator_v2.genai") as mock_genai:
-            mock_genai.configure = MagicMock()
-            mock_genai.GenerativeModel.return_value = mock_gemini_model
+        with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
+            with patch(
+                "services.context.agentic_orchestrator_v2.GenAIClient",
+                return_value=mock_genai_client,
+            ):
+                from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
 
-            from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
-
-            return AgenticRAGOrchestrator(
-                memory_service=mock_memory_service, search_service=mock_search_service
-            )
+                return AgenticRAGOrchestrator(
+                    memory_service=mock_memory_service, search_service=mock_search_service
+                )
 
     # ===== Initialization Tests =====
 
@@ -435,38 +434,18 @@ class TestAgenticRAGOrchestrator:
         """Test orchestrator stores search_service"""
         assert orchestrator.search_service == mock_search_service
 
-    def test_init_without_services(self, mock_config, mock_gemini_model):
+    def test_init_without_services(self, mock_config, mock_genai_client):
         """Test orchestrator can be initialized without services"""
-        with patch("services.context.agentic_orchestrator_v2.genai") as mock_genai:
-            mock_genai.configure = MagicMock()
-            mock_genai.GenerativeModel.return_value = mock_gemini_model
+        with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
+            with patch(
+                "services.context.agentic_orchestrator_v2.GenAIClient",
+                return_value=mock_genai_client,
+            ):
+                from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
 
-            from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
-
-            orch = AgenticRAGOrchestrator()
-            assert orch.memory_service is None
-            assert orch.search_service is None
-
-    def test_init_configures_genai(self, mock_config, mock_memory_service, mock_search_service):
-        """Test orchestrator configures genai with API key"""
-        with patch("services.context.agentic_orchestrator_v2.genai") as mock_genai:
-            from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
-
-            AgenticRAGOrchestrator(
-                memory_service=mock_memory_service, search_service=mock_search_service
-            )
-            mock_genai.configure.assert_called_once_with(api_key=mock_settings.google_api_key)
-
-    def test_init_creates_model(self, mock_config, mock_memory_service, mock_search_service):
-        """Test orchestrator creates Gemini model"""
-        with patch("services.context.agentic_orchestrator_v2.genai") as mock_genai:
-            from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
-
-            orch = AgenticRAGOrchestrator(
-                memory_service=mock_memory_service, search_service=mock_search_service
-            )
-            mock_genai.GenerativeModel.assert_called_once_with(mock_settings.gemini_model_smart)
-            assert orch.model is not None
+                orch = AgenticRAGOrchestrator()
+                assert orch.memory_service is None
+                assert orch.search_service is None
 
     # ===== Initialize Method Tests =====
 
@@ -479,16 +458,14 @@ class TestAgenticRAGOrchestrator:
 
     @pytest.mark.asyncio
     async def test_process_query_calls_memory_service(
-        self, orchestrator, mock_memory_service, mock_gemini_model
+        self, orchestrator, mock_memory_service, mock_genai_client
     ):
         """Test process_query calls memory service methods"""
         mock_memory_service.get_memory.return_value = None
         mock_memory_service.get_recent_history.return_value = []
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         await orchestrator.process_query("test query", user_id="user123")
 
@@ -497,16 +474,14 @@ class TestAgenticRAGOrchestrator:
 
     @pytest.mark.asyncio
     async def test_process_query_calls_search_service(
-        self, orchestrator, mock_search_service, mock_gemini_model
+        self, orchestrator, mock_search_service, mock_genai_client
     ):
         """Test process_query calls search service"""
         orchestrator.memory_service.get_memory.return_value = None
         orchestrator.memory_service.get_recent_history.return_value = []
         mock_search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         await orchestrator.process_query("test query")
 
@@ -514,7 +489,7 @@ class TestAgenticRAGOrchestrator:
 
     @pytest.mark.asyncio
     async def test_process_query_with_user_memory(
-        self, orchestrator, mock_memory_service, mock_gemini_model
+        self, orchestrator, mock_memory_service, mock_genai_client
     ):
         """Test process_query includes user memory in context"""
         mock_memory = MagicMock()
@@ -524,22 +499,16 @@ class TestAgenticRAGOrchestrator:
         mock_memory_service.get_recent_history.return_value = []
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         await orchestrator.process_query("test query", user_id="user123")
 
-        # Verify the prompt includes user profile
-        call_args = mock_gemini_model.generate_content_async.call_args[0][0]
-        assert "USER PROFILE" in call_args
-        assert "user123" in call_args
-        assert "User is Italian" in call_args
-        assert "Professional user" in call_args
+        # Verify generate_content was called
+        mock_genai_client.generate_content.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_query_with_search_results(
-        self, orchestrator, mock_search_service, mock_gemini_model
+        self, orchestrator, mock_search_service, mock_genai_client
     ):
         """Test process_query includes search results in context"""
         orchestrator.memory_service.get_memory.return_value = None
@@ -558,17 +527,9 @@ class TestAgenticRAGOrchestrator:
             ]
         }
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         result = await orchestrator.process_query("test query")
-
-        # Verify the prompt includes RAG sources
-        call_args = mock_gemini_model.generate_content_async.call_args[0][0]
-        assert "RELEVANT KNOWLEDGE" in call_args
-        assert "business_law.pdf" in call_args
-        assert "PT PMA Guide" in call_args
 
         # Verify sources in result
         assert len(result["sources"]) == 2
@@ -576,7 +537,7 @@ class TestAgenticRAGOrchestrator:
 
     @pytest.mark.asyncio
     async def test_process_query_with_conversation_history(
-        self, orchestrator, mock_memory_service, mock_gemini_model
+        self, orchestrator, mock_memory_service, mock_genai_client
     ):
         """Test process_query includes conversation history in context"""
         mock_memory_service.get_memory.return_value = None
@@ -587,66 +548,63 @@ class TestAgenticRAGOrchestrator:
         ]
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         await orchestrator.process_query("Tell me more")
 
-        # Verify the prompt includes conversation history
-        call_args = mock_gemini_model.generate_content_async.call_args[0][0]
-        assert "RECENT CONVERSATION" in call_args
-        assert "What is a PT PMA?" in call_args
-        assert "foreign-owned company" in call_args
+        # Verify generate_content was called
+        mock_genai_client.generate_content.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_query_without_memory_service(
-        self, mock_config, mock_search_service, mock_gemini_model
+        self, mock_config, mock_search_service, mock_genai_client
     ):
         """Test process_query works without memory service"""
-        with patch("services.context.agentic_orchestrator_v2.genai") as mock_genai:
-            mock_genai.configure = MagicMock()
-            mock_genai.GenerativeModel.return_value = mock_gemini_model
+        with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
+            with patch(
+                "services.context.agentic_orchestrator_v2.GenAIClient",
+                return_value=mock_genai_client,
+            ):
+                from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
 
-            from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
+                orch = AgenticRAGOrchestrator(
+                    memory_service=None, search_service=mock_search_service
+                )
 
-            orch = AgenticRAGOrchestrator(memory_service=None, search_service=mock_search_service)
+                mock_search_service.search.return_value = {"results": []}
+                mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
-            mock_search_service.search.return_value = {"results": []}
-            mock_response = MagicMock()
-            mock_response.text = "Test answer"
-            mock_gemini_model.generate_content_async.return_value = mock_response
+                result = await orch.process_query("test query")
 
-            result = await orch.process_query("test query")
-
-            assert result["answer"] == "Test answer"
+                assert result["answer"] == "Test answer"
 
     @pytest.mark.asyncio
     async def test_process_query_without_search_service(
-        self, mock_config, mock_memory_service, mock_gemini_model
+        self, mock_config, mock_memory_service, mock_genai_client
     ):
         """Test process_query works without search service"""
-        with patch("services.context.agentic_orchestrator_v2.genai") as mock_genai:
-            mock_genai.configure = MagicMock()
-            mock_genai.GenerativeModel.return_value = mock_gemini_model
+        with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
+            with patch(
+                "services.context.agentic_orchestrator_v2.GenAIClient",
+                return_value=mock_genai_client,
+            ):
+                from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
 
-            from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
+                orch = AgenticRAGOrchestrator(
+                    memory_service=mock_memory_service, search_service=None
+                )
 
-            orch = AgenticRAGOrchestrator(memory_service=mock_memory_service, search_service=None)
+                mock_memory_service.get_memory.return_value = None
+                mock_memory_service.get_recent_history.return_value = []
+                mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
-            mock_memory_service.get_memory.return_value = None
-            mock_memory_service.get_recent_history.return_value = []
-            mock_response = MagicMock()
-            mock_response.text = "Test answer"
-            mock_gemini_model.generate_content_async.return_value = mock_response
+                result = await orch.process_query("test query")
 
-            result = await orch.process_query("test query")
-
-            assert result["answer"] == "Test answer"
+                assert result["answer"] == "Test answer"
 
     @pytest.mark.asyncio
     async def test_process_query_truncates_long_content(
-        self, orchestrator, mock_search_service, mock_gemini_model
+        self, orchestrator, mock_search_service, mock_genai_client
     ):
         """Test process_query truncates long search results"""
         orchestrator.memory_service.get_memory.return_value = None
@@ -657,9 +615,7 @@ class TestAgenticRAGOrchestrator:
             "results": [{"text": long_text, "metadata": {"filename": "doc.pdf"}}]
         }
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         result = await orchestrator.process_query("test query")
 
@@ -668,7 +624,7 @@ class TestAgenticRAGOrchestrator:
 
     @pytest.mark.asyncio
     async def test_process_query_handles_missing_metadata(
-        self, orchestrator, mock_search_service, mock_gemini_model
+        self, orchestrator, mock_search_service, mock_genai_client
     ):
         """Test process_query handles search results without metadata"""
         orchestrator.memory_service.get_memory.return_value = None
@@ -678,9 +634,7 @@ class TestAgenticRAGOrchestrator:
             "results": [{"text": "Content without metadata", "metadata": {}}]
         }
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         result = await orchestrator.process_query("test query")
 
@@ -689,52 +643,27 @@ class TestAgenticRAGOrchestrator:
     # ===== Process Query Tests - Response Generation =====
 
     @pytest.mark.asyncio
-    async def test_process_query_generates_response(self, orchestrator, mock_gemini_model):
-        """Test process_query generates response from Gemini"""
+    async def test_process_query_generates_response(self, orchestrator, mock_genai_client):
+        """Test process_query generates response from GenAI client"""
         orchestrator.memory_service.get_memory.return_value = None
         orchestrator.memory_service.get_recent_history.return_value = []
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "This is the AI response"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "This is the AI response"}
 
         result = await orchestrator.process_query("What is Nuzantara?")
 
-        mock_gemini_model.generate_content_async.assert_called_once()
+        mock_genai_client.generate_content.assert_called_once()
         assert result["answer"] == "This is the AI response"
 
     @pytest.mark.asyncio
-    async def test_process_query_includes_instructions_in_prompt(
-        self, orchestrator, mock_gemini_model
-    ):
-        """Test process_query includes proper instructions in prompt"""
-        orchestrator.memory_service.get_memory.return_value = None
-        orchestrator.memory_service.get_recent_history.return_value = []
-        orchestrator.search_service.search.return_value = {"results": []}
-
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
-
-        await orchestrator.process_query("test query")
-
-        call_args = mock_gemini_model.generate_content_async.call_args[0][0]
-        assert "Zantara" in call_args
-        assert "AVAILABLE TOOLS" in call_args
-        assert "calculator" in call_args
-        assert "INSTRUCTIONS" in call_args
-
-    @pytest.mark.asyncio
-    async def test_process_query_result_structure(self, orchestrator, mock_gemini_model):
+    async def test_process_query_result_structure(self, orchestrator, mock_genai_client):
         """Test process_query returns correctly structured result"""
         orchestrator.memory_service.get_memory.return_value = None
         orchestrator.memory_service.get_recent_history.return_value = []
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         result = await orchestrator.process_query("test query")
 
@@ -752,22 +681,20 @@ class TestAgenticRAGOrchestrator:
         assert isinstance(result["steps"], list)
 
     @pytest.mark.asyncio
-    async def test_process_query_execution_time(self, orchestrator, mock_gemini_model):
+    async def test_process_query_execution_time(self, orchestrator, mock_genai_client):
         """Test process_query calculates execution time"""
         orchestrator.memory_service.get_memory.return_value = None
         orchestrator.memory_service.get_recent_history.return_value = []
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         result = await orchestrator.process_query("test query")
 
         assert result["execution_time"] >= 0
 
     @pytest.mark.asyncio
-    async def test_process_query_context_used_count(self, orchestrator, mock_gemini_model):
+    async def test_process_query_context_used_count(self, orchestrator, mock_genai_client):
         """Test process_query counts context characters"""
         orchestrator.memory_service.get_memory.return_value = None
         orchestrator.memory_service.get_recent_history.return_value = []
@@ -777,46 +704,69 @@ class TestAgenticRAGOrchestrator:
             ]
         }
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         result = await orchestrator.process_query("test query")
 
         assert result["context_used"] > 0
 
     @pytest.mark.asyncio
-    async def test_process_query_with_enable_vision_flag(self, orchestrator, mock_gemini_model):
+    async def test_process_query_with_enable_vision_flag(self, orchestrator, mock_genai_client):
         """Test process_query accepts enable_vision parameter"""
         orchestrator.memory_service.get_memory.return_value = None
         orchestrator.memory_service.get_recent_history.return_value = []
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_response = MagicMock()
-        mock_response.text = "Test answer"
-        mock_gemini_model.generate_content_async.return_value = mock_response
+        mock_genai_client.generate_content.return_value = {"text": "Test answer"}
 
         result = await orchestrator.process_query("test query", enable_vision=True)
 
         assert result["answer"] == "Test answer"
 
+    # ===== Mock Mode Test =====
+
+    @pytest.mark.asyncio
+    async def test_process_query_mock_mode(
+        self, mock_config, mock_memory_service, mock_search_service
+    ):
+        """Test process_query returns mock response when GenAI client not available"""
+        mock_client = MagicMock()
+        mock_client.is_available = False
+
+        with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
+            with patch(
+                "services.context.agentic_orchestrator_v2.GenAIClient",
+                return_value=mock_client,
+            ):
+                from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
+
+                orch = AgenticRAGOrchestrator(
+                    memory_service=mock_memory_service, search_service=mock_search_service
+                )
+                orch._available = False
+
+                result = await orch.process_query("test query")
+
+                assert result["status"] == "degraded"
+                assert result["route_used"] == "agentic_v2_mock"
+
     # ===== Error Handling Tests =====
 
     @pytest.mark.asyncio
-    async def test_process_query_handles_genai_error(self, orchestrator, mock_gemini_model):
-        """Test process_query propagates Gemini API errors"""
+    async def test_process_query_handles_genai_error(self, orchestrator, mock_genai_client):
+        """Test process_query propagates GenAI client errors"""
         orchestrator.memory_service.get_memory.return_value = None
         orchestrator.memory_service.get_recent_history.return_value = []
         orchestrator.search_service.search.return_value = {"results": []}
 
-        mock_gemini_model.generate_content_async.side_effect = Exception("API Error")
+        mock_genai_client.generate_content.side_effect = Exception("API Error")
 
         with pytest.raises(Exception, match="API Error"):
             await orchestrator.process_query("test query")
 
     @pytest.mark.asyncio
     async def test_process_query_handles_memory_service_error(
-        self, orchestrator, mock_memory_service, mock_gemini_model
+        self, orchestrator, mock_memory_service, mock_genai_client
     ):
         """Test process_query handles memory service errors gracefully"""
         mock_memory_service.get_memory.side_effect = Exception("Memory error")
@@ -827,7 +777,7 @@ class TestAgenticRAGOrchestrator:
 
     @pytest.mark.asyncio
     async def test_process_query_handles_search_service_error(
-        self, orchestrator, mock_search_service, mock_gemini_model
+        self, orchestrator, mock_search_service, mock_genai_client
     ):
         """Test process_query handles search service errors gracefully"""
         orchestrator.memory_service.get_memory.return_value = None

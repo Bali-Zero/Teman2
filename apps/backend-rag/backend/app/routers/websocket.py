@@ -107,8 +107,10 @@ async def websocket_endpoint(websocket: WebSocket):
         token = auth_header[7:]  # Remove "Bearer " prefix
 
     # Fallback to subprotocol if header not available (WebSocket limitation)
-    if not token and websocket.subprotocols:
-        for subprotocol in websocket.subprotocols:
+    # Use scope.get() as subprotocols attribute may not exist in all Starlette versions
+    subprotocols = websocket.scope.get("subprotocols", [])
+    if not token and subprotocols:
+        for subprotocol in subprotocols:
             if subprotocol.startswith("bearer."):
                 token = subprotocol[7:]  # Remove "bearer." prefix
                 break

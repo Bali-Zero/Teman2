@@ -35,13 +35,23 @@ describe('FeedbackWidget', () => {
     render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Come sta andando la conversazione?/)).toBeInTheDocument();
+      expect(screen.getByText(/How is your experience?/)).toBeInTheDocument();
     });
   });
 
   it('should not render if feedback already submitted', () => {
     mockLocalStorage.getItem.mockImplementation((key) => {
-      if (key === 'feedbackSubmitted') return 'true';
+      if (key === 'zantara_feedback_submitted') return 'true';
+      return null;
+    });
+
+    const { container } = render(<FeedbackWidget sessionId="test-session" turnCount={10} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('should not render if feedback already dismissed', () => {
+    mockLocalStorage.getItem.mockImplementation((key) => {
+      if (key === 'zantara_feedback_dismissed') return 'true';
       return null;
     });
 
@@ -55,9 +65,9 @@ describe('FeedbackWidget', () => {
     render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Sta andando bene')).toBeInTheDocument();
-      expect(screen.getByText('Ho riscontrato problemi')).toBeInTheDocument();
-      expect(screen.getByText('Ho trovato un bug')).toBeInTheDocument();
+      expect(screen.getByText("It's going well")).toBeInTheDocument();
+      expect(screen.getByText('I had some issues')).toBeInTheDocument();
+      expect(screen.getByText('I found a bug')).toBeInTheDocument();
     });
   });
 
@@ -68,10 +78,10 @@ describe('FeedbackWidget', () => {
     render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Come sta andando la conversazione?/)).toBeInTheDocument();
+      expect(screen.getByText(/How is your experience?/)).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText('Sta andando bene'));
+    await user.click(screen.getByText("It's going well"));
   });
 
   it('should allow typing message', async () => {
@@ -80,11 +90,11 @@ describe('FeedbackWidget', () => {
 
     render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
 
-    await user.click(screen.getByText('Sta andando bene'));
+    await user.click(screen.getByText("It's going well"));
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Scrivi qui...')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Tell us more...')).toBeInTheDocument();
     });
-    const textarea = screen.getByPlaceholderText('Scrivi qui...');
+    const textarea = screen.getByPlaceholderText('Tell us more...');
     await user.type(textarea, 'Test feedback message');
 
     expect(textarea).toHaveValue('Test feedback message');
@@ -97,40 +107,70 @@ describe('FeedbackWidget', () => {
     render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Come sta andando la conversazione?/)).toBeInTheDocument();
+      expect(screen.getByText(/How is your experience?/)).toBeInTheDocument();
     });
 
     const closeButton = screen.getByLabelText('Dismiss feedback');
     await user.click(closeButton);
 
-    expect(mockLocalStorage.setItem).toHaveBeenCalledWith('feedbackDismissed', 'true');
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith('zantara_feedback_dismissed', 'true');
   });
 
   it('should submit feedback successfully', async () => {
     const user = userEvent.setup();
-    mockLocalStorage.getItem.mockImplementation((key) => {
-      if (key === 'conversationFeedback') return '[]';
-      return null;
+    mockLocalStorage.getItem.mockReturnValue(null);
+
+    // Mock fetch
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
     });
 
     render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Come sta andando la conversazione?/)).toBeInTheDocument();
+      expect(screen.getByText(/How is your experience?/)).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText('Sta andando bene'));
+    await user.click(screen.getByText("It's going well"));
 
-    // Type message
-    const textarea = screen.getByPlaceholderText('Scrivi qui...');
+    // Type message (optional)
+    const textarea = screen.getByPlaceholderText('Tell us more...');
     await user.type(textarea, 'Great service!');
 
     // Submit
-    const submitButton = screen.getByText('Invia Feedback');
+    const submitButton = screen.getByText('Send Feedback');
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('feedbackSubmitted', 'true');
+      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('zantara_feedback_submitted', 'true');
+    });
+  });
+
+  it('should submit without message (optional)', async () => {
+    const user = userEvent.setup();
+    mockLocalStorage.getItem.mockReturnValue(null);
+
+    // Mock fetch
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true }),
+    });
+
+    render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/How is your experience?/)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("It's going well"));
+
+    // Submit without typing message
+    const submitButton = screen.getByText('Send Feedback');
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
     });
   });
 
@@ -138,23 +178,19 @@ describe('FeedbackWidget', () => {
     const user = userEvent.setup();
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockLocalStorage.getItem.mockReturnValue(null);
-    mockLocalStorage.setItem.mockImplementation(() => {
-      throw new Error('localStorage error');
-    });
+
+    // Mock fetch to fail
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
     render(<FeedbackWidget sessionId="test-session" turnCount={8} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Come sta andando la conversazione?/)).toBeInTheDocument();
+      expect(screen.getByText(/How is your experience?/)).toBeInTheDocument();
     });
 
-    // Try to submit (will fail due to localStorage error)
-    await user.click(screen.getByText('Sta andando bene'));
+    await user.click(screen.getByText("It's going well"));
 
-    const textarea = screen.getByPlaceholderText('Scrivi qui...');
-    await user.type(textarea, 'Test');
-
-    const submitButton = screen.getByText('Invia Feedback');
+    const submitButton = screen.getByText('Send Feedback');
     await user.click(submitButton);
 
     await waitFor(() => {

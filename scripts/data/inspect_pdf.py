@@ -2,7 +2,7 @@ import pypdf
 
 
 def main():
-    pdf_path = "apps/scraper/data/correspondence-table-kbli-2020---kbli-2015.pdf"
+    pdf_path = "/Users/antonellosiano/Desktop/kb/correspondence-table-kbli-2020---kbli-2015.pdf"
 
     try:
         reader = pypdf.PdfReader(pdf_path)

@@ -14,6 +14,7 @@ import logging
 from typing import Any
 
 import asyncpg
+
 from ..services.kg_extractors import EntityExtractor, RelationshipExtractor
 from ..services.kg_repository import KnowledgeGraphRepository
 from ..services.kg_schema import KnowledgeGraphSchema

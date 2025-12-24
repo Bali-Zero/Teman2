@@ -12,16 +12,18 @@ Usage:
 
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from llm.zantara_ai_client import ZantaraAIClient
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+
 class ExtractedGraph(BaseModel):
-    entities: List[Dict[str, Any]]
-    relationships: List[Dict[str, Any]]
+    entities: list[dict[str, Any]]
+    relationships: list[dict[str, Any]]
+
 
 class GraphExtractor:
     def __init__(self, ai_client: ZantaraAIClient):
@@ -51,7 +53,7 @@ class GraphExtractor:
 
         user_prompt = f"""
         Context: {context}
-        
+
         Text to Analyze:
         "{text[:2000]}"... (truncated)
 
@@ -63,16 +65,16 @@ class GraphExtractor:
             response = await self.ai.generate_response(
                 prompt=user_prompt,
                 system_prompt=system_prompt,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
-            
+
             # Parse JSON
             data = json.loads(response)
-            
+
             # Validate simple structure
             entities = data.get("entities", [])
             relations = data.get("relationships", []) or data.get("relations", [])
-            
+
             return ExtractedGraph(entities=entities, relationships=relations)
 
         except Exception as e:

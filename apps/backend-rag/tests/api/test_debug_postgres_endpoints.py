@@ -33,19 +33,22 @@ if str(backend_path) not in sys.path:
 def client():
     """Create test client with debug router only (no middleware)."""
     from fastapi import FastAPI
+
     from app.routers import debug
-    
+
     # Create minimal app with only debug router (no middleware)
     app = FastAPI()
     app.include_router(debug.router)
-    
+
     # Mock settings for debug router
     with patch("app.routers.debug.settings") as mock_settings:
         mock_settings.environment = "development"
         mock_settings.admin_api_key = os.getenv("ADMIN_API_KEY", "test_admin_api_key")
         # Also patch settings in postgres_debugger
         with patch("app.utils.postgres_debugger.settings") as mock_pg_settings:
-            mock_pg_settings.database_url = os.getenv("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
+            mock_pg_settings.database_url = os.getenv(
+                "DATABASE_URL", "postgresql://test:test@localhost:5432/test"
+            )
             yield TestClient(app)
 
 
@@ -78,7 +81,8 @@ class TestPostgresConnectionEndpoint:
     def test_connection_endpoint_failure(self, client, auth_headers):
         """Test connection endpoint with connection failure."""
         with patch(
-            "app.utils.postgres_debugger.asyncpg.connect", side_effect=Exception("Connection failed")
+            "app.utils.postgres_debugger.asyncpg.connect",
+            side_effect=Exception("Connection failed"),
         ):
             response = client.get("/api/debug/postgres/connection", headers=auth_headers)
 
@@ -104,7 +108,9 @@ class TestPostgresSchemaEndpoints:
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_row = MagicMock()
-            mock_row.__getitem__ = MagicMock(side_effect=lambda k: {"table_name": "users", "table_type": "BASE TABLE"}[k])
+            mock_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {"table_name": "users", "table_type": "BASE TABLE"}[k]
+            )
             mock_row.keys = MagicMock(return_value=["table_name", "table_type"])
             mock_conn.fetch = AsyncMock(return_value=[mock_row])
             mock_conn.close = AsyncMock()
@@ -123,9 +129,21 @@ class TestPostgresSchemaEndpoints:
             mock_conn = AsyncMock()
             # Mock columns
             mock_col = MagicMock()
-            mock_col.__getitem__ = MagicMock(side_effect=lambda k: {"column_name": "id", "data_type": "integer", "is_nullable": "NO", "column_default": None, "character_maximum_length": None, "numeric_precision": None, "numeric_scale": None}[k])
+            mock_col.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "column_name": "id",
+                    "data_type": "integer",
+                    "is_nullable": "NO",
+                    "column_default": None,
+                    "character_maximum_length": None,
+                    "numeric_precision": None,
+                    "numeric_scale": None,
+                }[k]
+            )
             mock_col.keys = MagicMock(return_value=["column_name", "data_type", "is_nullable"])
-            mock_conn.fetch = AsyncMock(side_effect=[[mock_col], [], [], []])  # columns, indexes, fks, constraints
+            mock_conn.fetch = AsyncMock(
+                side_effect=[[mock_col], [], [], []]
+            )  # columns, indexes, fks, constraints
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn
 
@@ -142,8 +160,17 @@ class TestPostgresSchemaEndpoints:
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_row = MagicMock()
-            mock_row.__getitem__ = MagicMock(side_effect=lambda k: {"schemaname": "public", "tablename": "users", "indexname": "idx_users_email", "indexdef": "CREATE INDEX..."}[k])
-            mock_row.keys = MagicMock(return_value=["schemaname", "tablename", "indexname", "indexdef"])
+            mock_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "schemaname": "public",
+                    "tablename": "users",
+                    "indexname": "idx_users_email",
+                    "indexdef": "CREATE INDEX...",
+                }[k]
+            )
+            mock_row.keys = MagicMock(
+                return_value=["schemaname", "tablename", "indexname", "indexdef"]
+            )
             mock_conn.fetch = AsyncMock(return_value=[mock_row])
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn
@@ -164,7 +191,16 @@ class TestPostgresStatsEndpoints:
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_stat_row = MagicMock()
-            mock_stat_row.__getitem__ = MagicMock(side_effect=lambda k: {"schemaname": "public", "tablename": "users", "total_size": "1 MB", "table_size": "800 kB", "indexes_size": "200 kB", "index_count": 2}[k])
+            mock_stat_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "schemaname": "public",
+                    "tablename": "users",
+                    "total_size": "1 MB",
+                    "table_size": "800 kB",
+                    "indexes_size": "200 kB",
+                    "index_count": 2,
+                }[k]
+            )
             mock_stat_row.keys = MagicMock(return_value=["schemaname", "tablename", "total_size"])
             mock_conn.fetch = AsyncMock(return_value=[mock_stat_row])
             mock_conn.fetchval = AsyncMock(return_value=100)
@@ -182,7 +218,9 @@ class TestPostgresStatsEndpoints:
         """Test /api/debug/postgres/stats/database endpoint."""
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
-            mock_conn.fetchval = AsyncMock(side_effect=["100 MB", "PostgreSQL 14.0", 10, 5, 5, "testdb"])
+            mock_conn.fetchval = AsyncMock(
+                side_effect=["100 MB", "PostgreSQL 14.0", 10, 5, 5, "testdb"]
+            )
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn
 
@@ -293,13 +331,25 @@ class TestPostgresPerformanceEndpoints:
             mock_conn = AsyncMock()
             mock_conn.fetchval = AsyncMock(return_value=True)  # extension exists
             mock_row = MagicMock()
-            mock_row.__getitem__ = MagicMock(side_effect=lambda k: {"query": "SELECT * FROM users", "calls": 100, "total_exec_time": 5000.0, "mean_exec_time": 50.0, "max_exec_time": 200.0, "min_exec_time": 10.0, "stddev_exec_time": 20.0}[k])
+            mock_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "query": "SELECT * FROM users",
+                    "calls": 100,
+                    "total_exec_time": 5000.0,
+                    "mean_exec_time": 50.0,
+                    "max_exec_time": 200.0,
+                    "min_exec_time": 10.0,
+                    "stddev_exec_time": 20.0,
+                }[k]
+            )
             mock_row.keys = MagicMock(return_value=["query", "calls", "total_exec_time"])
             mock_conn.fetch = AsyncMock(return_value=[mock_row])
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn
 
-            response = client.get("/api/debug/postgres/performance/slow-queries?limit=10", headers=auth_headers)
+            response = client.get(
+                "/api/debug/postgres/performance/slow-queries?limit=10", headers=auth_headers
+            )
 
             assert response.status_code == 200
             data = response.json()
@@ -311,7 +361,20 @@ class TestPostgresPerformanceEndpoints:
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_row = MagicMock()
-            mock_row.__getitem__ = MagicMock(side_effect=lambda k: {"locktype": "relation", "relation": "users", "mode": "AccessShareLock", "granted": True, "pid": 12345, "usename": "testuser", "application_name": "testapp", "state": "active", "query_start": None, "state_change": None}[k])
+            mock_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "locktype": "relation",
+                    "relation": "users",
+                    "mode": "AccessShareLock",
+                    "granted": True,
+                    "pid": 12345,
+                    "usename": "testuser",
+                    "application_name": "testapp",
+                    "state": "active",
+                    "query_start": None,
+                    "state_change": None,
+                }[k]
+            )
             mock_row.keys = MagicMock(return_value=["locktype", "relation", "mode"])
             mock_conn.fetch = AsyncMock(return_value=[mock_row])
             mock_conn.close = AsyncMock()
@@ -329,14 +392,18 @@ class TestPostgresPerformanceEndpoints:
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_state_row = MagicMock()
-            mock_state_row.__getitem__ = MagicMock(side_effect=lambda k: {"state": "active", "count": 5}[k])
+            mock_state_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {"state": "active", "count": 5}[k]
+            )
             mock_state_row.keys = MagicMock(return_value=["state", "count"])
             mock_conn.fetchval = AsyncMock(side_effect=[10, 2, 3])
             mock_conn.fetch = AsyncMock(return_value=[mock_state_row])
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn
 
-            response = client.get("/api/debug/postgres/performance/connections", headers=auth_headers)
+            response = client.get(
+                "/api/debug/postgres/performance/connections", headers=auth_headers
+            )
 
             assert response.status_code == 200
             data = response.json()
@@ -396,4 +463,3 @@ class TestPostgresSecurity:
                 json={"query": query, "limit": 10},
             )
             assert response.status_code == 400, f"Query should be blocked: {query}"
-

@@ -69,8 +69,8 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
         Tuple of (success, project_id)
     """
     creds_json = (
-        getattr(settings, 'google_credentials_json', None) 
-        or os.environ.get('GOOGLE_CREDENTIALS_JSON') 
+        getattr(settings, 'google_credentials_json', None)
+        or os.environ.get('GOOGLE_CREDENTIALS_JSON')
         or os.environ.get('GEMINI_SA_TOKEN')  # Support GEMINI_SA_TOKEN alias
     )
 
@@ -86,6 +86,30 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
 
         # Extract project_id for Vertex AI
         project_id = creds_dict.get('project_id')
+
+        # Validate private key format
+        private_key = creds_dict.get('private_key', '')
+        if not private_key:
+            logger.warning("⚠️ Service Account credentials missing private_key")
+            return False, None
+
+        # Fix escaped newlines from environment variables (literal \n -> actual newline)
+        if '\\n' in private_key:
+            private_key = private_key.replace('\\n', '\n')
+            creds_dict['private_key'] = private_key
+            logger.info("✅ Fixed escaped newlines in private key")
+
+        # Check that newlines are properly formatted (not merged with header)
+        lines = private_key.split('\n')
+        if len(lines) < 10:
+            logger.warning(f"⚠️ Service Account private key has too few lines ({len(lines)}), likely corrupted")
+            return False, None
+
+        # Header should be exactly "-----BEGIN PRIVATE KEY-----"
+        header = lines[0].strip()
+        if header != "-----BEGIN PRIVATE KEY-----":
+            logger.warning(f"⚠️ Service Account private key has invalid header: '{header[:50]}...'")
+            return False, None
 
         # Write to temp file
         creds_file = '/tmp/google_credentials.json'
@@ -137,11 +161,18 @@ class GenAIClient:
     The client uses connection pooling internally for efficiency.
     """
 
-    # Default models
-    DEFAULT_MODEL = "gemini-2.0-flash"
-    FLASH_MODEL = "gemini-2.0-flash"
-    PRO_MODEL = "gemini-2.5-pro"
-    FLASH_LITE_MODEL = "gemini-2.0-flash-lite"
+    # Default models - using Gemini 2.5 (Vertex AI GA)
+    # Primary tier
+    DEFAULT_MODEL = "gemini-2.5-flash"  # Standard: fast, cost-effective
+    PRO_MODEL = "gemini-2.5-pro"  # Reasoning: high quality
+
+    # Fallback tier (Gemini 2.0)
+    FALLBACK_FLASH = "gemini-2.0-flash"  # Fallback for flash
+    FALLBACK_PRO = "gemini-2.0-flash"  # Fallback for pro (no 2.0-pro exists)
+
+    # Aliases for clarity
+    FLASH_MODEL = "gemini-2.5-flash"
+    PRO_HIGH_MODEL = "gemini-2.5-pro"
 
     def __init__(self, api_key: str | None = None):
         """
@@ -149,12 +180,13 @@ class GenAIClient:
 
         Supports two authentication methods:
         1. Service Account (preferred for production) - via GOOGLE_CREDENTIALS_JSON (uses Vertex AI)
-        2. API Key (fallback) - via GOOGLE_API_KEY (uses AI Studio)
+        2. API Key (fallback) - via GOOGLE_API_KEY or GOOGLE_IMAGEN_API_KEY (uses AI Studio)
 
         Args:
             api_key: Google API key (defaults to settings.google_api_key)
         """
-        self.api_key = api_key or settings.google_api_key
+        # Try multiple API key sources
+        self.api_key = api_key or settings.google_api_key or settings.google_imagen_api_key
         self._client = None
         self._available = False
         self._auth_method = None
@@ -163,23 +195,22 @@ class GenAIClient:
             logger.warning("⚠️ google-genai SDK not available")
             return
 
-        # Try Service Account first (Vertex AI with ADC)
+        # Try Service Account first (Vertex AI mode) - PREFERRED for production
         if _sa_configured and _sa_project_id:
             try:
-                # For Service Account, use Vertex AI mode
                 self._client = genai.Client(
                     vertexai=True,
                     project=_sa_project_id,
-                    location="us-central1"  # Default region for Vertex AI
+                    location="us-central1"
                 )
                 self._available = True
-                self._auth_method = "service_account"
+                self._auth_method = "service_account_vertexai"
                 logger.info(f"✅ GenAI client initialized with Vertex AI (project: {_sa_project_id})")
                 return
             except Exception as e:
-                logger.warning(f"⚠️ Service Account/Vertex AI auth failed, trying API key: {e}")
+                logger.warning(f"⚠️ Vertex AI Service Account auth failed: {e}")
 
-        # Fallback to API key (AI Studio)
+        # Fallback to GOOGLE_API_KEY (AI Studio)
         if not self.api_key:
             logger.warning("⚠️ No Google API key provided and Service Account not configured")
             return
@@ -200,7 +231,7 @@ class GenAIClient:
     def _get_config(
         self,
         system_instruction: str | None = None,
-        max_output_tokens: int = 2000,
+        max_output_tokens: int = 8192,
         temperature: float = 0.4,
         safety_settings: list | None = None,
     ) -> Any:
@@ -237,7 +268,7 @@ class GenAIClient:
         contents: str | list,
         model: str | None = None,
         system_instruction: str | None = None,
-        max_output_tokens: int = 2000,
+        max_output_tokens: int = 8192,
         temperature: float = 0.4,
         safety_settings: list | None = None,
     ) -> dict[str, Any]:
@@ -290,7 +321,7 @@ class GenAIClient:
         contents: str | list,
         model: str | None = None,
         system_instruction: str | None = None,
-        max_output_tokens: int = 2000,
+        max_output_tokens: int = 8192,
         temperature: float = 0.4,
         safety_settings: list | None = None,
     ) -> AsyncGenerator[str, None]:
@@ -417,7 +448,7 @@ class ChatSession:
     async def send_message(
         self,
         message: str,
-        max_output_tokens: int = 2000,
+        max_output_tokens: int = 8192,
         temperature: float = 0.4,
     ) -> dict[str, Any]:
         """
@@ -450,7 +481,7 @@ class ChatSession:
     async def send_message_stream(
         self,
         message: str,
-        max_output_tokens: int = 2000,
+        max_output_tokens: int = 8192,
         temperature: float = 0.4,
     ) -> AsyncGenerator[str, None]:
         """

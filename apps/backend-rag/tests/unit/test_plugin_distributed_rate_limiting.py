@@ -182,12 +182,3 @@ async def test_rate_limiting_redis_expiration():
         expire_call = mock_redis.expire.call_args
         assert expire_call[0][1] == 60  # 60 seconds expiration
 
-
-
-
-
-
-
-
-
-

@@ -113,7 +113,7 @@ class GoldenRouterService:
             # 1. Try Load from Cache
             if os.path.exists(CACHE_FILE):
                 try:
-                    with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                    with open(CACHE_FILE, encoding="utf-8") as f:
                         cache_data = json.load(f)
 
                     # Verify cache validity (simple length check)

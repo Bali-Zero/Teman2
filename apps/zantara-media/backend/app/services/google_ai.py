@@ -790,7 +790,7 @@ No text in image."""
 
 Focus on key points and actionable information."""
 
-        result, _ = await self.generate(prompt, max_tokens=500, temperature=0.3)
+        result, _ = await self.generate(prompt, max_tokens=8192, temperature=0.3)
         return result
 
     async def translate(self, content: str, source_lang: str, target_lang: str) -> str:
@@ -858,7 +858,7 @@ Translation:"""
         # Test Gemini
         try:
             start = datetime.utcnow()
-            await self.generate("Say OK", max_tokens=10)
+            await self.generate("Say OK", max_tokens=8192)
             latency = (datetime.utcnow() - start).total_seconds() * 1000
             results["gemini"] = {"status": "healthy", "latency_ms": round(latency)}
         except Exception as e:

@@ -52,7 +52,7 @@ class NurturingMessageService:
         try:
             # Add timeout for AI generation
             message = await asyncio.wait_for(
-                self.ai_client.generate_text(prompt=prompt, max_tokens=300, temperature=0.7),
+                self.ai_client.generate_text(prompt=prompt, max_tokens=8192, temperature=0.7),
                 timeout=timeout,
             )
             return message.strip()

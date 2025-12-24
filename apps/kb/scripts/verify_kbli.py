@@ -14,15 +14,16 @@ CANARY_CODES = {
     "56102": "WARUNG MAKAN",
     "55111": "HOTEL BINTANG LIMA",
     "55112": "HOTEL BINTANG EMPAT",
-    "62010": "AKTIVITAS PEMROGRAMAN KOMPUTER"
+    "62010": "AKTIVITAS PEMROGRAMAN KOMPUTER",
 }
+
 
 def verify():
     if not os.path.exists(EXTRACTED_FILE):
         print("FAIL: JSON file not found")
         return
 
-    with open(EXTRACTED_FILE, 'r') as f:
+    with open(EXTRACTED_FILE, "r") as f:
         data = json.load(f)
 
     codes = data.get("kbli_codes", [])
@@ -39,17 +40,17 @@ def verify():
     code_set = set()
     errors = 0
     for item in codes:
-        c = item.get('kode')
+        c = item.get("kode")
         if not c:
             print("FAIL: Item missing code")
             errors += 1
             continue
-        
+
         # Check format
-        if not re.fullmatch(r'\d{5}', c):
+        if not re.fullmatch(r"\d{5}", c):
             print(f"FAIL: Invalid code format: {c}")
             errors += 1
-        
+
         # Check duplicates (though script deduplicated)
         if c in code_set:
             print(f"FAIL: Duplicate code {c}")
@@ -64,7 +65,7 @@ def verify():
     for cc, name in CANARY_CODES.items():
         found = False
         for item in codes:
-            if item['kode'] == cc:
+            if item["kode"] == cc:
                 found = True
                 print(f"Found Canary: {cc} - {item['judul']}")
                 break
@@ -79,8 +80,10 @@ def verify():
     # Sample check
     print("\n--- Sample Entry ---")
     import random
+
     if codes:
         print(json.dumps(random.choice(codes), indent=2))
+
 
 if __name__ == "__main__":
     verify()

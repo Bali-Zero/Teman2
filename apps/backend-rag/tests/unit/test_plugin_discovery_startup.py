@@ -164,12 +164,3 @@ async def test_discover_plugins_invalid_module_segment():
         # Should handle gracefully
         assert isinstance(result["errors"], list)
 
-
-
-
-
-
-
-
-
-

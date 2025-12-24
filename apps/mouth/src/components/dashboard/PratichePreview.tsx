@@ -77,13 +77,13 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-[var(--foreground)]">
-          Le Mie Pratiche
+          My Cases
         </h2>
         <Link
           href="/pratiche"
           className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors flex items-center gap-1"
         >
-          Tutte
+          All
           <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
@@ -93,7 +93,7 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
         {pratiche.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-[var(--foreground-muted)]">
-              Nessuna pratica assegnata
+              No cases assigned
             </p>
           </div>
         ) : (
@@ -137,7 +137,7 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
                         )}
                       >
                         <Clock className="w-3 h-3" />
-                        {pratica.daysRemaining} giorni
+                        {pratica.daysRemaining} days
                       </span>
                     )}
                     {pratica.status === 'completed' && pratica.completedAt && (

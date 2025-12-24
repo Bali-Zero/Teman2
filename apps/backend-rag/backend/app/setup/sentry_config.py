@@ -40,4 +40,3 @@ def init_sentry() -> None:
         environment=env,
         release=os.getenv("SENTRY_RELEASE", "nuzantara-backend@1.0.0"),
     )
-

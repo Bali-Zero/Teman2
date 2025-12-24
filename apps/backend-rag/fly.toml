@@ -23,6 +23,7 @@ primary_region = 'sin'
   PORT = '8080'
   QDRANT_URL = 'https://nuzantara-qdrant.fly.dev'
   PYTHONUNBUFFERED = '1'
+  ZANTARA_ALLOWED_ORIGINS = 'https://zantara.balizero.com,https://www.zantara.balizero.com,https://nuzantara-mouth.fly.dev'
 
 [[mounts]]
   source = 'nuzantara_rag_data'

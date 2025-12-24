@@ -33,6 +33,20 @@ class Settings(BaseSettings):
         default=None,
         description="Google Service Account JSON credentials for Vertex AI. Set via GOOGLE_CREDENTIALS_JSON or GEMINI_SA_TOKEN env var",
     )
+    gemini_sa_token: str | None = None  # Alias for GEMINI_SA_TOKEN env var
+
+    @field_validator("google_credentials_json", mode="before")
+    @classmethod
+    def resolve_google_credentials(cls, v):
+        """Resolve Google credentials from multiple env vars."""
+        import os
+        if v:
+            return v
+        # Check GEMINI_SA_TOKEN as fallback
+        gemini_token = os.environ.get("GEMINI_SA_TOKEN")
+        if gemini_token:
+            return gemini_token
+        return None
     google_imagen_api_key: str | None = (
         None  # Set via GOOGLE_IMAGEN_API_KEY env var (for Imagen image generation)
     )

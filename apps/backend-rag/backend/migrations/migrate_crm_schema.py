@@ -5,14 +5,17 @@ Connects to Fly.io PostgreSQL and applies migration 007
 """
 
 import sys
-import psycopg2
 from pathlib import Path
+
+import psycopg2
+
 
 def apply_crm_migration():
     """Apply CRM schema migration to PostgreSQL"""
 
     # Get DATABASE_URL
     from app.core.config import settings
+
     database_url = settings.database_url
     if not database_url:
         print("❌ DATABASE_URL environment variable not set")
@@ -35,11 +38,13 @@ def apply_crm_migration():
     print("=" * 70)
     print()
     print(f"📁 Migration file: {migration_file.name}")
-    print(f"🗄️  Target database: {database_url.split('@')[1] if '@' in database_url else 'Fly.io PostgreSQL'}")
+    print(
+        f"🗄️  Target database: {database_url.split('@')[1] if '@' in database_url else 'Fly.io PostgreSQL'}"
+    )
     print()
 
     # Read SQL
-    with open(migration_file, 'r', encoding='utf-8') as f:
+    with open(migration_file, encoding="utf-8") as f:
         sql = f.read()
 
     # Connect and execute
@@ -54,7 +59,8 @@ def apply_crm_migration():
         conn.commit()
 
         # Verify tables created
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT table_name
             FROM information_schema.tables
             WHERE table_schema = 'public'
@@ -64,7 +70,8 @@ def apply_crm_migration():
                 'activity_log'
             )
             ORDER BY table_name
-        """)
+        """
+        )
 
         tables = cursor.fetchall()
 
@@ -85,13 +92,15 @@ def apply_crm_migration():
             print(f"   • {code}: {name}")
 
         # Show views
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT table_name
             FROM information_schema.views
             WHERE table_schema = 'public'
             AND table_name LIKE '%_view'
             ORDER BY table_name
-        """)
+        """
+        )
         views = cursor.fetchall()
 
         if views:
@@ -127,6 +136,7 @@ def apply_crm_migration():
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

@@ -49,6 +49,7 @@ class TestFeedbackEndpoints:
 
         # Patch app.state.db_pool
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -133,6 +134,7 @@ class TestFeedbackEndpoints:
 
         # Patch app.state.db_pool
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -159,6 +161,7 @@ class TestFeedbackEndpoints:
 
         # Patch app.state.db_pool
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -195,6 +198,7 @@ class TestFeedbackEndpoints:
     def test_rate_conversation_database_unavailable(self, authenticated_client):
         """Test POST /api/feedback/rate-conversation - database not available"""
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = None
 
@@ -217,6 +221,7 @@ class TestFeedbackEndpoints:
     def test_get_rating_database_unavailable(self, authenticated_client):
         """Test GET /api/feedback/ratings/{session_id} - database not available"""
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = None
 
@@ -233,6 +238,7 @@ class TestFeedbackEndpoints:
     def test_rate_conversation_database_error(self, authenticated_client, mock_db_pool):
         """Test POST /api/feedback/rate-conversation - database error handling"""
         import asyncpg
+
         session_id = str(uuid4())
 
         # Mock database error
@@ -240,6 +246,7 @@ class TestFeedbackEndpoints:
         mock_conn.fetchval = AsyncMock(side_effect=asyncpg.PostgresError("Database error"))
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -263,6 +270,7 @@ class TestFeedbackEndpoints:
     def test_get_rating_database_error(self, authenticated_client, mock_db_pool):
         """Test GET /api/feedback/ratings/{session_id} - database error handling"""
         import asyncpg
+
         session_id = str(uuid4())
 
         # Mock database error
@@ -270,6 +278,7 @@ class TestFeedbackEndpoints:
         mock_conn.fetchrow = AsyncMock(side_effect=asyncpg.PostgresError("Database error"))
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -292,6 +301,7 @@ class TestFeedbackEndpoints:
         mock_conn.fetchval = AsyncMock(return_value=rating_id)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -319,6 +329,7 @@ class TestFeedbackEndpoints:
         mock_conn.fetchval = AsyncMock(return_value=rating_id)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -341,9 +352,10 @@ class TestFeedbackEndpoints:
             if original_pool:
                 app.state.db_pool = original_pool
 
-    def test_rate_conversation_with_user_profile_from_state(self, authenticated_client, mock_db_pool):
+    def test_rate_conversation_with_user_profile_from_state(
+        self, authenticated_client, mock_db_pool
+    ):
         """Test POST /api/feedback/rate-conversation - with user_profile from req.state"""
-        from uuid import UUID
         session_id = str(uuid4())
         user_id = uuid4()
         rating_id = str(uuid4())
@@ -352,6 +364,7 @@ class TestFeedbackEndpoints:
         mock_conn.fetchval = AsyncMock(return_value=rating_id)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -384,6 +397,7 @@ class TestFeedbackEndpoints:
         mock_conn.fetchval = AsyncMock(side_effect=ValueError("Unexpected error"))
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -412,6 +426,7 @@ class TestFeedbackEndpoints:
         mock_conn.fetchrow = AsyncMock(side_effect=ValueError("Unexpected error"))
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = mock_db_pool
 
@@ -424,4 +439,3 @@ class TestFeedbackEndpoints:
         finally:
             if original_pool:
                 app.state.db_pool = original_pool
-

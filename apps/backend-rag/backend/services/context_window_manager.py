@@ -238,7 +238,7 @@ Update the summary to include both the previous context and new messages."""
             logger.info(f"📝 [Summary] Generating summary for {len(messages)} messages...")
 
             summary = await self.zantara_client.generate_text(
-                prompt=prompt, max_tokens=150, temperature=0.3
+                prompt=prompt, max_tokens=8192, temperature=0.3
             )
 
             logger.info(f"✅ [Summary] Generated ({len(summary)} chars)")
@@ -289,7 +289,7 @@ class AdvancedContextWindowManager:
         self,
         max_tokens: int = 6000,
         recent_window_tokens: int = 3000,
-        summary_max_tokens: int = 500,
+        summary_max_tokens: int = 8192,
     ):
         self.max_tokens = max_tokens
         self.recent_window_tokens = recent_window_tokens
@@ -297,7 +297,7 @@ class AdvancedContextWindowManager:
         try:
             # import tiktoken
             # self.tokenizer = tiktoken.get_encoding("cl100k_base")
-            self.tokenizer = None # Force fallback to character estimation to prevent crashes
+            self.tokenizer = None  # Force fallback to character estimation to prevent crashes
         except ImportError:
             self.tokenizer = None
             logger.warning("⚠️ tiktoken not found, using character estimation")

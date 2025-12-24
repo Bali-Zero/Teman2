@@ -1,10 +1,11 @@
 """
 DEBUG endpoint per verificare PostgreSQL
 """
-from fastapi import APIRouter, Depends
-from app.services.api_key_auth import APIKeyAuth
 import asyncpg
+from fastapi import APIRouter
+
 from app.core.config import settings
+from app.services.api_key_auth import APIKeyAuth
 
 router = APIRouter()
 api_key_service = APIKeyAuth()
@@ -34,35 +35,34 @@ async def get_parent_documents(document_id: str):
             WHERE document_id = $1
             ORDER BY id
             """,
-            document_id
+            document_id,
         )
 
         await conn.close()
 
         results = []
         for row in rows:
-            results.append({
-                "id": row["id"],
-                "document_id": row["document_id"],
-                "type": row["type"],
-                "title": row["title"],
-                "char_count": row["char_count"],
-                "pasal_count": row["pasal_count"],
-                "created_at": str(row["created_at"]),
-            })
+            results.append(
+                {
+                    "id": row["id"],
+                    "document_id": row["document_id"],
+                    "type": row["type"],
+                    "title": row["title"],
+                    "char_count": row["char_count"],
+                    "pasal_count": row["pasal_count"],
+                    "created_at": str(row["created_at"]),
+                }
+            )
 
         return {
             "success": True,
             "document_id": document_id,
             "total_bab": len(results),
-            "bab_list": results
+            "bab_list": results,
         }
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}
 
 
 @router.get("/debug/parent-documents/{document_id}/{bab_id}")
@@ -78,7 +78,8 @@ async def get_bab_full_text(document_id: str, bab_id: str):
             FROM parent_documents
             WHERE document_id = $1 AND id = $2
             """,
-            document_id, bab_id
+            document_id,
+            bab_id,
         )
 
         await conn.close()
@@ -92,11 +93,8 @@ async def get_bab_full_text(document_id: str, bab_id: str):
             "title": row["title"],
             "char_count": row["char_count"],
             "pasal_count": row["pasal_count"],
-            "full_text": row["full_text"]
+            "full_text": row["full_text"],
         }
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        return {"success": False, "error": str(e)}

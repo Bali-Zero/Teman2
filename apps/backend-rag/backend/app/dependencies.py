@@ -21,12 +21,12 @@ Note: main_cloud.py still exports initialize_services() for backward compatibili
 import logging
 
 import asyncpg
+from core.cache import CacheService, get_cache_service
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-
-from core.cache import CacheService, get_cache_service
 from llm.zantara_ai_client import ZantaraAIClient
+
 from services.intelligent_router import IntelligentRouter
 from services.memory_service_postgres import MemoryServicePostgres
 from services.search_service import SearchService
@@ -182,21 +182,25 @@ def get_database_pool(request: Request) -> asyncpg.Pool | None:
         Some endpoints may require database and should check for None explicitly.
         Others can work with degraded functionality when database is unavailable.
     """
+    # Get db_pool from app.state
+    # Use direct attribute access with fallback to handle edge cases
     db_pool = getattr(request.app.state, "db_pool", None)
-    if db_pool is None:
+    
+    # Additional check: verify pool is actually usable (not just present)
+    if db_pool is None or not hasattr(db_pool, "acquire"):
         # Fail fast in tests and surface a clear 503 for API callers that require DB
+        # Use string detail instead of dict to avoid JSON serialization issues with Pool objects
+        db_init_error = getattr(request.app.state, "db_init_error", None)
+        error_message = "The database connection pool is not initialized."
+        if db_init_error:
+            error_message += f" Initialization error: {db_init_error}"
+
         raise HTTPException(
             status_code=503,
-            detail={
-                "error": "Database unavailable",
-                "message": "The database connection pool is not initialized.",
-                "retry_after": 30,
-                "service": "database",
-                "troubleshooting": [
-                    "Ensure DATABASE_URL is configured and reachable",
-                    "Check PostgreSQL service status and credentials",
-                    "Verify initialize_services() was executed at startup",
-                ],
+            detail=error_message,  # Use string instead of dict to avoid serialization issues
+            headers={
+                "X-Error-Type": "database_unavailable",
+                "Retry-After": "30",
             },
         )
     return db_pool

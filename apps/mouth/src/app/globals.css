@@ -20,3 +20,16 @@ body {
   --font-geist-sans: 'Geist', sans-serif;
   --font-geist-mono: 'Geist Mono', monospace;
 }
+
+/* Progress bar with dynamic width using data attribute */
+.progress-bar-fill[data-width] {
+  width: attr(data-width);
+}
+
+/* Remove default focus outlines on textareas in chat */
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}

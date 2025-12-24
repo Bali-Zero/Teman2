@@ -36,6 +36,7 @@ export interface SearchResponse {
   total_found?: number;
   query: string;
   execution_time_ms?: number;
+  user_level?: number;
 }
 
 // Re-export with Knowledge prefix for consistency

@@ -4,7 +4,6 @@ Unit tests for search_filters module.
 Tests the build_search_filter function extracted from SearchService.
 """
 
-import pytest
 
 from services.search_filters import build_search_filter
 
@@ -107,4 +106,3 @@ class TestBuildSearchFilter:
         # Should have $in format with valid status
         assert "status_vigensi" in result
         assert result["status_vigensi"] == {"$in": ["berlaku"]}
-

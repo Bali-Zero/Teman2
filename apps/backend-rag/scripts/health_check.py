@@ -229,6 +229,7 @@ async def check_environment_variables() -> dict[str, Any]:
     """Check critical environment variables are set"""
     try:
         import os
+
         from app.core.config import Settings
 
         settings = Settings()
@@ -280,6 +281,7 @@ async def check_database_connectivity() -> dict[str, Any]:
     """Check PostgreSQL database connectivity"""
     try:
         import os
+
         import asyncpg
 
         database_url = os.getenv("DATABASE_URL")
@@ -315,6 +317,7 @@ async def check_qdrant_connectivity() -> dict[str, Any]:
     """Check Qdrant vector database connectivity"""
     try:
         import httpx
+
         from app.core.config import settings
 
         qdrant_url = settings.qdrant_url
@@ -347,7 +350,9 @@ async def check_type_hints_coverage() -> dict[str, Any]:
 
         backend_dir = Path(__file__).parent.parent / "backend"
         python_files = list(backend_dir.rglob("*.py"))
-        python_files = [f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)]
+        python_files = [
+            f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)
+        ]
 
         total_functions = 0
         typed_functions = 0
@@ -462,11 +467,13 @@ async def check_no_hardcoded_secrets() -> dict[str, Any]:
 
         backend_dir = Path(__file__).parent.parent / "backend"
         python_files = list(backend_dir.rglob("*.py"))
-        python_files = [f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)]
+        python_files = [
+            f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)
+        ]
 
         suspicious_patterns = [
-            (r'sk-[a-zA-Z0-9]{32,}', "OpenAI API key"),
-            (r'AIza[0-9A-Za-z-_]{35}', "Google API key"),
+            (r"sk-[a-zA-Z0-9]{32,}", "OpenAI API key"),
+            (r"AIza[0-9A-Za-z-_]{35}", "Google API key"),
             (r'password\s*=\s*["\'][^"\']+["\']', "Hardcoded password"),
             (r'secret\s*=\s*["\'][^"\']+["\']', "Hardcoded secret"),
             (r'api_key\s*=\s*["\'][^"\']+["\']', "Hardcoded API key"),
@@ -566,7 +573,7 @@ async def main():
             print(f"   Coverage: {result['coverage']:.1f}%")
         if "violations" in result:
             print(f"   Violations: {len(result['violations'])} found")
-            for violation in result['violations'][:3]:
+            for violation in result["violations"][:3]:
                 print(f"     - {violation}")
 
     print("\n" + "=" * 60)

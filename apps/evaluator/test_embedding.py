@@ -16,7 +16,7 @@ print("=" * 60)
 
 # Check environment variable
 env_key = os.getenv("OPENAI_API_KEY")
-print(f"\n1. OPENAI_API_KEY da environment:")
+print("\n1. OPENAI_API_KEY da environment:")
 if env_key:
     print(f"   ✅ Presente: {env_key[:20]}...{env_key[-10:]}")
     print(f"   Lunghezza: {len(env_key)} caratteri")
@@ -26,57 +26,54 @@ else:
 # Check settings
 try:
     from app.core.config import settings
-    print(f"\n2. Settings da config.py:")
+
+    print("\n2. Settings da config.py:")
     print(f"   embedding_provider: {settings.embedding_provider}")
-    print(f"   openai_api_key: {settings.openai_api_key[:20] if settings.openai_api_key else 'None'}...")
+    print(
+        f"   openai_api_key: {settings.openai_api_key[:20] if settings.openai_api_key else 'None'}..."
+    )
     print(f"   embedding_model: {settings.embedding_model}")
 except Exception as e:
     print(f"   ❌ Errore caricando settings: {e}")
 
 # Test EmbeddingsGenerator initialization
-print(f"\n3. Test EmbeddingsGenerator:")
+print("\n3. Test EmbeddingsGenerator:")
 try:
     from core.embeddings import EmbeddingsGenerator
+
     embedder = EmbeddingsGenerator()
-    print(f"   ✅ Inizializzato con successo")
+    print("   ✅ Inizializzato con successo")
     print(f"   Provider: {embedder.provider}")
     print(f"   Model: {embedder.model}")
-    if hasattr(embedder, 'api_key'):
+    if hasattr(embedder, "api_key"):
         if embedder.api_key:
             print(f"   ✅ API Key presente: {embedder.api_key[:20]}...")
         else:
-            print(f"   ❌ API Key NON presente")
+            print("   ❌ API Key NON presente")
     else:
-        print(f"   ℹ️  Provider locale (sentence-transformers), no API key needed")
+        print("   ℹ️  Provider locale (sentence-transformers), no API key needed")
 except ValueError as e:
     print(f"   ❌ ValueError: {e}")
-    print(f"   → Questo è il problema! API key mancante o non valida")
+    print("   → Questo è il problema! API key mancante o non valida")
 except Exception as e:
     print(f"   ❌ Errore: {e}")
     import traceback
+
     traceback.print_exc()
 
 # Test actual embedding generation
-print(f"\n4. Test generazione embedding:")
+print("\n4. Test generazione embedding:")
 try:
     from core.embeddings import EmbeddingsGenerator
+
     embedder = EmbeddingsGenerator()
     test_embedding = embedder.generate_single_embedding("test query")
-    print(f"   ✅ Embedding generato con successo")
+    print("   ✅ Embedding generato con successo")
     print(f"   Dimensione: {len(test_embedding)}")
 except Exception as e:
     print(f"   ❌ Errore generando embedding: {e}")
     import traceback
+
     traceback.print_exc()
 
 print("\n" + "=" * 60)
-
-
-
-
-
-
-
-
-
-

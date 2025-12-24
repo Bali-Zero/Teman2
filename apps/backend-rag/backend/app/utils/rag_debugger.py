@@ -199,4 +199,3 @@ class RAGPipelineStepContext:
         error = str(exc_val) if exc_val else None
         self.step.finish(error=error)
         return False  # Don't suppress exceptions
-

@@ -31,11 +31,11 @@ All original exports are maintained for seamless integration with existing code.
 import logging
 from typing import Any
 
+from services.graph_service import GraphService
 from services.rag.agent.diagnostics_tool import DiagnosticsTool
 from services.rag.agent.mcp_tool import MCPSuperTool
-from services.semantic_cache import SemanticCache
-from services.graph_service import GraphService
 from services.rag.agentic.graph_tool import GraphTraversalTool
+from services.semantic_cache import SemanticCache
 
 from .orchestrator import AgenticRAGOrchestrator
 from .pipeline import (
@@ -50,6 +50,7 @@ from .tools import (
     CalculatorTool,
     DatabaseQueryTool,
     PricingTool,
+    TeamKnowledgeTool,
     VectorSearchTool,
     VisionTool,
     WebSearchTool,
@@ -67,6 +68,7 @@ __all__ = [
     "CalculatorTool",
     "VisionTool",
     "PricingTool",
+    "TeamKnowledgeTool",
     "GraphTraversalTool",
     # Pipeline components
     "ResponsePipeline",
@@ -116,7 +118,8 @@ def create_agentic_rag(
     # IMPORTANT: vector_search comes first to be the default tool
     tools = [
         VectorSearchTool(retriever),  # FIRST: Primary tool for knowledge base search
-        GraphTraversalTool(graph_service), # SECOND: Graph exploration
+        TeamKnowledgeTool(db_pool),  # SECOND: Team member queries (CEO, founder, staff)
+        GraphTraversalTool(graph_service),  # THIRD: Graph exploration
         DatabaseQueryTool(db_pool),
         CalculatorTool(),
         VisionTool(),

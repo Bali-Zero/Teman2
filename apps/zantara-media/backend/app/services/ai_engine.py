@@ -23,27 +23,29 @@ logger = logging.getLogger(__name__)
 
 class TaskType(Enum):
     """Types of content generation tasks."""
-    LONG_FORM = "long_form"          # Articles, newsletters, in-depth content
-    SHORT_FORM = "short_form"        # Social posts, tweets, captions
-    THREAD = "thread"                # Twitter threads, sequential content
-    REASONING = "reasoning"          # Analysis, research, complex thinking
-    CREATIVE = "creative"            # Storytelling, engaging hooks
-    TRANSLATION = "translation"      # Multi-language content
+
+    LONG_FORM = "long_form"  # Articles, newsletters, in-depth content
+    SHORT_FORM = "short_form"  # Social posts, tweets, captions
+    THREAD = "thread"  # Twitter threads, sequential content
+    REASONING = "reasoning"  # Analysis, research, complex thinking
+    CREATIVE = "creative"  # Storytelling, engaging hooks
+    TRANSLATION = "translation"  # Multi-language content
     SUMMARIZATION = "summarization"  # Condensing long content
-    CODING = "coding"                # Code generation/review
+    CODING = "coding"  # Code generation/review
 
 
 @dataclass
 class ModelConfig:
     """Configuration for an AI model."""
-    id: str                          # OpenRouter model ID
-    name: str                        # Human-readable name
-    provider: str                    # Meta, Google, DeepSeek, etc.
-    context_length: int              # Max tokens
-    strengths: list[str]             # What it's good at
-    best_for: list[TaskType]         # Optimal task types
-    speed: str = "medium"            # fast, medium, slow
-    is_free: bool = True             # Only free models
+
+    id: str  # OpenRouter model ID
+    name: str  # Human-readable name
+    provider: str  # Meta, Google, DeepSeek, etc.
+    context_length: int  # Max tokens
+    strengths: list[str]  # What it's good at
+    best_for: list[TaskType]  # Optimal task types
+    speed: str = "medium"  # fast, medium, slow
+    is_free: bool = True  # Only free models
 
     # Runtime stats
     success_count: int = 0
@@ -62,7 +64,9 @@ class ModelConfig:
 
         # Penalize recent failures
         if self.last_failure:
-            minutes_since_failure = (datetime.utcnow() - self.last_failure).total_seconds() / 60
+            minutes_since_failure = (
+                datetime.utcnow() - self.last_failure
+            ).total_seconds() / 60
             if minutes_since_failure < 5:
                 success_rate *= 0.5
             elif minutes_since_failure < 30:
@@ -91,7 +95,12 @@ FREE_MODELS: dict[str, ModelConfig] = {
         provider="Meta",
         context_length=131_072,
         strengths=["instruction following", "quality", "versatile", "reliable"],
-        best_for=[TaskType.LONG_FORM, TaskType.CREATIVE, TaskType.THREAD, TaskType.TRANSLATION],
+        best_for=[
+            TaskType.LONG_FORM,
+            TaskType.CREATIVE,
+            TaskType.THREAD,
+            TaskType.TRANSLATION,
+        ],
         speed="medium",
     ),
     "llama-3.2-3b": ModelConfig(
@@ -103,7 +112,6 @@ FREE_MODELS: dict[str, ModelConfig] = {
         best_for=[TaskType.SHORT_FORM, TaskType.SUMMARIZATION],
         speed="fast",
     ),
-
     # -------------------------------------------------------------------------
     # GOOGLE - Fast and capable
     # -------------------------------------------------------------------------
@@ -143,7 +151,6 @@ FREE_MODELS: dict[str, ModelConfig] = {
         best_for=[TaskType.SHORT_FORM],
         speed="fast",
     ),
-
     # -------------------------------------------------------------------------
     # MISTRAL - Structured output specialist
     # -------------------------------------------------------------------------
@@ -152,7 +159,12 @@ FREE_MODELS: dict[str, ModelConfig] = {
         name="Mistral Small 3.1",
         provider="Mistral",
         context_length=128_000,
-        strengths=["structured output", "JSON", "function calling", "European languages"],
+        strengths=[
+            "structured output",
+            "JSON",
+            "function calling",
+            "European languages",
+        ],
         best_for=[TaskType.SHORT_FORM, TaskType.SUMMARIZATION, TaskType.CODING],
         speed="fast",
     ),
@@ -165,7 +177,6 @@ FREE_MODELS: dict[str, ModelConfig] = {
         best_for=[TaskType.CODING, TaskType.REASONING],
         speed="medium",
     ),
-
     # -------------------------------------------------------------------------
     # QWEN - Chinese & reasoning
     # -------------------------------------------------------------------------
@@ -196,7 +207,6 @@ FREE_MODELS: dict[str, ModelConfig] = {
         best_for=[TaskType.SHORT_FORM, TaskType.TRANSLATION],
         speed="fast",
     ),
-
     # -------------------------------------------------------------------------
     # NVIDIA - Optimized performance
     # -------------------------------------------------------------------------
@@ -218,7 +228,6 @@ FREE_MODELS: dict[str, ModelConfig] = {
         best_for=[TaskType.SHORT_FORM, TaskType.SUMMARIZATION],
         speed="fast",
     ),
-
     # -------------------------------------------------------------------------
     # AMAZON NOVA - Long context
     # -------------------------------------------------------------------------
@@ -231,7 +240,6 @@ FREE_MODELS: dict[str, ModelConfig] = {
         best_for=[TaskType.LONG_FORM, TaskType.SUMMARIZATION],
         speed="medium",
     ),
-
     # -------------------------------------------------------------------------
     # SPECIALIZED MODELS
     # -------------------------------------------------------------------------
@@ -307,64 +315,64 @@ FREE_MODELS: dict[str, ModelConfig] = {
 
 TASK_FALLBACK_CHAINS: dict[TaskType, list[str]] = {
     TaskType.LONG_FORM: [
-        "llama-3.3-70b",       # Best quality, reliable
-        "gemma-3-27b",         # Good balance
-        "gpt-oss-120b",        # Large scale
-        "nova-lite",           # 1M context
-        "hermes-405b",         # Massive fallback
-        "dolphin-mistral",     # Creative
+        "llama-3.3-70b",  # Best quality, reliable
+        "gemma-3-27b",  # Good balance
+        "gpt-oss-120b",  # Large scale
+        "nova-lite",  # 1M context
+        "hermes-405b",  # Massive fallback
+        "dolphin-mistral",  # Creative
     ],
     TaskType.SHORT_FORM: [
-        "gemma-3-12b",         # Fast, good quality
-        "mistral-small",       # Structured
-        "gemini-flash",        # Super fast
-        "llama-3.2-3b",        # Lightweight
-        "gemma-3-4b",          # Very fast
-        "nemotron-nano-9b",    # NVIDIA optimized
+        "gemma-3-12b",  # Fast, good quality
+        "mistral-small",  # Structured
+        "gemini-flash",  # Super fast
+        "llama-3.2-3b",  # Lightweight
+        "gemma-3-4b",  # Very fast
+        "nemotron-nano-9b",  # NVIDIA optimized
     ],
     TaskType.THREAD: [
-        "llama-3.3-70b",       # Quality threads
-        "gemma-3-27b",         # Good structure
-        "mistral-small",       # Organized output
-        "gemini-flash",        # Fast
-        "dolphin-mistral",     # Creative
+        "llama-3.3-70b",  # Quality threads
+        "gemma-3-27b",  # Good structure
+        "mistral-small",  # Organized output
+        "gemini-flash",  # Fast
+        "dolphin-mistral",  # Creative
     ],
     TaskType.REASONING: [
-        "qwen3-235b",          # Massive reasoning
-        "hermes-405b",         # Deep thinking
-        "olmo-3-32b-think",    # Thinking model
-        "gpt-oss-120b",        # Large scale
-        "llama-3.3-70b",       # Reliable fallback
+        "qwen3-235b",  # Massive reasoning
+        "hermes-405b",  # Deep thinking
+        "olmo-3-32b-think",  # Thinking model
+        "gpt-oss-120b",  # Large scale
+        "llama-3.3-70b",  # Reliable fallback
     ],
     TaskType.CREATIVE: [
-        "dolphin-mistral",     # Uncensored creative
-        "llama-3.3-70b",       # Quality writing
-        "gemma-3-27b",         # Good creativity
-        "kimi-k2",             # Asian flair
-        "hermes-405b",         # Deep creative
+        "dolphin-mistral",  # Uncensored creative
+        "llama-3.3-70b",  # Quality writing
+        "gemma-3-27b",  # Good creativity
+        "kimi-k2",  # Asian flair
+        "hermes-405b",  # Deep creative
     ],
     TaskType.TRANSLATION: [
-        "gemini-flash",        # Multi-language, fast
-        "llama-3.3-70b",       # Quality
-        "qwen3-235b",          # Chinese expert
-        "glm-4.5-air",         # Asian languages
-        "kimi-k2",             # Chinese
-        "mistral-small",       # European
+        "gemini-flash",  # Multi-language, fast
+        "llama-3.3-70b",  # Quality
+        "qwen3-235b",  # Chinese expert
+        "glm-4.5-air",  # Asian languages
+        "kimi-k2",  # Chinese
+        "mistral-small",  # European
     ],
     TaskType.SUMMARIZATION: [
-        "gemini-flash",        # Fast, 1M context
-        "nova-lite",           # 1M context
-        "gemma-3-12b",         # Efficient
-        "mistral-small",       # Structured
-        "longcat-flash",       # Long context
-        "llama-3.2-3b",        # Simple summaries
+        "gemini-flash",  # Fast, 1M context
+        "nova-lite",  # 1M context
+        "gemma-3-12b",  # Efficient
+        "mistral-small",  # Structured
+        "longcat-flash",  # Long context
+        "llama-3.2-3b",  # Simple summaries
     ],
     TaskType.CODING: [
-        "qwen3-coder",         # Coding specialist
-        "devstral",            # Development focus
-        "mistral-small",       # Structured code
-        "llama-3.3-70b",       # General coding
-        "gpt-oss-120b",        # Large scale
+        "qwen3-coder",  # Coding specialist
+        "devstral",  # Development focus
+        "mistral-small",  # Structured code
+        "llama-3.3-70b",  # General coding
+        "gpt-oss-120b",  # Large scale
     ],
 }
 
@@ -383,11 +391,19 @@ class AIEngine:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://openrouter.ai/api/v1"
-        self.models = {k: ModelConfig(
-            id=v.id, name=v.name, provider=v.provider,
-            context_length=v.context_length, strengths=v.strengths,
-            best_for=v.best_for, speed=v.speed, is_free=v.is_free
-        ) for k, v in FREE_MODELS.items()}
+        self.models = {
+            k: ModelConfig(
+                id=v.id,
+                name=v.name,
+                provider=v.provider,
+                context_length=v.context_length,
+                strengths=v.strengths,
+                best_for=v.best_for,
+                speed=v.speed,
+                is_free=v.is_free,
+            )
+            for k, v in FREE_MODELS.items()
+        }
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -412,7 +428,9 @@ class AIEngine:
 
     def get_best_model(self, task_type: TaskType) -> ModelConfig:
         """Get the best healthy model for a task type."""
-        chain = TASK_FALLBACK_CHAINS.get(task_type, TASK_FALLBACK_CHAINS[TaskType.LONG_FORM])
+        chain = TASK_FALLBACK_CHAINS.get(
+            task_type, TASK_FALLBACK_CHAINS[TaskType.LONG_FORM]
+        )
 
         for model_key in chain:
             model = self.models.get(model_key)
@@ -427,7 +445,9 @@ class AIEngine:
 
     def get_fallback_chain(self, task_type: TaskType) -> list[ModelConfig]:
         """Get ordered list of models to try for a task type."""
-        chain = TASK_FALLBACK_CHAINS.get(task_type, TASK_FALLBACK_CHAINS[TaskType.LONG_FORM])
+        chain = TASK_FALLBACK_CHAINS.get(
+            task_type, TASK_FALLBACK_CHAINS[TaskType.LONG_FORM]
+        )
         return [self.models[key] for key in chain if key in self.models]
 
     async def generate(
@@ -547,7 +567,13 @@ Structure:
 
 Format: Markdown"""
 
-        return await self.generate(prompt, TaskType.LONG_FORM, max_tokens=3000, temperature=0.7, system_prompt=system_prompt)
+        return await self.generate(
+            prompt,
+            TaskType.LONG_FORM,
+            max_tokens=8192,
+            temperature=0.7,
+            system_prompt=system_prompt,
+        )
 
     async def generate_social_post(
         self,
@@ -556,7 +582,12 @@ Format: Markdown"""
         context: str = "",
     ) -> tuple[str, ModelConfig]:
         """Generate a social media post."""
-        char_limits = {"twitter": 280, "linkedin": 3000, "instagram": 2200, "telegram": 4096}
+        char_limits = {
+            "twitter": 280,
+            "linkedin": 3000,
+            "instagram": 2200,
+            "telegram": 4096,
+        }
         limit = char_limits.get(platform, 280)
 
         system_prompt = """You are ZANTARA, creating engaging social media content for Bali Zero.
@@ -573,7 +604,13 @@ Requirements:
 - Relevant hashtags (3-5)
 - Maximum {limit} characters"""
 
-        return await self.generate(prompt, TaskType.SHORT_FORM, max_tokens=500, temperature=0.8, system_prompt=system_prompt)
+        return await self.generate(
+            prompt,
+            TaskType.SHORT_FORM,
+            max_tokens=8192,
+            temperature=0.8,
+            system_prompt=system_prompt,
+        )
 
     async def generate_thread(
         self,
@@ -597,7 +634,13 @@ Requirements:
 - Number each (1/, 2/, etc.)
 - Each under 280 characters"""
 
-        return await self.generate(prompt, TaskType.THREAD, max_tokens=2000, temperature=0.7, system_prompt=system_prompt)
+        return await self.generate(
+            prompt,
+            TaskType.THREAD,
+            max_tokens=8192,
+            temperature=0.7,
+            system_prompt=system_prompt,
+        )
 
     async def generate_newsletter(
         self,
@@ -621,7 +664,13 @@ Structure:
 
 Format: Clean, scannable, mobile-friendly markdown."""
 
-        return await self.generate(prompt, TaskType.LONG_FORM, max_tokens=2000, temperature=0.6, system_prompt=system_prompt)
+        return await self.generate(
+            prompt,
+            TaskType.LONG_FORM,
+            max_tokens=8192,
+            temperature=0.6,
+            system_prompt=system_prompt,
+        )
 
     async def analyze_intel(
         self,
@@ -648,7 +697,13 @@ Provide:
 
 Be specific and actionable."""
 
-        return await self.generate(prompt, TaskType.REASONING, max_tokens=1500, temperature=0.5, system_prompt=system_prompt)
+        return await self.generate(
+            prompt,
+            TaskType.REASONING,
+            max_tokens=8192,
+            temperature=0.5,
+            system_prompt=system_prompt,
+        )
 
     async def summarize(
         self,
@@ -665,7 +720,9 @@ Be specific and actionable."""
 
 Focus on key points, actionable information, and main conclusions."""
 
-        return await self.generate(prompt, TaskType.SUMMARIZATION, max_tokens=max_tokens, temperature=0.3)
+        return await self.generate(
+            prompt, TaskType.SUMMARIZATION, max_tokens=max_tokens, temperature=0.3
+        )
 
     async def translate(
         self,
@@ -680,7 +737,12 @@ Maintain the tone, style, and formatting of the original.
 Content:
 {content}"""
 
-        return await self.generate(prompt, TaskType.TRANSLATION, max_tokens=len(content.split()) * 3, temperature=0.3)
+        return await self.generate(
+            prompt,
+            TaskType.TRANSLATION,
+            max_tokens=len(content.split()) * 3,
+            temperature=0.3,
+        )
 
     # =========================================================================
     # HEALTH & STATUS
@@ -731,7 +793,11 @@ Content:
         healthy_count = len([r for r in results.values() if r["status"] == "ok"])
 
         return {
-            "overall": "healthy" if healthy_count >= 2 else "degraded" if healthy_count >= 1 else "down",
+            "overall": "healthy"
+            if healthy_count >= 2
+            else "degraded"
+            if healthy_count >= 1
+            else "down",
             "models": results,
             "timestamp": datetime.utcnow().isoformat(),
         }
@@ -751,12 +817,14 @@ def get_ai_engine(api_key: str) -> AIEngine:
 # Create default instance for imports (will be initialized when config loaded)
 class _DeferredAIEngine:
     """Deferred AI engine that loads config on first use."""
+
     def __init__(self):
         self._engine: Optional[AIEngine] = None
 
     def _get_engine(self) -> AIEngine:
         if self._engine is None:
             from app.config import settings
+
             self._engine = get_ai_engine(settings.openrouter_api_key)
         return self._engine
 

@@ -21,7 +21,7 @@ class TestGreetingsDetection:
     def test_simple_greetings_italian(self, builder):
         """Test: Italian greetings are detected"""
         greetings = ["ciao", "salve", "buongiorno", "buonasera"]
-        
+
         for greeting in greetings:
             result = builder.check_greetings(greeting)
             assert result is not None, f"'{greeting}' should be detected as greeting"
@@ -30,7 +30,7 @@ class TestGreetingsDetection:
     def test_simple_greetings_english(self, builder):
         """Test: English greetings are detected"""
         greetings = ["hello", "hi", "hey"]
-        
+
         for greeting in greetings:
             result = builder.check_greetings(greeting)
             assert result is not None, f"'{greeting}' should be detected as greeting"
@@ -39,7 +39,7 @@ class TestGreetingsDetection:
     def test_greetings_with_exclamation(self, builder):
         """Test: Greetings with exclamation marks are detected"""
         greetings = ["ciao!", "hello!", "hi!", "hey!"]
-        
+
         for greeting in greetings:
             result = builder.check_greetings(greeting)
             assert result is not None, f"'{greeting}' should be detected as greeting"
@@ -47,7 +47,7 @@ class TestGreetingsDetection:
     def test_greetings_with_name(self, builder):
         """Test: Greetings followed by name are detected"""
         greetings = ["ciao zan", "hello zantara", "hi there", "hey zan"]
-        
+
         for greeting in greetings:
             result = builder.check_greetings(greeting)
             assert result is not None, f"'{greeting}' should be detected as greeting"
@@ -62,7 +62,7 @@ class TestGreetingsDetection:
             "I need help with business setup",
             "ciao ma voglio sapere qualcosa",  # Too long, not just greeting
         ]
-        
+
         for query in non_greetings:
             result = builder.check_greetings(query)
             assert result is None, f"'{query}' should NOT be detected as greeting"
@@ -70,7 +70,7 @@ class TestGreetingsDetection:
     def test_case_insensitive(self, builder):
         """Test: Greetings detection is case-insensitive"""
         greetings = ["CIAO", "Hello", "HI", "Hey"]
-        
+
         for greeting in greetings:
             result = builder.check_greetings(greeting)
             assert result is not None, f"'{greeting}' should be detected (case-insensitive)"
@@ -78,7 +78,7 @@ class TestGreetingsDetection:
     def test_whitespace_handling(self, builder):
         """Test: Whitespace is handled correctly"""
         greetings = [" ciao ", "  hello  ", "\t hi \n"]
-        
+
         for greeting in greetings:
             result = builder.check_greetings(greeting)
             assert result is not None, f"'{greeting}' should be detected after whitespace trim"
@@ -91,8 +91,7 @@ class TestGreetingsDetection:
     def test_very_short_greetings(self, builder):
         """Test: Very short greetings (<=5 chars) are detected"""
         short_greetings = ["ciao", "hello", "hi", "hey", "salve"]
-        
+
         for greeting in short_greetings:
             result = builder.check_greetings(greeting)
             assert result is not None, f"'{greeting}' should be detected as short greeting"
-

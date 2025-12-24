@@ -91,12 +91,3 @@ class WhatsAppNotificationService:
             logger.error(f"Error sending WhatsApp message to {phone}: {e}", exc_info=True)
             return None
 
-
-
-
-
-
-
-
-
-

@@ -1,3 +1,10 @@
+"""
+Agentic RAG Orchestrator v2
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
+"""
+
 import ast
 import asyncio
 import logging
@@ -5,9 +12,8 @@ import operator
 import re
 from typing import Any
 
-import google.generativeai as genai
-
 from app.core.config import settings
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -128,14 +134,27 @@ class AgenticRAGOrchestrator:
         self.memory_service = memory_service
         self.search_service = search_service
 
-        # Configure Gemini only when a real key is provided
-        self.model = None
-        api_key = settings.google_api_key
-        if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel(settings.gemini_model_smart)
+        # Initialize GenAI client (supports both API Key and Service Account via Vertex AI)
+        self._genai_client: GenAIClient | None = None
+        self._available = False
+        self.model_name = getattr(settings, "gemini_model_smart", "gemini-3-flash-preview")
+        # Strip 'models/' prefix for new SDK
+        self.model_name = self.model_name.replace("models/", "")
+
+        if GENAI_AVAILABLE:
+            try:
+                from llm.genai_client import get_genai_client
+                self._genai_client = get_genai_client()
+                self._available = self._genai_client.is_available
+                if self._available:
+                    auth_method = getattr(self._genai_client, '_auth_method', 'unknown')
+                    logger.info(f"✅ AgenticRAGOrchestrator initialized with GenAI client (auth: {auth_method})")
+                else:
+                    logger.warning("⚠️ GenAI client not available - using mock mode")
+            except Exception as e:
+                logger.warning(f"Failed to initialize GenAI client: {e}")
         else:
-            logger.warning("AgenticRAGOrchestrator running without Gemini key; using mock mode")
+            logger.warning("AgenticRAGOrchestrator running without GenAI SDK; using mock mode")
 
     async def initialize(self):
         """Async initialization if needed."""
@@ -150,8 +169,8 @@ class AgenticRAGOrchestrator:
         _ = enable_vision  # unused for now; reserved for future multimodal support
         start_time = asyncio.get_event_loop().time()
 
-        # If the model is not available (e.g., test/mock mode), return a safe stub
-        if not self.model:
+        # If the client is not available (e.g., test/mock mode), return a safe stub
+        if not self._available or not self._genai_client:
             return {
                 "answer": "Agentic orchestrator running in mock mode (no LLM available).",
                 "sources": [],
@@ -240,8 +259,12 @@ class AgenticRAGOrchestrator:
             5. Be helpful, professional, and concise.
             """
 
-            response = await self.model.generate_content_async(system_prompt)
-            text_response = response.text
+            result = await self._genai_client.generate_content(
+                contents=system_prompt,
+                model=self.model_name,
+                max_output_tokens=8192,
+            )
+            text_response = result.get("text", "")
 
             return {
                 "answer": text_response,

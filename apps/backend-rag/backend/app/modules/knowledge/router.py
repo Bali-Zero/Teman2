@@ -10,8 +10,9 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.dependencies import get_current_user
 from app.models import ChunkMetadata, SearchQuery, SearchResponse, SearchResult, TierLevel
 from app.modules.knowledge.service import KnowledgeService
 
@@ -171,76 +172,87 @@ async def search_health(request: Request) -> dict[str, Any]:
 async def get_parent_documents_debug(document_id: str) -> dict[str, Any]:
     """DEBUG endpoint: Get parent documents (BAB) from PostgreSQL for a document"""
     import asyncpg
+
     from app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url)
 
-        records = await conn.fetch("""
+        records = await conn.fetch(
+            """
             SELECT id, document_id, type, title, pasal_count, char_count,
                    LEFT(full_text, 2000) as text_preview,
                    LENGTH(full_text) as full_text_length
             FROM parent_documents
             WHERE document_id = $1
             ORDER BY id
-        """, document_id)
+        """,
+            document_id,
+        )
 
         await conn.close()
 
         bab_list = []
         for r in records:
-            bab_list.append({
-                "id": r["id"],
-                "document_id": r["document_id"],
-                "type": r["type"],
-                "title": r["title"],
-                "pasal_count": r["pasal_count"],
-                "char_count": r["char_count"],
-                "full_text_length": r["full_text_length"],
-                "text_preview": r["text_preview"]
-            })
+            bab_list.append(
+                {
+                    "id": r["id"],
+                    "document_id": r["document_id"],
+                    "type": r["type"],
+                    "title": r["title"],
+                    "pasal_count": r["pasal_count"],
+                    "char_count": r["char_count"],
+                    "full_text_length": r["full_text_length"],
+                    "text_preview": r["text_preview"],
+                }
+            )
 
-        return {
-            "document_id": document_id,
-            "total_bab": len(bab_list),
-            "bab": bab_list
-        }
+        return {"document_id": document_id, "total_bab": len(bab_list), "bab": bab_list}
 
     except Exception as e:
         logger.error(f"Error fetching parent documents: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch parent documents: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch parent documents: {str(e)}"
+        ) from e
 
 
-# TEMPORARY PUBLIC ENDPOINT - NO AUTH
+# PUBLIC ENDPOINT - Requires authentication
 router_public = APIRouter(prefix="/api/public", tags=["public"])
 
+
 @router_public.get("/bab/{document_id}")
-async def get_bab_public(document_id: str) -> dict[str, Any]:
-    """TEMPORARY PUBLIC - Get BAB without authentication"""
+async def get_bab_public(
+    document_id: str, current_user: dict = Depends(get_current_user)
+) -> dict[str, Any]:
+    """
+    Get BAB (Buku Acuan Bali) document by ID.
+
+    SECURITY: Requires authentication. Public prefix is for API organization only.
+    """
     import asyncpg
+
     from app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url, timeout=30)
 
-        records = await conn.fetch("""
+        records = await conn.fetch(
+            """
             SELECT id, title, pasal_count, char_count,
                    LEFT(full_text, 2000) as text_preview,
                    LENGTH(full_text) as full_text_length
             FROM parent_documents
             WHERE document_id = $1
             ORDER BY id
-        """, document_id)
+        """,
+            document_id,
+        )
 
         await conn.close()
 
         bab_list = [dict(r) for r in records]
 
-        return {
-            "document_id": document_id,
-            "total_bab": len(bab_list),
-            "bab": bab_list
-        }
+        return {"document_id": document_id, "total_bab": len(bab_list), "bab": bab_list}
 
     except Exception as e:
         logger.error(f"Error: {e}", exc_info=True)

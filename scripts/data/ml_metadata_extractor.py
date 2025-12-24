@@ -97,7 +97,7 @@ class MLMetadataExtractor:
 
             result = await self.ai_client.chat_async(
                 messages=messages,
-                max_tokens=500,
+                max_tokens=8192,
                 temperature=0.1,  # Low temperature for consistent extraction
                 safety_settings=safety_settings,
             )

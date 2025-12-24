@@ -18,8 +18,13 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+// Production URL - uses environment variable or falls back to production domain
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'https://zantara.balizero.com');
+
 export const metadata: Metadata = {
-  metadataBase: new URL('http://localhost:3000'), // Replace with actual production URL when deploying
+  metadataBase: new URL(appUrl),
   title: {
     default: 'Zantara | Bali Zero Team',
     template: '%s | Zantara',
@@ -36,7 +41,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://nuzantara-rag.fly.dev',
+    url: appUrl,
     title: 'Zantara | Bali Zero Team',
     description: 'AI-powered team assistant for Bali Zero',
     siteName: 'Zantara',

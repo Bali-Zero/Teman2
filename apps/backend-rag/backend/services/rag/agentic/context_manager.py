@@ -73,9 +73,7 @@ async def get_user_context(
             # For now, let's try to get entities if we can find a recent conversation for this user
             # This is a limitation of the current cache design (keyed by conversation_id)
             # But we can iterate to find the user's latest conversation
-            logger.warning(
-                f"Memory cache lookup skipped - user_id not found in cache"
-            )
+            logger.warning("Memory cache lookup skipped - user_id not found in cache")
             pass
         except (KeyError, ValueError, RuntimeError) as e:
             logger.warning(f"⚠️ Memory cache lookup failed: {e}", exc_info=True)
@@ -117,7 +115,9 @@ async def get_user_context(
                     LEFT JOIN team_access ta ON ta.user_id = up.id
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
-                logger.info(f"🧠 [ContextManager] Executing profile query for user_id: {user_id}, session_id: {session_id}")
+                logger.info(
+                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id}, session_id: {session_id}"
+                )
                 row = await conn.fetchrow(query_combined, user_id, session_id)
             else:
                 query_combined = """
@@ -141,7 +141,9 @@ async def get_user_context(
                     LEFT JOIN team_access ta ON ta.user_id = up.id
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
-                logger.info(f"🧠 [ContextManager] Executing profile query for user_id: {user_id} (no session_id)")
+                logger.info(
+                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id} (no session_id)"
+                )
                 row = await conn.fetchrow(query_combined, user_id)
 
             if row:
@@ -184,7 +186,7 @@ async def get_user_context(
     # Get Memory Facts via MemoryOrchestrator (single source of truth)
     # FIX: Don't apply memory facts on first query of a new session to avoid hallucination
     is_first_query = len(context.get("history", [])) == 0
-    
+
     if memory_orchestrator and not is_first_query:
         try:
             # Pass query for query-aware collective memory retrieval

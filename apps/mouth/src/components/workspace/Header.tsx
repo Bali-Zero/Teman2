@@ -49,9 +49,9 @@ export function Header({
   // Get greeting based on time
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Buongiorno';
-    if (hour < 18) return 'Buon pomeriggio';
-    return 'Buonasera';
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
   };
 
   // Format current date
@@ -62,7 +62,7 @@ export function Header({
       month: 'long',
       year: 'numeric',
     };
-    return new Date().toLocaleDateString('it-IT', options);
+    return new Date().toLocaleDateString('en-US', options);
   };
 
   return (
@@ -143,12 +143,12 @@ export function Header({
                 <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto z-50 bg-[var(--background-secondary)] border border-[var(--border)] rounded-xl shadow-xl">
                   <div className="p-4 border-b border-[var(--border)]">
                     <h3 className="font-semibold text-[var(--foreground)]">
-                      Notifiche
+                      Notifications
                     </h3>
                   </div>
                   <div className="p-4">
                     <p className="text-sm text-[var(--foreground-muted)] text-center py-4">
-                      Nessuna nuova notifica
+                      No new notifications
                     </p>
                   </div>
                 </div>

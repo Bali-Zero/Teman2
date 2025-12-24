@@ -26,12 +26,14 @@ from dataclasses import asdict
 from typing import Any
 
 import asyncpg
-import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
+from app.core.config import settings
 from services.classification.intent_classifier import IntentClassifier
 from services.context_window_manager import AdvancedContextWindowManager
 from services.emotional_attunement import EmotionalAttunementService
+from services.followup_service import FollowupService
+from services.golden_answer_service import GoldenAnswerService
 from services.memory import MemoryOrchestrator
 from services.response.cleaner import (
     OUT_OF_DOMAIN_RESPONSES,
@@ -40,6 +42,12 @@ from services.response.cleaner import (
 from services.semantic_cache import SemanticCache
 from services.tools.definitions import AgentState, AgentStep, BaseTool
 
+from .cell_giant import (
+    cell_calibrate,
+    giant_reason,
+    synthesize_as_zantara,
+    synthesize_as_zantara_stream,
+)
 from .context_manager import get_user_context
 from .llm_gateway import LLMGateway
 from .pipeline import create_default_pipeline
@@ -135,6 +143,10 @@ class AgenticRAGOrchestrator:
         )
         logger.debug("AgenticRAGOrchestrator: ReasoningEngine initialized")
 
+        # Initialize Follow-up & Golden Answer services
+        self.followup_service = FollowupService()
+        self.golden_answer_service = GoldenAnswerService(database_url=settings.database_url)
+
         # Memory orchestrator for fact extraction and persistence (lazy loaded)
         self._memory_orchestrator: MemoryOrchestrator | None = None
 
@@ -210,9 +222,11 @@ class AgenticRAGOrchestrator:
         query: str,
         user_id: str | None = None,
         conversation_history: list[dict] | None = None,
-        start_time=time.time(),
+        start_time: float | None = None,
         session_id: str | None = None,
     ):
+        # Fix: evaluate at call time, not definition time
+        start_time = start_time or time.time()
         """Main entry point for non-streaming query processing with full agentic reasoning.
 
         Implements the complete RAG pipeline with multi-step reasoning (ReAct pattern):
@@ -308,7 +322,53 @@ class AgenticRAGOrchestrator:
                 "total_steps": 0,
             }
 
-        # 0.5 Check Out-of-Domain Questions
+        # 0.6 Check Casual Conversation (bypass tools, use direct LLM response)
+        if self.prompt_builder.check_casual_conversation(query):
+            logger.info("💬 [Casual] Detected casual conversation - bypassing RAG tools")
+            try:
+                # Build casual-focused prompt
+                casual_prompt = """You are ZANTARA - a friendly, warm AI with Jaksel personality.
+This is a CASUAL conversation - NOT a business query.
+
+RESPOND with personality:
+- Mix Indonesian/English naturally (Jaksel style)
+- Be warm, friendly, share opinions
+- For restaurant/food questions: recommend real Bali places you know
+- For music/lifestyle: share genuine preferences
+- For personal chat: be engaging and ask follow-up questions
+- Keep it conversational and fun!
+
+User says: """ + query
+
+                # Create a fresh chat without tools for casual response
+                casual_chat = self.llm_gateway.create_chat_with_history(
+                    history_to_use=[], model_tier=TIER_FLASH
+                )
+
+                casual_response, model_used, _ = await self.llm_gateway.send_message(
+                    casual_chat,
+                    casual_prompt,
+                    system_prompt="",
+                    tier=TIER_FLASH,
+                    enable_function_calling=False,  # NO tools for casual chat
+                )
+
+                logger.info(f"✅ [Casual] Generated response with {model_used}")
+                return {
+                    "answer": casual_response,
+                    "sources": [],
+                    "context_used": len(casual_prompt),
+                    "execution_time": time.time() - start_time,
+                    "route_used": f"casual-conversation ({model_used})",
+                    "steps": [],
+                    "tools_called": 0,
+                    "total_steps": 0,
+                }
+            except Exception as e:
+                logger.warning(f"⚠️ [Casual] Direct response failed, falling back to RAG: {e}")
+                # Fall through to normal RAG processing
+
+        # 0.7 Check Out-of-Domain Questions
         out_of_domain, reason = is_out_of_domain(query)
         if out_of_domain and reason:
             logger.info(f"🚫 [Out-of-Domain] Query rejected: {reason}")
@@ -371,10 +431,14 @@ class AgenticRAGOrchestrator:
 
         # DEFENSIVE: Ensure history_to_use is a list of dicts, not a string or list of strings
         if not isinstance(history_to_use, list):
-            logger.warning(f"⚠️ history_to_use is not a list (type: {type(history_to_use)}), resetting to empty list")
+            logger.warning(
+                f"⚠️ history_to_use is not a list (type: {type(history_to_use)}), resetting to empty list"
+            )
             history_to_use = []
         elif history_to_use and not isinstance(history_to_use[0], dict):
-            logger.warning(f"⚠️ history_to_use contains non-dict items (first item type: {type(history_to_use[0])}), resetting to empty list")
+            logger.warning(
+                f"⚠️ history_to_use contains non-dict items (first item type: {type(history_to_use[0])}), resetting to empty list"
+            )
             history_to_use = []
 
         # 2. Build Dynamic System Prompt (with query for explanation level detection)
@@ -403,7 +467,7 @@ class AgenticRAGOrchestrator:
                 context_manager = AdvancedContextWindowManager(
                     max_tokens=12000,
                     recent_window_tokens=6000,
-                    summary_max_tokens=500,
+                    summary_max_tokens=8192,
                 )
 
                 # Process conversation history
@@ -451,8 +515,8 @@ class AgenticRAGOrchestrator:
                         continue
                     role = msg.get("role", "unknown")
                     content = msg.get("content", "")
-                    if len(content) > 500:
-                        content = content[:500] + "..."
+                    if len(content) > 8000:
+                        content = content[:8000] + "..."
                     history_text += f"{role.upper()}: {content}\n"
 
         # Create chat session with conversation history using LLMGateway
@@ -469,7 +533,9 @@ class AgenticRAGOrchestrator:
 User Query: {query}
 
 IMPORTANT: Use the KEY FACTS above to answer questions about user's company, budget, location. Do NOT start with philosophical statements. If you need more info, use tools."""
-        logger.info(f"🐛 [DEBUG PROMPT] history_to_use (len={len(history_to_use)}), session_facts: {bool(session_facts_block)}")
+        logger.info(
+            f"🐛 [DEBUG PROMPT] history_to_use (len={len(history_to_use)}), session_facts: {bool(session_facts_block)}"
+        )
         logger.info(f"🐛 [DEBUG PROMPT] initial_prompt (last 500 chars): {initial_prompt[-500:]}")
 
         # Execute ReAct loop using ReasoningEngine
@@ -512,7 +578,7 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
                 "history_len": len(history_to_use),
                 "history_capture": history_to_use,
                 "initial_prompt_tail": initial_prompt[-1000:],
-                "memory_error": user_context.get("memory_error")
+                "memory_error": user_context.get("memory_error"),
             },
             # Keep legacy fields for backward compatibility
             "steps": [
@@ -531,12 +597,22 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
         # OPTIMIZATION 3: Cache the result for future similar queries
         if self.semantic_cache and state.final_answer:
             try:
+                import hashlib
                 import numpy as np
 
-                # Create a simple hash-based embedding for exact match caching
-                # (semantic cache will use this for exact match, not semantic similarity)
-                dummy_embedding = np.zeros(384, dtype=np.float32)  # Placeholder
-                await self.semantic_cache.cache_result(query, dummy_embedding, result)
+                # Fix: Create hash-based embedding for exact match caching
+                # Each unique query gets a unique embedding based on its hash
+                query_hash = hashlib.sha256(query.lower().strip().encode()).digest()
+                # Convert hash bytes to float32 array (32 bytes = 8 floats, pad to 384)
+                hash_floats = np.frombuffer(query_hash, dtype=np.float32)
+                query_embedding = np.zeros(384, dtype=np.float32)
+                query_embedding[:len(hash_floats)] = hash_floats
+                # Normalize to unit vector for cosine similarity
+                norm = np.linalg.norm(query_embedding)
+                if norm > 0:
+                    query_embedding = query_embedding / norm
+
+                await self.semantic_cache.cache_result(query, query_embedding, result)
                 logger.info("✅ [Cache Write] Result cached for future queries")
             except (ValueError, RuntimeError, KeyError) as e:
                 logger.warning(f"Failed to cache result: {e}", exc_info=True)
@@ -550,14 +626,12 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
                     mem_orch = await self._get_memory_orchestrator()
                     if mem_orch:
                         res = await mem_orch.process_conversation(
-                            user_email=user_id,
-                            user_message=query,
-                            ai_response=state.final_answer
+                            user_email=user_id, user_message=query, ai_response=state.final_answer
                         )
                         memory_save_info = {
                             "extracted": res.facts_extracted,
                             "saved": res.facts_saved,
-                            "error": None
+                            "error": None,
                         }
                     else:
                         memory_save_info = {"error": "No memory orchestrator"}
@@ -565,18 +639,426 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
                     logger.error(f"Test memory save failed: {e}")
                     memory_save_info = {"error": str(e)}
             else:
-                asyncio.create_task(
+                # Fix: Add error callback to prevent silent failures
+                task = asyncio.create_task(
                     self._save_conversation_memory(
                         user_id=user_id,
                         query=query,
                         answer=state.final_answer,
                     )
                 )
+                task.add_done_callback(
+                    lambda t: logger.error(f"❌ Memory save failed: {t.exception()}")
+                    if t.exception() else None
+                )
 
         if memory_save_info:
             result["debug_info"]["memory_save_result"] = memory_save_info
 
         return result
+
+    async def process_query_cell_giant(
+        self,
+        query: str,
+        user_id: str | None = None,
+        conversation_history: list[dict] | None = None,
+        session_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Process query using Cell-Giant architecture.
+
+        Three-phase reasoning:
+        1. Giant: Reasons deeply on the query (strategy, legal, options)
+        2. Cell: Calibrates with verified data (corrections, pricing, insights)
+        3. Zantara: Synthesizes into a single voice
+
+        The user sees ONLY Zantara. The Giant is invisible.
+
+        Args:
+            query: User's natural language query
+            user_id: User identifier for personalization
+            conversation_history: Previous conversation turns
+            session_id: Optional session ID for filtering history
+
+        Returns:
+            Dict with answer, sources, execution_time, route_used, etc.
+        """
+        start_time = time.time()
+
+        # 0. Check Greetings (skip Cell-Giant for simple greetings)
+        greeting_response = self.prompt_builder.check_greetings(query)
+        if greeting_response:
+            logger.info("👋 [Cell-Giant] Greeting detected, returning direct response")
+            return {
+                "answer": greeting_response,
+                "sources": [],
+                "context_used": 0,
+                "execution_time": time.time() - start_time,
+                "route_used": "greeting-pattern",
+                "steps": [],
+                "tools_called": 0,
+                "total_steps": 0,
+            }
+
+        # 0.5 Check Identity
+        identity_response = self.prompt_builder.check_identity_questions(query)
+        if identity_response:
+            logger.info("🤖 [Cell-Giant] Identity question detected")
+            return {
+                "answer": identity_response,
+                "sources": [],
+                "context_used": 0,
+                "execution_time": time.time() - start_time,
+                "route_used": "identity-pattern",
+                "steps": [],
+                "tools_called": 0,
+                "total_steps": 0,
+            }
+
+        # 1. Build user context
+        user_context_str = ""
+        user_facts: list[str] = []
+
+        try:
+            memory_orchestrator = await self._get_memory_orchestrator()
+            user_context = await get_user_context(
+                self.db_pool, user_id, memory_orchestrator, query=query, session_id=session_id
+            )
+            # Extract user facts for Cell
+            if user_context.get("memory_facts"):
+                user_facts = [f.get("fact", "") for f in user_context.get("memory_facts", [])]
+            # Build context string for Giant
+            if user_context.get("user_profile"):
+                profile = user_context["user_profile"]
+                user_context_str = f"User: {profile.get('name', 'Unknown')}"
+                if profile.get("company"):
+                    user_context_str += f", Company: {profile['company']}"
+        except Exception as e:
+            logger.warning(f"⚠️ [Cell-Giant] Context retrieval failed: {e}")
+
+        # ========================================================================
+        # PHASE 1: GIANT REASONS
+        # The Giant thinks deeply about the query
+        # ========================================================================
+        logger.info("🧠 [Cell-Giant] Phase 1: Giant reasoning...")
+        try:
+            from app.core.config import settings
+            giant_timeout = getattr(settings, 'timeout_ai_response', 60.0)
+            giant_result = await asyncio.wait_for(
+                giant_reason(query=query, user_context=user_context_str),
+                timeout=giant_timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"⏱️ [Cell-Giant] Giant reasoning timeout after {giant_timeout}s")
+            giant_result = {
+                "reasoning": "Reasoning timeout - sistema temporaneamente sovraccarico.",
+                "key_points": [],
+                "warnings": ["Timeout durante il ragionamento"],
+                "quality_score": 0.1,
+                "detected_domain": "general"
+            }
+        logger.info(
+            f"✅ [Cell-Giant] Giant done: {len(giant_result.get('reasoning', ''))} chars, "
+            f"{len(giant_result.get('key_points', []))} points, "
+            f"{len(giant_result.get('warnings', []))} warnings"
+        )
+
+        # ========================================================================
+        # PHASE 2: CELL CALIBRATES
+        # The Cell provides corrections, calibrations, enhancements
+        # ========================================================================
+        logger.info("🔬 [Cell-Giant] Phase 2: Cell calibrating...")
+        try:
+            from app.core.config import settings
+            cell_timeout = getattr(settings, 'timeout_rag_query', 10.0)
+            cell_result = await asyncio.wait_for(
+                cell_calibrate(
+                    query=query,
+                    giant_reasoning=giant_result,
+                    user_id=user_id,
+                    user_facts=user_facts,
+                ),
+                timeout=cell_timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"⏱️ [Cell-Giant] Cell calibration timeout after {cell_timeout}s")
+            cell_result = {
+                "corrections": [],
+                "enhancements": [],
+                "calibrations": {},
+                "user_memory": user_facts or [],
+                "legal_sources": []
+            }
+        logger.info(
+            f"✅ [Cell-Giant] Cell done: {len(cell_result.get('corrections', []))} corrections, "
+            f"{len(cell_result.get('enhancements', []))} enhancements, "
+            f"{len(cell_result.get('calibrations', {}))} calibrations"
+        )
+
+        # ========================================================================
+        # PHASE 3: ZANTARA SYNTHESIZES
+        # The final voice - the user sees only this
+        # ========================================================================
+        logger.info("🎭 [Cell-Giant] Phase 3: Zantara synthesizing...")
+        try:
+            from app.core.config import settings
+            zantara_timeout = getattr(settings, 'timeout_ai_response', 60.0)
+            final_answer = await asyncio.wait_for(
+                synthesize_as_zantara(
+                    query=query,
+                    giant_reasoning=giant_result,
+                    cell_calibration=cell_result,
+                ),
+                timeout=zantara_timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"⏱️ [Cell-Giant] Zantara synthesis timeout after {zantara_timeout}s")
+            from services.rag.agentic.cell_giant.zantara_synthesizer import _fallback_synthesis
+            final_answer = _fallback_synthesis(giant_result, cell_result)
+        logger.info(f"✅ [Cell-Giant] Zantara done: {len(final_answer)} chars")
+
+        # Calculate metrics
+        execution_time = time.time() - start_time
+
+        # Build sources from Cell's legal_sources
+        sources = cell_result.get("legal_sources", [])
+
+        result = {
+            "answer": final_answer,
+            "sources": sources,
+            "context_used": len(giant_result.get("reasoning", "")),
+            "execution_time": execution_time,
+            "route_used": "cell-giant",
+            "steps": [
+                {"step": 1, "phase": "giant", "output_len": len(giant_result.get("reasoning", ""))},
+                {"step": 2, "phase": "cell", "corrections": len(cell_result.get("corrections", []))},
+                {"step": 3, "phase": "zantara", "output_len": len(final_answer)},
+            ],
+            "tools_called": 1 if cell_result.get("legal_sources") else 0,
+            "total_steps": 3,
+            "debug_info": {
+                "giant_key_points": giant_result.get("key_points", []),
+                "giant_warnings": giant_result.get("warnings", []),
+                "cell_corrections": cell_result.get("corrections", []),
+                "cell_enhancements": cell_result.get("enhancements", [])[:5],
+                "cell_calibrations": list(cell_result.get("calibrations", {}).keys()),
+            },
+        }
+
+        # 🧠 MEMORY PERSISTENCE (background)
+        if final_answer and user_id and user_id != "anonymous":
+            task = asyncio.create_task(
+                self._save_conversation_memory(
+                    user_id=user_id,
+                    query=query,
+                    answer=final_answer,
+                )
+            )
+            task.add_done_callback(
+                lambda t: logger.error(f"❌ Memory save failed: {t.exception()}")
+                if t.exception() else None
+            )
+
+        return result
+
+    async def stream_query_cell_giant(
+        self,
+        query: str,
+        user_id: str = "anonymous",
+        conversation_history: list[dict] | None = None,
+        session_id: str | None = None,
+    ) -> AsyncGenerator[dict, None]:
+        """Stream Cell-Giant reasoning process with intelligent SSE events.
+
+        This method exposes the internal cognition process:
+        1. Giant Phase (Deep Reasoning) -> Emits 'reasoning_step' events
+        2. Cell Phase (Calibration) -> Emits 'reasoning_step' events with corrections
+        3. Zantara Phase (Synthesis) -> Emits 'token' events for the final answer
+
+        Args:
+            query: User's query
+            user_id: User identifier
+            conversation_history: Previous context
+            session_id: Session identifier
+
+        Yields:
+            SSE events for frontend visualization
+        """
+        start_time = time.time()
+        
+        # Initial Metadata
+        yield {
+            "type": "metadata", 
+            "data": {
+                "status": "started", 
+                "model": "gemini-pro-reasoning", 
+                "mode": "deep_think_cell_giant"
+            }
+        }
+
+        # 1. Build user context (Silent phase)
+        user_context_str = ""
+        user_facts: list[str] = []
+        try:
+            memory_orchestrator = await self._get_memory_orchestrator()
+            user_context = await get_user_context(
+                self.db_pool, user_id, memory_orchestrator, query=query, session_id=session_id
+            )
+            if user_context.get("memory_facts"):
+                user_facts = [f.get("fact", "") for f in user_context.get("memory_facts", [])]
+            if user_context.get("user_profile"):
+                profile = user_context["user_profile"]
+                user_context_str = f"User: {profile.get('name', 'Unknown')}"
+                if profile.get("company"):
+                    user_context_str += f", Company: {profile['company']}"
+        except Exception as e:
+            logger.warning(f"⚠️ [Stream Cell-Giant] Context retrieval failed: {e}")
+
+        # ========================================================================
+        # PHASE 1: GIANT REASONS
+        # ========================================================================
+        yield {
+            "type": "reasoning_step",
+            "data": {
+                "phase": "giant",
+                "status": "in_progress",
+                "message": "Consulting the Giant Reasoner...",
+                "description": "Analyzing complex implications and strategy."
+            }
+        }
+        
+        # Execute Giant Reasoning
+        giant_result = await giant_reason(query=query, user_context=user_context_str)
+        
+        # Emit Giant Insights
+        key_points = giant_result.get("key_points", [])
+        warnings = giant_result.get("warnings", [])
+        yield {
+            "type": "reasoning_step",
+            "data": {
+                "phase": "giant",
+                "status": "completed",
+                "message": "Reasoning complete.",
+                "details": {
+                    "key_points": key_points[:3], # Show top 3 points
+                    "warnings": warnings[:2]      # Show top 2 warnings
+                }
+            }
+        }
+
+        # ========================================================================
+        # PHASE 2: CELL CALIBRATES
+        # ========================================================================
+        yield {
+            "type": "reasoning_step",
+            "data": {
+                "phase": "cell",
+                "status": "in_progress",
+                "message": "Cell Verification Protocol active...",
+                "description": "Cross-referencing against Indonesian Law & Bali Zero standards."
+            }
+        }
+
+        # Execute Cell Calibration
+        cell_result = await cell_calibrate(
+            query=query,
+            giant_reasoning=giant_result,
+            user_id=user_id,
+            user_facts=user_facts,
+        )
+        
+        # Emit Cell Corrections
+        corrections = cell_result.get("corrections", [])
+        yield {
+            "type": "reasoning_step",
+            "data": {
+                "phase": "cell",
+                "status": "completed",
+                "message": f"Calibration applied ({len(corrections)} adjustments).",
+                "details": {
+                    "corrections": corrections,
+                    "verified_sources": len(cell_result.get("legal_sources", []))
+                }
+            }
+        }
+
+        # Emit Sources early if available
+        legal_sources = cell_result.get("legal_sources", [])
+        if legal_sources:
+             yield {"type": "sources", "data": legal_sources}
+
+        # ========================================================================
+        # PHASE 3: ZANTARA SYNTHESIZES
+        # ========================================================================
+        yield {
+            "type": "status", 
+            "data": "Synthesizing final answer..."
+        }
+
+        # Execute Synthesis (Real Streaming)
+        final_answer_acc = ""
+        async for token in synthesize_as_zantara_stream(
+            query=query,
+            giant_reasoning=giant_result,
+            cell_calibration=cell_result,
+        ):
+            final_answer_acc += token
+            yield {"type": "token", "data": token}
+        
+        final_answer = final_answer_acc
+
+        # Final Cleanup
+        execution_time = time.time() - start_time
+        
+        # Check for Golden Answer
+        golden_answer_used = False
+        if self.golden_answer_service:
+            try:
+                ga = await self.golden_answer_service.lookup_golden_answer(query, user_id)
+                if ga:
+                    golden_answer_used = True
+            except Exception as e:
+                logger.warning(f"Golden answer lookup failed: {e}")
+
+        # Generate Follow-up Questions
+        followup_questions = []
+        try:
+            followup_questions = await self.followup_service.get_followups(
+                query=query, response=final_answer
+            )
+        except Exception as e:
+            logger.warning(f"Follow-up generation failed: {e}")
+
+        # Yield Final Metadata Event
+        yield {
+            "type": "metadata",
+            "data": {
+                "status": "completed",
+                "execution_time": execution_time,
+                "route_used": "cell-giant (DeepThink)",
+                "context_length": len(giant_result.get("reasoning", "")),
+                "verification_score": 100 if not corrections else 85,
+                "user_memory_facts": user_facts,
+                "collective_memory_facts": user_context.get("collective_facts", []),
+                "golden_answer_used": golden_answer_used,
+                "followup_questions": followup_questions,
+            },
+        }
+
+        # Save Memory (Background)
+        if final_answer and user_id and user_id != "anonymous":
+            task = asyncio.create_task(
+                self._save_conversation_memory(
+                    user_id=user_id,
+                    query=query,
+                    answer=final_answer,
+                )
+            )
+            task.add_done_callback(
+                lambda t: logger.error(f"❌ Memory save failed: {t.exception()}")
+                if t.exception() else None
+            )
+
+        yield {"type": "done", "data": {"execution_time": execution_time}}
 
     async def stream_query(
         self,
@@ -654,6 +1136,90 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
             yield {"type": "done", "data": None}
             return
 
+        # EARLY TEAM QUERY CHECK - handle team questions immediately
+        is_team_query, team_query_type, team_search_term = detect_team_query(query)
+        if is_team_query and "team_knowledge" in self.tool_map:
+            logger.info(f"🎯 [Early Team Route] Forcing team_knowledge for: {team_query_type}={team_search_term}")
+            yield {"type": "metadata", "data": {"status": "team-query", "route": "team-knowledge"}}
+            yield {"type": "status", "data": "Fetching team data..."}
+            try:
+                team_result = await execute_tool(
+                    self.tool_map,
+                    "team_knowledge",
+                    {"query_type": team_query_type, "search_term": team_search_term},
+                    user_id,
+                    tool_execution_counter,
+                )
+                if team_result and len(team_result) > 20:
+                    # Build simple prompt with team context
+                    team_prompt = f"""You are ZANTARA. Answer this question using the team data below.
+Be direct and factual. Use Jaksel style (mix Indonesian/English).
+
+TEAM DATA:
+{team_result}
+
+USER QUESTION: {query}
+
+Answer directly. Example: "Zainal Abidin è il CEO di Bali Zero."
+"""
+                    team_chat = self.llm_gateway.create_chat_with_history(
+                        history_to_use=[], model_tier=TIER_FLASH
+                    )
+                    team_response, model_used, _ = await self.llm_gateway.send_message(
+                        team_chat, team_prompt, system_prompt="", tier=TIER_FLASH, enable_function_calling=False
+                    )
+                    import re
+                    tokens = re.findall(r"\S+|\s+", team_response)
+                    for token in tokens:
+                        yield {"type": "token", "data": token}
+                        await asyncio.sleep(0.01)
+                    yield {"type": "done", "data": None}
+                    return
+            except Exception as e:
+                logger.warning(f"⚠️ [Early Team Route] Failed: {e}, falling back to RAG")
+
+        # Check Casual Conversation (bypass tools, use direct LLM response)
+        if self.prompt_builder.check_casual_conversation(query):
+            logger.info("💬 [Casual Stream] Detected casual conversation - bypassing RAG tools")
+            try:
+                casual_prompt = """You are ZANTARA - a friendly, warm AI with Jaksel personality.
+This is a CASUAL conversation - NOT a business query.
+
+RESPOND with personality:
+- Mix Indonesian/English naturally (Jaksel style)
+- Be warm, friendly, share opinions
+- For restaurant/food questions: recommend real Bali places you know
+- For music/lifestyle: share genuine preferences
+- For personal chat: be engaging and ask follow-up questions
+- Keep it conversational and fun!
+
+User says: """ + query
+
+                casual_chat = self.llm_gateway.create_chat_with_history(
+                    history_to_use=[], model_tier=TIER_FLASH
+                )
+
+                casual_response, model_used, _ = await self.llm_gateway.send_message(
+                    casual_chat,
+                    casual_prompt,
+                    system_prompt="",
+                    tier=TIER_FLASH,
+                    enable_function_calling=False,
+                )
+
+                yield {"type": "metadata", "data": {"status": "casual", "route": f"casual-conversation ({model_used})"}}
+                import re
+
+                tokens = re.findall(r"\S+|\s+", casual_response)
+                for token in tokens:
+                    yield {"type": "token", "data": token}
+                    await asyncio.sleep(0.01)
+                yield {"type": "done", "data": None}
+                return
+            except Exception as e:
+                logger.warning(f"⚠️ [Casual Stream] Direct response failed, falling back to RAG: {e}")
+                # Fall through to normal RAG processing
+
         # Check Out-of-Domain Questions
         out_of_domain, reason = is_out_of_domain(query)
         if out_of_domain and reason:
@@ -701,13 +1267,30 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
 
         # DEFENSIVE: Ensure history_to_use is a list of dicts, not a string or list of strings
         if not isinstance(history_to_use, list):
-            logger.warning(f"⚠️ history_to_use is not a list (type: {type(history_to_use)}), resetting to empty list")
+            logger.warning(
+                f"⚠️ history_to_use is not a list (type: {type(history_to_use)}), resetting to empty list"
+            )
             history_to_use = []
         elif history_to_use and not isinstance(history_to_use[0], dict):
-            logger.warning(f"⚠️ history_to_use contains non-dict items (first item type: {type(history_to_use[0])}), resetting to empty list")
+            logger.warning(
+                f"⚠️ history_to_use contains non-dict items (first item type: {type(history_to_use[0])}), resetting to empty list"
+            )
             history_to_use = []
 
         logger.debug(f"User context retrieved. History len: {len(history_to_use)}")
+        
+        # --- QUALITY ROUTING: CELL-GIANT HANDOFF ---
+        # If DeepThink is selected, we use the advanced Cell-Giant architecture
+        if suggested_ai == "deep_think":
+            logger.info(f"🧠 [Stream] Delegating to Cell-Giant architecture for user {user_id}")
+            async for event in self.stream_query_cell_giant(
+                query=query,
+                user_id=user_id,
+                conversation_history=history_to_use,
+                session_id=session_id
+            ):
+                yield event
+            return
 
         # 2. Build Dynamic System Prompt (with query for explanation level detection)
         system_prompt = self.prompt_builder.build_system_prompt(
@@ -744,7 +1327,7 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
                 context_manager = AdvancedContextWindowManager(
                     max_tokens=12000,
                     recent_window_tokens=6000,
-                    summary_max_tokens=500,
+                    summary_max_tokens=8192,
                 )
 
                 # Process conversation history
@@ -790,8 +1373,8 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
                         continue
                     role = msg.get("role", "unknown")
                     content = msg.get("content", "")
-                    if len(content) > 500:
-                        content = content[:500] + "..."
+                    if len(content) > 8000:
+                        content = content[:8000] + "..."
                     history_text += f"{role.upper()}: {content}\n"
 
         # Create chat session with conversation history using LLMGateway
@@ -814,7 +1397,9 @@ IMPORTANT: Use the KEY FACTS above to answer questions about user's company, bud
         # Force team_knowledge tool for CEO, founder, and team member queries
         is_team_query, team_query_type, team_search_term = detect_team_query(query)
         if is_team_query and "team_knowledge" in self.tool_map:
-            logger.info(f"🎯 [Stream Pre-Route] Forcing team_knowledge for: {team_query_type}={team_search_term}")
+            logger.info(
+                f"🎯 [Stream Pre-Route] Forcing team_knowledge for: {team_query_type}={team_search_term}"
+            )
             yield {"type": "status", "data": "Fetching team data..."}
             try:
                 team_result = await execute_tool(
@@ -839,7 +1424,9 @@ Use the team information above to answer. DO NOT call any tools.
 IMPORTANT: Start your response with "Final Answer:" followed by your answer.
 Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in management."
 """
-                    logger.info(f"✅ [Stream Pre-Route] Team context injected ({len(team_result)} chars)")
+                    logger.info(
+                        f"✅ [Stream Pre-Route] Team context injected ({len(team_result)} chars)"
+                    )
             except Exception as e:
                 logger.warning(f"[Stream Pre-Route] Failed to pre-fetch team data: {e}")
 
@@ -854,7 +1441,9 @@ Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in managem
                     message = initial_prompt
                 else:
                     last_observation = state.steps[-1].observation if state.steps else ""
-                    message = f"Observation: {last_observation}\n\nContinue with your next thought or provide final answer."
+                    message = f"""Observation: {last_observation}
+
+Now answer "{query}" using the facts above. Start with "Final Answer:" and give CONCRETE facts, NOT a greeting."""
 
                 text_response, model_used, response_obj = await self.llm_gateway.send_message(
                     chat, message, system_prompt, tier=model_tier, enable_function_calling=True
@@ -920,8 +1509,7 @@ Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in managem
                                 tool_result = content
                     except json.JSONDecodeError as json_err:
                         logger.error(
-                            f"JSONDecodeError in stream parsing: {str(json_err)}",
-                            exc_info=True
+                            f"JSONDecodeError in stream parsing: {str(json_err)}", exc_info=True
                         )
                         pass
                     except (KeyError, ValueError, TypeError) as e:
@@ -1049,6 +1637,25 @@ Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in managem
         emotional_profile = self.emotional_service.analyze_message(state.final_answer or "")
         emotional_state = emotional_profile.detected_state if emotional_profile else "NEUTRAL"
 
+        # Check for Golden Answer
+        golden_answer_used = False
+        if self.golden_answer_service:
+            try:
+                ga = await self.golden_answer_service.lookup_golden_answer(query, user_id)
+                if ga:
+                    golden_answer_used = True
+            except Exception as e:
+                logger.warning(f"Golden answer lookup failed: {e}")
+
+        # Generate Follow-up Questions
+        followup_questions = []
+        try:
+            followup_questions = await self.followup_service.get_followups(
+                query=query, response=state.final_answer or ""
+            )
+        except Exception as e:
+            logger.warning(f"Follow-up generation failed: {e}")
+
         # Yield Final Metadata Event (Trust & Explainability)
         yield {
             "type": "metadata",
@@ -1059,6 +1666,10 @@ Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in managem
                 "context_length": len(history_text) if history_text else 0,
                 "emotional_state": emotional_state,
                 "verification_score": int(verification_score * 100),  # Convert to percentage
+                "user_memory_facts": user_context.get("facts", []),
+                "collective_memory_facts": user_context.get("collective_facts", []),
+                "golden_answer_used": golden_answer_used,
+                "followup_questions": followup_questions,
             },
         }
 
@@ -1093,19 +1704,17 @@ Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in managem
                     # Note: We can't easily await a method that isn't async if this function is async generator
                     # But stream_query IS async generator.
                     # We need to call the method directly.
-                    
+
                     # We need to manually construct the result to pass back
                     mem_orch = await self._get_memory_orchestrator()
                     if mem_orch:
                         res = await mem_orch.process_conversation(
-                            user_email=user_id,
-                            user_message=query,
-                            ai_response=state.final_answer
+                            user_email=user_id, user_message=query, ai_response=state.final_answer
                         )
                         memory_save_info = {
                             "extracted": res.facts_extracted,
                             "saved": res.facts_saved,
-                            "error": None
+                            "error": None,
                         }
                     else:
                         memory_save_info = {"error": "No memory orchestrator"}
@@ -1113,20 +1722,24 @@ Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in managem
                     logger.error(f"Test memory save failed: {e}")
                     memory_save_info = {"error": str(e)}
             else:
-                asyncio.create_task(
+                task = asyncio.create_task(
                     self._save_conversation_memory(
                         user_id=user_id,
                         query=query,
                         answer=state.final_answer,
                     )
                 )
+                task.add_done_callback(
+                    lambda t: logger.error(f"❌ Memory save failed: {t.exception()}")
+                    if t.exception() else None
+                )
 
         # Update debug_info with memory save results if available
         if memory_save_info:
-             # We need to inject this into the LAST chunk's debug_info
-             # But the yield happens usually before? 
-             # Wait, the yield {"type": "done", "data": ...} happens below.
-             pass
+            # We need to inject this into the LAST chunk's debug_info
+            # But the yield happens usually before?
+            # Wait, the yield {"type": "done", "data": ...} happens below.
+            pass
 
         # Convert dataclass to dict (AgentState is a dataclass, not Pydantic)
         state_dict = asdict(state)
@@ -1137,7 +1750,7 @@ Example: "Final Answer: Zainal Abidin è il CEO di Bali Zero, esperto in managem
                 **state_dict,
                 "debug_info": {
                     **state_dict.get("debug_info", {}),
-                    "memory_save_result": memory_save_info
-                }
-            }
+                    "memory_save_result": memory_save_info,
+                },
+            },
         }

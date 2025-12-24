@@ -40,10 +40,10 @@ COLLECTION_NAME = "visa_oracle"
 # Files to ingest
 SURAT_EDARAN_FILES = [
     Path(
-        "/Users/antonellosiano/Desktop/nuzantara/apps/kb/data/immigration/SE_IMI-941_GR_01_01_2024_peneraan_cap.txt"
+        "/Users/antonellosiano/Desktop/kb/immigration/SE_IMI-941_GR_01_01_2024_peneraan_cap.txt"
     ),
     Path(
-        "/Users/antonellosiano/Desktop/nuzantara/apps/kb/data/immigration/SE_IMI-417_GR_01_01_2025_penyesuaian_pelayanan.txt"
+        "/Users/antonellosiano/Desktop/kb/immigration/SE_IMI-417_GR_01_01_2025_penyesuaian_pelayanan.txt"
     ),
 ]
 

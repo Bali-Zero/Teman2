@@ -1,62 +1,62 @@
 """
 Gemini Jaksel Service with OpenRouter Fallback
 
-Primary: Google Gemini API (gemini-2.5-flash)
+Primary: Google Gemini API (gemini-3-flash-preview)
 Fallback: OpenRouter free models when quota exceeded (429)
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK (replaced deprecated google-generativeai)
 """
 
 import logging
 from collections.abc import AsyncGenerator
 
-import google.generativeai as genai
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from prompts.jaksel_persona import FEW_SHOT_EXAMPLES, SYSTEM_INSTRUCTION
 
 from app.core.config import settings
-
-# Configure API Key
-if settings.google_api_key:
-    genai.configure(api_key=settings.google_api_key)
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE, get_genai_client
 
 logger = logging.getLogger(__name__)
 
 
 class GeminiJakselService:
-    def __init__(self, model_name: str = "gemini-2.5-flash"):
+    def __init__(self, model_name: str = "gemini-3-flash-preview"):
         """
         Initialize Gemini Service with Jaksel Persona and OpenRouter fallback.
 
         Args:
-            model_name: "gemini-2.5-flash" (Fast/Unlimited on Ultra) or "gemini-2.5-pro" (High Quality)
+            model_name: "gemini-3-flash-preview" (Fast/Medium thinking) or "gemini-3-pro-preview" (High thinking)
 
         Note:
-            - Free tier: 2.5 Flash (250 RPD), 2.5 Pro (100 RPD)
+            - Free tier: 2.0 Flash (high quota), 2.5 Pro (lower quota)
             - Ultra plan: Both unlimited for normal use
             - Automatic fallback to OpenRouter free models on 429
         """
-        # Ensure model name has the correct format (with 'models/' prefix if not present)
-        if not model_name.startswith("models/"):
-            self.model_name = f"models/{model_name}"
-        else:
-            self.model_name = model_name
-
+        # Store model name (new SDK doesn't need 'models/' prefix)
+        self.model_name = model_name.replace("models/", "")
         self.system_instruction = SYSTEM_INSTRUCTION
 
-        # Initialize Gemini model (may be None if API key not set)
-        self.model = None
-        if settings.google_api_key:
+        # Initialize GenAI client using singleton (supports API Key & Service Account)
+        self._genai_client = None
+        self._available = False
+        if GENAI_AVAILABLE:
             try:
-                self.model = genai.GenerativeModel(
-                    model_name=self.model_name, system_instruction=self.system_instruction
-                )
+                self._genai_client = get_genai_client()
+                self._available = self._genai_client.is_available
+                if self._available:
+                    auth_method = getattr(self._genai_client, '_auth_method', 'unknown')
+                    logger.info(f"✅ Gemini Jaksel Service initialized (model: {self.model_name}, auth: {auth_method})")
             except Exception as e:
-                logger.warning(f"Failed to initialize Gemini model: {e}")
+                logger.warning(f"Failed to initialize Gemini client: {e}")
 
         # Pre-compute history from examples for "Few-Shot" prompting
         self.few_shot_history = []
         for ex in FEW_SHOT_EXAMPLES:
-            role = "user" if ex["role"] == "user" else "model"
-            self.few_shot_history.append({"role": role, "parts": [ex["content"]]})
+            self.few_shot_history.append({
+                "role": ex["role"],
+                "content": ex["content"],
+            })
 
         # OpenRouter client for fallback (lazy loaded)
         self._openrouter_client = None
@@ -163,20 +163,19 @@ class GeminiJakselService:
             history = []
 
         # Try Gemini first (if available)
-        if self.model:
+        if self._available and self._genai_client:
             try:
                 # Combine few-shot history with actual conversation history
                 chat_history = self.few_shot_history.copy()
 
-                # Convert app history format to Gemini format
+                # Convert app history format
                 for msg in history:
-                    role = "user" if msg.get("role") == "user" else "model"
                     content = msg.get("content", "")
                     if content:
-                        chat_history.append({"role": role, "parts": [content]})
-
-                # Initialize chat with history
-                chat = self.model.start_chat(history=chat_history)
+                        chat_history.append({
+                            "role": msg.get("role", "user"),
+                            "content": content,
+                        })
 
                 # Build final message
                 if context and context.strip():
@@ -184,12 +183,16 @@ class GeminiJakselService:
                 else:
                     final_message = message
 
-                # Stream response
-                response = await chat.send_message_async(final_message, stream=True)
+                # Create chat session with new SDK wrapper
+                chat = self._genai_client.create_chat(
+                    model=self.model_name,
+                    system_instruction=self.system_instruction,
+                    history=chat_history,
+                )
 
-                async for chunk in response:
-                    if chunk.text:
-                        yield chunk.text
+                # Stream response
+                async for chunk in chat.send_message_stream(final_message):
+                    yield chunk
 
                 return  # Success, exit generator
 
@@ -222,7 +225,7 @@ class GeminiJakselService:
             history = []
 
         # Try Gemini first (if available)
-        if self.model:
+        if self._available and self._genai_client:
             try:
                 # Use streaming internally to collect full response
                 full_response = ""
@@ -262,10 +265,7 @@ class GeminiService:
         Args:
             api_key: Google API key (optional, uses settings if not provided)
         """
-        if api_key:
-            import google.generativeai as genai
-
-            genai.configure(api_key=api_key)
+        # API key is passed to the service constructor now
         self._service = GeminiJakselService()
 
     async def generate_response(
@@ -306,7 +306,9 @@ if __name__ == "__main__":
     async def test():
         logger.info("🚀 Testing Gemini Jaksel Service with OpenRouter Fallback...")
         logger.info(f"   Gemini API Key: {'✅ Set' if settings.google_api_key else '❌ Not set'}")
-        logger.info(f"   OpenRouter API Key: {'✅ Set' if settings.openrouter_api_key else '❌ Not set'}")
+        logger.info(
+            f"   OpenRouter API Key: {'✅ Set' if settings.openrouter_api_key else '❌ Not set'}"
+        )
 
         # Test Query
         query = "Bro, gue mau bikin PT PMA tapi modal gue pas-pasan. Ada solusi gak?"

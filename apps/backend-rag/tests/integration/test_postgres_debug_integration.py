@@ -33,19 +33,22 @@ if str(backend_path) not in sys.path:
 def client():
     """Create test client with debug router only (no middleware)."""
     from fastapi import FastAPI
+
     from app.routers import debug
-    
+
     # Create minimal app with only debug router (no middleware)
     app = FastAPI()
     app.include_router(debug.router)
-    
+
     # Mock settings for debug router
     with patch("app.routers.debug.settings") as mock_settings:
         mock_settings.environment = "development"
         mock_settings.admin_api_key = os.getenv("ADMIN_API_KEY", "test_admin_api_key")
         # Also patch settings in postgres_debugger
         with patch("app.utils.postgres_debugger.settings") as mock_pg_settings:
-            mock_pg_settings.database_url = os.getenv("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
+            mock_pg_settings.database_url = os.getenv(
+                "DATABASE_URL", "postgresql://test:test@localhost:5432/test"
+            )
             yield TestClient(app)
 
 
@@ -137,7 +140,7 @@ class TestPostgresDebugIntegration:
         mock_desc_id.name = "id"
         mock_desc_name = MagicMock()
         mock_desc_name.name = "name"
-        
+
         mock_row = MagicMock()
         mock_row._row_desc = [mock_desc_id, mock_desc_name]
         mock_row.__getitem__ = MagicMock(side_effect=lambda k: {"id": 1, "name": "test"}[k])
@@ -176,18 +179,39 @@ class TestPostgresDebugIntegration:
 
             # Mock tables list
             mock_table_row = MagicMock()
-            mock_table_row.__getitem__ = MagicMock(side_effect=lambda k: {"table_name": "users", "table_type": "BASE TABLE"}[k])
+            mock_table_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {"table_name": "users", "table_type": "BASE TABLE"}[k]
+            )
             mock_table_row.keys = MagicMock(return_value=["table_name", "table_type"])
 
             # Mock table details
             mock_col = MagicMock()
-            mock_col.__getitem__ = MagicMock(side_effect=lambda k: {"column_name": "id", "data_type": "integer", "is_nullable": "NO", "column_default": None, "character_maximum_length": None, "numeric_precision": None, "numeric_scale": None}[k])
+            mock_col.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "column_name": "id",
+                    "data_type": "integer",
+                    "is_nullable": "NO",
+                    "column_default": None,
+                    "character_maximum_length": None,
+                    "numeric_precision": None,
+                    "numeric_scale": None,
+                }[k]
+            )
             mock_col.keys = MagicMock(return_value=["column_name", "data_type"])
 
             # Mock indexes
             mock_idx_row = MagicMock()
-            mock_idx_row.__getitem__ = MagicMock(side_effect=lambda k: {"schemaname": "public", "tablename": "users", "indexname": "idx_users_email", "indexdef": "CREATE INDEX..."}[k])
-            mock_idx_row.keys = MagicMock(return_value=["schemaname", "tablename", "indexname", "indexdef"])
+            mock_idx_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "schemaname": "public",
+                    "tablename": "users",
+                    "indexname": "idx_users_email",
+                    "indexdef": "CREATE INDEX...",
+                }[k]
+            )
+            mock_idx_row.keys = MagicMock(
+                return_value=["schemaname", "tablename", "indexname", "indexdef"]
+            )
 
             mock_conn.fetch = AsyncMock(
                 side_effect=[
@@ -214,7 +238,9 @@ class TestPostgresDebugIntegration:
             assert "columns" in table_data["table"]
 
             # Step 3: Get indexes
-            response3 = client.get("/api/debug/postgres/schema/indexes?table_name=users", headers=auth_headers)
+            response3 = client.get(
+                "/api/debug/postgres/schema/indexes?table_name=users", headers=auth_headers
+            )
             assert response3.status_code == 200
             indexes_data = response3.json()
             assert "indexes" in indexes_data
@@ -226,15 +252,28 @@ class TestPostgresDebugIntegration:
             mock_conn.close = AsyncMock()
 
             # Mock database stats
-            mock_conn.fetchval = AsyncMock(side_effect=["100 MB", "PostgreSQL 14.0", 10, 5, 5, "testdb"])
+            mock_conn.fetchval = AsyncMock(
+                side_effect=["100 MB", "PostgreSQL 14.0", 10, 5, 5, "testdb"]
+            )
 
             # Mock table stats
             mock_stat_row = MagicMock()
-            mock_stat_row.__getitem__ = MagicMock(side_effect=lambda k: {"schemaname": "public", "tablename": "users", "total_size": "1 MB", "table_size": "800 kB", "indexes_size": "200 kB", "index_count": 2}[k])
+            mock_stat_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "schemaname": "public",
+                    "tablename": "users",
+                    "total_size": "1 MB",
+                    "table_size": "800 kB",
+                    "indexes_size": "200 kB",
+                    "index_count": 2,
+                }[k]
+            )
             mock_stat_row.keys = MagicMock(return_value=["schemaname", "tablename", "total_size"])
 
             mock_conn.fetch = AsyncMock(return_value=[mock_stat_row])
-            mock_conn.fetchval = AsyncMock(side_effect=["100 MB", "PostgreSQL 14.0", 10, 5, 5, "testdb", 100])  # db stats + row count
+            mock_conn.fetchval = AsyncMock(
+                side_effect=["100 MB", "PostgreSQL 14.0", 10, 5, 5, "testdb", 100]
+            )  # db stats + row count
 
             mock_connect.return_value = mock_conn
 
@@ -252,7 +291,10 @@ class TestPostgresDebugIntegration:
 
     def test_error_propagation(self, client, auth_headers):
         """Test that errors are properly propagated through the stack."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect", side_effect=Exception("Database connection failed")):
+        with patch(
+            "app.utils.postgres_debugger.asyncpg.connect",
+            side_effect=Exception("Database connection failed"),
+        ):
             response = client.get("/api/debug/postgres/schema/tables", headers=auth_headers)
 
             assert response.status_code == 500
@@ -291,17 +333,42 @@ class TestPostgresDebugIntegration:
             # Mock slow queries
             mock_conn.fetchval = AsyncMock(return_value=True)  # extension exists
             mock_slow_row = MagicMock()
-            mock_slow_row.__getitem__ = MagicMock(side_effect=lambda k: {"query": "SELECT * FROM users", "calls": 100, "total_exec_time": 5000.0, "mean_exec_time": 50.0, "max_exec_time": 200.0, "min_exec_time": 10.0, "stddev_exec_time": 20.0}[k])
+            mock_slow_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "query": "SELECT * FROM users",
+                    "calls": 100,
+                    "total_exec_time": 5000.0,
+                    "mean_exec_time": 50.0,
+                    "max_exec_time": 200.0,
+                    "min_exec_time": 10.0,
+                    "stddev_exec_time": 20.0,
+                }[k]
+            )
             mock_slow_row.keys = MagicMock(return_value=["query", "calls"])
 
             # Mock locks
             mock_lock_row = MagicMock()
-            mock_lock_row.__getitem__ = MagicMock(side_effect=lambda k: {"locktype": "relation", "relation": "users", "mode": "AccessShareLock", "granted": True, "pid": 12345, "usename": "testuser", "application_name": "testapp", "state": "active", "query_start": None, "state_change": None}[k])
+            mock_lock_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {
+                    "locktype": "relation",
+                    "relation": "users",
+                    "mode": "AccessShareLock",
+                    "granted": True,
+                    "pid": 12345,
+                    "usename": "testuser",
+                    "application_name": "testapp",
+                    "state": "active",
+                    "query_start": None,
+                    "state_change": None,
+                }[k]
+            )
             mock_lock_row.keys = MagicMock(return_value=["locktype", "relation"])
 
             # Mock connection stats
             mock_state_row = MagicMock()
-            mock_state_row.__getitem__ = MagicMock(side_effect=lambda k: {"state": "active", "count": 5}[k])
+            mock_state_row.__getitem__ = MagicMock(
+                side_effect=lambda k: {"state": "active", "count": 5}[k]
+            )
             mock_state_row.keys = MagicMock(return_value=["state", "count"])
 
             mock_conn.fetch = AsyncMock(
@@ -311,11 +378,15 @@ class TestPostgresDebugIntegration:
                     [mock_state_row],  # connection stats
                 ]
             )
-            mock_conn.fetchval = AsyncMock(side_effect=[True, 10, 2, 3])  # extension exists, total, long_running, idle_in_transaction
+            mock_conn.fetchval = AsyncMock(
+                side_effect=[True, 10, 2, 3]
+            )  # extension exists, total, long_running, idle_in_transaction
             mock_connect.return_value = mock_conn
 
             # Test slow queries
-            response1 = client.get("/api/debug/postgres/performance/slow-queries", headers=auth_headers)
+            response1 = client.get(
+                "/api/debug/postgres/performance/slow-queries", headers=auth_headers
+            )
             assert response1.status_code == 200
 
             # Test locks
@@ -323,6 +394,7 @@ class TestPostgresDebugIntegration:
             assert response2.status_code == 200
 
             # Test connection stats
-            response3 = client.get("/api/debug/postgres/performance/connections", headers=auth_headers)
+            response3 = client.get(
+                "/api/debug/postgres/performance/connections", headers=auth_headers
+            )
             assert response3.status_code == 200
-

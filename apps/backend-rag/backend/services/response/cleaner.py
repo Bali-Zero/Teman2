@@ -196,10 +196,10 @@ def clean_response(response: str) -> str:
     # Remove leading/trailing whitespace
     cleaned = cleaned.strip()
 
-    # Truncate if too long (strict limit)
-    if len(cleaned) > 1000:
-        logger.warning(f"⚠️ Response truncated from {len(cleaned)} to 1000 chars")
-        cleaned = cleaned[:997] + "..."
+    # NO TRUNCATION for business responses - let the LLM decide response length
+    # Only log extremely long responses for monitoring
+    if len(cleaned) > 15000:
+        logger.warning(f"⚠️ Very long response: {len(cleaned)} chars (not truncated)")
 
     logger.info(f"🧹 Cleaned response length: {len(cleaned)}")
     return cleaned

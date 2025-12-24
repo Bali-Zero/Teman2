@@ -413,3 +413,4 @@ Se le query sono lente:
 **Ultimo aggiornamento**: 2025-01-XX
 **Mantenuto da**: Nuzantara Prime Team
 
+

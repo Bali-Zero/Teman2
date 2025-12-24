@@ -34,12 +34,17 @@ class HealthMonitor:
         self.alert_cooldown = timedelta(minutes=5)  # Don't spam alerts
         self.running = False
         self.task: asyncio.Task | None = None
+        
+        # Service injections
+        self.memory_service = None
+        self.intelligent_router = None
+        self.tool_executor = None
 
         logger.info(f"✅ HealthMonitor initialized (check_interval={check_interval}s)")
 
     async def start(self):
         """Start the health monitoring loop"""
-        if self.running:
+        if self.running and self.task and not self.task.done():
             logger.warning("⚠️ HealthMonitor already running")
             return
 
@@ -57,15 +62,23 @@ class HealthMonitor:
         logger.info("🛑 HealthMonitor stopped")
 
     async def _monitoring_loop(self):
-        """Main monitoring loop"""
+        """Main monitoring loop with robust error handling"""
+        logger.info("🔄 HealthMonitor loop entered")
         while self.running:
             try:
                 await self._check_health()
             except Exception as e:
-                logger.error(f"❌ Health check failed: {e}")
-
-            # Wait before next check
-            await asyncio.sleep(self.check_interval)
+                logger.error(f"❌ Critical error in health check loop: {e}", exc_info=True)
+            
+            try:
+                # Wait before next check
+                await asyncio.sleep(self.check_interval)
+            except asyncio.CancelledError:
+                logger.info("👋 HealthMonitor loop cancelled")
+                break
+            except Exception as e:
+                logger.error(f"❌ Sleep interrupted in health monitor: {e}")
+                break
 
     def set_services(
         self,
@@ -90,9 +103,9 @@ class HealthMonitor:
             search_service = None
 
         # Use injected services or fallback to None
-        memory_service = getattr(self, "memory_service", None)
-        intelligent_router = getattr(self, "intelligent_router", None)
-        tool_executor = getattr(self, "tool_executor", None)
+        memory_service = self.memory_service
+        intelligent_router = self.intelligent_router
+        tool_executor = self.tool_executor
 
         current_status = {
             "qdrant": await self._check_qdrant(search_service),
@@ -166,8 +179,12 @@ class HealthMonitor:
         try:
             # Try to get collection count (lightweight operation)
             if hasattr(search_service, "client") and search_service.client:
-                collections = search_service.client.list_collections()
-                return len(collections) >= 0  # Even 0 is OK (means connection works)
+                # client might be async or sync depending on implementation
+                res = search_service.client.list_collections()
+                import inspect
+                if inspect.isawaitable(res):
+                    await res
+                return True
             return True  # Service exists
         except Exception as e:
             logger.debug(f"Qdrant health check failed: {e}")
@@ -179,14 +196,14 @@ class HealthMonitor:
             return False
 
         try:
-            # Check if using postgres and has active pool
-            use_postgres = getattr(memory_service, "use_postgres", False)
-            if not use_postgres:
-                return False
-
-            # Try a simple connection check
+            # Try a simple connection check or check pool status
             if hasattr(memory_service, "pool") and memory_service.pool:
                 return True
+            
+            # Check if it has a health method
+            if hasattr(memory_service, "health_check"):
+                return await memory_service.health_check()
+                
             return False
         except Exception as e:
             logger.debug(f"PostgreSQL health check failed: {e}")
@@ -198,26 +215,31 @@ class HealthMonitor:
             return False
 
         try:
-            # Check if router has working AI clients
+            # NEW: Check if router has the Agentic RAG orchestrator
+            has_orchestrator = (
+                hasattr(intelligent_router, "orchestrator")
+                and intelligent_router.orchestrator is not None
+            )
+
+            if has_orchestrator:
+                return True
+
+            # Legacy fallback: check old attributes
             has_llama = (
                 hasattr(intelligent_router, "llama_client")
                 and intelligent_router.llama_client is not None
             )
-            has_haiku = (
-                hasattr(intelligent_router, "haiku_client")
-                and intelligent_router.haiku_client is not None
-            )
-
-            # At least one AI should be available
-            return has_llama or has_haiku
+            return has_orchestrator or has_llama
         except Exception as e:
             logger.debug(f"AI Router health check failed: {e}")
             return False
 
     def get_status(self) -> dict[str, Any]:
-        """Get current monitoring status"""
+        """Get current monitoring status with task liveness check"""
+        is_task_alive = self.task is not None and not self.task.done()
         return {
-            "running": self.running,
+            "running": self.running and is_task_alive,
+            "task_status": "alive" if is_task_alive else "dead/not_started",
             "check_interval": self.check_interval,
             "last_status": self.last_status,
             "next_check_in": f"{self.check_interval}s",

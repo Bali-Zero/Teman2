@@ -73,7 +73,9 @@ def fix_pdf_encoding():
             total_chars += chars
             success_count += 1
 
-            print(f"  ✅ Estratto → {txt_path.name} ({chars:,} chars, {len(doc)} pages)")
+            print(
+                f"  ✅ Estratto → {txt_path.name} ({chars:,} chars, {len(doc)} pages)"
+            )
 
         except Exception as e:
             error_count += 1

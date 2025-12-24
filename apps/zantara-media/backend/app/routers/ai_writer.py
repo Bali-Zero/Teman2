@@ -15,8 +15,6 @@ from app.models import (
     AIGenerateRequest,
     AIGenerateResponse,
     ContentType,
-    ContentCategory,
-    APIResponse,
 )
 from app.config import settings
 from app.services.ai_engine import (
@@ -256,18 +254,20 @@ async def list_available_models():
     models_list = []
 
     for key, model in FREE_MODELS.items():
-        models_list.append({
-            "key": key,
-            "name": model.name,
-            "id": model.id,
-            "provider": model.provider,
-            "context_length": model.context_length,
-            "strengths": model.strengths,
-            "best_for": [t.value for t in model.best_for],
-            "speed": model.speed,
-            "supports_vision": model.supports_vision,
-            "is_free": True,
-        })
+        models_list.append(
+            {
+                "key": key,
+                "name": model.name,
+                "id": model.id,
+                "provider": model.provider,
+                "context_length": model.context_length,
+                "strengths": model.strengths,
+                "best_for": [t.value for t in model.best_for],
+                "speed": model.speed,
+                "supports_vision": model.supports_vision,
+                "is_free": True,
+            }
+        )
 
     return {
         "total": len(models_list),
@@ -305,12 +305,14 @@ async def get_models_for_task(task_type: str):
     for key in chain_keys:
         model = FREE_MODELS.get(key)
         if model:
-            chain_models.append({
-                "key": key,
-                "name": model.name,
-                "provider": model.provider,
-                "speed": model.speed,
-            })
+            chain_models.append(
+                {
+                    "key": key,
+                    "name": model.name,
+                    "provider": model.provider,
+                    "speed": model.speed,
+                }
+            )
 
     return {
         "task_type": task_type,

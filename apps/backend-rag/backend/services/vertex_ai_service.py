@@ -94,7 +94,7 @@ class VertexAIService:
             response = self.model.generate_content(
                 prompt,
                 generation_config=GenerationConfig(
-                    temperature=0.1, max_output_tokens=1024, response_mime_type="application/json"
+                    temperature=0.1, max_output_tokens=8192, response_mime_type="application/json"
                 ),
             )
 

@@ -225,22 +225,24 @@ async def detailed_health(request: Request) -> dict[str, Any]:
         if router_instance:
             services["router"] = {
                 "status": "healthy",
-                "critical": False,
+                "critical": True,
                 "details": {"type": type(router_instance).__name__},
             }
         else:
-            services["router"] = {"status": "unavailable", "critical": False}
+            services["router"] = {"status": "unavailable", "critical": True}
     except Exception as e:
-        services["router"] = {"status": "error", "critical": False, "error": str(e)}
+        services["router"] = {"status": "error", "critical": True, "error": str(e)}
 
     # Check Health Monitor
     try:
         health_monitor = getattr(request.app.state, "health_monitor", None)
         if health_monitor:
+            # Use public get_status method which checks task liveness
+            monitor_status = health_monitor.get_status()
             services["health_monitor"] = {
                 "status": "healthy",
                 "critical": False,
-                "details": {"running": getattr(health_monitor, "_running", False)},
+                "details": monitor_status,
             }
         else:
             services["health_monitor"] = {"status": "unavailable", "critical": False}

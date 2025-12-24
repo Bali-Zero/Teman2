@@ -138,9 +138,11 @@ export class ApiClientBase {
         signal: controller.signal,
       });
 
-      console.log(
-        `[ApiClient] ${method} ${endpoint} -> Status: ${response.status}, OK: ${response.ok}`
-      );
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(
+          `[ApiClient] ${method} ${endpoint} -> Status: ${response.status}, OK: ${response.ok}`
+        );
+      }
 
       // Handle 401 Unauthorized (token expired or invalid)
       if (response.status === 401) {

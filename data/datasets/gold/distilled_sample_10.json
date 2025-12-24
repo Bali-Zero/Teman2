@@ -1,0 +1,625 @@
+[
+  {
+    "topic": "OSS NIB Registration",
+    "distilled": {
+      "analisi_procedura": {
+        "nome_procedura": "Registrazione NIB tramite OSS",
+        "paese": "Indonesia",
+        "categoria": "Business",
+        "fase": "Preparazione Documentale",
+        "documenti_richiesti": [
+          {
+            "id": 1,
+            "nome_documento": "Atto costitutivo",
+            "descrizione": "Documento legale che sancisce la fondazione della societ\u00e0.",
+            "termine_originale": "Akta pendirian"
+          },
+          {
+            "id": 2,
+            "nome_documento": "Decreto del Ministero della Giustizia e dei Diritti Umani (Kemenkumham)",
+            "descrizione": "Decreto di ratifica dell'entit\u00e0 giuridica emesso dal ministero competente.",
+            "termine_originale": "SK Kemenkumham"
+          },
+          {
+            "id": 3,
+            "nome_documento": "Documento d'identit\u00e0 del Direttore",
+            "descrizione": "Documento di identificazione personale del direttore della societ\u00e0.",
+            "logica_condizionale": {
+              "variabile": "nazionalit\u00e0_direttore",
+              "casi": [
+                {
+                  "condizione": "Cittadino Indonesiano",
+                  "documento_richiesto": "KTP (Carta d'Identit\u00e0 Nazionale)"
+                },
+                {
+                  "condizione": "Cittadino Straniero (WNA)",
+                  "documento_richiesto": "Passaporto"
+                }
+              ]
+            },
+            "termine_originale": "KTP Direktur (atau paspor untuk WNA)"
+          },
+          {
+            "id": 4,
+            "nome_documento": "Certificato di domicilio o dichiarazione di indirizzo",
+            "descrizione": "Documento che attesta l'indirizzo della sede legale o operativa.",
+            "opzioni": [
+              "Surat domisili",
+              "Keterangan alamat"
+            ],
+            "termine_originale": "Surat domisili/keterangan alamat"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "topic": "Investor KITAS",
+    "distilled": {
+      "analysis_context": {
+        "category": "VISA",
+        "type": "E28A",
+        "topic": "Investor KITAS",
+        "language": "ID"
+      },
+      "company_details": {
+        "type": "PT PMA",
+        "full_name": "Foreign Investment Limited Company",
+        "setup_fee": {
+          "amount": 20000000,
+          "currency": "IDR",
+          "note": "Starting fee"
+        }
+      },
+      "allowed_business_sectors": [
+        {
+          "kbli_code": "56101",
+          "description": "Restaurant",
+          "foreign_ownership": "100%"
+        },
+        {
+          "kbli_code": "56301",
+          "description": "Bar/Pub",
+          "foreign_ownership": "100%"
+        },
+        {
+          "kbli_code": "55130",
+          "description": "Villa Rental",
+          "foreign_ownership": "100%"
+        }
+      ],
+      "investment_requirements": {
+        "minimum_investment": {
+          "amount": 10000000000,
+          "currency": "IDR",
+          "scope": "per KBLI",
+          "note": "On paper requirement"
+        },
+        "paid_up_capital": {
+          "amount": 2500000000,
+          "currency": "IDR",
+          "note": "Actual deposit required"
+        }
+      },
+      "visa_costs": {
+        "visa_type": "E28A",
+        "options": [
+          {
+            "application_location": "Offshore",
+            "cost": 17000000,
+            "currency": "IDR"
+          },
+          {
+            "application_location": "Onshore",
+            "cost": 19000000,
+            "currency": "IDR"
+          },
+          {
+            "application_type": "Extension",
+            "cost": 18000000,
+            "currency": "IDR"
+          }
+        ]
+      },
+      "additional_costs": [
+        {
+          "item": "Alcohol License",
+          "cost": 15000000,
+          "currency": "IDR",
+          "note": "Starting fee"
+        },
+        {
+          "item": "Tax Package",
+          "cost": 1500000,
+          "currency": "IDR",
+          "frequency": "monthly",
+          "note": "Starting fee"
+        }
+      ],
+      "taxation": {
+        "corporate_tax": {
+          "rate": "22%",
+          "base": "on profit"
+        },
+        "vat": {
+          "rate": "11%"
+        }
+      }
+    }
+  },
+  {
+    "topic": "OSS NIB Registration",
+    "distilled": {
+      "definizioni": [
+        {
+          "acronimo": "OSS",
+          "nome_completo": "Online Single Submission",
+          "descrizione": "Piattaforma online del governo indonesiano per la registrazione delle imprese.",
+          "url": "oss.go.id"
+        },
+        {
+          "acronimo": "NIB",
+          "nome_completo": "Nomor Induk Berusaha",
+          "descrizione": "Numero di Identificazione Aziendale, funge da identit\u00e0 principale per un'impresa in Indonesia."
+        },
+        {
+          "acronimo": "NPWP",
+          "descrizione": "Numero di Identificazione Fiscale, richiesto prima della registrazione del NIB."
+        },
+        {
+          "acronimo": "PKP",
+          "nome_completo": "Pengusaha Kena Pajak",
+          "descrizione": "Imprenditore soggetto a imposta (IVA)."
+        },
+        {
+          "acronimo": "KBLI",
+          "descrizione": "Classificazione Standard Indonesiana delle Attivit\u00e0 Economiche."
+        }
+      ],
+      "processo_registrazione_nib": {
+        "costo_governativo": "Gratuito",
+        "tempistiche_previste": "1-5 giorni lavorativi",
+        "prerequisiti": [
+          "Possesso di un NPWP (Numero di Identificazione Fiscale) valido."
+        ]
+      },
+      "logica_autorizzazioni_per_rischio": {
+        "descrizione": "I requisiti per avviare l'operativit\u00e0 aziendale dipendono dal livello di rischio associato al codice KBLI dell'attivit\u00e0.",
+        "livelli": [
+          {
+            "livello_rischio": "Basso",
+            "requisiti_operativita": "Il solo NIB \u00e8 sufficiente per avviare le operazioni commerciali.",
+            "documentazione_necessaria": [
+              "NIB"
+            ]
+          },
+          {
+            "livello_rischio": "Medio",
+            "requisiti_operativita": "\u00c8 necessario ottenere il NIB e un Certificato Standard.",
+            "documentazione_necessaria": [
+              "NIB",
+              "Certificato Standard"
+            ]
+          },
+          {
+            "livello_rischio": "Alto",
+            "requisiti_operativita": "\u00c8 necessario ottenere il NIB e una Licenza Commerciale, la quale \u00e8 soggetta a un processo di verifica.",
+            "documentazione_necessaria": [
+              "NIB",
+              "Licenza Commerciale"
+            ]
+          }
+        ]
+      },
+      "esempi_classificazione_kbli": [
+        {
+          "codice_kbli": "62010",
+          "attivita": "Attivit\u00e0 di programmazione informatica",
+          "livello_rischio": "Basso"
+        },
+        {
+          "codice_kbli": "62020",
+          "attivita": "Attivit\u00e0 di consulenza informatica e gestione di strutture informatiche",
+          "livello_rischio": "Basso"
+        },
+        {
+          "codice_kbli": "73100",
+          "attivita": "Pubblicit\u00e0",
+          "livello_rischio": "Medio"
+        }
+      ],
+      "dettagli_pkp": {
+        "soglia_registrazione_obbligatoria": {
+          "valore": 4800000000,
+          "valuta": "IDR",
+          "descrizione": "La registrazione come PKP diventa obbligatoria al superamento di 4.8 miliardi di IDR di fatturato annuo."
+        }
+      },
+      "costi_servizi_professionali": [
+        {
+          "servizio": "Assistenza per la registrazione NIB (standalone)",
+          "costo": 3500000,
+          "valuta": "IDR"
+        },
+        {
+          "servizio": "Assistenza per la registrazione PKP",
+          "costo": 2500000,
+          "valuta": "IDR"
+        }
+      ],
+      "raccomandazioni_finanziarie": {
+        "banche_consigliate": [
+          "CIMB",
+          "DBS",
+          "BCA",
+          "Mandiri"
+        ]
+      }
+    }
+  },
+  {
+    "topic": "Spouse KITAS / Mixed Marriage",
+    "distilled": {
+      "categoria_visto": "Spouse KITAS / Mixed Marriage",
+      "codice_visto": "E31A",
+      "visto_principale": {
+        "tipo": "E26 Spouse KITAS",
+        "descrizione": "Destinato a stranieri sposati con cittadini indonesiani.",
+        "validita": {
+          "durata_anni": 2,
+          "rinnovabile": true
+        },
+        "costi": {
+          "valuta": "IDR",
+          "richiesta_offshore": 14500000,
+          "richiesta_onshore": 16500000,
+          "estensione": 15500000
+        }
+      },
+      "costi_visti_correlati": {
+        "valuta": "IDR",
+        "itks_figlio": {
+          "descrizione": "Visto per figlio a carico",
+          "costo_offshore": 12000000,
+          "costo_onshore": 14000000
+        },
+        "kitas_317": {
+          "costo": 13000000
+        }
+      },
+      "requisiti_e_obblighi": [
+        {
+          "requisito": "Registrazione del Matrimonio",
+          "dettagli": "Il matrimonio deve essere registrato presso il Dukcapil in Indonesia."
+        },
+        {
+          "obbligo": "Segnalazione SKTT",
+          "frequenza": "Ogni 3 mesi",
+          "costo": 0,
+          "valuta": "IDR"
+        }
+      ],
+      "servizi_aggiuntivi": [
+        {
+          "servizio": "Permesso di Lavoro (IMTA)",
+          "range_di_costo": {
+            "minimo": 8000000,
+            "massimo": 12000000
+          },
+          "valuta": "IDR"
+        },
+        {
+          "servizio": "Gestione KITAS",
+          "costo": 2500000,
+          "periodo": "annuale",
+          "valuta": "IDR"
+        }
+      ],
+      "promozioni": {
+        "sconto_pacchetto_famiglia": {
+          "importo": 2000000,
+          "valuta": "IDR",
+          "descrizione": "Sconto sul totale del pacchetto famiglia."
+        }
+      },
+      "caratteristiche_principali": [
+        {
+          "caratteristica": "Flessibilit\u00e0 di residenza",
+          "dettagli": "Nessun requisito di soggiorno minimo."
+        }
+      ]
+    }
+  },
+  {
+    "topic": "General Consultation",
+    "distilled": [
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "b1-visa-conversation-english 2.md",
+        "visa_type": "B1 Business Visit",
+        "duration_days": 60,
+        "languages": [
+          "EN"
+        ]
+      },
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "b1-visa-conversation-medan-pekat 2.md",
+        "visa_type": "B1 Business Visit",
+        "duration_days": 60,
+        "languages": [
+          "Medan"
+        ]
+      },
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "percakapan-b1-bahasa-bali 2.md",
+        "visa_type": "B1 Business Visit",
+        "duration_days": 60,
+        "languages": [
+          "Balinese"
+        ]
+      },
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "c2_business_visit_conversation.md",
+        "visa_type": "C2 Business Visit",
+        "duration_days": 60,
+        "languages": [
+          "ID",
+          "EN"
+        ]
+      },
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "c7-visa-10bubble-3bahasa 2.md",
+        "visa_type": "C7 Performing",
+        "duration_days": 30,
+        "languages": [
+          "ID",
+          "JV",
+          "EN"
+        ]
+      },
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "c10-visa-10bubble-3bahasa 2.md",
+        "visa_type": "C10 Event Participant",
+        "duration_days": 60,
+        "languages": [
+          "ID",
+          "JV",
+          "EN"
+        ]
+      },
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "c11-visa-10bubble-3bahasa 2.md",
+        "visa_type": "C11 Exhibitor",
+        "duration_days": 60,
+        "languages": [
+          "ID",
+          "JV",
+          "EN"
+        ]
+      },
+      {
+        "category": "Visit Visas (Single Entry)",
+        "file_name": "conv_whatsap.md",
+        "visa_type": "C1 Tourism",
+        "duration_days": 60,
+        "languages": [
+          "EN",
+          "ID",
+          "Bali"
+        ]
+      }
+    ]
+  },
+  {
+    "topic": "OSS NIB Registration",
+    "distilled": {
+      "argomento_principale": "Requisiti per la ristrutturazione di edifici",
+      "fatti_estratti": [
+        {
+          "fatto": "In caso di ristrutturazione fisica di un edificio, \u00e8 necessario ottenere il PBG (Persetujuan Bangunan Gedung) o l'SLF.",
+          "soggetti_obbligati": "Chiunque effettui una ristrutturazione fisica di un edificio.",
+          "obbligo": "Ottenere il PBG o l'SLF."
+        },
+        {
+          "fatto": "PBG \u00e8 l'acronimo di 'Persetujuan Bangunan Gedung'.",
+          "termine": "PBG",
+          "definizione": "Persetujuan Bangunan Gedung"
+        },
+        {
+          "fatto": "Il termine PBG ha sostituito il precedente termine IMB (Izin Mendirikan Bangunan).",
+          "termine_nuovo": "PBG",
+          "termine_precedente": "IMB",
+          "relazione": "Sostituzione terminologica"
+        }
+      ],
+      "concetti_menzionati": [
+        "Akses Kepabeanan",
+        "PBG (Persetujuan Bangunan Gedung)",
+        "SLF",
+        "Renovasi fisik bangunan (ristrutturazione fisica dell'edificio)",
+        "IMB (Izin Mendirikan Bangunan)"
+      ]
+    }
+  },
+  {
+    "topic": "Spouse KITAS / Mixed Marriage",
+    "distilled": {
+      "interazione": {
+        "tipo": "Conclusione Consulenza",
+        "feedback_utente": "Positivo",
+        "messaggio_utente": "L'utente esprime gratitudine per la spiegazione dettagliata ricevuta.",
+        "risposta_consulente": "Il consulente d\u00e0 il benvenuto all'utente per un soggiorno a lungo termine in Indonesia e conferma l'avvio della procedura.",
+        "tono": "Accogliente e rassicurante"
+      },
+      "procedura": {
+        "categoria": "Visto",
+        "tipo_visto": "E31A",
+        "argomento": "KITAS per Coniuge / Matrimonio Misto",
+        "obiettivo": "Soggiorno a lungo termine in Indonesia.",
+        "stato_attuale": "Avvio dell'elaborazione",
+        "impegno": "Il consulente si impegna a processare la pratica il prima possibile."
+      },
+      "fatti_chiave": [
+        {
+          "fatto": "L'utente ha ricevuto una spiegazione dettagliata che ha trovato soddisfacente.",
+          "fonte": "Thank you so much for the detailed explanation!"
+        },
+        {
+          "fatto": "Il consulente avvier\u00e0 una procedura relativa a un soggiorno a lungo termine in Indonesia.",
+          "fonte": "We'll process as soon as possible \u2014 welcome home!"
+        },
+        {
+          "fatto": "Il contesto della conversazione \u00e8 una consulenza per un visto E31A (Spouse KITAS).",
+          "fonte": "Metadati di contesto (CATEGORY VISA, VISA E31A, TOPIC Spouse KITAS)"
+        }
+      ]
+    }
+  },
+  {
+    "topic": "Transfer Pricing",
+    "distilled": {
+      "fatti": [
+        {
+          "fatto": "Esiste una transazione tra l'entit\u00e0 che parla ('noi') e la sua sede centrale ('HQ').",
+          "dettagli": {
+            "parti": [
+              "Entit\u00e0 Locale (narratore)",
+              "Sede Centrale (HQ)"
+            ],
+            "tipo_relazione": "Parti correlate"
+          }
+        },
+        {
+          "fatto": "Il valore della transazione \u00e8 quantificato.",
+          "dettagli": {
+            "valore": 30000000000,
+            "valuta": "IDR",
+            "qualificatore": "circa",
+            "periodo": "annuale"
+          }
+        }
+      ],
+      "logica_implicita": [
+        {
+          "principio": "Applicabilit\u00e0 delle normative sul Prezzo di Trasferimento (Transfer Pricing).",
+          "ragionamento": "Una transazione tra un'entit\u00e0 locale e la sua sede centrale \u00e8 una transazione infragruppo tra parti correlate. Tali transazioni sono soggette alle normative fiscali sul transfer pricing, che richiedono che i prezzi siano conformi al principio di libera concorrenza (arm's length principle)."
+        },
+        {
+          "principio": "Obbligo di documentazione.",
+          "ragionamento": "Un valore di transazione di 30 miliardi di IDR \u00e8 generalmente considerato significativo (materiale), il che implica l'obbligo di preparare e mantenere una documentazione sui prezzi di trasferimento (es. Master File, Local File) per dimostrare la conformit\u00e0 al principio di libera concorrenza all'amministrazione finanziaria."
+        }
+      ],
+      "elementi_chiave": {
+        "soggetto_passivo": "Entit\u00e0 Locale",
+        "controparte_correlata": "Sede Centrale (HQ)",
+        "valore_transazione_annuale": "circa 30.000.000.000 IDR",
+        "contesto_normativo": "Prezzi di Trasferimento (Transfer Pricing)"
+      }
+    }
+  },
+  {
+    "topic": "Spouse KITAS / Mixed Marriage",
+    "distilled": {
+      "argomento_principale": "Visto E31A KITAS per coniuge in matrimonio misto",
+      "dettagli_visto": {
+        "codice_visto": "E31A",
+        "descrizione": "KITAS per Coniuge",
+        "processo_raccomandato": "Iniziare con la richiesta del visto E31A.",
+        "struttura_prezzi": [
+          {
+            "durata": "1 Anno",
+            "tipo_applicazione": "Offshore",
+            "prezzo_idr": 11000000
+          },
+          {
+            "durata": "1 Anno",
+            "tipo_applicazione": "Onshore",
+            "prezzo_idr": 13500000
+          },
+          {
+            "durata": "2 Anni",
+            "tipo_applicazione": "Offshore",
+            "prezzo_idr": 15000000
+          },
+          {
+            "durata": "2 Anni",
+            "tipo_applicazione": "Onshore",
+            "prezzo_idr": 18000000
+          },
+          {
+            "durata": "Estensione 1 Anno",
+            "tipo_applicazione": "Estensione",
+            "prezzo_idr": 9000000
+          },
+          {
+            "durata": "Estensione 2 Anni",
+            "tipo_applicazione": "Estensione",
+            "prezzo_idr": 15000000
+          }
+        ],
+        "raccomandazione_consulente": "Scegliere l'opzione di 2 anni per evitare estensioni annuali.",
+        "decisione_cliente": "Ha accettato la raccomandazione e ha scelto l'opzione di 2 anni."
+      },
+      "status_figli_matrimonio_misto": {
+        "contesto": "Figli nati da un matrimonio in cui la madre \u00e8 cittadina indonesiana.",
+        "cittadinanza_automatica": "I figli sono automaticamente cittadini indonesiani.",
+        "doppia_cittadinanza": {
+          "permessa": true,
+          "condizione": "\u00c8 permessa fino al compimento dei 18 anni."
+        },
+        "regola_post_18_anni": "Al raggiungimento della maggiore et\u00e0, devono scegliere una sola cittadinanza.",
+        "requisiti_visto_per_figli": "Nessun visto richiesto, in quanto sono considerati cittadini indonesiani."
+      }
+    }
+  },
+  {
+    "topic": "Property Purchase",
+    "distilled": [
+      {
+        "tipo_assicurazione": "Asuransi Kebakaran (Assicurazione Incendio)",
+        "oggetto": "Copertura per l'acquisto di una propriet\u00e0 immobiliare",
+        "copertura_rischi": [
+          "Kebakaran (Incendio)",
+          "Petir (Fulmine)",
+          "Ledakan (Esplosione)",
+          "Kerusuhan (Sommosse)"
+        ],
+        "calcolo_premio": {
+          "percentuale_annua": "0.1-0.2%",
+          "base_calcolo": "Valore dell'edificio",
+          "descrizione": "Il premio annuale \u00e8 circa lo 0.1-0.2% del valore dell'edificio."
+        },
+        "esempio": {
+          "valore_edificio_idr": 1000000000,
+          "premio_annuale_idr": "1.000.000 - 2.000.000"
+        }
+      },
+      {
+        "tipo_assicurazione": "Asuransi All Risk (Assicurazione Globale Rischi)",
+        "oggetto": "Copertura per l'acquisto di una propriet\u00e0 immobiliare",
+        "copertura_rischi": [
+          "Incendio",
+          "Banjir (Alluvione)",
+          "Gempa (Terremoto)",
+          "Tanah longsor (Frana)",
+          "Huru-hara (Tumulti)"
+        ],
+        "calcolo_premio": {
+          "percentuale_annua": "0.3-0.5%",
+          "base_calcolo": "Valore dell'edificio",
+          "descrizione": "Il premio annuale \u00e8 circa lo 0.3-0.5% del valore dell'edificio."
+        },
+        "esempio": {
+          "valore_edificio_idr": 1000000000,
+          "premio_annuale_idr": "3.000.000 - 5.000.000"
+        }
+      }
+    ]
+  }
+]

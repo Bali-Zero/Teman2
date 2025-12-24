@@ -153,7 +153,7 @@ IMPORTANT: If the user mentioned their name, city, budget, or other personal det
                 "temperature": 0.3 if context.mode in ["legal_brief", "procedure_guide"] else 0.4,
                 "top_p": 0.9,
                 "top_k": 50,
-                "max_output_tokens": 4096,
+                "max_output_tokens": 8192,
             }
 
             # Generate response

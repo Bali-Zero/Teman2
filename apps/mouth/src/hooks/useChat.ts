@@ -148,6 +148,10 @@ export function useChat() {
             context_length?: number;
             emotional_state?: string;
             status?: string;
+            user_memory_facts?: string[];
+            collective_memory_facts?: string[];
+            golden_answer_used?: boolean;
+            followup_questions?: string[];
           }
         ) => {
           if (!isMountedRef.current || isAbortedRef.current) {
@@ -296,6 +300,14 @@ export function useChat() {
 
               if (step.type === 'status') {
                 newStatus = step.data;
+              } else if (step.type === 'phase') {
+                const phaseName = step.data.name;
+                const phaseStatus = step.data.status;
+                if (phaseStatus === 'started') {
+                  newStatus = phaseName === 'giant' ? 'Giant Reasoning...' : phaseName === 'cell' ? 'Cell Calibration...' : 'Zantara Synthesis...';
+                } else {
+                  newStatus = `${phaseName} Complete`;
+                }
               } else if (step.type === 'tool_start') {
                 newStatus = `Using tool: ${step.data.name || 'External Tool'}...`;
               } else if (step.type === 'tool_end') {
@@ -313,7 +325,11 @@ export function useChat() {
         },
         120000,
         conversationHistory,
-        abortController.signal
+        abortController.signal,
+        requestId, // correlationId
+        60000, // idleTimeoutMs
+        600000, // maxTotalTimeMs
+        'auto' // useCellGiant - auto-detect based on query content
       );
     } catch (error) {
       // Handle any unhandled errors from sendMessageStreaming

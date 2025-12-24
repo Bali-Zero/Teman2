@@ -9,14 +9,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import asyncpg
-
-from app.core.config import settings
 from core.legal.quality_validators import (
     assess_document_quality,
-    calculate_text_fingerprint,
     extract_ayat_numbers,
     validate_ayat_sequence,
 )
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +95,9 @@ class HierarchicalIndexer:
 
                 # If text is empty, try to reconstruct from pasals
                 if not bab_full_text and bab.get("pasal"):
-                    bab_full_text = f"{bab_title}\n\n" + "\n\n".join([p["text"] for p in bab["pasal"]])
+                    bab_full_text = f"{bab_title}\n\n" + "\n\n".join(
+                        [p["text"] for p in bab["pasal"]]
+                    )
 
                 # Quality assessment for BAB
                 bab_quality = assess_document_quality(bab_full_text)
@@ -128,12 +129,14 @@ class HierarchicalIndexer:
                         bab_id=bab_id,
                         bab_title=bab_title,
                         metadata=metadata,
-                        chunks_to_index=chunks_to_index
+                        chunks_to_index=chunks_to_index,
                     )
-        
+
         # 4. Fallback per documenti senza BAB ma con Pasal (es: leggi di modifica)
         elif structure.get("pasal_list"):
-            logger.info(f"No BAB found for {document_id}, but found {len(structure['pasal_list'])} Pasals. Processing as root Pasals.")
+            logger.info(
+                f"No BAB found for {document_id}, but found {len(structure['pasal_list'])} Pasals. Processing as root Pasals."
+            )
             for pasal in structure.get("pasal_list", []):
                 self._add_pasal_to_chunks(
                     pasal=pasal,
@@ -141,7 +144,7 @@ class HierarchicalIndexer:
                     bab_id=None,
                     bab_title=None,
                     metadata=metadata,
-                    chunks_to_index=chunks_to_index
+                    chunks_to_index=chunks_to_index,
                 )
 
         # 5. Fallback for unstructured text (if no chunks created from structure)
@@ -188,25 +191,31 @@ class HierarchicalIndexer:
             "total_pasal": len(structure.get("pasal_list", [])),
         }
 
-    def _add_pasal_to_chunks(self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index):
+    def _add_pasal_to_chunks(
+        self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index
+    ):
         """Helper to process a single Pasal and add it to chunks list"""
         pasal_id = f"{document_id}_Pasal_{pasal['number']}"
-        
+
         if bab_id:
-            hierarchy_path = f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/Pasal_{pasal['number']}"
+            hierarchy_path = (
+                f"{document_id}/BAB_{bab_id.split('_BAB_')[-1]}/Pasal_{pasal['number']}"
+            )
         else:
             hierarchy_path = f"{document_id}/Pasal_{pasal['number']}"
 
         # SAFE SPLITTING: If Pasal is too large, split it using the chunker
-        char_limit = 4000 # ~1000 tokens
+        char_limit = 4000  # ~1000 tokens
         pasal_text = pasal["text"]
-        
+
         if len(pasal_text) > char_limit and self.chunker:
-            logger.info(f"Pasal {pasal['number']} is too large ({len(pasal_text)} chars). Splitting...")
+            logger.info(
+                f"Pasal {pasal['number']} is too large ({len(pasal_text)} chars). Splitting..."
+            )
             # Create sub-metadata for chunker
             sub_metadata = {**metadata, "pasal_number": pasal["number"]}
             sub_chunks = self.chunker.chunk(pasal_text, sub_metadata)
-            
+
             for i, sc in enumerate(sub_chunks):
                 sc_id = f"{pasal_id}_{i}"
                 chunk = HierarchicalChunk(
@@ -222,7 +231,7 @@ class HierarchicalIndexer:
                     sibling_chunk_ids=[],
                     bab_title=bab_title,
                     bab_full_text=None,
-                    metadata=sc
+                    metadata=sc,
                 )
                 chunks_to_index.append(chunk)
             return

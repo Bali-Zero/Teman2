@@ -4,7 +4,6 @@ Handles conversation ratings and feedback collection
 """
 
 import logging
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -189,4 +188,3 @@ async def get_conversation_rating(session_id: str, req: Request) -> dict[str, An
     except Exception as e:
         logger.error(f"Error retrieving rating: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-

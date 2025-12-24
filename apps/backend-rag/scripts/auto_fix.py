@@ -6,7 +6,6 @@ Automatically fixes common code quality issues.
 
 import ast
 import logging
-import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -57,7 +56,9 @@ class AutoFixer:
                     continue
                 if imp.startswith("from .") or imp.startswith("from app."):
                     local_imports.append(imp)
-                elif any(pkg in imp for pkg in ["fastapi", "pydantic", "sqlmodel", "httpx", "pytest"]):
+                elif any(
+                    pkg in imp for pkg in ["fastapi", "pydantic", "sqlmodel", "httpx", "pytest"]
+                ):
                     third_party_imports.append(imp)
                 else:
                     stdlib_imports.append(imp)
@@ -166,8 +167,7 @@ class AutoFixer:
         """Process all Python files in directory"""
         python_files = list(directory.rglob("*.py"))
         python_files = [
-            f for f in python_files
-            if "test" not in str(f) and "__pycache__" not in str(f)
+            f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)
         ]
 
         total_fixes = 0
@@ -212,7 +212,9 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Auto-Fix common code issues")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be fixed without making changes")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be fixed without making changes"
+    )
 
     args = parser.parse_args()
 
@@ -222,5 +224,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

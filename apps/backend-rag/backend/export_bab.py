@@ -3,9 +3,10 @@
 Export BAB to JSON - run this FROM INSIDE the backend container
 """
 import asyncio
-import asyncpg
 import json
 import os
+
+import asyncpg
 
 
 async def export_bab():
@@ -17,11 +18,12 @@ async def export_bab():
         return
 
     try:
-        print(f"Connecting to database...")
+        print("Connecting to database...")
         conn = await asyncpg.connect(db_url, timeout=30)
         print("✅ Connected!")
 
-        records = await conn.fetch("""
+        records = await conn.fetch(
+            """
             SELECT
                 id,
                 document_id,
@@ -35,7 +37,8 @@ async def export_bab():
             FROM parent_documents
             WHERE document_id = 'PP_31_2013'
             ORDER BY id
-        """)
+        """
+        )
 
         await conn.close()
 
@@ -45,11 +48,7 @@ async def export_bab():
             bab_data.append(dict(r))
 
         # Save to JSON
-        output = {
-            "document_id": "PP_31_2013",
-            "total_bab": len(bab_data),
-            "bab": bab_data
-        }
+        output = {"document_id": "PP_31_2013", "total_bab": len(bab_data), "bab": bab_data}
 
         with open("/tmp/pp31_bab_export.json", "w") as f:
             json.dump(output, f, indent=2, ensure_ascii=False)
@@ -60,6 +59,7 @@ async def export_bab():
     except Exception as e:
         print(f"ERROR: {e}")
         import traceback
+
         traceback.print_exc()
 
 

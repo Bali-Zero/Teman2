@@ -33,9 +33,11 @@ def _convert_schema_to_gemini_format(schema: dict) -> dict:
             "integer": "INTEGER",
             "boolean": "BOOLEAN",
             "array": "ARRAY",
-            "object": "OBJECT"
+            "object": "OBJECT",
         }
-        result["type"] = type_mapping.get(type_value, type_value.upper() if isinstance(type_value, str) else type_value)
+        result["type"] = type_mapping.get(
+            type_value, type_value.upper() if isinstance(type_value, str) else type_value
+        )
 
     # Recursively convert properties
     if "properties" in schema:

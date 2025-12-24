@@ -29,4 +29,3 @@ def register_startup_handlers(app: FastAPI) -> None:
         app.state.alert_service = AlertService()
         await initialize_services(app)
         await initialize_plugins(app)
-

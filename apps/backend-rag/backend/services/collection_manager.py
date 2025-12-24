@@ -154,12 +154,3 @@ class CollectionManager:
         definition["actual_name"] = definition.get("alias") or name
         return definition
 
-
-
-
-
-
-
-
-
-

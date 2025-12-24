@@ -251,37 +251,33 @@ class AutoIngestionOrchestrator:
         # For now, simulate scraping
         scraped_items = []
 
-        if self.scraper:
-            # Use external scraper service
-            try:
-                items = await self.scraper.scrape(source.url)
-                for item in items:
-                    content = ScrapedContent(
-                        content_id=self._generate_content_id(item.get("content", "")),
-                        source_id=source.source_id,
-                        title=item.get("title", ""),
-                        content=item.get("content", ""),
-                        url=item.get("url", source.url),
-                        scraped_at=datetime.now().isoformat(),
-                        metadata=item.get("metadata", {}),
-                    )
-                    scraped_items.append(content)
-            except Exception as e:
-                logger.error(f"Scraping error: {e}")
-                return []
-        else:
-            # Simulate scraping for demo
-            logger.info(f"   [DEMO MODE] Simulated scraping from {source.url}")
-            scraped_items = [
-                ScrapedContent(
-                    content_id=self._generate_content_id(f"{source.source_id}_demo"),
+        if not self.scraper:
+            # PRODUCTION: Scraper service is required - fail fast instead of simulating
+            logger.error(
+                f"❌ Scraper service not configured for source {source.name}. "
+                "Cannot scrape without scraper service. Set scraper service in AutoIngestionOrchestrator initialization."
+            )
+            raise ValueError(
+                f"Scraper service not configured. Cannot scrape source: {source.name}"
+            )
+
+        # Use external scraper service
+        try:
+            items = await self.scraper.scrape(source.url)
+            for item in items:
+                content = ScrapedContent(
+                    content_id=self._generate_content_id(item.get("content", "")),
                     source_id=source.source_id,
-                    title=f"Demo content from {source.name}",
-                    content=f"This is simulated content from {source.url}",
-                    url=source.url,
+                    title=item.get("title", ""),
+                    content=item.get("content", ""),
+                    url=item.get("url", source.url),
                     scraped_at=datetime.now().isoformat(),
+                    metadata=item.get("metadata", {}),
                 )
-            ]
+                scraped_items.append(content)
+        except Exception as e:
+            logger.error(f"Scraping error: {e}")
+            raise  # Re-raise exception instead of returning empty list
 
         # Update last scraped
         source.last_scraped = datetime.now().isoformat()
@@ -353,7 +349,7 @@ Answer with YES or NO and a brief reason."""
                     message=prompt,
                     user_id="auto_ingestion",
                     conversation_history=[],
-                    max_tokens=100,
+                    max_tokens=8192,
                 )
 
                 answer = response.get("text", "").lower()
@@ -414,12 +410,19 @@ Answer with YES or NO and a brief reason."""
 
             target_collection = source.target_collection
 
-            # Add to collection (using search_service ingestion method if available)
+            # Add to collection using search_service
             try:
-                # Prepare metadata for logging
-                # In production, use search_service.add_document()
-                # For now, log
-                logger.info(f"   ✅ Ingested: {content.title[:50]}... → {target_collection}")
+                if not self.search:
+                    raise ValueError("SearchService not available for ingestion")
+
+                # Use search_service.add_document() for actual ingestion
+                # Note: This requires implementing add_document() in SearchService if not already available
+                # For now, log and track stats - actual ingestion should be implemented
+                logger.warning(
+                    f"⚠️ Ingestion not fully implemented for {content.title[:50]}... "
+                    f"Target collection: {target_collection}. "
+                    "Implement search_service.add_document() for production ingestion."
+                )
 
                 # Add to deduplication set
                 self.content_hashes.add(content.content_id)
@@ -432,7 +435,7 @@ Answer with YES or NO and a brief reason."""
 
             except Exception as e:
                 logger.error(f"Ingestion error: {e}")
-                continue
+                raise  # Re-raise in production instead of silently continuing
 
         logger.info(f"✅ Ingested {ingested_count} items")
 

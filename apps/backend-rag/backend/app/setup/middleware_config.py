@@ -48,4 +48,3 @@ def register_middleware(app: FastAPI) -> None:
     app.add_middleware(RateLimitMiddleware)
 
     logger.info("✅ Middleware registered: CORS + Auth + Tracing + ErrorMonitoring + RateLimiting")
-

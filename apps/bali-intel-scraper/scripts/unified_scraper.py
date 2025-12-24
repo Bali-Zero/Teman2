@@ -9,7 +9,7 @@ import httpx
 import asyncio
 import time
 from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 import hashlib
 from pathlib import Path
@@ -18,9 +18,8 @@ from dateutil import parser as dateparser
 import re
 from urllib.parse import urljoin
 from pydantic import BaseModel, HttpUrl, field_validator, ValidationError
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from fake_useragent import UserAgent
-from playwright.async_api import async_playwright, Browser, Page
+from playwright.async_api import async_playwright, Browser
 
 # Configure logging
 logger.add("logs/scraper_{time}.log", rotation="1 day", retention="7 days")
@@ -28,6 +27,7 @@ logger.add("logs/scraper_{time}.log", rotation="1 day", retention="7 days")
 
 class ScrapedItem(BaseModel):
     """Validated scraped item with Pydantic"""
+
     title: str
     content: str
     url: HttpUrl
@@ -38,24 +38,24 @@ class ScrapedItem(BaseModel):
     content_id: str
     published_at: Optional[str] = "unknown"
 
-    @field_validator('content')
+    @field_validator("content")
     @classmethod
     def validate_content_length(cls, v):
         if len(v) < 100:
             raise ValueError(f"Content too short ({len(v)} chars, minimum 100)")
         return v
 
-    @field_validator('title')
+    @field_validator("title")
     @classmethod
     def validate_title_length(cls, v):
         if len(v) < 10:
             raise ValueError(f"Title too short ({len(v)} chars, minimum 10)")
         return v
 
-    @field_validator('tier')
+    @field_validator("tier")
     @classmethod
     def validate_tier(cls, v):
-        valid_tiers = ['T1', 'T2', 'T3']
+        valid_tiers = ["T1", "T2", "T3"]
         if v not in valid_tiers:
             raise ValueError(f"Invalid tier '{v}', must be one of {valid_tiers}")
         return v
@@ -64,7 +64,12 @@ class ScrapedItem(BaseModel):
 class BaliZeroScraper:
     """Unified scraper for Bali Zero Intelligence System - Async optimized"""
 
-    def __init__(self, config_path: str = "config/categories.json", max_age_days: int = 5, max_concurrent: int = 10):
+    def __init__(
+        self,
+        config_path: str = "config/categories.json",
+        max_age_days: int = 5,
+        max_concurrent: int = 10,
+    ):
         self.config_path = Path(config_path)
         self.config = self.load_config()
         self.output_dir = Path("data/raw")
@@ -104,7 +109,7 @@ class BaliZeroScraper:
             "filtered_old": 0,
             "filtered_duplicate": 0,
             "filtered_short": 0,
-            "saved": 0
+            "saved": 0,
         }
 
         # Playwright browser (lazy initialization)
@@ -115,9 +120,9 @@ class BaliZeroScraper:
             f"Initialized Bali Zero Scraper with {self.config['total_categories']} categories"
         )
         logger.info(f"Max article age: {max_age_days} days")
-        logger.info(f"User-Agent rotation enabled ✓")
+        logger.info("User-Agent rotation enabled ✓")
         logger.info(f"Async mode: max {max_concurrent} concurrent requests ✓")
-        logger.info(f"Browser automation: Playwright (lazy init) ✓")
+        logger.info("Browser automation: Playwright (lazy init) ✓")
 
     def load_config(self) -> Dict:
         """Load scraper configuration"""
@@ -164,23 +169,26 @@ class BaliZeroScraper:
             # Increase delay on errors (exponential backoff)
             self.consecutive_errors += 1
             self.current_delay = min(
-                self.base_delay * (2 ** self.consecutive_errors),
-                self.max_delay
+                self.base_delay * (2**self.consecutive_errors), self.max_delay
             )
-            logger.warning(f"⚠️  Rate limit adjusted: {self.current_delay:.1f}s (errors: {self.consecutive_errors})")
+            logger.warning(
+                f"⚠️  Rate limit adjusted: {self.current_delay:.1f}s (errors: {self.consecutive_errors})"
+            )
 
     async def _adaptive_delay(self):
         """Apply adaptive delay between requests"""
         await asyncio.sleep(self.current_delay)
 
-    def _update_source_health(self, source_name: str, success: bool, items_count: int = 0):
+    def _update_source_health(
+        self, source_name: str, success: bool, items_count: int = 0
+    ):
         """Track health status for each source"""
         if source_name not in self.source_health:
             self.source_health[source_name] = {
                 "success_count": 0,
                 "failure_count": 0,
                 "last_success": None,
-                "total_items": 0
+                "total_items": 0,
             }
 
         if success:
@@ -203,43 +211,50 @@ class BaliZeroScraper:
 
     def get_health_report(self) -> Dict:
         """Generate health report for all sources"""
-        report = {
-            "timestamp": datetime.now().isoformat(),
-            "sources": []
-        }
+        report = {"timestamp": datetime.now().isoformat(), "sources": []}
 
         for source_name, health in self.source_health.items():
             total = health["success_count"] + health["failure_count"]
             success_rate = (health["success_count"] / total * 100) if total > 0 else 0
 
-            report["sources"].append({
-                "name": source_name,
-                "success_rate": f"{success_rate:.1f}%",
-                "total_items": health["total_items"],
-                "last_success": health["last_success"],
-                "status": "healthy" if success_rate >= 80 else "degraded" if success_rate >= 50 else "failing"
-            })
+            report["sources"].append(
+                {
+                    "name": source_name,
+                    "success_rate": f"{success_rate:.1f}%",
+                    "total_items": health["total_items"],
+                    "last_success": health["last_success"],
+                    "status": "healthy"
+                    if success_rate >= 80
+                    else "degraded"
+                    if success_rate >= 50
+                    else "failing",
+                }
+            )
 
         return report
 
-    def _extract_date(self, elem, source: Dict, soup: BeautifulSoup) -> Optional[datetime]:
+    def _extract_date(
+        self, elem, source: Dict, soup: BeautifulSoup
+    ) -> Optional[datetime]:
         """Extract publication date from element or page"""
 
         # Try source-specific date selectors first
-        date_selectors = source.get('date_selectors', [])
+        date_selectors = source.get("date_selectors", [])
 
         # Add common fallback selectors
-        date_selectors.extend([
-            'time[datetime]',
-            'meta[property="article:published_time"]',
-            'meta[name="publishdate"]',
-            '.date',
-            '.published',
-            '.post-date',
-            '.entry-date',
-            'span[class*="date"]',
-            'div[class*="date"]',
-        ])
+        date_selectors.extend(
+            [
+                "time[datetime]",
+                'meta[property="article:published_time"]',
+                'meta[name="publishdate"]',
+                ".date",
+                ".published",
+                ".post-date",
+                ".entry-date",
+                'span[class*="date"]',
+                'div[class*="date"]',
+            ]
+        )
 
         # Try each selector
         for selector in date_selectors:
@@ -253,16 +268,16 @@ class BaliZeroScraper:
                 if date_elem:
                     # Extract date string
                     date_str = (
-                        date_elem.get('datetime') or
-                        date_elem.get('content') or
-                        date_elem.get_text(strip=True)
+                        date_elem.get("datetime")
+                        or date_elem.get("content")
+                        or date_elem.get_text(strip=True)
                     )
 
                     if date_str:
                         parsed_date = self._parse_flexible_date(date_str)
                         if parsed_date:
                             return parsed_date
-            except Exception as e:
+            except Exception:
                 continue
 
         return None
@@ -278,18 +293,30 @@ class BaliZeroScraper:
 
         # Indonesian month mapping
         indonesian_months = {
-            'januari': 'january', 'jan': 'jan',
-            'februari': 'february', 'feb': 'feb',
-            'maret': 'march', 'mar': 'mar',
-            'april': 'april', 'apr': 'apr',
-            'mei': 'may', 'may': 'may',
-            'juni': 'june', 'jun': 'jun',
-            'juli': 'july', 'jul': 'jul',
-            'agustus': 'august', 'agu': 'aug',
-            'september': 'september', 'sep': 'sep',
-            'oktober': 'october', 'okt': 'oct',
-            'november': 'november', 'nov': 'nov',
-            'desember': 'december', 'des': 'dec',
+            "januari": "january",
+            "jan": "jan",
+            "februari": "february",
+            "feb": "feb",
+            "maret": "march",
+            "mar": "mar",
+            "april": "april",
+            "apr": "apr",
+            "mei": "may",
+            "may": "may",
+            "juni": "june",
+            "jun": "jun",
+            "juli": "july",
+            "jul": "jul",
+            "agustus": "august",
+            "agu": "aug",
+            "september": "september",
+            "sep": "sep",
+            "oktober": "october",
+            "okt": "oct",
+            "november": "november",
+            "nov": "nov",
+            "desember": "december",
+            "des": "dec",
         }
 
         # Replace Indonesian months with English
@@ -307,9 +334,9 @@ class BaliZeroScraper:
 
         # Try common patterns manually
         patterns = [
-            r'(\d{4})-(\d{2})-(\d{2})',  # 2025-01-15
-            r'(\d{2})/(\d{2})/(\d{4})',  # 15/01/2025
-            r'(\d{2})-(\d{2})-(\d{4})',  # 15-01-2025
+            r"(\d{4})-(\d{2})-(\d{2})",  # 2025-01-15
+            r"(\d{2})/(\d{2})/(\d{4})",  # 15/01/2025
+            r"(\d{2})-(\d{2})-(\d{4})",  # 15-01-2025
         ]
 
         for pattern in patterns:
@@ -319,7 +346,7 @@ class BaliZeroScraper:
                     groups = match.groups()
                     if len(groups) == 3:
                         # Try different date orderings
-                        for date_format in ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y']:
+                        for date_format in ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"]:
                             try:
                                 return datetime.strptime(match.group(0), date_format)
                             except:
@@ -363,10 +390,10 @@ class BaliZeroScraper:
             self._browser = await self._playwright.chromium.launch(
                 headless=True,
                 args=[
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-blink-features=AutomationControlled'
-                ]
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                ],
             )
             logger.info("✅ Playwright browser initialized")
         return self._browser
@@ -379,20 +406,22 @@ class BaliZeroScraper:
         async with self.semaphore:
             for attempt in range(3):
                 try:
-                    logger.debug(f"Fetching with browser: {url} (attempt {attempt + 1}/3)")
+                    logger.debug(
+                        f"Fetching with browser: {url} (attempt {attempt + 1}/3)"
+                    )
 
                     browser = await self._get_browser()
                     context = await browser.new_context(
                         user_agent=self.ua.random,
-                        viewport={'width': 1920, 'height': 1080}
+                        viewport={"width": 1920, "height": 1080},
                     )
                     page = await context.new_page()
 
                     # Navigate with retry
-                    await page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                    await page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
                     # Wait for content to load
-                    await page.wait_for_load_state('networkidle', timeout=10000)
+                    await page.wait_for_load_state("networkidle", timeout=10000)
 
                     # Get page content
                     html = await page.content()
@@ -405,11 +434,15 @@ class BaliZeroScraper:
                 except Exception as e:
                     if attempt == 2:  # Last attempt
                         raise
-                    wait_time = 2 ** attempt
-                    logger.warning(f"Browser retry {attempt + 1}/3 failed for {url}: {e}, waiting {wait_time}s")
+                    wait_time = 2**attempt
+                    logger.warning(
+                        f"Browser retry {attempt + 1}/3 failed for {url}: {e}, waiting {wait_time}s"
+                    )
                     await asyncio.sleep(wait_time)
 
-    async def _fetch_url(self, url: str, headers: Dict, use_browser: bool = False) -> str:
+    async def _fetch_url(
+        self, url: str, headers: Dict, use_browser: bool = False
+    ) -> str:
         """
         Fetch URL async with automatic retry (3 attempts, exponential backoff).
         Tracks response time for adaptive rate limiting.
@@ -427,7 +460,7 @@ class BaliZeroScraper:
                 response_time = time.time() - start_time
                 self._adjust_rate_limit(success=True, response_time=response_time)
                 return result
-            except Exception as e:
+            except Exception:
                 self._adjust_rate_limit(success=False)
                 raise
 
@@ -437,25 +470,33 @@ class BaliZeroScraper:
                 try:
                     logger.debug(f"Fetching: {url} (attempt {attempt + 1}/3)")
                     start_time = time.time()
-                    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                    async with httpx.AsyncClient(
+                        timeout=30.0, follow_redirects=True
+                    ) as client:
                         response = await client.get(url, headers=headers)
                         response.raise_for_status()
                         response_time = time.time() - start_time
-                        self._adjust_rate_limit(success=True, response_time=response_time)
+                        self._adjust_rate_limit(
+                            success=True, response_time=response_time
+                        )
                         return response.text
                 except (httpx.HTTPError, httpx.TimeoutException) as e:
                     self._adjust_rate_limit(success=False)
                     if attempt == 2:  # Last attempt
                         raise
-                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
-                    logger.warning(f"Retry {attempt + 1}/3 failed for {url}: {e}, waiting {wait_time}s")
+                    wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Retry {attempt + 1}/3 failed for {url}: {e}, waiting {wait_time}s"
+                    )
                     await asyncio.sleep(wait_time)
 
     async def scrape_source(self, source: Dict, category: str) -> List[Dict[str, Any]]:
         """Scrape a single source (async with optional browser automation)"""
         use_browser = source.get("use_browser", False)
         method = "🌐 Browser" if use_browser else "⚡ HTTP"
-        logger.info(f"[{category}] Scraping {source['name']} (Tier {source['tier']}) via {method}")
+        logger.info(
+            f"[{category}] Scraping {source['name']} (Tier {source['tier']}) via {method}"
+        )
 
         items = []
 
@@ -464,7 +505,9 @@ class BaliZeroScraper:
             headers = self.get_headers()
 
             # Fetch with automatic retry (async) - browser if needed
-            html_content = await self._fetch_url(source["url"], headers, use_browser=use_browser)
+            html_content = await self._fetch_url(
+                source["url"], headers, use_browser=use_browser
+            )
 
             soup = BeautifulSoup(html_content, "html.parser")
 
@@ -513,8 +556,14 @@ class BaliZeroScraper:
                     # Date freshness filter
                     if not self._is_date_fresh(published_date):
                         self.stats["filtered_old"] += 1
-                        age_days = (datetime.now() - published_date).days if published_date else "unknown"
-                        logger.debug(f"Filtered old: {title[:50]}... ({age_days} days old)")
+                        age_days = (
+                            (datetime.now() - published_date).days
+                            if published_date
+                            else "unknown"
+                        )
+                        logger.debug(
+                            f"Filtered old: {title[:50]}... ({age_days} days old)"
+                        )
                         continue
 
                     # Duplicate check
@@ -532,7 +581,9 @@ class BaliZeroScraper:
                             "source": source["name"],
                             "tier": source["tier"],
                             "category": category,
-                            "published_at": published_date.isoformat() if published_date else None,
+                            "published_at": published_date.isoformat()
+                            if published_date
+                            else None,
                             "scraped_at": datetime.now().isoformat(),
                             "content_id": content_id,
                         }
@@ -546,7 +597,9 @@ class BaliZeroScraper:
                     if self.items_since_save >= self.cache_save_interval:
                         self.save_cache()
                         self.items_since_save = 0
-                        logger.debug(f"💾 Auto-saved cache ({len(self.seen_hashes)} hashes)")
+                        logger.debug(
+                            f"💾 Auto-saved cache ({len(self.seen_hashes)} hashes)"
+                        )
 
                 if items:
                     break  # Found items with this selector
@@ -556,7 +609,9 @@ class BaliZeroScraper:
             )
 
             # Update health tracking
-            self._update_source_health(source['name'], success=True, items_count=len(items))
+            self._update_source_health(
+                source["name"], success=True, items_count=len(items)
+            )
 
             return items
 
@@ -564,7 +619,7 @@ class BaliZeroScraper:
             logger.error(f"[{category}] Error scraping {source['name']}: {e}")
 
             # Update health tracking
-            self._update_source_health(source['name'], success=False)
+            self._update_source_health(source["name"], success=False)
 
             return []
 
@@ -581,7 +636,9 @@ class BaliZeroScraper:
         )
 
         # Scrape all sources in parallel (semaphore controls concurrency)
-        tasks = [self.scrape_source(source, category_key) for source in category["sources"]]
+        tasks = [
+            self.scrape_source(source, category_key) for source in category["sources"]
+        ]
         all_items = await asyncio.gather(*tasks, return_exceptions=True)
 
         total_items = 0
@@ -657,7 +714,9 @@ content_id: {item['content_id']}
 
         logger.debug(f"Saved: {filepath}")
 
-    async def scrape_all_categories(self, limit: int = 10, categories: List[str] = None):
+    async def scrape_all_categories(
+        self, limit: int = 10, categories: List[str] = None
+    ):
         """Scrape all categories in parallel (async optimized)"""
 
         logger.info("=" * 70)
@@ -665,6 +724,7 @@ content_id: {item['content_id']}
         logger.info("=" * 70)
 
         import time
+
         start_time = time.time()
 
         # Determine which categories to scrape
@@ -676,7 +736,10 @@ content_id: {item['content_id']}
         logger.info(f"📋 Scraping {len(category_keys)} categories in parallel")
 
         # Scrape all categories in parallel
-        tasks = [self.scrape_category(category_key, limit=limit) for category_key in category_keys]
+        tasks = [
+            self.scrape_category(category_key, limit=limit)
+            for category_key in category_keys
+        ]
         counts = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Build results dict

@@ -29,7 +29,7 @@ class MemoryFactExtractor:
             (r"preferisco|prefer|mi piace|I like", "preference"),
             (r"voglio|want|desidero|wish", "want"),
             (r"non voglio|don\'t want|non mi piace|I don\'t like", "avoid"),
-            (r"favorite|preferito|my favorite", "preference"), # Added
+            (r"favorite|preferito|my favorite", "preference"),  # Added
         ]
 
         # Business patterns
@@ -46,8 +46,8 @@ class MemoryFactExtractor:
             (r"nazionalità|nationality|passport", "nationality"),
             (r"vivo a|live in|based in|location", "location"),
             (r"lavoro come|work as|profession|mestiere", "profession"),
-            (r"secret word|parola segreta|codice segreto", "secret"), # Added for BANANA test
-            (r"remember|ricorda|memorizza", "instruction"), # Added for explicit instruction
+            (r"secret word|parola segreta|codice segreto", "secret"),  # Added for BANANA test
+            (r"remember|ricorda|memorizza", "instruction"),  # Added for explicit instruction
         ]
 
         # Timeline patterns

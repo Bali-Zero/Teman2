@@ -17,7 +17,6 @@ Architecture compliance:
 """
 
 import hashlib
-import json
 import logging
 import os
 import re
@@ -121,7 +120,9 @@ def register_parent_doc_via_api(
             logger.info(f"  ✅ Registered parent doc: {parent_id}")
             return True
         else:
-            logger.warning(f"  ⚠️ Failed to register parent doc: {resp.status_code} - {resp.text}")
+            logger.warning(
+                f"  ⚠️ Failed to register parent doc: {resp.status_code} - {resp.text}"
+            )
             return False
     except Exception as e:
         logger.warning(f"  ⚠️ Could not register parent doc (API unavailable): {e}")
@@ -137,14 +138,29 @@ def extract_metadata_from_filename(filename: str) -> dict:
         return {"category": "visa", "visa_type": "E33G", "topic": "Digital Nomad KITAS"}
     elif any(x in filename_lower for x in ["e28a", "investor"]):
         return {"category": "visa", "visa_type": "E28A", "topic": "Investor KITAS"}
-    elif any(x in filename_lower for x in ["e31a", "spouse", "mixed_marriage", "mixed-marriage"]):
-        return {"category": "visa", "visa_type": "E31A", "topic": "Spouse KITAS / Mixed Marriage"}
+    elif any(
+        x in filename_lower
+        for x in ["e31a", "spouse", "mixed_marriage", "mixed-marriage"]
+    ):
+        return {
+            "category": "visa",
+            "visa_type": "E31A",
+            "topic": "Spouse KITAS / Mixed Marriage",
+        }
     elif any(x in filename_lower for x in ["e26", "spouse_kitas"]):
         return {"category": "visa", "visa_type": "E26", "topic": "Spouse KITAS"}
     elif "d1" in filename_lower or "tourism" in filename_lower:
-        return {"category": "visa", "visa_type": "D1", "topic": "Tourism Multiple Entry"}
+        return {
+            "category": "visa",
+            "visa_type": "D1",
+            "topic": "Tourism Multiple Entry",
+        }
     elif "d2" in filename_lower:
-        return {"category": "visa", "visa_type": "D2", "topic": "Business Multiple Entry"}
+        return {
+            "category": "visa",
+            "visa_type": "D2",
+            "topic": "Business Multiple Entry",
+        }
     elif "c1" in filename_lower:
         return {"category": "visa", "visa_type": "C1", "topic": "Tourism Single Entry"}
     elif "c2" in filename_lower:
@@ -160,13 +176,29 @@ def extract_metadata_from_filename(filename: str) -> dict:
     elif "golden_visa" in filename_lower or "golden-visa" in filename_lower:
         return {"category": "visa", "visa_type": "Golden Visa", "topic": "Golden Visa"}
     elif "freelance" in filename_lower:
-        return {"category": "visa", "visa_type": "Freelance KITAS", "topic": "Freelance KITAS"}
+        return {
+            "category": "visa",
+            "visa_type": "Freelance KITAS",
+            "topic": "Freelance KITAS",
+        }
     elif "working" in filename_lower and "kitas" in filename_lower:
-        return {"category": "visa", "visa_type": "Working KITAS", "topic": "Working KITAS"}
+        return {
+            "category": "visa",
+            "visa_type": "Working KITAS",
+            "topic": "Working KITAS",
+        }
     elif "dependent" in filename_lower:
-        return {"category": "visa", "visa_type": "Dependent KITAS", "topic": "Dependent KITAS"}
+        return {
+            "category": "visa",
+            "visa_type": "Dependent KITAS",
+            "topic": "Dependent KITAS",
+        }
     elif "kitap" in filename_lower:
-        return {"category": "visa", "visa_type": "KITAP", "topic": "Permanent Stay Permit"}
+        return {
+            "category": "visa",
+            "visa_type": "KITAP",
+            "topic": "Permanent Stay Permit",
+        }
     # Business types
     elif "kbli" in filename_lower:
         if "restaurant" in filename_lower:
@@ -176,7 +208,11 @@ def extract_metadata_from_filename(filename: str) -> dict:
         elif "it" in filename_lower or "consulting" in filename_lower:
             return {"category": "business", "topic": "KBLI IT Consulting"}
         return {"category": "business", "topic": "KBLI Codes"}
-    elif "pt_pma" in filename_lower or "pt-pma" in filename_lower or "pma" in filename_lower:
+    elif (
+        "pt_pma" in filename_lower
+        or "pt-pma" in filename_lower
+        or "pma" in filename_lower
+    ):
         return {"category": "business", "topic": "PT PMA Setup"}
     elif "pt_lokal" in filename_lower or "lokal_vs_pma" in filename_lower:
         return {"category": "business", "topic": "PT Lokal vs PT PMA"}
@@ -203,16 +239,36 @@ def detect_language(text: str) -> str:
     text_lower = text[:1000].lower()
 
     # Javanese markers
-    if any(x in text_lower for x in ["nggih", "panjenengan", "kuwi", "kanggo", "sak", "nek ", "wae", "piro"]):
+    if any(
+        x in text_lower
+        for x in [
+            "nggih",
+            "panjenengan",
+            "kuwi",
+            "kanggo",
+            "sak",
+            "nek ",
+            "wae",
+            "piro",
+        ]
+    ):
         return "jv"  # Javanese
     # Balinese markers
-    elif any(x in text_lower for x in ["titiang", "punapi", "dados", "nggih", "punika", "ring "]):
+    elif any(
+        x in text_lower
+        for x in ["titiang", "punapi", "dados", "nggih", "punika", "ring "]
+    ):
         return "ban"  # Balinese
     # Indonesian markers
-    elif any(x in text_lower for x in ["apa", "bisa", "untuk", "yang", "ini", "dengan", "tidak"]):
+    elif any(
+        x in text_lower
+        for x in ["apa", "bisa", "untuk", "yang", "ini", "dengan", "tidak"]
+    ):
         return "id"  # Indonesian
     # English
-    elif any(x in text_lower for x in ["what", "how", "can", "the", "is", "for", "this"]):
+    elif any(
+        x in text_lower for x in ["what", "how", "can", "the", "is", "for", "this"]
+    ):
         return "en"  # English
 
     return "id"  # Default to Indonesian
@@ -367,16 +423,18 @@ def chunk_conversation_by_qa_with_context(text: str, metadata: dict) -> list[dic
             chunk_text = "\n\n".join(paragraphs[i : i + chunk_size])
             if len(chunk_text) > 100:
                 chunk_with_context = f"{context}\n\n{chunk_text}"
-                chunks.append({
-                    "text": chunk_with_context,
-                    "metadata": {
-                        **metadata,
-                        "language": detect_language(chunk_text),
-                        "chunk_type": "paragraph",
-                        "source": "training_conversation",
-                        "has_context": True,
-                    },
-                })
+                chunks.append(
+                    {
+                        "text": chunk_with_context,
+                        "metadata": {
+                            **metadata,
+                            "language": detect_language(chunk_text),
+                            "chunk_type": "paragraph",
+                            "source": "training_conversation",
+                            "has_context": True,
+                        },
+                    }
+                )
 
     return chunks
 
@@ -414,7 +472,9 @@ def upsert_points(points: list[dict]):
             result = qdrant_request(
                 "PUT", f"/collections/{COLLECTION_NAME}/points", payload
             )
-            logger.info(f"  Batch {batch_num}/{total_batches}: {len(batch)} points upserted")
+            logger.info(
+                f"  Batch {batch_num}/{total_batches}: {len(batch)} points upserted"
+            )
         except Exception as e:
             logger.error(f"  Batch {batch_num} failed: {e}")
 

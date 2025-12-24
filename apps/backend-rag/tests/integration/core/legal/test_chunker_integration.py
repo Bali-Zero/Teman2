@@ -116,7 +116,7 @@ class TestLegalChunkerIntegration:
         """Test semantic splitter"""
         text = "Sentence one. Sentence two. Sentence three."
 
-        chunks = chunker.semantic_splitter.split_text(text, max_tokens=50)
+        chunks = chunker.semantic_splitter.split_text(text, max_tokens=8192)
 
         assert chunks is not None
         assert len(chunks) > 0

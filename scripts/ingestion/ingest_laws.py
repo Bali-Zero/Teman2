@@ -2,7 +2,7 @@
 """
 Ingest Laws into Qdrant
 -----------------------
-Scans 'apps/scraper/data' for PDF and TXT files and ingests them using IngestionService.
+Scans the Desktop KB data for PDF and TXT files and ingests them using IngestionService.
 """
 
 import asyncio
@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 
 # Directories to scan
 DATA_DIRS = [
-    Path("apps/scraper/data/raw_laws_local"),
-    Path("apps/scraper/data/raw_laws_targeted"),
-    Path("apps/scraper/data/raw_laws"),
+    Path("/Users/antonellosiano/Desktop/kb/raw_laws_local"),
+    Path("/Users/antonellosiano/Desktop/kb/raw_laws_targeted"),
+    Path("/Users/antonellosiano/Desktop/kb/raw_laws"),
 ]
 
 

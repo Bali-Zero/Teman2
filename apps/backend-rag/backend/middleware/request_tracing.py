@@ -6,8 +6,8 @@ Provides end-to-end request tracing with correlation IDs
 import logging
 import time
 import uuid
-from collections.abc import Callable
 from collections import OrderedDict
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import Request, Response
@@ -23,7 +23,7 @@ _trace_storage: OrderedDict[str, dict[str, Any]] = OrderedDict()
 class RequestTracingMiddleware(BaseHTTPMiddleware):
     """
     Middleware for end-to-end request tracing with correlation IDs.
-    
+
     Features:
     - Generates correlation ID for each request
     - Tracks request through all services
@@ -206,7 +206,8 @@ def get_correlation_id(request: Request) -> str:
     Returns:
         Correlation ID
     """
-    return getattr(request.state, "correlation_id", None) or getattr(
-        request.state, "request_id", None
-    ) or str(uuid.uuid4())
-
+    return (
+        getattr(request.state, "correlation_id", None)
+        or getattr(request.state, "request_id", None)
+        or str(uuid.uuid4())
+    )

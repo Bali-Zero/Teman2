@@ -1,6 +1,13 @@
 export interface Source {
+  id?: number;
   title?: string;
   content?: string;
+  snippet?: string;
+  url?: string;
+  score?: number;
+  collection?: string;
+  doc_id?: string;
+  download_url?: string | null;
 }
 
 export interface UserProfile {
@@ -17,7 +24,19 @@ export interface UserProfile {
 export type AgentStep =
   | { type: 'status'; data: string; timestamp: Date }
   | { type: 'tool_start'; data: { name: string; args: Record<string, unknown> }; timestamp: Date }
-  | { type: 'tool_end'; data: { result: string }; timestamp: Date };
+  | { type: 'tool_end'; data: { result: string }; timestamp: Date }
+  | { type: 'phase'; data: { name: string; status: string }; timestamp: Date }
+  | {
+      type: 'reasoning_step';
+      data: {
+        phase: string;
+        status: string;
+        message: string;
+        description?: string;
+        details?: Record<string, unknown>;
+      };
+      timestamp: Date;
+    };
 
 export interface Message {
   id?: string;
@@ -35,6 +54,11 @@ export interface Message {
     context_length?: number;
     emotional_state?: string;
     status?: string;
+    // Memory & Context
+    user_memory_facts?: string[];
+    collective_memory_facts?: string[];
+    golden_answer_used?: boolean;
+    followup_questions?: string[];
   };
 }
 

@@ -383,7 +383,7 @@ class OracleService:
 
             # 3. Semantic Search (Refactored to use SearchService with Reranking & Metrics)
             search_start = time.time()
-            
+
             # Keep explicit routing for analytics details
             routing_stats = search_service.query_router.route_query(request_query)
             collection_used = routing_stats["collection_name"]
@@ -398,9 +398,9 @@ class OracleService:
                     user_level=user_level,
                     limit=request_limit,
                     collection_override=collection_used,
-                    tier_filter=None # Use default tier filtering
+                    tier_filter=None,  # Use default tier filtering
                 )
-                
+
                 # Check for early exit optimization
                 if search_response.get("early_exit"):
                     logger.info("🚀 OracleService benefited from Early Exit optimization")
@@ -417,26 +417,28 @@ class OracleService:
             # 4. Process Results (Map from SearchService format to Oracle format)
             documents = []
             sources = []
-            
+
             for result in search_response.get("results", []):
                 # Extract data from standardized format
                 doc_content = result.get("text", "")
                 metadata = result.get("metadata", {})
                 score = result.get("score", 0.0)
                 doc_id = result.get("id") or metadata.get("id")
-                
+
                 # Prepare document text for reasoning
                 documents.append(doc_content)
-                
+
                 # Prepare source metadata for citation
                 sources.append(
                     {
-                        "content": doc_content[:500] + "..." if len(doc_content) > 500 else doc_content,
+                        "content": doc_content[:500] + "..."
+                        if len(doc_content) > 500
+                        else doc_content,
                         "metadata": metadata,
                         "relevance": round(score, 4),
                         "source_collection": collection_used,
                         "document_id": doc_id,
-                        "is_reranked": search_response.get("reranked", False)
+                        "is_reranked": search_response.get("reranked", False),
                     }
                 )
 

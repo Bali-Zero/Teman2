@@ -9,7 +9,6 @@ This module provides secure cookie management for authentication:
 
 import logging
 import secrets
-from pathlib import Path
 
 from fastapi import Request, Response
 

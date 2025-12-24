@@ -26,13 +26,14 @@ logger = logging.getLogger(__name__)
 # Performance metrics (Phase 1 fixes)
 try:
     from app.metrics import (
-        rag_embedding_duration,
-        rag_vector_search_duration,
-        rag_reranking_duration,
-        rag_pipeline_duration,
         rag_early_exit_total,
+        rag_embedding_duration,
         rag_parallel_searches,
+        rag_pipeline_duration,
+        rag_reranking_duration,
+        rag_vector_search_duration,
     )
+
     METRICS_AVAILABLE = True
 except ImportError:
     METRICS_AVAILABLE = False
@@ -43,6 +44,7 @@ from core.cache import cached
 from app.core.config import settings
 from app.models import TierLevel
 from services.collection_manager import CollectionManager
+
 from .collection_warmup_service import CollectionWarmupService
 from .conflict_resolver import ConflictResolver
 from .cultural_insights_service import CulturalInsightsService
@@ -131,6 +133,7 @@ class SearchService:
         if settings.enable_bm25:
             try:
                 from core.bm25_vectorizer import BM25Vectorizer
+
                 self._bm25_vectorizer = BM25Vectorizer(
                     vocab_size=settings.bm25_vocab_size,
                     k1=settings.bm25_k1,
@@ -219,13 +222,13 @@ class SearchService:
         # Validate input
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
-        
+
         if user_level < 0 or user_level > 3:
             raise ValueError(f"User level must be between 0 and 3, got {user_level}")
 
         # Generate query embedding
         query_embedding = self.embedder.generate_query_embedding(query)
-        
+
         # Validate embedding was generated
         if not query_embedding or len(query_embedding) == 0:
             raise ValueError("Failed to generate query embedding")
@@ -259,9 +262,7 @@ class SearchService:
             tier_values = []
 
         # Build combined filter
-        chroma_filter = build_search_filter(
-            tier_filter=tier_filter_dict, exclude_repealed=True
-        )
+        chroma_filter = build_search_filter(tier_filter=tier_filter_dict, exclude_repealed=True)
 
         # Control filter application
         if apply_filters is False:
@@ -297,10 +298,14 @@ class SearchService:
         try:
             # Prepare search context (DRY: shared logic with search_with_reranking)
             embedding_start = time.time() if METRICS_AVAILABLE else None
-            query_embedding, collection_name, vector_db, chroma_filter, tier_values = (
-                self._prepare_search_context(
-                    query, user_level, tier_filter, collection_override, apply_filters
-                )
+            (
+                query_embedding,
+                collection_name,
+                vector_db,
+                chroma_filter,
+                tier_values,
+            ) = self._prepare_search_context(
+                query, user_level, tier_filter, collection_override, apply_filters
             )
             if METRICS_AVAILABLE and embedding_start:
                 rag_embedding_duration.observe(time.time() - embedding_start)
@@ -357,7 +362,9 @@ class SearchService:
             from core.reranker import ReRanker
 
             self._reranker = ReRanker()
-            logger.info(f"🔧 ReRanker initialized: enabled={self._reranker.enabled}, url={self._reranker.api_url}")
+            logger.info(
+                f"🔧 ReRanker initialized: enabled={self._reranker.enabled}, url={self._reranker.api_url}"
+            )
         return self._reranker
 
     async def search_with_reranking(
@@ -383,7 +390,7 @@ class SearchService:
             Search results with reranking metadata
         """
         pipeline_start_time = time.time() if METRICS_AVAILABLE else None
-        
+
         # 1. Retrieve more candidates (Wide Funnel)
         initial_limit = limit * 3
 
@@ -463,10 +470,14 @@ class SearchService:
         try:
             # Prepare search context (same as regular search)
             embedding_start = time.time() if METRICS_AVAILABLE else None
-            query_embedding, collection_name, vector_db, chroma_filter, tier_values = (
-                self._prepare_search_context(
-                    query, user_level, tier_filter, collection_override, apply_filters
-                )
+            (
+                query_embedding,
+                collection_name,
+                vector_db,
+                chroma_filter,
+                tier_values,
+            ) = self._prepare_search_context(
+                query, user_level, tier_filter, collection_override, apply_filters
             )
             if METRICS_AVAILABLE and embedding_start:
                 rag_embedding_duration.observe(time.time() - embedding_start)
@@ -481,7 +492,7 @@ class SearchService:
 
             # Try hybrid search if available
             search_start = time.time() if METRICS_AVAILABLE else None
-            if query_sparse and hasattr(vector_db, 'hybrid_search'):
+            if query_sparse and hasattr(vector_db, "hybrid_search"):
                 raw_results = await vector_db.hybrid_search(
                     query_embedding=query_embedding,
                     query_sparse=query_sparse,
@@ -877,8 +888,6 @@ class SearchService:
             "resolution_rate": f"{(resolver_stats['conflicts_resolved'] / resolver_stats['conflicts_detected'] * 100) if resolver_stats['conflicts_detected'] > 0 else 0:.1f}%",
         }
 
-
-
     async def search_collection(
         self,
         query: str,
@@ -927,4 +936,3 @@ class SearchService:
         except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError) as e:
             logger.error(f"Collection search failed: {e}", exc_info=True)
             return {"results": [], "error": str(e)}
-

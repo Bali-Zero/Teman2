@@ -14,12 +14,23 @@ class TestGeminiJakselService:
     """Comprehensive test suite for GeminiJakselService"""
 
     @pytest.fixture
-    def service(self):
+    def mock_genai_client(self):
+        """Mock GenAIClient from llm.genai_client"""
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        mock_client.generate_content = AsyncMock(return_value={"text": "Test response"})
+        mock_chat = MagicMock()
+        mock_chat.send_message_async = AsyncMock(return_value=MagicMock(text="Test response"))
+        mock_client.create_chat = MagicMock(return_value=mock_chat)
+        return mock_client
+
+    @pytest.fixture
+    def service(self, mock_genai_client):
         """Create GeminiJakselService instance"""
         with patch("services.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = "test_key"
-            with patch("services.gemini_service.genai.configure"):
-                with patch("services.gemini_service.genai.GenerativeModel"):
+            with patch("services.gemini_service.GENAI_AVAILABLE", True):
+                with patch("services.gemini_service.GenAIClient", return_value=mock_genai_client):
                     return GeminiJakselService()
 
     def test_init(self, service):
@@ -27,12 +38,12 @@ class TestGeminiJakselService:
         assert service.model_name.startswith("models/")
         assert service.system_instruction is not None
 
-    def test_init_custom_model(self):
+    def test_init_custom_model(self, mock_genai_client):
         """Test initialization with custom model"""
         with patch("services.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = "test_key"
-            with patch("services.gemini_service.genai.configure"):
-                with patch("services.gemini_service.genai.GenerativeModel"):
+            with patch("services.gemini_service.GENAI_AVAILABLE", True):
+                with patch("services.gemini_service.GenAIClient", return_value=mock_genai_client):
                     service = GeminiJakselService(model_name="gemini-2.5-pro")
                     assert "gemini-2.5-pro" in service.model_name
 
@@ -40,8 +51,9 @@ class TestGeminiJakselService:
         """Test initialization without API key"""
         with patch("services.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = None
-            service = GeminiJakselService()
-            assert service.model is None
+            with patch("services.gemini_service.GENAI_AVAILABLE", False):
+                service = GeminiJakselService()
+                assert service.model is None
 
     def test_convert_to_openai_messages(self, service):
         """Test _convert_to_openai_messages"""

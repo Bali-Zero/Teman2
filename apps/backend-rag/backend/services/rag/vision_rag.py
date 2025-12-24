@@ -1,6 +1,9 @@
 """
 Vision RAG Service
 RAG multi-modale per documenti con immagini, tabelle, grafici.
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
 import io
@@ -9,10 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import google.generativeai as genai
 from PIL import Image
 
 from app.core.config import settings
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +46,19 @@ class VisionRAGService:
     """
 
     def __init__(self):
-        genai.configure(api_key=settings.google_api_key)
-        self.vision_model = genai.GenerativeModel(
-            "gemini-2.5-flash"
-        )  # Vision capable - Updated to 2.5-flash
-        self.text_model = genai.GenerativeModel("gemini-2.5-flash")  # Updated to 2.5-flash
+        self._genai_client: GenAIClient | None = None
+        self._available = False
+        self.vision_model_name = "gemini-2.5-flash"  # Vision capable
+        self.text_model_name = "gemini-2.5-flash"
+
+        if settings.google_api_key and GENAI_AVAILABLE:
+            try:
+                self._genai_client = GenAIClient(api_key=settings.google_api_key)
+                self._available = self._genai_client.is_available
+                if self._available:
+                    logger.info("✅ VisionRAGService initialized with GenAI client")
+            except Exception as e:
+                logger.warning(f"Failed to initialize VisionRAGService: {e}")
 
     async def process_pdf(self, pdf_path: str | Path) -> MultiModalDocument:
         """
@@ -130,11 +141,34 @@ class VisionRAGService:
             }
             """
 
-            response = await self.vision_model.generate_content_async([prompt, image])
+            # Use GenAI client for vision analysis
+            if not self._available or not self._genai_client:
+                logger.warning("GenAI client not available for vision analysis")
+                return None
 
+            # For multimodal content, we need to format properly for new SDK
+            # The new SDK expects contents as a list with parts
+            import base64
             import json
 
-            clean_json = response.text.replace("```json", "").replace("```", "").strip()
+            # Convert image to base64 for the API
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            image_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+            # Build multimodal content
+            contents = [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/png", "data": image_base64}},
+            ]
+
+            result_response = await self._genai_client.generate_content(
+                contents=contents,
+                model=self.vision_model_name,
+                max_output_tokens=8192,
+            )
+
+            clean_json = result_response.get("text", "{}").replace("```json", "").replace("```", "").strip()
             result = json.loads(clean_json)
 
             return VisualElement(
@@ -252,10 +286,34 @@ class VisionRAGService:
         prompt_parts.append("\n\nProvide a comprehensive answer using all available information:")
 
         # 4. Query Gemini Vision
-        response = await self.vision_model.generate_content_async(prompt_parts)
+        if not self._available or not self._genai_client:
+            return {
+                "answer": "Vision service not available",
+                "visuals_used": [],
+                "text_context_length": 0,
+            }
+
+        # Build content for the new SDK
+        import base64
+
+        contents = []
+        for part in prompt_parts:
+            if isinstance(part, str):
+                contents.append({"text": part})
+            elif hasattr(part, "save"):  # PIL Image
+                buffered = io.BytesIO()
+                part.save(buffered, format="PNG")
+                image_base64 = base64.b64encode(buffered.getvalue()).decode()
+                contents.append({"inline_data": {"mime_type": "image/png", "data": image_base64}})
+
+        result_response = await self._genai_client.generate_content(
+            contents=contents,
+            model=self.vision_model_name,
+            max_output_tokens=8192,
+        )
 
         return {
-            "answer": response.text,
+            "answer": result_response.get("text", ""),
             "visuals_used": [
                 {"type": v.element_type, "page": v.page_number, "description": v.description}
                 for v in relevant_visuals[:5]

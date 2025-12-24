@@ -1,5 +1,5 @@
 import { ApiClientBase } from '../client';
-import type { Practice, Interaction, PracticeStats, InteractionStats, Client, CreateClientParams, CreatePracticeParams, RenewalAlert } from './crm.types';
+import type { Practice, Interaction, PracticeStats, InteractionStats, Client, CreateClientParams, CreatePracticeParams, RenewalAlert, AutoCRMStats } from './crm.types';
 
 export class CrmApi {
   constructor(private client: ApiClientBase) {}
@@ -131,6 +131,26 @@ export class CrmApi {
     }) as Promise<any>;
   }
   /**
+   * Get all clients with optional search and filtering
+   */
+  async getClients(params: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+  } = {}): Promise<Client[]> {
+    const queryParams = new URLSearchParams();
+    if (params.search) queryParams.append('search', params.search);
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.offset) queryParams.append('offset', params.offset.toString());
+
+    const queryString = queryParams.toString();
+    const url = `/api/crm/clients${queryString ? `?${queryString}` : ''}`;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(url) as Promise<Client[]>;
+  }
+
+  /**
    * Create a new client
    */
   async createClient(data: CreateClientParams, createdBy: string): Promise<Client> {
@@ -138,10 +158,14 @@ export class CrmApi {
     queryParams.append('created_by', createdBy);
     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(`/api/crm/clients?${queryParams.toString()}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }) as Promise<Client>;
+    return (this.client as any).request(
+      `/api/crm/clients?${queryParams.toString()}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+      60000 // 60 second timeout for creation
+    ) as Promise<Client>;
   }
 
   /**
@@ -152,9 +176,21 @@ export class CrmApi {
     queryParams.append('created_by', createdBy);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(`/api/crm/practices?${queryParams.toString()}`, {
-       method: 'POST',
-       body: JSON.stringify(data),
-    }) as Promise<Practice>;
+    return (this.client as any).request(
+      `/api/crm/practices?${queryParams.toString()}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+      60000 // 60 second timeout for creation
+    ) as Promise<Practice>;
+  }
+
+  /**
+   * Get AUTO CRM extraction statistics
+   */
+  async getAutoCRMStats(days: number = 7): Promise<AutoCRMStats> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (this.client as any).request(`/api/crm/auto/stats?days=${days}`) as Promise<AutoCRMStats>;
   }
 }

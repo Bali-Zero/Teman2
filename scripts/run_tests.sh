@@ -65,10 +65,10 @@ else
 fi
 
 # 3. BACKEND RAG Tests (if exists)
-if [ -d "apps/backend-rag/backend/tests" ]; then
+if [ -d "apps/backend-rag/tests" ]; then
     run_tests \
         "BACKEND RAG" \
-        "apps/backend-rag/backend" \
+        "apps/backend-rag" \
         "pytest tests/ -v --tb=short --disable-warnings || true"
 else
     echo -e "${YELLOW}⚠ BACKEND RAG tests not found, skipping${NC}"

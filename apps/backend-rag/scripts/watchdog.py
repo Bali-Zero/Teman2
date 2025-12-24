@@ -41,26 +41,30 @@ class CodeWatchdog:
         issues = []
         python_files = list(self.backend_path.rglob("*.py"))
         python_files = [
-            f for f in python_files
-            if "test" not in str(f) and "__pycache__" not in str(f)
+            f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)
         ]
 
         for py_file in python_files[:100]:  # Limit for performance
             try:
                 import ast
+
                 content = py_file.read_text()
                 tree = ast.parse(content)
 
                 for node in ast.walk(tree):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         if not node.returns and not node.name.startswith("_"):
-                            issues.append({
-                                "file": str(py_file.relative_to(self.backend_path.parent.parent)),
-                                "line": node.lineno,
-                                "function": node.name,
-                                "issue": "Missing return type hint",
-                                "fixable": True,
-                            })
+                            issues.append(
+                                {
+                                    "file": str(
+                                        py_file.relative_to(self.backend_path.parent.parent)
+                                    ),
+                                    "line": node.lineno,
+                                    "function": node.name,
+                                    "issue": "Missing return type hint",
+                                    "fixable": True,
+                                }
+                            )
             except Exception as e:
                 logger.debug(f"Error checking {py_file}: {e}")
 
@@ -71,8 +75,7 @@ class CodeWatchdog:
         issues = []
         python_files = list(self.backend_path.rglob("*.py"))
         python_files = [
-            f for f in python_files
-            if "test" not in str(f) and "__pycache__" not in str(f)
+            f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)
         ]
 
         for py_file in python_files:
@@ -81,12 +84,14 @@ class CodeWatchdog:
                 lines = content.split("\n")
                 for i, line in enumerate(lines, 1):
                     if "print(" in line and "#" not in line.split("print(")[0]:
-                        issues.append({
-                            "file": str(py_file.relative_to(self.backend_path.parent.parent)),
-                            "line": i,
-                            "issue": "print() statement found, should use logger",
-                            "fixable": True,
-                        })
+                        issues.append(
+                            {
+                                "file": str(py_file.relative_to(self.backend_path.parent.parent)),
+                                "line": i,
+                                "issue": "print() statement found, should use logger",
+                                "fixable": True,
+                            }
+                        )
             except Exception as e:
                 logger.debug(f"Error checking {py_file}: {e}")
 
@@ -99,8 +104,8 @@ class CodeWatchdog:
 
         python_files = list(self.backend_path.rglob("*.py"))
         suspicious_patterns = [
-            (r'sk-[a-zA-Z0-9]{32,}', "OpenAI API key"),
-            (r'AIza[0-9A-Za-z-_]{35}', "Google API key"),
+            (r"sk-[a-zA-Z0-9]{32,}", "OpenAI API key"),
+            (r"AIza[0-9A-Za-z-_]{35}", "Google API key"),
             (r'password\s*=\s*["\'][^"\']+["\']', "Hardcoded password"),
         ]
 
@@ -110,12 +115,14 @@ class CodeWatchdog:
                 for pattern, description in suspicious_patterns:
                     matches = re.findall(pattern, content, re.IGNORECASE)
                     if matches:
-                        issues.append({
-                            "file": str(py_file.relative_to(self.backend_path.parent.parent)),
-                            "issue": f"Potential {description}",
-                            "fixable": False,  # Requires manual review
-                            "severity": "critical",
-                        })
+                        issues.append(
+                            {
+                                "file": str(py_file.relative_to(self.backend_path.parent.parent)),
+                                "issue": f"Potential {description}",
+                                "fixable": False,  # Requires manual review
+                                "severity": "critical",
+                            }
+                        )
             except Exception as e:
                 logger.debug(f"Error checking {py_file}: {e}")
 
@@ -134,12 +141,14 @@ class CodeWatchdog:
         for module in modules:
             test_module_dir = tests_dir / module.name
             if not test_module_dir.exists() or not list(test_module_dir.glob("test_*.py")):
-                issues.append({
-                    "file": f"modules/{module.name}/",
-                    "issue": "Module missing test files",
-                    "fixable": True,
-                    "severity": "warning",
-                })
+                issues.append(
+                    {
+                        "file": f"modules/{module.name}/",
+                        "issue": "Module missing test files",
+                        "fixable": True,
+                        "severity": "warning",
+                    }
+                )
 
         return issues
 
@@ -148,8 +157,7 @@ class CodeWatchdog:
         fixes = 0
         python_files = list(self.backend_path.rglob("*.py"))
         python_files = [
-            f for f in python_files
-            if "test" not in str(f) and "__pycache__" not in str(f)
+            f for f in python_files if "test" not in str(f) and "__pycache__" not in str(f)
         ]
 
         for py_file in python_files:
@@ -170,11 +178,8 @@ class CodeWatchdog:
 
                     # Replace print() with logger.info()
                     import re
-                    content = re.sub(
-                        r'print\(([^)]+)\)',
-                        r'logger.info(\1)',
-                        content
-                    )
+
+                    content = re.sub(r"print\(([^)]+)\)", r"logger.info(\1)", content)
 
                     py_file.write_text(content)
                     fixes += 1
@@ -228,7 +233,9 @@ class CodeWatchdog:
             if issues:
                 report.append(f"  {category}: {len(issues)} issues")
                 for issue in issues[:5]:  # Show first 5
-                    report.append(f"    - {issue.get('file', 'unknown')}:{issue.get('line', '?')} - {issue.get('issue', 'unknown')}")
+                    report.append(
+                        f"    - {issue.get('file', 'unknown')}:{issue.get('line', '?')} - {issue.get('issue', 'unknown')}"
+                    )
         report.append("")
 
         # Fixes
@@ -298,5 +305,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

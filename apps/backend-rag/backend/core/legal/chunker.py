@@ -144,16 +144,18 @@ class LegalChunker:
         for pasal_chunk in pasal_chunks:
             # Check if this is a Pasal or just a block of text (like preamble)
             pasal_match = PASAL_PATTERN.match(pasal_chunk)
-            
+
             if not pasal_match:
                 # Handle blocks without Pasal marker (e.g. Preamble)
                 chunk_text = pasal_chunk.strip()
                 if not chunk_text:
                     continue
-                    
+
                 # If too large, split semantically
                 if len(chunk_text) > char_limit:
-                    logger.debug(f"Non-Pasal block too large ({len(chunk_text)} chars), splitting semantically")
+                    logger.debug(
+                        f"Non-Pasal block too large ({len(chunk_text)} chars), splitting semantically"
+                    )
                     semantic_subchunks = self.semantic_splitter.split_text(
                         chunk_text, self.max_pasal_tokens
                     )
@@ -176,7 +178,7 @@ class LegalChunker:
             # Check if Pasal is too large (using character length as proxy for tokens)
             # Safe limit: 4000 chars ~ 1000 tokens
             pasal_length = len(pasal_text)
-            
+
             if pasal_length > char_limit:
                 # Split by Ayat first
                 logger.debug(

@@ -9,16 +9,23 @@ vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
 }));
 
+// Mock for autonomous agents API methods
+const mockGetAutonomousAgentsStatus = vi.fn();
+const mockGetSchedulerStatus = vi.fn();
+const mockRunConversationTrainer = vi.fn();
+const mockRunClientValuePredictor = vi.fn();
+const mockRunKnowledgeGraphBuilder = vi.fn();
+
 vi.mock('@/lib/api', () => ({
   api: {
     isAuthenticated: vi.fn(),
     client: {
       autonomousTier1: {
-        getAutonomousAgentsStatusApiAutonomousAgentsStatusGet: vi.fn(),
-        getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet: vi.fn(),
-        runConversationTrainerApiAutonomousAgentsConversationTrainerRunPost: vi.fn(),
-        runClientValuePredictorApiAutonomousAgentsClientValuePredictorRunPost: vi.fn(),
-        runKnowledgeGraphBuilderApiAutonomousAgentsKnowledgeGraphBuilderRunPost: vi.fn(),
+        getAutonomousAgentsStatusApiAutonomousAgentsStatusGet: mockGetAutonomousAgentsStatus,
+        getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet: mockGetSchedulerStatus,
+        runConversationTrainerApiAutonomousAgentsConversationTrainerRunPost: mockRunConversationTrainer,
+        runClientValuePredictorApiAutonomousAgentsClientValuePredictorRunPost: mockRunClientValuePredictor,
+        runKnowledgeGraphBuilderApiAutonomousAgentsKnowledgeGraphBuilderRunPost: mockRunKnowledgeGraphBuilder,
       },
     },
   },
@@ -57,26 +64,22 @@ describe('AgentsPage', () => {
       const mockAgentsResponse = Promise.resolve({});
       const mockSchedulerResponse = Promise.resolve({ is_running: true });
 
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockReturnValue(mockAgentsResponse);
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockReturnValue(mockSchedulerResponse);
+      mockGetAutonomousAgentsStatus.mockReturnValue(mockAgentsResponse);
+      mockGetSchedulerStatus.mockReturnValue(mockSchedulerResponse);
 
       render(<AgentsPage />);
 
       await waitFor(() => {
-        expect(api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet).toHaveBeenCalled();
-        expect(api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet).toHaveBeenCalled();
+        expect(mockGetAutonomousAgentsStatus).toHaveBeenCalled();
+        expect(mockGetSchedulerStatus).toHaveBeenCalled();
       });
     });
   });
 
   describe('Page Rendering', () => {
     beforeEach(async () => {
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockResolvedValue({});
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockResolvedValue({ is_running: true });
+      mockGetAutonomousAgentsStatus.mockResolvedValue({});
+      mockGetSchedulerStatus.mockResolvedValue({ is_running: true });
     });
 
     it('renders page title', async () => {
@@ -124,10 +127,8 @@ describe('AgentsPage', () => {
 
   describe('User Interactions', () => {
     beforeEach(() => {
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockResolvedValue({});
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockResolvedValue({ is_running: true });
+      mockGetAutonomousAgentsStatus.mockResolvedValue({});
+      mockGetSchedulerStatus.mockResolvedValue({ is_running: true });
     });
 
     it('navigates back to chat when back button is clicked', async () => {
@@ -153,7 +154,7 @@ describe('AgentsPage', () => {
         expect(refreshButton).toBeInTheDocument();
       });
 
-      const initialCalls = (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock).mock.calls.length;
+      const initialCalls = mockGetAutonomousAgentsStatus.mock.calls.length;
 
       await act(async () => {
         const refreshButton = screen.getByRole('button', { name: /refresh/i });
@@ -161,13 +162,12 @@ describe('AgentsPage', () => {
       });
 
       await waitFor(() => {
-        expect(api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet).toHaveBeenCalledTimes(initialCalls + 1);
+        expect(mockGetAutonomousAgentsStatus).toHaveBeenCalledTimes(initialCalls + 1);
       });
     });
 
     it('runs agent when Run button is clicked', async () => {
-      (api.client.autonomousTier1.runConversationTrainerApiAutonomousAgentsConversationTrainerRunPost as Mock)
-        .mockResolvedValue({});
+      mockRunConversationTrainer.mockResolvedValue({});
 
       await act(async () => {
         render(<AgentsPage />);
@@ -184,7 +184,7 @@ describe('AgentsPage', () => {
       });
 
       await waitFor(() => {
-        expect(api.client.autonomousTier1.runConversationTrainerApiAutonomousAgentsConversationTrainerRunPost)
+        expect(mockRunConversationTrainer)
           .toHaveBeenCalledWith(7);
       });
     });
@@ -192,10 +192,8 @@ describe('AgentsPage', () => {
 
   describe('Error Handling', () => {
     it('displays error banner when API call fails', async () => {
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockRejectedValue(new Error('API Error'));
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockResolvedValue({ is_running: true });
+      mockGetAutonomousAgentsStatus.mockRejectedValue(new Error('API Error'));
+      mockGetSchedulerStatus.mockResolvedValue({ is_running: true });
 
       await act(async () => {
         render(<AgentsPage />);
@@ -207,10 +205,8 @@ describe('AgentsPage', () => {
     });
 
     it('dismisses error when close button is clicked', async () => {
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockRejectedValue(new Error('API Error'));
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockResolvedValue({ is_running: true });
+      mockGetAutonomousAgentsStatus.mockRejectedValue(new Error('API Error'));
+      mockGetSchedulerStatus.mockResolvedValue({ is_running: true });
 
       await act(async () => {
         render(<AgentsPage />);
@@ -229,12 +225,9 @@ describe('AgentsPage', () => {
     });
 
     it('displays error when agent run fails', async () => {
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockResolvedValue({});
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockResolvedValue({ is_running: true });
-      (api.client.autonomousTier1.runConversationTrainerApiAutonomousAgentsConversationTrainerRunPost as Mock)
-        .mockRejectedValue(new Error('Run failed'));
+      mockGetAutonomousAgentsStatus.mockResolvedValue({});
+      mockGetSchedulerStatus.mockResolvedValue({ is_running: true });
+      mockRunConversationTrainer.mockRejectedValue(new Error('Run failed'));
 
       await act(async () => {
         render(<AgentsPage />);
@@ -267,16 +260,14 @@ describe('AgentsPage', () => {
     });
 
     it('auto-refreshes data every 30 seconds', async () => {
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockResolvedValue({});
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockResolvedValue({ is_running: true });
+      mockGetAutonomousAgentsStatus.mockResolvedValue({});
+      mockGetSchedulerStatus.mockResolvedValue({ is_running: true });
 
       await act(async () => {
         render(<AgentsPage />);
       });
 
-      const initialCalls = (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock).mock.calls.length;
+      const initialCalls = mockGetAutonomousAgentsStatus.mock.calls.length;
 
       // Advance timers and run all pending timers
       await act(async () => {
@@ -284,17 +275,15 @@ describe('AgentsPage', () => {
       });
 
       // After 30 seconds, should have been called one more time
-      expect(api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet)
+      expect(mockGetAutonomousAgentsStatus)
         .toHaveBeenCalledTimes(initialCalls + 1);
     }, 10000); // Increase timeout to 10s
   });
 
   describe('Agent Status Counts', () => {
     it('displays correct count of running agents', async () => {
-      (api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet as Mock)
-        .mockResolvedValue({});
-      (api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet as Mock)
-        .mockResolvedValue({ is_running: true });
+      mockGetAutonomousAgentsStatus.mockResolvedValue({});
+      mockGetSchedulerStatus.mockResolvedValue({ is_running: true });
 
       await act(async () => {
         render(<AgentsPage />);

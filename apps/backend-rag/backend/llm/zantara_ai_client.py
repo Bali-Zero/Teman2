@@ -2,16 +2,15 @@
 ZANTARA AI Client - Primary engine for all conversational AI
 
 AI Models Architecture:
-- PRIMARY: Google Gemini 2.5 Pro (production)
+- PRIMARY: Google Gemini 2.0 Flash (production)
 
 Configuration:
 - GOOGLE_API_KEY: API key for Gemini (primary)
 
-UPDATED 2025-12-07:
-- Refactored for better separation of concerns
-- Added PromptManager, RetryHandler, TokenEstimator
-- Improved error handling and performance
-- Added input validation and connection pooling
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK (replaced deprecated google-generativeai)
+- Using genai_client.py wrapper for centralized client management
+- Improved async support with client.aio
 """
 
 import asyncio
@@ -20,6 +19,7 @@ from typing import Any
 
 # Import helper modules
 from llm.fallback_messages import get_fallback_message
+from llm.genai_client import GenAIClient, get_genai_client, GENAI_AVAILABLE
 from llm.prompt_manager import PromptManager
 from llm.retry_handler import RetryHandler
 from llm.token_estimator import TokenEstimator
@@ -27,16 +27,6 @@ from llm.token_estimator import TokenEstimator
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Try to import google.generativeai at module level
-try:
-    import google.generativeai as genai
-
-    GENAI_AVAILABLE = True
-except ImportError:
-    GENAI_AVAILABLE = False
-    genai = None
-    logger.warning("⚠️ google.generativeai not available")
 
 
 # Constants
@@ -48,10 +38,10 @@ class ZantaraAIClientConstants:
     RETRY_BACKOFF_FACTOR = 2
     MOCK_STREAM_DELAY = 0.05
     FALLBACK_STREAM_DELAY = 0.1
-    DEFAULT_MAX_TOKENS = 2000  # Increased for comprehensive responses
+    DEFAULT_MAX_TOKENS = 8192  # Maximum tokens for comprehensive responses
     DEFAULT_TEMPERATURE = 0.4  # Lower for more factual, consistent responses
     DEFAULT_STREAM_MAX_TOKENS = (
-        2000  # Aligned with DEFAULT_MAX_TOKENS - streaming needs same capacity
+        8192  # Aligned with DEFAULT_MAX_TOKENS - streaming needs same capacity
     )
     MAX_TEMPERATURE = 2.0
     MIN_TEMPERATURE = 0.0
@@ -64,9 +54,9 @@ class ZantaraAIClient:
     ZANTARA AI Client – primary engine for all conversational AI.
 
     AI Models:
-    - PRIMARY: Google Gemini 2.5 Flash (production) - unlimited quota, fast, cost-effective
+    - PRIMARY: Google Gemini 2.0 Flash (production) - unlimited quota, fast, cost-effective
 
-    Provider: Google AI (Gemini) - native implementation
+    Provider: Google AI (Gemini) - using new google-genai SDK
 
     This client handles:
     - Chat completion (async)
@@ -76,43 +66,58 @@ class ZantaraAIClient:
     - Token estimation for cost tracking
     """
 
-    # Class-level model cache for connection pooling
-    _model_cache: dict[str, Any] = {}
-
     def __init__(self, api_key: str | None = None, model: str | None = None):
         """
         Initialize ZantaraAIClient.
 
+        Supports two authentication methods:
+        1. Service Account (preferred) - via GOOGLE_CREDENTIALS_JSON env var
+        2. API Key (fallback) - via GOOGLE_API_KEY env var
+
         Args:
             api_key: Google API key (defaults to settings.google_api_key)
-            model: Model name (defaults to gemini-2.5-flash)
+            model: Model name (defaults to gemini-2.0-flash)
 
         Raises:
-            ValueError: If API key is missing in production environment
+            ValueError: If no valid credentials in production environment
         """
+        import os
         self.api_key = api_key or settings.google_api_key
         self.mock_mode = False
 
-        # Initialize Gemini client
-        if self.api_key and GENAI_AVAILABLE:
+        # Check if Service Account credentials are available
+        has_service_account = bool(
+            os.environ.get('GOOGLE_APPLICATION_CREDENTIALS') or
+            os.environ.get('GOOGLE_CREDENTIALS_JSON') or
+            getattr(settings, 'google_credentials_json', None)
+        )
+
+        # Initialize GenAI client using new SDK wrapper
+        # GenAIClient will try Service Account (ADC) first, then API key
+        if GENAI_AVAILABLE and (self.api_key or has_service_account):
             try:
-                genai.configure(api_key=self.api_key)
-                logger.info("✅ Gemini AI Client initialized in production mode")
+                # GenAIClient handles auth method selection internally
+                self._genai_client = GenAIClient(api_key=self.api_key if self.api_key else None)
+                if not self._genai_client.is_available:
+                    raise RuntimeError("GenAI client initialization failed")
+                auth_method = getattr(self._genai_client, '_auth_method', 'unknown')
+                logger.info(f"✅ Gemini AI Client initialized (auth: {auth_method})")
             except Exception as e:
                 logger.error(f"❌ Failed to configure Gemini: {e}")
                 if settings.environment == "production":
                     raise ValueError(f"CRITICAL: Failed to configure Gemini in production: {e}")
                 self.mock_mode = True
+                self._genai_client = None
         else:
             if settings.environment == "production":
-                logger.critical("❌ CRITICAL: No Gemini API key found in PRODUCTION environment")
-                raise ValueError("GOOGLE_API_KEY is required in production environment")
+                logger.critical("❌ CRITICAL: No Gemini credentials found in PRODUCTION environment")
+                raise ValueError("GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required in production")
 
-            logger.warning("⚠️ No Gemini API key found - defaulting to MOCK MODE (Development only)")
+            logger.warning("⚠️ No Gemini credentials found - defaulting to MOCK MODE (Development only)")
             self.mock_mode = True
+            self._genai_client = None
 
-        # Default: use Gemini 2.5 Flash (unlimited quota, fast, cost-effective)
-        # Changed from gemini-2.5-pro to gemini-2.5-flash for better quota availability
+        # Default: use Gemini 2.5 Flash (latest, fast, cost-effective)
         self.model = model or "gemini-2.5-flash"
 
         # Initialize pricing even in mock mode
@@ -140,36 +145,27 @@ class ZantaraAIClient:
 
         logger.info("✅ ZantaraAIClient initialized")
         logger.info(f"   Engine model: {self.model}")
-        logger.info(f"   Mode: {'Mock' if self.mock_mode else 'Native Gemini'}")
+        logger.info(f"   Mode: {'Mock' if self.mock_mode else 'google-genai SDK'}")
 
-    def _get_cached_model(self, model_name: str, system_instruction: str) -> Any:
+    def _get_chat_session(self, system_instruction: str, history: list[dict] | None = None):
         """
-        Get or create cached GenerativeModel instance.
-
-        Implements connection pooling by caching model instances.
+        Create a chat session using the new GenAI wrapper.
 
         Args:
-            model_name: Name of the model
             system_instruction: System instruction for the model
+            history: Optional conversation history
 
         Returns:
-            Cached or new GenerativeModel instance
+            ChatSession instance from genai_client wrapper
         """
-        if not GENAI_AVAILABLE:
+        if not self._genai_client or not self._genai_client.is_available:
             return None
 
-        # Create cache key from model name and system instruction hash
-        cache_key = f"{model_name}:{hash(system_instruction)}"
-
-        if cache_key not in self._model_cache:
-            self._model_cache[cache_key] = genai.GenerativeModel(
-                model_name, system_instruction=system_instruction
-            )
-            # Sanitize cache_key for logging (show only first 8 chars to avoid exposing sensitive data)
-            sanitized_key = f"{cache_key[:8]}..." if len(cache_key) > 8 else cache_key[:8]
-            logger.debug(f"✅ Created new cached model: {sanitized_key}")
-
-        return self._model_cache[cache_key]
+        return self._genai_client.create_chat(
+            model=self.model,
+            system_instruction=system_instruction,
+            history=history,
+        )
 
     def get_model_info(self) -> dict[str, Any]:
         """
@@ -403,33 +399,38 @@ class ZantaraAIClient:
                 "cost": 0.0,
             }
 
-        if not GENAI_AVAILABLE:
+        if not GENAI_AVAILABLE or not self._genai_client:
             logger.error("❌ Gemini client library not available")
             raise ValueError("Gemini client library is not available")
 
         try:
-            client_with_sys = self._get_cached_model(self.model, system)
+            # Prepare history and get last user message
             gemini_history, last_user_message = self._prepare_gemini_messages(messages)
-            chat = client_with_sys.start_chat(history=gemini_history)
-            response = await chat.send_message_async(
+
+            # Create chat session with new SDK wrapper
+            chat = self._get_chat_session(system, gemini_history)
+            if not chat:
+                raise RuntimeError("Failed to create chat session")
+
+            # Send message and get response
+            result = await chat.send_message(
                 last_user_message,
-                generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=max_tokens, temperature=temperature
-                ),
-                safety_settings=safety_settings,
+                max_output_tokens=max_tokens,
+                temperature=temperature,
             )
-            answer = self._extract_response_text(response)
+
+            answer = result.get("text", "")
             tokens = self._estimate_tokens(messages, answer)
             return {
                 "text": answer,
                 "model": self.model,
-                "provider": "google_native",
+                "provider": "google_genai",
                 "tokens": tokens,
                 "cost": 0.0,
             }
 
         except (ConnectionError, TimeoutError) as e:
-            logger.error(f"❌ Native Gemini Connection Error: {e}")
+            logger.error(f"❌ GenAI Connection Error: {e}")
             raise
         except Exception as e:
             error_msg = str(e).lower()
@@ -444,7 +445,7 @@ class ZantaraAIClient:
                     "API key was reported as leaked. Please use another API key. "
                     "Contact the technical team to update GOOGLE_API_KEY."
                 ) from e
-            logger.error(f"❌ Native Gemini Error: {e}", exc_info=True)
+            logger.error(f"❌ GenAI Error: {e}", exc_info=True)
             raise
 
     async def stream(
@@ -513,8 +514,8 @@ class ZantaraAIClient:
                 await asyncio.sleep(ZantaraAIClientConstants.MOCK_STREAM_DELAY)
             return
 
-        if not GENAI_AVAILABLE:
-            logger.error("❌ Native Gemini not available for streaming")
+        if not GENAI_AVAILABLE or not self._genai_client:
+            logger.error("❌ GenAI not available for streaming")
             fallback_response = get_fallback_message("service_unavailable", language)
             words = fallback_response.split()
             for word in words:
@@ -523,35 +524,30 @@ class ZantaraAIClient:
             return
 
         async def _stream_operation():
-            """Inner function for retry handler."""
-            client_with_sys = self._get_cached_model(self.model, system)
-
+            """Inner function for retry handler using new SDK."""
+            # Prepare conversation history
             gemini_history = []
             if conversation_history:
                 for msg in conversation_history:
-                    role = msg.get("role")
-                    content = msg.get("content", "")
-                    if role == "user":
-                        gemini_history.append({"role": "user", "parts": [content]})
-                    elif role == "assistant":
-                        gemini_history.append({"role": "model", "parts": [content]})
+                    gemini_history.append({
+                        "role": msg.get("role", "user"),
+                        "content": msg.get("content", ""),
+                    })
 
-            chat = client_with_sys.start_chat(history=gemini_history)
+            # Create chat session with new SDK wrapper
+            chat = self._get_chat_session(system, gemini_history)
+            if not chat:
+                raise RuntimeError("Failed to create chat session")
 
-            response = await chat.send_message_async(
-                message,
-                generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=max_tokens,
-                    temperature=ZantaraAIClientConstants.DEFAULT_TEMPERATURE,
-                ),
-                stream=True,
-            )
-
+            # Stream response
             stream_active = False
-            async for chunk in response:
+            async for chunk in chat.send_message_stream(
+                message,
+                max_output_tokens=max_tokens,
+                temperature=ZantaraAIClientConstants.DEFAULT_TEMPERATURE,
+            ):
                 stream_active = True
-                if chunk.text:
-                    yield chunk.text
+                yield chunk
 
             if not stream_active:
                 logger.warning("⚠️ [ZantaraAI] No content received in stream")
@@ -593,7 +589,7 @@ class ZantaraAIClient:
             return
 
         # Should never reach here, but keep fallback guard
-        logger.error("❌ Native Gemini encountered unexpected error during streaming")
+        logger.error("❌ GenAI encountered unexpected error during streaming")
         fallback_response = get_fallback_message("service_unavailable", language)
         words = fallback_response.split()
         for word in words:

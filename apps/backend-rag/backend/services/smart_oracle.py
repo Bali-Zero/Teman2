@@ -5,6 +5,9 @@ This module provides intelligent document analysis by:
 1. Downloading PDFs from Google Drive using Service Account
 2. Processing documents with Google Gemini AI
 3. Providing accurate answers based on full document content
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
 import io
@@ -12,22 +15,28 @@ import json
 import logging
 import os
 
-import google.generativeai as genai
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
 from app.core.config import settings
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE, genai, get_genai_client
 
 logger = logging.getLogger(__name__)
 
 # --- CONFIGURATION ---
 
-# 1. AI Configuration (Currently set to Google Gemini)
-# Ensure GOOGLE_API_KEY is set in your Fly.io secrets
+# Initialize GenAI client singleton for this module (supports API Key & Service Account)
+_genai_client: GenAIClient | None = None
 
-if settings.google_api_key:
-    genai.configure(api_key=settings.google_api_key)
+if GENAI_AVAILABLE:
+    try:
+        _genai_client = get_genai_client()
+        if _genai_client.is_available:
+            auth_method = getattr(_genai_client, '_auth_method', 'unknown')
+            logger.info(f"✅ Smart Oracle GenAI client initialized (auth: {auth_method})")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Smart Oracle GenAI client: {e}")
 
 
 # 2. Google Drive Service (Using Service Account)
@@ -149,30 +158,36 @@ async def smart_oracle(query, best_filename_from_qdrant):
 
     if pdf_path:
         try:
-            # --- AI PROCESSING BLOCK (Gemini Implementation) ---
-            # Uses Google Gemini for PDF analysis
-
-            # Upload file to Gemini's temporary cache
-            gemini_file = genai.upload_file(pdf_path)
-
-            # Select Model (Use 'models/gemini-2.5-flash' - unlimited on ULTRA plan)
-            model = genai.GenerativeModel("models/gemini-2.5-flash")
+            # --- AI PROCESSING BLOCK (New GenAI SDK Implementation) ---
+            if not _genai_client or not _genai_client.is_available:
+                return "AI service not available. Please check configuration."
 
             logger.info(f"Analyzing document: {best_filename_from_qdrant}")
 
-            # Generate content using the uploaded file and the user query
-            response = model.generate_content(
-                [
-                    "You are an expert consultant. Answer the user query based ONLY on the provided document.",
-                    gemini_file,
-                    f"User Query: {query}",
-                ]
-            )
+            # Upload file to Gemini's temporary cache using new SDK
+            # The new SDK uses client.files.upload() via the underlying genai module
+            if genai:
+                gemini_file = genai.Client(api_key=settings.google_api_key).files.upload(
+                    file=pdf_path
+                )
 
-            # Cleanup: Remove local temp file to save space
-            os.remove(pdf_path)
+                # Generate content using uploaded file
+                result = await _genai_client.generate_content(
+                    contents=[
+                        {"text": "You are an expert consultant. Answer the user query based ONLY on the provided document."},
+                        {"file_data": {"file_uri": gemini_file.uri, "mime_type": gemini_file.mime_type}},
+                        {"text": f"User Query: {query}"},
+                    ],
+                    model="gemini-3-flash-preview",
+                    max_output_tokens=8192,
+                )
 
-            return response.text
+                # Cleanup: Remove local temp file to save space
+                os.remove(pdf_path)
+
+                return result.get("text", "No response generated.")
+            else:
+                return "GenAI SDK not available."
 
         except Exception as ai_error:
             logger.error(f"AI Processing Error: {ai_error}")

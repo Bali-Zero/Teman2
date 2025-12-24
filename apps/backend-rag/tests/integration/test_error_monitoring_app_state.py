@@ -7,14 +7,13 @@ Verifies that ErrorMonitoringMiddleware:
 - Handles both constructor-injected and app.state patterns
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 from middleware.error_monitoring import ErrorMonitoringMiddleware
-from services.alert_service import AlertService, AlertLevel
+
+from services.alert_service import AlertService
 
 
 class TestErrorMonitoringWithAppState:
@@ -131,4 +130,3 @@ class TestErrorMonitoringWithAppState:
         # Verify middleware would use constructor service
         # (we can't easily test this without more complex mocking,
         # but the _resolve_alert_service method handles this)
-

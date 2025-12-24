@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  Activity,
 } from 'lucide-react';
 import { navigation, NavSection, NavItem } from '@/types/navigation';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ const iconMap: Record<string, React.ElementType> = {
   UserCircle,
   BarChart3,
   Settings,
+  Activity,
 };
 
 interface AppSidebarProps {

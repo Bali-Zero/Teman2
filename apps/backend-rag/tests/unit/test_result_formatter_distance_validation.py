@@ -77,4 +77,3 @@ class TestResultFormatterDistanceValidation:
         # Should not raise ZeroDivisionError, distance is clamped to 0.0 (not 1.0)
         # because distance < 0 check happens before distance == -1.0 check
         assert result[0]["score"] == pytest.approx(1.0, abs=0.0001)  # 1 / (1 + 0.0) = 1.0
-

@@ -10,6 +10,7 @@ import { AudioApi } from './media/audio.api';
 import { ImageApi } from './media/image.api';
 import { CrmApi } from './crm/crm.api';
 import { WebSocketUtils } from './websocket/websocket.utils';
+import { AnalyticsApi } from './analytics/analytics.api';
 import { UserProfile, UserMemoryContext, AgentStep } from '@/types';
 import type { LoginResponse } from './auth/auth.types';
 import type { KnowledgeSearchResponse, KnowledgeSearchResult, TierLevel } from './knowledge/knowledge.types';
@@ -38,6 +39,7 @@ export class ApiClient extends ApiClientBase {
   private imageApi: ImageApi;
   private crmApi: CrmApi;
   private wsUtils: WebSocketUtils;
+  private analyticsApi: AnalyticsApi;
 
   constructor(baseUrl: string) {
     super(baseUrl);
@@ -52,14 +54,23 @@ export class ApiClient extends ApiClientBase {
     this.imageApi = new ImageApi(this);
     this.crmApi = new CrmApi(this);
     this.wsUtils = new WebSocketUtils(this);
+    this.analyticsApi = new AnalyticsApi(baseUrl, () => this.token);
   }
 
   // ============================================================================
   // CRM (exposed directly)
   // ============================================================================
-  
+
   public get crm(): CrmApi {
     return this.crmApi;
+  }
+
+  // ============================================================================
+  // Analytics (Founder-only dashboard)
+  // ============================================================================
+
+  public get analytics(): AnalyticsApi {
+    return this.analyticsApi;
   }
 
   // ============================================================================
@@ -124,7 +135,10 @@ export class ApiClient extends ApiClientBase {
     timeoutMs: number = 120000,
     conversationHistory?: Array<{ role: string; content: string }>,
     abortSignal?: AbortSignal,
-    correlationId?: string
+    correlationId?: string,
+    idleTimeoutMs: number = 60000,
+    maxTotalTimeMs: number = 600000,
+    useCellGiant?: boolean | 'auto'
   ): Promise<void> {
     return this.chatApi.sendMessageStreaming(
       message,
@@ -136,7 +150,10 @@ export class ApiClient extends ApiClientBase {
       timeoutMs,
       conversationHistory,
       abortSignal,
-      correlationId
+      correlationId,
+      idleTimeoutMs,
+      maxTotalTimeMs,
+      useCellGiant
     );
   }
 
@@ -289,6 +306,26 @@ export class ApiClient extends ApiClientBase {
 
   async exportTimesheet(startDate: string, endDate: string): Promise<Blob> {
     return this.adminApi.exportTimesheet(startDate, endDate);
+  }
+
+  async getSystemHealth(): Promise<import('./admin/admin.types').SystemHealthReport> {
+    return this.adminApi.getSystemHealth();
+  }
+
+  async getPostgresTables(): Promise<string[]> {
+    return this.adminApi.getPostgresTables();
+  }
+
+  async getTableData(table: string, limit = 50, offset = 0): Promise<import('./admin/admin.types').TableDataResponse> {
+    return this.adminApi.getTableData(table, limit, offset);
+  }
+
+  async getQdrantCollections(): Promise<import('./admin/admin.types').QdrantCollectionsResponse> {
+    return this.adminApi.getQdrantCollections();
+  }
+
+  async getQdrantPoints(collection: string, limit = 20, offset?: string): Promise<import('./admin/admin.types').QdrantPointsResponse> {
+    return this.adminApi.getQdrantPoints(collection, limit, offset);
   }
 
   // ============================================================================

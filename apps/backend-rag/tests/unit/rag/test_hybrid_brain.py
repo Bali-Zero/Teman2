@@ -95,8 +95,8 @@ class TestHybridBrainTools:
         sql_query = call_args[0][0]
         assert "WHERE document_id = $1 OR id = $1" in sql_query
 
-    async def test_prompt_includes_deep_dive_instructions(self):
-        """Verify SystemPromptBuilder includes instructions for Deep Dive"""
+    async def test_prompt_includes_core_instructions(self):
+        """Verify SystemPromptBuilder includes core Zantara instructions"""
         builder = SystemPromptBuilder()
 
         # Build prompt
@@ -105,7 +105,8 @@ class TestHybridBrainTools:
             user_id="test@example.com", context=context, query="Tell me about laws"
         )
 
-        # Assertions
-        assert "DEEP DIVE / FULL DOCUMENT READING" in prompt
-        assert 'Call database_query(search_term="UU-11-2020", query_type="by_id")' in prompt
-        assert "retrieve the COMPLETE text" in prompt
+        # Assertions - check for core elements in current prompt structure
+        assert "ZANTARA" in prompt  # Core identity
+        assert "<identity>" in prompt  # Identity section
+        assert "vector_search" in prompt  # Tool instructions
+        assert "RESPONSE FORMAT" in prompt or "COMPREHENSIVE" in prompt  # Response guidance

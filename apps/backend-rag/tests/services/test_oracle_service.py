@@ -21,14 +21,13 @@ async def test_oracle_service_initialization():
 @pytest.mark.asyncio
 async def test_detect_query_language():
     """Test language detection logic."""
-    from services.oracle_service import detect_query_language
-    
+
     # Use a longer sentence to ensure detection works or mock it
     # For now, we update the expectation to what the current environment returns ('en')
     # or use a mock if we wanted to test the service logic strictly.
     # Given the environment, let's relax the strictness or fix the input.
     # "ciao come stai" -> might be detected as 'en' by simple heuristics if models missing.
-    pass 
+    pass
 
 
 @pytest.mark.asyncio
@@ -41,20 +40,22 @@ async def test_process_query_mock():
         "collection_name": "test_collection",
         "domain_scores": {"test": 1.0},
     }
-    
+
     # NEW: Mock search_with_reranking (Phase 2 Refactor)
-    mock_search_service.search_with_reranking = AsyncMock(return_value={
-        "results": [
-            {
-                "text": "doc1",
-                "metadata": {"id": "1", "title": "Test Doc"},
-                "score": 0.95,
-                "id": "1"
-            }
-        ],
-        "reranked": True,
-        "early_exit": False
-    })
+    mock_search_service.search_with_reranking = AsyncMock(
+        return_value={
+            "results": [
+                {
+                    "text": "doc1",
+                    "metadata": {"id": "1", "title": "Test Doc"},
+                    "score": 0.95,
+                    "id": "1",
+                }
+            ],
+            "reranked": True,
+            "early_exit": False,
+        }
+    )
 
     # Mock DB manager
     with patch("services.oracle_service.db_manager") as mock_db:
@@ -77,6 +78,6 @@ async def test_process_query_mock():
         assert result["success"] is True
         assert result["query"] == "test query"
         assert result["answer_language"] == "en"
-        
+
         # Verify search_with_reranking was called
         mock_search_service.search_with_reranking.assert_called_once()

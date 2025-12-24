@@ -18,8 +18,8 @@ from app.setup.middleware_config import register_middleware
 from app.setup.observability import setup_observability
 from app.setup.plugin_initializer import initialize_plugins
 from app.setup.router_registration import include_routers
-from app.setup.service_initializer import initialize_services
 from app.setup.sentry_config import init_sentry
+from app.setup.service_initializer import initialize_services
 
 __all__ = [
     "create_app",

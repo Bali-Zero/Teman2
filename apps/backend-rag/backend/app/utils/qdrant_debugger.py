@@ -83,9 +83,10 @@ class QdrantDebugger:
                     name=collection_name,
                     points_count=data.get("points_count", 0),
                     vectors_count=data.get("vectors_count", 0),
-                    indexed=data.get("config", {}).get("params", {}).get("vectors", {}).get(
-                        "on_disk", False
-                    ),
+                    indexed=data.get("config", {})
+                    .get("params", {})
+                    .get("vectors", {})
+                    .get("on_disk", False),
                     status=data.get("status", "unknown"),
                     config=data.get("config", {}),
                 )
@@ -248,4 +249,3 @@ class QdrantDebugger:
         except Exception as e:
             logger.error(f"Failed to inspect document {document_id} in {collection}: {e}")
             return None
-

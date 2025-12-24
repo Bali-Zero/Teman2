@@ -5,7 +5,7 @@ Tests for scraper REST API
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 from pathlib import Path
 
@@ -41,7 +41,7 @@ class TestScraperAPI:
         assert data["service"] == "Bali Intel Scraper API"
         assert "endpoints" in data
 
-    @patch('api.main.run_stage1_scraping')
+    @patch("api.main.run_stage1_scraping")
     def test_trigger_scrape(self, mock_scrape, client):
         """Test triggering scrape job."""
         mock_scrape.return_value = {
@@ -56,8 +56,8 @@ class TestScraperAPI:
                 "limit": 10,
                 "generate_articles": True,
                 "upload_to_vector_db": False,
-                "max_articles": 10
-            }
+                "max_articles": 10,
+            },
         )
 
         assert response.status_code == 200

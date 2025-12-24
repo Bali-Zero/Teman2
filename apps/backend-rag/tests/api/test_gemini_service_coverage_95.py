@@ -47,26 +47,26 @@ class TestGeminiJakselService:
         """Test GeminiJakselService initialization with model name"""
         from backend.services.gemini_service import GeminiJakselService
 
-        with patch("backend.services.gemini_service.genai") as mock_genai:
-            mock_model = MagicMock()
-            mock_genai.GenerativeModel = MagicMock(return_value=mock_model)
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        with patch("backend.services.gemini_service.GENAI_AVAILABLE", True):
+            with patch("backend.services.gemini_service.GenAIClient", return_value=mock_client):
+                service = GeminiJakselService(model_name="gemini-2.5-flash")
 
-            service = GeminiJakselService(model_name="gemini-2.5-flash")
-
-            assert service.model_name == "models/gemini-2.5-flash"
-            assert service.model is not None
+                assert service.model_name == "models/gemini-2.5-flash"
+                assert service.model is not None
 
     def test_init_with_model_name_with_prefix(self):
         """Test GeminiJakselService initialization with model name that has prefix"""
         from backend.services.gemini_service import GeminiJakselService
 
-        with patch("backend.services.gemini_service.genai") as mock_genai:
-            mock_model = MagicMock()
-            mock_genai.GenerativeModel = MagicMock(return_value=mock_model)
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        with patch("backend.services.gemini_service.GENAI_AVAILABLE", True):
+            with patch("backend.services.gemini_service.GenAIClient", return_value=mock_client):
+                service = GeminiJakselService(model_name="models/gemini-2.5-flash")
 
-            service = GeminiJakselService(model_name="models/gemini-2.5-flash")
-
-            assert service.model_name == "models/gemini-2.5-flash"
+                assert service.model_name == "models/gemini-2.5-flash"
 
     def test_init_without_api_key(self):
         """Test GeminiJakselService initialization without API key"""
@@ -310,12 +310,12 @@ class TestGeminiService:
         """Test GeminiService initialization"""
         from backend.services.gemini_service import GeminiService
 
-        with patch("backend.services.gemini_service.genai") as mock_genai:
-            mock_model = MagicMock()
-            mock_genai.GenerativeModel = MagicMock(return_value=mock_model)
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        with patch("backend.services.gemini_service.GENAI_AVAILABLE", True):
+            with patch("backend.services.gemini_service.GenAIClient", return_value=mock_client):
+                service = GeminiService()
 
-            service = GeminiService()
-
-            # GeminiService may not have a model attribute directly
-            # Check that it was initialized without errors
-            assert service is not None
+                # GeminiService may not have a model attribute directly
+                # Check that it was initialized without errors
+                assert service is not None

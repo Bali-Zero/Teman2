@@ -50,7 +50,7 @@ def parse_native_function_call(function_call_part: Any) -> ToolCall | None:
         fc = function_call_part.function_call
         tool_name = fc.name
         arguments = dict(fc.args) if fc.args else {}
-        
+
         if not tool_name:
             logger.warning("🔧 [Native Function Call] Empty tool name detected (ignoring)")
             return None

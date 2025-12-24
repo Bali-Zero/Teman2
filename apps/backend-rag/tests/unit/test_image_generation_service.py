@@ -1,6 +1,9 @@
 """
 Unit tests for Image Generation Service
 100% coverage target with comprehensive mocking
+
+UPDATED 2025-12-23:
+- Updated for new implementation (pollinations.ai fallback, no direct Gemini calls)
 """
 
 import sys
@@ -26,7 +29,6 @@ def image_service_with_key():
     """Create ImageGenerationService with API key"""
     with (
         patch("app.core.config.settings") as mock_settings,
-        patch("google.generativeai.configure"),
         patch("services.image_generation_service.logger"),
     ):
         # Mock both google_imagen_api_key and google_api_key (code checks imagen first)
@@ -69,7 +71,6 @@ def test_image_service_init_with_custom_key():
     """Test ImageGenerationService initialization with custom API key"""
     with (
         patch("app.core.config.settings") as mock_settings,
-        patch("google.generativeai.configure"),
         patch("services.image_generation_service.logger"),
     ):
         mock_settings.google_imagen_api_key = None

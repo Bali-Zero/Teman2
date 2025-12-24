@@ -2,6 +2,9 @@
 PDF Vision Service
 Usa Gemini Vision per "vedere" e interpretare tabelle complesse nei PDF (es: KBLI).
 Integrato con Google Drive per scaricare i file on-demand.
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK via GenAIClient wrapper
 """
 
 import io
@@ -10,11 +13,11 @@ import os
 from typing import Any
 
 import fitz  # PyMuPDF
-import google.generativeai as genai
 from PIL import Image
 
 from app.core.config import settings
 from services.smart_oracle import download_pdf_from_drive
+from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +39,20 @@ class PDFVisionService:
         """
         self.ai_client = ai_client
         self.api_key = api_key or settings.google_api_key
+        self._genai_client: GenAIClient | None = None
+        self._available = False
+        self.model_name = "gemini-3-flash-preview"  # Gemini 3 Flash for speed
+
         if not self.api_key:
             logger.warning("⚠️ No Gemini API key found for Vision Service")
-        else:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel("gemini-1.5-flash")  # Use Flash for speed/cost
+        elif GENAI_AVAILABLE:
+            try:
+                self._genai_client = GenAIClient(api_key=self.api_key)
+                self._available = self._genai_client.is_available
+                if self._available:
+                    logger.info("✅ PDFVisionService initialized with GenAI client")
+            except Exception as e:
+                logger.warning(f"Failed to initialize PDFVisionService GenAI client: {e}")
 
     async def analyze_page(
         self,
@@ -67,8 +79,28 @@ class PDFVisionService:
             # 2. Renderizza pagina PDF come immagine
             image = self._render_page_to_image(local_path, page_number)
 
-            # 3. Invia a Gemini Vision
-            response = self.model.generate_content([prompt, image])
+            # 3. Check if GenAI client is available
+            if not self._available or not self._genai_client:
+                return "Vision service not available. Please check configuration."
+
+            # 4. Convert image to base64 and send to Gemini Vision
+            import base64
+
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            image_base64 = base64.b64encode(buffered.getvalue()).decode()
+
+            # Build multimodal content for new SDK
+            contents = [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/png", "data": image_base64}},
+            ]
+
+            result = await self._genai_client.generate_content(
+                contents=contents,
+                model=self.model_name,
+                max_output_tokens=8192,
+            )
 
             logger.info(f"👁️ Vision analysis complete for {local_path} p.{page_number}")
 
@@ -76,7 +108,7 @@ class PDFVisionService:
             if is_drive_file and os.path.exists(local_path):
                 os.remove(local_path)
 
-            return response.text
+            return result.get("text", "No response generated.")
 
         except Exception as e:
             logger.error(f"❌ Vision analysis failed: {e}")

@@ -327,7 +327,10 @@ async def create_and_start_scheduler(
                     logger.info(f"✅ Conversation Trainer: PR {pr_branch} created")
 
                 except Exception as e:
-                    logger.error(f"Error in Conversation Trainer prompt generation/PR creation: {e}", exc_info=True)
+                    logger.error(
+                        f"Error in Conversation Trainer prompt generation/PR creation: {e}",
+                        exc_info=True,
+                    )
 
             scheduler.register_task(
                 name="conversation_trainer",

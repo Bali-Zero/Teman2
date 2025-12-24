@@ -55,14 +55,14 @@ export const INTERVALS = {
 // ============================================================================
 
 export const FILE_LIMITS = {
-  /** Maximum file size in bytes (2MB) */
-  MAX_FILE_SIZE: 2 * 1024 * 1024,
+  /** Maximum file size in bytes (10MB) */
+  MAX_FILE_SIZE: 10 * 1024 * 1024,
 
   /** Maximum file size in MB (for display) */
-  MAX_FILE_SIZE_MB: 2,
+  MAX_FILE_SIZE_MB: 10,
 
   /** Maximum image dimension (width/height) */
-  MAX_IMAGE_DIMENSION: 2048,
+  MAX_IMAGE_DIMENSION: 4096,
 } as const;
 
 /** PNG file signature bytes */

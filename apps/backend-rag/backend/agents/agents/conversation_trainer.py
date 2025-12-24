@@ -159,7 +159,7 @@ Return JSON:
                     try:
                         analysis_text = await asyncio.wait_for(
                             self.zantara_client.generate_text(
-                                prompt=analysis_prompt, max_tokens=2000, temperature=0.3
+                                prompt=analysis_prompt, max_tokens=8192, temperature=0.3
                             ),
                             timeout=timeout,
                         )
@@ -210,7 +210,7 @@ Return ONLY the prompt text, no explanations."""
             try:
                 improved_prompt = await asyncio.wait_for(
                     self.zantara_client.generate_text(
-                        prompt=prompt, max_tokens=3000, temperature=0.5
+                        prompt=prompt, max_tokens=8192, temperature=0.5
                     ),
                     timeout=timeout,
                 )

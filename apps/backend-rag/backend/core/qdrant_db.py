@@ -289,8 +289,11 @@ class QdrantClient:
         return result if result else None
 
     async def search(
-        self, query_embedding: list[float], filter: dict[str, Any] | None = None, limit: int = 5,
-        vector_name: str | None = None
+        self,
+        query_embedding: list[float],
+        filter: dict[str, Any] | None = None,
+        limit: int = 5,
+        vector_name: str | None = None,
     ) -> dict[str, Any]:
         """
         Search for similar documents.
@@ -319,7 +322,7 @@ class QdrantClient:
                 payload = {
                     "vector": {"name": vector_name, "vector": query_embedding},
                     "limit": limit,
-                    "with_payload": True
+                    "with_payload": True,
                 }
             else:
                 payload = {"vector": query_embedding, "limit": limit, "with_payload": True}
@@ -362,7 +365,11 @@ class QdrantClient:
                 if 500 <= e.response.status_code < 600:
                     raise Exception(f"Qdrant server error {e.response.status_code}: {error_text}")
                 # Auto-retry with named vector if collection uses named vectors
-                if e.response.status_code == 400 and "Vector params for" in error_text and not vector_name:
+                if (
+                    e.response.status_code == 400
+                    and "Vector params for" in error_text
+                    and not vector_name
+                ):
                     logger.info("Collection uses named vectors, retrying with 'dense'")
                     # Retry with named vector
                     payload["vector"] = {"name": "dense", "vector": query_embedding}
@@ -479,14 +486,10 @@ class QdrantClient:
             # Use named vectors for hybrid search compatibility
             if enable_sparse:
                 payload = {
-                    "vectors": {
-                        "dense": {"size": vector_size, "distance": distance}
-                    },
-                    "sparse_vectors": {
-                        "bm25": {"index": {"on_disk": False}}
-                    }
+                    "vectors": {"dense": {"size": vector_size, "distance": distance}},
+                    "sparse_vectors": {"bm25": {"index": {"on_disk": False}}},
                 }
-                logger.info(f"Creating collection with sparse vector support (BM25)")
+                logger.info("Creating collection with sparse vector support (BM25)")
             else:
                 payload = {"vectors": {"size": vector_size, "distance": distance}}
 
@@ -862,11 +865,13 @@ class QdrantClient:
                 # fall back to dense-only search
                 if e.response.status_code == 400 and "sparse" in error_text.lower():
                     logger.warning(
-                        f"Hybrid search not available (no sparse vectors), "
-                        f"falling back to dense search"
+                        "Hybrid search not available (no sparse vectors), "
+                        "falling back to dense search"
                     )
                     return await self.search(query_embedding, filter=filter, limit=limit)
-                logger.error(f"Qdrant hybrid search failed: {e.response.status_code} - {error_text}")
+                logger.error(
+                    f"Qdrant hybrid search failed: {e.response.status_code} - {error_text}"
+                )
                 return {
                     "ids": [],
                     "documents": [],
@@ -927,10 +932,13 @@ class QdrantClient:
             # Generate IDs if not provided
             if not ids:
                 import uuid
+
                 ids = [str(uuid.uuid4()) for _ in range(len(chunks))]
 
             # Validate input lengths
-            if not (len(chunks) == len(embeddings) == len(sparse_vectors) == len(metadatas) == len(ids)):
+            if not (
+                len(chunks) == len(embeddings) == len(sparse_vectors) == len(metadatas) == len(ids)
+            ):
                 raise ValueError(
                     "chunks, embeddings, sparse_vectors, metadatas, and ids must have same length"
                 )

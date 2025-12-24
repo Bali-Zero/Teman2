@@ -11,8 +11,9 @@ When run together with other tests, conftest.py may interfere.
 Run individually if needed: pytest tests/api/test_main_cloud_startup_events.py
 """
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from app.main_cloud import app, on_startup
 from services.alert_service import AlertService
@@ -35,16 +36,22 @@ class TestStartupEvents:
                 delattr(app.state, "alert_service")
 
             # Mock initialize_services and initialize_plugins to avoid heavy initialization in tests
-            from unittest.mock import patch, AsyncMock
-            with patch("app.main_cloud.initialize_services", new_callable=AsyncMock) as mock_init, \
-                 patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock) as mock_plugins:
+            from unittest.mock import AsyncMock, patch
+
+            with patch(
+                "app.main_cloud.initialize_services", new_callable=AsyncMock
+            ) as mock_init, patch(
+                "app.main_cloud.initialize_plugins", new_callable=AsyncMock
+            ) as mock_plugins:
                 # Run startup
                 await on_startup()
 
                 # Verify AlertService is initialized (happens before initialize_services)
                 assert hasattr(app.state, "alert_service"), "alert_service should be in app.state"
                 assert app.state.alert_service is not None, "alert_service should not be None"
-                assert isinstance(app.state.alert_service, AlertService), f"Expected AlertService, got {type(app.state.alert_service)}"
+                assert isinstance(
+                    app.state.alert_service, AlertService
+                ), f"Expected AlertService, got {type(app.state.alert_service)}"
                 # Verify initialize_services was called
                 mock_init.assert_called_once()
                 mock_plugins.assert_called_once()
@@ -58,39 +65,51 @@ class TestStartupEvents:
     async def test_startup_idempotent_alert_service(self):
         """Test startup can be called multiple times without issues."""
         # Save original state
-        original_state_dict = {k: getattr(app.state, k) for k in dir(app.state) if not k.startswith('_')}
+        original_state_dict = {
+            k: getattr(app.state, k) for k in dir(app.state) if not k.startswith("_")
+        }
         original_alert_service = getattr(app.state, "alert_service", None)
 
         try:
-            from unittest.mock import patch, AsyncMock
-            
+            from unittest.mock import AsyncMock, patch
+
             # Clear alert_service if it exists
             if hasattr(app.state, "alert_service"):
                 delattr(app.state, "alert_service")
             app.state.services_initialized = False
-            
+
             # Run startup first time
-            with patch("app.main_cloud.initialize_services", new_callable=AsyncMock), \
-                 patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock):
+            with patch("app.main_cloud.initialize_services", new_callable=AsyncMock), patch(
+                "app.main_cloud.initialize_plugins", new_callable=AsyncMock
+            ):
                 await on_startup()
             first_instance = getattr(app.state, "alert_service", None)
-            
+
             # Verify first instance was created
-            assert first_instance is not None, f"First instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
-            assert isinstance(first_instance, AlertService), f"Expected AlertService, got {type(first_instance)}"
+            assert (
+                first_instance is not None
+            ), f"First instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
+            assert isinstance(
+                first_instance, AlertService
+            ), f"Expected AlertService, got {type(first_instance)}"
 
             # Reset to allow second run (but keep alert_service to test idempotency)
             app.state.services_initialized = False
-            
+
             # Run startup again (will overwrite alert_service)
-            with patch("app.main_cloud.initialize_services", new_callable=AsyncMock), \
-                 patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock):
+            with patch("app.main_cloud.initialize_services", new_callable=AsyncMock), patch(
+                "app.main_cloud.initialize_plugins", new_callable=AsyncMock
+            ):
                 await on_startup()
             second_instance = getattr(app.state, "alert_service", None)
 
             # Both should be AlertService instances
-            assert second_instance is not None, f"Second instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
-            assert isinstance(second_instance, AlertService), f"Expected AlertService, got {type(second_instance)}"
+            assert (
+                second_instance is not None
+            ), f"Second instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
+            assert isinstance(
+                second_instance, AlertService
+            ), f"Expected AlertService, got {type(second_instance)}"
         finally:
             # Restore original state
             if original_alert_service is not None:
@@ -124,4 +143,3 @@ class TestStartupEvents:
                 # If it was None, ensure we have a valid one after startup
                 if not isinstance(app.state.alert_service, AlertService):
                     app.state.alert_service = original_alert_service
-

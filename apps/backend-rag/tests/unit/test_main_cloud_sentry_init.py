@@ -21,6 +21,7 @@ class TestSentryInitialization:
             with patch("sentry_sdk.init") as mock_sentry_init:
                 # Re-import to trigger initialization check
                 import app.main_cloud
+
                 importlib.reload(app.main_cloud)
 
                 # Sentry should not be initialized
@@ -29,11 +30,15 @@ class TestSentryInitialization:
     def test_sentry_not_initialized_when_no_dsn(self):
         """Test Sentry doesn't initialize when DSN is not set."""
         # Remove SENTRY_DSN and SKIP_SENTRY_INIT
-        env_vars = {k: v for k, v in os.environ.items() if k not in ["SENTRY_DSN", "SKIP_SENTRY_INIT"]}
+        env_vars = {
+            k: v for k, v in os.environ.items() if k not in ["SENTRY_DSN", "SKIP_SENTRY_INIT"]
+        }
         with patch.dict(os.environ, env_vars, clear=True):
             with patch("sentry_sdk.init") as mock_sentry_init:
                 import importlib
+
                 import app.main_cloud
+
                 importlib.reload(app.main_cloud)
 
                 # Sentry should not be initialized without DSN
@@ -51,7 +56,9 @@ class TestSentryInitialization:
         ):
             with patch("sentry_sdk.init") as mock_sentry_init:
                 import importlib
+
                 import app.main_cloud
+
                 importlib.reload(app.main_cloud)
 
                 # Sentry should be initialized
@@ -60,4 +67,3 @@ class TestSentryInitialization:
                 call_kwargs = mock_sentry_init.call_args[1]
                 assert call_kwargs["dsn"] == "https://test@sentry.io/123"
                 assert call_kwargs["environment"] == "production"
-

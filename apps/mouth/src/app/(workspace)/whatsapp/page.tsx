@@ -12,12 +12,12 @@ export default function WhatsAppPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--foreground)]">WhatsApp Business</h1>
           <p className="text-sm text-[var(--foreground-muted)]">
-            Gestisci le conversazioni con i clienti
+            Manage conversations with clients
           </p>
         </div>
         <Button className="gap-2">
           <Plus className="w-4 h-4" />
-          Nuova Chat
+          New Chat
         </Button>
       </div>
 
@@ -27,13 +27,13 @@ export default function WhatsAppPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
           <input
             type="text"
-            placeholder="Cerca conversazioni..."
+            placeholder="Search conversations..."
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
           />
         </div>
         <Button variant="outline" className="gap-2">
           <Filter className="w-4 h-4" />
-          Filtri
+          Filters
         </Button>
       </div>
 
@@ -44,11 +44,11 @@ export default function WhatsAppPage() {
           WhatsApp Business Integration
         </h2>
         <p className="text-sm text-[var(--foreground-muted)] max-w-md mx-auto mb-6">
-          Questa sezione permetterà di gestire tutte le conversazioni WhatsApp,
-          con suggerimenti AI di Zantara e collegamento automatico alle pratiche.
+          This section will allow you to manage all WhatsApp conversations,
+          with Zantara AI suggestions and automatic linking to cases.
         </p>
         <div className="flex flex-wrap justify-center gap-2 text-xs text-[var(--foreground-muted)]">
-          <span className="px-3 py-1 rounded-full bg-[var(--background-elevated)]">Chat in tempo reale</span>
+          <span className="px-3 py-1 rounded-full bg-[var(--background-elevated)]">Real-time chat</span>
           <span className="px-3 py-1 rounded-full bg-[var(--background-elevated)]">AI Suggestions</span>
           <span className="px-3 py-1 rounded-full bg-[var(--background-elevated)]">Auto-CRM</span>
           <span className="px-3 py-1 rounded-full bg-[var(--background-elevated)]">Template Messages</span>

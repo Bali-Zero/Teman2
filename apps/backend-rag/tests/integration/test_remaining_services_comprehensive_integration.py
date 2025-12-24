@@ -374,7 +374,7 @@ class TestGeminiAdapterIntegration:
 
             response = await adapter.generate(
                 prompt="Test prompt",
-                max_tokens=100,
+                max_tokens=8192,
             )
 
             assert response is not None

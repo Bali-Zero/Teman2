@@ -3,9 +3,8 @@ Tests for judgement_day.py - RAGAS Evaluation Script
 Provides comprehensive test coverage with mocking for external dependencies.
 """
 
-import asyncio
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
@@ -44,12 +43,15 @@ def mock_external_deps():
 
     mock_datasets.Dataset = MockDataset
 
-    with patch.dict(sys.modules, {
-        'langchain_google_genai': mock_langchain,
-        'ragas': mock_ragas,
-        'ragas.metrics': mock_ragas,
-        'datasets': mock_datasets,
-    }):
+    with patch.dict(
+        sys.modules,
+        {
+            "langchain_google_genai": mock_langchain,
+            "ragas": mock_ragas,
+            "ragas.metrics": mock_ragas,
+            "datasets": mock_datasets,
+        },
+    ):
         yield
 
 
@@ -232,9 +234,7 @@ class TestDataFiltering:
 
     def test_filter_empty_contexts(self, evaluation_data_with_errors):
         """Test that entries without contexts are filtered out"""
-        valid_data = [
-            item for item in evaluation_data_with_errors if item["contexts"]
-        ]
+        valid_data = [item for item in evaluation_data_with_errors if item["contexts"]]
 
         assert len(valid_data) == 1
         assert valid_data[0]["contexts"] == ["Valid context"]
@@ -284,10 +284,12 @@ class TestEvaluationMetrics:
 
     def test_average_calculation(self):
         """Test average score calculation"""
-        df = pd.DataFrame({
-            "faithfulness": [0.9, 0.85, 0.78],
-            "answer_relevancy": [0.88, 0.92, 0.75],
-        })
+        df = pd.DataFrame(
+            {
+                "faithfulness": [0.9, 0.85, 0.78],
+                "answer_relevancy": [0.88, 0.92, 0.75],
+            }
+        )
 
         avg_faithfulness = df["faithfulness"].mean()
         avg_relevancy = df["answer_relevancy"].mean()
@@ -297,10 +299,12 @@ class TestEvaluationMetrics:
 
     def test_nan_handling(self):
         """Test handling of NaN values in scores"""
-        df = pd.DataFrame({
-            "faithfulness": [0.9, float('nan'), 0.78],
-            "answer_relevancy": [0.88, 0.92, float('nan')],
-        })
+        df = pd.DataFrame(
+            {
+                "faithfulness": [0.9, float("nan"), 0.78],
+                "answer_relevancy": [0.88, 0.92, float("nan")],
+            }
+        )
 
         avg_faithfulness = df["faithfulness"].mean(skipna=True)
         avg_relevancy = df["answer_relevancy"].mean(skipna=True)
@@ -377,11 +381,13 @@ class TestResultsOutput:
 
     def test_dataframe_to_csv(self):
         """Test DataFrame can be saved to CSV"""
-        df = pd.DataFrame({
-            "question": ["Q1", "Q2"],
-            "answer": ["A1", "A2"],
-            "faithfulness": [0.9, 0.85],
-        })
+        df = pd.DataFrame(
+            {
+                "question": ["Q1", "Q2"],
+                "answer": ["A1", "A2"],
+                "faithfulness": [0.9, 0.85],
+            }
+        )
 
         # Test CSV string generation
         csv_str = df.to_csv(index=False)
@@ -390,11 +396,13 @@ class TestResultsOutput:
 
     def test_summary_display(self):
         """Test summary string generation"""
-        df = pd.DataFrame({
-            "question": ["Q1", "Q2"],
-            "faithfulness": [0.9, 0.85],
-            "answer_relevancy": [0.88, 0.92],
-        })
+        df = pd.DataFrame(
+            {
+                "question": ["Q1", "Q2"],
+                "faithfulness": [0.9, 0.85],
+                "answer_relevancy": [0.88, 0.92],
+            }
+        )
 
         summary = df.to_string()
         assert "Q1" in summary
@@ -422,6 +430,7 @@ class TestAsyncHelpers:
     @pytest.mark.asyncio
     async def test_async_error_handling(self):
         """Test async error handling pattern"""
+
         async def failing_query():
             raise Exception("Network error")
 

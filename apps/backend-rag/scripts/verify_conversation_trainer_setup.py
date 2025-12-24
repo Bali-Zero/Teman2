@@ -93,9 +93,7 @@ async def verify_database():
             print(f"📊 Ratings salvati: {count}")
 
             # Conta high-rated conversations
-            high_rated = await conn.fetchval(
-                "SELECT COUNT(*) FROM v_rated_conversations"
-            )
+            high_rated = await conn.fetchval("SELECT COUNT(*) FROM v_rated_conversations")
             print(f"⭐ Conversazioni high-rated (>=4): {high_rated}")
 
             return True
@@ -112,9 +110,9 @@ async def verify_api():
     """Verifica che il router sia registrato"""
     print("\n🔍 Verificando API router...")
     try:
-        from app.setup.router_registration import include_routers
-        from app.routers import feedback
         from fastapi import FastAPI
+
+        from app.setup.router_registration import include_routers
 
         app = FastAPI()
         include_routers(app)
@@ -152,8 +150,10 @@ async def verify_scheduler():
 
         if "conversation_trainer" in status.get("tasks", {}):
             task = status["tasks"]["conversation_trainer"]
-            print(f"✅ Conversation Trainer registrato nello scheduler")
-            print(f"   - Intervallo: {task['interval_seconds']}s ({task['interval_seconds']/3600:.1f}h)")
+            print("✅ Conversation Trainer registrato nello scheduler")
+            print(
+                f"   - Intervallo: {task['interval_seconds']}s ({task['interval_seconds']/3600:.1f}h)"
+            )
             print(f"   - Abilitato: {task['enabled']}")
             print(f"   - Esecuzioni: {task['run_count']}")
             return True
@@ -189,9 +189,10 @@ async def main():
     else:
         print("\n⚠️  Alcuni componenti richiedono configurazione.")
         if not db_ok:
-            print("   → Esegui migration: python apps/backend-rag/backend/migrations/migration_025.py")
+            print(
+                "   → Esegui migration: python apps/backend-rag/backend/migrations/migration_025.py"
+            )
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-

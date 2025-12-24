@@ -284,7 +284,7 @@ class TestOpenRouterClient:
             MockClient.return_value.__aenter__.return_value = mock_client
 
             result = await client.complete(
-                [{"role": "user", "content": "Hi"}], temperature=0.5, max_tokens=1000, top_p=0.9
+                [{"role": "user", "content": "Hi"}], temperature=0.5, max_tokens=8192, top_p=0.9
             )
 
             assert result.content == "Custom"

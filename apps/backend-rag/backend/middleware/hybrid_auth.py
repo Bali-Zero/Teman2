@@ -26,6 +26,15 @@ from app.utils.cookie_auth import get_jwt_from_cookie, is_csrf_exempt, validate_
 logger = logging.getLogger(__name__)
 
 
+def _get_correlation_id(request: Request) -> str:
+    """Extract correlation ID from request state for logging"""
+    return (
+        getattr(request.state, "correlation_id", None)
+        or getattr(request.state, "request_id", None)
+        or "unknown"
+    )
+
+
 def _allowed_origins() -> set[str]:
     """
     Local helper to mirror CORS allowlist so we can attach headers even when
@@ -177,27 +186,118 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             return response
 
         except HTTPException as exc:
-            # Return JSONResponse for HTTP exceptions to avoid 500 error in BaseHTTPMiddleware
+            # HTTPException from dependency injection (e.g., get_database_pool) or endpoint handlers
+            # Extract correlation ID for better tracing
+            correlation_id = _get_correlation_id(request)
+            client_host = request.client.host if request.client else "unknown"
+
+            logger.warning(
+                f"[{correlation_id}] HTTPException during request processing: "
+                f"{exc.status_code} - {request.method} {request.url.path} from {client_host}. "
+                f"Detail: {exc.detail if isinstance(exc.detail, str) else 'See detail object'}"
+            )
+
             from fastapi.responses import JSONResponse
+
+            # Sanitize exc.detail to avoid JSON serialization errors (e.g., Pool objects)
+            sanitized_detail = exc.detail
+            if isinstance(exc.detail, dict):
+                # Create a copy and sanitize any non-serializable values
+                sanitized_detail = {}
+                for key, value in exc.detail.items():
+                    if isinstance(value, (str, int, float, bool, type(None))):
+                        sanitized_detail[key] = value
+                    elif isinstance(value, (list, tuple)):
+                        # Recursively sanitize list items
+                        sanitized_detail[key] = [
+                            str(item)
+                            if not isinstance(item, (str, int, float, bool, type(None)))
+                            else item
+                            for item in value
+                        ]
+                    else:
+                        # Convert non-serializable objects to string
+                        sanitized_detail[key] = str(value)
+            elif not isinstance(exc.detail, (str, int, float, bool, type(None))):
+                # If detail is not a basic type, convert to string
+                sanitized_detail = str(exc.detail)
+
+            cors_headers = self._cors_headers_for_request(request)
+            try:
+                return JSONResponse(
+                    status_code=exc.status_code,
+                    content={"detail": sanitized_detail},
+                    headers={**(exc.headers or {}), **cors_headers},
+                )
+            except (TypeError, ValueError) as serialization_error:
+                # If sanitization failed, fallback to string representation
+                logger.error(
+                    f"[{correlation_id}] Failed to serialize HTTPException detail: {serialization_error}. "
+                    f"Original detail type: {type(exc.detail)}"
+                )
+                return JSONResponse(
+                    status_code=exc.status_code,
+                    content={
+                        "detail": "Service unavailable (error serializing response)",
+                        "correlation_id": correlation_id,
+                        "error_type": type(serialization_error).__name__,
+                    },
+                    headers={**(exc.headers or {}), **cors_headers},
+                )
+        except Exception as e:
+            # FAIL-CLOSED: Any system error = deny access for security
+            correlation_id = _get_correlation_id(request)
+            client_host = request.client.host if request.client else "unknown"
+
+            # Log detailed exception info BEFORE sanitization for debugging
+            error_type = type(e).__name__
+            error_module = getattr(type(e), "__module__", "unknown")
+            error_repr = repr(e) if len(repr(e)) < 500 else repr(e)[:500] + "..."
+
+            logger.critical(
+                f"[{correlation_id}] Authentication system failure - ACCESS DENIED: "
+                f"Type={error_type}, Module={error_module}, "
+                f"Request={request.method} {request.url.path} from {client_host}, "
+                f"Error={error_repr}",
+                exc_info=True,
+            )
+
+            from fastapi.responses import JSONResponse
+
+            # Safe error message extraction (avoid serializing non-serializable objects)
+            # Extract only exception type and a generic message to avoid Pool serialization
+            try:
+                # Check if error might involve database/Pool without trying to serialize it
+                if (
+                    "Pool" in error_type
+                    or "asyncpg" in error_type.lower()
+                    or "database" in error_type.lower()
+                    or "Database" in error_type
+                ):
+                    error_msg = "Database connection error during authentication"
+                else:
+                    # Try to get message safely, but fallback to type if it fails
+                    try:
+                        error_msg = str(e)
+                        # Sanitize message to remove any Pool references
+                        if "Pool" in error_msg or "asyncpg" in error_msg.lower():
+                            error_msg = "Database connection error during authentication"
+                        elif len(error_msg) > 200:
+                            error_msg = f"{error_type}: {error_msg[:200]}..."
+                    except (TypeError, ValueError, AttributeError):
+                        error_msg = f"{error_type} error during authentication"
+            except Exception:
+                error_msg = "Authentication service error"
 
             cors_headers = self._cors_headers_for_request(request)
             return JSONResponse(
-                status_code=exc.status_code,
-                content={"detail": exc.detail},
-                headers={**(exc.headers or {}), **cors_headers},
-            )
-        except Exception as e:
-            # FAIL-CLOSED: Any system error = deny access for security
-            client_host = request.client.host if request.client else "unknown"
-            logger.critical(
-                f"Authentication system failure - ACCESS DENIED: {e}. "
-                f"Request: {request.url.path} from {client_host}"
-            )
-            from fastapi.responses import JSONResponse
-
-            return JSONResponse(
                 status_code=HTTP_503_SERVICE_UNAVAILABLE,
-                content={"detail": f"Authentication service temporarily unavailable: {str(e)}"},
+                content={
+                    "detail": f"Authentication service temporarily unavailable: {error_msg}",
+                    "correlation_id": correlation_id,
+                    "error_type": error_type,
+                },
+                headers={**cors_headers, "X-Correlation-ID": correlation_id},
             )
 
     def _cors_headers_for_request(self, request: Request) -> dict[str, str]:

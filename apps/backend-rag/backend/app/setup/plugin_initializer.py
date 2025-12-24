@@ -54,4 +54,3 @@ async def initialize_plugins(app: FastAPI) -> None:
         logger.error(f"Failed to initialize plugin system: {e}", exc_info=True)
         # Don't fail startup - plugins are non-critical
         app.state.plugin_registry = None
-

@@ -25,7 +25,7 @@ async def create_test_user():
     TEST_NAME = "Test User"
     TEST_ROLE = "user"
 
-    print(f"🔧 Creating/verifying test user...")
+    print("🔧 Creating/verifying test user...")
     print(f"   Email: {TEST_EMAIL}")
     print(f"   PIN: {TEST_PIN}")
     print(f"   Name: {TEST_NAME}")
@@ -40,7 +40,7 @@ async def create_test_user():
         # Check if user exists
         existing_user = await conn.fetchrow(
             "SELECT id, email, full_name, active FROM team_members WHERE email = $1",
-            TEST_EMAIL
+            TEST_EMAIL,
         )
 
         if existing_user:
@@ -48,11 +48,10 @@ async def create_test_user():
             print(f"   Name: {existing_user['full_name']}")
             print(f"   Active: {existing_user['active']}")
 
-            if not existing_user['active']:
+            if not existing_user["active"]:
                 # Activate user
                 await conn.execute(
-                    "UPDATE team_members SET active = true WHERE email = $1",
-                    TEST_EMAIL
+                    "UPDATE team_members SET active = true WHERE email = $1", TEST_EMAIL
                 )
                 print("✅ Activated test user")
         else:
@@ -60,7 +59,9 @@ async def create_test_user():
             print("📝 Creating new test user...")
 
             # Hash PIN
-            pin_hash = bcrypt.hashpw(TEST_PIN.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            pin_hash = bcrypt.hashpw(TEST_PIN.encode("utf-8"), bcrypt.gensalt()).decode(
+                "utf-8"
+            )
 
             # Insert user
             user_id = await conn.fetchval(
@@ -72,17 +73,25 @@ async def create_test_user():
                 VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
                 RETURNING id
                 """,
-                TEST_EMAIL, TEST_NAME, pin_hash, TEST_ROLE, True, "en"
+                TEST_EMAIL,
+                TEST_NAME,
+                pin_hash,
+                TEST_ROLE,
+                True,
+                "en",
             )
 
             print(f"✅ Test user created (ID: {user_id})")
 
         # Update PIN to ensure it's correct
         print("🔑 Updating PIN hash...")
-        pin_hash = bcrypt.hashpw(TEST_PIN.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        pin_hash = bcrypt.hashpw(TEST_PIN.encode("utf-8"), bcrypt.gensalt()).decode(
+            "utf-8"
+        )
         await conn.execute(
             "UPDATE team_members SET pin_hash = $1, active = true WHERE email = $2",
-            pin_hash, TEST_EMAIL
+            pin_hash,
+            TEST_EMAIL,
         )
         print("✅ PIN hash updated")
 
@@ -106,6 +115,7 @@ async def create_test_user():
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

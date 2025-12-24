@@ -195,12 +195,3 @@ class ClientScoringService:
             "practice_statuses": row["practice_statuses"] or [],
         }
 
-
-
-
-
-
-
-
-
-

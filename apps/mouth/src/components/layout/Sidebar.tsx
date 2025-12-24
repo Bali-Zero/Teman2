@@ -5,6 +5,7 @@ import { Plus, X, Loader2, History, MessageSquare, Trash2, Activity } from 'luci
 import { Conversation } from '@/types';
 import { ComplianceWidget } from '../dashboard/ComplianceWidget';
 import { ComplianceAlert } from '@/types/compliance';
+import { MemoryPulse } from '../memory/MemoryPulse';
 
 const MOCK_ALERTS: ComplianceAlert[] = [
   {
@@ -122,6 +123,11 @@ export function Sidebar({
         {/* Compliance Alerts Widget */}
         <div className="px-4 pt-2 -mb-2 flex justify-end">
            <ComplianceWidget alerts={MOCK_ALERTS} />
+        </div>
+
+        {/* AI Pulse Memory Widget */}
+        <div className="px-2 pt-4">
+          <MemoryPulse />
         </div>
 
         {/* Conversations List */}

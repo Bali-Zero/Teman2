@@ -399,7 +399,7 @@ Keep the response comprehensive but concise (max 800 words).
         try:
             # Call ZANTARA AI
             response = await self.zantara.generate_text(
-                prompt=synthesis_prompt, max_tokens=1500, temperature=0.7
+                prompt=synthesis_prompt, max_tokens=8192, temperature=0.7
             )
 
             synthesis_text = response.get("text", "")

@@ -4,9 +4,40 @@ import type { AgenticQueryResponse } from './chat.types';
 
 /**
  * Chat/Streaming API methods
+ *
+ * Supports two modes:
+ * - Standard: Uses agentic-rag with tool-based reasoning
+ * - Cell-Giant: Uses Giant (deep reasoning) + Cell (corrections) + Zantara (synthesis)
  */
 export class ChatApi {
   constructor(private client: ApiClientBase) {}
+
+  /**
+   * Detect if query should use Cell-Giant mode.
+   * Cell-Giant is better for complex business questions about Indonesia.
+   */
+  private shouldUseCellGiant(query: string): boolean {
+    const cellGiantPatterns = [
+      // Company setup
+      /\b(pt\s*pma|pma|penanaman\s*modal|foreign\s*company|societa)\b/i,
+      // Visa & Immigration
+      /\b(kitas|kitap|visa|e33g|e31a|digital\s*nomad|work\s*permit)\b/i,
+      // Business types
+      /\b(ghost\s*kitchen|restaurant|f&b|cafe|bar)\b/i,
+      // Legal & Compliance
+      /\b(kbli|nib|oss|izin|permit|license|legale|compliance)\b/i,
+      // Tax
+      /\b(pajak|tax|pph|ppn|npwp|fiscal)\b/i,
+      // Capital & Investment
+      /\b(capital|modal|investimento|miliardi?|billion)\b/i,
+      // Property
+      /\b(property|hak\s*pakai|lease|sewa|tanah)\b/i,
+      // Employment
+      /\b(karyawan|employee|pkwt|bpjs|hiring)\b/i,
+    ];
+
+    return cellGiantPatterns.some(pattern => pattern.test(query));
+  }
 
   async sendMessage(
     message: string,
@@ -32,7 +63,7 @@ export class ChatApi {
     };
   }
 
-  // SSE streaming via backend `/api/agentic-rag/stream`
+  // SSE streaming via backend `/api/agentic-rag/stream` or `/api/agentic-rag/stream/cell-giant`
   async sendMessageStreaming(
     message: string,
     conversationId: string | undefined,
@@ -46,6 +77,10 @@ export class ChatApi {
         context_length?: number;
         emotional_state?: string;
         status?: string;
+        user_memory_facts?: string[];
+        collective_memory_facts?: string[];
+        golden_answer_used?: boolean;
+        followup_questions?: string[];
       }
     ) => void,
     onError: (error: Error) => void,
@@ -55,9 +90,25 @@ export class ChatApi {
     abortSignal?: AbortSignal,
     correlationId?: string,
     idleTimeoutMs: number = 60000, // 60s idle timeout (reset on data)
-    maxTotalTimeMs: number = 600000 // 10min max total time
+    maxTotalTimeMs: number = 600000, // 10min max total time
+    useCellGiant?: boolean | 'auto' // 'auto' = detect based on query
   ): Promise<void> {
-    console.log('ChatApi: sendMessageStreaming called', { correlationId, timeoutMs, idleTimeoutMs, maxTotalTimeMs });
+    // Determine if we should use Cell-Giant mode
+    const cellGiantMode = useCellGiant === true ||
+      (useCellGiant === 'auto' && this.shouldUseCellGiant(message));
+
+    const endpoint = cellGiantMode
+      ? '/api/agentic-rag/stream/cell-giant'
+      : '/api/agentic-rag/stream';
+
+    console.log('ChatApi: sendMessageStreaming called', {
+      correlationId,
+      timeoutMs,
+      idleTimeoutMs,
+      maxTotalTimeMs,
+      cellGiantMode,
+      endpoint
+    });
     const controller = new AbortController();
     let timedOut = false;
     let userCancelled = false;
@@ -169,8 +220,9 @@ export class ChatApi {
       }
 
       const baseUrl = this.client.getBaseUrl();
-      console.log('ChatApi: about to fetch', { baseUrl, url: `${baseUrl}/api/agentic-rag/stream` });
-      const response = await fetch(`${baseUrl}/api/agentic-rag/stream`, {
+      const fullUrl = `${baseUrl}${endpoint}`;
+      console.log('ChatApi: about to fetch', { baseUrl, url: fullUrl, cellGiantMode });
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: streamHeaders,
         body: JSON.stringify(requestBody),
@@ -268,7 +320,65 @@ export class ChatApi {
 
             if (!isRecord(data) || typeof data.type !== 'string') continue;
 
-            if (data.type === 'token') {
+            // Handle Cell-Giant reasoning events (Rich)
+            if (data.type === 'reasoning_step') {
+              resetIdleTimeout();
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                typeof data.data.phase === 'string' &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({
+                  type: 'reasoning_step',
+                  data: {
+                    phase: data.data.phase as string,
+                    status: (data.data.status as string) || 'in_progress',
+                    message: (data.data.message as string) || '',
+                    description: data.data.description as string | undefined,
+                    details: data.data.details as Record<string, unknown> | undefined,
+                  },
+                  timestamp: new Date(),
+                });
+              }
+            } else if (data.type === 'phase') {
+              // Reset idle timeout on phase update
+              resetIdleTimeout();
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                typeof data.data.name === 'string' &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({ 
+                  type: 'phase', 
+                  data: { 
+                    name: data.data.name as string, 
+                    status: (data.data.status as string) || 'started' 
+                  }, 
+                  timestamp: new Date() 
+                });
+              }
+            } else if (data.type === 'keepalive') {
+              // Reset idle timeout on keepalive - this keeps connection alive during long operations
+              resetIdleTimeout();
+              // Optionally notify about progress
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                const phase = (data.data.phase as string) || 'processing';
+                const elapsed = (data.data.elapsed as number) || 0;
+                // Only show status for longer operations (after 20s)
+                if (elapsed >= 20) {
+                  onStep({ type: 'status', data: `⏳ Still ${phase}... (${elapsed}s)`, timestamp: new Date() });
+                }
+              }
+            } else if (data.type === 'token') {
               const text =
                 (typeof data.content === 'string' && data.content) ||
                 (typeof data.data === 'string' && data.data) ||

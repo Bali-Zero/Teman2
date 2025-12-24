@@ -5,7 +5,7 @@ Tests correlation ID generation and trace storage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI, Request
@@ -284,4 +284,3 @@ class TestAddStep:
         # Should not fail silently
         trace = RequestTracingMiddleware.get_trace("non-existent-id")
         assert trace is None
-

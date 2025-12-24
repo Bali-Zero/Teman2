@@ -10,10 +10,12 @@ from app.modules.knowledge.router import router as knowledge_router
 from app.routers import (
     agentic_rag,
     agents,
+    analytics,
     auth,
     autonomous_agents,
     collective_memory,
     conversations,
+    crm_auto,
     crm_clients,
     crm_interactions,
     crm_practices,
@@ -27,6 +29,7 @@ from app.routers import (
     intel,
     legal_ingest,
     media,
+    nusantara_health,
     oracle_ingest,
     oracle_universal,
     performance,
@@ -53,6 +56,7 @@ def include_routers(api: FastAPI) -> None:
     # Core routers
     api.include_router(auth.router)
     api.include_router(health.router)
+    api.include_router(nusantara_health.router)  # Admin-only archipelago health map
     api.include_router(handlers.router)
 
     # Debug router (dev/staging always, production only if ADMIN_API_KEY is set)
@@ -80,6 +84,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_interactions.router)
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
+    api.include_router(crm_auto.router)
 
     # Ingestion routers
     api.include_router(ingest.router)
@@ -109,3 +114,6 @@ def include_routers(api: FastAPI) -> None:
     from app.routers import image_generation
 
     api.include_router(image_generation.router)
+
+    # Analytics router (Founder-only dashboard)
+    api.include_router(analytics.router)

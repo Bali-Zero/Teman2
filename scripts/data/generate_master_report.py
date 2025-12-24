@@ -14,8 +14,8 @@ HEADERS = {"api-key": QDRANT_API_KEY, "Content-Type": "application/json"}
 
 TARGETS = ["legal_unified", "visa_oracle", "tax_genius", "kbli_unified"]
 
-# Keep repo root clean: generated reports belong in docs/.
-OUTPUT_FILE = "docs/reports/PROJECT_DATA_INVENTORY.md"
+# Keep repo root clean: generated reports live outside the repo.
+OUTPUT_FILE = "/Users/antonellosiano/Desktop/Archive/reports/PROJECT_DATA_INVENTORY.md"
 
 
 def get_top_keywords(texts, n=10):

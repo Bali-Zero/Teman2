@@ -30,8 +30,12 @@ nuzantara/
 
 - **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
 - **Backend**: Python 3.11+, FastAPI, PostgreSQL, Redis, Qdrant
-- **AI Providers**: OpenAI, Anthropic, Google Gemini (Flash 2.0/Pro 1.5), ZeroEntropy
-- **Deployment**: Docker, Fly.io
+- **AI Providers**:
+  - OpenAI (GPT-4o, text-embedding-3-small)
+  - Anthropic (Claude 3.5 Sonnet)
+  - Google Gemini via `google-genai` SDK v1.56+ (Flash 2.0, Pro 1.5)
+  - ZeroEntropy (zerank-2 reranking)
+- **Deployment**: Docker, Fly.io (Singapore region)
 - **Database**: PostgreSQL, Redis, Qdrant Vector DB
 
 ### 🚀 Ultra Hybrid Features (v5.4)
@@ -140,18 +144,17 @@ Nuzantara usa un **workflow completamente locale**:
 3. **Build Test**: Verifica build Docker localmente prima di deploy
 4. **Deployment Manuale**: Deploy su Fly.io usando gli script helper
 
-**Workflow Completo**: Vedi [docs/WORKFLOW.md](docs/WORKFLOW.md) per la guida dettagliata.
+**Workflow Completo**: Vedi [docs/AI_ONBOARDING.md](docs/AI_ONBOARDING.md) per standards e procedure.
 
 **Nota**: Nessun deploy automatico. Il CI (se usato) esegue solo gate di sicurezza/verifica; il deploy resta manuale.
 
 ## 📚 Documentation
 
-- [**Development Workflow**](docs/WORKFLOW.md) - **Start Here - Complete development workflow**
-- [**Production Usage Guide**](docs/PRODUCTION_USAGE_GUIDE.md) - API & Deploy info
-- [Backend Essentials](docs/BACKEND_ESSENTIALS.py) - Core configuration reference
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [Agentic RAG System](docs/AGENT_ARCHITECTURE.md)
-- [Deployment Guide](docs/DEPLOY_SETUP.md)
+- [**AI Onboarding**](docs/AI_ONBOARDING.md) - **Start Here - System overview and standards**
+- [**Living Architecture**](docs/LIVING_ARCHITECTURE.md) - Auto-generated API & module reference
+- [**System Map 4D**](docs/SYSTEM_MAP_4D.md) - Space, Time, Logic, Scale dimensions
+- [**System Overview**](docs/SYSTEM_OVERVIEW.md) - Quick stats and endpoint summary
+- [**Deploy Checklist**](docs/operations/DEPLOY_CHECKLIST.md) - Deployment procedures
 
 ### 🦟 Flyctl Management (Crucial)
 
@@ -193,16 +196,14 @@ python3 apps/core/scribe_frontend.py
 
 ## 📊 Knowledge Base
 
-The platform uses **Qdrant Vector Database** with **25,458+ documents** across 8 collections:
+The platform uses **Qdrant Vector Database** with **53,757+ documents** across 4 main collections:
 
-- **Visa & Immigration**: 1,612 documents (`visa_oracle`)
 - **Business Codes (KBLI)**: 8,886 documents (`kbli_unified`)
-- **Tax Regulations**: 895 documents (`tax_genius`)
 - **Legal Framework**: 5,041 documents (`legal_unified`)
-- **General Knowledge**: 8,923 documents (`knowledge_base`)
-- **Team Profiles**: 43 documents (`bali_zero_team`)
-- **Pricing**: 29 documents (`bali_zero_pricing`)
-- **Property**: 29 documents (`property_unified`)
+- **Visa & Immigration**: 1,612 documents (`visa_oracle`)
+- **Tax Regulations**: 895 documents (`tax_genius`)
+- **General Knowledge Base**: 37,272+ documents (`knowledge_base`, `zantara_books`)
+- **Team & Pricing**: 51 documents (`bali_zero_team`, `bali_zero_pricing`)
 
 All documents use **OpenAI embeddings** (1536-dim) for semantic search. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md#3-qdrant-vector-database-structure) for detailed structure.
 

@@ -127,4 +127,3 @@ def set_span_status(status: str, description: str | None = None) -> None:
                 span.set_status(Status(StatusCode.OK, description))
     except Exception as e:
         logger.debug(f"Failed to set span status: {e}")
-

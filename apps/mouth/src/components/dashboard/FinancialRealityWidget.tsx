@@ -12,7 +12,7 @@ interface FinancialRealityWidgetProps {
   growth: number;
 }
 
-export function FinancialRealityWidget({ revenue, growth }: FinancialRealityWidgetProps) {
+export function FinancialRealityWidget({ revenue, growth }: Readonly<FinancialRealityWidgetProps>) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -30,6 +30,7 @@ export function FinancialRealityWidget({ revenue, growth }: FinancialRealityWidg
   const isPositiveGrowth = growth >= 0;
   const paidPercentage =
     revenue.total_revenue > 0 ? (revenue.paid_revenue / revenue.total_revenue) * 100 : 0;
+  const progressWidthPercent = Math.min(paidPercentage, 100);
 
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
@@ -72,10 +73,10 @@ export function FinancialRealityWidget({ revenue, growth }: FinancialRealityWidg
               {formatCurrency(revenue.paid_revenue)}
             </span>
           </div>
-          <div className="w-full bg-white/10 rounded-full h-1.5">
+          <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden relative">
             <div
-              className="bg-green-500 h-1.5 rounded-full transition-all"
-              style={{ width: `${Math.min(paidPercentage, 100)}%` }}
+              className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all pointer-events-none progress-bar-fill"
+              data-width={`${progressWidthPercent}%`}
             />
           </div>
           <p className="text-xs text-white/60 mt-1">{paidPercentage.toFixed(1)}% collected</p>

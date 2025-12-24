@@ -100,6 +100,41 @@ export interface RenewalAlert {
   status: string;
 }
 
+export interface AutoCRMStats {
+  total_extractions: number;
+  successful_extractions: number;
+  failed_extractions: number;
+  clients_created: number;
+  clients_updated: number;
+  practices_created: number;
+  last_24h: {
+    extractions: number;
+    clients: number;
+    practices: number;
+  };
+  last_7d: {
+    extractions: number;
+    clients: number;
+    practices: number;
+  };
+  extraction_confidence_avg: number | null;
+  top_practice_types: Array<{
+    code: string;
+    name: string;
+    count: number;
+  }>;
+  recent_extractions: Array<{
+    id: number;
+    client_id: number | null;
+    practice_id: number | null;
+    summary: string | null;
+    sentiment: string | null;
+    created_at: string | null;
+    client_name: string | null;
+    practice_type_code: string | null;
+  }>;
+}
+
 export interface CreatePracticeParams {
   client_id?: number; // Optional if creating simultaneous, but usually required
   title: string;

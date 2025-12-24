@@ -61,7 +61,7 @@ class {self.module_name.title()}Base(SQLModel):
 class {self.module_name.title()}({self.module_name.title()}Base, table=True):
     """{self.module_name.title()} database model"""
     __tablename__ = "{self.module_name}s"
-    
+
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default=None)
@@ -72,7 +72,7 @@ class {self.module_name.title()}({self.module_name.title()}Base, table=True):
         module = self.module_name
         Module = self.module_name.title()
         module_id_var = f"{module}_id"
-        
+
         return f'''"""
 {Module} Service
 Business logic for {module} module
@@ -96,13 +96,13 @@ class {Module}Service:
     async def create(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Create a new {module}
-        
+
         Args:
             data: {module} data
-            
+
         Returns:
             Created {module} data
-            
+
         Raises:
             ValueError: If data is invalid
         """
@@ -117,10 +117,10 @@ class {Module}Service:
     async def get_by_id(self, {module_id_var}: int) -> Optional[dict[str, Any]]:
         """
         Get {module} by ID
-        
+
         Args:
             {module_id_var}: {Module} ID
-            
+
         Returns:
             {Module} data or None
         """
@@ -135,11 +135,11 @@ class {Module}Service:
     async def update(self, {module_id_var}: int, data: dict[str, Any]) -> dict[str, Any]:
         """
         Update {module}
-        
+
         Args:
             {module_id_var}: {Module} ID
             data: Update data
-            
+
         Returns:
             Updated {module} data
         """
@@ -154,10 +154,10 @@ class {Module}Service:
     async def delete(self, {module_id_var}: int) -> bool:
         """
         Delete {module}
-        
+
         Args:
             {module_id_var}: {Module} ID
-            
+
         Returns:
             True if deleted
         """
@@ -176,7 +176,7 @@ class {Module}Service:
         Module = self.module_name.title()
         module_id_var = f"{module}_id"
         route_param = f"{{{module_id_var}}}"
-        
+
         template = '''"""
 {Module} Router
 API endpoints for {module} module
@@ -210,11 +210,11 @@ async def create_{module}(
 ) -> dict[str, Any]:
     """
     Create a new {module}
-    
+
     Args:
         data: {Module} data
         service: {Module}Service instance
-        
+
     Returns:
         Created {module} data
     """
@@ -238,11 +238,11 @@ async def get_{module}(
 ) -> dict[str, Any]:
     """
     Get {module} by ID
-    
+
     Args:
         {module_id_var}: {Module} ID
         service: {Module}Service instance
-        
+
     Returns:
         {Module} data
     """
@@ -272,12 +272,12 @@ async def update_{module}(
 ) -> dict[str, Any]:
     """
     Update {module}
-    
+
     Args:
         {module_id_var}: {Module} ID
         data: Update data
         service: {Module}Service instance
-        
+
     Returns:
         Updated {module} data
     """
@@ -301,11 +301,11 @@ async def delete_{module}(
 ) -> dict[str, Any]:
     """
     Delete {module}
-    
+
     Args:
         {module_id_var}: {Module} ID
         service: {Module}Service instance
-        
+
     Returns:
         Deletion status
     """
@@ -319,8 +319,10 @@ async def delete_{module}(
             detail="Internal server error",
         )
 '''
-        
-        return template.format(module=module, Module=Module, module_id_var=module_id_var, route_param=route_param)
+
+        return template.format(
+            module=module, Module=Module, module_id_var=module_id_var, route_param=route_param
+        )
 
     def generate_test_files(self) -> dict[str, str]:
         """Generate test files"""
@@ -465,7 +467,7 @@ class Test{self.module_name.title()}Router:
 
             response = client.get("/api/{self.module_name}/999")
             assert response.status_code == 404
-'''
+''',
         }
 
     def generate(self) -> None:
@@ -493,7 +495,7 @@ class Test{self.module_name.title()}Router:
         logger.info("   2. Implement service methods")
         logger.info("   3. Complete test implementations")
         logger.info("   4. Register router in main_cloud.py")
-        logger.info("   5. Run tests: pytest tests/modules/{}/".format(self.module_name))
+        logger.info(f"   5. Run tests: pytest tests/modules/{self.module_name}/")
 
 
 def main():
@@ -511,4 +513,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

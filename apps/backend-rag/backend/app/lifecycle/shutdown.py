@@ -68,4 +68,3 @@ def register_shutdown_handlers(app: FastAPI) -> None:
         logger.info("✅ HTTP clients closed")
 
         logger.info("✅ ZANTARA shutdown complete")
-

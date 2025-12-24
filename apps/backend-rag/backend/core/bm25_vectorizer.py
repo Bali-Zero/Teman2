@@ -14,19 +14,102 @@ logger = logging.getLogger(__name__)
 
 # Indonesian stopwords (common words to filter out)
 INDONESIAN_STOPWORDS = {
-    "dan", "di", "ke", "dari", "yang", "untuk", "pada", "dengan", "ini", "itu",
-    "adalah", "atau", "juga", "tidak", "akan", "telah", "sudah", "dapat", "bisa",
-    "ada", "serta", "oleh", "sebagai", "dalam", "tersebut", "bahwa", "antara",
-    "kepada", "karena", "secara", "melalui", "tentang", "atas", "bagi", "seperti",
-    "namun", "tetapi", "sedangkan", "maupun", "baik", "sesuai", "berdasarkan",
-    "terhadap", "hingga", "sampai", "sejak", "selama", "setelah", "sebelum",
-    "apabila", "jika", "bila", "maka", "yaitu", "yakni", "dimana", "sehingga",
-    "walaupun", "meskipun", "agar", "supaya", "tanpa", "hanya", "saja", "pun",
-    "lain", "sama", "hal", "cara", "pihak", "masa", "waktu", "saat", "kali",
+    "dan",
+    "di",
+    "ke",
+    "dari",
+    "yang",
+    "untuk",
+    "pada",
+    "dengan",
+    "ini",
+    "itu",
+    "adalah",
+    "atau",
+    "juga",
+    "tidak",
+    "akan",
+    "telah",
+    "sudah",
+    "dapat",
+    "bisa",
+    "ada",
+    "serta",
+    "oleh",
+    "sebagai",
+    "dalam",
+    "tersebut",
+    "bahwa",
+    "antara",
+    "kepada",
+    "karena",
+    "secara",
+    "melalui",
+    "tentang",
+    "atas",
+    "bagi",
+    "seperti",
+    "namun",
+    "tetapi",
+    "sedangkan",
+    "maupun",
+    "baik",
+    "sesuai",
+    "berdasarkan",
+    "terhadap",
+    "hingga",
+    "sampai",
+    "sejak",
+    "selama",
+    "setelah",
+    "sebelum",
+    "apabila",
+    "jika",
+    "bila",
+    "maka",
+    "yaitu",
+    "yakni",
+    "dimana",
+    "sehingga",
+    "walaupun",
+    "meskipun",
+    "agar",
+    "supaya",
+    "tanpa",
+    "hanya",
+    "saja",
+    "pun",
+    "lain",
+    "sama",
+    "hal",
+    "cara",
+    "pihak",
+    "masa",
+    "waktu",
+    "saat",
+    "kali",
     # Common legal terms that appear everywhere
-    "pasal", "ayat", "huruf", "angka", "butir", "nomor", "tahun", "tentang",
-    "peraturan", "undang", "pemerintah", "menteri", "presiden", "republik",
-    "indonesia", "negara", "daerah", "pusat", "provinsi", "kabupaten", "kota",
+    "pasal",
+    "ayat",
+    "huruf",
+    "angka",
+    "butir",
+    "nomor",
+    "tahun",
+    "tentang",
+    "peraturan",
+    "undang",
+    "pemerintah",
+    "menteri",
+    "presiden",
+    "republik",
+    "indonesia",
+    "negara",
+    "daerah",
+    "pusat",
+    "provinsi",
+    "kabupaten",
+    "kota",
 }
 
 
@@ -63,9 +146,7 @@ class BM25Vectorizer:
         self.max_token_length = max_token_length
         self.avg_doc_length = 500  # Default average, can be updated
 
-        logger.info(
-            f"BM25Vectorizer initialized: vocab_size={vocab_size}, k1={k1}, b={b}"
-        )
+        logger.info(f"BM25Vectorizer initialized: vocab_size={vocab_size}, k1={k1}, b={b}")
 
     def tokenize(self, text: str) -> list[str]:
         """
@@ -91,12 +172,12 @@ class BM25Vectorizer:
 
         # Preserve important patterns before cleaning
         # Keep KBLI codes, legal references intact
-        text = re.sub(r'kbli\s*(\d+)', r'kbli_\1', text)  # KBLI 56101 -> kbli_56101
-        text = re.sub(r'uu\s*no\.?\s*(\d+)', r'uu_\1', text)  # UU No. 6 -> uu_6
-        text = re.sub(r'pp\s*no\.?\s*(\d+)', r'pp_\1', text)  # PP No. 28 -> pp_28
+        text = re.sub(r"kbli\s*(\d+)", r"kbli_\1", text)  # KBLI 56101 -> kbli_56101
+        text = re.sub(r"uu\s*no\.?\s*(\d+)", r"uu_\1", text)  # UU No. 6 -> uu_6
+        text = re.sub(r"pp\s*no\.?\s*(\d+)", r"pp_\1", text)  # PP No. 28 -> pp_28
 
         # Remove punctuation except underscores (preserving our patterns)
-        text = re.sub(r'[^\w\s_]', ' ', text)
+        text = re.sub(r"[^\w\s_]", " ", text)
 
         # Split on whitespace
         tokens = text.split()
@@ -240,9 +321,7 @@ class BM25Vectorizer:
 
         return {"indices": indices, "values": values}
 
-    def generate_batch_sparse_vectors(
-        self, texts: list[str]
-    ) -> list[dict[str, Any]]:
+    def generate_batch_sparse_vectors(self, texts: list[str]) -> list[dict[str, Any]]:
         """
         Generate sparse vectors for a batch of texts.
 

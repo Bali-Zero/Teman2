@@ -1,16 +1,33 @@
 import os
+import sys
+from google import genai
 
-import google.generativeai as genai
-from dotenv import load_dotenv
+# PULIZIA ENV
+if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
+    del os.environ["GOOGLE_APPLICATION_CREDENTIALS"]
+if "GOOGLE_CREDENTIALS_JSON" in os.environ:
+    del os.environ["GOOGLE_CREDENTIALS_JSON"]
 
-load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "../.env")))
+def list_vertex_models():
+    print(f"🔍 Scouting Modelli su Vertex AI (Project: nuzantara)...")
+    try:
+        # Usiamo ADC
+        client = genai.Client(vertexai=True, project="nuzantara", location="us-central1")
+        
+        models = client.models.list()
+        print("\nModelli trovati:")
+        found = False
+        for m in models:
+            # Stampiamo solo quelli che sembrano Gemini
+            if "gemini" in m.name.lower():
+                print(f"- Nome: {m.name} | Modello: {m.base_model_id}")
+                found = True
+        
+        if not found:
+            print("❌ Nessun modello Gemini trovato. Probabilmente l'API 'aiplatform.googleapis.com' non è abilitata o non hai i permessi.")
+            
+    except Exception as e:
+        print(f"❌ Errore durante la list: {e}")
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
-print("Listing available models...")
-try:
-    for m in genai.list_models():
-        if "generateContent" in m.supported_generation_methods:
-            print(m.name)
-except Exception as e:
-    print(f"Error: {e}")
+if __name__ == "__main__":
+    list_vertex_models()

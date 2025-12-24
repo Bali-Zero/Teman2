@@ -482,12 +482,3 @@ class TestRedisListener:
                 # Should not raise
                 await redis_listener()
 
-
-
-
-
-
-
-
-
-

@@ -141,7 +141,7 @@ class OpenRouterClient:
         tier: ModelTier | None = None,
         model_id: str | None = None,
         temperature: float = 0.7,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
         tools: list[dict] | None = None,
         **kwargs,
     ) -> CompletionResult:
@@ -222,7 +222,7 @@ class OpenRouterClient:
         tier: ModelTier | None = None,
         model_id: str | None = None,
         temperature: float = 0.7,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
         **kwargs,
     ) -> AsyncGenerator[str, None]:
         """

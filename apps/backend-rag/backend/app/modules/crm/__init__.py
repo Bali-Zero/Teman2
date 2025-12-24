@@ -7,12 +7,3 @@ from .models import Client, Interaction, Practice, PracticeType
 
 __all__ = ["Client", "Practice", "PracticeType", "Interaction"]
 
-
-
-
-
-
-
-
-
-

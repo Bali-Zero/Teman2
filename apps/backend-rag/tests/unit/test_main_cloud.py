@@ -47,7 +47,7 @@ async def test_app_startup():
     """Test application startup and service initialization."""
     # Import here to avoid import-time env validation issues
     from app.setup.service_initializer import initialize_services
-    
+
     with patch("app.setup.service_initializer.service_registry") as mock_registry:
         with patch("app.setup.service_initializer.ZantaraAIClient") as MockAI:
             with patch("app.setup.service_initializer.SearchService") as MockSearch:

@@ -87,7 +87,9 @@ class LegalIngestionService:
             Dictionary with ingestion results
         """
         try:
-            logger.info(f"Starting legal document ingestion: {file_path} (Category: {category or 'None'})")
+            logger.info(
+                f"Starting legal document ingestion: {file_path} (Category: {category or 'None'})"
+            )
 
             # Override collection if specified
             if collection_name:
@@ -157,14 +159,16 @@ class LegalIngestionService:
                     logger.warning(f"Vertex AI fallback failed: {e}")
 
             if not metadata or metadata.get("type_abbrev") == "UNKNOWN":
-                logger.warning("Could not extract metadata (Pattern + AI failed), using category fallback")
-                
+                logger.warning(
+                    "Could not extract metadata (Pattern + AI failed), using category fallback"
+                )
+
                 # Use category as fallback for type_abbrev if possible
                 fallback_type = "DOC"
                 if category:
                     # e.g. "01_immigrazione" -> "IMMIGRAZIONE"
                     fallback_type = category.split("_")[-1].upper()
-                
+
                 if not metadata:
                     metadata = {
                         "type": "UNKNOWN",

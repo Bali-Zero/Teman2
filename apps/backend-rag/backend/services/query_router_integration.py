@@ -150,13 +150,3 @@ class QueryRouterIntegration:
                 "confidence": 1.0,
                 "is_pricing": False,
             }
-
-
-
-
-
-
-
-
-
-

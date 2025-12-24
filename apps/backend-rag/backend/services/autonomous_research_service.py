@@ -380,7 +380,7 @@ Format:
                 message=prompt,
                 user_id="autonomous_research",
                 conversation_history=[],
-                max_tokens=1000,
+                max_tokens=8192,
             )
 
             synthesis = response.get("text", "")

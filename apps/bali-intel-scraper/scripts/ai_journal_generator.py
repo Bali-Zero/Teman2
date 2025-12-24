@@ -192,7 +192,7 @@ class AIJournalGenerator:
 
             response = self.anthropic_client.messages.create(
                 model="claude-3-5-haiku-20241022",
-                max_tokens=2000,
+                max_tokens=8192,
                 temperature=0.7,
                 messages=[{"role": "user", "content": prompt}],
             )
@@ -300,7 +300,7 @@ Respond ONLY with this exact JSON format (no markdown, no extra text):
                     "should_process": True,
                     "relevance_score": 5,
                     "reason": "No filter available",
-                    "category_match": True
+                    "category_match": True,
                 }
 
             # Use Gemini Flash for quick cheap check
@@ -309,15 +309,15 @@ Respond ONLY with this exact JSON format (no markdown, no extra text):
                 generation_config={
                     "temperature": 0.1,  # Low temp for consistent filtering
                     "max_output_tokens": 200,
-                }
+                },
             )
 
             # Parse JSON response
             response_text = response.text.strip()
 
             # Remove markdown code blocks if present
-            response_text = re.sub(r'```json\n?', '', response_text)
-            response_text = re.sub(r'```\n?', '', response_text)
+            response_text = re.sub(r"```json\n?", "", response_text)
+            response_text = re.sub(r"```\n?", "", response_text)
             response_text = response_text.strip()
 
             result = json.loads(response_text)
@@ -329,7 +329,7 @@ Respond ONLY with this exact JSON format (no markdown, no extra text):
 
             # Threshold: relevance_score >= 6 to process
             threshold = 6
-            if result['relevance_score'] < threshold:
+            if result["relevance_score"] < threshold:
                 logger.info(
                     f"❌ FILTERED OUT: {raw_file.name} "
                     f"(score: {result['relevance_score']}/10) - {result['reason']}"
@@ -350,7 +350,7 @@ Respond ONLY with this exact JSON format (no markdown, no extra text):
                 "should_process": True,
                 "relevance_score": 5,
                 "reason": f"Filter error: {str(e)[:50]}",
-                "category_match": True
+                "category_match": True,
             }
 
     def _build_journal_prompt(self, content: str, category: str, metadata: Dict) -> str:
@@ -417,7 +417,9 @@ Transform the following scraped content into a professional, actionable journal 
 - Output ONLY the formatted article, no preamble
 """
 
-    def generate_article(self, raw_file: Path, output_dir: Path, skip_filter: bool = False) -> Dict[str, Any]:
+    def generate_article(
+        self, raw_file: Path, output_dir: Path, skip_filter: bool = False
+    ) -> Dict[str, Any]:
         """
         Generate journal article from raw scraped content
         Uses 3-tier fallback: Llama → Gemini → Haiku
@@ -432,12 +434,12 @@ Transform the following scraped content into a professional, actionable journal 
         if not skip_filter:
             filter_result = self.should_process_article(raw_file)
 
-            if not filter_result['should_process']:
+            if not filter_result["should_process"]:
                 return {
                     "success": False,
                     "reason": "filtered_out",
                     "filter_result": filter_result,
-                    "cost_usd": 0.0
+                    "cost_usd": 0.0,
                 }
 
         # Read raw file

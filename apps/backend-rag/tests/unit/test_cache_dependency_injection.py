@@ -240,12 +240,3 @@ def test_memory_cache_stats_per_instance():
     # They should be separate instances
     assert cache1 is not cache2
 
-
-
-
-
-
-
-
-
-

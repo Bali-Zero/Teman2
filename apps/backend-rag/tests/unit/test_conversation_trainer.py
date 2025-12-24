@@ -104,7 +104,9 @@ class TestConversationTrainer:
             # Verify DB was queried correctly (should use v_rated_conversations view)
             mock_conn.fetch.assert_called_once()
             args = mock_conn.fetch.call_args
-            assert "v_rated_conversations" in args[0][0] or "FROM v_rated_conversations" in args[0][0]
+            assert (
+                "v_rated_conversations" in args[0][0] or "FROM v_rated_conversations" in args[0][0]
+            )
             assert "rating >=" in args[0][0]
 
             # Verify result

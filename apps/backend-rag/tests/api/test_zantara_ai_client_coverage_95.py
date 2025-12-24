@@ -46,12 +46,14 @@ class TestZantaraAIClient:
         """Test ZantaraAIClient initialization with API key"""
         from backend.llm.zantara_ai_client import ZantaraAIClient
 
-        with patch("backend.llm.zantara_ai_client.genai") as mock_genai:
-            mock_genai.configure = MagicMock()
-            client = ZantaraAIClient(api_key="test_key")
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+            with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_client):
+                client = ZantaraAIClient(api_key="test_key")
 
-            assert client.api_key == "test_key"
-            assert client.model == "gemini-2.5-flash"
+                assert client.api_key == "test_key"
+                assert client.model == "gemini-2.5-flash"
 
     def test_init_without_api_key_mock_mode(self):
         """Test ZantaraAIClient initialization without API key (mock mode)"""
@@ -69,34 +71,33 @@ class TestZantaraAIClient:
         """Test _get_cached_model method"""
         from backend.llm.zantara_ai_client import ZantaraAIClient
 
-        with patch("backend.llm.zantara_ai_client.genai") as mock_genai:
-            mock_model = MagicMock()
-            mock_genai.GenerativeModel = MagicMock(return_value=mock_model)
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+            with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_client):
+                client = ZantaraAIClient(api_key="test_key")
 
-            client = ZantaraAIClient(api_key="test_key")
+                model1 = client._get_cached_model("test-model", "instruction1")
+                model2 = client._get_cached_model("test-model", "instruction1")
 
-            model1 = client._get_cached_model("test-model", "instruction1")
-            model2 = client._get_cached_model("test-model", "instruction1")
-
-            # Should return same cached model
-            assert model1 == model2
+                # Should return same cached model
+                assert model1 == model2
 
     def test_get_cached_model_different_instructions(self):
         """Test _get_cached_model with different instructions"""
         from backend.llm.zantara_ai_client import ZantaraAIClient
 
-        with patch("backend.llm.zantara_ai_client.genai") as mock_genai:
-            mock_model1 = MagicMock()
-            mock_model2 = MagicMock()
-            mock_genai.GenerativeModel = MagicMock(side_effect=[mock_model1, mock_model2])
+        mock_client = MagicMock()
+        mock_client.is_available = True
+        with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+            with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_client):
+                client = ZantaraAIClient(api_key="test_key")
 
-            client = ZantaraAIClient(api_key="test_key")
+                model1 = client._get_cached_model("test-model", "instruction1")
+                model2 = client._get_cached_model("test-model", "instruction2")
 
-            model1 = client._get_cached_model("test-model", "instruction1")
-            model2 = client._get_cached_model("test-model", "instruction2")
-
-            # Should create different models for different instructions
-            assert model1 != model2
+                # Should create different models for different instructions
+                assert model1 != model2
 
     def test_get_model_info(self):
         """Test get_model_info method"""
@@ -131,7 +132,7 @@ class TestZantaraAIClient:
 
         # Should not raise
         client._validate_inputs(
-            max_tokens=1000, temperature=0.7, messages=[{"role": "user", "content": "test"}]
+            max_tokens=8192, temperature=0.7, messages=[{"role": "user", "content": "test"}]
         )
 
     def test_validate_inputs_invalid_max_tokens(self):

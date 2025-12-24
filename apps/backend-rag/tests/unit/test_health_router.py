@@ -370,46 +370,5 @@ class TestQdrantMetrics:
             assert "error" in data
 
 
-class TestDebugConfig:
-    """Tests for debug_config endpoint"""
-
-    def test_debug_config(self, client):
-        """Test debug config endpoint"""
-        with patch("app.core.config.settings") as mock_settings:
-            mock_settings.api_keys = "key1,key2,key3"
-            mock_settings.api_auth_enabled = True
-            mock_settings.jwt_secret_key = "test-secret-key-very-long"
-            mock_settings.environment = "development"
-
-            response = client.get("/health/debug/config")
-
-            assert response.status_code == 200
-            data = response.json()
-            assert data["api_keys_count"] == 3
-            assert data["api_auth_enabled"] is True
-            assert data["jwt_secret_set"] is True
-
-    def test_debug_config_no_keys(self, client):
-        """Test debug config with no API keys"""
-        with patch("app.core.config.settings") as mock_settings:
-            mock_settings.api_keys = ""
-            mock_settings.api_auth_enabled = False
-            mock_settings.jwt_secret_key = ""
-            mock_settings.environment = "test"
-
-            response = client.get("/health/debug/config")
-
-            assert response.status_code == 200
-            data = response.json()
-            assert data["api_keys_count"] == 0
-            assert data["jwt_secret_set"] is False
-
-
-
-
-
-
-
-
-
+# TestDebugConfig removed - endpoint no longer exists
 

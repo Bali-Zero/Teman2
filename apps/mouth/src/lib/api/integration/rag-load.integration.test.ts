@@ -27,6 +27,7 @@ const TEST_CREDENTIALS = {
 const baseSearchResponse: KnowledgeSearchResponse = {
   query: 'test',
   results: [],
+  total: 0,
   total_found: 0,
   user_level: 1,
   execution_time_ms: 5,

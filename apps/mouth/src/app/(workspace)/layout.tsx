@@ -81,7 +81,18 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       const loadData = async () => {
         setIsLoading(true);
         try {
-          await Promise.all([loadUserProfile(), loadClockStatus()]);
+          // Load profile first (critical), clock status can fail gracefully
+          await loadUserProfile();
+          // Load clock status with timeout - don't block if it fails
+          await Promise.race([
+            loadClockStatus(),
+            new Promise((resolve) => setTimeout(resolve, 5000)), // 5s timeout
+          ]).catch(() => {
+            // Clock status failed, but continue anyway
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('Clock status load failed or timed out, continuing anyway');
+            }
+          });
         } catch (error) {
           // If profile load fails, might be auth issue - redirect to login
           if (error instanceof Error && error.message.includes('401')) {
@@ -133,7 +144,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-[var(--foreground-muted)]">Caricamento...</p>
+          <p className="text-sm text-[var(--foreground-muted)]">Loading...</p>
         </div>
       </div>
     );

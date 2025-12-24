@@ -204,3 +204,31 @@ Deploy considerato riuscito se:
 **Deployato da**: _______________
 **Status**: ☐ Success ☐ Failed ☐ Rollback
 
+---
+
+## Recent Deployments Log
+
+### v857 - 2025-12-22 (google-genai SDK Migration + Exception Handlers Fix)
+
+**Changes**:
+- Migrated from `google-generativeai` to `google-genai` SDK
+- Fixed OpenAI/httpx compatibility (`openai>=1.57.0`)
+- Updated all GenAI mocking patterns in tests
+- **Added global exception handlers** (`exception_handlers.py`) to prevent TypeError during HTTPException serialization
+- **Fixed ImportError** in `nusantara_health.py` (changed relative import `...services` to absolute `services`)
+
+**Final Dependencies**:
+- `google-genai` 1.56.0
+- `openai` 2.14.0
+- `httpx` 0.28.1
+
+**Status**: ✅ Success
+**Health Check**: `{"status":"healthy","version":"v100-qdrant","database":{"collections":4,"total_documents":53757}}`
+**Machine Status**: 1/1 passing ✅
+**Fix Verification**:
+- ✅ No TypeError in logs (exception handlers working)
+- ✅ No ImportError in logs (nusantara_health.py fixed)
+- ✅ Health checks passing
+- ✅ Login functional
+
+

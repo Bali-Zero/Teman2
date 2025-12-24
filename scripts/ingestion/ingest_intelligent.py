@@ -403,12 +403,12 @@ async def main():
     conn = await asyncpg.connect(DB_URL)
 
     # Directories (Absolute paths to be safe)
-    base_dir = Path("/Users/antonellosiano/Desktop/nuzantara")
-    raw_laws = base_dir / "apps/scraper/data/raw_laws"
-    raw_targeted = base_dir / "apps/scraper/data/raw_laws_targeted"
-    raw_putusan = base_dir / "apps/scraper/data/raw_putusan"
-    raw_kbli = base_dir / "apps/scraper/data/raw_laws_local/Company&Licenses/kbli"
-    raw_laws_local = base_dir / "apps/scraper/data/raw_laws_local"
+    base_dir = Path("/Users/antonellosiano/Desktop/kb")
+    raw_laws = base_dir / "raw_laws"
+    raw_targeted = base_dir / "raw_laws_targeted"
+    raw_putusan = base_dir / "raw_putusan"
+    raw_kbli = base_dir / "raw_laws_local/Company&Licenses/kbli"
+    raw_laws_local = base_dir / "raw_laws_local"
 
     # --- DEDUPLICATION LOGIC ---
     unique_files = {}  # filename -> Path

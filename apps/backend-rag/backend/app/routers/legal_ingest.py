@@ -145,8 +145,7 @@ async def upload_legal_document(
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF files are supported"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are supported"
         )
 
     temp_path = None
@@ -278,6 +277,7 @@ async def get_collection_stats(collection_name: str = "legal_unified") -> dict[s
 
 class RegisterParentDocRequest(BaseModel):
     """Request to register a parent document"""
+
     id: str = Field(..., description="Unique ID for the parent document")
     document_id: str = Field(..., description="Document ID (e.g. 'training_visa_e33g')")
     doc_type: str = Field(default="training_conversation", description="Document type")
@@ -301,7 +301,9 @@ async def register_parent_document(request: RegisterParentDocRequest) -> dict[st
         Registration result
     """
     import json
+
     import asyncpg
+
     from app.core.config import settings
 
     try:
@@ -362,6 +364,7 @@ async def get_parent_documents(document_id: str) -> dict[str, Any]:
         List of BAB with metadata
     """
     import asyncpg
+
     from app.core.config import settings
 
     try:
@@ -375,22 +378,24 @@ async def get_parent_documents(document_id: str) -> dict[str, Any]:
             WHERE document_id = $1
             ORDER BY id
             """,
-            document_id
+            document_id,
         )
 
         await conn.close()
 
         results = []
         for row in rows:
-            results.append({
-                "id": row["id"],
-                "document_id": row["document_id"],
-                "type": row["type"],
-                "title": row["title"],
-                "char_count": row["char_count"],
-                "pasal_count": row["pasal_count"],
-                "created_at": str(row["created_at"]),
-            })
+            results.append(
+                {
+                    "id": row["id"],
+                    "document_id": row["document_id"],
+                    "type": row["type"],
+                    "title": row["title"],
+                    "char_count": row["char_count"],
+                    "pasal_count": row["pasal_count"],
+                    "created_at": str(row["created_at"]),
+                }
+            )
 
         return {
             "success": True,
@@ -421,6 +426,7 @@ async def get_bab_full_text(document_id: str, bab_id: str) -> dict[str, Any]:
         Full text of the BAB
     """
     import asyncpg
+
     from app.core.config import settings
 
     try:
@@ -433,7 +439,8 @@ async def get_bab_full_text(document_id: str, bab_id: str) -> dict[str, Any]:
             FROM parent_documents
             WHERE document_id = $1 AND id = $2
             """,
-            document_id, bab_id
+            document_id,
+            bab_id,
         )
 
         await conn.close()

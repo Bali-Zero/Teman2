@@ -27,7 +27,8 @@ class Migration022:
                 return True
 
             # Create indexes (IF NOT EXISTS for safety)
-            await conn.execute("""
+            await conn.execute(
+                """
                 -- Index on memory_facts.user_id for fast user lookups
                 CREATE INDEX IF NOT EXISTS idx_memory_facts_user_id
                 ON memory_facts(user_id);
@@ -47,7 +48,8 @@ class Migration022:
                 -- Composite index for conversations with timestamp ordering
                 CREATE INDEX IF NOT EXISTS idx_conversations_user_created
                 ON conversations(user_id, created_at DESC);
-            """)
+            """
+            )
 
             # Record migration
             await conn.execute(
@@ -118,6 +120,7 @@ async def run_migration():
 
     try:
         from app.core.config import settings
+
         database_url = settings.database_url
     except ImportError:
         database_url = os.getenv("DATABASE_URL")
@@ -144,4 +147,5 @@ async def run_migration():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(run_migration())

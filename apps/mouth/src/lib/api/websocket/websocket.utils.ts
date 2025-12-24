@@ -14,12 +14,13 @@ export class WebSocketUtils {
       Boolean(value) && value !== 'undefined' && value !== 'null';
     const envBase = process.env.NEXT_PUBLIC_API_URL;
     const clientBase = this.client.getBaseUrl();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://zantara.balizero.com';
     const base =
       (isUsableBase(clientBase) ? clientBase : '') ||
       (isUsableBase(envBase) ? envBase : '') ||
       (typeof window !== 'undefined' && window.location?.origin
         ? window.location.origin
-        : 'http://localhost:3000');
+        : appUrl);
     const normalizedBase = normalizeBaseUrl(base);
     const wsUrl = normalizedBase.replace('https://', 'wss://').replace('http://', 'ws://');
     return `${wsUrl}/ws`;

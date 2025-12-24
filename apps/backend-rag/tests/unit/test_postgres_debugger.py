@@ -2,14 +2,14 @@
 Unit tests for PostgreSQLDebugger utility.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.utils.postgres_debugger import (
-    PostgreSQLDebugger,
     FORBIDDEN_KEYWORDS,
     MAX_ROWS_LIMIT,
-    QUERY_TIMEOUT_SECONDS,
+    PostgreSQLDebugger,
 )
 
 
@@ -53,7 +53,8 @@ class TestPostgreSQLDebugger:
         debugger = PostgreSQLDebugger(database_url="postgresql://test:test@localhost/test")
 
         with patch(
-            "app.utils.postgres_debugger.asyncpg.connect", side_effect=Exception("Connection failed")
+            "app.utils.postgres_debugger.asyncpg.connect",
+            side_effect=Exception("Connection failed"),
         ):
             conn_info = await debugger.test_connection()
 
@@ -141,7 +142,9 @@ class TestPostgreSQLDebugger:
         """Test that queries with multiple statements are rejected."""
         debugger = PostgreSQLDebugger()
         # Use a query that has multiple semicolons (more than 1)
-        is_valid, error = debugger.validate_query("SELECT * FROM users; SELECT * FROM posts; SELECT * FROM comments")
+        is_valid, error = debugger.validate_query(
+            "SELECT * FROM users; SELECT * FROM posts; SELECT * FROM comments"
+        )
         assert is_valid is False
         assert "Multiple statements" in error or "forbidden" in error.lower()
 
@@ -251,11 +254,15 @@ class TestPostgreSQLDebugger:
         debugger = PostgreSQLDebugger(database_url="postgresql://test:test@localhost/test")
 
         mock_row1 = MagicMock()
-        mock_row1.__getitem__ = MagicMock(side_effect=lambda k: {"table_name": "users", "table_type": "BASE TABLE"}[k])
+        mock_row1.__getitem__ = MagicMock(
+            side_effect=lambda k: {"table_name": "users", "table_type": "BASE TABLE"}[k]
+        )
         mock_row1.keys = MagicMock(return_value=["table_name", "table_type"])
 
         mock_row2 = MagicMock()
-        mock_row2.__getitem__ = MagicMock(side_effect=lambda k: {"table_name": "posts", "table_type": "BASE TABLE"}[k])
+        mock_row2.__getitem__ = MagicMock(
+            side_effect=lambda k: {"table_name": "posts", "table_type": "BASE TABLE"}[k]
+        )
         mock_row2.keys = MagicMock(return_value=["table_name", "table_type"])
 
         mock_conn = AsyncMock()
@@ -288,21 +295,41 @@ class TestPostgreSQLDebugger:
                 "numeric_scale": None,
             }[k]
         )
-        mock_col_row.keys = MagicMock(return_value=["column_name", "data_type", "is_nullable", "column_default"])
+        mock_col_row.keys = MagicMock(
+            return_value=["column_name", "data_type", "is_nullable", "column_default"]
+        )
 
         # Mock indexes (empty)
         mock_idx_row = MagicMock()
-        mock_idx_row.__getitem__ = MagicMock(side_effect=lambda k: {"indexname": None, "indexdef": None, "column_name": None}[k])
+        mock_idx_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {"indexname": None, "indexdef": None, "column_name": None}[k]
+        )
         mock_idx_row.keys = MagicMock(return_value=["indexname", "indexdef", "column_name"])
 
         # Mock foreign keys (empty)
         mock_fk_row = MagicMock()
-        mock_fk_row.__getitem__ = MagicMock(side_effect=lambda k: {"constraint_name": None, "column_name": None, "foreign_table_name": None, "foreign_column_name": None}[k])
-        mock_fk_row.keys = MagicMock(return_value=["constraint_name", "column_name", "foreign_table_name", "foreign_column_name"])
+        mock_fk_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {
+                "constraint_name": None,
+                "column_name": None,
+                "foreign_table_name": None,
+                "foreign_column_name": None,
+            }[k]
+        )
+        mock_fk_row.keys = MagicMock(
+            return_value=[
+                "constraint_name",
+                "column_name",
+                "foreign_table_name",
+                "foreign_column_name",
+            ]
+        )
 
         # Mock constraints (empty)
         mock_constraint_row = MagicMock()
-        mock_constraint_row.__getitem__ = MagicMock(side_effect=lambda k: {"constraint_name": None, "constraint_type": None}[k])
+        mock_constraint_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {"constraint_name": None, "constraint_type": None}[k]
+        )
         mock_constraint_row.keys = MagicMock(return_value=["constraint_name", "constraint_type"])
 
         mock_conn = AsyncMock()
@@ -368,7 +395,16 @@ class TestPostgreSQLDebugger:
                 "index_count": 2,
             }[k]
         )
-        mock_stat_row.keys = MagicMock(return_value=["schemaname", "tablename", "total_size", "table_size", "indexes_size", "index_count"])
+        mock_stat_row.keys = MagicMock(
+            return_value=[
+                "schemaname",
+                "tablename",
+                "total_size",
+                "table_size",
+                "indexes_size",
+                "index_count",
+            ]
+        )
 
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(return_value=[mock_stat_row])
@@ -444,7 +480,17 @@ class TestPostgreSQLDebugger:
                 "stddev_exec_time": 20.0,
             }[k]
         )
-        mock_row.keys = MagicMock(return_value=["query", "calls", "total_exec_time", "mean_exec_time", "max_exec_time", "min_exec_time", "stddev_exec_time"])
+        mock_row.keys = MagicMock(
+            return_value=[
+                "query",
+                "calls",
+                "total_exec_time",
+                "mean_exec_time",
+                "max_exec_time",
+                "min_exec_time",
+                "stddev_exec_time",
+            ]
+        )
 
         mock_conn = AsyncMock()
         mock_conn.fetchval = AsyncMock(return_value=True)  # extension exists
@@ -479,7 +525,20 @@ class TestPostgreSQLDebugger:
                 "state_change": None,
             }[k]
         )
-        mock_row.keys = MagicMock(return_value=["locktype", "relation", "mode", "granted", "pid", "usename", "application_name", "state", "query_start", "state_change"])
+        mock_row.keys = MagicMock(
+            return_value=[
+                "locktype",
+                "relation",
+                "mode",
+                "granted",
+                "pid",
+                "usename",
+                "application_name",
+                "state",
+                "query_start",
+                "state_change",
+            ]
+        )
 
         mock_conn = AsyncMock()
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
@@ -499,11 +558,15 @@ class TestPostgreSQLDebugger:
         debugger = PostgreSQLDebugger(database_url="postgresql://test:test@localhost/test")
 
         mock_state_row = MagicMock()
-        mock_state_row.__getitem__ = MagicMock(side_effect=lambda k: {"state": "active", "count": 5}[k])
+        mock_state_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {"state": "active", "count": 5}[k]
+        )
         mock_state_row.keys = MagicMock(return_value=["state", "count"])
 
         mock_conn = AsyncMock()
-        mock_conn.fetchval = AsyncMock(side_effect=[10, 2, 3])  # total, long_running, idle_in_transaction
+        mock_conn.fetchval = AsyncMock(
+            side_effect=[10, 2, 3]
+        )  # total, long_running, idle_in_transaction
         mock_conn.fetch = AsyncMock(return_value=[mock_state_row])
         mock_conn.close = AsyncMock()
 
@@ -515,4 +578,3 @@ class TestPostgreSQLDebugger:
         assert stats["idle_in_transaction"] == 3
         assert "by_state" in stats
         mock_conn.close.assert_called_once()
-

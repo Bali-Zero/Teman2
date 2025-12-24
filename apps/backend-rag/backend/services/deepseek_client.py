@@ -65,7 +65,7 @@ class DeepSeekClient:
         messages: list[dict],
         model: str = DEFAULT_MODEL,
         temperature: float = 0.7,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
     ) -> DeepSeekResponse:
         """
         Generate completion from DeepSeek.
@@ -117,7 +117,7 @@ class DeepSeekClient:
         messages: list[dict],
         model: str = DEFAULT_MODEL,
         temperature: float = 0.7,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
     ) -> AsyncGenerator[str, None]:
         """
         Stream completion from DeepSeek.

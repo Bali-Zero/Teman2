@@ -83,12 +83,3 @@ def test_get_embedded_fallback_prompt():
     assert isinstance(prompt, str)
     assert len(prompt) > 0
 
-
-
-
-
-
-
-
-
-

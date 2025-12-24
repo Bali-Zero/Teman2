@@ -12,15 +12,14 @@ Non-critical services will log errors and continue with degraded functionality.
 import asyncio
 import json
 import logging
-from typing import Any
 
 import asyncpg
 from fastapi import FastAPI
+from llm.zantara_ai_client import ZantaraAIClient
 
 from app.core.config import settings
 from app.core.service_health import ServiceStatus, service_registry
 from app.routers.websocket import redis_listener
-from llm.zantara_ai_client import ZantaraAIClient
 from services.alert_service import AlertService
 from services.auto_crm_service import get_auto_crm_service
 from services.autonomous_research_service import AutonomousResearchService
@@ -44,7 +43,9 @@ from services.zantara_tools import ZantaraTools
 logger = logging.getLogger("zantara.backend")
 
 
-async def _init_critical_services(app: FastAPI) -> tuple[SearchService | None, ZantaraAIClient | None]:
+async def _init_critical_services(
+    app: FastAPI,
+) -> tuple[SearchService | None, ZantaraAIClient | None]:
     """
     Initialize critical services: SearchService and ZantaraAIClient.
 
@@ -177,9 +178,7 @@ async def _init_tool_stack(app: FastAPI) -> ToolExecutor:
     return tool_executor
 
 
-async def _init_rag_components(
-    app: FastAPI, search_service: SearchService | None
-) -> QueryRouter:
+async def _init_rag_components(app: FastAPI, search_service: SearchService | None) -> QueryRouter:
     """
     Initialize RAG components: CulturalRAGService and QueryRouter.
 
@@ -372,7 +371,9 @@ async def _init_crm_memory(
             app.state.auto_crm_service = auto_crm_service
 
         # Initialize Memory Service (Postgres)
-        app.state.memory_service = MemoryServicePostgres(app.state.db_pool)
+        # MemoryServicePostgres expects database_url string, not Pool object
+        from app.core.config import settings
+        app.state.memory_service = MemoryServicePostgres(settings.database_url)
         await app.state.memory_service.connect()
 
         # Initialize Conversation Service
@@ -445,10 +446,10 @@ async def _init_intelligent_router(
             db_pool=db_pool,
         )
         app.state.intelligent_router = intelligent_router
-        service_registry.register("router", ServiceStatus.HEALTHY, critical=False)
+        service_registry.register("router", ServiceStatus.HEALTHY, critical=True)
         logger.info("✅ IntelligentRouter initialized with full services")
     except Exception as e:
-        service_registry.register("router", ServiceStatus.UNAVAILABLE, error=str(e), critical=False)
+        service_registry.register("router", ServiceStatus.UNAVAILABLE, error=str(e), critical=True)
         logger.error(f"❌ Failed to initialize IntelligentRouter: {e}")
         app.state.intelligent_router = None
 
@@ -588,9 +589,11 @@ async def initialize_services(app: FastAPI) -> None:
         cultural_rag_service = CulturalRAGService(search_service=search_service)
 
     # 4. Specialized agents
-    autonomous_research_service, cross_oracle_synthesis_service, client_journey_orchestrator = (
-        await _init_specialized_agents(app, search_service, ai_client, query_router)
-    )
+    (
+        autonomous_research_service,
+        cross_oracle_synthesis_service,
+        client_journey_orchestrator,
+    ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
 
     # 5. Database services
     db_pool = await _init_database_services(app)
@@ -629,4 +632,3 @@ async def initialize_services(app: FastAPI) -> None:
     app.state.services_initialized = True
     logger.info("✅ ZANTARA Services Initialization Complete.")
     logger.info(f"📊 Service Status: {service_registry.get_status()['overall']}")
-

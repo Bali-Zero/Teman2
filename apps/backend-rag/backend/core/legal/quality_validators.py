@@ -24,10 +24,10 @@ def calculate_text_fingerprint(text: str) -> str:
         16-char hex fingerprint
     """
     # Normalize: lowercase, collapse whitespace
-    normalized = re.sub(r'\s+', ' ', text.lower().strip())
+    normalized = re.sub(r"\s+", " ", text.lower().strip())
 
     # SHA256 hash, take first 16 chars
-    fingerprint = hashlib.sha256(normalized.encode('utf-8')).hexdigest()[:16]
+    fingerprint = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
     return fingerprint
 
@@ -49,10 +49,10 @@ def detect_placeholders(text: str) -> bool:
         True if placeholders found
     """
     placeholder_patterns = [
-        r'\.\s+\.\s+\.',  # . . .
-        r'…',             # ellipsis
-        r'\[\.{3,}\]',    # [...]
-        r'_{4,}',         # ____
+        r"\.\s+\.\s+\.",  # . . .
+        r"…",  # ellipsis
+        r"\[\.{3,}\]",  # [...]
+        r"_{4,}",  # ____
     ]
 
     for pattern in placeholder_patterns:
@@ -78,7 +78,7 @@ def count_broken_words(text: str) -> int:
         Count of broken words
     """
     # Pattern: lowercase letter, optional comma/period, newline, space(s), lowercase 1-2 letter fragment
-    pattern = r'[a-z][,.]?\n\s+[a-z]{1,2}(?:\s|$)'
+    pattern = r"[a-z][,.]?\n\s+[a-z]{1,2}(?:\s|$)"
 
     matches = re.findall(pattern, text, re.IGNORECASE)
 
@@ -111,7 +111,7 @@ def calculate_ocr_quality_score(text: str) -> float:
     score -= min(0.5, broken * 0.05)
 
     # Penalty for excessive newlines (OCR often adds spurious line breaks)
-    newline_count = text.count('\n')
+    newline_count = text.count("\n")
     char_count = len(text)
     if char_count > 0:
         newline_density = newline_count / char_count
@@ -134,7 +134,7 @@ def extract_ayat_numbers(pasal_text: str) -> list[int]:
         List of ayat numbers found (may have duplicates or gaps)
     """
     # Pattern: (digit+) at line start or after newline
-    pattern = r'(?:^|\n)\s*\((\d+)\)'
+    pattern = r"(?:^|\n)\s*\((\d+)\)"
 
     matches = re.findall(pattern, pasal_text, re.MULTILINE)
 
@@ -177,7 +177,7 @@ def validate_ayat_sequence(ayat_numbers: list[int]) -> dict[str, Any]:
 
     # Check for valid sequence: [1, 2, 3, ..., N]
     expected = list(range(1, ayat_max + 1))
-    is_valid = (ayat_numbers == expected)
+    is_valid = ayat_numbers == expected
 
     # Generate error message
     error = None

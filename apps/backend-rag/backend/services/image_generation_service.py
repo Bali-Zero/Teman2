@@ -1,12 +1,13 @@
 """
 Google Imagen Service for ZANTARA
 Uses Google's Generative AI (Imagen) to generate images from text prompts.
+
+UPDATED 2025-12-23:
+- Migrated to new google-genai SDK (configuration removed, using pollinations.ai fallback)
 """
 
 import logging
 from typing import Any
-
-import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 class ImageGenerationService:
     """
     Service to generate images using Google's Generative AI.
+    Note: Currently uses pollinations.ai as fallback since Google Imagen
+    requires Vertex AI setup.
     """
 
     def __init__(self, api_key: str | None = None):
@@ -33,8 +36,8 @@ class ImageGenerationService:
                 "⚠️ GOOGLE_IMAGEN_API_KEY or GOOGLE_API_KEY not set. Image generation disabled."
             )
         else:
-            genai.configure(api_key=self.api_key)
-            logger.info("✅ ImageGenerationService initialized with Google Imagen API Key")
+            # Note: Google Imagen requires Vertex AI setup, currently using pollinations.ai fallback
+            logger.info("✅ ImageGenerationService initialized (using pollinations.ai fallback)")
 
     async def generate_image(self, prompt: str) -> dict[str, Any]:
         """

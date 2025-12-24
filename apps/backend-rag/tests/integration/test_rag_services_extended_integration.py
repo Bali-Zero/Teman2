@@ -351,20 +351,21 @@ class TestVisionRAGIntegration:
         """Test Vision RAG for PDF document processing"""
         from services.rag.vision_rag import VisionRAGService
 
+        mock_genai_client = MagicMock()
+        mock_genai_client.is_available = True
+        mock_genai_client.generate_content = AsyncMock(
+            return_value={"text": '{"type": "TABLE", "extracted_text": "KBLI 56101", "description": "Table with KBLI codes"}'}
+        )
         with (
-            patch("services.rag.vision_rag.genai") as mock_genai,
+            patch("services.rag.vision_rag.GENAI_AVAILABLE", True),
+            patch("services.rag.vision_rag.GenAIClient", return_value=mock_genai_client),
             patch("services.rag.vision_rag.settings") as mock_settings,
         ):
             mock_settings.google_api_key = "test_key"
 
-            # Mock Gemini Vision model
-            mock_model = MagicMock()
-            mock_response = MagicMock()
-            mock_response.text = '{"type": "TABLE", "extracted_text": "KBLI 56101", "description": "Table with KBLI codes"}'
-            mock_model.generate_content_async = AsyncMock(return_value=mock_response)
-            mock_genai.GenerativeModel.return_value = mock_model
-
             vision_rag = VisionRAGService()
+            vision_rag._genai_client = mock_genai_client
+            vision_rag._available = True
 
             # Mock PDF processing (skip actual file reading)
             with patch("fitz.open") as mock_fitz:
@@ -390,20 +391,21 @@ class TestVisionRAGIntegration:
         """Test Vision RAG query with visual elements"""
         from services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
 
+        mock_genai_client = MagicMock()
+        mock_genai_client.is_available = True
+        mock_genai_client.generate_content = AsyncMock(
+            return_value={"text": "The table shows KBLI code 56101 for restaurants."}
+        )
         with (
-            patch("services.rag.vision_rag.genai") as mock_genai,
+            patch("services.rag.vision_rag.GENAI_AVAILABLE", True),
+            patch("services.rag.vision_rag.GenAIClient", return_value=mock_genai_client),
             patch("services.rag.vision_rag.settings") as mock_settings,
         ):
             mock_settings.google_api_key = "test_key"
 
-            # Mock Gemini Vision model
-            mock_model = MagicMock()
-            mock_response = MagicMock()
-            mock_response.text = "The table shows KBLI code 56101 for restaurants."
-            mock_model.generate_content_async = AsyncMock(return_value=mock_response)
-            mock_genai.GenerativeModel.return_value = mock_model
-
             vision_rag = VisionRAGService()
+            vision_rag._genai_client = mock_genai_client
+            vision_rag._available = True
 
             # Create test documents with visual elements
             test_doc = MultiModalDocument(

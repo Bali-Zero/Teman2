@@ -112,12 +112,3 @@ class TestWebSocketDisconnection:
 
         assert response.status_code in [200, 426, 500, 503]
 
-
-
-
-
-
-
-
-
-

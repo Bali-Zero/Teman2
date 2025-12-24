@@ -23,6 +23,7 @@ describe('KnowledgeApi', () => {
       const mockResponse: KnowledgeSearchResponse = {
         query: 'test query',
         results: [],
+        total: 0,
         total_found: 0,
         user_level: 1,
         execution_time_ms: 100,
@@ -52,6 +53,7 @@ describe('KnowledgeApi', () => {
       const mockResponse: KnowledgeSearchResponse = {
         query: 'test query',
         results: [],
+        total: 0,
         total_found: 0,
         user_level: 1,
         execution_time_ms: 100,
@@ -73,6 +75,7 @@ describe('KnowledgeApi', () => {
       const mockResponse: KnowledgeSearchResponse = {
         query: 'test',
         results: [],
+        total: 0,
         total_found: 0,
         user_level: 1,
         execution_time_ms: 100,
@@ -94,6 +97,7 @@ describe('KnowledgeApi', () => {
       const mockResponse: KnowledgeSearchResponse = {
         query: 'test',
         results: [],
+        total: 0,
         total_found: 0,
         user_level: 1,
         execution_time_ms: 100,
@@ -115,6 +119,7 @@ describe('KnowledgeApi', () => {
       const mockResponse: KnowledgeSearchResponse = {
         query: 'test',
         results: [],
+        total: 0,
         total_found: 0,
         user_level: 1,
         execution_time_ms: 100,

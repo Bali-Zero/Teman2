@@ -7,16 +7,16 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, Body
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
-
-from app.core.config import settings
-from app.dependencies import get_current_user
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from middleware.request_tracing import (
     RequestTracingMiddleware,
     get_correlation_id,
 )
+from pydantic import BaseModel
+
+from app.core.config import settings
+from app.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +109,9 @@ async def get_request_trace(
 @router.get("/logs")
 async def get_logs(
     module: str | None = Query(None, description="Filter logs by module name"),
-    level: str | None = Query(None, description="Filter by log level (DEBUG, INFO, WARNING, ERROR)"),
+    level: str | None = Query(
+        None, description="Filter by log level (DEBUG, INFO, WARNING, ERROR)"
+    ),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of logs to return"),
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
@@ -482,22 +484,24 @@ async def get_parent_documents_public(
             WHERE document_id = $1
             ORDER BY id
             """,
-            document_id
+            document_id,
         )
 
         await conn.close()
 
         results = []
         for row in rows:
-            results.append({
-                "id": row["id"],
-                "document_id": row["document_id"],
-                "type": row["type"],
-                "title": row["title"],
-                "char_count": row["char_count"],
-                "pasal_count": row["pasal_count"],
-                "created_at": str(row["created_at"]),
-            })
+            results.append(
+                {
+                    "id": row["id"],
+                    "document_id": row["document_id"],
+                    "type": row["type"],
+                    "title": row["title"],
+                    "char_count": row["char_count"],
+                    "pasal_count": row["pasal_count"],
+                    "created_at": str(row["created_at"]),
+                }
+            )
 
         return {
             "success": True,
@@ -544,7 +548,8 @@ async def get_bab_full_text(
             FROM parent_documents
             WHERE document_id = $1 AND id = $2
             """,
-            document_id, bab_id
+            document_id,
+            bab_id,
         )
 
         await conn.close()
@@ -592,7 +597,9 @@ async def run_performance_profiling(
     from pathlib import Path
 
     # Import the profiler class
-    profiler_script_path = Path(__file__).parent.parent.parent.parent.parent / "scripts" / "performance_profiler.py"
+    profiler_script_path = (
+        Path(__file__).parent.parent.parent.parent.parent / "scripts" / "performance_profiler.py"
+    )
 
     if not profiler_script_path.exists():
         return {
@@ -607,8 +614,11 @@ async def run_performance_profiling(
         sys.path.insert(0, str(profiler_script_path.parent))
         from performance_profiler import PerformanceProfiler
 
-        # Run profiling
-        profiler = PerformanceProfiler(base_url=f"http://localhost:{settings.port}")
+        # Run profiling - use hostname from request or settings
+        # PRODUCTION: Use actual hostname instead of hardcoded localhost
+        hostname = getattr(request.app.state, "hostname", None) or settings.hostname or "localhost"
+        base_url = f"http://{hostname}:{settings.port}" if hostname != "localhost" else f"http://localhost:{settings.port}"
+        profiler = PerformanceProfiler(base_url=base_url)
         results = await profiler.run_profiling()
 
         return {
@@ -923,7 +933,8 @@ async def get_postgres_slow_queries(
             "success": True,
             "queries": queries,
             "count": len(queries),
-            "extension_available": len(queries) > 0 or True,  # Will be empty if extension not available
+            "extension_available": len(queries) > 0
+            or True,  # Will be empty if extension not available
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
@@ -1000,5 +1011,3 @@ async def sentry_test_error(
     raise ValueError(
         "🧪 TEST ERROR: This is a controlled test error for Sentry verification. If you see this in Sentry, the integration is working correctly!"
     )
-
-
