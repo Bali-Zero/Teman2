@@ -72,13 +72,36 @@ async function proxy(req: NextRequest): Promise<Response> {
 
   const upstreamStartTime = Date.now();
   try {
-    const upstream = await fetch(targetUrl, {
+    // Use redirect: 'manual' and handle redirects ourselves to preserve cookies
+    let upstream = await fetch(targetUrl, {
       method: req.method,
       headers,
       body,
       redirect: 'manual',
-      credentials: 'include', // CRITICAL: Pass httpOnly cookies to backend
+      credentials: 'include',
     });
+
+    // Handle redirects manually to preserve cookies (fetch doesn't forward cookies on redirects)
+    let redirectCount = 0;
+    const maxRedirects = 5;
+    while (upstream.status >= 300 && upstream.status < 400 && redirectCount < maxRedirects) {
+      const location = upstream.headers.get('location');
+      if (!location) break;
+
+      // Resolve relative URLs against the backend base
+      const redirectUrl = location.startsWith('http')
+        ? location.replace(/^http:/, 'https:') // Force HTTPS
+        : `${backendBase}${location.startsWith('/') ? '' : '/'}${location}`;
+
+      upstream = await fetch(redirectUrl, {
+        method: req.method === 'POST' ? 'GET' : req.method, // POST->GET on redirect
+        headers,
+        redirect: 'manual',
+        credentials: 'include',
+      });
+      redirectCount++;
+    }
+
     const upstreamDuration = Date.now() - upstreamStartTime;
 
     // Log streaming response status
@@ -94,22 +117,13 @@ async function proxy(req: NextRequest): Promise<Response> {
       console.error(`[Proxy] Error ${upstream.status} for ${req.method} ${url.pathname}`);
     }
 
-    // Forward all headers from upstream, including content-encoding
-    // The browser will handle decompression automatically
-    // Only delete transfer-encoding as it's hop-by-hop
+    // Forward headers from upstream
+    // IMPORTANT: Remove content-encoding because Node.js fetch already decompresses the body
+    // If we forward content-encoding: gzip with an already-decompressed body,
+    // the browser will try to decompress again causing ERR_CONTENT_DECODING_FAILED
     const respHeaders = new Headers(upstream.headers);
     respHeaders.delete('transfer-encoding');
-
-    // CRITICAL: Rewrite Location header for redirects to prevent Mixed Content
-    // FastAPI may return redirects with http:// URLs when behind a proxy
-    const location = respHeaders.get('location');
-    if (location && upstream.status >= 300 && upstream.status < 400) {
-      // Rewrite backend URL to proxy URL
-      const rewrittenLocation = location
-        .replace(/^https?:\/\/nuzantara-rag\.fly\.dev/, '')
-        .replace(/^https?:\/\/[^/]+\.fly\.dev/, '');
-      respHeaders.set('location', rewrittenLocation);
-    }
+    respHeaders.delete('content-encoding');
 
     return new Response(upstream.body, {
       status: upstream.status,
