@@ -45,16 +45,24 @@ def client():
 def mock_db_pool():
     pool = MagicMock()
     conn = AsyncMock()
-    transaction = AsyncMock()
+    transaction = MagicMock()
 
-    # Properly mock async context managers
-    pool.acquire = AsyncMock()
-    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
-    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+    # Create proper async context manager mocks
+    async def acquire_context():
+        return conn
     
-    conn.transaction = AsyncMock()
+    async def transaction_context():
+        return transaction
+    
+    # Mock acquire as async context manager
+    pool.acquire = MagicMock()
+    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
+    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    
+    # Mock transaction as async context manager
+    conn.transaction = MagicMock()
     conn.transaction.return_value.__aenter__ = AsyncMock(return_value=transaction)
-    conn.transaction.return_value.__aexit__ = AsyncMock(return_value=None)
+    conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
 
     return pool, conn
 
