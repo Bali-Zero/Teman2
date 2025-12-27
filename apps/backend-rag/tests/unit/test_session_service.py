@@ -29,7 +29,7 @@ class TestSessionService:
     @pytest.fixture
     def service(self, mock_redis):
         """Create SessionService instance"""
-        with patch("services.session_service.redis.from_url") as mock_from_url:
+        with patch("services.misc.session_service.redis.from_url") as mock_from_url:
             mock_from_url.return_value = mock_redis
             from services.misc.session_service import SessionService
 
@@ -39,7 +39,7 @@ class TestSessionService:
 
     def test_init_success(self, mock_redis):
         """Test successful initialization"""
-        with patch("services.session_service.redis.from_url") as mock_from_url:
+        with patch("services.misc.session_service.redis.from_url") as mock_from_url:
             mock_from_url.return_value = mock_redis
             from services.misc.session_service import SessionService
 
@@ -49,7 +49,7 @@ class TestSessionService:
 
     def test_init_failure(self):
         """Test initialization failure"""
-        with patch("services.session_service.redis.from_url") as mock_from_url:
+        with patch("services.misc.session_service.redis.from_url") as mock_from_url:
             mock_from_url.side_effect = Exception("Connection failed")
             from services.misc.session_service import SessionService
 

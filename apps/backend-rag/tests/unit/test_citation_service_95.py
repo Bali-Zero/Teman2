@@ -32,7 +32,7 @@ class TestCitationServiceInit:
 
     def test_init_without_search_service(self):
         """Test initialization without search service"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
 
@@ -42,7 +42,7 @@ class TestCitationServiceInit:
         """Test initialization with search service"""
         from unittest.mock import MagicMock
 
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         mock_search = MagicMock()
         service = CitationService(search_service=mock_search)
@@ -61,7 +61,7 @@ class TestGenerateCitations:
     @pytest.mark.asyncio
     async def test_generate_citations_empty_results(self):
         """Test generating citations from empty results"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         result = await service.generate_citations([])
@@ -71,7 +71,7 @@ class TestGenerateCitations:
     @pytest.mark.asyncio
     async def test_generate_citations_with_results(self):
         """Test generating citations from results"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         results = [
@@ -96,7 +96,7 @@ class TestCreateCitationInstructions:
 
     def test_no_sources_returns_empty(self):
         """Test no sources returns empty string"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         result = service.create_citation_instructions(sources_available=False)
@@ -105,7 +105,7 @@ class TestCreateCitationInstructions:
 
     def test_with_sources_returns_instructions(self):
         """Test with sources returns instructions"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         result = service.create_citation_instructions(sources_available=True)
@@ -125,7 +125,7 @@ class TestExtractSourcesFromRag:
 
     def test_extract_empty_list(self):
         """Test extracting from empty list"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         result = service.extract_sources_from_rag([])
@@ -134,7 +134,7 @@ class TestExtractSourcesFromRag:
 
     def test_extract_single_document(self):
         """Test extracting from single document"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         docs = [
@@ -162,7 +162,7 @@ class TestExtractSourcesFromRag:
 
     def test_extract_multiple_documents(self):
         """Test extracting from multiple documents"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         docs = [
@@ -180,7 +180,7 @@ class TestExtractSourcesFromRag:
 
     def test_extract_missing_metadata(self):
         """Test extracting with missing metadata"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         docs = [{"score": 0.75}]
@@ -195,7 +195,7 @@ class TestExtractSourcesFromRag:
 
     def test_extract_source_url_fallback(self):
         """Test source_url fallback for url"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         docs = [{"metadata": {"source_url": "https://fallback.com"}}]
@@ -206,7 +206,7 @@ class TestExtractSourcesFromRag:
 
     def test_extract_scraped_at_fallback(self):
         """Test scraped_at fallback for date"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         docs = [{"metadata": {"scraped_at": "2024-03-15"}}]
@@ -226,7 +226,7 @@ class TestFormatSourcesSection:
 
     def test_format_empty_sources(self):
         """Test formatting empty sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         result = service.format_sources_section([])
@@ -235,7 +235,7 @@ class TestFormatSourcesSection:
 
     def test_format_single_source(self):
         """Test formatting single source"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1, "title": "Test Source", "url": "", "date": ""}]
@@ -247,7 +247,7 @@ class TestFormatSourcesSection:
 
     def test_format_source_with_url(self):
         """Test formatting source with URL"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1, "title": "Test Source", "url": "https://example.com", "date": ""}]
@@ -258,7 +258,7 @@ class TestFormatSourcesSection:
 
     def test_format_source_with_date(self):
         """Test formatting source with date"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1, "title": "Test Source", "url": "", "date": "2024-01-15T10:30:00"}]
@@ -269,7 +269,7 @@ class TestFormatSourcesSection:
 
     def test_format_source_with_all_fields(self):
         """Test formatting source with all fields"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [
@@ -289,7 +289,7 @@ class TestFormatSourcesSection:
 
     def test_format_multiple_sources(self):
         """Test formatting multiple sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [
@@ -313,7 +313,7 @@ class TestInjectCitationContextIntoPrompt:
 
     def test_inject_no_sources(self):
         """Test injecting with no sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         original = "You are a helpful assistant."
@@ -324,7 +324,7 @@ class TestInjectCitationContextIntoPrompt:
 
     def test_inject_with_sources(self):
         """Test injecting with sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         original = "You are a helpful assistant."
@@ -340,7 +340,7 @@ class TestInjectCitationContextIntoPrompt:
 
     def test_inject_multiple_sources(self):
         """Test injecting with multiple sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         original = "Base prompt"
@@ -366,7 +366,7 @@ class TestValidateCitationsInResponse:
 
     def test_validate_no_citations(self):
         """Test validating response with no citations"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1}, {"id": 2}]
@@ -380,7 +380,7 @@ class TestValidateCitationsInResponse:
 
     def test_validate_valid_citations(self):
         """Test validating valid citations"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1}, {"id": 2}]
@@ -395,7 +395,7 @@ class TestValidateCitationsInResponse:
 
     def test_validate_invalid_citations(self):
         """Test validating invalid citations"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1}]
@@ -408,7 +408,7 @@ class TestValidateCitationsInResponse:
 
     def test_validate_duplicate_citations(self):
         """Test validating duplicate citations"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1}]
@@ -420,7 +420,7 @@ class TestValidateCitationsInResponse:
 
     def test_validate_empty_sources(self):
         """Test validating with empty sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
 
@@ -439,7 +439,7 @@ class TestAppendSourcesToResponse:
 
     def test_append_no_sources(self):
         """Test appending with no sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         original = "This is the response."
@@ -450,7 +450,7 @@ class TestAppendSourcesToResponse:
 
     def test_append_with_sources(self):
         """Test appending with sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         original = "This is the response."
@@ -464,7 +464,7 @@ class TestAppendSourcesToResponse:
 
     def test_append_filter_by_validation(self):
         """Test appending filters by validation result"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         original = "Response [1]"
@@ -490,7 +490,7 @@ class TestProcessResponseWithCitations:
 
     def test_process_no_rag_results(self):
         """Test processing without RAG results"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
 
@@ -502,7 +502,7 @@ class TestProcessResponseWithCitations:
 
     def test_process_with_rag_results_no_citations(self):
         """Test processing with RAG results but no citations in response"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         rag_results = [{"metadata": {"title": "Doc"}, "score": 0.8}]
@@ -517,7 +517,7 @@ class TestProcessResponseWithCitations:
 
     def test_process_with_citations_auto_append(self):
         """Test processing with citations and auto append"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         rag_results = [{"metadata": {"title": "Immigration Doc"}, "score": 0.9}]
@@ -532,7 +532,7 @@ class TestProcessResponseWithCitations:
 
     def test_process_with_auto_append_disabled(self):
         """Test processing with auto append disabled"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         rag_results = [{"metadata": {"title": "Doc"}, "score": 0.8}]
@@ -555,7 +555,7 @@ class TestCreateSourceMetadataForFrontend:
 
     def test_create_empty_sources(self):
         """Test creating metadata from empty sources"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         result = service.create_source_metadata_for_frontend([])
@@ -564,7 +564,7 @@ class TestCreateSourceMetadataForFrontend:
 
     def test_create_single_source(self):
         """Test creating metadata from single source"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [
@@ -589,7 +589,7 @@ class TestCreateSourceMetadataForFrontend:
 
     def test_create_with_missing_fields(self):
         """Test creating metadata with missing fields"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         sources = [{"id": 1}]
@@ -613,7 +613,7 @@ class TestHealthCheck:
     @pytest.mark.asyncio
     async def test_health_check_returns_healthy(self):
         """Test health check returns healthy status"""
-        from services.citation_service import CitationService
+        from services.search.citation_service import CitationService
 
         service = CitationService()
         result = await service.health_check()

@@ -16,7 +16,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.gemini_service import GeminiJakselService, gemini_jaksel
+from services.llm_clients.gemini_service import GeminiJakselService, gemini_jaksel
 
 # ============================================================================
 # Fixtures
@@ -258,7 +258,7 @@ def test_gemini_jaksel_singleton():
 
 def test_gemini_service_wrapper():
     """Test GeminiService wrapper for backward compatibility"""
-    from services.gemini_service import GeminiService
+    from services.llm_clients.gemini_service import GeminiService
 
     with patch("services.gemini_service.GeminiJakselService") as mock_jaksel:
         mock_jaksel.return_value = MagicMock()
@@ -269,7 +269,7 @@ def test_gemini_service_wrapper():
 @pytest.mark.asyncio
 async def test_gemini_service_wrapper_generate_response():
     """Test GeminiService wrapper generate_response method"""
-    from services.gemini_service import GeminiService
+    from services.llm_clients.gemini_service import GeminiService
 
     mock_jaksel = MagicMock()
     mock_jaksel.generate_response = AsyncMock(return_value="Test response")

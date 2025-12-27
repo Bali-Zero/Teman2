@@ -323,7 +323,8 @@ class ReasoningEngine:
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
         # 🔍 TRACING: Evidence score calculation
-        with trace_span("react.evidence_score", {"sources_count": len(state.sources) if hasattr(state, "sources") else 0}):
+        sources_count = len(state.sources) if hasattr(state, "sources") and state.sources is not None else 0
+        with trace_span("react.evidence_score", {"sources_count": sources_count}):
             # Calculate evidence score after ReAct loop
             sources = state.sources if hasattr(state, "sources") else None
             evidence_score = calculate_evidence_score(sources, state.context_gathered, query)

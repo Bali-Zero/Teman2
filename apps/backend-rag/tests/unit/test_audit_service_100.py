@@ -22,7 +22,7 @@ class TestAuditService:
 
     def test_init_with_database_url(self, mock_settings):
         """Test initialization with provided database URL"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService(database_url="postgresql://custom@localhost/db")
 
@@ -32,7 +32,7 @@ class TestAuditService:
 
     def test_init_from_settings(self, mock_settings):
         """Test initialization from settings"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 
@@ -41,7 +41,7 @@ class TestAuditService:
 
     def test_init_no_database_url(self):
         """Test initialization without database URL"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         with patch("services.audit_service.settings") as mock:
             mock.database_url = None
@@ -52,7 +52,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect_success(self, mock_settings):
         """Test successful database connection"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 
@@ -70,7 +70,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect_disabled(self):
         """Test connect when service is disabled"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         with patch("services.audit_service.settings") as mock:
             mock.database_url = None
@@ -83,7 +83,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect_failure(self, mock_settings):
         """Test connect handles connection failure"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 
@@ -98,7 +98,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_close_with_pool(self, mock_settings):
         """Test close with active pool"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
         mock_pool = AsyncMock()
@@ -111,7 +111,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_close_without_pool(self, mock_settings):
         """Test close without pool"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
         service.pool = None
@@ -122,7 +122,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_auth_event_success(self, mock_settings):
         """Test successful auth event logging"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
         service.enabled = True
@@ -156,7 +156,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_auth_event_disabled(self):
         """Test auth event logging when disabled"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         with patch("services.audit_service.settings") as mock:
             mock.database_url = None
@@ -168,7 +168,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_auth_event_no_pool(self, mock_settings):
         """Test auth event logging without pool"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
         service.pool = None
@@ -179,7 +179,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_auth_event_failure(self, mock_settings):
         """Test auth event logging handles database error"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 
@@ -195,7 +195,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_auth_event_minimal(self, mock_settings):
         """Test auth event logging with minimal params"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 
@@ -216,7 +216,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_system_event_success(self, mock_settings):
         """Test successful system event logging"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 
@@ -247,7 +247,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_system_event_disabled(self):
         """Test system event logging when disabled"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         with patch("services.audit_service.settings") as mock:
             mock.database_url = None
@@ -259,7 +259,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_system_event_no_pool(self, mock_settings):
         """Test system event logging without pool"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
         service.pool = None
@@ -270,7 +270,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_system_event_failure(self, mock_settings):
         """Test system event logging handles database error"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 
@@ -286,7 +286,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_system_event_minimal(self, mock_settings):
         """Test system event logging with minimal params"""
-        from services.audit_service import AuditService
+        from services.monitoring.audit_service import AuditService
 
         service = AuditService()
 

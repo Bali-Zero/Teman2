@@ -16,7 +16,7 @@ class TestAuditServiceInit:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService("postgresql://custom")
 
@@ -29,7 +29,7 @@ class TestAuditServiceInit:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://settings"
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService()
 
@@ -41,7 +41,7 @@ class TestAuditServiceInit:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService()
 
@@ -62,7 +62,7 @@ class TestConnect:
             ) as mock_pool:
                 mock_pool.return_value = MagicMock()
 
-                from services.audit_service import AuditService
+                from services.monitoring.audit_service import AuditService
 
                 service = AuditService()
                 await service.connect()
@@ -76,7 +76,7 @@ class TestConnect:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService()
             await service.connect()
@@ -94,7 +94,7 @@ class TestConnect:
             ) as mock_pool:
                 mock_pool.side_effect = Exception("Connection failed")
 
-                from services.audit_service import AuditService
+                from services.monitoring.audit_service import AuditService
 
                 service = AuditService()
                 await service.connect()
@@ -111,7 +111,7 @@ class TestClose:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService()
             service.pool = AsyncMock()
@@ -126,7 +126,7 @@ class TestClose:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService()
 
@@ -142,7 +142,7 @@ class TestLogAuthEvent:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             svc = AuditService()
             svc.pool = AsyncMock()
@@ -200,7 +200,7 @@ class TestLogAuthEvent:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService()
 
@@ -236,7 +236,7 @@ class TestLogSystemEvent:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             svc = AuditService()
             svc.pool = AsyncMock()
@@ -285,7 +285,7 @@ class TestLogSystemEvent:
         with patch("services.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
-            from services.audit_service import AuditService
+            from services.monitoring.audit_service import AuditService
 
             service = AuditService()
 

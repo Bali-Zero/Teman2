@@ -22,14 +22,14 @@ class TestGoldenRouterService:
     @pytest.fixture
     def service(self, mock_settings):
         """Create GoldenRouterService instance"""
-        from services.golden_router_service import GoldenRouterService
+        from services.routing.golden_router_service import GoldenRouterService
 
         return GoldenRouterService()
 
     @pytest.fixture
     def service_with_deps(self, mock_settings):
         """Create service with dependencies"""
-        from services.golden_router_service import GoldenRouterService
+        from services.routing.golden_router_service import GoldenRouterService
 
         mock_embeddings = MagicMock()
         mock_golden = MagicMock()

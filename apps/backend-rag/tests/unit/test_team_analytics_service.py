@@ -22,7 +22,7 @@ class TestTeamAnalyticsService:
     @pytest.fixture
     def service(self, mock_pool):
         """Create TeamAnalyticsService instance"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from services.analytics.team_analytics_service import TeamAnalyticsService
 
         return TeamAnalyticsService(mock_pool)
 

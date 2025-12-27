@@ -35,7 +35,7 @@ class TestWorkSessionService:
         with patch("app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.work_session_service import WorkSessionService
+                from services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 assert service is not None
@@ -56,7 +56,7 @@ class TestWorkSessionService:
         ):
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.work_session_service import WorkSessionService
+                from services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 await service.connect()
@@ -68,7 +68,7 @@ class TestWorkSessionService:
         with patch("app.core.config.settings") as mock_settings:
             mock_settings.database_url = None
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.work_session_service import WorkSessionService
+                from services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 await service.connect()
@@ -86,7 +86,7 @@ class TestWorkSessionService:
                 patch("pathlib.Path.exists", return_value=True),
                 patch("services.work_session_service.WorkSessionService._write_to_log"),
             ):
-                from services.work_session_service import WorkSessionService
+                from services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 service.pool = mock_db_pool
@@ -107,7 +107,7 @@ class TestWorkSessionService:
         with patch("app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.work_session_service import WorkSessionService
+                from services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 service.pool = mock_db_pool
@@ -129,7 +129,7 @@ class TestWorkSessionService:
                     patch("pathlib.Path.exists", return_value=True),
                     patch("services.work_session_service.WorkSessionService._write_to_log"),
                 ):
-                    from services.work_session_service import WorkSessionService
+                    from services.misc.work_session_service import WorkSessionService
 
                     service = WorkSessionService()
                     service.pool = mock_db_pool
@@ -148,7 +148,7 @@ class TestWorkSessionService:
             with patch("app.core.config.settings") as mock_settings:
                 mock_settings.database_url = "postgresql://test:test@localhost/test"
                 with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                    from services.work_session_service import WorkSessionService
+                    from services.misc.work_session_service import WorkSessionService
 
                     service = WorkSessionService()
                     service.pool = mock_db_pool
@@ -166,7 +166,7 @@ class TestWorkSessionService:
                 patch("pathlib.Path.exists", return_value=True),
                 patch("builtins.open", create=True) as mock_open,
             ):
-                from services.work_session_service import WorkSessionService
+                from services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 service._write_to_log("test_event", {"data": "test"})
