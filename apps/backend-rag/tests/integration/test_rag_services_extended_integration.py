@@ -234,7 +234,7 @@ class TestParentChildRetrievalIntegration:
     @pytest.mark.asyncio
     async def test_parent_child_retrieval(self, qdrant_client, db_pool):
         """Test hierarchical parent-child document retrieval"""
-        from services.search_service import SearchService
+        from services.search.search_service import SearchService
 
         with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()

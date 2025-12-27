@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.context_window_manager import ContextWindowManager
+from services.misc.context_window_manager import ContextWindowManager
 
 
 class TestContextWindowManager:

@@ -16,7 +16,7 @@ if str(backend_path) not in sys.path:
 
 from core.legal import LegalChunker, LegalCleaner, LegalMetadataExtractor, LegalStructureParser
 
-from services.legal_ingestion_service import LegalIngestionService
+from services.ingestion.legal_ingestion_service import LegalIngestionService
 
 # ============================================================================
 # Sample Legal Document Text (Indonesian)
@@ -301,7 +301,7 @@ def test_ingestion_service_routes_to_legal():
     """Test that IngestionService routes legal documents to LegalIngestionService"""
     # Mock create_embeddings_generator to avoid API key requirement
     with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
-        from services.ingestion_service import IngestionService
+        from services.ingestion.ingestion_service import IngestionService
 
         service = IngestionService()
         # Test detection method

@@ -280,7 +280,7 @@ class TestDependenciesIntegration:
         from fastapi import Request
 
         from app.dependencies import get_search_service
-        from services.search_service import SearchService
+        from services.search.search_service import SearchService
 
         # Set up app state
         app.state.search_service = SearchService()

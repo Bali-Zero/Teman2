@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
-from services.compliance.compliance_tracker import ComplianceItem
-from services.compliance.severity_calculator import AlertSeverity
+from .compliance_tracker import ComplianceItem
+from .severity_calculator import AlertSeverity
 
 logger = logging.getLogger(__name__)
 

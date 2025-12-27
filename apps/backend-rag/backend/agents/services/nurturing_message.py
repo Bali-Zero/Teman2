@@ -4,6 +4,8 @@ Nurturing Message Service
 Responsibility: Generate personalized nurturing messages using AI.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from typing import Any
@@ -24,7 +26,7 @@ except ImportError:
 class NurturingMessageService:
     """Service for generating personalized nurturing messages"""
 
-    def __init__(self, ai_client: ZantaraAIClient | None = None):
+    def __init__(self, ai_client: Any = None):
         """
         Initialize NurturingMessageService.
 

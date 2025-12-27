@@ -6,8 +6,8 @@ Direct execution (no HTTP calls) - faster & more reliable
 import logging
 from typing import Any
 
-from services.collaborator_service import CollaboratorService
-from services.pricing_service import get_pricing_service
+from ..crm.collaborator_service import CollaboratorService
+from ..pricing.pricing_service import get_pricing_service
 
 logger = logging.getLogger(__name__)
 

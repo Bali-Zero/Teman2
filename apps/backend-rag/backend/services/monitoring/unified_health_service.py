@@ -270,7 +270,7 @@ class UnifiedHealthService:
         """Check CollectionManager initialization"""
         start = time.time()
         try:
-            from services.collection_manager import CollectionManager
+            from services.ingestion.collection_manager import CollectionManager
 
             manager = CollectionManager()
             collections = manager.list_collections()

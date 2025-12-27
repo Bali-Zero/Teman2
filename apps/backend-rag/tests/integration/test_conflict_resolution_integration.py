@@ -31,7 +31,7 @@ class TestConflictResolverIntegration:
     @pytest.mark.asyncio
     async def test_conflict_resolver_initialization(self):
         """Test ConflictResolver initialization"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
 

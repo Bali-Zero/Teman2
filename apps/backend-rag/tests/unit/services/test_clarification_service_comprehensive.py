@@ -5,7 +5,7 @@ Target: 95%+ coverage
 
 import pytest
 
-from services.clarification_service import AmbiguityType, ClarificationService
+from services.misc.clarification_service import AmbiguityType, ClarificationService
 
 
 class TestClarificationService:

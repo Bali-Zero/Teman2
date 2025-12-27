@@ -35,7 +35,7 @@ class TestIngestionServiceIntegration:
     async def test_ingestion_service_initialization(self, qdrant_client):
         """Test IngestionService initialization"""
         with patch("services.ingestion_service.QdrantClient") as mock_qdrant:
-            from services.ingestion_service import IngestionService
+            from services.ingestion.ingestion_service import IngestionService
 
             service = IngestionService()
 
@@ -56,7 +56,7 @@ class TestIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536])
             mock_embedder.return_value = embedder
 
-            from services.ingestion_service import IngestionService
+            from services.ingestion.ingestion_service import IngestionService
 
             service = IngestionService()
             service.qdrant_client = mock_client
@@ -87,7 +87,7 @@ class TestIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536] * 10)
             mock_embedder.return_value = embedder
 
-            from services.ingestion_service import IngestionService
+            from services.ingestion.ingestion_service import IngestionService
 
             service = IngestionService()
             service.qdrant_client = mock_client
@@ -110,7 +110,7 @@ class TestLegalIngestionServiceIntegration:
     async def test_legal_ingestion_service_initialization(self, qdrant_client):
         """Test LegalIngestionService initialization"""
         with patch("services.legal_ingestion_service.QdrantClient") as mock_qdrant:
-            from services.legal_ingestion_service import LegalIngestionService
+            from services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()
 
@@ -131,7 +131,7 @@ class TestLegalIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536])
             mock_embedder.return_value = embedder
 
-            from services.legal_ingestion_service import LegalIngestionService
+            from services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()
             service.qdrant_client = mock_client
@@ -165,7 +165,7 @@ class TestLegalIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536] * 5)
             mock_embedder.return_value = embedder
 
-            from services.legal_ingestion_service import LegalIngestionService
+            from services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()
             service.qdrant_client = mock_client

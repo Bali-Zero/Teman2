@@ -20,7 +20,7 @@ import logging
 from typing import Any, Literal
 
 from app.core.constants import RoutingConstants
-from services.routing import (
+from . import (
     ConfidenceCalculatorService,
     FallbackManagerService,
     KeywordMatcherService,

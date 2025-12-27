@@ -22,7 +22,7 @@ import pytest
 # Add backend directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../backend")))
 
-from services.smart_oracle import (
+from services.oracle.smart_oracle import (
     download_pdf_from_drive,
     get_drive_service,
     smart_oracle,

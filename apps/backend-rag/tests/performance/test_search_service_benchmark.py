@@ -10,11 +10,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from services.collection_manager import CollectionManager
-from services.conflict_resolver import ConflictResolver
-from services.cultural_insights_service import CulturalInsightsService
-from services.query_router_integration import QueryRouterIntegration
-from services.search_service import SearchService
+from services.ingestion.collection_manager import CollectionManager
+from services.routing.conflict_resolver import ConflictResolver
+from services.misc.cultural_insights_service import CulturalInsightsService
+from services.routing.query_router_integration import QueryRouterIntegration
+from services.search.search_service import SearchService
 
 
 class TestSearchServicePerformance:

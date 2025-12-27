@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.auto_crm_service import AutoCRMService, get_auto_crm_service
+from services.crm.auto_crm_service import AutoCRMService, get_auto_crm_service
 
 # ============================================================================
 # Fixtures

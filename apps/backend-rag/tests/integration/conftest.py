@@ -654,7 +654,7 @@ async def search_service(qdrant_client):
     Yields:
         SearchService: Search service connected to test Qdrant
     """
-    from services.search_service import SearchService
+    from services.search.search_service import SearchService
 
     # Override Qdrant URL in settings
     original_url = os.getenv("QDRANT_URL")

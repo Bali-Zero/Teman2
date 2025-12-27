@@ -21,8 +21,7 @@ from typing import Any
 
 import asyncpg
 
-from services.memory import MemoryOrchestrator
-from services.memory_fallback import get_memory_cache
+from services.memory import MemoryOrchestrator, get_memory_cache
 
 logger = logging.getLogger(__name__)
 

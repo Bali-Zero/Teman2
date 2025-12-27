@@ -7,7 +7,7 @@ import pytest
 # Add backend to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../backend"))
 
-from services.oracle_service import oracle_service
+from services.oracle.oracle_service import oracle_service
 
 
 @pytest.mark.asyncio

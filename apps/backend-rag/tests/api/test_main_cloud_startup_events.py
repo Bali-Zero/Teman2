@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.main_cloud import app, on_startup
-from services.alert_service import AlertService
+from services.monitoring.alert_service import AlertService
 
 
 class TestStartupEvents:

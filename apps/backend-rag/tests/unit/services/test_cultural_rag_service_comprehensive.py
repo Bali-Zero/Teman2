@@ -13,7 +13,7 @@ class TestCulturalRAGServiceInit:
 
     def test_init_without_services(self):
         """Test initialization without any services"""
-        with patch("services.cultural_insights_service.CulturalInsightsService") as mock_cis:
+        with patch("services.misc.cultural_insights_service.CulturalInsightsService") as mock_cis:
             mock_cis.return_value = Mock()
 
             from backend.services.cultural_rag_service import CulturalRAGService
@@ -47,7 +47,7 @@ class TestCulturalRAGServiceInit:
 
     def test_init_with_search_service_without_cultural_insights(self):
         """Test initialization with search_service without cultural_insights attr"""
-        with patch("services.cultural_insights_service.CulturalInsightsService") as mock_cis:
+        with patch("services.misc.cultural_insights_service.CulturalInsightsService") as mock_cis:
             mock_cis.return_value = Mock()
 
             from backend.services.cultural_rag_service import CulturalRAGService

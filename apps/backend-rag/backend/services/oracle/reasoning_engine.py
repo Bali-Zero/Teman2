@@ -10,8 +10,8 @@ from typing import Any, Optional
 from llm.adapters.gemini import GeminiAdapter
 from prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
 
-from services.oracle_google_services import google_services
-from services.response.validator import ZantaraResponseValidator
+from .oracle_google_services import google_services
+from ..response.validator import ZantaraResponseValidator
 
 logger = logging.getLogger(__name__)
 

@@ -29,17 +29,17 @@ from typing import Any
 import asyncpg
 from agents.services.kg_repository import KnowledgeGraphRepository
 
-from services.collective_memory_service import CollectiveMemoryService
-from services.episodic_memory_service import EpisodicMemoryService
-from services.memory.models import (
+from .collective_memory_service import CollectiveMemoryService
+from .episodic_memory_service import EpisodicMemoryService
+from .models import (
     FactType,
     MemoryContext,
     MemoryFact,
     MemoryProcessResult,
     MemoryStats,
 )
-from services.memory_fact_extractor import MemoryFactExtractor
-from services.memory_service_postgres import MemoryServicePostgres
+from .memory_fact_extractor import MemoryFactExtractor
+from .memory_service_postgres import MemoryServicePostgres
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from typing import Any
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-from services.oracle_config import oracle_config
+from .oracle_config import oracle_config
 from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)

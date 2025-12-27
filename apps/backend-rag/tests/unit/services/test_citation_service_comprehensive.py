@@ -5,7 +5,7 @@ Target: 95%+ coverage
 
 import pytest
 
-from services.citation_service import CitationService
+from services.search.citation_service import CitationService
 
 
 class TestCitationService:

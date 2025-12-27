@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from services.cultural_insights_service import CulturalInsightsService
+from services.misc.cultural_insights_service import CulturalInsightsService
 
 
 class TestCulturalInsightsService:

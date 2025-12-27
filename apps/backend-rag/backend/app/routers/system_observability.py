@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.routers.team_activity import get_admin_email
-from services.unified_health_service import UnifiedHealthService, get_unified_health_service
+from services.monitoring.unified_health_service import UnifiedHealthService, get_unified_health_service
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock
 import numpy as np
 import pytest
 
-from services.semantic_cache import SemanticCache
+from services.search.semantic_cache import SemanticCache
 
 
 class TestSemanticCache:

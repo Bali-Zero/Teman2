@@ -31,7 +31,7 @@ class StepManagerService:
         if not step:
             return False
 
-        from services.client_journey_orchestrator import JourneyStatus, StepStatus
+        from services.misc.client_journey_orchestrator import JourneyStatus, StepStatus
 
         if step.status == StepStatus.COMPLETED:
             logger.warning(f"Step {step_id} already completed")
@@ -64,7 +64,7 @@ class StepManagerService:
         if not step:
             return False
 
-        from services.client_journey_orchestrator import StepStatus
+        from services.misc.client_journey_orchestrator import StepStatus
 
         if step.status == StepStatus.COMPLETED:
             logger.warning(f"Step {step_id} already completed")
@@ -99,7 +99,7 @@ class StepManagerService:
         if not step:
             return False
 
-        from services.client_journey_orchestrator import JourneyStatus, StepStatus
+        from services.misc.client_journey_orchestrator import JourneyStatus, StepStatus
 
         step.status = StepStatus.BLOCKED
         step.blocked_reason = reason
@@ -119,7 +119,7 @@ class StepManagerService:
 
     def _update_journey_status(self, journey):
         """Update journey status based on step completion."""
-        from services.client_journey_orchestrator import (
+        from services.misc.client_journey_orchestrator import (
             JourneyStatus,  # noqa: F401
             StepStatus,
         )

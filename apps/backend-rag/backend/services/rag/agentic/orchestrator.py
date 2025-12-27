@@ -30,14 +30,14 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
-from services.clarification_service import ClarificationService
+from services.misc.clarification_service import ClarificationService
 from services.classification.intent_classifier import IntentClassifier
-from services.context_window_manager import AdvancedContextWindowManager
-from services.emotional_attunement import EmotionalAttunementService
-from services.followup_service import FollowupService
-from services.golden_answer_service import GoldenAnswerService
+from services.misc.context_window_manager import AdvancedContextWindowManager
+from services.misc.emotional_attunement import EmotionalAttunementService
+from services.misc.followup_service import FollowupService
+from services.misc.golden_answer_service import GoldenAnswerService
 from services.memory import MemoryOrchestrator
-from services.semantic_cache import SemanticCache
+from services.search.semantic_cache import SemanticCache
 from services.response.cleaner import (
     OUT_OF_DOMAIN_RESPONSES,
     is_out_of_domain,

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.followup_service import FollowupService
+from services.misc.followup_service import FollowupService
 
 
 class TestFollowupService:
@@ -16,7 +16,7 @@ class TestFollowupService:
     @pytest.fixture
     def service(self):
         """Create FollowupService instance"""
-        with patch("services.followup_service.ZantaraAIClient"):
+        with patch("services.misc.followup_service.ZantaraAIClient"):
             return FollowupService()
 
     @pytest.fixture

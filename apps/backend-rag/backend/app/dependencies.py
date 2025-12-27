@@ -27,9 +27,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from llm.zantara_ai_client import ZantaraAIClient
 
-from services.intelligent_router import IntelligentRouter
-from services.memory_service_postgres import MemoryServicePostgres
-from services.search_service import SearchService
+from services.routing.intelligent_router import IntelligentRouter
+from services.memory import MemoryServicePostgres
+from services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 

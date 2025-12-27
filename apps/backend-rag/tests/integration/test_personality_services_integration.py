@@ -33,7 +33,7 @@ class TestPersonalityServiceIntegration:
     async def test_personality_service_initialization(self, db_pool):
         """Test PersonalityService initialization"""
         with patch("services.personality_service.MemoryServicePostgres") as mock_memory:
-            from services.personality_service import PersonalityService
+            from services.misc.personality_service import PersonalityService
 
             service = PersonalityService(memory_service=mock_memory.return_value)
 

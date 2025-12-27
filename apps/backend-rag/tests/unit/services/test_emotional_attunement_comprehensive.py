@@ -5,7 +5,7 @@ Target: 95%+ coverage
 
 import pytest
 
-from services.emotional_attunement import (
+from services.misc.emotional_attunement import (
     EmotionalAttunementService,
     EmotionalState,
     ToneStyle,

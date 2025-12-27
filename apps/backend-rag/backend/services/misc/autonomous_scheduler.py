@@ -240,7 +240,7 @@ async def create_and_start_scheduler(
     # ═══════════════════════════════════════════════════════════════════════════
     if auto_ingestion_enabled:
         try:
-            from services.auto_ingestion_orchestrator import AutoIngestionOrchestrator
+            from services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 
             orchestrator = AutoIngestionOrchestrator(
                 search_service=search_service,

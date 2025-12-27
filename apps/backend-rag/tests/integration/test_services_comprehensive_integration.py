@@ -222,7 +222,7 @@ class TestIntelligentRouterIntegration:
     @pytest.mark.asyncio
     async def test_intelligent_router_init(self):
         """Test IntelligentRouter initialization"""
-        from services.intelligent_router import IntelligentRouter
+        from services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
         assert router is not None
@@ -231,7 +231,7 @@ class TestIntelligentRouterIntegration:
     @pytest.mark.asyncio
     async def test_route_chat(self):
         """Test routing chat"""
-        from services.intelligent_router import IntelligentRouter
+        from services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
 
@@ -254,7 +254,7 @@ class TestIntelligentRouterIntegration:
     @pytest.mark.asyncio
     async def test_stream_chat(self):
         """Test streaming chat"""
-        from services.intelligent_router import IntelligentRouter
+        from services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
 
@@ -276,7 +276,7 @@ class TestIntelligentRouterIntegration:
 
     def test_get_stats(self):
         """Test getting router stats"""
-        from services.intelligent_router import IntelligentRouter
+        from services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
         stats = router.get_stats()

@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from middleware.error_monitoring import ErrorMonitoringMiddleware
 
-from services.alert_service import AlertService
+from services.monitoring.alert_service import AlertService
 
 
 class TestErrorMonitoringWithAppState:

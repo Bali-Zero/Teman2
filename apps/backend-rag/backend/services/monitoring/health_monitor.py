@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any
 
-from services.alert_service import AlertLevel, AlertService
+from .alert_service import AlertLevel, AlertService
 
 logger = logging.getLogger(__name__)
 

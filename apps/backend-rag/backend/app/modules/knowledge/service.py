@@ -18,7 +18,7 @@ from core.qdrant_db import QdrantClient
 
 from app.core.config import settings
 from app.models import TierLevel
-from services.query_router import QueryRouter
+from services.routing.query_router import QueryRouter
 
 logger = logging.getLogger(__name__)
 

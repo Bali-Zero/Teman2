@@ -57,7 +57,7 @@ class TestEndToEndFlows:
 
             # Step 2: Search service finds relevant documents
             with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
-                from services.search_service import SearchService
+                from services.search.search_service import SearchService
 
                 embedder = MagicMock()
                 embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
@@ -271,7 +271,7 @@ class TestEndToEndFlows:
 
             # Step 2: Route query to appropriate collections
             with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
-                from services.query_router import QueryRouter
+                from services.routing.query_router import QueryRouter
 
                 embedder = MagicMock()
                 embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)

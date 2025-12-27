@@ -45,7 +45,7 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from app.core.config import settings
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from llm.genai_client import GenAIClient, GENAI_AVAILABLE, types, get_genai_client
-from services.openrouter_client import ModelTier, OpenRouterClient
+from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 
 logger = logging.getLogger(__name__)
 

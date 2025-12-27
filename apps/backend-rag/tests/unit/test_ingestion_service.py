@@ -15,7 +15,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from app.models import TierLevel
-from services.ingestion_service import IngestionService
+from services.ingestion.ingestion_service import IngestionService
 
 # ============================================================================
 # Fixtures

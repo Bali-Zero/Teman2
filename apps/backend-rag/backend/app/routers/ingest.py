@@ -11,7 +11,7 @@ from pathlib import Path
 from core.qdrant_db import QdrantClient
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 
-from services.ingestion_service import IngestionService
+from services.ingestion.ingestion_service import IngestionService
 
 from ..models import (
     BatchIngestionRequest,

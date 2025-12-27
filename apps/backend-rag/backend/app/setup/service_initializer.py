@@ -20,25 +20,25 @@ from llm.zantara_ai_client import ZantaraAIClient
 from app.core.config import settings
 from app.core.service_health import ServiceStatus, service_registry
 from app.routers.websocket import redis_listener
-from services.alert_service import AlertService
-from services.auto_crm_service import get_auto_crm_service
-from services.autonomous_research_service import AutonomousResearchService
-from services.autonomous_scheduler import create_and_start_scheduler
-from services.client_journey_orchestrator import ClientJourneyOrchestrator
-from services.collaborator_service import CollaboratorService
-from services.collective_memory_workflow import create_collective_memory_workflow
-from services.conversation_service import ConversationService
-from services.cross_oracle_synthesis_service import CrossOracleSynthesisService
-from services.cultural_rag_service import CulturalRAGService
-from services.health_monitor import HealthMonitor
-from services.intelligent_router import IntelligentRouter
-from services.mcp_client_service import initialize_mcp_client
-from services.memory_service_postgres import MemoryServicePostgres
-from services.proactive_compliance_monitor import ProactiveComplianceMonitor
-from services.query_router import QueryRouter
-from services.search_service import SearchService
-from services.tool_executor import ToolExecutor
-from services.zantara_tools import ZantaraTools
+from services.monitoring.alert_service import AlertService
+from services.crm.auto_crm_service import get_auto_crm_service
+from services.misc.autonomous_research_service import AutonomousResearchService
+from services.misc.autonomous_scheduler import create_and_start_scheduler
+from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
+from services.crm.collaborator_service import CollaboratorService
+from services.memory.collective_memory_workflow import create_collective_memory_workflow
+from services.misc.conversation_service import ConversationService
+from services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
+from services.misc.cultural_rag_service import CulturalRAGService
+from services.monitoring.health_monitor import HealthMonitor
+from services.routing.intelligent_router import IntelligentRouter
+from services.misc.mcp_client_service import initialize_mcp_client
+from services.memory import MemoryServicePostgres
+from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+from services.routing.query_router import QueryRouter
+from services.search.search_service import SearchService
+from services.misc.tool_executor import ToolExecutor
+from services.misc.zantara_tools import ZantaraTools
 
 logger = logging.getLogger("zantara.backend")
 
@@ -67,10 +67,10 @@ async def _init_critical_services(
     search_service = None
     try:
         # Initialize SearchService with dependency injection
-        from services.collection_manager import CollectionManager
-        from services.conflict_resolver import ConflictResolver
-        from services.cultural_insights_service import CulturalInsightsService
-        from services.query_router_integration import QueryRouterIntegration
+        from services.ingestion.collection_manager import CollectionManager
+        from services.routing.conflict_resolver import ConflictResolver
+        from services.misc.cultural_insights_service import CulturalInsightsService
+        from services.routing.query_router_integration import QueryRouterIntegration
 
         # Create shared services
         collection_manager = CollectionManager(qdrant_url=settings.qdrant_url)
@@ -312,7 +312,7 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
             init=init_db_connection,
         )
 
-        from services.team_timesheet_service import init_timesheet_service
+        from services.analytics.team_timesheet_service import init_timesheet_service
 
         ts_service = init_timesheet_service(db_pool)
         app.state.ts_service = ts_service

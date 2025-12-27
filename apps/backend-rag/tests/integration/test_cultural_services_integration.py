@@ -37,7 +37,7 @@ class TestCulturalRAGServiceIntegration:
             patch("services.cultural_rag_service.SearchService") as mock_search,
             patch("services.cultural_rag_service.ZantaraAIClient") as mock_ai,
         ):
-            from services.cultural_rag_service import CulturalRAGService
+            from services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(
                 search_service=mock_search.return_value,
@@ -66,7 +66,7 @@ class TestCulturalRAGServiceIntegration:
                 return_value="Cultural RAG response with context"
             )
 
-            from services.cultural_rag_service import CulturalRAGService
+            from services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(
                 search_service=mock_search_instance,

@@ -25,7 +25,7 @@ import logging
 
 import asyncpg
 
-from services.analytics import (
+from . import (
     BurnoutDetectorService,
     OptimalHoursService,
     PatternAnalyzerService,

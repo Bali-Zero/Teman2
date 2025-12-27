@@ -24,7 +24,7 @@ class TestClarificationServiceIntegration:
     @pytest.fixture
     def service(self):
         """Create ClarificationService instance"""
-        from services.clarification_service import ClarificationService
+        from services.misc.clarification_service import ClarificationService
 
         return ClarificationService()
 

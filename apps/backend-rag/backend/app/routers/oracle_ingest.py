@@ -19,7 +19,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 
 from app.dependencies import get_search_service
-from services.search_service import SearchService
+from services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 

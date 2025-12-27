@@ -39,8 +39,8 @@ def mock_redis():
 @pytest.fixture
 def session_service(mock_redis):
     """Create SessionService with mocked Redis"""
-    with patch("services.session_service.redis.from_url", return_value=mock_redis):
-        from services.session_service import SessionService
+    with patch("services.misc.session_service.redis.from_url", return_value=mock_redis):
+        from services.misc.session_service import SessionService
 
         service = SessionService("redis://localhost:6379", ttl_hours=24)
         return service
@@ -56,8 +56,8 @@ class TestSessionServiceInit:
 
     def test_init_success(self, mock_redis):
         """Test successful initialization"""
-        with patch("services.session_service.redis.from_url", return_value=mock_redis):
-            from services.session_service import SessionService
+        with patch("services.misc.session_service.redis.from_url", return_value=mock_redis):
+            from services.misc.session_service import SessionService
 
             service = SessionService("redis://localhost:6379", ttl_hours=24)
 
@@ -65,8 +65,8 @@ class TestSessionServiceInit:
 
     def test_init_custom_ttl(self, mock_redis):
         """Test initialization with custom TTL"""
-        with patch("services.session_service.redis.from_url", return_value=mock_redis):
-            from services.session_service import SessionService
+        with patch("services.misc.session_service.redis.from_url", return_value=mock_redis):
+            from services.misc.session_service import SessionService
 
             service = SessionService("redis://localhost:6379", ttl_hours=48)
 
@@ -75,10 +75,10 @@ class TestSessionServiceInit:
     def test_init_failure(self):
         """Test initialization failure"""
         with patch(
-            "services.session_service.redis.from_url",
+            "services.misc.session_service.redis.from_url",
             side_effect=Exception("Connection failed"),
         ):
-            from services.session_service import SessionService
+            from services.misc.session_service import SessionService
 
             with pytest.raises(Exception) as exc_info:
                 SessionService("redis://invalid:6379")

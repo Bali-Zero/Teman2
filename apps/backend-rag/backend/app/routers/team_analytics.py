@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.dependencies import get_database_pool
-from services.team_analytics_service import TeamAnalyticsService
+from services.analytics.team_analytics_service import TeamAnalyticsService
 
 logger = logging.getLogger(__name__)
 

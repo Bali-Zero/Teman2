@@ -13,7 +13,7 @@ sys.path.insert(0, str(backend_path))
 
 import importlib.util
 
-conflict_resolver_path = backend_path / "services" / "conflict_resolver.py"
+conflict_resolver_path = backend_path / "services" / "routing" / "conflict_resolver.py"
 spec = importlib.util.spec_from_file_location("conflict_resolver", conflict_resolver_path)
 conflict_resolver_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(conflict_resolver_module)

@@ -37,7 +37,7 @@ class TestFollowupServiceInit:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
 
@@ -48,7 +48,7 @@ class TestFollowupServiceInit:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("Client init failed")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
 
@@ -70,7 +70,7 @@ class TestGenerateFollowups:
             mock_client.generate_response.return_value = "Question 1?\nQuestion 2?\nQuestion 3?"
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.generate_followups(
@@ -91,7 +91,7 @@ class TestGenerateFollowups:
             mock_client.generate_response.return_value = mock_async_response()
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.generate_followups("Test query", "Test response", "business")
@@ -103,7 +103,7 @@ class TestGenerateFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("Client not available")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.generate_followups("What is KITAS?", "KITAS is...", "immigration")
@@ -118,7 +118,7 @@ class TestGenerateFollowups:
             mock_client.generate_response.side_effect = Exception("AI error")
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.generate_followups("Test", "Response", "business")
@@ -130,7 +130,7 @@ class TestGenerateFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.generate_followups("Ciao", "Ciao!", "casual", language="it")
@@ -151,7 +151,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Query", "Response", "business", "en")
@@ -164,7 +164,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Query", "Response", "business", "it")
@@ -176,7 +176,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Query", "Response", "immigration", "en")
@@ -188,7 +188,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Query", "Response", "tax", "id")
@@ -200,7 +200,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Hi", "Hello!", "casual", "en")
@@ -212,7 +212,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Code?", "Here...", "technical", "en")
@@ -224,7 +224,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Query", "Response", "unknown_topic", "en")
@@ -236,7 +236,7 @@ class TestGetTopicBasedFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups("Query", "Response", "business", "fr")
@@ -258,7 +258,7 @@ class TestGenerateDynamicFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.generate_dynamic_followups("Query", "Response", None, "en")
@@ -275,7 +275,7 @@ class TestGenerateDynamicFollowups:
             )
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.generate_dynamic_followups(
@@ -293,7 +293,7 @@ class TestGenerateDynamicFollowups:
             mock_client.chat_async = AsyncMock(return_value={"text": "No numbered list here"})
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.generate_dynamic_followups("Query", "Response", None, "en")
@@ -308,7 +308,7 @@ class TestGenerateDynamicFollowups:
             mock_client.chat_async = AsyncMock(side_effect=Exception("AI failed"))
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.generate_dynamic_followups("Query", "Response", None, "en")
@@ -325,7 +325,7 @@ class TestGenerateDynamicFollowups:
             )
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.generate_dynamic_followups(
@@ -348,7 +348,7 @@ class TestBuildFollowupGenerationPrompt:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             prompt = service._build_followup_generation_prompt(
@@ -363,7 +363,7 @@ class TestBuildFollowupGenerationPrompt:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             prompt = service._build_followup_generation_prompt("Ciao", "Ciao!", None, "it")
@@ -375,7 +375,7 @@ class TestBuildFollowupGenerationPrompt:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             prompt = service._build_followup_generation_prompt("Halo", "Halo!", None, "id")
@@ -387,7 +387,7 @@ class TestBuildFollowupGenerationPrompt:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             prompt = service._build_followup_generation_prompt(
@@ -410,7 +410,7 @@ class TestParseFollowupList:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             text = "1. First question?\n2. Second question?\n3. Third question?"
@@ -427,7 +427,7 @@ class TestParseFollowupList:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             text = "1) Question one?\n2) Question two?"
@@ -441,7 +441,7 @@ class TestParseFollowupList:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             text = '1. "Quoted question?"'
@@ -456,7 +456,7 @@ class TestParseFollowupList:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
 
@@ -469,7 +469,7 @@ class TestParseFollowupList:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             text = "Just some text without numbers"
@@ -492,7 +492,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("What visa do I need?")
@@ -504,7 +504,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("How do I get KITAS?")
@@ -516,7 +516,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("What is the tax rate?")
@@ -528,7 +528,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("Berapa pajak?")
@@ -540,7 +540,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("How do I fix this code error?")
@@ -552,7 +552,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("Hello, how are you?")
@@ -564,7 +564,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("Ciao!")
@@ -576,7 +576,7 @@ class TestDetectTopicFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_topic_from_query("How do I start a company?")
@@ -597,7 +597,7 @@ class TestDetectLanguageFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_language_from_query("Ciao, come stai?")
@@ -609,7 +609,7 @@ class TestDetectLanguageFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_language_from_query("Halo, apa kabar?")
@@ -621,7 +621,7 @@ class TestDetectLanguageFromQuery:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.detect_language_from_query("How are you?")
@@ -647,7 +647,7 @@ class TestGetFollowups:
             )
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.get_followups("What is KITAS?", "KITAS is a permit", use_ai=True)
@@ -660,7 +660,7 @@ class TestGetFollowups:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.get_followups("What is KITAS?", "KITAS...", use_ai=False)
@@ -675,7 +675,7 @@ class TestGetFollowups:
             mock_client.chat_async = AsyncMock(return_value={"text": "1. Q1?\n2. Q2?\n3. Q3?"})
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.get_followups(
@@ -700,7 +700,7 @@ class TestHealthCheck:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.health_check()
@@ -715,7 +715,7 @@ class TestHealthCheck:
         with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.health_check()

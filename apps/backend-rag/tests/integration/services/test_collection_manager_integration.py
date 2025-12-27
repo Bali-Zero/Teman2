@@ -30,7 +30,7 @@ class TestCollectionManagerIntegration:
             mock_client_instance = MagicMock()
             mock_client.return_value = mock_client_instance
 
-            from services.collection_manager import CollectionManager
+            from services.ingestion.collection_manager import CollectionManager
 
             manager = CollectionManager(qdrant_url="http://localhost:6333")
             return manager

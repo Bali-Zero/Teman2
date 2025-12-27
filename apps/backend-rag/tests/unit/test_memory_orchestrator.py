@@ -163,7 +163,7 @@ class TestMemoryOrchestratorGetContext:
     @pytest.mark.asyncio
     async def test_get_context_for_new_user(self, orchestrator_with_mock, mock_memory_service):
         """Test getting context for a user with no memory"""
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         # Mock empty memory
         mock_memory_service.get_memory.return_value = UserMemory(
@@ -183,7 +183,7 @@ class TestMemoryOrchestratorGetContext:
     @pytest.mark.asyncio
     async def test_get_context_for_known_user(self, orchestrator_with_mock, mock_memory_service):
         """Test getting context for a user with existing memory"""
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         # Mock user with facts
         mock_memory_service.get_memory.return_value = UserMemory(
@@ -401,7 +401,7 @@ class TestMemoryOrchestratorIntegration:
     async def test_full_memory_lifecycle(self):
         """Test complete memory lifecycle: init -> save -> retrieve -> close"""
         from services.memory.orchestrator import MemoryOrchestrator
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         # Create orchestrator with mocked pool
         mock_pool = AsyncMock()
@@ -515,7 +515,7 @@ class TestMemoryOrchestratorEdgeCases:
         import asyncio
 
         from services.memory.orchestrator import MemoryOrchestrator
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         mock_pool = AsyncMock()
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)

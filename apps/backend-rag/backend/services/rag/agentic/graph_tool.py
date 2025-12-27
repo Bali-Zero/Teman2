@@ -8,7 +8,7 @@ and structured data that might be missed by vector search.
 
 import logging
 
-from services.graph_service import GraphService
+from services.misc.graph_service import GraphService
 from services.tools.definitions import BaseTool
 
 logger = logging.getLogger(__name__)

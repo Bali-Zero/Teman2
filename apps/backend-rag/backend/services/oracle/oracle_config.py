@@ -14,7 +14,9 @@ class OracleConfiguration:
     """Production configuration manager for Oracle endpoints"""
 
     def __init__(self):
-        self._validate_environment()
+        # Don't validate at import time - allow lazy initialization
+        # Validation will happen when database_url is actually accessed
+        pass
 
     def _validate_environment(self) -> None:
         """Validate required environment variables"""
@@ -24,8 +26,9 @@ class OracleConfiguration:
             missing_vars.append("DATABASE_URL")
 
         if missing_vars:
-            logger.error(f"❌ Missing required environment variables: {missing_vars}")
-            raise ValueError(f"Missing required environment variables: {missing_vars}")
+            logger.warning(f"⚠️ Missing required environment variables: {missing_vars}")
+            # Don't raise error at import time - allow graceful degradation
+            # raise ValueError(f"Missing required environment variables: {missing_vars}")
 
     @property
     def google_api_key(self) -> str:

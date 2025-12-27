@@ -37,7 +37,7 @@ class TestIntelligentRouterInit:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             mock_search = MagicMock()
             mock_db_pool = MagicMock()
@@ -57,7 +57,7 @@ class TestIntelligentRouterInit:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
 
@@ -73,7 +73,7 @@ class TestIntelligentRouterInit:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             mock_collaborator = MagicMock()
 
@@ -98,7 +98,7 @@ class TestInitialize:
             mock_orchestrator.initialize = AsyncMock()
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
             await router.initialize()
@@ -127,7 +127,7 @@ class TestRouteChat:
             )
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
             result = await router.route_chat(
@@ -154,7 +154,7 @@ class TestRouteChat:
             )
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
             history = [
@@ -182,7 +182,7 @@ class TestRouteChat:
             )
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
 
@@ -211,7 +211,7 @@ class TestRouteChat:
             mock_orchestrator.process_query = AsyncMock(side_effect=Exception("Query failed"))
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
 
@@ -241,7 +241,7 @@ class TestStreamChat:
             mock_orchestrator.stream_query = mock_stream
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
 
@@ -269,7 +269,7 @@ class TestStreamChat:
             mock_orchestrator.stream_query = mock_stream
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
 
@@ -302,7 +302,7 @@ class TestStreamChat:
             mock_orchestrator.stream_query = mock_stream
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
 
@@ -325,7 +325,7 @@ class TestGetStats:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
             stats = router.get_stats()
@@ -342,7 +342,7 @@ class TestGetStats:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter()
             stats = router.get_stats()

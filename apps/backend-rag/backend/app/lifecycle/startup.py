@@ -10,7 +10,7 @@ from fastapi import FastAPI
 
 from app.setup.plugin_initializer import initialize_plugins
 from app.setup.service_initializer import initialize_services
-from services.alert_service import AlertService
+from services.monitoring.alert_service import AlertService
 
 logger = logging.getLogger("zantara.backend")
 

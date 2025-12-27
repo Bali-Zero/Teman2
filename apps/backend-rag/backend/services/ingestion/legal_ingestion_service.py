@@ -141,7 +141,7 @@ class LegalIngestionService:
                     "Pattern extraction failed/incomplete. Attempting Vertex AI fallback..."
                 )
                 try:
-                    from services.vertex_ai_service import VertexAIService
+                    from services.llm_clients.vertex_ai_service import VertexAIService
 
                     vertex_service = VertexAIService()
                     ai_metadata = await vertex_service.extract_metadata(cleaned_text)

@@ -16,7 +16,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 
 from app.core.config import settings
-from services.smart_oracle import download_pdf_from_drive
+from services.oracle.smart_oracle import download_pdf_from_drive
 from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)

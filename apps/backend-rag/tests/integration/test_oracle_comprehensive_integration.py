@@ -35,7 +35,7 @@ class TestOracleComprehensiveIntegration:
     @pytest.mark.asyncio
     async def test_oracle_query_with_qdrant_search(self, qdrant_client, db_pool):
         """Test Oracle query with real Qdrant search"""
-        from services.search_service import SearchService
+        from services.search.search_service import SearchService
 
         # Initialize search service with test Qdrant
         search_service = SearchService()
@@ -247,8 +247,8 @@ class TestOracleComprehensiveIntegration:
     @pytest.mark.asyncio
     async def test_oracle_multi_collection_routing(self, qdrant_client):
         """Test Oracle routing across multiple collections"""
-        from services.query_router import QueryRouter
-        from services.search_service import SearchService
+        from services.routing.query_router import QueryRouter
+        from services.search.search_service import SearchService
 
         # Initialize services
         search_service = SearchService()

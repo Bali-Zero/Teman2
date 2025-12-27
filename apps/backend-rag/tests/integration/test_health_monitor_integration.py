@@ -28,7 +28,7 @@ class TestHealthMonitorIntegration:
             mock_monitor = MagicMock()
             mock_monitor_class.return_value = mock_monitor
 
-            from services.health_monitor import HealthMonitor
+            from services.monitoring.health_monitor import HealthMonitor
 
             monitor = HealthMonitor()
             assert monitor is not None
@@ -40,7 +40,7 @@ class TestHealthMonitorIntegration:
             mock_monitor.record_operation = MagicMock()
             mock_monitor_class.return_value = mock_monitor
 
-            from services.health_monitor import HealthMonitor
+            from services.monitoring.health_monitor import HealthMonitor
 
             monitor = HealthMonitor()
             monitor.record_operation("search", "visa_oracle", 100.0, success=True)

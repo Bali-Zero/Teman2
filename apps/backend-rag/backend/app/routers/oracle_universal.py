@@ -32,8 +32,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.dependencies import get_current_user, get_search_service
 from app.models import UserProfile
-from services.oracle_service import oracle_service
-from services.search_service import SearchService
+from services.oracle.oracle_service import oracle_service
+from services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 

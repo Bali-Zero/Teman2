@@ -22,8 +22,7 @@ from typing import Any
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
-from services.ingestion_service import IngestionService
-from services.legal_ingestion_service import LegalIngestionService
+from services.ingestion import IngestionService, LegalIngestionService
 
 logger = logging.getLogger(__name__)
 

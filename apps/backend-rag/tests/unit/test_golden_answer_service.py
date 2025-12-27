@@ -14,7 +14,7 @@ class TestGoldenAnswerService:
     @pytest.fixture
     def service(self):
         """Create GoldenAnswerService instance"""
-        from services.golden_answer_service import GoldenAnswerService
+        from services.misc.golden_answer_service import GoldenAnswerService
 
         return GoldenAnswerService(database_url="postgresql://test:test@localhost/test")
 
@@ -27,7 +27,7 @@ class TestGoldenAnswerService:
 
     def test_init(self):
         """Test initialization"""
-        from services.golden_answer_service import GoldenAnswerService
+        from services.misc.golden_answer_service import GoldenAnswerService
 
         service = GoldenAnswerService("postgresql://test:test@localhost/test")
 

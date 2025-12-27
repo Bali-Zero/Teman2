@@ -10,6 +10,13 @@ from .performance_trend import PerformanceTrendService
 from .productivity_scorer import ProductivityScorerService
 from .team_insights import TeamInsightsService
 from .workload_balance import WorkloadBalanceService
+from .analytics_aggregator import AnalyticsAggregator
+from .team_analytics_service import TeamAnalyticsService
+from .team_timesheet_service import (
+    TeamTimesheetService,
+    get_timesheet_service,
+    init_timesheet_service,
+)
 
 __all__ = [
     "PatternAnalyzerService",
@@ -19,4 +26,9 @@ __all__ = [
     "WorkloadBalanceService",
     "OptimalHoursService",
     "TeamInsightsService",
+    "AnalyticsAggregator",
+    "TeamAnalyticsService",
+    "TeamTimesheetService",
+    "get_timesheet_service",
+    "init_timesheet_service",
 ]

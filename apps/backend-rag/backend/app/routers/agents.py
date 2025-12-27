@@ -24,12 +24,12 @@ from core.cache import cached
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from services.auto_ingestion_orchestrator import AutoIngestionOrchestrator
+from services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 
 # Import all agent services
-from services.client_journey_orchestrator import ClientJourneyOrchestrator
-from services.knowledge_graph_builder import KnowledgeGraphBuilder
-from services.proactive_compliance_monitor import (
+from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
+from services.misc.knowledge_graph_builder import KnowledgeGraphBuilder
+from services.misc.proactive_compliance_monitor import (
     AlertSeverity,
     ProactiveComplianceMonitor,
 )
@@ -231,7 +231,7 @@ async def add_compliance_tracking(
     """
     try:
         # Convert string to enum
-        from services.proactive_compliance_monitor import ComplianceType
+        from services.misc.proactive_compliance_monitor import ComplianceType
 
         compliance_type_enum = ComplianceType(request.compliance_type)
 
@@ -520,7 +520,7 @@ async def cross_oracle_synthesis(
 
     if not cross_oracle_service:
         # Try to get it directly from app.state
-        from services.cross_oracle_synthesis_service import CrossOracleSynthesisService
+        from services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
 
         search_service = getattr(request.app.state, "search_service", None)
         ai_client = getattr(request.app.state, "ai_client", None)
@@ -624,7 +624,7 @@ async def run_autonomous_research(
         }
 
     try:
-        from services.autonomous_research_service import AutonomousResearchService
+        from services.misc.autonomous_research_service import AutonomousResearchService
 
         # Create service instance with dependencies
         research_service = AutonomousResearchService(

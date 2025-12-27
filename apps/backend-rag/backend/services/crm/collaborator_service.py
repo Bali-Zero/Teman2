@@ -17,7 +17,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-DATA_PATH = Path(__file__).parent.parent / "data" / "team_members.json"
+DATA_PATH = Path(__file__).parent.parent.parent / "data" / "team_members.json"
 
 
 @dataclass

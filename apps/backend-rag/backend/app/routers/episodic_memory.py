@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.dependencies import get_database_pool as get_db_pool
 from app.routers.auth import get_current_user
-from services.episodic_memory_service import Emotion, EpisodicMemoryService, EventType
+from services.memory.episodic_memory_service import Emotion, EpisodicMemoryService, EventType
 
 logger = logging.getLogger(__name__)
 

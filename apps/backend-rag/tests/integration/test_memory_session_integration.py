@@ -37,7 +37,7 @@ class TestMemorySessionIntegration:
         user_id = "test_user_memory_1"
 
         # Create memory
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         memory = UserMemory(
             user_id=user_id,

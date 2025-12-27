@@ -10,7 +10,7 @@ from typing import Any
 from core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 from pydantic import Field
 
-from services.collaborator_service import CollaboratorService
+from services.crm.collaborator_service import CollaboratorService
 
 logger = logging.getLogger(__name__)
 

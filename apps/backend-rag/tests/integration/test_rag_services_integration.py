@@ -80,7 +80,7 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_cultural_rag_service(self, qdrant_client):
         """Test CulturalRAGService with real Qdrant"""
-        from services.cultural_rag_service import CulturalRAGService
+        from services.misc.cultural_rag_service import CulturalRAGService
 
         with (
             patch("services.cultural_rag_service.SearchService") as mock_search,
@@ -123,7 +123,7 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_multi_collection_retrieval(self, qdrant_client):
         """Test multi-collection retrieval"""
-        from services.search_service import SearchService
+        from services.search.search_service import SearchService
 
         with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
@@ -213,7 +213,7 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_hybrid_search(self, qdrant_client):
         """Test hybrid search (vector + keyword)"""
-        from services.search_service import SearchService
+        from services.search.search_service import SearchService
 
         with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()

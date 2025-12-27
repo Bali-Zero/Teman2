@@ -34,7 +34,7 @@ class TestMemoryServiceIntegration:
         """Test saving user memory to PostgreSQL"""
         from datetime import datetime
 
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         user_id = "test_user_integration_1"
 
@@ -57,7 +57,7 @@ class TestMemoryServiceIntegration:
         """Test retrieving user memory from PostgreSQL"""
         from datetime import datetime
 
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         user_id = "test_user_integration_2"
 

@@ -36,7 +36,7 @@ class TestCollectiveMemoryWorkflowIntegration:
             patch("services.collective_memory_workflow.MemoryServicePostgres") as mock_memory,
             patch("services.collective_memory_workflow.SearchService") as mock_search,
         ):
-            from services.collective_memory_workflow import create_collective_memory_workflow
+            from services.memory.collective_memory_workflow import create_collective_memory_workflow
 
             workflow = create_collective_memory_workflow(
                 memory_service=mock_memory.return_value,
@@ -200,7 +200,7 @@ class TestCollectiveMemoryEmitterIntegration:
     async def test_collective_memory_emitter_initialization(self, db_pool):
         """Test CollectiveMemoryEmitter initialization"""
         with patch("services.collective_memory_emitter.MemoryServicePostgres") as mock_memory:
-            from services.collective_memory_emitter import CollectiveMemoryEmitter
+            from services.memory.collective_memory_emitter import CollectiveMemoryEmitter
 
             emitter = CollectiveMemoryEmitter(memory_service=mock_memory.return_value)
 

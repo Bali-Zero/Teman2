@@ -30,7 +30,7 @@ async def redis_url():
 @pytest_asyncio.fixture(scope="function")
 async def session_service(redis_url):
     """Create SessionService instance"""
-    from services.session_service import SessionService
+    from services.misc.session_service import SessionService
 
     service = SessionService(redis_url, ttl_hours=1)
     # Test connection

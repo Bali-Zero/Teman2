@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from app.dependencies import get_database_pool as get_db_pool
 from app.routers.auth import get_current_user
-from services.collective_memory_service import CollectiveMemoryService
+from services.memory.collective_memory_service import CollectiveMemoryService
 
 logger = logging.getLogger(__name__)
 

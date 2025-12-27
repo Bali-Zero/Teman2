@@ -462,7 +462,7 @@ async def get_scheduler_status():
         - tasks: Details of each task (intervals, run counts, errors)
     """
     try:
-        from services.autonomous_scheduler import get_autonomous_scheduler
+        from services.misc.autonomous_scheduler import get_autonomous_scheduler
 
         scheduler = get_autonomous_scheduler()
         status = scheduler.get_status()
@@ -490,7 +490,7 @@ async def enable_scheduler_task(task_name: str):
         task_name: Name of the task to enable
     """
     try:
-        from services.autonomous_scheduler import get_autonomous_scheduler
+        from services.misc.autonomous_scheduler import get_autonomous_scheduler
 
         scheduler = get_autonomous_scheduler()
         success = scheduler.enable_task(task_name)
@@ -519,7 +519,7 @@ async def disable_scheduler_task(task_name: str):
         task_name: Name of the task to disable
     """
     try:
-        from services.autonomous_scheduler import get_autonomous_scheduler
+        from services.misc.autonomous_scheduler import get_autonomous_scheduler
 
         scheduler = get_autonomous_scheduler()
         success = scheduler.disable_task(task_name)

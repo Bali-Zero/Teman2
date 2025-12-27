@@ -55,7 +55,7 @@ class TestMemoryAPIIntegration:
         # This test verifies that when an oracle query is made,
         # the memory orchestrator's process_conversation is called
 
-        from services.oracle_service import OracleService
+        from services.oracle.oracle_service import OracleService
 
         with patch.object(OracleService, "memory_orchestrator", mock_oracle_service):
             with patch.object(
@@ -205,7 +205,7 @@ class TestMemoryEndpointSecurity:
     @pytest.mark.asyncio
     async def test_empty_user_no_memory_saved(self):
         """Test that empty user_id doesn't get memory saved"""
-        from services.oracle_service import OracleService
+        from services.oracle.oracle_service import OracleService
 
         service = OracleService()
         mock_orchestrator = AsyncMock()
@@ -231,7 +231,7 @@ class TestMemoryPersistenceRoundTrip:
         from datetime import datetime
 
         from services.memory.orchestrator import MemoryOrchestrator
-        from services.memory_service_postgres import UserMemory
+        from services.memory.memory_service_postgres import UserMemory
 
         # Create mock storage
         storage = {}

@@ -28,27 +28,27 @@ from qdrant_client.http import exceptions as qdrant_exceptions
 
 # Core Dependencies
 # Services
-from services.citation_service import CitationService
-from services.clarification_service import ClarificationService
-from services.classification.intent_classifier import IntentClassifier
-from services.followup_service import FollowupService
-from services.golden_answer_service import GoldenAnswerService
-from services.memory import MemoryOrchestrator
-from services.memory_fact_extractor import MemoryFactExtractor
-from services.memory_service_postgres import MemoryServicePostgres
-from services.oracle import (
+from ..search.citation_service import CitationService
+from ..misc.clarification_service import ClarificationService
+from ..classification.intent_classifier import IntentClassifier
+from ..misc.followup_service import FollowupService
+from ..misc.golden_answer_service import GoldenAnswerService
+from ..memory import MemoryOrchestrator
+from ..memory.memory_fact_extractor import MemoryFactExtractor
+from ..memory.memory_service_postgres import MemoryServicePostgres
+from . import (
     DocumentRetrievalService,
     LanguageDetectionService,
     OracleAnalyticsService,
     ReasoningEngineService,
     UserContextService,
 )
-from services.oracle_config import oracle_config as config
-from services.oracle_database import db_manager
-from services.personality_service import PersonalityService
-from services.response.validator import ZantaraResponseValidator
-from services.search_service import SearchService
-from services.smart_oracle import smart_oracle
+from .oracle_config import oracle_config as config
+from .oracle_database import db_manager
+from ..misc.personality_service import PersonalityService
+from ..response.validator import ZantaraResponseValidator
+from ..search.search_service import SearchService
+from .smart_oracle import smart_oracle
 
 logger = logging.getLogger(__name__)
 
@@ -57,10 +57,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Note: Request/Response models are typically defined in routers or a shared schemas file.
 # Since they are currently in the router, we will assume the service receives typed arguments
-from services.rag.agentic import create_agentic_rag
-from services.rag.agentic.orchestrator import AgenticRAGOrchestrator
-from services.rag.agentic.schema import CoreResult
-from services.rag.agentic.entity_extractor import EntityExtractionService
+from ..rag.agentic import create_agentic_rag
+from ..rag.agentic.orchestrator import AgenticRAGOrchestrator
+from ..rag.agentic.schema import CoreResult
+from ..rag.agentic.entity_extractor import EntityExtractionService
 
 # ---------------------------------------------------------------------------
 # HELPER FUNCTIONS (Backward Compatibility)

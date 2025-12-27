@@ -9,7 +9,7 @@ import logging
 from core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 from pydantic import Field
 
-from services.pricing_service import get_pricing_service
+from services.pricing.pricing_service import get_pricing_service
 
 logger = logging.getLogger(__name__)
 

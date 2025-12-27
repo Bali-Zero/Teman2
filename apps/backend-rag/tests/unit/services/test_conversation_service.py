@@ -25,7 +25,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.conversation_service import ConversationService
+from services.misc.conversation_service import ConversationService
 
 # ============================================================================
 # Fixtures
@@ -128,7 +128,7 @@ def test_init_without_pool():
 def test_get_auto_crm_success(conversation_service, mock_auto_crm_service):
     """Test lazy loading of Auto-CRM service successfully"""
     # Mock the import at the module level
-    with patch("services.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service):
+    with patch("services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service):
         result = conversation_service._get_auto_crm()
 
         assert result == mock_auto_crm_service
@@ -138,7 +138,7 @@ def test_get_auto_crm_success(conversation_service, mock_auto_crm_service):
 def test_get_auto_crm_cached(conversation_service, mock_auto_crm_service):
     """Test that Auto-CRM service is cached after first load"""
     # Mock the import at the module level
-    with patch("services.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service) as mock_get_service:
+    with patch("services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service) as mock_get_service:
         # First call
         result1 = conversation_service._get_auto_crm()
         # Second call
@@ -162,7 +162,7 @@ def test_get_auto_crm_import_error(conversation_service):
 def test_get_auto_crm_general_exception(conversation_service):
     """Test handling of general exception when loading Auto-CRM"""
     # Mock the import to raise an exception
-    with patch("services.auto_crm_service.get_auto_crm_service", side_effect=Exception("Unexpected error")):
+    with patch("services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Unexpected error")):
         result = conversation_service._get_auto_crm()
 
         assert result is None

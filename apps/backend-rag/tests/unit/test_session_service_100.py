@@ -21,11 +21,11 @@ def mock_redis():
 @pytest.fixture
 def session_service():
     """Create SessionService instance with mocked Redis"""
-    with patch("services.session_service.redis") as mock_redis_module:
+    with patch("services.misc.session_service.redis") as mock_redis_module:
         mock_client = AsyncMock()
         mock_redis_module.from_url.return_value = mock_client
 
-        from services.session_service import SessionService
+        from services.misc.session_service import SessionService
 
         service = SessionService("redis://localhost:6379", ttl_hours=24)
         service.redis = mock_client
@@ -37,10 +37,10 @@ class TestSessionServiceInit:
 
     def test_init_success(self):
         """Test successful initialization"""
-        with patch("services.session_service.redis") as mock_redis:
+        with patch("services.misc.session_service.redis") as mock_redis:
             mock_redis.from_url.return_value = AsyncMock()
 
-            from services.session_service import SessionService
+            from services.misc.session_service import SessionService
 
             service = SessionService("redis://localhost:6379", ttl_hours=12)
 
@@ -49,10 +49,10 @@ class TestSessionServiceInit:
 
     def test_init_failure(self):
         """Test initialization failure"""
-        with patch("services.session_service.redis") as mock_redis:
+        with patch("services.misc.session_service.redis") as mock_redis:
             mock_redis.from_url.side_effect = Exception("Connection failed")
 
-            from services.session_service import SessionService
+            from services.misc.session_service import SessionService
 
             with pytest.raises(Exception, match="Connection failed"):
                 SessionService("redis://localhost:6379")

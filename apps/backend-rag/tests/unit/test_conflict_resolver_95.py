@@ -30,7 +30,7 @@ class TestConflictResolverInit:
 
     def test_init_creates_stats(self):
         """Test initialization creates stats dictionary"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
 
@@ -51,7 +51,7 @@ class TestDetectConflicts:
 
     def test_detect_no_conflicts_empty_input(self):
         """Test no conflicts with empty input"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         result = resolver.detect_conflicts({})
@@ -61,7 +61,7 @@ class TestDetectConflicts:
 
     def test_detect_no_conflicts_single_collection(self):
         """Test no conflicts with single collection"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {"tax_knowledge": [{"score": 0.9, "metadata": {"title": "Tax Guide"}}]}
@@ -72,7 +72,7 @@ class TestDetectConflicts:
 
     def test_detect_conflict_tax_collections(self):
         """Test detecting conflict between tax collections"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -90,7 +90,7 @@ class TestDetectConflicts:
 
     def test_detect_conflict_legal_collections(self):
         """Test detecting conflict between legal collections"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -105,7 +105,7 @@ class TestDetectConflicts:
 
     def test_detect_conflict_with_timestamp_metadata(self):
         """Test detecting conflict with timestamp metadata"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -127,7 +127,7 @@ class TestDetectConflicts:
 
     def test_detect_no_conflict_when_one_empty(self):
         """Test no conflict when one collection is empty"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -141,7 +141,7 @@ class TestDetectConflicts:
 
     def test_detect_semantic_conflict_type(self):
         """Test semantic conflict type detection"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -156,7 +156,7 @@ class TestDetectConflicts:
 
     def test_detect_conflict_records_scores(self):
         """Test conflict detection records collection scores"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -180,7 +180,7 @@ class TestResolveConflicts:
 
     def test_resolve_empty_conflicts(self):
         """Test resolving empty conflicts list"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
 
@@ -191,7 +191,7 @@ class TestResolveConflicts:
 
     def test_resolve_updates_collection_wins(self):
         """Test updates collection wins over base collection"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -222,7 +222,7 @@ class TestResolveConflicts:
 
     def test_resolve_base_collection_as_updates(self):
         """Test when base collection name contains 'updates'"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -244,7 +244,7 @@ class TestResolveConflicts:
 
     def test_resolve_by_score_when_no_updates(self):
         """Test resolution by score when neither is updates collection"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -269,7 +269,7 @@ class TestResolveConflicts:
 
     def test_resolve_first_wins_on_equal_score(self):
         """Test first collection wins on equal score"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -292,7 +292,7 @@ class TestResolveConflicts:
 
     def test_resolve_marks_loser_as_alternate(self):
         """Test loser results are marked as alternate or outdated"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -320,7 +320,7 @@ class TestResolveConflicts:
 
     def test_resolve_reduces_loser_score(self):
         """Test loser results have reduced score"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         original_score = 0.9
@@ -347,7 +347,7 @@ class TestResolveConflicts:
 
     def test_resolve_increments_resolved_count(self):
         """Test resolved count increments correctly"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -378,7 +378,7 @@ class TestGetStats:
 
     def test_get_stats_returns_copy(self):
         """Test get_stats returns a copy of stats"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         stats = resolver.get_stats()
@@ -391,7 +391,7 @@ class TestGetStats:
 
     def test_get_stats_structure(self):
         """Test get_stats returns all expected keys"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         stats = resolver.get_stats()
@@ -403,7 +403,7 @@ class TestGetStats:
 
     def test_get_stats_after_operations(self):
         """Test get_stats reflects operations"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -432,7 +432,7 @@ class TestEdgeCases:
 
     def test_multiple_conflicts_in_same_resolution(self):
         """Test resolving multiple conflicts at once"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -454,7 +454,7 @@ class TestEdgeCases:
 
     def test_tax_genius_conflict_pair(self):
         """Test tax_genius vs tax_updates conflict pair"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -469,7 +469,7 @@ class TestEdgeCases:
 
     def test_conflict_detected_at_timestamp(self):
         """Test conflict has detected_at timestamp"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {
@@ -485,7 +485,7 @@ class TestEdgeCases:
 
     def test_conflict_report_includes_original(self):
         """Test conflict report includes original conflict info"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         resolver = ConflictResolver()
         results = {

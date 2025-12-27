@@ -16,7 +16,7 @@ if str(backend_path) not in sys.path:
 
 # Move imports here to satisfy E402 if possible, or ignore E402
 from app.models import TierLevel  # noqa: E402
-from services.legal_ingestion_service import LegalIngestionService  # noqa: E402
+from services.ingestion.legal_ingestion_service import LegalIngestionService  # noqa: E402
 
 # ============================================================================
 # Fixtures

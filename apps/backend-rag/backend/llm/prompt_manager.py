@@ -4,10 +4,11 @@ Prompt Manager - Handles system prompt loading and building
 Separated from ZantaraAIClient to follow Single Responsibility Principle.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-
-from services.emotional_attunement import ToneStyle
+from typing import TYPE_CHECKING, Any
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +17,50 @@ PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 SYSTEM_PROMPT_FILE = PROMPTS_DIR / "zantara_system_prompt.md"  # Single source of truth
 FALLBACK_PROMPT_FILE = PROMPTS_DIR / "zantara_system_prompt.md"  # Same file (no fallback needed)
 
-# Tone style prompts
-TONE_PROMPTS = {
-    ToneStyle.PROFESSIONAL: "Maintain a professional, balanced tone. Be clear and concise.",
-    ToneStyle.WARM: "Use a warm, friendly tone. Show empathy and encouragement.",
-    ToneStyle.TECHNICAL: "Provide detailed technical explanations. Use precise terminology.",
-    ToneStyle.SIMPLE: "Explain in simple terms. Break down complex concepts step by step.",
-    ToneStyle.ENCOURAGING: "Be reassuring and supportive. Acknowledge the challenge and offer clear next steps.",
-    ToneStyle.DIRECT: "Be direct and action-oriented. Focus on solutions, not explanations.",
+# ToneStyle is imported at runtime to avoid circular import
+# The TONE_PROMPTS dict uses string keys at module level, mapped to ToneStyle at runtime
+_TONE_PROMPTS_BY_NAME: dict[str, str] = {
+    "professional": "Maintain a professional, balanced tone. Be clear and concise.",
+    "warm": "Use a warm, friendly tone. Show empathy and encouragement.",
+    "technical": "Provide detailed technical explanations. Use precise terminology.",
+    "simple": "Explain in simple terms. Break down complex concepts step by step.",
+    "encouraging": "Be reassuring and supportive. Acknowledge the challenge and offer clear next steps.",
+    "direct": "Be direct and action-oriented. Focus on solutions, not explanations.",
 }
+
+
+def _get_tone_prompt(style: Any) -> str | None:
+    """Get tone prompt for a style (ToneStyle enum or string)."""
+    if style is None:
+        return None
+    # If it's a string, use directly
+    if isinstance(style, str):
+        return _TONE_PROMPTS_BY_NAME.get(style.lower())
+    # If it's a ToneStyle enum, get its value
+    if hasattr(style, "value"):
+        return _TONE_PROMPTS_BY_NAME.get(style.value.lower())
+    return None
+
+
+# Backward compatibility: TONE_PROMPTS as a property-like dict
+# This is a class that acts like a dict but lazily resolves ToneStyle keys
+class _TonePromptsDict:
+    """Dict-like class that supports both ToneStyle enum and string keys."""
+
+    def get(self, key: Any, default: str | None = None) -> str | None:
+        return _get_tone_prompt(key) or default
+
+    def __getitem__(self, key: Any) -> str:
+        result = _get_tone_prompt(key)
+        if result is None:
+            raise KeyError(key)
+        return result
+
+
+TONE_PROMPTS = _TonePromptsDict()
+
+if TYPE_CHECKING:
+    from services.misc.emotional_attunement import ToneStyle
 
 
 class PromptManager:
@@ -193,18 +229,11 @@ language clear and accessible.
 
         # Tone/Style Context
         if style:
-            tone_instruction = None
-            if isinstance(style, ToneStyle):
-                tone_instruction = TONE_PROMPTS.get(style)
-            elif isinstance(style, str):
-                # Try to map string to ToneStyle
-                try:
-                    style_enum = ToneStyle(style.lower())
-                    tone_instruction = TONE_PROMPTS.get(style_enum)
-                except ValueError:
-                    # If string doesn't match enum, use it as is if it's not empty
-                    if style.strip():
-                        tone_instruction = f"Style/Tone: {style}"
+            # Use the unified tone prompt lookup (handles both ToneStyle enum and strings)
+            tone_instruction = TONE_PROMPTS.get(style)
+            # If not found in predefined tones, use the style string directly
+            if tone_instruction is None and isinstance(style, str) and style.strip():
+                tone_instruction = f"Style/Tone: {style}"
 
             if tone_instruction:
                 context_sections.append(

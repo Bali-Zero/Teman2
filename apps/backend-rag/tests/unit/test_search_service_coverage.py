@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from services.search_service import SearchService
+from services.search.search_service import SearchService
 
 # Import Qdrant exceptions the same way as search_service.py
 try:

@@ -10,7 +10,7 @@ from typing import Optional
 
 from googleapiclient.http import MediaIoBaseDownload
 
-from services.oracle_google_services import google_services
+from .oracle_google_services import google_services
 
 logger = logging.getLogger(__name__)
 

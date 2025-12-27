@@ -27,7 +27,7 @@ class TestContextWindowManagerIntegration:
     def manager(self):
         """Create ContextWindowManager instance"""
         with patch("services.context_window_manager.ZantaraAIClient") as mock_client:
-            from services.context_window_manager import ContextWindowManager
+            from services.misc.context_window_manager import ContextWindowManager
 
             manager = ContextWindowManager(max_messages=10, summary_threshold=15)
             manager.zantara_client = None  # Disable AI for tests

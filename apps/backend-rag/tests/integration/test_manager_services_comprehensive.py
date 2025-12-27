@@ -33,7 +33,7 @@ class TestCollectionManager:
     async def test_collection_manager_initialization(self, qdrant_client):
         """Test CollectionManager initialization"""
         with patch("services.collection_manager.QdrantClient") as mock_qdrant:
-            from services.collection_manager import CollectionManager
+            from services.ingestion.collection_manager import CollectionManager
 
             manager = CollectionManager(qdrant_client=mock_qdrant.return_value)
 
@@ -222,7 +222,7 @@ class TestContextWindowManager:
     @pytest.mark.asyncio
     async def test_context_window_manager_initialization(self):
         """Test AdvancedContextWindowManager initialization"""
-        from services.context_window_manager import AdvancedContextWindowManager
+        from services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -232,7 +232,7 @@ class TestContextWindowManager:
     @pytest.mark.asyncio
     async def test_context_truncation(self):
         """Test context truncation"""
-        from services.context_window_manager import AdvancedContextWindowManager
+        from services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -255,7 +255,7 @@ class TestContextWindowManager:
     @pytest.mark.asyncio
     async def test_context_priority_management(self):
         """Test context priority management"""
-        from services.context_window_manager import AdvancedContextWindowManager
+        from services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 

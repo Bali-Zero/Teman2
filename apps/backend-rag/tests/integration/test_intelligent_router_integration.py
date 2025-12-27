@@ -43,7 +43,7 @@ class TestIntelligentRouterIntegration:
             mock_orchestrator.initialize = AsyncMock()
             mock_create_rag.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter(search_service=mock_search.return_value)
             await router.initialize()
@@ -67,7 +67,7 @@ class TestIntelligentRouterIntegration:
             )
             mock_create_rag.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter(search_service=mock_search.return_value)
             await router.initialize()
@@ -105,7 +105,7 @@ class TestIntelligentRouterIntegration:
                 return_value=MagicMock(profile_facts=["User likes Python"])
             )
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter(search_service=mock_search.return_value)
             await router.initialize()
@@ -135,7 +135,7 @@ class TestIntelligentRouterIntegration:
             )
             mock_create_rag.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter(search_service=mock_search.return_value)
             await router.initialize()
@@ -165,7 +165,7 @@ class TestIntelligentRouterIntegration:
             mock_orchestrator.process_query = AsyncMock(side_effect=Exception("Test error"))
             mock_create_rag.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter(search_service=mock_search.return_value)
             await router.initialize()
@@ -195,7 +195,7 @@ class TestIntelligentRouterIntegration:
             )
             mock_create_rag.return_value = mock_orchestrator
 
-            from services.intelligent_router import IntelligentRouter
+            from services.routing.intelligent_router import IntelligentRouter
 
             router = IntelligentRouter(search_service=mock_search.return_value)
             await router.initialize()

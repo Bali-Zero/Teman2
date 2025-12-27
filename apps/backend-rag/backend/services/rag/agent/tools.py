@@ -3,7 +3,7 @@ import logging
 import operator
 import re
 
-from services.pricing_service import get_pricing_service
+from services.pricing.pricing_service import get_pricing_service
 from services.rag.agent.structures import BaseTool
 from services.rag.vision_rag import VisionRAGService
 

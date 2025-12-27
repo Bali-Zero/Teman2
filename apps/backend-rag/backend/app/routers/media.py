@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from services.image_generation_service import ImageGenerationService
+from services.misc.image_generation_service import ImageGenerationService
 
 router = APIRouter(prefix="/media", tags=["media"])
 logger = logging.getLogger(__name__)

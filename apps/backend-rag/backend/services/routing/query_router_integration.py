@@ -8,7 +8,7 @@ Extracted from SearchService to follow Single Responsibility Principle.
 import logging
 from typing import Any
 
-from services.query_router import QueryRouter
+from .query_router import QueryRouter
 
 logger = logging.getLogger(__name__)
 

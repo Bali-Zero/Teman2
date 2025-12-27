@@ -130,7 +130,7 @@ class TestImportTimeCriticalPaths:
         """
         try:
             from app.setup.service_initializer import initialize_services  # noqa: F401
-            from services.intelligent_router import IntelligentRouter  # noqa: F401
+            from services.routing.intelligent_router import IntelligentRouter  # noqa: F401
             from services.rag.agentic import create_agentic_rag  # noqa: F401
             from services.rag.agentic.reasoning import detect_team_query  # noqa: F401
             from services.rag.agentic.session_fact_extractor import (

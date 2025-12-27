@@ -65,7 +65,7 @@ class GeminiJakselService:
         """Lazy load OpenRouter client"""
         if self._openrouter_client is None:
             try:
-                from services.openrouter_client import ModelTier, OpenRouterClient
+                from .openrouter_client import ModelTier, OpenRouterClient
 
                 self._openrouter_client = OpenRouterClient(default_tier=ModelTier.RAG)
             except ImportError as e:
@@ -115,7 +115,7 @@ class GeminiJakselService:
         messages = self._convert_to_openai_messages(message, history, context)
 
         try:
-            from services.openrouter_client import ModelTier
+            from .openrouter_client import ModelTier
 
             result = await client.complete(messages, tier=ModelTier.RAG)
             logger.info(f"OpenRouter fallback used: {result.model_name}")
@@ -135,7 +135,7 @@ class GeminiJakselService:
         messages = self._convert_to_openai_messages(message, history, context)
 
         try:
-            from services.openrouter_client import ModelTier
+            from .openrouter_client import ModelTier
 
             logger.info("Using OpenRouter streaming fallback")
             async for chunk in client.complete_stream(messages, tier=ModelTier.RAG):

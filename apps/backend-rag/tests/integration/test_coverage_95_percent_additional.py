@@ -189,7 +189,7 @@ class TestIntelligentRouter95Percent:
     @pytest.mark.asyncio
     async def test_intelligent_router_all_branches(self):
         """Test all branches of intelligent router"""
-        from services.intelligent_router import IntelligentRouter
+        from services.routing.intelligent_router import IntelligentRouter
 
         # Test initialization
         router = IntelligentRouter()
@@ -544,7 +544,7 @@ class TestCulturalRagService95Percent:
     @pytest.mark.asyncio
     async def test_cultural_rag_service_all_branches(self):
         """Test all branches of cultural RAG service"""
-        from services.cultural_rag_service import CulturalRagService
+        from services.misc.cultural_rag_service import CulturalRagService
 
         service = CulturalRagService()
         assert service is not None
@@ -694,7 +694,7 @@ class TestAutoCRMService95Percent:
     @pytest.mark.asyncio
     async def test_auto_crm_service_all_branches(self, db_pool):
         """Test all branches of auto CRM service"""
-        from services.auto_crm_service import AutoCRMService
+        from services.crm.auto_crm_service import AutoCRMService
 
         service = AutoCRMService(db_pool=db_pool)
         assert service is not None

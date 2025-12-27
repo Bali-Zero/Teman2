@@ -43,15 +43,14 @@ from core.cache import cached
 
 from app.core.config import settings
 from app.models import TierLevel
-from services.collection_manager import CollectionManager
-
-from .collection_warmup_service import CollectionWarmupService
-from .conflict_resolver import ConflictResolver
-from .cultural_insights_service import CulturalInsightsService
-from .result_formatter import format_search_results
+from ..ingestion.collection_manager import CollectionManager
+from ..ingestion.collection_warmup_service import CollectionWarmupService
+from ..routing.conflict_resolver import ConflictResolver
+from ..misc.cultural_insights_service import CulturalInsightsService
+from ..misc.result_formatter import format_search_results
 from .search_filters import build_search_filter
 
-# from services.query_router_integration import QueryRouterIntegration
+# from services.routing.query_router_integration import QueryRouterIntegration
 
 
 class SearchService:
@@ -153,7 +152,7 @@ class SearchService:
         if query_router:
             self.query_router = query_router
         else:
-            from services.query_router_integration import QueryRouterIntegration
+            from services.routing.query_router_integration import QueryRouterIntegration
 
             self.query_router = QueryRouterIntegration()
 
@@ -163,7 +162,7 @@ class SearchService:
         )
 
         # Initialize collection health monitor
-        from services.collection_health_service import CollectionHealthService
+        from services.ingestion.collection_health_service import CollectionHealthService
 
         self.health_monitor = CollectionHealthService(search_service=self)
 

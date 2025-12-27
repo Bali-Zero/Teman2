@@ -156,7 +156,7 @@ async def clock_in(request: ClockInRequest):
     Team members use this to start their work day.
     One clock-in per day allowed.
     """
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -180,7 +180,7 @@ async def clock_out(request: ClockOutRequest):
     Team members use this to end their work day.
     Must be clocked in first.
     """
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -206,7 +206,7 @@ async def get_my_status(user_id: str = Query(..., description="User ID")):
     - Today's hours worked
     - This week's summary
     """
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -232,7 +232,7 @@ async def get_team_status(_admin_email: str = Depends(get_admin_email)):
 
     Shows who is currently clocked in and who is offline.
     """
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -256,7 +256,7 @@ async def get_daily_hours(
 
     Returns all team members' work hours for the specified date.
     """
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -286,7 +286,7 @@ async def get_weekly_summary(
 
     Returns total hours, days worked, and averages for each team member.
     """
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -316,7 +316,7 @@ async def get_monthly_summary(
 
     Returns total hours, days worked, and averages for each team member.
     """
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -350,7 +350,7 @@ async def export_timesheet(
     """
     from fastapi.responses import Response
 
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
     if not service:
@@ -387,7 +387,7 @@ async def export_timesheet(
 @router.get("/health")
 async def health_check():
     """Health check for team activity service"""
-    from services.team_timesheet_service import get_timesheet_service
+    from services.analytics.team_timesheet_service import get_timesheet_service
 
     service = get_timesheet_service()
 

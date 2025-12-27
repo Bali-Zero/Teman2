@@ -11,7 +11,7 @@ import pytest
 # Add backend to path
 sys.path.append(str(Path(__file__).parent.parent.parent / "backend"))
 
-from services.intelligent_router import IntelligentRouter
+from services.routing.intelligent_router import IntelligentRouter
 
 
 @pytest.fixture

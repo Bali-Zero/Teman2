@@ -41,12 +41,12 @@ class CulturalRAGService:
             self.cultural_insights = getattr(search_service, "cultural_insights", None)
             if not self.cultural_insights:
                 # If no cultural_insights, create a minimal stub
-                from services.cultural_insights_service import CulturalInsightsService
+                from .cultural_insights_service import CulturalInsightsService
 
                 self.cultural_insights = CulturalInsightsService()
         else:
             # For test compatibility, allow initialization without services
-            from services.cultural_insights_service import CulturalInsightsService
+            from .cultural_insights_service import CulturalInsightsService
 
             self.cultural_insights = CulturalInsightsService()
 
@@ -183,7 +183,7 @@ class CulturalRAGService:
 # Test function
 async def test_cultural_rag():  # pragma: no cover
     """Test CulturalRAGService"""
-    from services.search_service import SearchService
+    from services.search import SearchService
 
     # Initialize
     search_service = SearchService()

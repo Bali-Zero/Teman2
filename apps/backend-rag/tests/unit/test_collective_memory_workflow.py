@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.collective_memory_workflow import (
+from services.memory.collective_memory_workflow import (
     MemoryCategory,
     analyze_content_intent,
     assess_personal_importance,
@@ -492,7 +492,7 @@ async def test_store_collective_memory_exception_no_errors_key(mock_memory_servi
 
 def test_route_by_existence_consolidate():
     """Test route_by_existence when consolidation needed"""
-    from services.collective_memory_workflow import route_by_existence
+    from services.memory.collective_memory_workflow import route_by_existence
 
     state = {"needs_consolidation": True, "existing_memories": []}
     result = route_by_existence(state)
@@ -501,7 +501,7 @@ def test_route_by_existence_consolidate():
 
 def test_route_by_existence_exists():
     """Test route_by_existence when memories exist"""
-    from services.collective_memory_workflow import route_by_existence
+    from services.memory.collective_memory_workflow import route_by_existence
 
     state = {"needs_consolidation": False, "existing_memories": [{"id": 1}]}
     result = route_by_existence(state)
@@ -510,7 +510,7 @@ def test_route_by_existence_exists():
 
 def test_route_by_existence_new():
     """Test route_by_existence when no existing memories"""
-    from services.collective_memory_workflow import route_by_existence
+    from services.memory.collective_memory_workflow import route_by_existence
 
     state = {"needs_consolidation": False, "existing_memories": []}
     result = route_by_existence(state)
@@ -519,7 +519,7 @@ def test_route_by_existence_new():
 
 def test_route_by_importance_high():
     """Test route_by_importance for high importance"""
-    from services.collective_memory_workflow import route_by_importance
+    from services.memory.collective_memory_workflow import route_by_importance
 
     state = {"personal_importance": 0.9}
     result = route_by_importance(state)
@@ -528,7 +528,7 @@ def test_route_by_importance_high():
 
 def test_route_by_importance_medium():
     """Test route_by_importance for medium importance"""
-    from services.collective_memory_workflow import route_by_importance
+    from services.memory.collective_memory_workflow import route_by_importance
 
     state = {"personal_importance": 0.7}
     result = route_by_importance(state)
@@ -537,7 +537,7 @@ def test_route_by_importance_medium():
 
 def test_route_by_importance_low():
     """Test route_by_importance for low importance"""
-    from services.collective_memory_workflow import route_by_importance
+    from services.memory.collective_memory_workflow import route_by_importance
 
     state = {"personal_importance": 0.5}
     result = route_by_importance(state)
@@ -551,7 +551,7 @@ def test_route_by_importance_low():
 
 def test_create_collective_memory_workflow():
     """Test create_collective_memory_workflow"""
-    from services.collective_memory_workflow import create_collective_memory_workflow
+    from services.memory.collective_memory_workflow import create_collective_memory_workflow
 
     workflow = create_collective_memory_workflow()
     assert workflow is not None
@@ -559,7 +559,7 @@ def test_create_collective_memory_workflow():
 
 def test_create_collective_memory_workflow_with_services():
     """Test create_collective_memory_workflow with memory service"""
-    from services.collective_memory_workflow import create_collective_memory_workflow
+    from services.memory.collective_memory_workflow import create_collective_memory_workflow
 
     mock_memory = MagicMock()
     workflow = create_collective_memory_workflow(memory_service=mock_memory)

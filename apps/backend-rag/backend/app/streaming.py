@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from app.auth.validation import validate_auth_mixed
 from app.utils.state_helpers import get_app_state, get_request_state
-from services.intelligent_router import IntelligentRouter
+from services.routing.intelligent_router import IntelligentRouter
 
 logger = logging.getLogger(__name__)
 

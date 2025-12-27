@@ -48,7 +48,7 @@ class JourneyBuilderService:
         Returns:
             ClientJourney instance
         """
-        from services.client_journey_orchestrator import ClientJourney, JourneyStatus, JourneyStep
+        from services.misc.client_journey_orchestrator import ClientJourney, JourneyStatus, JourneyStep
 
         template = self.templates.get_template(template_key)
         if not template:
@@ -115,7 +115,7 @@ class JourneyBuilderService:
         Returns:
             ClientJourney instance
         """
-        from services.client_journey_orchestrator import ClientJourney, JourneyStatus, JourneyStep
+        from services.misc.client_journey_orchestrator import ClientJourney, JourneyStatus, JourneyStep
 
         journey_steps = []
         for idx, step_data in enumerate(steps, start=1):

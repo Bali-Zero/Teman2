@@ -24,7 +24,7 @@ class TestGoldenRouterService:
     @pytest.fixture
     def service(self):
         """Create GoldenRouterService instance"""
-        from services.golden_router_service import GoldenRouterService
+        from services.routing.golden_router_service import GoldenRouterService
 
         return GoldenRouterService()
 
@@ -36,9 +36,9 @@ class TestGoldenRouterService:
     @pytest.mark.asyncio
     async def test_get_db_pool(self, service):
         """Test _get_db_pool"""
-        with patch("services.golden_router_service.settings") as mock_settings:
+        with patch("services.routing.golden_router_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
-            with patch("services.golden_router_service.asyncpg.create_pool") as mock_create:
+            with patch("services.routing.golden_router_service.asyncpg.create_pool") as mock_create:
                 mock_pool = AsyncMock()
                 mock_create.return_value = mock_pool
                 pool = await service._get_db_pool()

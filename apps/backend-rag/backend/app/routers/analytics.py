@@ -73,7 +73,7 @@ async def get_overview(
     user: dict = Depends(verify_founder_access)
 ) -> OverviewStats:
     """Get overview statistics for the dashboard"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_overview_stats()
@@ -103,7 +103,7 @@ async def get_rag_stats(
     user: dict = Depends(verify_founder_access)
 ) -> RAGStats:
     """Get RAG pipeline statistics"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_rag_stats()
@@ -134,7 +134,7 @@ async def get_crm_stats(
     user: dict = Depends(verify_founder_access)
 ) -> CRMStats:
     """Get CRM statistics"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_crm_stats()
@@ -160,7 +160,7 @@ async def get_team_stats(
     user: dict = Depends(verify_founder_access)
 ) -> TeamStats:
     """Get team productivity statistics"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_team_stats()
@@ -191,7 +191,7 @@ async def get_system_stats(
     user: dict = Depends(verify_founder_access)
 ) -> SystemStats:
     """Get system health statistics"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_system_stats()
@@ -217,7 +217,7 @@ async def get_qdrant_stats(
     user: dict = Depends(verify_founder_access)
 ) -> QdrantStats:
     """Get Qdrant vector database statistics"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_qdrant_stats()
@@ -243,7 +243,7 @@ async def get_feedback_stats(
     user: dict = Depends(verify_founder_access)
 ) -> FeedbackStats:
     """Get feedback and quality statistics"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_feedback_stats()
@@ -268,7 +268,7 @@ async def get_alert_stats(
     user: dict = Depends(verify_founder_access)
 ) -> AlertStats:
     """Get alert and error statistics"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_alert_stats()
@@ -297,7 +297,7 @@ async def get_all_analytics(
     user: dict = Depends(verify_founder_access)
 ) -> AllAnalytics:
     """Get all analytics in one request for initial dashboard load"""
-    from services.analytics_aggregator import AnalyticsAggregator
+    from services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
 

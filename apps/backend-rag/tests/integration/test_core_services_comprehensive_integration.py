@@ -221,7 +221,7 @@ class TestMemoryServicePostgresIntegration:
     @pytest_asyncio.fixture
     async def memory_service(self, postgres_container):
         """Create memory service for testing"""
-        from services.memory_service_postgres import MemoryServicePostgres
+        from services.memory.memory_service_postgres import MemoryServicePostgres
 
         database_url = postgres_container
         if database_url and "+" in database_url:

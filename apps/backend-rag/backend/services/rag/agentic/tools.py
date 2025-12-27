@@ -16,7 +16,7 @@ import json
 import logging
 
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status
-from services.pricing_service import get_pricing_service
+from services.pricing.pricing_service import get_pricing_service
 from services.rag.vision_rag import VisionRAGService
 from services.tools.definitions import BaseTool
 

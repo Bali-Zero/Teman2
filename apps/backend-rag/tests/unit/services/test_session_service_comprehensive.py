@@ -29,31 +29,31 @@ class TestSessionService:
     @pytest.fixture
     def session_service(self, mock_redis):
         """Create SessionService instance with mocked Redis"""
-        with patch("services.session_service.redis.from_url", return_value=mock_redis):
-            from services.session_service import SessionService
+        with patch("services.misc.session_service.redis.from_url", return_value=mock_redis):
+            from services.misc.session_service import SessionService
 
             return SessionService("redis://localhost:6379")
 
     def test_init(self, mock_redis):
         """Test SessionService initialization"""
-        with patch("services.session_service.redis.from_url", return_value=mock_redis):
-            from services.session_service import SessionService
+        with patch("services.misc.session_service.redis.from_url", return_value=mock_redis):
+            from services.misc.session_service import SessionService
 
             service = SessionService("redis://localhost:6379")
             assert service.ttl is not None
 
     def test_init_custom_ttl(self, mock_redis):
         """Test SessionService initialization with custom TTL"""
-        with patch("services.session_service.redis.from_url", return_value=mock_redis):
-            from services.session_service import SessionService
+        with patch("services.misc.session_service.redis.from_url", return_value=mock_redis):
+            from services.misc.session_service import SessionService
 
             service = SessionService("redis://localhost:6379", ttl_hours=48)
             assert service.ttl.total_seconds() == 48 * 3600
 
     def test_init_error(self):
         """Test SessionService initialization error"""
-        with patch("services.session_service.redis.from_url", side_effect=Exception("Error")):
-            from services.session_service import SessionService
+        with patch("services.misc.session_service.redis.from_url", side_effect=Exception("Error")):
+            from services.misc.session_service import SessionService
 
             with pytest.raises(Exception):
                 SessionService("redis://localhost:6379")

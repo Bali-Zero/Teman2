@@ -623,7 +623,7 @@ class TestMemoryService95Percent:
     @pytest.fixture
     async def memory_service(self, postgres_container):
         """Create memory service"""
-        from services.memory_service_postgres import MemoryServicePostgres
+        from services.memory.memory_service_postgres import MemoryServicePostgres
 
         database_url = postgres_container
         if database_url and "+" in database_url:
@@ -638,7 +638,7 @@ class TestMemoryService95Percent:
         """Test all branches of memory service"""
 
         # Test initialization without database_url
-        from services.memory_service_postgres import MemoryServicePostgres
+        from services.memory.memory_service_postgres import MemoryServicePostgres
 
         service_no_db = MemoryServicePostgres(database_url=None)
         assert service_no_db.use_postgres is False

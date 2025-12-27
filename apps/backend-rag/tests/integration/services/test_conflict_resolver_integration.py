@@ -24,7 +24,7 @@ class TestConflictResolverIntegration:
     @pytest.fixture
     def resolver(self):
         """Create ConflictResolver instance"""
-        from services.conflict_resolver import ConflictResolver
+        from services.routing.conflict_resolver import ConflictResolver
 
         return ConflictResolver()
 

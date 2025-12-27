@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services.search_service import SearchService
+from services.search.search_service import SearchService
 
 
 class TestSearchServiceInputValidation:

@@ -45,7 +45,7 @@ def stubbed_search_service():
         router.route_query.return_value = {"collection_name": "zantara_books"}
         mock_router_integration.return_value = router
 
-        from services.search_service import SearchService
+        from services.search.search_service import SearchService
 
         service = SearchService()
         yield service, collection_manager, router
@@ -61,7 +61,7 @@ def clear_search_cache():
 @pytest.mark.integration
 class TestSearchServiceIntegration:
     def test_search_service_initialization(self):
-        from services.search_service import SearchService
+        from services.search.search_service import SearchService
 
         service = SearchService()
         assert service.collection_manager is not None

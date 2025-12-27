@@ -69,7 +69,7 @@ class TestPricingServiceIntegration:
         with patch("services.pricing_service.Path") as mock_path:
             mock_path.return_value.parent.parent = tmp_path
 
-            from services.pricing_service import PricingService
+            from services.pricing.pricing_service import PricingService
 
             service = PricingService()
             return service
@@ -173,7 +173,7 @@ class TestPricingServiceIntegration:
         with patch("services.pricing_service.Path") as mock_path:
             mock_path.return_value.parent.parent = Path("/nonexistent")
 
-            from services.pricing_service import PricingService
+            from services.pricing.pricing_service import PricingService
 
             service = PricingService()
 

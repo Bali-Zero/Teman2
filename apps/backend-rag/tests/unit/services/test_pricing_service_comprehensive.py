@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from services.pricing_service import (
+from services.pricing.pricing_service import (
     PricingService,
     get_all_prices,
     get_pricing_service,

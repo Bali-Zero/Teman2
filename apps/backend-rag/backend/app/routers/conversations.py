@@ -18,8 +18,7 @@ from pydantic import BaseModel
 from app.dependencies import get_current_user, get_database_pool
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_error, log_success, log_warning
-from services.memory import MemoryOrchestrator
-from services.memory_fallback import get_memory_cache
+from services.memory import MemoryOrchestrator, get_memory_cache
 
 logger = get_logger(__name__)
 
@@ -49,7 +48,7 @@ def get_auto_crm():
     if _auto_crm_service is None:
         try:
             # SECURITY: Use proper import instead of sys.path.append to avoid circular dependencies
-            from services.auto_crm_service import get_auto_crm_service
+            from services.crm.auto_crm_service import get_auto_crm_service
 
             _auto_crm_service = get_auto_crm_service()
             # Note: connect() should be called during app startup (main_cloud.py)

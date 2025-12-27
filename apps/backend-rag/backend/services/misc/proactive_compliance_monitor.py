@@ -29,7 +29,7 @@ Example Monitored Items:
 import logging
 from datetime import datetime
 
-from services.compliance import (
+from ..compliance import (
     AlertGeneratorService,
     AlertSeverity,
     ComplianceNotificationService,
@@ -43,8 +43,8 @@ logger = logging.getLogger(__name__)
 
 
 # Import types from sub-services for backward compatibility
-from services.compliance.alert_generator import AlertStatus, ComplianceAlert
-from services.compliance.compliance_tracker import ComplianceItem
+from ..compliance.alert_generator import AlertStatus, ComplianceAlert
+from ..compliance.compliance_tracker import ComplianceItem
 
 
 class ProactiveComplianceMonitor:

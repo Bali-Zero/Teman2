@@ -12,7 +12,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
 from app.models import TierLevel
-from services.legal_ingestion_service import LegalIngestionService
+from services.ingestion.legal_ingestion_service import LegalIngestionService
 
 logger = logging.getLogger(__name__)
 

@@ -99,7 +99,7 @@ class TestAutoCRMServiceIntegration:
     @pytest.mark.asyncio
     async def test_auto_crm_service_init(self, db_pool):
         """Test AutoCRMService initialization"""
-        from services.auto_crm_service import AutoCRMService
+        from services.crm.auto_crm_service import AutoCRMService
 
         service = AutoCRMService(db_pool=db_pool)
         assert service is not None
@@ -107,7 +107,7 @@ class TestAutoCRMServiceIntegration:
     @pytest.mark.asyncio
     async def test_extract_client_info(self, db_pool):
         """Test extracting client info"""
-        from services.auto_crm_service import AutoCRMService
+        from services.crm.auto_crm_service import AutoCRMService
 
         service = AutoCRMService(db_pool=db_pool)
 
@@ -167,7 +167,7 @@ class TestCulturalRagServiceIntegration:
     @pytest.mark.asyncio
     async def test_cultural_rag_service_init(self):
         """Test CulturalRagService initialization"""
-        from services.cultural_rag_service import CulturalRagService
+        from services.misc.cultural_rag_service import CulturalRagService
 
         service = CulturalRagService()
         assert service is not None
@@ -175,7 +175,7 @@ class TestCulturalRagServiceIntegration:
     @pytest.mark.asyncio
     async def test_get_cultural_context(self):
         """Test getting cultural context"""
-        from services.cultural_rag_service import CulturalRagService
+        from services.misc.cultural_rag_service import CulturalRagService
 
         service = CulturalRagService()
 

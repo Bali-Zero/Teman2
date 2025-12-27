@@ -22,7 +22,7 @@ from app.setup.cors_config import get_allowed_origins
 from app.setup.plugin_initializer import initialize_plugins
 from app.setup.sentry_config import init_sentry
 from app.setup.service_initializer import initialize_services
-from services.alert_service import AlertService
+from services.monitoring.alert_service import AlertService
 
 logger = logging.getLogger("zantara.backend")
 
@@ -77,8 +77,8 @@ async def on_shutdown() -> None:
     import inspect
     from contextlib import suppress
 
-    from services.health_monitor import HealthMonitor
-    from services.proactive_compliance_monitor import ProactiveComplianceMonitor
+    from services.monitoring.health_monitor import HealthMonitor
+    from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
 
     # Shutdown WebSocket Redis Listener
     redis_task = getattr(app.state, "redis_listener_task", None)

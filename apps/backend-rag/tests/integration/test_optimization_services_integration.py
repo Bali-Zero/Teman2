@@ -106,7 +106,7 @@ class TestContextWindowManagerIntegration:
     @pytest.mark.asyncio
     async def test_context_window_manager_initialization(self):
         """Test AdvancedContextWindowManager initialization"""
-        from services.context_window_manager import AdvancedContextWindowManager
+        from services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -116,7 +116,7 @@ class TestContextWindowManagerIntegration:
     @pytest.mark.asyncio
     async def test_context_window_management(self):
         """Test context window management"""
-        from services.context_window_manager import AdvancedContextWindowManager
+        from services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -140,7 +140,7 @@ class TestContextWindowManagerIntegration:
     @pytest.mark.asyncio
     async def test_context_window_truncation(self):
         """Test context window management with many messages"""
-        from services.context_window_manager import AdvancedContextWindowManager
+        from services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)  # Standard window
 
@@ -168,7 +168,7 @@ class TestPerformanceOptimizerIntegration:
     async def test_performance_optimizer_initialization(self, db_pool):
         """Test PerformanceOptimizer initialization"""
         with patch("services.performance_optimizer.asyncpg") as mock_asyncpg:
-            from services.performance_optimizer import PerformanceOptimizer
+            from services.misc.performance_optimizer import PerformanceOptimizer
 
             optimizer = PerformanceOptimizer(db_pool=db_pool)
 

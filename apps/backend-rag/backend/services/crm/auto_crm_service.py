@@ -20,7 +20,7 @@ from datetime import datetime
 import asyncpg
 
 from app.core.constants import CRMConstants
-from services.ai_crm_extractor import get_extractor
+from .ai_crm_extractor import get_extractor
 
 logger = logging.getLogger(__name__)
 

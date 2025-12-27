@@ -145,7 +145,7 @@ async def login(
     Returns JWT token and user profile on successful authentication.
     Also sets httpOnly cookie with JWT token and CSRF cookie.
     """
-    from services.audit_service import get_audit_service
+    from services.monitoring.audit_service import get_audit_service
 
     audit_service = get_audit_service()
     if not audit_service.pool:

@@ -17,7 +17,7 @@ sys.path.insert(0, str(backend_path))
 
 import importlib.util
 
-pricing_service_path = backend_path / "services" / "pricing_service.py"
+pricing_service_path = backend_path / "services" / "pricing" / "pricing_service.py"
 spec = importlib.util.spec_from_file_location("pricing_service", pricing_service_path)
 pricing_service_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pricing_service_module)

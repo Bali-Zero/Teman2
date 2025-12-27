@@ -35,7 +35,7 @@ class TestPricingServiceIntegration:
     async def test_pricing_service_initialization(self, qdrant_client):
         """Test PricingService initialization"""
         with patch("services.pricing_service.QdrantClient") as mock_qdrant:
-            from services.pricing_service import PricingService
+            from services.pricing.pricing_service import PricingService
 
             service = PricingService()
 
@@ -60,7 +60,7 @@ class TestPricingServiceIntegration:
             )
             mock_qdrant.return_value = mock_client
 
-            from services.pricing_service import PricingService
+            from services.pricing.pricing_service import PricingService
 
             service = PricingService()
             service.qdrant_client = mock_client
@@ -96,7 +96,7 @@ class TestPricingServiceIntegration:
             )
             mock_qdrant.return_value = mock_client
 
-            from services.pricing_service import PricingService
+            from services.pricing.pricing_service import PricingService
 
             service = PricingService()
             service.qdrant_client = mock_client

@@ -68,7 +68,7 @@ class IngestionService:
             # AUTO-ROUTING: Check if this is a legal document
             if doc_type == "legal" or self._is_legal_document(file_path):
                 logger.info("📜 Legal document detected - routing to LegalIngestionService")
-                from services.legal_ingestion_service import LegalIngestionService
+                from .legal_ingestion_service import LegalIngestionService
 
                 legal_service = LegalIngestionService()
                 return await legal_service.ingest_legal_document(

@@ -25,7 +25,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
 import pytest
-from services.conflict_resolver import ConflictResolver
+from services.routing.conflict_resolver import ConflictResolver
 from app.core.constants import SearchConstants
 
 

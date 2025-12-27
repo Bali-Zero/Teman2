@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from services.session_service import SessionService
+from services.misc.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 

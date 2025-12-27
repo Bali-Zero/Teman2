@@ -135,7 +135,7 @@ class TestClarificationServiceIntegration:
     async def test_clarification_service_initialization(self):
         """Test ClarificationService initialization"""
         with patch("services.clarification_service.ZantaraAIClient") as mock_ai:
-            from services.clarification_service import ClarificationService
+            from services.misc.clarification_service import ClarificationService
 
             service = ClarificationService(ai_client=mock_ai.return_value)
 
@@ -156,7 +156,7 @@ class TestClarificationServiceIntegration:
                 }
             )
 
-            from services.clarification_service import ClarificationService
+            from services.misc.clarification_service import ClarificationService
 
             service = ClarificationService(ai_client=mock_ai_instance)
 
@@ -241,7 +241,7 @@ class TestFollowupServiceIntegration:
     async def test_followup_service_initialization(self, db_pool):
         """Test FollowupService initialization"""
         with patch("services.followup_service.MemoryServicePostgres") as mock_memory:
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService(memory_service=mock_memory.return_value)
 

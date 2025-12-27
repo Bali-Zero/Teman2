@@ -24,7 +24,7 @@ class TestFollowupServiceIntegration:
 
     def test_followup_service_init(self):
         """Test FollowupService initialization"""
-        from services.followup_service import FollowupService
+        from services.misc.followup_service import FollowupService
 
         service = FollowupService()
         assert service is not None
@@ -38,7 +38,7 @@ class TestFollowupServiceIntegration:
             )
             mock_zantara.return_value = mock_zantara_instance
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.generate_followups(
@@ -51,7 +51,7 @@ class TestFollowupServiceIntegration:
 
     def test_get_topic_based_followups(self):
         """Test getting topic-based follow-up questions"""
-        from services.followup_service import FollowupService
+        from services.misc.followup_service import FollowupService
 
         service = FollowupService()
         result = service.get_topic_based_followups(
@@ -73,7 +73,7 @@ class TestFollowupServiceIntegration:
             )
             mock_client.return_value = mock_instance
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.get_followups(
@@ -95,7 +95,7 @@ class TestFollowupServiceIntegration:
             mock_instance.chat_async = AsyncMock(return_value={"text": "No numbers here"})
             mock_client.return_value = mock_instance
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             with patch.object(
@@ -114,7 +114,7 @@ class TestFollowupServiceIntegration:
     async def test_followups_without_ai_client(self):
         """Gracefully fall back when AI client cannot be initialized"""
         with patch("services.followup_service.ZantaraAIClient", side_effect=Exception("boom")):
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.get_followups(
@@ -129,7 +129,7 @@ class TestFollowupServiceIntegration:
     def test_language_and_topic_detection_integration(self):
         """Detect Italian + tax topic and return localized followups"""
         with patch("services.followup_service.ZantaraAIClient", side_effect=Exception("skip ai")):
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups(
@@ -153,7 +153,7 @@ class TestFollowupServiceIntegration:
             mock_instance = MagicMock()
             mock_client.return_value = mock_instance
 
-            from services.followup_service import FollowupService
+            from services.misc.followup_service import FollowupService
 
             service = FollowupService()
             health = await service.health_check()

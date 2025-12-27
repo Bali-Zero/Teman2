@@ -189,7 +189,7 @@ class TestLegalIngestRouter:
     async def test_legal_ingestion_service_initialization(self):
         """Test LegalIngestionService initialization"""
         with patch("services.legal_ingestion_service.LegalIngestionService") as mock_service:
-            from services.legal_ingestion_service import LegalIngestionService
+            from services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()
 

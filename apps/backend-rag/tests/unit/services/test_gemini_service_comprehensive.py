@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.gemini_service import GeminiJakselService
+from services.llm_clients.gemini_service import GeminiJakselService
 
 
 class TestGeminiJakselService:
@@ -27,10 +27,10 @@ class TestGeminiJakselService:
     @pytest.fixture
     def service(self, mock_genai_client):
         """Create GeminiJakselService instance"""
-        with patch("services.gemini_service.settings") as mock_settings:
+        with patch("services.llm_clients.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = "test_key"
-            with patch("services.gemini_service.GENAI_AVAILABLE", True):
-                with patch("services.gemini_service.GenAIClient", return_value=mock_genai_client):
+            with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
+                with patch("services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client):
                     return GeminiJakselService()
 
     def test_init(self, service):
@@ -40,18 +40,18 @@ class TestGeminiJakselService:
 
     def test_init_custom_model(self, mock_genai_client):
         """Test initialization with custom model"""
-        with patch("services.gemini_service.settings") as mock_settings:
+        with patch("services.llm_clients.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = "test_key"
-            with patch("services.gemini_service.GENAI_AVAILABLE", True):
-                with patch("services.gemini_service.GenAIClient", return_value=mock_genai_client):
+            with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
+                with patch("services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client):
                     service = GeminiJakselService(model_name="gemini-3-flash-preview")
                     assert "gemini-3-flash-preview" in service.model_name
 
     def test_init_no_api_key(self):
         """Test initialization without API key"""
-        with patch("services.gemini_service.settings") as mock_settings:
+        with patch("services.llm_clients.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = None
-            with patch("services.gemini_service.GENAI_AVAILABLE", False):
+            with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", False):
                 service = GeminiJakselService()
                 assert service.model is None
 
