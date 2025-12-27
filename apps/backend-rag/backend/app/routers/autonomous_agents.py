@@ -314,41 +314,91 @@ async def run_knowledge_graph_builder(
 @router.get("/status")
 async def get_autonomous_agents_status():
     """
-    Get status of all Tier 1 autonomous agents
+    Get status of all Tier 1 autonomous agents with execution statistics
 
     Returns:
-        Agent capabilities and recent executions
+        Agent capabilities, execution statistics, and recent executions
+        Format matches frontend AgentStatus interface
     """
+    # Helper function to get agent execution stats
+    def get_agent_stats(agent_id: str) -> dict[str, Any]:
+        """Calculate execution statistics for an agent"""
+        # Filter executions for this agent
+        agent_execs = [
+            (exec_id, data)
+            for exec_id, data in agent_executions.items()
+            if data.get("agent_name") == agent_id
+        ]
+
+        if not agent_execs:
+            return {
+                "status": "idle",
+                "last_run": None,
+                "next_run": None,
+                "success_rate": None,
+                "total_runs": 0,
+                "latest_result": None,
+            }
+
+        # Sort by started_at (most recent first)
+        agent_execs.sort(key=lambda x: x[1].get("started_at", ""), reverse=True)
+
+        # Get latest execution
+        latest_exec_id, latest_exec = agent_execs[0]
+
+        # Determine status
+        latest_status = latest_exec.get("status", "idle")
+        if latest_status == "running":
+            status = "running"
+        elif latest_status == "failed":
+            status = "error"
+        else:
+            status = "idle"
+
+        # Calculate success rate
+        total_runs = len(agent_execs)
+        successful_runs = sum(1 for _, data in agent_execs if data.get("status") == "completed")
+        success_rate = (successful_runs / total_runs * 100) if total_runs > 0 else None
+
+        # Get last_run timestamp
+        last_run = latest_exec.get("completed_at") or latest_exec.get("started_at")
+
+        # Get latest_result
+        latest_result = latest_exec.get("result")
+
+        return {
+            "status": status,
+            "last_run": last_run,
+            "next_run": None,  # TODO: Get from scheduler if available
+            "success_rate": round(success_rate, 1) if success_rate is not None else None,
+            "total_runs": total_runs,
+            "latest_result": latest_result,
+        }
+
+    # Agent definitions with stats
+    agents_data = [
+        {
+            "name": "Conversation Quality Trainer",
+            "description": "Learns from successful conversations and improves prompts",
+            **get_agent_stats("conversation_trainer"),
+        },
+        {
+            "name": "Client LTV Predictor & Nurturer",
+            "description": "Predicts client value and sends personalized nurturing messages",
+            **get_agent_stats("client_value_predictor"),
+        },
+        {
+            "name": "Knowledge Graph Builder",
+            "description": "Extracts entities and relationships from all data sources",
+            **get_agent_stats("knowledge_graph_builder"),
+        },
+    ]
+
     return {
         "success": True,
         "tier": 1,
         "total_agents": 3,
-        "agents": [
-            {
-                "id": "conversation_trainer",
-                "name": "Conversation Quality Trainer",
-                "description": "Learns from successful conversations and improves prompts",
-                "schedule": "Weekly (Sunday 4 AM)",
-                "priority": 8,
-                "estimated_duration_min": 15,
-            },
-            {
-                "id": "client_value_predictor",
-                "name": "Client LTV Predictor & Nurturer",
-                "description": "Predicts client value and sends personalized nurturing messages",
-                "schedule": "Daily (10 AM)",
-                "priority": 9,
-                "estimated_duration_min": 10,
-            },
-            {
-                "id": "knowledge_graph_builder",
-                "name": "Knowledge Graph Builder",
-                "description": "Extracts entities and relationships from all data sources",
-                "schedule": "Daily (4 AM)",
-                "priority": 7,
-                "estimated_duration_min": 30,
-            },
-        ],
+        "agents": agents_data,
         "recent_executions": len(agent_executions),
         "timestamp": datetime.now().isoformat(),
     }

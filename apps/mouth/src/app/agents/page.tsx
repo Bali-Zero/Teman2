@@ -44,53 +44,21 @@ export default function AgentsPage() {
       const response =
         await api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet();
 
-      // TODO: Use actual backend response when API returns proper agent status
-      // For now using mock data until backend implements full agent status endpoint
-
-      console.log('Backend response (debug):', response);
+      console.log('Backend response:', response);
 
       // Transform backend response to our format
-      const agentsData: AgentStatus[] = [
-        {
-          name: 'Conversation Quality Trainer',
-          description: 'Analyzes high-rated conversations and generates prompt improvements',
-          status: 'running',
-          success_rate: 98.5,
-          total_runs: 200,
-          latest_result: {
-            conversations_analyzed: 47,
-            improvements_generated: 3,
-            score_increase: '+12%',
-          },
-        },
-        {
-          name: 'Client LTV Predictor',
-          description: 'Predicts client lifetime value and sends nurturing messages',
-          status: 'running',
-          success_rate: 100,
-          total_runs: 84,
-          latest_result: {
-            clients_scored: 145,
-            vip_clients: 8,
-            messages_sent: 12,
-            response_rate: '58%',
-          },
-        },
-        {
-          name: 'Knowledge Graph Builder',
-          description: 'Extracts entities and relationships from conversations',
-          status: 'idle',
-          success_rate: 95.2,
-          total_runs: 42,
-          latest_result: {
-            conversations_processed: 230,
-            entities_extracted: 487,
-            new_entities: 125,
-            relationships_created: 892,
-            graph_size: '2,143 nodes, 4,567 edges',
-          },
-        },
-      ];
+      // Backend now returns proper AgentStatus format!
+      const agentsData: AgentStatus[] =
+        response.agents?.map((agent: any) => ({
+          name: agent.name,
+          description: agent.description,
+          status: agent.status || 'idle',
+          last_run: agent.last_run,
+          next_run: agent.next_run,
+          success_rate: agent.success_rate,
+          total_runs: agent.total_runs || 0,
+          latest_result: agent.latest_result,
+        })) || [];
 
       setAgents(agentsData);
       setLastUpdate(new Date());

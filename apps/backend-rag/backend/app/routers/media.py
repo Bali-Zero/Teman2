@@ -19,24 +19,41 @@ class ImagePrompt(BaseModel):
 @router.post("/generate-image")
 async def generate_image(request: ImagePrompt):
     """
-    Generate an image from a text prompt.
+    Generate an image from a text prompt using pollinations.ai fallback.
+
+    This endpoint always succeeds if prompt is valid, returning a pollinations.ai URL.
+    No API key required.
     """
     try:
-        service = ImageGenerationService()
+        logger.info(f"🎨 Image generation request: prompt='{request.prompt[:100]}...'")
+
+        # Initialize service (uses pollinations.ai fallback, no API key needed)
+        service = ImageGenerationService(api_key="dummy")  # Pollinations doesn't need real key
+
+        # Generate image
         result = await service.generate_image(request.prompt)
 
+        logger.info(f"🎨 Service result: success={result['success']}, url={result.get('url', 'N/A')[:100]}")
+
         if result["success"]:
-            return {
+            response = {
                 "success": True,
                 "url": result["url"],
                 "prompt": result.get("prompt"),
-                "service": result.get("service", "unknown"),
+                "service": result.get("service", "pollinations_fallback"),
             }
+            logger.info(f"✅ Image generation successful: {response['url'][:100]}")
+            return response
         else:
+            # Service returned an error
+            error_msg = result.get("error", "Unknown error")
+            error_details = result.get("details", "")
+            logger.error(f"❌ Image generation failed: {error_msg} - {error_details}")
+
             # Return proper HTTP status codes for different error types
-            if "not configured" in result["error"]:
+            if "not configured" in error_msg:
                 raise HTTPException(status_code=503, detail=result)
-            elif "Invalid prompt" in result["error"]:
+            elif "Invalid prompt" in error_msg:
                 raise HTTPException(status_code=400, detail=result)
             else:
                 raise HTTPException(status_code=500, detail=result)
@@ -45,7 +62,7 @@ async def generate_image(request: ImagePrompt):
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        logger.error(f"Image generation error: {e}")
+        logger.error(f"❌ Unexpected image generation error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={"success": False, "error": "Internal server error", "details": str(e)},
