@@ -22,7 +22,7 @@ from plugins.team.search_member_plugin import (
     TeamSearchOutput,
 )
 
-from services.collaborator_service import CollaboratorProfile
+from services.crm.collaborator_service import CollaboratorProfile
 
 # ============================================================================
 # Test Data Fixtures

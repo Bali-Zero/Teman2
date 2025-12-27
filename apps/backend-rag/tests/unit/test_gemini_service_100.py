@@ -13,7 +13,7 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 @pytest.fixture(autouse=True)
 def mock_settings():
     """Mock settings for all tests"""
-    with patch("services.gemini_service.settings") as mock:
+    with patch("services.llm_clients.gemini_service.settings") as mock:
         mock.google_api_key = "test-google-key"
         mock.openrouter_api_key = "test-openrouter-key"
         yield mock
@@ -34,17 +34,17 @@ def mock_genai_client():
 @pytest.fixture
 def mock_genai(mock_genai_client):
     """Mock GenAIClient as genai replacement"""
-    with patch("services.gemini_service.GENAI_AVAILABLE", True):
-        with patch("services.gemini_service.GenAIClient", return_value=mock_genai_client):
+    with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
+        with patch("services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client):
             yield mock_genai_client
 
 
 @pytest.fixture
 def mock_jaksel_persona():
     """Mock Jaksel persona prompts"""
-    with patch("services.gemini_service.SYSTEM_INSTRUCTION", "Test system instruction"):
+    with patch("services.llm_clients.gemini_service.SYSTEM_INSTRUCTION", "Test system instruction"):
         with patch(
-            "services.gemini_service.FEW_SHOT_EXAMPLES",
+            "services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES",
             [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi there!"}],
         ):
             yield
@@ -57,7 +57,7 @@ class TestGeminiJakselService:
         """Test init with models/ prefix already present"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
             service = GeminiJakselService(model_name="models/gemini-3-flash-preview")
 
@@ -67,7 +67,7 @@ class TestGeminiJakselService:
         """Test init adds models/ prefix"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
             service = GeminiJakselService(model_name="gemini-3-flash-preview")
 
@@ -77,7 +77,7 @@ class TestGeminiJakselService:
         """Test init without API key"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.settings") as mock_s:
             mock_s.google_api_key = None
             service = GeminiJakselService()
 
@@ -88,9 +88,9 @@ class TestGeminiJakselService:
         from services.llm_clients.gemini_service import GeminiJakselService
 
         # Mock GenAIClient to raise exception on instantiation
-        with patch("services.gemini_service.GENAI_AVAILABLE", True):
-            with patch("services.gemini_service.GenAIClient", side_effect=Exception("Model init failed")):
-                with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
+            with patch("services.llm_clients.gemini_service.GenAIClient", side_effect=Exception("Model init failed")):
+                with patch("services.llm_clients.gemini_service.settings") as mock_s:
                     mock_s.google_api_key = "test-key"
                     service = GeminiJakselService()
 
@@ -101,10 +101,10 @@ class TestGeminiJakselService:
         from services.llm_clients.gemini_service import GeminiJakselService
 
         with patch(
-            "services.gemini_service.FEW_SHOT_EXAMPLES",
+            "services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES",
             [{"role": "user", "content": "Question"}, {"role": "assistant", "content": "Answer"}],
         ):
-            with patch("services.gemini_service.settings") as mock_s:
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -116,13 +116,13 @@ class TestGeminiJakselService:
         """Test OpenRouter client is lazy loaded"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
             service = GeminiJakselService()
 
             assert service._openrouter_client is None
 
-            with patch("services.gemini_service.OpenRouterClient") as mock_client:
+            with patch("services.llm_clients.gemini_service.OpenRouterClient") as mock_client:
                 mock_client.return_value = MagicMock()
                 client = service._get_openrouter_client()
 
@@ -135,7 +135,7 @@ class TestGeminiJakselService:
         """Test OpenRouter client handles import error"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
             service = GeminiJakselService()
 
@@ -151,8 +151,8 @@ class TestGeminiJakselService:
         """Test message conversion without history or context"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -168,8 +168,8 @@ class TestGeminiJakselService:
         """Test message conversion with context"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -184,8 +184,8 @@ class TestGeminiJakselService:
         """Test message conversion with history"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -207,8 +207,8 @@ class TestGeminiJakselService:
         """Test message conversion skips empty history content"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -227,8 +227,8 @@ class TestGeminiJakselService:
         """Test OpenRouter fallback success"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -250,8 +250,8 @@ class TestGeminiJakselService:
         """Test OpenRouter fallback when client not available"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
                 service._get_openrouter_client = MagicMock(return_value=None)
@@ -266,8 +266,8 @@ class TestGeminiJakselService:
         """Test OpenRouter fallback handles errors"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -285,8 +285,8 @@ class TestGeminiJakselService:
         """Test OpenRouter streaming fallback success"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -311,8 +311,8 @@ class TestGeminiJakselService:
         """Test streaming fallback when client not available"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
                 service._get_openrouter_client = MagicMock(return_value=None)
@@ -328,8 +328,8 @@ class TestGeminiJakselService:
         """Test generate_response_stream with successful Gemini response"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -366,8 +366,8 @@ class TestGeminiJakselService:
         """Test generate_response_stream with context"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -402,8 +402,8 @@ class TestGeminiJakselService:
         """Test generate_response_stream falls back on quota exceeded"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -436,8 +436,8 @@ class TestGeminiJakselService:
         """Test generate_response_stream falls back on service unavailable"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -468,8 +468,8 @@ class TestGeminiJakselService:
         """Test generate_response_stream falls back on 429 error"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -500,8 +500,8 @@ class TestGeminiJakselService:
         """Test generate_response_stream raises on unexpected error"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -523,8 +523,8 @@ class TestGeminiJakselService:
         """Test generate_response_stream uses fallback when no model"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = None
                 service = GeminiJakselService()
                 service.model = None
@@ -545,8 +545,8 @@ class TestGeminiJakselService:
         """Test generate_response success"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -567,8 +567,8 @@ class TestGeminiJakselService:
         """Test generate_response falls back on quota exceeded"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -590,8 +590,8 @@ class TestGeminiJakselService:
         """Test generate_response falls back on rate limit"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -613,8 +613,8 @@ class TestGeminiJakselService:
         """Test generate_response raises on unexpected error"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.gemini_service.settings") as mock_s:
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
@@ -636,7 +636,7 @@ class TestGeminiService:
         """Test GeminiService init with API key"""
         from services.llm_clients.gemini_service import GeminiService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
             service = GeminiService(api_key="custom-key")
 
             # Service should be initialized with the custom key
@@ -647,7 +647,7 @@ class TestGeminiService:
         """Test GeminiService init without API key"""
         from services.llm_clients.gemini_service import GeminiService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
             service = GeminiService()
 
             assert service._service is not None
@@ -657,7 +657,7 @@ class TestGeminiService:
         """Test GeminiService generate_response"""
         from services.llm_clients.gemini_service import GeminiService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
             service = GeminiService()
             service._service.generate_response = AsyncMock(return_value="Response")
 
@@ -672,7 +672,7 @@ class TestGeminiService:
         """Test GeminiService generate_response with context list"""
         from services.llm_clients.gemini_service import GeminiService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
             service = GeminiService()
             service._service.generate_response = AsyncMock(return_value="Response")
 
@@ -687,7 +687,7 @@ class TestGeminiService:
         """Test GeminiService stream_response"""
         from services.llm_clients.gemini_service import GeminiService
 
-        with patch("services.gemini_service.FEW_SHOT_EXAMPLES", []):
+        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
             service = GeminiService()
 
             async def mock_stream(prompt):

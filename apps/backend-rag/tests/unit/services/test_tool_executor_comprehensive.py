@@ -13,7 +13,7 @@ class TestToolExecutorInit:
 
     def test_init_without_zantara_tools(self):
         """Test initialization without ZantaraTools"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
 
@@ -22,7 +22,7 @@ class TestToolExecutorInit:
 
     def test_init_with_zantara_tools(self):
         """Test initialization with ZantaraTools"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = Mock()
         executor = ToolExecutor(zantara_tools=mock_tools)
@@ -31,7 +31,7 @@ class TestToolExecutorInit:
 
     def test_zantara_tool_names_set(self):
         """Test that zantara_tool_names contains expected tools"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
 
@@ -58,7 +58,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_empty(self):
         """Test execute with empty tool list"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
         result = await executor.execute_tool_calls([])
@@ -68,7 +68,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_dict_format(self):
         """Test execute with dict format tool use"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -97,7 +97,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_object_format(self):
         """Test execute with object format tool use (Pydantic)"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -122,7 +122,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_tool_error(self):
         """Test execute when tool returns error"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -143,7 +143,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_unknown_tool(self):
         """Test execute with unknown tool name"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         executor = ToolExecutor(zantara_tools=mock_tools)
@@ -159,7 +159,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_no_zantara_tools(self):
         """Test execute when ZantaraTools not provided"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()  # No zantara_tools
 
@@ -174,7 +174,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_exception(self):
         """Test execute handles exceptions"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.side_effect = Exception("Unexpected error")
@@ -192,7 +192,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_string_result(self):
         """Test execute with string result (non-dict/list)"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -211,7 +211,7 @@ class TestToolExecutorExecuteToolCalls:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_multiple(self):
         """Test execute multiple tool calls"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.side_effect = [
@@ -239,7 +239,7 @@ class TestToolExecutorExecuteTool:
     @pytest.mark.asyncio
     async def test_execute_tool_success(self):
         """Test single tool execution success"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -261,7 +261,7 @@ class TestToolExecutorExecuteTool:
     @pytest.mark.asyncio
     async def test_execute_tool_failure(self):
         """Test single tool execution failure"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -283,7 +283,7 @@ class TestToolExecutorExecuteTool:
     @pytest.mark.asyncio
     async def test_execute_tool_unknown(self):
         """Test single tool execution with unknown tool"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         executor = ToolExecutor(zantara_tools=mock_tools)
@@ -300,7 +300,7 @@ class TestToolExecutorExecuteTool:
     @pytest.mark.asyncio
     async def test_execute_tool_no_zantara_tools(self):
         """Test single tool execution without ZantaraTools"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
 
@@ -316,7 +316,7 @@ class TestToolExecutorExecuteTool:
     @pytest.mark.asyncio
     async def test_execute_tool_exception(self):
         """Test single tool execution handles exception"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.side_effect = Exception("Crash!")
@@ -339,7 +339,7 @@ class TestToolExecutorGetAvailableTools:
     @pytest.mark.asyncio
     async def test_get_available_tools_with_zantara(self):
         """Test getting available tools with ZantaraTools"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = Mock()
         mock_tools.get_tool_definitions.return_value = [
@@ -358,7 +358,7 @@ class TestToolExecutorGetAvailableTools:
     @pytest.mark.asyncio
     async def test_get_available_tools_without_zantara(self):
         """Test getting available tools without ZantaraTools"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
 
@@ -369,7 +369,7 @@ class TestToolExecutorGetAvailableTools:
     @pytest.mark.asyncio
     async def test_get_available_tools_exception(self):
         """Test getting available tools handles exception"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = Mock()
         mock_tools.get_tool_definitions.side_effect = Exception("Load failed")
@@ -388,7 +388,7 @@ class TestToolExecutorEdgeCases:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_none_input(self):
         """Test execute with None input"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -414,7 +414,7 @@ class TestToolExecutorEdgeCases:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_result_without_data(self):
         """Test execute when result has no data key"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -435,7 +435,7 @@ class TestToolExecutorEdgeCases:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_list_result(self):
         """Test execute with list result"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {
@@ -455,7 +455,7 @@ class TestToolExecutorEdgeCases:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_dict_format_missing_input(self):
         """Test execute with dict missing input key"""
-        from backend.services.tool_executor import ToolExecutor
+        from services.misc.tool_executor import ToolExecutor
 
         mock_tools = AsyncMock()
         mock_tools.execute_tool.return_value = {

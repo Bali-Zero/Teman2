@@ -276,8 +276,8 @@ async def test_legal_ingestion_service_full_pipeline():
     """Test complete legal ingestion pipeline"""
     # Mock file operations
     with (
-        patch("services.legal_ingestion_service.auto_detect_and_parse") as mock_parse,
-        patch("services.legal_ingestion_service.QdrantClient") as mock_qdrant,
+        patch("services.ingestion.legal_ingestion_service.auto_detect_and_parse") as mock_parse,
+        patch("services.ingestion.legal_ingestion_service.QdrantClient") as mock_qdrant,
         patch("core.embeddings.create_embeddings_generator") as mock_embedder,
     ):
         # Setup mocks

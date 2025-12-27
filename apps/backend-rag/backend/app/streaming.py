@@ -5,6 +5,7 @@ Streaming endpoints extracted from main_cloud to keep entrypoint slim.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -16,6 +17,7 @@ from pydantic import BaseModel
 
 from app.auth.validation import validate_auth_mixed
 from app.utils.state_helpers import get_app_state, get_request_state
+from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from services.routing.intelligent_router import IntelligentRouter
 
 logger = logging.getLogger(__name__)
@@ -134,6 +136,20 @@ async def bali_zero_chat_stream(
                 )
         except Exception as e:
             logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
+
+    # TRACING: Record span for streaming request (completes before response streams)
+    query_hash = hashlib.sha256(query.encode()).hexdigest()[:8]
+    with trace_span("chat.stream.get", {
+        "user_id": user_id,
+        "query_length": len(query),
+        "query_hash": query_hash,
+        "endpoint": "/bali-zero/chat-stream",
+        "has_history": bool(conversation_history_list),
+        "has_memory": bool(user_memory),
+        "identified_user": collaborator.name if collaborator and collaborator.id != "anonymous" else "anonymous",
+    }):
+        add_span_event("stream_initiated", {"query_preview": query[:30]})
+        set_span_status("ok", "Stream initiated")
 
     async def event_stream() -> AsyncIterator[str]:
         # Send connection metadata
@@ -355,6 +371,21 @@ async def chat_stream_post(
                 )
         except Exception as e:
             logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
+
+    # TRACING: Record span for streaming request (completes before response streams)
+    query_hash = hashlib.sha256(body.message.encode()).hexdigest()[:8]
+    with trace_span("chat.stream.post", {
+        "user_id": user_id,
+        "query_length": len(body.message),
+        "query_hash": query_hash,
+        "session_id": session_id or "none",
+        "endpoint": "/api/chat/stream",
+        "has_history": bool(conversation_history_list),
+        "has_memory": bool(user_memory),
+        "identified_user": collaborator.name if collaborator and collaborator.id != "anonymous" else "anonymous",
+    }):
+        add_span_event("stream_initiated", {"query_preview": body.message[:30]})
+        set_span_status("ok", "Stream initiated")
 
     async def event_stream() -> AsyncIterator[str]:
         metadata = {

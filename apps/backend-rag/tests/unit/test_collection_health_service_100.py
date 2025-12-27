@@ -15,7 +15,7 @@ class TestHealthStatus:
 
     def test_health_status_values(self):
         """Test all HealthStatus values"""
-        from services.collection_health_service import HealthStatus
+        from services.ingestion.collection_health_service import HealthStatus
 
         assert HealthStatus.EXCELLENT.value == "excellent"
         assert HealthStatus.GOOD.value == "good"
@@ -28,7 +28,7 @@ class TestStalenessSeverity:
 
     def test_staleness_severity_values(self):
         """Test all StalenessSeverity values"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         assert StalenessSeverity.FRESH.value == "fresh"
         assert StalenessSeverity.AGING.value == "aging"
@@ -41,7 +41,7 @@ class TestCollectionMetrics:
 
     def test_collection_metrics_creation(self):
         """Test CollectionMetrics dataclass"""
-        from services.collection_health_service import (
+        from services.ingestion.collection_health_service import (
             CollectionMetrics,
             HealthStatus,
             StalenessSeverity,
@@ -75,14 +75,14 @@ class TestCollectionHealthService:
     @pytest.fixture
     def service(self):
         """Create a CollectionHealthService instance"""
-        from services.collection_health_service import CollectionHealthService
+        from services.ingestion.collection_health_service import CollectionHealthService
 
         return CollectionHealthService()
 
     @pytest.fixture
     def service_with_search(self):
         """Create service with search_service"""
-        from services.collection_health_service import CollectionHealthService
+        from services.ingestion.collection_health_service import CollectionHealthService
 
         mock_search = MagicMock()
         return CollectionHealthService(search_service=mock_search)
@@ -161,14 +161,14 @@ class TestCollectionHealthService:
 
     def test_calculate_staleness_none(self, service):
         """Test calculate_staleness with None"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         result = service.calculate_staleness(None)
         assert result == StalenessSeverity.VERY_STALE
 
     def test_calculate_staleness_fresh(self, service):
         """Test calculate_staleness with fresh timestamp"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         fresh_date = (datetime.now() - timedelta(days=15)).isoformat()
         result = service.calculate_staleness(fresh_date)
@@ -176,7 +176,7 @@ class TestCollectionHealthService:
 
     def test_calculate_staleness_aging(self, service):
         """Test calculate_staleness with aging timestamp"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         aging_date = (datetime.now() - timedelta(days=60)).isoformat()
         result = service.calculate_staleness(aging_date)
@@ -184,7 +184,7 @@ class TestCollectionHealthService:
 
     def test_calculate_staleness_stale(self, service):
         """Test calculate_staleness with stale timestamp"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         stale_date = (datetime.now() - timedelta(days=120)).isoformat()
         result = service.calculate_staleness(stale_date)
@@ -192,7 +192,7 @@ class TestCollectionHealthService:
 
     def test_calculate_staleness_very_stale(self, service):
         """Test calculate_staleness with very stale timestamp"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         very_stale_date = (datetime.now() - timedelta(days=200)).isoformat()
         result = service.calculate_staleness(very_stale_date)
@@ -200,7 +200,7 @@ class TestCollectionHealthService:
 
     def test_calculate_staleness_with_z_suffix(self, service):
         """Test calculate_staleness with Z timezone suffix"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         fresh_date = (datetime.now() - timedelta(days=10)).isoformat() + "Z"
         result = service.calculate_staleness(fresh_date)
@@ -208,14 +208,14 @@ class TestCollectionHealthService:
 
     def test_calculate_staleness_invalid_format(self, service):
         """Test calculate_staleness with invalid format"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         result = service.calculate_staleness("invalid-date")
         assert result == StalenessSeverity.VERY_STALE
 
     def test_calculate_health_status_critical_very_stale(self, service):
         """Test calculate_health_status returns CRITICAL for very stale"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.9,
@@ -227,7 +227,7 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_critical_low_hit_rate(self, service):
         """Test calculate_health_status returns CRITICAL for low hit rate"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.3,  # Below 0.4
@@ -239,7 +239,7 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_critical_low_confidence(self, service):
         """Test calculate_health_status returns CRITICAL for low confidence"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.9,
@@ -251,7 +251,7 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_warning_stale(self, service):
         """Test calculate_health_status returns WARNING for stale"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.9, avg_confidence=0.8, staleness=StalenessSeverity.STALE, query_count=100
@@ -260,7 +260,7 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_warning_medium_hit_rate(self, service):
         """Test calculate_health_status returns WARNING for medium hit rate"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.5,  # Below 0.6 but >= 0.4
@@ -272,7 +272,7 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_warning_medium_confidence(self, service):
         """Test calculate_health_status returns WARNING for medium confidence"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.9,
@@ -284,7 +284,7 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_excellent(self, service):
         """Test calculate_health_status returns EXCELLENT"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.85,  # > 0.8
@@ -296,7 +296,7 @@ class TestCollectionHealthService:
 
     def test_calculate_health_status_good(self, service):
         """Test calculate_health_status returns GOOD by default"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.calculate_health_status(
             hit_rate=0.7,  # Not excellent but not warning
@@ -308,7 +308,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_very_stale(self, service):
         """Test generate_recommendations for very stale collection"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -323,7 +323,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_stale(self, service):
         """Test generate_recommendations for stale collection"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -338,7 +338,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_aging(self, service):
         """Test generate_recommendations for aging collection"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -353,7 +353,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_low_hit_rate(self, service):
         """Test generate_recommendations for low hit rate"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -368,7 +368,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_medium_hit_rate(self, service):
         """Test generate_recommendations for medium hit rate"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -383,7 +383,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_low_confidence(self, service):
         """Test generate_recommendations for low confidence"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -398,7 +398,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_no_queries(self, service):
         """Test generate_recommendations for unused collection"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -413,7 +413,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_low_usage(self, service):
         """Test generate_recommendations for low usage"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -428,7 +428,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_updates_collection(self, service):
         """Test generate_recommendations for updates collection"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "tax_updates",
@@ -443,7 +443,7 @@ class TestCollectionHealthService:
 
     def test_generate_recommendations_healthy(self, service):
         """Test generate_recommendations for healthy collection"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         recommendations = service.generate_recommendations(
             "visa_oracle",
@@ -458,7 +458,7 @@ class TestCollectionHealthService:
 
     def test_get_collection_health_unknown(self, service):
         """Test get_collection_health for unknown collection"""
-        from services.collection_health_service import HealthStatus, StalenessSeverity
+        from services.ingestion.collection_health_service import HealthStatus, StalenessSeverity
 
         result = service.get_collection_health("unknown_collection")
 
@@ -494,7 +494,7 @@ class TestCollectionHealthService:
 
     def test_get_collection_health_uses_provided_timestamp(self, service):
         """Test get_collection_health uses provided last_updated"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         result = service.get_collection_health(
             "visa_oracle", last_updated=(datetime.now() - timedelta(days=10)).isoformat()
@@ -504,7 +504,7 @@ class TestCollectionHealthService:
 
     def test_get_collection_health_uses_tracked_timestamp(self, service):
         """Test get_collection_health uses tracked last_updated"""
-        from services.collection_health_service import StalenessSeverity
+        from services.ingestion.collection_health_service import StalenessSeverity
 
         # Set tracked timestamp
         service.metrics["visa_oracle"]["last_updated"] = (
@@ -618,7 +618,7 @@ class TestIntegration:
 
     def test_full_workflow(self):
         """Test complete health monitoring workflow"""
-        from services.collection_health_service import (
+        from services.ingestion.collection_health_service import (
             CollectionHealthService,
             HealthStatus,
             StalenessSeverity,

@@ -42,8 +42,12 @@ class TestReasoningToolExecution:
     @pytest.mark.asyncio
     async def test_tool_execution_with_valid_tool_call(self):
         """Test tool execution when valid tool call is parsed"""
+        # Create a proper mock tool that implements BaseTool interface
+        mock_tool = MagicMock()
+        mock_tool.execute = AsyncMock(return_value="Found relevant documents about KITAS")
+        
         tool_map = {
-            "vector_search": AsyncMock(return_value="Found relevant documents about KITAS")
+            "vector_search": mock_tool
         }
         engine = ReasoningEngine(tool_map=tool_map)
 
@@ -67,22 +71,26 @@ class TestReasoningToolExecution:
         )
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-            result_state, _, _ = await engine.execute_react_loop(
-                state=state,
-                llm_gateway=llm_gateway,
-                chat=chat,
-                initial_prompt="test",
-                system_prompt="",
-                query="What is KITAS?",
-                user_id="test_user",
-                model_tier=0,
-                tool_execution_counter=tool_execution_counter,
-            )
+        # Mock tracing to avoid generator issues
+        with patch("services.rag.agentic.reasoning.trace_span") as mock_trace:
+            mock_trace.return_value.__enter__ = MagicMock()
+            mock_trace.return_value.__exit__ = MagicMock(return_value=None)
+            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+                result_state, _, _ = await engine.execute_react_loop(
+                    state=state,
+                    llm_gateway=llm_gateway,
+                    chat=chat,
+                    initial_prompt="test",
+                    system_prompt="",
+                    query="What is KITAS?",
+                    user_id="test_user",
+                    model_tier=0,
+                    tool_execution_counter=tool_execution_counter,
+                )
 
         # Verify tool was executed
         assert "vector_search" in tool_map
-        tool_map["vector_search"].assert_called_once()
+        mock_tool.execute.assert_called_once()
         
         # Verify context was gathered
         assert len(result_state.context_gathered) > 0
@@ -90,9 +98,15 @@ class TestReasoningToolExecution:
     @pytest.mark.asyncio
     async def test_tool_execution_with_multiple_tools(self):
         """Test tool execution with multiple tool calls"""
+        # Create proper mock tools
+        mock_vector_search = MagicMock()
+        mock_vector_search.execute = AsyncMock(return_value="Document 1 about KITAS")
+        mock_calculator = MagicMock()
+        mock_calculator.execute = AsyncMock(return_value="42")
+        
         tool_map = {
-            "vector_search": AsyncMock(return_value="Document 1 about KITAS"),
-            "calculator": AsyncMock(return_value="42"),
+            "vector_search": mock_vector_search,
+            "calculator": mock_calculator,
         }
         engine = ReasoningEngine(tool_map=tool_map)
 
@@ -130,28 +144,37 @@ class TestReasoningToolExecution:
                 return result
             return None
 
-        with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call):
-            result_state, _, _ = await engine.execute_react_loop(
-                state=state,
-                llm_gateway=llm_gateway,
-                chat=chat,
-                initial_prompt="test",
-                system_prompt="",
-                query="What is KITAS and calculate 6*7?",
-                user_id="test_user",
-                model_tier=0,
-                tool_execution_counter={},
-            )
+        tool_execution_counter = {"count": 0}
+        # Mock tracing to avoid generator issues
+        with patch("services.rag.agentic.reasoning.trace_span") as mock_trace:
+            mock_trace.return_value.__enter__ = MagicMock()
+            mock_trace.return_value.__exit__ = MagicMock(return_value=None)
+            with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call):
+                result_state, _, _ = await engine.execute_react_loop(
+                    state=state,
+                    llm_gateway=llm_gateway,
+                    chat=chat,
+                    initial_prompt="test",
+                    system_prompt="",
+                    query="What is KITAS and calculate 6*7?",
+                    user_id="test_user",
+                    model_tier=0,
+                    tool_execution_counter=tool_execution_counter,
+                )
 
         # Verify both tools were executed
-        assert tool_map["vector_search"].called
-        assert tool_map["calculator"].called
+        assert mock_vector_search.execute.called
+        assert mock_calculator.execute.called
 
     @pytest.mark.asyncio
     async def test_tool_execution_error_handling(self):
         """Test error handling when tool execution fails"""
+        # Create mock tool that raises exception
+        mock_tool = MagicMock()
+        mock_tool.execute = AsyncMock(side_effect=Exception("Tool execution failed"))
+        
         tool_map = {
-            "vector_search": AsyncMock(side_effect=Exception("Tool execution failed"))
+            "vector_search": mock_tool
         }
         engine = ReasoningEngine(tool_map=tool_map)
 
@@ -174,18 +197,23 @@ class TestReasoningToolExecution:
         )
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-            result_state, _, _ = await engine.execute_react_loop(
-                state=state,
-                llm_gateway=llm_gateway,
-                chat=chat,
-                initial_prompt="test",
-                system_prompt="",
-                query="What is KITAS?",
-                user_id="test_user",
-                model_tier=0,
-                tool_execution_counter=tool_execution_counter,
-            )
+        # Mock tracing to avoid generator issues
+        with patch("services.rag.agentic.reasoning.trace_span") as mock_trace:
+            mock_trace.return_value.__enter__ = MagicMock()
+            mock_trace.return_value.__exit__ = MagicMock(return_value=None)
+            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+                # Tool execution errors should be caught and handled
+                result_state, _, _ = await engine.execute_react_loop(
+                    state=state,
+                    llm_gateway=llm_gateway,
+                    chat=chat,
+                    initial_prompt="test",
+                    system_prompt="",
+                    query="What is KITAS?",
+                    user_id="test_user",
+                    model_tier=0,
+                    tool_execution_counter=tool_execution_counter,
+                )
 
         # Should handle error gracefully and continue
         assert result_state is not None
@@ -193,8 +221,12 @@ class TestReasoningToolExecution:
     @pytest.mark.asyncio
     async def test_tool_execution_with_native_function_calling(self):
         """Test tool execution with native function calling (Gemini)"""
+        # Create proper mock tool
+        mock_tool = MagicMock()
+        mock_tool.execute = AsyncMock(return_value="Found documents")
+        
         tool_map = {
-            "vector_search": AsyncMock(return_value="Found documents")
+            "vector_search": mock_tool
         }
         engine = ReasoningEngine(tool_map=tool_map)
 
@@ -203,9 +235,6 @@ class TestReasoningToolExecution:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
-        )
         chat = MagicMock()
 
         # Mock response object with native function call
@@ -221,25 +250,29 @@ class TestReasoningToolExecution:
         )
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-            llm_gateway.send_message = AsyncMock(
-                return_value=("Answer", "gemini-2.0-flash", mock_response)
-            )
-            
-            result_state, _, _ = await engine.execute_react_loop(
-                state=state,
-                llm_gateway=llm_gateway,
-                chat=chat,
-                initial_prompt="test",
-                system_prompt="",
-                query="What is KITAS?",
-                user_id="test_user",
-                model_tier=0,
-                tool_execution_counter=tool_execution_counter,
-            )
+        # Mock tracing to avoid generator issues
+        with patch("services.rag.agentic.reasoning.trace_span") as mock_trace:
+            mock_trace.return_value.__enter__ = MagicMock()
+            mock_trace.return_value.__exit__ = MagicMock(return_value=None)
+            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+                llm_gateway.send_message = AsyncMock(
+                    return_value=("Answer", "gemini-2.0-flash", mock_response)
+                )
+                
+                result_state, _, _ = await engine.execute_react_loop(
+                    state=state,
+                    llm_gateway=llm_gateway,
+                    chat=chat,
+                    initial_prompt="test",
+                    system_prompt="",
+                    query="What is KITAS?",
+                    user_id="test_user",
+                    model_tier=0,
+                    tool_execution_counter=tool_execution_counter,
+                )
 
         # Verify tool was called
-        assert tool_map["vector_search"].called
+        assert mock_tool.execute.called
 
 
 @pytest.mark.unit
@@ -287,13 +320,13 @@ class TestReasoningStreamingMode:
     @pytest.mark.asyncio
     async def test_streaming_mode_with_tool_calls(self):
         """Test streaming mode with tool execution"""
-        async def mock_vector_search(*args, **kwargs):
-            return "Found documents about KITAS"
+        # Create proper mock tool
+        mock_tool = MagicMock()
+        mock_tool.execute = AsyncMock(return_value="Found documents about KITAS")
         
         tool_map = {
-            "vector_search": MagicMock()
+            "vector_search": mock_tool
         }
-        tool_map["vector_search"].execute = AsyncMock(return_value="Found documents about KITAS")
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)

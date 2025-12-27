@@ -109,13 +109,25 @@ class AnalyticsAggregator:
                     row = await conn.fetchrow("""
                         SELECT
                             COUNT(*) as total,
-                            AVG(response_time_ms) as avg_latency
+                            AVG(response_time_ms) as avg_latency,
+                            AVG(COALESCE((metadata->'routing_stats'->>'embedding')::float, 0)) as avg_embedding,
+                            AVG(COALESCE((metadata->'routing_stats'->>'search')::float, 0)) as avg_search,
+                            AVG(COALESCE((metadata->'routing_stats'->>'rerank')::float, 0)) as avg_rerank,
+                            AVG(COALESCE((metadata->'routing_stats'->>'llm')::float, 0)) as avg_llm
                         FROM query_analytics
                         WHERE created_at >= CURRENT_DATE
                     """)
                     if row:
                         stats.queries_today = row["total"] or 0
                         stats.avg_latency_ms = float(row["avg_latency"] or 0)
+                        
+                        # Populate granular latencies if available (convert seconds to ms if stored as seconds in orchestrator)
+                        # Orchestrator stores timings in SECONDS (time.time difference).
+                        # Dashboard expects MS. We multiply by 1000.
+                        stats.embedding_latency_ms = float(row["avg_embedding"] or 0) * 1000
+                        stats.search_latency_ms = float(row["avg_search"] or 0) * 1000
+                        stats.rerank_latency_ms = float(row["avg_rerank"] or 0) * 1000
+                        stats.llm_latency_ms = float(row["avg_llm"] or 0) * 1000
 
                     # Top queries (last 7 days)
                     top_queries = await conn.fetch("""

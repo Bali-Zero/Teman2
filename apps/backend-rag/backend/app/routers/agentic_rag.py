@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.dependencies import get_current_user, get_database_pool
+from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
 
 logger = logging.getLogger(__name__)
@@ -303,10 +304,28 @@ async def stream_agentic_rag(
         f"session_id={request_body.session_id}"
     )
 
-    # Validate query is not empty
-    if not request_body.query or not request_body.query.strip():
-        logger.warning(f"⚠️ Empty query received - rejecting (correlation_id={correlation_id})")
-        raise HTTPException(status_code=400, detail="Query cannot be empty")
+    # TRACING: Record span for streaming request (completes before response streams)
+    # This ensures traces are sent even for long-running SSE connections
+    with trace_span("agentic_rag.stream", {
+        "user_id": authenticated_user_id or "anonymous",
+        "query_length": len(request_body.query) if request_body.query else 0,
+        "query_hash": query_hash,
+        "session_id": request_body.session_id or "none",
+        "correlation_id": correlation_id,
+        "has_conversation_history": bool(request_body.conversation_history),
+        "endpoint": "/api/agentic-rag/stream",
+    }):
+        add_span_event("stream_request_received", {
+            "query_preview": query_preview[:30] if query_preview else "",
+        })
+
+        # Validate query is not empty
+        if not request_body.query or not request_body.query.strip():
+            logger.warning(f"⚠️ Empty query received - rejecting (correlation_id={correlation_id})")
+            set_span_status("error", "Empty query")
+            raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+        set_span_status("ok", "Stream initiated")
 
     async def event_generator():
         events_yielded = 0

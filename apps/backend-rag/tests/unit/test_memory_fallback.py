@@ -1,6 +1,6 @@
 import pytest
 
-from backend.services.memory_fallback import InMemoryConversationCache
+from services.memory.memory_fallback import InMemoryConversationCache
 
 
 @pytest.fixture

@@ -26,11 +26,11 @@ from services.ingestion.ingestion_service import IngestionService
 def ingestion_service():
     """Create IngestionService instance"""
     with (
-        patch("services.ingestion_service.TextChunker"),
-        patch("services.ingestion_service.create_embeddings_generator") as mock_create_embedder,
-        patch("services.ingestion_service.QdrantClient"),
-        patch("services.ingestion_service.TierClassifier"),
-        patch("services.ingestion_service.logger"),
+        patch("services.ingestion.ingestion_service.TextChunker"),
+        patch("services.ingestion.ingestion_service.create_embeddings_generator") as mock_create_embedder,
+        patch("services.ingestion.ingestion_service.QdrantClient"),
+        patch("services.ingestion.ingestion_service.TierClassifier"),
+        patch("services.ingestion.ingestion_service.logger"),
     ):
         mock_embedder = MagicMock()
         mock_create_embedder.return_value = mock_embedder
@@ -74,8 +74,8 @@ async def test_ingest_book_success(ingestion_service):
     ingestion_service.classifier.get_min_access_level.return_value = 1
 
     with (
-        patch("services.ingestion_service.get_document_info") as mock_info,
-        patch("services.ingestion_service.auto_detect_and_parse") as mock_parse,
+        patch("services.ingestion.ingestion_service.get_document_info") as mock_info,
+        patch("services.ingestion.ingestion_service.auto_detect_and_parse") as mock_parse,
     ):
         mock_info.return_value = {"title": "Test Book", "author": "Test Author"}
         mock_parse.return_value = "Sample book text content here"
@@ -99,8 +99,8 @@ async def test_ingest_book_with_tier_override(ingestion_service):
     ingestion_service.classifier.get_min_access_level.return_value = 3
 
     with (
-        patch("services.ingestion_service.get_document_info"),
-        patch("services.ingestion_service.auto_detect_and_parse") as mock_parse,
+        patch("services.ingestion.ingestion_service.get_document_info"),
+        patch("services.ingestion.ingestion_service.auto_detect_and_parse") as mock_parse,
     ):
         mock_parse.return_value = "Sample text"
 
@@ -121,7 +121,7 @@ async def test_ingest_book_with_tier_override(ingestion_service):
 async def test_ingest_book_exception(ingestion_service):
     """Test ingesting book with exception"""
     with patch(
-        "services.ingestion_service.get_document_info", side_effect=Exception("Parse error")
+        "services.ingestion.ingestion_service.get_document_info", side_effect=Exception("Parse error")
     ):
         result = await ingestion_service.ingest_book(file_path="/path/to/book.pdf")
 
@@ -141,8 +141,8 @@ async def test_ingest_book_auto_detect_title_author(ingestion_service):
     ingestion_service.classifier.get_min_access_level.return_value = 1
 
     with (
-        patch("services.ingestion_service.get_document_info") as mock_info,
-        patch("services.ingestion_service.auto_detect_and_parse"),
+        patch("services.ingestion.ingestion_service.get_document_info") as mock_info,
+        patch("services.ingestion.ingestion_service.auto_detect_and_parse"),
         patch("pathlib.Path.stem", "book_file"),
     ):
         mock_info.return_value = {"title": "Detected Title", "author": "Detected Author"}
