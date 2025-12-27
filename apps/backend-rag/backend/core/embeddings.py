@@ -4,8 +4,25 @@ Supports both OpenAI and Sentence Transformers
 """
 
 import logging
+import time
 
 logger = logging.getLogger(__name__)
+
+# Tracing utilities (with fallback for standalone usage)
+try:
+    from app.utils.tracing import trace_span, set_span_attribute, set_span_status
+except ImportError:
+    from contextlib import contextmanager
+
+    @contextmanager
+    def trace_span(name, attrs=None):
+        yield
+
+    def set_span_attribute(key, value):
+        pass
+
+    def set_span_status(status, msg=None):
+        pass
 
 # Import settings - try both absolute paths
 try:
@@ -153,19 +170,36 @@ class EmbeddingsGenerator:
         Raises:
             Exception: If API call fails
         """
-        if not texts:
-            logger.warning("Empty text list provided for embedding")
-            return []
+        with trace_span("embedding.generate", {
+            "provider": self.provider,
+            "model": self.model,
+            "texts_count": len(texts),
+            "dimensions": self.dimensions,
+        }):
+            if not texts:
+                logger.warning("Empty text list provided for embedding")
+                set_span_attribute("skipped", True)
+                set_span_attribute("skip_reason", "empty_input")
+                set_span_status("ok")
+                return []
 
-        try:
-            if self.provider == "openai":
-                return self._generate_embeddings_openai(texts)
-            else:
-                return self._generate_embeddings_sentence_transformers(texts)
+            try:
+                start_time = time.perf_counter()
+                if self.provider == "openai":
+                    result = self._generate_embeddings_openai(texts)
+                else:
+                    result = self._generate_embeddings_sentence_transformers(texts)
 
-        except Exception as e:
-            logger.error(f"Error generating embeddings: {e}")
-            raise
+                latency_ms = (time.perf_counter() - start_time) * 1000
+                set_span_attribute("latency_ms", round(latency_ms, 2))
+                set_span_attribute("embeddings_generated", len(result))
+                set_span_status("ok")
+                return result
+
+            except Exception as e:
+                logger.error(f"Error generating embeddings: {e}")
+                set_span_status("error", str(e))
+                raise
 
     def _generate_embeddings_openai(self, texts: list[str]) -> list[list[float]]:
         """

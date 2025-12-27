@@ -15,6 +15,7 @@ Essential Tools (Dec 2025):
 import json
 import logging
 
+from app.utils.tracing import trace_span, set_span_attribute, set_span_status
 from services.pricing_service import get_pricing_service
 from services.rag.vision_rag import VisionRAGService
 from services.tools.definitions import BaseTool
@@ -66,147 +67,159 @@ class VectorSearchTool(BaseTool):
         }
 
     async def execute(self, query: str, collection: str = None, top_k: int = 5, filters: dict = None, **kwargs) -> str:
-        # Gemini sometimes passes top_k as float, ensure it's int
-        top_k = int(top_k) if top_k else 5
-        
-        import re
-        
-        # FEDERATED SEARCH STRATEGY (Dec 2025):
-        # We moved away from "Siloed Search" (searching only 1 collection) to "Smart Federation".
-        # If the user asks a business question, we usually need:
-        # 1. The Specific Facts (Visa Oracle / KBLI)
-        # 2. The Law (Legal Unified)
-        # 3. Practical Examples (Training Conversations)
-        
-        # Determine domain-specific collections to include
-        query_lower = query.lower()
-        
-        # VISAS
-        visa_pattern = r"\b(visa|kitas|kitap|voa|b211|e33|c31|stay|permit|immigration)\b"
-        is_visa = bool(re.search(visa_pattern, query_lower)) or "e33g" in query_lower or "c312" in query_lower
-        
-        # COMPANY / BUSINESS
-        company_pattern = r"\b(company|pt pma|pma|business|license|oss|kbli|sector|setup|incorporation|sharia)\b"
-        is_company = bool(re.search(company_pattern, query_lower))
-        
-        # TAX / LEGAL / REAL ESTATE
-        # These primarily rely on legal_unified, but training helps for explanation
-        
-        target_collections = set()
-        
-        if collection:
-            target_collections.add(collection)
-        
-        # Add Universal Context collections (Always relevant for business queries)
-        # CRITICAL FIX: The Production Collection is named 'legal_unified_hybrid' (48k chunks), 
-        # NOT 'legal_unified' (which is empty/non-existent).
-        target_collections.add("legal_unified_hybrid") 
-        target_collections.add("training_conversations")
-        
-        # Add Domains
-        if is_visa:
-            target_collections.add("visa_oracle")
-        if is_company:
-            target_collections.add("kbli_unified")
-            
-        # Convert to list
-        target_collections_list = list(target_collections)
-        
-        logger.info(f"🌐 [Federated Search] Strategy: {target_collections_list} for query: '{query}'")
-            
-        all_chunks = []
-        seen_content = set()
-        
-        # Execute Search across all targets
-        for target_col in target_collections_list:
-            try:
-                # Use standard search
-                if hasattr(self.retriever, "search_with_reranking"):
-                    res = await self.retriever.search_with_reranking(
-                        query=query, user_level=1, limit=3, collection_override=target_col, metadata_filter=filters
-                    )
-                else:
-                    res = await self.retriever.search(
-                        query=query, user_level=1, limit=3, collection_override=target_col, metadata_filter=filters
-                    )
-                
-                for chunk in res.get("results", []):
-                    # Deduplication based on text content
-                    text = chunk.get("text", "") if isinstance(chunk, dict) else getattr(chunk, "text", "")
-                    # content_hash = hash(text[:100]) # Simple hash
-                    if text[:100] not in seen_content:
-                        seen_content.add(text[:100])
-                        # Tag the source collection explicitly for the context
-                        if isinstance(chunk, dict):
-                            chunk["_source_collection"] = target_col
-                        all_chunks.append(chunk)
-                        
-            except Exception as e:
-                logger.warning(f"Federated search failed for {target_col}: {e}")
-        
-        # Sort by score if available (cross-collection ranking)
-        all_chunks.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
-        chunks = all_chunks[:top_k+3] # Expanded context window for federated results
+        # 🔍 TRACING: Span for VectorSearchTool execution
+        with trace_span("tool.vector_search", {
+            "query_length": len(query),
+            "requested_collection": collection or "auto",
+            "top_k": top_k,
+            "has_filters": bool(filters),
+        }):
+            # Gemini sometimes passes top_k as float, ensure it's int
+            top_k = int(top_k) if top_k else 5
 
-        if not chunks:
-            return json.dumps({"content": "No relevant documents found.", "sources": []})
+            import re
 
-        formatted_texts = []
-        sources_metadata = []
+            # FEDERATED SEARCH STRATEGY (Dec 2025):
+            # We moved away from "Siloed Search" (searching only 1 collection) to "Smart Federation".
+            # If the user asks a business question, we usually need:
+            # 1. The Specific Facts (Visa Oracle / KBLI)
+            # 2. The Law (Legal Unified)
+            # 3. Practical Examples (Training Conversations)
 
-        for i, chunk in enumerate(chunks):
-            # Handle both dict and object access if needed, assuming dict for now based on KnowledgeService
-            text = (
-                chunk.get("text", "")
-                if isinstance(chunk, dict)
-                else getattr(chunk, "text", str(chunk))
-            )
+            # Determine domain-specific collections to include
+            query_lower = query.lower()
 
-            # Extract metadata for citation
-            metadata = chunk.get("metadata", {})
-            # Build title from legal document metadata fields if 'title' not present
-            title = (
-                metadata.get("title")
-                or (
-                    f"{metadata.get('type_abbrev', 'DOC')} {metadata.get('number', '')} "
-                    f"Tahun {metadata.get('year', '')} - {metadata.get('topic', 'Unknown')}"
-                ).strip()
-            )
-            url = metadata.get("url", metadata.get("source_url", ""))
-            
-            # Identify Source Collection
-            source_col = chunk.get("_source_collection", collection or metadata.get("category", "general"))
+            # VISAS
+            visa_pattern = r"\b(visa|kitas|kitap|voa|b211|e33|c31|stay|permit|immigration)\b"
+            is_visa = bool(re.search(visa_pattern, query_lower)) or "e33g" in query_lower or "c312" in query_lower
 
-            # Extract document ID for Deep Dive (Hybrid Brain)
-            # Priorities: chapter_id (from hierarchical indexer) > document_id > id
-            doc_id = (
-                metadata.get("chapter_id") or metadata.get("document_id") or metadata.get("id", "")
-            )
+            # COMPANY / BUSINESS
+            company_pattern = r"\b(company|pt pma|pma|business|license|oss|kbli|sector|setup|incorporation|sharia)\b"
+            is_company = bool(re.search(company_pattern, query_lower))
 
-            # Format text with ID for agent visibility
-            # Use full chunk text - no artificial truncation
-            formatted_texts.append(
-                f"[{i + 1}] source: {source_col} | ID: {doc_id} | Title: {title}\n{text}"
-            )  # Full text - let the LLM context window handle limits
+            # TAX / LEGAL / REAL ESTATE
+            # These primarily rely on legal_unified, but training helps for explanation
 
-            sources_metadata.append(
-                {
-                    "id": i + 1,
-                    "title": title,
-                    "url": url,
-                    "score": chunk.get("score", 0.0),
-                    "collection": source_col,
-                    "snippet": text[:500] if text else "",  # Preview for UI
-                    "content": text if text else "",  # Full content - no truncation
-                    "doc_id": doc_id,  # Pass doc_id for potential UI use or debugging
-                    "download_url": f"/api/documents/{doc_id}/download" if doc_id else None,
-                }
-            )
+            target_collections = set()
 
-        content_str = "\n\n".join(formatted_texts)
+            if collection:
+                target_collections.add(collection)
 
-        # Return structured JSON so orchestrator can parse it
-        return json.dumps({"content": content_str, "sources": sources_metadata})
+            # Add Universal Context collections (Always relevant for business queries)
+            # CRITICAL FIX: The Production Collection is named 'legal_unified_hybrid' (48k chunks),
+            # NOT 'legal_unified' (which is empty/non-existent).
+            target_collections.add("legal_unified_hybrid")
+            target_collections.add("training_conversations")
+
+            # Add Domains
+            if is_visa:
+                target_collections.add("visa_oracle")
+            if is_company:
+                target_collections.add("kbli_unified")
+
+            # Convert to list
+            target_collections_list = list(target_collections)
+            set_span_attribute("collections_searched", str(target_collections_list))
+
+            logger.info(f"🌐 [Federated Search] Strategy: {target_collections_list} for query: '{query}'")
+
+            all_chunks = []
+            seen_content = set()
+
+            # Execute Search across all targets
+            for target_col in target_collections_list:
+                try:
+                    # Use standard search
+                    if hasattr(self.retriever, "search_with_reranking"):
+                        res = await self.retriever.search_with_reranking(
+                            query=query, user_level=1, limit=3, collection_override=target_col, metadata_filter=filters
+                        )
+                    else:
+                        res = await self.retriever.search(
+                            query=query, user_level=1, limit=3, collection_override=target_col, metadata_filter=filters
+                        )
+
+                    for chunk in res.get("results", []):
+                        # Deduplication based on text content
+                        text = chunk.get("text", "") if isinstance(chunk, dict) else getattr(chunk, "text", "")
+                        # content_hash = hash(text[:100]) # Simple hash
+                        if text[:100] not in seen_content:
+                            seen_content.add(text[:100])
+                            # Tag the source collection explicitly for the context
+                            if isinstance(chunk, dict):
+                                chunk["_source_collection"] = target_col
+                            all_chunks.append(chunk)
+
+                except Exception as e:
+                    logger.warning(f"Federated search failed for {target_col}: {e}")
+
+            # Sort by score if available (cross-collection ranking)
+            all_chunks.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
+            chunks = all_chunks[:top_k+3] # Expanded context window for federated results
+
+            set_span_attribute("results_count", len(chunks))
+
+            if not chunks:
+                set_span_status("ok")
+                return json.dumps({"content": "No relevant documents found.", "sources": []})
+
+            formatted_texts = []
+            sources_metadata = []
+
+            for i, chunk in enumerate(chunks):
+                # Handle both dict and object access if needed, assuming dict for now based on KnowledgeService
+                text = (
+                    chunk.get("text", "")
+                    if isinstance(chunk, dict)
+                    else getattr(chunk, "text", str(chunk))
+                )
+
+                # Extract metadata for citation
+                metadata = chunk.get("metadata", {})
+                # Build title from legal document metadata fields if 'title' not present
+                title = (
+                    metadata.get("title")
+                    or (
+                        f"{metadata.get('type_abbrev', 'DOC')} {metadata.get('number', '')} "
+                        f"Tahun {metadata.get('year', '')} - {metadata.get('topic', 'Unknown')}"
+                    ).strip()
+                )
+                url = metadata.get("url", metadata.get("source_url", ""))
+
+                # Identify Source Collection
+                source_col = chunk.get("_source_collection", collection or metadata.get("category", "general"))
+
+                # Extract document ID for Deep Dive (Hybrid Brain)
+                # Priorities: chapter_id (from hierarchical indexer) > document_id > id
+                doc_id = (
+                    metadata.get("chapter_id") or metadata.get("document_id") or metadata.get("id", "")
+                )
+
+                # Format text with ID for agent visibility
+                # Use full chunk text - no artificial truncation
+                formatted_texts.append(
+                    f"[{i + 1}] source: {source_col} | ID: {doc_id} | Title: {title}\n{text}"
+                )  # Full text - let the LLM context window handle limits
+
+                sources_metadata.append(
+                    {
+                        "id": i + 1,
+                        "title": title,
+                        "url": url,
+                        "score": chunk.get("score", 0.0),
+                        "collection": source_col,
+                        "snippet": text[:500] if text else "",  # Preview for UI
+                        "content": text if text else "",  # Full content - no truncation
+                        "doc_id": doc_id,  # Pass doc_id for potential UI use or debugging
+                        "download_url": f"/api/documents/{doc_id}/download" if doc_id else None,
+                    }
+                )
+
+            content_str = "\n\n".join(formatted_texts)
+            set_span_status("ok")
+
+            # Return structured JSON so orchestrator can parse it
+            return json.dumps({"content": content_str, "sources": sources_metadata})
 
 
 class CalculatorTool(BaseTool):

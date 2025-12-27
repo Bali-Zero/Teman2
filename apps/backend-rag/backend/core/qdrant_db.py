@@ -18,6 +18,17 @@ try:
 except ImportError:
     settings = None
 
+try:
+    from app.utils.tracing import trace_span, set_span_attribute, set_span_status
+except ImportError:
+    # Fallback if tracing not available
+    from contextlib import contextmanager
+    @contextmanager
+    def trace_span(name, attrs=None):
+        yield
+    def set_span_attribute(key, value): pass
+    def set_span_status(status, msg=None): pass
+
 logger = logging.getLogger(__name__)
 
 # Constants
@@ -401,19 +412,30 @@ class QdrantClient:
                 raise ConnectionError(f"Qdrant connection error: {e}")
 
         start_time = time.time()
-        try:
-            result = await _retry_with_backoff(_do_search)
-            # Track metrics
-            elapsed = time.time() - start_time
-            _qdrant_metrics["search_calls"] += 1
-            _qdrant_metrics["search_total_time"] += elapsed
-            logger.debug(f"Qdrant search completed in {elapsed * 1000:.2f}ms")
-            return result
-        except Exception as e:
-            elapsed = time.time() - start_time
-            _qdrant_metrics["errors"] += 1
-            logger.error(f"Qdrant search error after retries: {e}", exc_info=True)
-            return {"ids": [], "documents": [], "metadatas": [], "distances": [], "total_found": 0}
+        # 🔍 TRACING: Span for Qdrant search
+        with trace_span("qdrant.search", {
+            "collection": self.collection_name,
+            "limit": limit,
+            "has_filter": bool(filter),
+            "vector_name": vector_name or "default",
+        }):
+            try:
+                result = await _retry_with_backoff(_do_search)
+                # Track metrics
+                elapsed = time.time() - start_time
+                _qdrant_metrics["search_calls"] += 1
+                _qdrant_metrics["search_total_time"] += elapsed
+                set_span_attribute("results_count", result.get("total_found", 0))
+                set_span_attribute("latency_ms", int(elapsed * 1000))
+                set_span_status("ok")
+                logger.debug(f"Qdrant search completed in {elapsed * 1000:.2f}ms")
+                return result
+            except Exception as e:
+                elapsed = time.time() - start_time
+                _qdrant_metrics["errors"] += 1
+                set_span_status("error", str(e))
+                logger.error(f"Qdrant search error after retries: {e}", exc_info=True)
+                return {"ids": [], "documents": [], "metadatas": [], "distances": [], "total_found": 0}
 
     async def get_collection_stats(self) -> dict[str, Any]:
         """
@@ -887,19 +909,31 @@ class QdrantClient:
                 raise ConnectionError(f"Qdrant connection error: {e}")
 
         start_time = time.time()
-        try:
-            result = await _retry_with_backoff(_do_hybrid_search)
-            elapsed = time.time() - start_time
-            _qdrant_metrics["search_calls"] += 1
-            _qdrant_metrics["search_total_time"] += elapsed
-            logger.debug(f"Qdrant hybrid search completed in {elapsed * 1000:.2f}ms")
-            return result
-        except Exception as e:
-            elapsed = time.time() - start_time
-            _qdrant_metrics["errors"] += 1
-            logger.error(f"Qdrant hybrid search error after retries: {e}", exc_info=True)
-            # Fall back to dense search on error
-            return await self.search(query_embedding, filter=filter, limit=limit)
+        # 🔍 TRACING: Span for Qdrant hybrid search
+        with trace_span("qdrant.hybrid_search", {
+            "collection": self.collection_name,
+            "limit": limit,
+            "prefetch_limit": prefetch_limit,
+            "has_filter": bool(filter),
+            "search_type": "hybrid_rrf",
+        }):
+            try:
+                result = await _retry_with_backoff(_do_hybrid_search)
+                elapsed = time.time() - start_time
+                _qdrant_metrics["search_calls"] += 1
+                _qdrant_metrics["search_total_time"] += elapsed
+                set_span_attribute("results_count", result.get("total_found", 0))
+                set_span_attribute("latency_ms", int(elapsed * 1000))
+                set_span_status("ok")
+                logger.debug(f"Qdrant hybrid search completed in {elapsed * 1000:.2f}ms")
+                return result
+            except Exception as e:
+                elapsed = time.time() - start_time
+                _qdrant_metrics["errors"] += 1
+                set_span_status("error", str(e))
+                logger.error(f"Qdrant hybrid search error after retries: {e}", exc_info=True)
+                # Fall back to dense search on error
+                return await self.search(query_embedding, filter=filter, limit=limit)
 
     async def upsert_documents_with_sparse(
         self,

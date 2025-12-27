@@ -4,11 +4,28 @@ Implements external API-based re-ranking for high-precision retrieval without lo
 """
 
 import logging
+import time
 from typing import Any
 
 import httpx
 
 from app.core.config import settings
+
+# Tracing utilities (with fallback for standalone usage)
+try:
+    from app.utils.tracing import trace_span, set_span_attribute, set_span_status
+except ImportError:
+    from contextlib import contextmanager
+
+    @contextmanager
+    def trace_span(name, attrs=None):
+        yield
+
+    def set_span_attribute(key, value):
+        pass
+
+    def set_span_status(status, msg=None):
+        pass
 
 logger = logging.getLogger(__name__)
 
@@ -50,85 +67,112 @@ class ReRanker:
         Returns:
             List of re-ranked document dictionaries with updated 'score' and 'rerank_score'.
         """
-        if not self.enabled or not documents:
-            return documents[:top_k]
+        with trace_span("rerank.zeroentropy", {
+            "documents_count": len(documents),
+            "top_k": top_k,
+            "model": self.model_name,
+            "enabled": self.enabled,
+        }):
+            if not self.enabled or not documents:
+                set_span_attribute("skipped", True)
+                set_span_attribute("skip_reason", "disabled" if not self.enabled else "no_documents")
+                set_span_status("ok")
+                return documents[:top_k]
 
-        # Extract text content from documents
-        doc_texts = []
-        valid_docs = []
+            # Extract text content from documents
+            doc_texts = []
+            valid_docs = []
 
-        for doc in documents:
-            text = doc.get("text") or doc.get("content") or ""
-            if text:
-                doc_texts.append(text)
-                valid_docs.append(doc)
+            for doc in documents:
+                text = doc.get("text") or doc.get("content") or ""
+                if text:
+                    doc_texts.append(text)
+                    valid_docs.append(doc)
 
-        if not doc_texts:
-            return documents[:top_k]
+            if not doc_texts:
+                set_span_attribute("skipped", True)
+                set_span_attribute("skip_reason", "no_valid_text")
+                set_span_status("ok")
+                return documents[:top_k]
 
-        try:
-            # Prepare payload for Ze-Rank 2 API
-            payload = {
-                "query": query,
-                "documents": doc_texts,
-                "model": self.model_name,
-                "top_k": top_k,
-            }
+            set_span_attribute("valid_documents_count", len(valid_docs))
 
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            }
+            try:
+                # Prepare payload for Ze-Rank 2 API
+                payload = {
+                    "query": query,
+                    "documents": doc_texts,
+                    "model": self.model_name,
+                    "top_k": top_k,
+                }
 
-            # Call Ze-Rank 2 API (async)
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(self.api_url, json=payload, headers=headers)
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                }
 
-                if response.status_code != 200:
-                    logger.error(
-                        f"❌ Ze-Rank 2 API Error: {response.status_code} - {response.text}"
-                    )
-                    return documents[:top_k]
+                # Call Ze-Rank 2 API (async)
+                start_time = time.perf_counter()
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.post(self.api_url, json=payload, headers=headers)
+                    api_latency_ms = (time.perf_counter() - start_time) * 1000
+                    set_span_attribute("api_latency_ms", round(api_latency_ms, 2))
+                    set_span_attribute("http_status_code", response.status_code)
 
-                data = response.json()
+                    if response.status_code != 200:
+                        logger.error(
+                            f"❌ Ze-Rank 2 API Error: {response.status_code} - {response.text}"
+                        )
+                        set_span_status("error", f"API returned {response.status_code}")
+                        return documents[:top_k]
 
-                # Assume standard rerank response format:
-                # { "results": [ { "index": 0, "relevance_score": 0.98 }, ... ] }
-                # Adjust parsing logic if the actual API format differs
-                results = data.get("results", [])
+                    data = response.json()
 
-                if not results:
-                    logger.warning("⚠️ Ze-Rank 2 returned no results")
-                    return documents[:top_k]
+                    # Assume standard rerank response format:
+                    # { "results": [ { "index": 0, "relevance_score": 0.98 }, ... ] }
+                    # Adjust parsing logic if the actual API format differs
+                    results = data.get("results", [])
 
-                # Map results back to documents
-                reranked_docs = []
-                for res in results:
-                    idx = res.get("index")
-                    score = res.get("relevance_score", 0.0)
+                    if not results:
+                        logger.warning("⚠️ Ze-Rank 2 returned no results")
+                        set_span_attribute("results_count", 0)
+                        set_span_status("ok")
+                        return documents[:top_k]
 
-                    if idx is not None and 0 <= idx < len(valid_docs):
-                        doc = valid_docs[idx]
-                        doc["rerank_score"] = float(score)
+                    # Map results back to documents
+                    reranked_docs = []
+                    for res in results:
+                        idx = res.get("index")
+                        score = res.get("relevance_score", 0.0)
 
-                        # Preserve original score if needed
-                        if "score" in doc and "vector_score" not in doc:
-                            doc["vector_score"] = doc["score"]
+                        if idx is not None and 0 <= idx < len(valid_docs):
+                            doc = valid_docs[idx]
+                            doc["rerank_score"] = float(score)
 
-                        # Update main score
-                        doc["score"] = float(score)
-                        reranked_docs.append(doc)
+                            # Preserve original score if needed
+                            if "score" in doc and "vector_score" not in doc:
+                                doc["vector_score"] = doc["score"]
 
-                # If API returned fewer docs than requested or something went wrong with mapping,
-                # we might want to fill with remaining original docs (rare)
-                # For now, just return what was successfully reranked
+                            # Update main score
+                            doc["score"] = float(score)
+                            reranked_docs.append(doc)
 
-                # Sort explicitly just in case API didn't
-                reranked_docs.sort(key=lambda x: x["score"], reverse=True)
+                    # If API returned fewer docs than requested or something went wrong with mapping,
+                    # we might want to fill with remaining original docs (rare)
+                    # For now, just return what was successfully reranked
 
-                return reranked_docs[:top_k]
+                    # Sort explicitly just in case API didn't
+                    reranked_docs.sort(key=lambda x: x["score"], reverse=True)
 
-        except Exception as e:
-            logger.error(f"❌ Re-ranking failed (Ze-Rank 2): {e}")
-            # Fallback to original order
-            return documents[:top_k]
+                    set_span_attribute("results_count", len(reranked_docs))
+                    if reranked_docs:
+                        set_span_attribute("top_score", round(reranked_docs[0]["score"], 4))
+                    set_span_status("ok")
+
+                    return reranked_docs[:top_k]
+
+            except Exception as e:
+                logger.error(f"❌ Re-ranking failed (Ze-Rank 2): {e}")
+                set_span_status("error", str(e))
+                # Fallback to original order
+                return documents[:top_k]

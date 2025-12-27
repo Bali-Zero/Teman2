@@ -43,6 +43,7 @@ import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
+from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from llm.genai_client import GenAIClient, GENAI_AVAILABLE, types, get_genai_client
 from services.openrouter_client import ModelTier, OpenRouterClient
 
@@ -313,22 +314,32 @@ class LLMGateway:
             if not self._genai_client or not self._genai_client.is_available:
                 raise RuntimeError("GenAI client not available")
 
-            config = _build_config(with_tools)
+            # 🔍 TRACING: Span for LLM call
+            with trace_span("llm.call", {
+                "model": model_name,
+                "with_tools": with_tools,
+                "message_length": len(message),
+            }):
+                config = _build_config(with_tools)
 
-            response = await self._genai_client._client.aio.models.generate_content(
-                model=model_name,
-                contents=message,
-                config=config,
-            )
+                response = await self._genai_client._client.aio.models.generate_content(
+                    model=model_name,
+                    contents=message,
+                    config=config,
+                )
 
-            # Extract text, handling function call responses
-            try:
-                text_content = response.text if hasattr(response, "text") else ""
-            except ValueError:
-                # Function call detected - reasoning.py will extract it from response_obj
-                text_content = ""
+                # Extract text, handling function call responses
+                try:
+                    text_content = response.text if hasattr(response, "text") else ""
+                    set_span_attribute("response_length", len(text_content))
+                    set_span_attribute("has_function_call", "false")
+                except ValueError:
+                    # Function call detected - reasoning.py will extract it from response_obj
+                    text_content = ""
+                    set_span_attribute("has_function_call", "true")
 
-            return text_content, response
+                set_span_status("ok")
+                return text_content, response
 
         # 1. Try PRO Tier (if requested) - same as flash (gemini-3-flash-preview)
         if model_tier == TIER_PRO and self._available:
@@ -344,11 +355,13 @@ class LLMGateway:
                 logger.warning(
                     f"⚠️ LLMGateway: Gemini 3 Flash quota exceeded, falling back to 2.0: {e}"
                 )
+                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": "quota"})
                 model_tier = TIER_FALLBACK
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
                     f"❌ LLMGateway: Gemini 3 Flash error: {e}. Trying 2.0 fallback.", exc_info=True
                 )
+                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": str(e)[:100]})
                 model_tier = TIER_FALLBACK
 
         # 2. Try Flash (Tier 0) - gemini-3-flash-preview (Standard)
@@ -363,12 +376,14 @@ class LLMGateway:
 
             except (ResourceExhausted, ServiceUnavailable) as e:
                 logger.warning(f"⚠️ LLMGateway: Gemini 3 Flash Preview quota exceeded, trying 2.0 fallback: {e}")
+                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": "quota"})
                 model_tier = TIER_FALLBACK
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
                     f"❌ LLMGateway: Gemini 3 Flash Preview error: {e}. Trying 2.0 fallback.",
                     exc_info=True,
                 )
+                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": str(e)[:100]})
                 model_tier = TIER_FALLBACK
 
         # 3. Try Gemini 2.0 Flash (Fallback Tier) - gemini-2.0-flash
