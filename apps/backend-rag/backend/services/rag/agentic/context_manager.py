@@ -184,11 +184,13 @@ async def get_user_context(
         logger.error(f"Failed to fetch profile/history for {user_id}: {e}", exc_info=True)
 
     # Get Memory Facts via MemoryOrchestrator (single source of truth)
-    # FIX: Don't apply memory facts on first query of a new session to avoid hallucination
-    is_first_query = len(context.get("history", [])) == 0
-
-    if memory_orchestrator and not is_first_query:
+    # FIX USER RECOGNITION BUG: ALWAYS load memory facts, even on first query
+    # The previous logic skipped facts on first query to "avoid hallucination",
+    # but this prevented user recognition completely!
+    if memory_orchestrator:
         try:
+            logger.info(f"🧠 [ContextManager] Loading memory facts for user: {original_user_id}")
+
             # Pass query for query-aware collective memory retrieval
             memory_context = await memory_orchestrator.get_user_context(
                 original_user_id, query=query
@@ -201,19 +203,27 @@ async def get_user_context(
             context["counters"] = memory_context.counters
             context["memory_context"] = memory_context  # Full context for system prompt
 
-            logger.debug(
-                f"🧠 [ContextManager] Memory via orchestrator: {len(memory_context.profile_facts)} personal facts, "
-                f"{len(memory_context.collective_facts)} collective facts, {len(memory_context.kg_entities)} KG entities for {original_user_id}"
+            logger.info(
+                f"✅ [ContextManager] Memory loaded: {len(memory_context.profile_facts)} personal facts, "
+                f"{len(memory_context.collective_facts)} collective facts, "
+                f"{len(memory_context.kg_entities)} KG entities for {original_user_id}"
             )
+
+            # DIAGNOSTIC: Log first 3 facts for debugging
+            if memory_context.profile_facts:
+                logger.info(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
+            else:
+                logger.warning(f"⚠️  [ContextManager] NO profile facts found for {original_user_id} - user recognition will fail!")
+
         except (asyncpg.PostgresError, ValueError, RuntimeError, KeyError) as e:
             logger.error(
-                f"Failed to fetch memory context via orchestrator for {original_user_id}: {e}",
+                f"❌ [ContextManager] Failed to fetch memory context for {original_user_id}: {e}",
                 exc_info=True,
             )
             # Fallback: empty facts (graceful degradation)
-    elif is_first_query:
-        logger.info(
-            f"🧠 [ContextManager] Skipping memory facts for first query of session (session_id={session_id}) to avoid hallucination"
-        )
+            context["facts"] = []
+            context["collective_facts"] = []
+    else:
+        logger.warning(f"⚠️  [ContextManager] NO memory_orchestrator provided - memory facts will be empty!")
 
     return context
