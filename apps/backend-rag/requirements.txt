@@ -16,7 +16,6 @@ qdrant-client>=1.12.0  # Upgraded to support urllib3>=2.0.0
 
 # Google Cloud Integration (Core for v5.3 Hybrid) - Use compatible versions
 google-genai>=1.55.0  # NEW unified SDK (replaces deprecated google-generativeai)
-# google-generativeai>=0.5.0  # DEPRECATED Nov 2025 - kept for rollback if needed
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
 google-auth-oauthlib>=1.1.0

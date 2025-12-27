@@ -29,6 +29,7 @@ import asyncpg
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
+from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from services.clarification_service import ClarificationService
 from services.classification.intent_classifier import IntentClassifier
 from services.context_window_manager import AdvancedContextWindowManager
@@ -316,20 +317,31 @@ class AgenticRAGOrchestrator:
         # Initialize tool execution counter for rate limiting
         tool_execution_counter = {"count": 0}
 
-        # 1. UNIVERSAL CONTEXT LOADING (CRITICAL: Must be first for Identity)
-        effective_user_id = user_id or "anonymous"
-        try:
-            memory_orchestrator = await self._get_memory_orchestrator()
-            user_context = await get_user_context(
-                self.db_pool,
-                effective_user_id,
-                memory_orchestrator,
-                query=query,
-                session_id=session_id,
-            )
-        except Exception as e:
-            logger.warning(f"⚠️ [Context] Failed to load user context (degraded): {e}", exc_info=True)
-            user_context = {"profile": None, "facts": [], "collective_facts": [], "history": []}
+        # 🔍 TRACING: Parent span for entire query processing
+        with trace_span("orchestrator.process_query", {
+            "user_id": user_id or "anonymous",
+            "query_length": len(query),
+            "session_id": session_id or "none",
+            "has_history": bool(conversation_history),
+        }):
+            # 1. UNIVERSAL CONTEXT LOADING (CRITICAL: Must be first for Identity)
+            effective_user_id = user_id or "anonymous"
+            with trace_span("context.load_user", {"user_id": effective_user_id}):
+                try:
+                    memory_orchestrator = await self._get_memory_orchestrator()
+                    user_context = await get_user_context(
+                        self.db_pool,
+                        effective_user_id,
+                        memory_orchestrator,
+                        query=query,
+                        session_id=session_id,
+                    )
+                    set_span_attribute("facts_count", len(user_context.get("facts", [])))
+                    set_span_status("ok")
+                except Exception as e:
+                    logger.warning(f"⚠️ [Context] Failed to load user context (degraded): {e}", exc_info=True)
+                    user_context = {"profile": None, "facts": [], "collective_facts": [], "history": []}
+                    set_span_status("error", str(e))
 
         history_to_use = conversation_history or user_context.get("history", [])
         if not isinstance(history_to_use, list):
@@ -491,38 +503,47 @@ User says: {query}"""
                 )
 
         # 0.8 PRE-RAG ENTITY EXTRACTION
-        extracted_entities = await self.entity_extractor.extract_entities(query)
-        if any(extracted_entities.values()):
-            logger.info(f"🔍 [Entity Extraction] Extracted entities: {extracted_entities}")
+        with trace_span("entity.extraction", {"query_length": len(query)}):
+            extracted_entities = await self.entity_extractor.extract_entities(query)
+            if any(extracted_entities.values()):
+                logger.info(f"🔍 [Entity Extraction] Extracted entities: {extracted_entities}")
+                set_span_attribute("entities_found", str(extracted_entities))
+            set_span_status("ok")
 
         # OPTIMIZATION 1: Check semantic cache first
-        if self.semantic_cache:
-            try:
-                cached = await self.semantic_cache.get_cached_result(query)
-                if cached:
-                    logger.info("✅ [Cache Hit] Returning cached result for query")
-                    # If cached is already a dict compatible with CoreResult?
-                    # Semantic Cache stores dicts. We might need to map it back to CoreResult.
-                    # Assuming cached['result'] is the answer if it's the old format.
-                    # Best effort mapping for now:
+        with trace_span("cache.semantic_check", {"cache_enabled": bool(self.semantic_cache)}):
+            if self.semantic_cache:
+                try:
+                    cached = await self.semantic_cache.get_cached_result(query)
+                    if cached:
+                        logger.info("✅ [Cache Hit] Returning cached result for query")
+                        set_span_attribute("cache_hit", "true")
+                        set_span_status("ok")
+                        # If cached is already a dict compatible with CoreResult?
+                        # Semantic Cache stores dicts. We might need to map it back to CoreResult.
+                        # Assuming cached['result'] is the answer if it's the old format.
+                        # Best effort mapping for now:
 
-                    cached_result = cached.get("result", cached) # Handle wrapper
+                        cached_result = cached.get("result", cached) # Handle wrapper
 
-                    # Check if it's a dict that looks like CoreResult (has 'model_used' etc) or old result
-                    answer = cached_result.get("answer", "")
-                    sources = cached_result.get("sources", [])
+                        # Check if it's a dict that looks like CoreResult (has 'model_used' etc) or old result
+                        answer = cached_result.get("answer", "")
+                        sources = cached_result.get("sources", [])
 
-                    return CoreResult(
-                        answer=answer,
-                        sources=sources,
-                        model_used="cache",
-                        cache_hit=True,
-                        timings={"total": time.time() - start_time},
-                        entities=extracted_entities,
-                        document_count=len(sources)
-                    )
-            except (KeyError, ValueError, RuntimeError) as e:
-                logger.warning(f"Cache lookup failed: {e}", exc_info=True)
+                        return CoreResult(
+                            answer=answer,
+                            sources=sources,
+                            model_used="cache",
+                            cache_hit=True,
+                            timings={"total": time.time() - start_time},
+                            entities=extracted_entities,
+                            document_count=len(sources)
+                        )
+                    else:
+                        set_span_attribute("cache_hit", "false")
+                except (KeyError, ValueError, RuntimeError) as e:
+                    logger.warning(f"Cache lookup failed: {e}", exc_info=True)
+                    set_span_status("error", str(e))
 
         # Default model tier (will be refined by intent classifier if not streaming)
         model_tier = TIER_PRO # Default to PRO for non-streaming
@@ -551,25 +572,35 @@ User says: {query}"""
         # --- QUALITY ROUTING: REACT LOOP (Full Agentic Architecture) ---
         logger.info(f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})")
 
-        try:
-            (
-                state,
-                model_used_name,
-                conversation_messages,
-            ) = await self.reasoning_engine.execute_react_loop(
-                state=state,
-                llm_gateway=self.llm_gateway,
-                chat=chat,
-                initial_prompt=_wrap_query_with_language_instruction(query), # Wrapped with language instruction
-                system_prompt=system_prompt, # System prompt with injected entities
-                query=query,
-                user_id=user_id or "anonymous",
-                model_tier=model_tier,
-                tool_execution_counter=tool_execution_counter,
-            )
-        except Exception as react_error:
-            logger.error(f"❌ ReAct loop failed: {react_error}", exc_info=True)
-            raise
+        with trace_span("react.loop", {
+            "model_tier": model_tier,
+            "user_id": user_id or "anonymous",
+            "query_length": len(query),
+        }):
+            try:
+                (
+                    state,
+                    model_used_name,
+                    conversation_messages,
+                ) = await self.reasoning_engine.execute_react_loop(
+                    state=state,
+                    llm_gateway=self.llm_gateway,
+                    chat=chat,
+                    initial_prompt=_wrap_query_with_language_instruction(query), # Wrapped with language instruction
+                    system_prompt=system_prompt, # System prompt with injected entities
+                    query=query,
+                    user_id=user_id or "anonymous",
+                    model_tier=model_tier,
+                    tool_execution_counter=tool_execution_counter,
+                )
+                set_span_attribute("model_used", model_used_name)
+                set_span_attribute("steps_count", len(state.steps))
+                set_span_attribute("tools_executed", tool_execution_counter["count"])
+                set_span_status("ok")
+            except Exception as react_error:
+                logger.error(f"❌ ReAct loop failed: {react_error}", exc_info=True)
+                set_span_status("error", str(react_error))
+                raise
 
         # Calculate execution time
         execution_time = time.time() - start_time
@@ -615,20 +646,31 @@ User says: {query}"""
         # Initialize tool execution counter for rate limiting
         tool_execution_counter = {"count": 0}
 
+        # 🔍 TRACING: Add span event for stream query start
+        add_span_event("stream_query.start", {
+            "user_id": user_id,
+            "query_length": len(query),
+            "session_id": session_id or "none",
+        })
+
         # UNIVERSAL CONTEXT LOADING (Stream)
-        try:
-             memory_orchestrator = await self._get_memory_orchestrator()
-             user_context = await get_user_context(
-                 self.db_pool,
-                 user_id,
-                 memory_orchestrator,
-                 query=query,
-                 conversation_history=conversation_history,
-                 session_id=session_id
-             )
-        except Exception as e:
-             logger.warning(f"⚠️ Failed to load user context in stream: {e}")
-             user_context = {}
+        with trace_span("context.load_user_stream", {"user_id": user_id}):
+            try:
+                memory_orchestrator = await self._get_memory_orchestrator()
+                user_context = await get_user_context(
+                    self.db_pool,
+                    user_id,
+                    memory_orchestrator,
+                    query=query,
+                    conversation_history=conversation_history,
+                    session_id=session_id
+                )
+                set_span_attribute("facts_count", len(user_context.get("facts", [])))
+                set_span_status("ok")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to load user context in stream: {e}")
+                user_context = {}
+                set_span_status("error", str(e))
 
         history_to_use = conversation_history or user_context.get("history", [])
         if not isinstance(history_to_use, list):
@@ -803,34 +845,43 @@ User says: """ + query
         start_time = time.time()
 
         # 0.2 PRE-RAG ENTITY EXTRACTION
-        extracted_entities = await self.entity_extractor.extract_entities(query)
-        if any(extracted_entities.values()):
-            logger.info(f"🔍 [Entity Extraction Stream] Extracted entities: {extracted_entities}")
-            yield {
-                "type": "metadata",
-                "data": {"extracted_entities": extracted_entities}
-            }
+        with trace_span("entity.extraction_stream", {"query_length": len(query)}):
+            extracted_entities = await self.entity_extractor.extract_entities(query)
+            if any(extracted_entities.values()):
+                logger.info(f"🔍 [Entity Extraction Stream] Extracted entities: {extracted_entities}")
+                set_span_attribute("entities_found", str(extracted_entities))
+                yield {
+                    "type": "metadata",
+                    "data": {"extracted_entities": extracted_entities}
+                }
+            set_span_status("ok")
 
         # 1. SEMANTIC CACHE CHECK
-        if self.semantic_cache:
-            try:
-                cached = await self.semantic_cache.get_cached_result(query)
-                if cached:
-                    logger.info("✅ [Cache Hit Stream] Returning cached result for query")
-                    result = cached.get("result", cached)
-                    result["cache_hit"] = cached.get("cache_hit", "exact")
-                    result["execution_time"] = time.time() - start_time
+        with trace_span("cache.semantic_check_stream", {"cache_enabled": bool(self.semantic_cache)}):
+            if self.semantic_cache:
+                try:
+                    cached = await self.semantic_cache.get_cached_result(query)
+                    if cached:
+                        logger.info("✅ [Cache Hit Stream] Returning cached result for query")
+                        set_span_attribute("cache_hit", "true")
+                        set_span_status("ok")
+                        result = cached.get("result", cached)
+                        result["cache_hit"] = cached.get("cache_hit", "exact")
+                        result["execution_time"] = time.time() - start_time
 
-                    yield {"type": "metadata", "data": {"status": "cache-hit", "route": "semantic-cache"}}
-                    for token in result["answer"].split():
-                        yield {"type": "token", "data": token + " "}
-                        await asyncio.sleep(0.01)
-                    if result.get("sources"):
-                        yield {"type": "sources", "data": result["sources"]}
-                    yield {"type": "done", "data": result}
-                    return
-            except (KeyError, ValueError, RuntimeError) as e:
-                logger.warning(f"Cache lookup failed: {e}", exc_info=True)
+                        yield {"type": "metadata", "data": {"status": "cache-hit", "route": "semantic-cache"}}
+                        for token in result["answer"].split():
+                            yield {"type": "token", "data": token + " "}
+                            await asyncio.sleep(0.01)
+                        if result.get("sources"):
+                            yield {"type": "sources", "data": result["sources"]}
+                        yield {"type": "done", "data": result}
+                        return
+                    else:
+                        set_span_attribute("cache_hit", "false")
+                except (KeyError, ValueError, RuntimeError) as e:
+                    logger.warning(f"Cache lookup failed: {e}", exc_info=True)
+                    set_span_status("error", str(e))
 
         # 1. User Context & Intent Classification
         logger.debug("Calling verify_intent...")
@@ -870,6 +921,12 @@ User says: """ + query
         )
 
         # Stream response using New Streaming ReAct Logic
+        # 🔍 TRACING: Add event for ReAct stream start
+        add_span_event("react.stream.start", {
+            "model_tier": model_tier,
+            "user_id": user_id,
+        })
+
         full_answer = ""
         try:
              async for event in self.reasoning_engine.execute_react_loop_stream(
@@ -893,6 +950,13 @@ User says: """ + query
              # Emit done event (and save memory)
              execution_time = time.time() - start_time
 
+             # 🔍 TRACING: Add event for stream completion
+             add_span_event("react.stream.complete", {
+                 "execution_time_ms": int(execution_time * 1000),
+                 "answer_length": len(full_answer),
+                 "tools_executed": tool_execution_counter["count"],
+             })
+
              # 🧠 MEMORY PERSISTENCE (background)
              if full_answer and user_id and user_id != "anonymous":
                  try:
@@ -911,6 +975,7 @@ User says: """ + query
             }
         except Exception as e:
             logger.error(f"❌ Stream failed: {e}", exc_info=True)
+            add_span_event("react.stream.error", {"error": str(e)})
             yield {"type": "error", "data": {"message": str(e)}}
             return
 
