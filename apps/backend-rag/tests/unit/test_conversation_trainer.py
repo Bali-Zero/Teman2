@@ -51,52 +51,52 @@ class TestConversationTrainer:
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
 
-            # Setup pool context manager
-            mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
+        # Setup pool context manager
+        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
 
-            # Mock conversation data
-            # Rows behave like dictionaries in asyncpg
-            row1 = {
-                "conversation_id": "conv1",
-                "messages": [
-                    {"role": "user", "content": "Hello"},
-                    {"role": "assistant", "content": "Hi"},
-                ],
-                "rating": 5,
-                "client_feedback": "Great",
-                "created_at": datetime.now(),
-            }
-            row2 = {
-                "conversation_id": "conv2",
-                "messages": [
-                    {"role": "user", "content": "Help"},
-                    {"role": "assistant", "content": "Sure"},
-                ],
-                "rating": 4,
-                "client_feedback": "Good",
-                "created_at": datetime.now(),
-            }
-            mock_conn.fetch.return_value = [row1, row2]
+        # Mock conversation data
+        # Rows behave like dictionaries in asyncpg
+        row1 = {
+            "conversation_id": "conv1",
+            "messages": [
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant", "content": "Hi"},
+            ],
+            "rating": 5,
+            "client_feedback": "Great",
+            "created_at": datetime.now(),
+        }
+        row2 = {
+            "conversation_id": "conv2",
+            "messages": [
+                {"role": "user", "content": "Help"},
+                {"role": "assistant", "content": "Sure"},
+            ],
+            "rating": 4,
+            "client_feedback": "Good",
+            "created_at": datetime.now(),
+        }
+        mock_conn.fetch.return_value = [row1, row2]
 
-            trainer = ConversationTrainer(db_pool=mock_pool)
+        trainer = ConversationTrainer(db_pool=mock_pool)
 
-            # Mock ZantaraAIClient to avoid API calls
-            trainer.zantara_client = MagicMock()
-            trainer.zantara_client.generate_text = AsyncMock(
-                return_value='{"successful_patterns": ["p1"], "prompt_improvements": ["i1"], "common_themes": ["t1"]}'
-            )
+        # Mock ZantaraAIClient to avoid API calls
+        trainer.zantara_client = MagicMock()
+        trainer.zantara_client.generate_text = AsyncMock(
+            return_value='{"successful_patterns": ["p1"], "prompt_improvements": ["i1"], "common_themes": ["t1"]}'
+        )
 
-            result = await trainer.analyze_winning_patterns(days_back=7)
+        result = await trainer.analyze_winning_patterns(days_back=7)
 
-            # Verify DB was queried correctly (should use v_rated_conversations view)
-            mock_conn.fetch.assert_called_once()
-            args = mock_conn.fetch.call_args
-            assert (
-                "v_rated_conversations" in args[0][0] or "FROM v_rated_conversations" in args[0][0]
-            )
-            assert "rating >=" in args[0][0]
+        # Verify DB was queried correctly (should use v_rated_conversations view)
+        mock_conn.fetch.assert_called_once()
+        args = mock_conn.fetch.call_args
+        assert (
+            "v_rated_conversations" in args[0][0] or "FROM v_rated_conversations" in args[0][0]
+        )
+        assert "rating >=" in args[0][0]
 
-            # Verify result
-            assert result is not None
-            assert "successful_patterns" in result
-            assert result["successful_patterns"] == ["p1"]
+        # Verify result
+        assert result is not None
+        assert "successful_patterns" in result
+        assert result["successful_patterns"] == ["p1"]
