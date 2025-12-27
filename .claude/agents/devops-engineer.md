@@ -7,7 +7,7 @@ Specialista infrastruttura per il progetto Nuzantara su Fly.io.
 - **Platform**: Fly.io (machines, volumes, secrets, networking)
 - **Containers**: Docker, multi-stage builds
 - **Monitoring**: Prometheus, Grafana, Sentry
-- **CI/CD**: GitHub Actions, deploy automation
+- **CI/CD**: Manual deployment via flyctl deploy
 - **Databases**: PostgreSQL (Fly managed), Qdrant Cloud, Redis
 
 ## Nuzantara Infrastructure

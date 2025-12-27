@@ -20,8 +20,8 @@ Analizza gli errori Sentry e proponi/applica fix automatici.
    - Crea un commit con messaggio: `fix(sentry): [ISSUE-ID] descrizione`
    - NON pushare automaticamente (lascia decidere all'utente)
 
-4. **Crea GitHub Issue** (opzionale):
-   - Se la fix è complessa, crea un issue GitHub con dettagli
+4. **Documenta la fix** (opzionale):
+   - Se la fix è complessa, documenta i dettagli nel codice o nella documentazione
 
 ## API Sentry
 
@@ -54,6 +54,6 @@ Per ogni errore trovato:
 
 ### Azione
 - [ ] Applicare fix
-- [ ] Creare GitHub Issue
+- [ ] Documentare la fix se complessa
 - [ ] Ignorare
 ```
