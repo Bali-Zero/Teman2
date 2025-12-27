@@ -7,6 +7,9 @@
 #   ./scripts/run_coverage_test.sh unit         # Run only unit tests
 #   ./scripts/run_coverage_test.sh api          # Run only API tests
 #   ./scripts/run_coverage_test.sh integration  # Run only integration tests
+#   ./scripts/run_coverage_test.sh unit -k "test_feedback"  # Run specific tests
+#
+# See docs/TEST_COVERAGE.md for detailed documentation
 
 set -e
 
