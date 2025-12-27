@@ -24,7 +24,7 @@ import {
   Star,
   MessageSquarePlus,
 } from 'lucide-react';
-import { CitationCard } from '@/components/CitationCard';
+import { CitationCard } from '@/components/search/CitationCard';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
