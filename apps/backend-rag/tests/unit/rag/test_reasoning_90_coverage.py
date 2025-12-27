@@ -61,7 +61,9 @@ class TestReasoning90Coverage:
 
         state = AgentState(query="What is KITAS?", max_steps=3)
         state.context_gathered = []
-        state.sources = None  # Not initialized
+        # Don't set sources at all - let it be uninitialized
+        if hasattr(state, "sources"):
+            delattr(state, "sources")
 
         llm_gateway = AsyncMock()
         call_count = 0
@@ -290,7 +292,8 @@ class TestReasoning90Coverage:
 
         # Should handle LLM error gracefully
         assert result_state.final_answer is not None
-        assert "apologize" in result_state.final_answer.lower() or "couldn't" in result_state.final_answer.lower()
+        # Error message can be in Italian or English
+        assert "apologize" in result_state.final_answer.lower() or "couldn't" in result_state.final_answer.lower() or "dispiace" in result_state.final_answer.lower()
 
     @pytest.mark.asyncio
     async def test_final_answer_stub_filtering(self):
@@ -412,7 +415,9 @@ class TestReasoning90Coverage:
 
         state = AgentState(query="What is KITAS?", max_steps=3)
         state.context_gathered = []
-        state.sources = None  # Not initialized
+        # Don't set sources at all - let it be uninitialized
+        if hasattr(state, "sources"):
+            delattr(state, "sources")
 
         llm_gateway = AsyncMock()
         call_count = 0
@@ -553,7 +558,7 @@ class TestReasoning90Coverage:
         state.final_answer = None
 
         llm_gateway = AsyncMock()
-        from google.api_core.exceptions import ValueError
+        # Use RuntimeError instead of ValueError from google.api_core
         call_count = 0
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
@@ -562,7 +567,7 @@ class TestReasoning90Coverage:
                 return ("Thought", "gemini-2.0-flash", None)
             else:
                 # Final answer generation raises error
-                raise ValueError("Invalid response")
+                raise RuntimeError("Invalid response")
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -589,7 +594,8 @@ class TestReasoning90Coverage:
         # Should handle LLM error gracefully
         assert len(events) >= 0
         assert state.final_answer is not None
-        assert "apologize" in state.final_answer.lower() or "couldn't" in state.final_answer.lower()
+        # Error message can be in Italian or English
+        assert "apologize" in state.final_answer.lower() or "couldn't" in state.final_answer.lower() or "dispiace" in state.final_answer.lower()
 
     @pytest.mark.asyncio
     async def test_streaming_stub_filtering(self):

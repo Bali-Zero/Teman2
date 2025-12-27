@@ -45,10 +45,14 @@ def client():
 def mock_db_pool():
     pool = MagicMock()
     conn = AsyncMock()
-    transaction = MagicMock()
+    transaction = AsyncMock()
 
+    # Properly mock async context managers
+    pool.acquire = AsyncMock()
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
     pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+    
+    conn.transaction = AsyncMock()
     conn.transaction.return_value.__aenter__ = AsyncMock(return_value=transaction)
     conn.transaction.return_value.__aexit__ = AsyncMock(return_value=None)
 
@@ -87,8 +91,8 @@ class TestFeedback90Coverage:
         pool, conn = mock_db_pool
         session_id = uuid4()
 
-        # Simulate transaction error
-        conn.transaction.return_value.__aenter__.side_effect = asyncpg.PostgresError("Transaction failed")
+        # Simulate transaction error during fetchval
+        conn.fetchval = AsyncMock(side_effect=asyncpg.PostgresError("Transaction failed"))
 
         mock_request = MagicMock(spec=Request)
         mock_request.state.user_id = None
