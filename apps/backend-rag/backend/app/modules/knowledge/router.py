@@ -63,6 +63,13 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
     try:
         start_time = time.time()
 
+        # DIAGNOSTIC LOGGING for Method Not Allowed issue
+        logger.info(
+            f"🔍 [SEARCH ENDPOINT] Request received: method={request.method}, "
+            f"url={request.url}, path={request.url.path}, "
+            f"headers={dict(request.headers)}"
+        )
+
         logger.info(
             f"Received query: '{query.query}', collection={query.collection}, level={query.level}, limit={query.limit}"
         )
@@ -146,6 +153,15 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
     except Exception as e:
         logger.error(f"Search error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}") from e
+
+
+@router.options("/")
+async def search_options():
+    """
+    Explicit OPTIONS handler for CORS preflight requests.
+    Fix for "Method Not Allowed" - ensures preflight requests succeed.
+    """
+    return {"status": "ok"}
 
 
 @router.get("/health")

@@ -43,7 +43,7 @@ class VectorSearchTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Search the legal document knowledge base. Available collections:\n- 'legal_unified' (DEFAULT): All laws, regulations, visas, immigration, taxes, business. Use this for most queries.\n- 'kbli_2025': Business classification codes (KBLI) for PT PMA setup."
+        return "Search the legal document knowledge base. Available collections:\n- 'legal_unified' (DEFAULT): All laws, visas. Use filters for higher precision (nationality='Italy', visa_type='KITAS').\n- 'kbli_unified': Business codes."
 
     @property
     def parameters_schema(self) -> dict:
@@ -55,19 +55,24 @@ class VectorSearchTool(BaseTool):
                     "type": "string",
                     "enum": [
                         "legal_unified",
-                        "kbli_2025",
+                        "kbli_unified",
                     ],
-                    "description": "Collection to search. Default: 'legal_unified' for laws, visas, taxes. Use 'kbli_2025' only for KBLI business codes.",
+                    "description": "Collection to search. Default: 'legal_unified' for laws, visas, taxes. Use 'kbli_unified' only for KBLI business codes.",
                 },
                 "top_k": {
                     "type": "integer",
                     "description": "Number of results to return (default: 5)",
                 },
+                "filters": {
+                    "type": "object",
+                    "description": "Metadata filters. Keys: nationality, visa_type, business_field. Example: {'nationality': 'Italy'}",
+                    "nullable": True
+                }
             },
             "required": ["query"],
         }
 
-    async def execute(self, query: str, collection: str = None, top_k: int = 5, **kwargs) -> str:
+    async def execute(self, query: str, collection: str = None, top_k: int = 5, filters: dict = None, **kwargs) -> str:
         # Gemini sometimes passes top_k as float, ensure it's int
         top_k = int(top_k) if top_k else 5
 
@@ -78,6 +83,7 @@ class VectorSearchTool(BaseTool):
                 user_level=1,  # Default to standard access
                 limit=top_k,
                 collection_override=collection,
+                metadata_filter=filters,
             )
             chunks = result.get("results", [])
         elif hasattr(self.retriever, "retrieve_with_graph_expansion"):
@@ -89,7 +95,7 @@ class VectorSearchTool(BaseTool):
         else:
             # Fallback to basic search
             result = await self.retriever.search(
-                query=query, user_level=1, limit=top_k, collection_override=collection
+                query=query, user_level=1, limit=top_k, collection_override=collection, metadata_filter=filters
             )
             chunks = result.get("results", [])
 
@@ -645,3 +651,280 @@ class TeamKnowledgeTool(BaseTool):
         except Exception as e:
             logger.error(f"TeamKnowledgeTool failed: {e}", exc_info=True)
             return json.dumps({"error": str(e)})
+
+
+# ============================================================================
+# CRM Clients Tool - Query and manage client data
+# ============================================================================
+
+
+class CRMClientsTool(BaseTool):
+    """
+    Tool for querying and managing CRM client data.
+    Allows Zantara to access client information, search clients, and view client details.
+    """
+
+    def __init__(self, db_pool=None):
+        self.name = "crm_clients_query"
+        self.description = (
+            "Query the CRM system to find client information. "
+            "Can list all clients, search by name/email/nationality, filter by status, "
+            "and get detailed client information including practices and interactions. "
+            "Use this when user asks about clients, customer data, or specific people in the CRM."
+        )
+        self.db_pool = db_pool
+        self.parameters = {
+            "action": {
+                "type": "string",
+                "description": "Action to perform: 'list' (list all clients with optional filters), 'search' (search by name/email), 'get_details' (get full client details by ID)",
+                "enum": ["list", "search", "get_details"],
+            },
+            "query": {
+                "type": "string",
+                "description": "Search query (for action='search'): client name, email, or nationality to search for",
+            },
+            "client_id": {
+                "type": "integer",
+                "description": "Client ID (for action='get_details'): the specific client ID to retrieve",
+            },
+            "status": {
+                "type": "string",
+                "description": "Filter by status (optional): 'active', 'inactive', or 'prospect'",
+                "enum": ["active", "inactive", "prospect"],
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of results to return (default: 20, max: 100)",
+            },
+        }
+        self.required_params = ["action"]
+
+    async def execute(self, action: str, query: str = None, client_id: int = None, status: str = None, limit: int = 20, **kwargs) -> str:
+        """Execute CRM query based on action"""
+        if not self.db_pool:
+            return json.dumps({"error": "CRM database not available"})
+
+        limit = min(limit or 20, 100)  # Cap at 100
+
+        try:
+            async with self.db_pool.acquire() as conn:
+                if action == "list":
+                    return await self._list_clients(conn, status, limit)
+                elif action == "search":
+                    if not query:
+                        return json.dumps({"error": "query parameter required for search action"})
+                    return await self._search_clients(conn, query, limit)
+                elif action == "get_details":
+                    if not client_id:
+                        return json.dumps({"error": "client_id parameter required for get_details action"})
+                    return await self._get_client_details(conn, client_id)
+                else:
+                    return json.dumps({"error": f"Unknown action: {action}"})
+
+        except Exception as e:
+            logger.error(f"CRMClientsTool failed: {e}", exc_info=True)
+            return json.dumps({"error": str(e)})
+
+    async def _list_clients(self, conn, status: str = None, limit: int = 20) -> str:
+        """List clients with optional status filter"""
+        query_parts = ["SELECT id, uuid, full_name, email, phone, nationality, status, client_type, assigned_to, created_at, last_interaction_date FROM clients"]
+        params = []
+
+        if status:
+            query_parts.append("WHERE status = $1")
+            params.append(status)
+
+        query_parts.append(f"ORDER BY last_interaction_date DESC NULLS LAST, created_at DESC LIMIT ${len(params) + 1}")
+        params.append(limit)
+
+        query = " ".join(query_parts)
+        rows = await conn.fetch(query, *params)
+
+        clients = [
+            {
+                "id": row["id"],
+                "uuid": row["uuid"],
+                "full_name": row["full_name"],
+                "email": row["email"],
+                "phone": row["phone"],
+                "nationality": row["nationality"],
+                "status": row["status"],
+                "client_type": row["client_type"],
+                "assigned_to": row["assigned_to"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "last_interaction_date": row["last_interaction_date"].isoformat() if row["last_interaction_date"] else None,
+            }
+            for row in rows
+        ]
+
+        return json.dumps({
+            "success": True,
+            "action": "list",
+            "count": len(clients),
+            "clients": clients,
+            "filter_status": status,
+        })
+
+    async def _search_clients(self, conn, query: str, limit: int = 20) -> str:
+        """Search clients by name, email, or nationality"""
+        search_pattern = f"%{query.lower()}%"
+
+        sql = """
+            SELECT id, uuid, full_name, email, phone, nationality, status, client_type, assigned_to, created_at, last_interaction_date
+            FROM clients
+            WHERE LOWER(full_name) LIKE $1
+               OR LOWER(email) LIKE $1
+               OR LOWER(nationality) LIKE $1
+               OR LOWER(phone) LIKE $1
+            ORDER BY
+                CASE
+                    WHEN LOWER(full_name) = LOWER($2) THEN 1
+                    WHEN LOWER(email) = LOWER($2) THEN 2
+                    WHEN LOWER(full_name) LIKE $1 THEN 3
+                    ELSE 4
+                END,
+                last_interaction_date DESC NULLS LAST
+            LIMIT $3
+        """
+
+        rows = await conn.fetch(sql, search_pattern, query.lower(), limit)
+
+        clients = [
+            {
+                "id": row["id"],
+                "uuid": row["uuid"],
+                "full_name": row["full_name"],
+                "email": row["email"],
+                "phone": row["phone"],
+                "nationality": row["nationality"],
+                "status": row["status"],
+                "client_type": row["client_type"],
+                "assigned_to": row["assigned_to"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "last_interaction_date": row["last_interaction_date"].isoformat() if row["last_interaction_date"] else None,
+            }
+            for row in rows
+        ]
+
+        return json.dumps({
+            "success": True,
+            "action": "search",
+            "query": query,
+            "count": len(clients),
+            "clients": clients,
+        })
+
+    async def _get_client_details(self, conn, client_id: int) -> str:
+        """Get detailed information about a specific client including practices"""
+        # Get client info
+        client_row = await conn.fetchrow(
+            """
+            SELECT id, uuid, full_name, email, phone, whatsapp, nationality, passport_number,
+                   status, client_type, assigned_to, first_contact_date, last_interaction_date,
+                   address, notes, tags, custom_fields, created_at, updated_at, created_by
+            FROM clients
+            WHERE id = $1
+            """,
+            client_id
+        )
+
+        if not client_row:
+            return json.dumps({"success": False, "error": f"Client with ID {client_id} not found"})
+
+        # Get client practices
+        practice_rows = await conn.fetch(
+            """
+            SELECT p.id, p.uuid, p.status as practice_status, p.start_date, p.completion_date,
+                   p.notes as practice_notes, p.total_cost, p.currency,
+                   pt.name as practice_type_name, pt.code as practice_type_code, pt.category
+            FROM practices p
+            JOIN practice_types pt ON p.practice_type_id = pt.id
+            WHERE p.client_id = $1
+            ORDER BY p.start_date DESC
+            LIMIT 20
+            """,
+            client_id
+        )
+
+        practices = [
+            {
+                "id": row["id"],
+                "uuid": row["uuid"],
+                "type_name": row["practice_type_name"],
+                "type_code": row["practice_type_code"],
+                "category": row["category"],
+                "status": row["practice_status"],
+                "start_date": row["start_date"].isoformat() if row["start_date"] else None,
+                "completion_date": row["completion_date"].isoformat() if row["completion_date"] else None,
+                "total_cost": float(row["total_cost"]) if row["total_cost"] else None,
+                "currency": row["currency"],
+                "notes": row["practice_notes"],
+            }
+            for row in practice_rows
+        ]
+
+        client_data = {
+            "id": client_row["id"],
+            "uuid": client_row["uuid"],
+            "full_name": client_row["full_name"],
+            "email": client_row["email"],
+            "phone": client_row["phone"],
+            "whatsapp": client_row["whatsapp"],
+            "nationality": client_row["nationality"],
+            "passport_number": client_row["passport_number"],
+            "status": client_row["status"],
+            "client_type": client_row["client_type"],
+            "assigned_to": client_row["assigned_to"],
+            "first_contact_date": client_row["first_contact_date"].isoformat() if client_row["first_contact_date"] else None,
+            "last_interaction_date": client_row["last_interaction_date"].isoformat() if client_row["last_interaction_date"] else None,
+            "address": client_row["address"],
+            "notes": client_row["notes"],
+            "tags": client_row["tags"] or [],
+            "custom_fields": client_row["custom_fields"] or {},
+            "created_at": client_row["created_at"].isoformat() if client_row["created_at"] else None,
+            "updated_at": client_row["updated_at"].isoformat() if client_row["updated_at"] else None,
+            "created_by": client_row["created_by"],
+            "practices_count": len(practices),
+            "practices": practices,
+        }
+
+        return json.dumps({
+            "success": True,
+            "action": "get_details",
+            "client": client_data,
+        })
+
+    def to_gemini_function_declaration(self) -> dict:
+        """Convert to Gemini function calling format"""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": self.parameters["action"]["description"],
+                        "enum": self.parameters["action"]["enum"],
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": self.parameters["query"]["description"],
+                    },
+                    "client_id": {
+                        "type": "integer",
+                        "description": self.parameters["client_id"]["description"],
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": self.parameters["status"]["description"],
+                        "enum": self.parameters["status"]["enum"],
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": self.parameters["limit"]["description"],
+                    },
+                },
+                "required": self.required_params,
+            },
+        }

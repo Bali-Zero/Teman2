@@ -31,6 +31,7 @@ All original exports are maintained for seamless integration with existing code.
 import logging
 from typing import Any
 
+from services.clarification_service import ClarificationService
 from services.graph_service import GraphService
 from services.rag.agent.diagnostics_tool import DiagnosticsTool
 from services.rag.agent.mcp_tool import MCPSuperTool
@@ -48,6 +49,7 @@ from .pipeline import (
 )
 from .tools import (
     CalculatorTool,
+    CRMClientsTool,
     DatabaseQueryTool,
     PricingTool,
     TeamKnowledgeTool,
@@ -69,6 +71,7 @@ __all__ = [
     "VisionTool",
     "PricingTool",
     "TeamKnowledgeTool",
+    "CRMClientsTool",
     "GraphTraversalTool",
     # Pipeline components
     "ResponsePipeline",
@@ -81,7 +84,11 @@ __all__ = [
 
 
 def create_agentic_rag(
-    retriever, db_pool, web_search_client=None, semantic_cache: SemanticCache = None
+    retriever,
+    db_pool,
+    web_search_client=None,
+    semantic_cache: SemanticCache = None,
+    clarification_service: ClarificationService = None,
 ) -> AgenticRAGOrchestrator:
     """
     Factory function to create a fully configured AgenticRAGOrchestrator.
@@ -95,20 +102,23 @@ def create_agentic_rag(
         db_pool: PostgreSQL connection pool for database queries
         web_search_client: Optional web search client (disabled by default)
         semantic_cache: Optional semantic cache for query results
+        clarification_service: Optional service for resolving ambiguous queries
 
     Returns:
         Configured AgenticRAGOrchestrator instance
 
     Tool Priority:
         1. VectorSearchTool (primary knowledge base search)
-        2. GraphTraversalTool (knowledge graph exploration)
-        3. DatabaseQueryTool (deep dive into full documents)
-        4. CalculatorTool (numerical computations)
-        5. VisionTool (visual document analysis)
-        6. PricingTool (official Bali Zero pricing)
-        7. DiagnosticsTool (system health checks)
-        8. MCPSuperTool (admin operations)
-        9. WebSearchTool (fallback, added last if available)
+        2. TeamKnowledgeTool (team member queries)
+        3. CRMClientsTool (client data management)
+        4. GraphTraversalTool (knowledge graph exploration)
+        5. DatabaseQueryTool (deep dive into full documents)
+        6. CalculatorTool (numerical computations)
+        7. VisionTool (visual document analysis)
+        8. PricingTool (official Bali Zero pricing)
+        9. DiagnosticsTool (system health checks)
+        10. MCPSuperTool (admin operations)
+        11. WebSearchTool (fallback, added last if available)
     """
     logger.debug("create_agentic_rag: Initializing tools...")
 
@@ -119,6 +129,7 @@ def create_agentic_rag(
     tools = [
         VectorSearchTool(retriever),  # FIRST: Primary tool for knowledge base search
         TeamKnowledgeTool(db_pool),  # SECOND: Team member queries (CEO, founder, staff)
+        CRMClientsTool(db_pool),  # CRM client data queries (list, search, details)
         GraphTraversalTool(graph_service),  # THIRD: Graph exploration
         DatabaseQueryTool(db_pool),
         CalculatorTool(),
@@ -136,7 +147,11 @@ def create_agentic_rag(
 
     logger.debug("create_agentic_rag: Instantiating AgenticRAGOrchestrator...")
     orchestrator = AgenticRAGOrchestrator(
-        tools=tools, db_pool=db_pool, semantic_cache=semantic_cache, retriever=retriever
+        tools=tools,
+        db_pool=db_pool,
+        semantic_cache=semantic_cache,
+        retriever=retriever,
+        clarification_service=clarification_service,
     )
     logger.debug("create_agentic_rag: Orchestrator instantiated")
     return orchestrator

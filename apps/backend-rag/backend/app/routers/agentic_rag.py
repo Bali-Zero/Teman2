@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.dependencies import get_database_pool
+from app.dependencies import get_current_user, get_database_pool
 from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
 
 logger = logging.getLogger(__name__)
@@ -23,69 +23,6 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-
-@router.get("/health/cell-giant")
-async def cell_giant_health_check():
-    """
-    Health check specifico per Cell-Giant architecture.
-    
-    Verifica che tutti i componenti siano disponibili:
-    - Giant Reasoner (LLM client)
-    - Cell Conscience (KB access)
-    - Zantara Synthesizer (LLM client)
-    """
-    from llm.genai_client import get_genai_client
-    from services.rag.agentic.cell_giant import KNOWN_CORRECTIONS, PRACTICAL_INSIGHTS, BALI_ZERO_SERVICES
-    
-    health_status = {
-        "status": "healthy",
-        "components": {},
-        "timestamp": time.time()
-    }
-    
-    # Check Giant (LLM client)
-    try:
-        client = get_genai_client()
-        giant_available = client.is_available
-        health_status["components"]["giant"] = {
-            "status": "healthy" if giant_available else "degraded",
-            "available": giant_available,
-            "model_pro": client.PRO_MODEL if hasattr(client, 'PRO_MODEL') else "unknown",
-            "model_flash": client.FLASH_MODEL if hasattr(client, 'FLASH_MODEL') else "unknown"
-        }
-        if not giant_available:
-            health_status["status"] = "degraded"
-    except Exception as e:
-        health_status["components"]["giant"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
-        health_status["status"] = "unhealthy"
-    
-    # Check Cell (Knowledge Base)
-    try:
-        corrections_count = len(KNOWN_CORRECTIONS)
-        insights_count = sum(len(v) for v in PRACTICAL_INSIGHTS.values())
-        services_count = len(BALI_ZERO_SERVICES)
-        
-        health_status["components"]["cell"] = {
-            "status": "healthy",
-            "known_corrections": corrections_count,
-            "practical_insights": insights_count,
-            "bali_zero_services": services_count,
-            "loaded": True
-        }
-    except Exception as e:
-        health_status["components"]["cell"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
-        health_status["status"] = "unhealthy"
-    
-    # Check Zantara Synthesizer (LLM client - same as Giant)
-    health_status["components"]["zantara"] = health_status["components"].get("giant", {"status": "unknown"})
-    
-    return health_status
 
 # Global orchestrator instance (lazy loaded)
 _orchestrator: AgenticRAGOrchestrator | None = None
@@ -141,12 +78,19 @@ class AgenticQueryResponse(BaseModel):
 @router.post("/query", response_model=AgenticQueryResponse)
 async def query_agentic_rag(
     request: AgenticQueryRequest,
+    current_user: dict = Depends(get_current_user),
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
 ):
     """
     Esegue una query usando il sistema Agentic RAG completo.
+
+    **AUTHENTICATION REQUIRED**: This endpoint requires a valid JWT token.
+    The user_id is extracted from the authenticated user, not from the request body.
     """
+    # SECURITY FIX: Use authenticated user's email/id instead of trusting request body
+    authenticated_user_id = current_user.get("email") or current_user.get("user_id")
+
     try:
         # Priority 1: Use conversation_history from frontend if provided
         conversation_history: list[dict] = []
@@ -160,21 +104,21 @@ async def query_agentic_rag(
             )
 
         # Priority 2: Try to retrieve from database if no frontend history
-        elif request.user_id and (request.conversation_id or request.session_id):
+        elif authenticated_user_id and (request.conversation_id or request.session_id):
             logger.info(
-                f"🔍 Retrieving conversation history from DB: conversation_id={request.conversation_id}, session_id={request.session_id}, user_id={request.user_id}"
+                f"🔍 Retrieving conversation history from DB: conversation_id={request.conversation_id}, session_id={request.session_id}, user_id={authenticated_user_id}"
             )
             conversation_history = await get_conversation_history_for_agentic(
                 conversation_id=request.conversation_id,
                 session_id=request.session_id,
-                user_id=request.user_id,
+                user_id=authenticated_user_id,
                 db_pool=db_pool,
             )
             logger.info(f"💬 Retrieved {len(conversation_history)} messages from database")
 
         query_kwargs = {
             "query": request.query,
-            "user_id": request.user_id,
+            "user_id": authenticated_user_id,  # SECURITY: Use authenticated user_id
             "session_id": request.session_id,
         }
         if conversation_history:
@@ -182,15 +126,16 @@ async def query_agentic_rag(
 
         result = await orchestrator.process_query(**query_kwargs)
 
+        # CoreResult is a Pydantic model, access via attributes
         return AgenticQueryResponse(
-            answer=result["answer"],
-            sources=result["sources"],
-            context_length=result["context_used"],
-            execution_time=result["execution_time"],
-            route_used=result["route_used"],
-            tools_called=result.get("tools_called", 0),
-            total_steps=result.get("total_steps", 0),
-            debug_info=result.get("debug_info"),
+            answer=result.answer,
+            sources=result.sources,
+            context_length=result.document_count,  # context_used -> document_count
+            execution_time=result.timings.get("total", 0.0),
+            route_used=result.route_used,
+            tools_called=len(result.tools_called),
+            total_steps=len(result.tools_called),
+            debug_info={"model": result.model_used, "cache_hit": result.cache_hit},
         )
     except Exception as e:
         import traceback
@@ -302,223 +247,32 @@ async def get_conversation_history_for_agentic(
         return []
 
 
-@router.post("/query/cell-giant", response_model=AgenticQueryResponse)
-async def query_cell_giant(
-    request: AgenticQueryRequest,
-    orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
-    db_pool: Any | None = Depends(get_optional_database_pool),
-):
-    """
-    Query using Cell-Giant architecture.
-
-    Three-phase reasoning:
-    1. Giant: Deep reasoning on the query (strategy, legal, options)
-    2. Cell: Calibrates with verified data (corrections, pricing, insights)
-    3. Zantara: Synthesizes into a single coherent voice
-
-    The user sees ONLY Zantara. The internal reasoning is invisible.
-    """
-    # Input validation
-    if not request.query or not request.query.strip():
-        raise HTTPException(status_code=400, detail="Query cannot be empty")
-    
-    if len(request.query) > 5000:
-        raise HTTPException(status_code=400, detail="Query too long (max 5000 characters)")
-    
-    if request.conversation_history and len(request.conversation_history) > 50:
-        raise HTTPException(status_code=400, detail="Conversation history too long (max 50 messages)")
-    
-    try:
-        # Build conversation history from frontend if provided
-        conversation_history: list[dict] = []
-
-        if request.conversation_history and len(request.conversation_history) > 0:
-            conversation_history = [
-                {"role": msg.role, "content": msg.content} for msg in request.conversation_history
-            ]
-            logger.info(
-                f"💬 [Cell-Giant] Using {len(conversation_history)} messages from frontend"
-            )
-
-        result = await orchestrator.process_query_cell_giant(
-            query=request.query,
-            user_id=request.user_id,
-            conversation_history=conversation_history if conversation_history else None,
-            session_id=request.session_id,
-        )
-
-        return AgenticQueryResponse(
-            answer=result["answer"],
-            sources=result["sources"],
-            context_length=result["context_used"],
-            execution_time=result["execution_time"],
-            route_used=result["route_used"],
-            tools_called=result.get("tools_called", 0),
-            total_steps=result.get("total_steps", 0),
-            debug_info=result.get("debug_info"),
-        )
-    except Exception as e:
-        import traceback
-
-        tb = traceback.format_exc()
-        logger.error(f"❌ Error in query_cell_giant: {str(e)}\n{tb}")
-        # Generic error message for production
-        raise HTTPException(status_code=500, detail="Internal Server Error: The request could not be processed.") from e
-
-
-@router.post("/stream/cell-giant")
-async def stream_cell_giant(
-    request_body: AgenticQueryRequest,
-    http_request: Request,
-    orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
-):
-    """
-    Stream Cell-Giant architecture response (SSE).
-
-    Three-phase reasoning with streaming final output:
-    1. Giant: Deep reasoning (internal, not streamed)
-    2. Cell: Calibrations (internal, not streamed)
-    3. Zantara: Final synthesis (STREAMED to user)
-
-    Events:
-    - {"type": "phase", "data": {"name": "giant"|"cell"|"zantara", "status": "started"|"complete"}}
-    - {"type": "metadata", "data": {...}} - Pipeline metadata after Giant+Cell
-    - {"type": "token", "data": "..."} - Response tokens
-    - {"type": "done", "data": {...}} - Completion with stats
-    """
-    from services.rag.agentic.cell_giant import cell_giant_pipeline_stream
-
-    # Input validation
-    if not request_body.query or not request_body.query.strip():
-        raise HTTPException(status_code=400, detail="Query cannot be empty")
-    
-    if len(request_body.query) > 5000:
-        raise HTTPException(status_code=400, detail="Query too long (max 5000 characters)")
-    
-    if request_body.conversation_history and len(request_body.conversation_history) > 50:
-        raise HTTPException(status_code=400, detail="Conversation history too long (max 50 messages)")
-
-    correlation_id = getattr(http_request.state, "correlation_id", "unknown")
-    start_time = time.time()
-
-    logger.info(
-        f"📥 [Cell-Giant Stream] Started: correlation_id={correlation_id}, "
-        f"query_length={len(request_body.query) if request_body.query else 0}"
-    )
-
-    async def event_generator():
-        events_yielded = 0
-        tokens_sent = 0
-
-        try:
-            # Build user context from conversation history
-            user_facts: list[str] = []
-            user_context = ""
-
-            if request_body.conversation_history:
-                # Extract potential facts from history
-                for msg in request_body.conversation_history[-5:]:
-                    if msg.role == "user":
-                        user_context += f" {msg.content}"
-
-            # Stream through the pipeline - it now yields phase events itself
-            async for event in cell_giant_pipeline_stream(
-                query=request_body.query,
-                user_context=user_context[:500] if user_context else "",
-                user_facts=user_facts,
-                user_id=request_body.user_id,
-            ):
-                if await http_request.is_disconnected():
-                    logger.warning(f"⚠️ [Cell-Giant Stream] Client disconnected")
-                    return
-
-                if isinstance(event, dict):
-                    event_type = event.get("type", "")
-
-                    if event_type == "phase":
-                        # Forward phase events to keep connection alive
-                        phase_name = event.get("name", "unknown")
-                        phase_status = event.get("status", "unknown")
-                        yield f"data: {json.dumps({'type': 'phase', 'data': {'name': phase_name, 'status': phase_status}})}\n\n"
-                        events_yielded += 1
-                        logger.debug(f"📡 [Cell-Giant] Phase: {phase_name} -> {phase_status}")
-
-                    elif event_type == "keepalive":
-                        # Send keepalive to prevent frontend timeout
-                        phase = event.get("phase", "unknown")
-                        elapsed = event.get("elapsed", 0)
-                        yield f"data: {json.dumps({'type': 'keepalive', 'data': {'phase': phase, 'elapsed': elapsed}})}\n\n"
-                        events_yielded += 1
-                        logger.debug(f"💓 [Cell-Giant] Keepalive: {phase} @ {elapsed}s")
-
-                    elif event_type == "metadata":
-                        # Pipeline metadata (Giant+Cell complete)
-                        # Extract metadata fields from event
-                        metadata_data = {
-                            "giant_quality_score": event.get("giant_quality", 0),
-                            "giant_domain": event.get("detected_domain", "general"),
-                            "corrections_count": event.get("corrections_count", 0),
-                            "enhancements_count": event.get("enhancements_count", 0),
-                            "calibrations_count": event.get("calibrations_count", 0)
-                        }
-                        yield f"data: {json.dumps({'type': 'metadata', 'data': metadata_data})}\n\n"
-                        events_yielded += 1
-
-                    elif event_type == "chunk":
-                        content = event.get("content", "")
-                        if content:
-                            yield f"data: {json.dumps({'type': 'token', 'data': content})}\n\n"
-                            tokens_sent += len(content)
-                            events_yielded += 1
-
-                    elif event_type == "done":
-                        execution_time = time.time() - start_time
-                        done_data = {
-                            "execution_time": execution_time,
-                            "route_used": "cell-giant",
-                            "tokens": tokens_sent
-                        }
-                        yield f"data: {json.dumps({'type': 'done', 'data': done_data})}\n\n"
-                        events_yielded += 1
-                        logger.info(f"✅ [Cell-Giant Stream] Done event sent: {done_data}")
-
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            logger.error(f"❌ [Cell-Giant Stream] Error: {e}\n{tb}")
-            yield f"data: {json.dumps({'type': 'error', 'data': {'message': 'Internal Server Error'}})}\n\n"
-
-        finally:
-            duration = time.time() - start_time
-            logger.info(
-                f"✅ [Cell-Giant Stream] Complete: correlation_id={correlation_id}, "
-                f"duration={duration:.2f}s, events={events_yielded}, tokens={tokens_sent}"
-            )
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
 @router.post("/stream")
 async def stream_agentic_rag(
     request_body: AgenticQueryRequest,
     http_request: Request,
+    current_user: dict = Depends(get_current_user),
     orchestrator: AgenticRAGOrchestrator = Depends(get_orchestrator),
     db_pool: Any | None = Depends(get_optional_database_pool),
 ):
     """
     Stream the Agentic RAG process (SSE).
+
+    **AUTHENTICATION REQUIRED**: This endpoint requires a valid JWT token.
+    The user_id is extracted from the authenticated user, not from the request body.
+
     Supports conversation history via:
     1. Direct conversation_history from frontend (preferred - works even if DB is down)
     2. conversation_id or session_id lookup from database (fallback)
     """
+    # SECURITY FIX: Use authenticated user's email/id instead of trusting request body
+    # This prevents user_id spoofing and unauthorized access to other users' data
+    authenticated_user_id = current_user.get("email") or current_user.get("user_id")
+
+    logger.info(
+        f"🔐 Authenticated user: {authenticated_user_id} "
+        f"(role: {current_user.get('role', 'user')})"
+    )
     # Get correlation ID from request state (set by RequestTracingMiddleware)
     correlation_id = (
         getattr(http_request.state, "correlation_id", None)
@@ -538,7 +292,7 @@ async def stream_agentic_rag(
         f"📥 SSE stream request started: correlation_id={correlation_id}, "
         f"query_preview='{query_preview}...', query_hash={query_hash}, "
         f"query_length={len(request_body.query) if request_body.query else 0}, "
-        f"user_id={request_body.user_id[:8] + '...' if request_body.user_id and len(request_body.user_id) > 8 else request_body.user_id}, "
+        f"user_id={authenticated_user_id[:8] + '...' if authenticated_user_id and len(authenticated_user_id) > 8 else authenticated_user_id}, "
         f"session_id={request_body.session_id}"
     )
 
@@ -568,16 +322,16 @@ async def stream_agentic_rag(
                 )
 
             # Priority 2: Try to retrieve from database if no frontend history
-            elif request_body.user_id and (request_body.conversation_id or request_body.session_id):
+            elif authenticated_user_id and (request_body.conversation_id or request_body.session_id):
                 logger.info(
                     f"🔍 Retrieving conversation history from DB: conversation_id={request_body.conversation_id}, "
-                    f"session_id={request_body.session_id}, user_id={request_body.user_id} "
+                    f"session_id={request_body.session_id}, user_id={authenticated_user_id} "
                     f"(correlation_id={correlation_id})"
                 )
                 conversation_history = await get_conversation_history_for_agentic(
                     conversation_id=request_body.conversation_id,
                     session_id=request_body.session_id,
-                    user_id=request_body.user_id,
+                    user_id=authenticated_user_id,
                     db_pool=db_pool,
                 )
                 logger.info(
@@ -598,9 +352,10 @@ async def stream_agentic_rag(
             events_yielded += 1
 
             # Stream query with disconnect detection
+            # SECURITY: Use authenticated_user_id from JWT, not from request body
             async for event in orchestrator.stream_query(
                 query=request_body.query,
-                user_id=request_body.user_id,
+                user_id=authenticated_user_id,
                 conversation_history=conversation_history if conversation_history else None,
                 session_id=request_body.session_id,
             ):
