@@ -111,12 +111,3 @@ class VertexAIService:
             logger.error(f"Vertex AI extraction failed: {e}")
             return {}
 
-    async def extract_structure(self, text: str) -> dict[str, Any]:
-        """
-        Extract document structure (BAB/Pasal) using Gemini Pro.
-        Use this only if regex parsing fails completely.
-        """
-        # This is expensive and complex for full text.
-        # For now, we rely on the pattern extractor for structure.
-        # This is a placeholder for future implementation.
-        pass

@@ -203,20 +203,6 @@ class TestVertexAIService:
 
                     assert result == {}
 
-    @pytest.mark.asyncio
-    async def test_extract_structure(self, mock_vertexai):
-        """Test structure extraction (placeholder)"""
-        with patch("services.vertex_ai_service.vertexai"):
-            from services.vertex_ai_service import VertexAIService
-
-            service = VertexAIService(project_id="test-project")
-
-            result = await service.extract_structure("Test text")
-
-            # Placeholder returns None
-            assert result is None
-
-
 class TestVertexAIServiceImportError:
     """Test VertexAI service when module is not available"""
 

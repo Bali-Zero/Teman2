@@ -155,6 +155,45 @@ class CacheService:
         else:
             logger.info("ℹ️ No REDIS_URL, using in-memory cache")
 
+    def _is_serializable(self, obj: Any) -> bool:
+        """Check if an object is JSON serializable."""
+        # Skip known non-serializable types
+        type_name = type(obj).__name__
+        non_serializable_types = {
+            'Pool',           # asyncpg.Pool
+            'Connection',     # asyncpg.Connection
+            'Request',        # fastapi.Request
+            'Response',       # fastapi.Response
+            'WebSocket',      # fastapi.WebSocket
+            'BackgroundTasks',# fastapi.BackgroundTasks
+            'State',          # starlette.State
+            'HTTPConnection', # starlette.HTTPConnection
+        }
+        if type_name in non_serializable_types:
+            return False
+
+        # Try to serialize
+        try:
+            json.dumps(obj)
+            return True
+        except (TypeError, ValueError):
+            return False
+
+    def _safe_serialize(self, obj: Any) -> Any:
+        """Safely convert an object to a serializable form."""
+        if obj is None:
+            return None
+        if isinstance(obj, (str, int, float, bool)):
+            return obj
+        if isinstance(obj, (list, tuple)):
+            return [self._safe_serialize(item) for item in obj if self._is_serializable(item)]
+        if isinstance(obj, dict):
+            return {k: self._safe_serialize(v) for k, v in obj.items() if self._is_serializable(v)}
+        if self._is_serializable(obj):
+            return obj
+        # For non-serializable objects, return type name as placeholder
+        return f"<{type(obj).__name__}>"
+
     def _generate_key(self, prefix: str, *args, **kwargs) -> str:
         """
         Generate cache key from function arguments.
@@ -162,16 +201,36 @@ class CacheService:
         Format: zantara:{prefix}:{hash}
         Hash is MD5 of JSON-serialized args/kwargs (first 12 chars).
 
+        Automatically filters out non-JSON-serializable arguments like
+        Request, Pool, Connection, etc.
+
         Example:
             >>> cache._generate_key("test", "arg1", key="value")
             'zantara:test:a1b2c3d4e5f6'
         """
-        # Skip 'self' from args (first argument for instance methods)
-        # This prevents "Object not JSON serializable" errors
-        filtered_args = args[1:] if args and hasattr(args[0], "__dict__") else args
+        # Filter args: skip 'self' and non-serializable objects
+        filtered_args = []
+        for i, arg in enumerate(args):
+            # Skip 'self' (first argument for instance methods)
+            if i == 0 and hasattr(arg, "__dict__"):
+                continue
+            # Skip non-serializable types
+            if not self._is_serializable(arg):
+                continue
+            filtered_args.append(arg)
 
-        # Create deterministic key from arguments
-        key_data = json.dumps({"args": filtered_args, "kwargs": kwargs}, sort_keys=True)
+        # Filter kwargs: skip non-serializable values
+        filtered_kwargs = {
+            k: v for k, v in kwargs.items()
+            if self._is_serializable(v)
+        }
+
+        # Create deterministic key from filtered arguments
+        key_data = json.dumps(
+            {"args": filtered_args, "kwargs": filtered_kwargs},
+            sort_keys=True,
+            default=str  # Fallback for any remaining non-serializable types
+        )
         key_hash = hashlib.md5(key_data.encode()).hexdigest()[:CACHE_KEY_HASH_LENGTH]
         return f"zantara:{prefix}:{key_hash}"
 

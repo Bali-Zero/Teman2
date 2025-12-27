@@ -19,7 +19,8 @@ Usage:
 
     # Or streaming:
     async for chunk in client.generate_content_stream("Hello!"):
-        print(chunk, end="")
+        # Process chunk
+        pass
 
 Author: Nuzantara Team
 Date: 2025-12-23
