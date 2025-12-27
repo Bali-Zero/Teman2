@@ -329,40 +329,57 @@ class AnalyticsAggregator:
     # =========================================================================
 
     async def get_qdrant_stats(self) -> dict:
-        """Get Qdrant vector database statistics"""
+        """Get Qdrant vector database statistics using direct HTTP calls"""
         from app.routers.analytics import QdrantStats
+        from app.core.config import settings
+        import httpx
 
         stats = QdrantStats()
 
         try:
-            search_service = getattr(self.app_state, "search_service", None)
-            if search_service and hasattr(search_service, "qdrant_db"):
-                qdrant = search_service.qdrant_db
-                if hasattr(qdrant, "client"):
-                    # Get collections
-                    collections_response = await qdrant.client.get_collections()
-                    collections = []
-                    total_docs = 0
+            # Use direct HTTP calls (same approach as /health endpoint)
+            headers = {}
+            if settings.qdrant_api_key:
+                headers["api-key"] = settings.qdrant_api_key
 
-                    for coll in collections_response.collections:
+            async with httpx.AsyncClient(
+                base_url=settings.qdrant_url,
+                headers=headers,
+                timeout=10.0,
+            ) as client:
+                # Get all collections
+                response = await client.get("/collections")
+                response.raise_for_status()
+                collections_data = response.json().get("result", {}).get("collections", [])
+
+                collections = []
+                total_docs = 0
+
+                for coll in collections_data:
+                    coll_name = coll.get("name")
+                    if coll_name:
                         try:
-                            info = await qdrant.client.get_collection(coll.name)
-                            count = info.points_count or 0
+                            coll_response = await client.get(f"/collections/{coll_name}")
+                            coll_response.raise_for_status()
+                            coll_info = coll_response.json().get("result", {})
+                            count = coll_info.get("points_count", 0)
+                            status = coll_info.get("status", "unknown")
                             total_docs += count
                             collections.append({
-                                "name": coll.name,
+                                "name": coll_name,
                                 "documents": count,
-                                "status": info.status.value if hasattr(info.status, 'value') else str(info.status)
+                                "status": status
                             })
-                        except Exception:
+                        except Exception as e:
+                            logger.warning(f"Failed to get info for collection {coll_name}: {e}")
                             collections.append({
-                                "name": coll.name,
+                                "name": coll_name,
                                 "documents": 0,
                                 "status": "unknown"
                             })
 
-                    stats.total_documents = total_docs
-                    stats.collections = sorted(collections, key=lambda x: x["documents"], reverse=True)
+                stats.total_documents = total_docs
+                stats.collections = sorted(collections, key=lambda x: x["documents"], reverse=True)
 
         except Exception as e:
             logger.error(f"Error fetching Qdrant stats: {e}")
