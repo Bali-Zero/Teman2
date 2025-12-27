@@ -59,8 +59,8 @@ async def get_user_context(
         - summary: Memory summary
         - counters: Memory statistics
     """
-    logger.debug(
-        f"🧠 [ContextManager] get_user_context called with user_id='{user_id}', session_id='{session_id}', query={query[:50] if query else None}..."
+    logger.warning(
+        f"🔍 [ContextManager] get_user_context called with user_id='{user_id}', session_id='{session_id}', query={query[:50] if query else None}..."
     )
     context = {"profile": None, "history": [], "facts": [], "collective_facts": [], "entities": {}}
 
@@ -189,7 +189,7 @@ async def get_user_context(
     # but this prevented user recognition completely!
     if memory_orchestrator:
         try:
-            logger.info(f"🧠 [ContextManager] Loading memory facts for user: {original_user_id}")
+            logger.warning(f"🧠 [ContextManager] Loading memory facts for user: {original_user_id}")
 
             # Pass query for query-aware collective memory retrieval
             memory_context = await memory_orchestrator.get_user_context(
@@ -203,7 +203,7 @@ async def get_user_context(
             context["counters"] = memory_context.counters
             context["memory_context"] = memory_context  # Full context for system prompt
 
-            logger.info(
+            logger.warning(
                 f"✅ [ContextManager] Memory loaded: {len(memory_context.profile_facts)} personal facts, "
                 f"{len(memory_context.collective_facts)} collective facts, "
                 f"{len(memory_context.kg_entities)} KG entities for {original_user_id}"
@@ -211,7 +211,7 @@ async def get_user_context(
 
             # DIAGNOSTIC: Log first 3 facts for debugging
             if memory_context.profile_facts:
-                logger.info(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
+                logger.warning(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
             else:
                 logger.warning(f"⚠️  [ContextManager] NO profile facts found for {original_user_id} - user recognition will fail!")
 

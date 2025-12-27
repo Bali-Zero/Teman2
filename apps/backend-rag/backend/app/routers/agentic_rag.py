@@ -91,6 +91,13 @@ async def query_agentic_rag(
     # SECURITY FIX: Use authenticated user's email/id instead of trusting request body
     authenticated_user_id = current_user.get("email") or current_user.get("user_id")
 
+    # DIAGNOSTIC: Log current_user structure and authenticated_user_id
+    logger.warning(
+        f"🔍 [USER_ID_DEBUG] current_user keys: {list(current_user.keys())}, "
+        f"email={current_user.get('email')}, id={current_user.get('id')}, "
+        f"authenticated_user_id={authenticated_user_id}"
+    )
+
     try:
         # Priority 1: Use conversation_history from frontend if provided
         conversation_history: list[dict] = []
