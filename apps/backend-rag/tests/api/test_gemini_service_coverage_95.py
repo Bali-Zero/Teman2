@@ -51,9 +51,9 @@ class TestGeminiJakselService:
         mock_client.is_available = True
         with patch("backend.services.gemini_service.GENAI_AVAILABLE", True):
             with patch("backend.services.gemini_service.GenAIClient", return_value=mock_client):
-                service = GeminiJakselService(model_name="gemini-2.5-flash")
+                service = GeminiJakselService(model_name="gemini-3-flash-preview")
 
-                assert service.model_name == "models/gemini-2.5-flash"
+                assert service.model_name == "models/gemini-3-flash-preview"
                 assert service.model is not None
 
     def test_init_with_model_name_with_prefix(self):
@@ -64,9 +64,9 @@ class TestGeminiJakselService:
         mock_client.is_available = True
         with patch("backend.services.gemini_service.GENAI_AVAILABLE", True):
             with patch("backend.services.gemini_service.GenAIClient", return_value=mock_client):
-                service = GeminiJakselService(model_name="models/gemini-2.5-flash")
+                service = GeminiJakselService(model_name="models/gemini-3-flash-preview")
 
-                assert service.model_name == "models/gemini-2.5-flash"
+                assert service.model_name == "models/gemini-3-flash-preview"
 
     def test_init_without_api_key(self):
         """Test GeminiJakselService initialization without API key"""

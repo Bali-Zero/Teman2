@@ -39,14 +39,14 @@ with open(SCHEMA_PATH, "r") as f:
 class MLMetadataExtractor:
     """Estrae metadata usando ML (Zantara AI)"""
 
-    def __init__(self, model: str = "models/gemini-2.5-pro"):
+    def __init__(self, model: str = "models/gemini-3-flash-preview"):
         """
         Inizializza ML extractor con Zantara AI
 
         Args:
             model: Modello Gemini da usare
-                - "models/gemini-2.5-pro": Migliore qualità, meno restrittivo (raccomandato con Ultra plan)
-                - "models/gemini-2.5-flash": Più veloce, unlimited con Ultra plan
+                - "models/gemini-3-flash-preview": Primary model (default)
+                - "models/gemini-2.0-flash": Fallback stabile
         """
         if not ML_AVAILABLE:
             raise RuntimeError("ZantaraAIClient non disponibile")

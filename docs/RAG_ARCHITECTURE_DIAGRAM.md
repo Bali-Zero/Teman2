@@ -328,35 +328,29 @@
                               │    (llm_gateway.py)     │
                               └───────────┬─────────────┘
                                           │
-                    ┌─────────────────────┼─────────────────────┐
-                    │                     │                     │
-                    ▼                     ▼                     ▼
-         ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-         │   TIER 0: FLASH  │  │   TIER 1: LITE   │  │   TIER 2: PRO    │
-         │   (Primary)      │  │   (Fallback 1)   │  │   (Fallback 2)   │
-         ├──────────────────┤  ├──────────────────┤  ├──────────────────┤
-         │ gemini-2.5-flash │  │ gemini-2.0-flash │  │ gemini-2.5-pro   │
-         │                  │  │                  │  │                  │
-         │ • Fastest        │  │ • Stable         │  │ • Highest quality│
-         │ • Cost-effective │  │ • Lower quota    │  │ • Higher quota   │
-         │ • Default choice │  │ • Good fallback  │  │ • Complex tasks  │
-         └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘
-                  │                     │                     │
-                  │ ResourceExhausted   │ ResourceExhausted   │ ResourceExhausted
-                  │ ServiceUnavailable  │ ServiceUnavailable  │ ServiceUnavailable
-                  │                     │                     │
-                  └──────────┬──────────┴──────────┬──────────┘
-                             │                     │
-                             ▼                     ▼
-                  ┌──────────────────────────────────────────┐
-                  │          TIER 3: OPENROUTER              │
-                  │          (Final Fallback)                │
-                  ├──────────────────────────────────────────┤
-                  │ • External provider                      │
-                  │ • Multiple model options                 │
-                  │ • Pay-per-use                            │
-                  │ • Lazy-loaded on first use               │
-                  └──────────────────────────────────────────┘
+                              │
+                              ▼
+         ┌──────────────────────────────────────────────────────────┐
+         │                   TIER 0: PRIMARY                        │
+         ├──────────────────────────────────────────────────────────┤
+         │ gemini-3-flash                                   │
+         │                                                          │
+         │ • Fast & cost-effective                                  │
+         │ • Default for all requests                               │
+         │ • Latest Gemini 3 capabilities                           │
+         └────────────────────────┬─────────────────────────────────┘
+                                  │
+                                  │ ResourceExhausted / ServiceUnavailable
+                                  │
+                                  ▼
+         ┌──────────────────────────────────────────────────────────┐
+         │                   TIER 1: FALLBACK                       │
+         ├──────────────────────────────────────────────────────────┤
+         │ gemini-2.0-flash                                         │
+         │                                                          │
+         │ • Stable & reliable                                      │
+         │ • Fallback when primary unavailable                      │
+         └──────────────────────────────────────────────────────────┘
 
 
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐

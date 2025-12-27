@@ -48,8 +48,8 @@ class VisionRAGService:
     def __init__(self):
         self._genai_client: GenAIClient | None = None
         self._available = False
-        self.vision_model_name = "gemini-2.5-flash"  # Vision capable
-        self.text_model_name = "gemini-2.5-flash"
+        self.vision_model_name = "gemini-3-flash-preview"  # Vision capable
+        self.text_model_name = "gemini-3-flash-preview"
 
         if settings.google_api_key and GENAI_AVAILABLE:
             try:

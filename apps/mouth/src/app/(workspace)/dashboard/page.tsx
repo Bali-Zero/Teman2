@@ -243,13 +243,13 @@ export default function DashboardPage() {
           title="Active Cases"
           value={isLoading ? '-' : stats.activeCases}
           icon={FolderKanban}
-          href="/pratiche"
+          href="/cases"
         />
         <StatsCard
           title="Critical Deadlines"
           value={isLoading ? '-' : stats.criticalDeadlines}
           icon={AlertTriangle}
-          href="/pratiche"
+          href="/cases"
           variant={stats.criticalDeadlines > 0 ? 'warning' : 'default'}
         />
         <StatsCard

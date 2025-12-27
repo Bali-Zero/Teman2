@@ -44,8 +44,8 @@ class TestGeminiJakselService:
             mock_settings.google_api_key = "test_key"
             with patch("services.gemini_service.GENAI_AVAILABLE", True):
                 with patch("services.gemini_service.GenAIClient", return_value=mock_genai_client):
-                    service = GeminiJakselService(model_name="gemini-2.5-pro")
-                    assert "gemini-2.5-pro" in service.model_name
+                    service = GeminiJakselService(model_name="gemini-3-flash-preview")
+                    assert "gemini-3-flash-preview" in service.model_name
 
     def test_init_no_api_key(self):
         """Test initialization without API key"""

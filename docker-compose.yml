@@ -44,6 +44,10 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - PORT=8080
       - HOST=0.0.0.0
+      # OpenTelemetry/Jaeger tracing (uses Docker network hostname)
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=nuzantara-backend
     depends_on:
       - qdrant
       - db

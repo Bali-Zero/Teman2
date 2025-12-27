@@ -904,8 +904,8 @@ class TestTokenEstimator95Percent:
         from llm.token_estimator import TIKTOKEN_AVAILABLE, TokenEstimator
 
         # Test initialization with Gemini model
-        estimator = TokenEstimator(model="gemini-2.5-flash")
-        assert estimator.model == "gemini-2.5-flash"
+        estimator = TokenEstimator(model="gemini-3-flash-preview")
+        assert estimator.model == "gemini-3-flash-preview"
 
         # Test initialization with GPT model
         estimator2 = TokenEstimator(model="gpt-4")

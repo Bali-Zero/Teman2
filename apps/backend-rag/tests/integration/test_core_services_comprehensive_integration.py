@@ -162,8 +162,8 @@ class TestTokenEstimatorIntegration:
         """Test TokenEstimator with Gemini model"""
         from llm.token_estimator import TokenEstimator
 
-        estimator = TokenEstimator(model="gemini-2.5-flash")
-        assert estimator.model == "gemini-2.5-flash"
+        estimator = TokenEstimator(model="gemini-3-flash-preview")
+        assert estimator.model == "gemini-3-flash-preview"
 
     def test_estimate_tokens(self):
         """Test token estimation"""

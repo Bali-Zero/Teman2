@@ -34,10 +34,7 @@ class TestConversationTrainer:
     @pytest.mark.asyncio
     async def test_analyze_winning_patterns_no_conversations(self):
         """Test: Returns None when no high-rated conversations found"""
-        with patch("app.core.config.settings") as mock_settings:
-            mock_settings.github_token = "token"
-
-            # Mock asyncpg pool and connection
+        # Mock asyncpg pool and connection
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
 
@@ -57,10 +54,7 @@ class TestConversationTrainer:
     @pytest.mark.asyncio
     async def test_analyze_winning_patterns_with_conversations(self):
         """Test: Analyzes patterns from high-rated conversations"""
-        with patch("app.core.config.settings") as mock_settings:
-            mock_settings.github_token = "token"
-
-            # Mock asyncpg pool and connection
+        # Mock asyncpg pool and connection
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
 

@@ -328,8 +328,7 @@ export function useChat() {
         abortController.signal,
         requestId, // correlationId
         60000, // idleTimeoutMs
-        600000, // maxTotalTimeMs
-        undefined // useCellGiant deprecated - no longer used
+        600000 // maxTotalTimeMs
       );
     } catch (error) {
       // Handle any unhandled errors from sendMessageStreaming

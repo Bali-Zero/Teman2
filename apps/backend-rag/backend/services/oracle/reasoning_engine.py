@@ -131,7 +131,7 @@ class ReasoningEngineService:
                 f"🧠 Starting Gemini reasoning with {len(documents)} documents (Mode: {context.mode})"
             )
 
-            model = google_services.get_gemini_model("models/gemini-2.5-flash")
+            model = google_services.get_gemini_model("models/gemini-3-flash-preview")
 
             # Build context
             context_string = self.build_context(
@@ -177,7 +177,7 @@ IMPORTANT: If the user mentioned their name, city, budget, or other personal det
 
             return {
                 "answer": final_answer,
-                "model_used": "gemini-2.5-flash",
+                "model_used": "gemini-3-flash-preview",
                 "reasoning_time_ms": reasoning_time,
                 "document_count": len(documents),
                 "full_analysis": use_full_docs,
@@ -190,7 +190,7 @@ IMPORTANT: If the user mentioned their name, city, budget, or other personal det
             logger.error(f"❌ Error in Gemini reasoning after {error_time:.2f}ms: {e}")
             return {
                 "answer": "I encountered an error while processing your request. The system has been notified. Please try again or contact support if the issue persists.",
-                "model_used": "gemini-2.5-flash",
+                "model_used": "gemini-3-flash-preview",
                 "reasoning_time_ms": error_time,
                 "document_count": len(documents),
                 "full_analysis": False,

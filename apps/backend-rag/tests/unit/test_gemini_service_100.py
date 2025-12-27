@@ -59,9 +59,9 @@ class TestGeminiJakselService:
 
         with patch("services.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
-            service = GeminiJakselService(model_name="models/gemini-2.5-flash")
+            service = GeminiJakselService(model_name="models/gemini-3-flash-preview")
 
-            assert service.model_name == "models/gemini-2.5-flash"
+            assert service.model_name == "models/gemini-3-flash-preview"
 
     def test_init_without_model_prefix(self, mock_settings, mock_genai, mock_jaksel_persona):
         """Test init adds models/ prefix"""
@@ -69,9 +69,9 @@ class TestGeminiJakselService:
 
         with patch("services.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
-            service = GeminiJakselService(model_name="gemini-2.5-flash")
+            service = GeminiJakselService(model_name="gemini-3-flash-preview")
 
-            assert service.model_name == "models/gemini-2.5-flash"
+            assert service.model_name == "models/gemini-3-flash-preview"
 
     def test_init_no_api_key(self, mock_genai, mock_jaksel_persona):
         """Test init without API key"""

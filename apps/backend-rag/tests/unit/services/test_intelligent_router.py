@@ -161,7 +161,7 @@ class TestIntelligentRouterRouteChat:
         assert result["response"] == "This is the answer"
         assert result["ai_used"] == "agentic-rag"
         assert result["category"] == "agentic"
-        assert result["model"] == "gemini-2.5-flash"
+        assert result["model"] == "gemini-3-flash-preview"
         assert result["tokens"] == {}
         assert result["used_rag"] is True
         assert result["used_tools"] is False
@@ -676,7 +676,7 @@ class TestIntelligentRouterGetStats:
         assert "model" in stats
         assert "rag_available" in stats
         assert stats["router"] == "agentic_rag_wrapper"
-        assert stats["model"] == "gemini-2.5-flash"
+        assert stats["model"] == "gemini-3-flash-preview"
         assert stats["rag_available"] is True
 
     @patch("services.intelligent_router.create_agentic_rag")
@@ -705,7 +705,7 @@ class TestIntelligentRouterGetStats:
         # Assert
         assert stats == {
             "router": "agentic_rag_wrapper",
-            "model": "gemini-2.5-flash",
+            "model": "gemini-3-flash-preview",
             "rag_available": True,
         }
 

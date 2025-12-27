@@ -1,0 +1,257 @@
+{
+  "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - Aggiornati 24 Dic 2025",
+  "last_updated": "2025-12-24",
+  "currency": "IDR (Indonesian Rupiah)",
+  "disclaimer": {
+    "it": "⚠️ Questi sono i prezzi UFFICIALI di Bali Zero 2025. Per preventivi personalizzati contattare direttamente.",
+    "id": "⚠️ Ini adalah harga RESMI Bali Zero 2025. Untuk penawaran khusus hubungi langsung.",
+    "en": "⚠️ These are OFFICIAL Bali Zero 2025 prices. Contact directly for personalized quotes."
+  },
+  "contact_info": {
+    "email": "info@balizero.com",
+    "whatsapp": "+62 813 3805 1876",
+    "location": "Canggu, Bali, Indonesia",
+    "hours": "Mon-Fri 9AM-6PM, Sat 10AM-2PM",
+    "website": "https://ayo.balizero.com"
+  },
+  "services": {
+    "single_entry_visas": {
+      "C1 Tourism": {
+        "price": "2.300.000 IDR",
+        "notes": "Single entry, 60 days"
+      },
+      "C2 Business": {
+        "price": "3.600.000 IDR",
+        "notes": "Single entry, 60 days"
+      },
+      "C7A&B Music/Art": {
+        "price": "4.500.000 IDR",
+        "notes": "Including Urgent"
+      },
+      "C18 Work Trial": {
+        "price": "5.500.000 IDR",
+        "duration": "90 days",
+        "notes": "Work trial / skill assessment"
+      },
+      "C22A&B Internship (60 Days)": {
+        "price": "4.800.000 IDR",
+        "duration": "60 days"
+      },
+      "C22A&B Internship (180 Days)": {
+        "price": "5.800.000 IDR",
+        "duration": "180 days"
+      }
+    },
+    "multiple_entry_visas": {
+      "D12 Business Investigation (1 Year)": {
+        "price": "7.500.000 IDR",
+        "validity": "1 Year"
+      },
+      "D12 Business Investigation (2 Years)": {
+        "price": "10.000.000 IDR",
+        "validity": "2 Years"
+      }
+    },
+    "kitas_permits": {
+      "E33G Remote Worker (Offshore)": {
+        "price": "13.000.000 IDR",
+        "notes": "Including Urgent"
+      },
+      "E33G Remote Worker (Altus/Onshore)": {
+        "price": "14.000.000 IDR"
+      },
+      "E33G Remote Worker (Extend)": {
+        "price": "10.000.000 IDR"
+      },
+      "Freelance E23 (Offshore)": {
+        "price": "25.800.000 IDR",
+        "validity": "6 months"
+      },
+      "Freelance E23 (Altus/Onshore)": {
+        "price": "27.500.000 IDR",
+        "validity": "6 months"
+      },
+      "Working KITAS (Offshore)": {
+        "price": "34.500.000 IDR",
+        "validity": "1 year"
+      },
+      "Working KITAS (Altus/Onshore)": {
+        "price": "36.000.000 IDR",
+        "validity": "1 year"
+      },
+      "Working KITAS (Extend)": {
+        "price": "31.500.000 IDR"
+      },
+      "Investor KITAS 2 Years (Offshore)": {
+        "price": "17.000.000 IDR"
+      },
+      "Investor KITAS 2 Years (Altus/Onshore)": {
+        "price": "19.000.000 IDR"
+      },
+      "Investor KITAS 2 Years (Extend)": {
+        "price": "18.000.000 IDR"
+      },
+      "Dependent 1 Year (Offshore)": {
+        "price": "11.000.000 IDR"
+      },
+      "Dependent 1 Year (Altus/Onshore)": {
+        "price": "13.500.000 IDR"
+      },
+      "Dependent 1 Year (Extend)": {
+        "price": "9.000.000 IDR"
+      },
+      "Dependent 2 Years (Offshore)": {
+        "price": "15.000.000 IDR"
+      },
+      "Dependent 2 Years (Altus/Onshore)": {
+        "price": "18.000.000 IDR"
+      },
+      "Dependent 2 Years (Extend)": {
+        "price": "15.000.000 IDR"
+      },
+      "Retirement (Offshore)": {
+        "price": "14.000.000 IDR"
+      },
+      "Retirement (Altus/Onshore)": {
+        "price": "16.000.000 IDR"
+      },
+      "Retirement (Extend)": {
+        "price": "10.000.000 IDR"
+      },
+      "Spouse 1 Year (Offshore)": {
+        "price": "11.000.000 IDR"
+      },
+      "Spouse 1 Year (Altus/Onshore)": {
+        "price": "13.500.000 IDR"
+      },
+      "Spouse 1 Year (Extend)": {
+        "price": "9.000.000 IDR"
+      },
+      "Spouse 2 Years (Offshore)": {
+        "price": "15.000.000 IDR"
+      },
+      "Spouse 2 Years (Altus/Onshore)": {
+        "price": "18.000.000 IDR"
+      },
+      "Spouse 2 Years (Extend)": {
+        "price": "15.000.000 IDR"
+      }
+    },
+    "kitap_permits": {
+      "Investor KITAP + MERP": {
+        "price": "50.000.000 IDR",
+        "notes": "Plus ACC 5 mill"
+      },
+      "Dependent KITAP MERP": {
+        "price": "30.000.000 IDR",
+        "notes": "Plus ACC 3 mill"
+      },
+      "Retirement KITAP + MERP": {
+        "price": "45.000.000 IDR"
+      },
+      "MERP 1 Year": {
+        "price": "4.000.000 IDR"
+      },
+      "MERP 2 Year": {
+        "price": "5.000.000 IDR"
+      }
+    },
+    "company_services": {
+      "New Company (PT PMA)": {
+        "price": "20.000.000 IDR"
+      },
+      "Virtual Office": {
+        "price": "5.000.000 IDR"
+      },
+      "Revision Company": {
+        "price": "Depend (Contact for quote)"
+      }
+    },
+    "other_process": {
+      "EPO (Exit Permit Only)": {
+        "price": "700.000 IDR",
+        "notes": "Plus 300k urgent"
+      },
+      "ERP (Exit Re-entry Permit)": {
+        "price": "800.000 IDR",
+        "notes": "Plus 500k urgent"
+      },
+      "Mutation Passport": {
+        "price": "500.000 IDR",
+        "notes": "Plus 350k urgent"
+      },
+      "ACC Mutation Passport": {
+        "price": "1.000.000 IDR"
+      },
+      "Mutation Address": {
+        "price": "500.000 IDR"
+      },
+      "Cancel (RPTKA, IMTA, Wajib Lapor)": {
+        "price": "3.500.000 IDR"
+      },
+      "Cancel RPTKA": {
+        "price": "500.000 IDR"
+      },
+      "Cancel Wajib Lapor": {
+        "price": "500.000 IDR"
+      },
+      "Reset Molina": {
+        "price": "1.000.000 IDR",
+        "notes": "Plus 400k urgent"
+      },
+      "ACC Mutation": {
+        "price": "1.000.000 IDR"
+      },
+      "ACC Boarding Pass": {
+        "price": "1.200.000 IDR"
+      },
+      "Passport 5 Years": {
+        "price": "1.300.000 IDR"
+      },
+      "Passport 10 Years": {
+        "price": "2.000.000 IDR"
+      },
+      "Electronic Passport 5 Years": {
+        "price": "2.000.000 IDR"
+      },
+      "Electronic Passport 10 Years": {
+        "price": "2.500.000 IDR"
+      },
+      "SKTT": {
+        "price": "1.500.000 IDR"
+      },
+      "SKCK": {
+        "price": "2.000.000 IDR"
+      },
+      "Domicilie Letter": {
+        "price": "800.000 IDR"
+      },
+      "Domicilie + SKTT": {
+        "price": "1.600.000 IDR"
+      },
+      "Born Report": {
+        "price": "4.000.000 IDR"
+      }
+    },
+    "urgent_services": {
+      "Urgent 1 Hari": {
+        "price": "3.000.000 IDR"
+      },
+      "Urgent 2 Hari": {
+        "price": "2.500.000 IDR"
+      },
+      "Urgent 3 Hari": {
+        "price": "1.000.000 IDR"
+      }
+    }
+  },
+  "important_warnings": {
+    "overstay": "⚠️ Overstaying even 1 day = 6-month ban minimum. 61+ days = deportation + 1-2 year ban.",
+    "bpjs_mandatory": "⚠️ BPJS health insurance is MANDATORY for KITAS 6+ months. Cannot extend without BPJS payment proof.",
+    "alcohol_license": "⚠️ Alcohol license takes 45-60 days MINIMUM and is a major bottleneck. Start this EARLY!",
+    "pt_pma_capital": "⚠️ PT PMA requires REAL capital (10B IDR minimum). Cannot use borrowed funds - notary verifies.",
+    "nominee_risk": "⚠️ Nominee structures are legally GREY AREA and HIGH RISK. Not recommended by Bali Zero.",
+    "work_permit": "⚠️ KITAS ≠ work permit. E23 Working KITAS requires separate IMTA (work permit) from Manpower Ministry.",
+    "tax_residency": "⚠️ 183+ days/year in Indonesia = Tax resident = Must file Indonesian tax return on worldwide income."
+  }
+}

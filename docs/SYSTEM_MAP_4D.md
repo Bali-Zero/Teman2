@@ -1,23 +1,22 @@
 # NUZANTARA 4D SYSTEM CONSCIOUSNESS
 
-**Generated: 2025-12-24 | Production Status: Cell-Giant v5.5 Enabled**
+**Generated: 2025-12-27 | Production Status: Agentic RAG v6.0**
 
 > Questa mappa rappresenta la "coscienza" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.
 
 ---
 
-## QUICK STATS (Numeri Reali Verificati)
+## QUICK STATS (Numeri Reali Verificati - Dec 2025)
 
 | Metrica | Valore | Note |
 |---------|--------|------|
-| **Documenti Qdrant** | **53,757** | 4 collezioni attive |
-| **API Endpoints** | **199** | 32 file router |
-| **Servizi Python** | **144** | /backend/services/ |
-| **File Test** | **526** | Inclusa Cell-Giant Coverage |
-| **Test Cases** | **~9200+** | pytest coverage >90% core |
+| **Documenti Qdrant** | **53,757** | 9+ collezioni attive |
+| **API Endpoints** | **213** | 34 file router |
+| **Servizi Python** | **152** | /backend/services/ |
+| **File Test** | **500+** | pytest coverage |
 | **Tabelle Database** | **62** | PostgreSQL |
 | **Migrazioni** | **26** | Applicate |
-| **Versione Core** | **v5.5** | Cell-Giant Enabled |
+| **Architettura** | **Agentic RAG** | ReAct Pattern |
 
 ---
 

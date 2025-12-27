@@ -49,10 +49,10 @@ from services.openrouter_client import ModelTier, OpenRouterClient
 logger = logging.getLogger(__name__)
 
 # Model Tier Constants
-TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-2.5-flash
-TIER_LITE = 1  # Fallback tier - gemini-2.0-flash
-TIER_PRO = 2  # Most capable, highest quality - gemini-2.5-pro
-TIER_FALLBACK = 3  # Final Gemini fallback - gemini-2.0-flash
+TIER_FLASH = 0  # Fast, cost-effective (default) - gemini-3-flash-preview
+TIER_LITE = 1  # Alias for FLASH
+TIER_PRO = 2  # Alias for FLASH (no separate pro tier)
+TIER_FALLBACK = 3  # Stable fallback - gemini-2.0-flash
 
 
 class LLMGateway:
@@ -120,15 +120,27 @@ class LLMGateway:
             except Exception as e:
                 logger.warning(f"Failed to initialize GenAI client: {e}")
 
-        # Model name constants - Gemini 2.5 (Vertex AI GA)
-        self.model_name_pro = "gemini-2.5-pro"  # Reasoning: high quality
-        self.model_name_flash = "gemini-2.5-flash"  # Standard: fast, cost-effective
+        # Model name constants - Gemini 3 Flash Preview (Primary)
+        self.model_name_pro = "gemini-3-flash-preview"  # Same as flash (no separate pro)
+        self.model_name_flash = "gemini-3-flash-preview"  # Primary: fast, cost-effective
         self.model_name_fallback = "gemini-2.0-flash"  # Fallback: stable, reliable
 
-        logger.info("✅ LLMGateway: Model configuration ready (2.5-pro, 2.5-flash, 2.0-flash fallback)")
+        logger.info("✅ LLMGateway: Model configuration ready (3-flash-preview primary, 2.0-flash fallback)")
 
         # Lazy-loaded OpenRouter client (fallback)
         self._openrouter_client: OpenRouterClient | None = None
+
+    def set_gemini_tools(self, tools: list) -> None:
+        """Set or update Gemini function declarations for tool calling.
+
+        Allows tools to be set after initialization, useful when tools
+        are created after the LLMGateway instance.
+
+        Args:
+            tools: List of Gemini function declarations for native tool calling
+        """
+        self.gemini_tools = tools or []
+        logger.debug(f"LLMGateway: Updated gemini_tools ({len(self.gemini_tools)} tools)")
 
     def _get_openrouter_client(self) -> OpenRouterClient | None:
         """Lazy load OpenRouter client for third-party fallback.
@@ -318,43 +330,43 @@ class LLMGateway:
 
             return text_content, response
 
-        # 1. Try PRO Tier (if requested) - gemini-2.5-pro
+        # 1. Try PRO Tier (if requested) - same as flash (gemini-3-flash-preview)
         if model_tier == TIER_PRO and self._available:
             try:
                 text_content, response = await _call_model(
                     self.model_name_pro,
                     with_tools=enable_function_calling,
                 )
-                logger.debug("✅ LLMGateway: Gemini 2.5 Pro response received")
-                return (text_content, "gemini-2.5-pro", response)
+                logger.debug("✅ LLMGateway: Gemini 3 Flash Preview (pro tier) response received")
+                return (text_content, "gemini-3-flash-preview", response)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
                 logger.warning(
-                    f"⚠️ LLMGateway: Gemini 2.5 Pro quota exceeded, falling back to Flash: {e}"
+                    f"⚠️ LLMGateway: Gemini 3 Flash quota exceeded, falling back to 2.0: {e}"
                 )
-                model_tier = TIER_FLASH  # Fallback to Flash
+                model_tier = TIER_FALLBACK
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
-                    f"❌ LLMGateway: Gemini 2.5 Pro error: {e}. Trying 2.0 fallback.", exc_info=True
+                    f"❌ LLMGateway: Gemini 3 Flash error: {e}. Trying 2.0 fallback.", exc_info=True
                 )
                 model_tier = TIER_FALLBACK
 
-        # 2. Try Flash (Tier 0) - gemini-2.5-flash (Standard)
+        # 2. Try Flash (Tier 0) - gemini-3-flash-preview (Standard)
         if model_tier <= TIER_FLASH and self._available:
             try:
                 text_content, response = await _call_model(
                     self.model_name_flash,
                     with_tools=enable_function_calling,
                 )
-                logger.debug("✅ LLMGateway: Gemini 2.5 Flash response received")
-                return (text_content, "gemini-2.5-flash", response)
+                logger.debug("✅ LLMGateway: Gemini 3 Flash Preview response received")
+                return (text_content, "gemini-3-flash-preview", response)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.warning(f"⚠️ LLMGateway: Gemini 2.5 Flash quota exceeded, trying 2.0 fallback: {e}")
+                logger.warning(f"⚠️ LLMGateway: Gemini 3 Flash Preview quota exceeded, trying 2.0 fallback: {e}")
                 model_tier = TIER_FALLBACK
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
-                    f"❌ LLMGateway: Gemini 2.5 Flash error: {e}. Trying 2.0 fallback.",
+                    f"❌ LLMGateway: Gemini 3 Flash Preview error: {e}. Trying 2.0 fallback.",
                     exc_info=True,
                 )
                 model_tier = TIER_FALLBACK
@@ -447,11 +459,11 @@ class LLMGateway:
             logger.warning("⚠️ LLMGateway: GenAI client not available for chat creation")
             return None
 
-        # Select model name based on tier (all use gemini-2.5 series)
-        selected_model_name = self.model_name_flash  # Default: gemini-2.5-flash
+        # Select model name based on tier (primary: gemini-3-flash-preview, fallback: gemini-2.0-flash)
+        selected_model_name = self.model_name_flash  # Default: gemini-3-flash-preview
 
         if model_tier == TIER_PRO:
-            selected_model_name = self.model_name_pro  # gemini-2.5-pro
+            selected_model_name = self.model_name_pro  # Same as flash (gemini-3-flash-preview)
         # TIER_LITE and TIER_FLASH both use model_name_flash
 
         # Convert conversation history to Gemini format

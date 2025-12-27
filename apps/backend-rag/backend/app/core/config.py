@@ -251,6 +251,32 @@ class Settings(BaseSettings):
     log_file: str = "./data/zantara_rag.log"
 
     # ========================================
+    # OPENTELEMETRY / JAEGER TRACING
+    # ========================================
+    otel_enabled: bool = Field(
+        default=False,
+        description="Enable OpenTelemetry tracing. Set via OTEL_ENABLED env var.",
+    )
+    otel_exporter_endpoint: str = Field(
+        default="http://localhost:4317",
+        description=(
+            "OTLP exporter endpoint for Jaeger. Set via OTEL_EXPORTER_ENDPOINT env var. "
+            "Use http://localhost:4317 for local dev, http://jaeger:4317 for Docker."
+        ),
+    )
+    otel_service_name: str = Field(
+        default="nuzantara-backend",
+        description="Service name for tracing. Set via OTEL_SERVICE_NAME env var.",
+    )
+    otel_exporter_headers: str | None = Field(
+        default=None,
+        description=(
+            "OTLP exporter headers for authentication. Set via OTEL_EXPORTER_HEADERS env var. "
+            "Format: 'Authorization=Basic <token>' for Grafana Cloud."
+        ),
+    )
+
+    # ========================================
     # DATA DIRECTORIES
     # ========================================
     raw_books_dir: str = "./data/raw_books"

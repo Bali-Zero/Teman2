@@ -138,7 +138,7 @@ class TestRouteChat:
             assert result["response"] == "This is the answer"
             assert result["ai_used"] == "agentic-rag"
             assert result["category"] == "agentic"
-            assert result["model"] == "gemini-2.5-flash"
+            assert result["model"] == "gemini-3-flash-preview"
             assert result["used_rag"] is True
             assert result["used_tools"] is False
             assert result["tools_called"] == []
@@ -332,7 +332,7 @@ class TestGetStats:
 
             assert stats == {
                 "router": "agentic_rag_wrapper",
-                "model": "gemini-2.5-flash",
+                "model": "gemini-3-flash-preview",
                 "rag_available": True,
             }
 
@@ -348,5 +348,5 @@ class TestGetStats:
             stats = router.get_stats()
 
             assert "model" in stats
-            assert stats["model"] == "gemini-2.5-flash"
+            assert stats["model"] == "gemini-3-flash-preview"
             assert stats["rag_available"] is True

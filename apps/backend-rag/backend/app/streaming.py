@@ -91,6 +91,11 @@ async def bali_zero_chat_stream(
         raise HTTPException(status_code=503, detail="Services are still initializing")
 
     intelligent_router: IntelligentRouter = request.app.state.intelligent_router
+    if intelligent_router is None:
+        raise HTTPException(
+            status_code=503,
+            detail="AI Router is not available. Please check service initialization logs.",
+        )
 
     if not user_email:
         user_email = user_profile.get("email") or user_profile.get("name")
@@ -155,6 +160,7 @@ async def bali_zero_chat_stream(
                     conversation_history=conversation_history_list,
                     memory=user_memory,
                     collaborator=collaborator,
+                    session_id=None,
                 ):
                     # Check chunk timeout (time since last chunk)
                     current_time = asyncio.get_event_loop().time()
@@ -281,6 +287,11 @@ async def chat_stream_post(
         raise HTTPException(status_code=503, detail="Services are still initializing")
 
     intelligent_router: IntelligentRouter = request.app.state.intelligent_router
+    if intelligent_router is None:
+        raise HTTPException(
+            status_code=503,
+            detail="AI Router is not available. Please check service initialization logs.",
+        )
 
     user_email = body.user_id or user_profile.get("email") or user_profile.get("name")
     user_role = user_profile.get("role", "member")
@@ -371,6 +382,7 @@ async def chat_stream_post(
                     conversation_history=conversation_history_list,
                     memory=user_memory,
                     collaborator=collaborator,
+                    session_id=session_id,
                 ):
                     # Check chunk timeout (time since last chunk)
                     current_time = asyncio.get_event_loop().time()

@@ -89,7 +89,7 @@ for i, item in enumerate(items):
     print(f"   ⚡ [{i+1}/10] {topic}...")
     try:
         r = client.models.generate_content(
-            model="gemini-2.5-pro",
+            model="gemini-3-flash-preview",
             contents=f"Extract legal facts in JSON:\n\n{text}",
             config={"response_mime_type": "application/json"}
         )

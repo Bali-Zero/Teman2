@@ -672,7 +672,7 @@ class SearchService:
 
         Note:
             - Caching: 5-minute TTL for query deduplication
-            - Pricing queries: Single collection (bali_zero_pricing), no fallbacks
+            - Pricing queries: Routed to legal_unified_hybrid + visa_oracle (Fallback)
             - Health tracking: Records metrics for all collections searched
             - Error handling: Falls back to simple search on failure
             - Performance: ~200-500ms for 3 collections (parallel execution)
@@ -704,7 +704,7 @@ class SearchService:
             confidence = routing_info["confidence"]
 
             if routing_info["is_pricing"]:
-                logger.info("💰 PRICING QUERY → Single collection: bali_zero_pricing")
+                logger.info("💰 PRICING QUERY → Routing to Fallback (legal_unified_hybrid + visa_oracle)")
             else:
                 logger.info(
                     f"🎯 [Conflict Resolution] Primary: {primary_collection} "

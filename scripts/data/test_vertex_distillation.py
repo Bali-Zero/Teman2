@@ -46,7 +46,7 @@ async def process():
             topic = conv.get("topic", "Unknown")
             print(f"   ⚡ [{i+1}/10] Distilling: {topic}...")
             response = client.models.generate_content(
-                model="gemini-2.5-pro", 
+                model="gemini-3-flash-preview", 
                 contents=f"Estrai conoscenza in JSON da questo testo:\n\n{text}",
                 config={"response_mime_type": "application/json"}
             )

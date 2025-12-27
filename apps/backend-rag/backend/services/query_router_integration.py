@@ -116,12 +116,15 @@ class QueryRouterIntegration:
         # Detect pricing query
         is_pricing = self.is_pricing_query(query)
         if is_pricing:
-            collection_name = "bali_zero_pricing"
-            logger.info("💰 PRICING QUERY DETECTED → Using bali_zero_pricing collection")
+            # FALLBACK: bali_zero_pricing does not exist in Prod yet.
+            # Route to legal_unified_hybrid + visa_oracle (via federated search)
+            # We set primary explicitly to legal_unified_hybrid to ensure validity.
+            collection_name = "legal_unified_hybrid"
+            logger.info("💰 PRICING QUERY DETECTED → Routing to legal_unified_hybrid (Backup for bali_zero_pricing)")
             return {
                 "collection_name": collection_name,
-                "collections": [collection_name],
-                "confidence": 1.0,
+                "collections": ["legal_unified_hybrid", "visa_oracle"], # Expanded context
+                "confidence": 0.8, # Lower confidence since it's a fallback
                 "is_pricing": True,
             }
 

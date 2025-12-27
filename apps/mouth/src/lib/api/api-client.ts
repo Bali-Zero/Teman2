@@ -158,8 +158,7 @@ export class ApiClient extends ApiClientBase {
     abortSignal?: AbortSignal,
     correlationId?: string,
     idleTimeoutMs: number = 60000,
-    maxTotalTimeMs: number = 600000,
-    _useCellGiant?: boolean | 'auto' // DEPRECATED: No longer used
+    maxTotalTimeMs: number = 600000
   ): Promise<void> {
     return this.chatApi.sendMessageStreaming(
       message,
@@ -173,8 +172,7 @@ export class ApiClient extends ApiClientBase {
       abortSignal,
       correlationId,
       idleTimeoutMs,
-      maxTotalTimeMs,
-      _useCellGiant
+      maxTotalTimeMs
     );
   }
 

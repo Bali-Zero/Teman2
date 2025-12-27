@@ -80,7 +80,7 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
           My Cases
         </h2>
         <Link
-          href="/pratiche"
+          href="/cases"
           className="text-sm text-[var(--accent)] hover:text-[var(--accent-hover)] transition-colors flex items-center gap-1"
         >
           All
@@ -102,7 +102,7 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
             return (
               <Link
                 key={pratica.id}
-                href={`/pratiche/${pratica.id}`}
+                href={`/cases/${pratica.id}`}
                 className="block p-3 rounded-lg border border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-elevated)]/30 transition-all"
               >
                 <div className="flex items-start justify-between gap-3">

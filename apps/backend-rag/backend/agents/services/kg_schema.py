@@ -94,3 +94,4 @@ class KnowledgeGraphSchema:
             logger.error(f"Unexpected error initializing schema: {e}", exc_info=True)
             raise
 
+

@@ -393,22 +393,13 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
                               <span className="text-emerald-400">Tool Completed</span>
                             )}
 
-                            {/* Reasoning Steps (deprecated Cell-Giant phases - kept for backward compatibility) */}
+                            {/* Reasoning Steps */}
                             {step.type === 'reasoning_step' && (
                               <div className="flex flex-col gap-1 mt-1 mb-2">
                                 <div className="flex items-center gap-1.5 font-medium">
-                                  {step.data.phase === 'giant' ? (
-                                    <BookOpen size={12} className="text-purple-400" />
-                                  ) : step.data.phase === 'cell' ? (
-                                    <ShieldCheck size={12} className="text-indigo-400" />
-                                  ) : (
-                                    <Sparkles size={12} className="text-pink-400" />
-                                  )}
-                                  <span className={
-                                    step.data.phase === 'giant' ? 'text-purple-400' :
-                                    step.data.phase === 'cell' ? 'text-indigo-400' : 'text-pink-400'
-                                  }>
-                                    {step.data.phase.charAt(0).toUpperCase() + step.data.phase.slice(1)}: {step.data.status}
+                                  <Sparkles size={12} className="text-purple-400" />
+                                  <span className="text-purple-400">
+                                    {step.data.phase ? `${step.data.phase.charAt(0).toUpperCase() + step.data.phase.slice(1)}: ` : ''}{step.data.status}
                                   </span>
                                 </div>
                                 {step.data.message && (

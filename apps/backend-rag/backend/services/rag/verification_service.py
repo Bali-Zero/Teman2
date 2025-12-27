@@ -45,7 +45,7 @@ class VerificationService:
     def __init__(self):
         self._genai_client: GenAIClient | None = None
         self._available = False
-        self.model_name = "gemini-2.0-flash"  # Use Flash for verification (fast, good at reading)
+        self.model_name = "gemini-3-flash-preview"  # Use Flash for verification (fast, good at reading)
 
         if settings.google_api_key and GENAI_AVAILABLE:
             try:

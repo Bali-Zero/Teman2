@@ -317,7 +317,7 @@ class TestEndToEndFlows:
                 query,
                 response,
                 "en",
-                "gemini-2.5-flash",
+                "gemini-3-flash-preview",
                 200,
                 len(collections),
                 "session_e2e_123",

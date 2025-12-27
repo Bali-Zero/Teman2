@@ -161,30 +161,30 @@ async def run_evaluation(dataset: Dataset) -> pd.DataFrame:
     print("\n⚖️  Initializing Google Gemini as judge...")
 
     # Initialize Google Gemini LLM
-    # Use gemini-2.5-flash (Nuzantara's production model for heavy work)
+    # Use gemini-3-flash-preview (Nuzantara's primary model)
     try:
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             google_api_key=GOOGLE_API_KEY,
             temperature=0,
         )
         # Test if model is accessible
         await llm.ainvoke("Hello")
     except Exception as e:
-        print(f"⚠️  Warning: Could not initialize gemini-2.5-flash: {e}")
-        print("   Trying gemini-1.5-pro as fallback...")
+        print(f"⚠️  Warning: Could not initialize gemini-3-flash-preview: {e}")
+        print("   Trying gemini-2.0-flash as fallback...")
         try:
             llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-pro",
+                model="gemini-2.0-flash",
                 google_api_key=GOOGLE_API_KEY,
                 temperature=0,
             )
             await llm.ainvoke("Hello")
-        except Exception as e_pro:
-            print(f"❌ Error: Could not initialize any Gemini LLM: {e_pro}")
+        except Exception as e_fallback:
+            print(f"❌ Error: Could not initialize any Gemini LLM: {e_fallback}")
             raise RuntimeError(
                 "Failed to initialize Gemini LLM for Ragas evaluation."
-            ) from e_pro
+            ) from e_fallback
 
     # Initialize Google Gemini Embeddings
     # Use embedding-001 (stable, widely available)

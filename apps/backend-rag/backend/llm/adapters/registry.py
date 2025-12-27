@@ -5,20 +5,14 @@ from llm.adapters.gemini import GeminiAdapter
 
 
 class ModelType(Enum):
-    GEMINI_FLASH = "gemini-2.0-flash"
-    GEMINI_PRO = "gemini-1.5-pro"
-    GEMINI_FLASH_2_5 = "gemini-2.5-flash"
-    GEMINI_PRO_2_5 = "gemini-2.5-pro"
-    # Future models
-    # LLAMA_4 = "llama-4-maverick"
-    # QWEN_2_5 = "qwen-2.5-72b"
+    """Active models only - legacy models removed 2025-12-28"""
+    GEMINI_3_FLASH = "gemini-3-flash-preview"  # Primary tier (default)
+    GEMINI_FLASH = "gemini-2.0-flash"  # Fallback tier (stable)
 
 
 ADAPTER_REGISTRY = {
+    ModelType.GEMINI_3_FLASH: GeminiAdapter,
     ModelType.GEMINI_FLASH: GeminiAdapter,
-    ModelType.GEMINI_PRO: GeminiAdapter,
-    ModelType.GEMINI_FLASH_2_5: GeminiAdapter,
-    ModelType.GEMINI_PRO_2_5: GeminiAdapter,
 }
 
 

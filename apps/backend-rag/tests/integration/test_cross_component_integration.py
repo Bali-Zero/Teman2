@@ -200,7 +200,7 @@ class TestCrossComponentIntegration:
                 """,
                 "What is KITAS?",
                 "KITAS is a temporary residence permit",
-                "gemini-2.5-flash",
+                "gemini-3-flash-preview",
                 200,
                 user_id,
             )

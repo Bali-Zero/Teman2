@@ -49,9 +49,9 @@ class TestTokenEstimatorInit:
         """Test initialization with Gemini model uses cl100k_base"""
         from llm.token_estimator import TokenEstimator
 
-        estimator = TokenEstimator(model="gemini-1.5-pro")
+        estimator = TokenEstimator(model="gemini-3-flash-preview")
 
-        assert estimator.model == "gemini-1.5-pro"
+        assert estimator.model == "gemini-3-flash-preview"
         # Should use cl100k_base encoding
         if estimator._encoding is not None:
             assert estimator._encoding is not None

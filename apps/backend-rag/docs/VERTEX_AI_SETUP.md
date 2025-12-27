@@ -19,14 +19,13 @@ Il backend è stato configurato per usare **Vertex AI** con il service account G
    - Imposta `GOOGLE_APPLICATION_CREDENTIALS` per Application Default Credentials (ADC)
    - Inizializza il client GenAI con `vertexai=True` e il `project_id`
 
-### Modelli configurati (2025-12-23):
-- **gemini-2.5-flash** (default) - Standard: veloce e cost-effective
-- **gemini-2.5-pro** - Reasoning: alta qualità per task complessi
-- **gemini-2.0-flash** - Fallback: stabile e affidabile
+### Modelli configurati (2025-12-28):
+- **gemini-3-flash** (primary) - Veloce e cost-effective
+- **gemini-2.0-flash** (fallback) - Stabile e affidabile
 
 ### Strategia di Fallback:
 ```
-gemini-2.5-pro → gemini-2.5-flash → gemini-2.0-flash
+gemini-3-flash → gemini-2.0-flash
 ```
 **Nota**: OpenRouter è stato rimosso come fallback. Ora usiamo solo modelli Gemini.
 
@@ -84,5 +83,6 @@ Modificato `zantara_system_prompt.md` - sezione OPENER:
 **Data configurazione**: 2025-12-22
 **Ultimo update**: 2025-12-23 (v912)
 **Status**: ✅ Configurato e attivo
+
 
 

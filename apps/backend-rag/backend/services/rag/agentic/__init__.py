@@ -49,13 +49,10 @@ from .pipeline import (
 )
 from .tools import (
     CalculatorTool,
-    CRMClientsTool,
-    DatabaseQueryTool,
     PricingTool,
     TeamKnowledgeTool,
     VectorSearchTool,
     VisionTool,
-    WebSearchTool,
 )
 
 logger = logging.getLogger(__name__)
@@ -65,13 +62,10 @@ __all__ = [
     "AgenticRAGOrchestrator",
     "create_agentic_rag",
     "VectorSearchTool",
-    "WebSearchTool",
-    "DatabaseQueryTool",
     "CalculatorTool",
     "VisionTool",
     "PricingTool",
     "TeamKnowledgeTool",
-    "CRMClientsTool",
     "GraphTraversalTool",
     # Pipeline components
     "ResponsePipeline",
@@ -109,41 +103,27 @@ def create_agentic_rag(
 
     Tool Priority:
         1. VectorSearchTool (primary knowledge base search)
-        2. TeamKnowledgeTool (team member queries)
-        3. CRMClientsTool (client data management)
-        4. GraphTraversalTool (knowledge graph exploration)
-        5. DatabaseQueryTool (deep dive into full documents)
-        6. CalculatorTool (numerical computations)
-        7. VisionTool (visual document analysis)
-        8. PricingTool (official Bali Zero pricing)
-        9. DiagnosticsTool (system health checks)
-        10. MCPSuperTool (admin operations)
-        11. WebSearchTool (fallback, added last if available)
+        2. PricingTool (official Bali Zero pricing)
+        3. TeamKnowledgeTool (team member queries)
+        4. CalculatorTool (numerical computations)
+        5. VisionTool (visual document analysis)
     """
     logger.debug("create_agentic_rag: Initializing tools...")
 
-    # Initialize GraphService
+    # Initialize GraphService (kept for potential future use or dependency satisfaction)
     graph_service = GraphService(db_pool)
 
     # IMPORTANT: vector_search comes first to be the default tool
+    # ZANTARA LEAN STRATEGY (Dec 2025): Reduced to essential tools only.
     tools = [
         VectorSearchTool(retriever),  # FIRST: Primary tool for knowledge base search
-        TeamKnowledgeTool(db_pool),  # SECOND: Team member queries (CEO, founder, staff)
-        CRMClientsTool(db_pool),  # CRM client data queries (list, search, details)
-        GraphTraversalTool(graph_service),  # THIRD: Graph exploration
-        DatabaseQueryTool(db_pool),
-        CalculatorTool(),
-        VisionTool(),
-        PricingTool(),
-        DiagnosticsTool(),  # System health checks (self-healing)
-        MCPSuperTool(),  # MCP superpowers (admin only: zero@balizero.com)
+        PricingTool(),               # SECOND: Official Pricing
+        TeamKnowledgeTool(db_pool),  # THIRD: Team member queries
+        CalculatorTool(),            # FOURTH: Math safety
+        VisionTool(),                # FIFTH: Document analysis
     ]
     logger.debug("create_agentic_rag: Tools list created")
-
-    # web_search is only added if configured AND functional
-    # It's added at the end to not interfere with vector_search
-    if web_search_client:
-        tools.append(WebSearchTool(web_search_client))
+    # web_search_client ignored (WebSearchTool removed)
 
     logger.debug("create_agentic_rag: Instantiating AgenticRAGOrchestrator...")
     orchestrator = AgenticRAGOrchestrator(

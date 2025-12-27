@@ -161,18 +161,18 @@ class GenAIClient:
     The client uses connection pooling internally for efficiency.
     """
 
-    # Default models - using Gemini 2.5 (Vertex AI GA)
+    # Default models - using Gemini 3 Flash Preview (Primary)
     # Primary tier
-    DEFAULT_MODEL = "gemini-2.5-flash"  # Standard: fast, cost-effective
-    PRO_MODEL = "gemini-2.5-pro"  # Reasoning: high quality
+    DEFAULT_MODEL = "gemini-3-flash-preview"  # Primary: fast, cost-effective
+    PRO_MODEL = "gemini-3-flash-preview"  # Same as default (no separate pro)
 
-    # Fallback tier (Gemini 2.0)
-    FALLBACK_FLASH = "gemini-2.0-flash"  # Fallback for flash
-    FALLBACK_PRO = "gemini-2.0-flash"  # Fallback for pro (no 2.0-pro exists)
+    # Fallback tier (Gemini 2.0 - stable)
+    FALLBACK_FLASH = "gemini-2.0-flash"  # Fallback: stable, reliable
+    FALLBACK_PRO = "gemini-2.0-flash"  # Fallback for pro
 
     # Aliases for clarity
-    FLASH_MODEL = "gemini-2.5-flash"
-    PRO_HIGH_MODEL = "gemini-2.5-pro"
+    FLASH_MODEL = "gemini-3-flash-preview"  # Primary model
+    PRO_HIGH_MODEL = "gemini-3-flash-preview"  # Same as flash
 
     def __init__(self, api_key: str | None = None):
         """
@@ -201,7 +201,7 @@ class GenAIClient:
                 self._client = genai.Client(
                     vertexai=True,
                     project=_sa_project_id,
-                    location="us-central1"
+                    location="global"  # Required for Gemini 3 preview models
                 )
                 self._available = True
                 self._auth_method = "service_account_vertexai"
@@ -277,7 +277,7 @@ class GenAIClient:
 
         Args:
             contents: User message or list of messages
-            model: Model name (defaults to gemini-2.0-flash)
+            model: Model name (defaults to gemini-3-flash-preview)
             system_instruction: System prompt
             max_output_tokens: Maximum tokens to generate
             temperature: Sampling temperature
@@ -330,7 +330,7 @@ class GenAIClient:
 
         Args:
             contents: User message or list of messages
-            model: Model name (defaults to gemini-2.0-flash)
+            model: Model name (defaults to gemini-3-flash-preview)
             system_instruction: System prompt
             max_output_tokens: Maximum tokens to generate
             temperature: Sampling temperature
@@ -372,7 +372,7 @@ class GenAIClient:
         Create a new chat session.
 
         Args:
-            model: Model name (defaults to gemini-2.0-flash)
+            model: Model name (defaults to gemini-3-flash-preview)
             system_instruction: System prompt
             history: Optional conversation history
 

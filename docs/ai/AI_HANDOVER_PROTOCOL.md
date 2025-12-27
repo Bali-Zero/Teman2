@@ -31,9 +31,10 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 ### 2. TECH STACK
 - **Backend:** Python 3.11, FastAPI, Uvicorn.
 - **DB:** Qdrant (Vector), PostgreSQL (Metadata), Redis (Cache).
-- **AI Architecture:** Cell-Giant (v5.5): Giant Reasoner (Gemini Pro) + Cell Conscience (Local KB).
-- **Providers:** Google Gemini (`google-genai` SDK), OpenAI, ZeroEntropy.
-- **Deploy:** Fly.io (Dockerized).
+- **AI Architecture:** Agentic RAG with ReAct Pattern (Thought→Action→Observation loop).
+- **LLM Cascade:** Gemini 3 Flash Preview → 2.0 Flash fallback.
+- **Providers:** Google Gemini (`google-genai` SDK), OpenAI (embeddings), ZeroEntropy (reranker).
+- **Deploy:** Fly.io (Dockerized, Singapore region).
 
 ### 3. FILE MAP (Mental Model)
 ```text
@@ -45,7 +46,8 @@ apps/backend-rag/
 │   ├── app/            # FastAPI entrypoint (main_cloud.py)
 │   ├── core/           # Config, Security, Logging
 │   ├── services/       # Business Logic
-│   │   ├── rag/agentic/cell_giant/  # CORE: Giant, Cell, Zantara
+│   │   ├── rag/agentic/  # CORE: Orchestrator, ReAct, LLM Gateway, Tools
+│   │   ├── memory/       # Memory Orchestrator (Facts, Episodic, Collective)
 │   │   └── ...
 │   └── api/            # Routers/Endpoints
 └── scripts/            # Maintenance scripts

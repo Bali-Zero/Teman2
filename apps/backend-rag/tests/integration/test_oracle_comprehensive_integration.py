@@ -99,7 +99,7 @@ class TestOracleComprehensiveIntegration:
                 "What is KITAS?",
                 "KITAS is a temporary residence permit...",
                 "en",
-                "gemini-2.5-flash",
+                "gemini-3-flash-preview",
                 150,
                 3,
                 "session_123",
@@ -120,7 +120,7 @@ class TestOracleComprehensiveIntegration:
 
             assert analytics is not None
             assert analytics["query_text"] == "What is KITAS?"
-            assert analytics["model_used"] == "gemini-2.5-flash"
+            assert analytics["model_used"] == "gemini-3-flash-preview"
             assert analytics["document_count"] == 3
 
             # Cleanup

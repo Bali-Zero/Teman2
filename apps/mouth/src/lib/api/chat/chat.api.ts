@@ -61,8 +61,7 @@ export class ChatApi {
     abortSignal?: AbortSignal,
     correlationId?: string,
     idleTimeoutMs: number = 60000, // 60s idle timeout (reset on data)
-    maxTotalTimeMs: number = 600000, // 10min max total time
-    _useCellGiant?: boolean | 'auto' // DEPRECATED: No longer used, kept for backward compatibility
+    maxTotalTimeMs: number = 600000 // 10min max total time
   ): Promise<void> {
     // Always use standard Zantara AI endpoint (v2.0)
     const endpoint = '/api/agentic-rag/stream';

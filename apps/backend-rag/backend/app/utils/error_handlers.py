@@ -44,3 +44,4 @@ def handle_database_error(e: Exception) -> HTTPException:
     logger.error(f"Unexpected error: {e}", exc_info=True)
     return HTTPException(status_code=500, detail="Internal server error")
 
+

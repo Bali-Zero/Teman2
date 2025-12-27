@@ -7,11 +7,10 @@
 
 ## Latest Update (2025-12-23)
 
-### Model Configuration Update
-- **Standard Model**: `gemini-2.5-flash` (was gemini-2.0-flash)
-- **Reasoning Model**: `gemini-2.5-pro` (was gemini-2.0-flash)
-- **Fallback Model**: `gemini-2.0-flash` (Gemini-only fallback)
-- **OpenRouter**: ❌ Removed as fallback - now using Gemini 2.0 as fallback tier
+### Model Configuration Update (Updated 2025-12-28)
+- **Primary Model**: `gemini-3-flash` (was gemini-2.5-flash)
+- **Fallback Model**: `gemini-2.0-flash` (stable)
+- **OpenRouter**: ❌ Removed as fallback
 
 ### Service Account Update
 - **Active SA**: `vertex-express@gen-lang-client-0498009027.iam.gserviceaccount.com`

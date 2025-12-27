@@ -48,11 +48,8 @@ class ConversationTrainer:
             db_pool: AsyncPG connection pool (if None, will try to get from app.state)
             zantara_client: ZantaraAIClient instance (if None, will create new)
         """
-        from app.core.config import settings
-
         self.db_pool = db_pool
         self.zantara_client = zantara_client or (ZantaraAIClient() if ZANTARA_AVAILABLE else None)
-        self.github_token = settings.github_token
 
     async def _get_db_pool(self) -> asyncpg.Pool:
         """Get database pool from instance or app.state"""
@@ -314,18 +311,11 @@ See `{prompt_file}` for updated system prompt.
                 timeout=10.0,
             )
 
-            # 5. Push and create PR (safe subprocess)
-            subprocess.run(
-                ["git", "push", "-u", "origin", branch_name],
-                check=True,
-                timeout=30.0,
-            )
-
-            # Create branch and commit (platform agnostic)
-            # PR creation removed - use git push and create PR manually if needed
-            logger.info(f"Branch {branch_name} created and committed. Push manually to create PR.")
-
-            logger.info(f"✅ Created PR on branch: {branch_name}")
+            # 5. Branch and commit created locally
+            # No remote push - deploy manually via flyctl deploy
+            logger.info(f"Branch {branch_name} created and committed locally.")
+            logger.info(f"✅ Improvement branch ready: {branch_name}")
+            logger.info("Review changes and deploy manually via flyctl deploy if approved.")
             return branch_name
 
         except subprocess.TimeoutExpired as e:

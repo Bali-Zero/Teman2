@@ -90,7 +90,7 @@ class TestOracleUniversalIntegration:
                 ) as mock_reason:
                     mock_reason.return_value = {
                         "answer": "Test answer",
-                        "model_used": "gemini-2.5-flash",
+                        "model_used": "gemini-3-flash-preview",
                         "reasoning_time_ms": 100,
                         "success": True,
                     }
@@ -142,7 +142,7 @@ class TestOracleUniversalIntegration:
                     ) as mock_reason:
                         mock_reason.return_value = {
                             "answer": "Test answer",
-                            "model_used": "gemini-2.5-flash",
+                            "model_used": "gemini-3-flash-preview",
                             "success": True,
                         }
 
@@ -285,7 +285,7 @@ class TestOracleUniversalIntegration:
                 ) as mock_reason:
                     mock_reason.return_value = {
                         "answer": "Test answer",
-                        "model_used": "gemini-2.5-flash",
+                        "model_used": "gemini-3-flash-preview",
                         "success": True,
                     }
 
@@ -324,7 +324,7 @@ class TestOracleUniversalIntegration:
                 ) as mock_reason:
                     mock_reason.return_value = {
                         "answer": "Risposta di test",
-                        "model_used": "gemini-2.5-flash",
+                        "model_used": "gemini-3-flash-preview",
                         "success": True,
                     }
 

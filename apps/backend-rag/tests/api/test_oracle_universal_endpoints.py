@@ -592,7 +592,7 @@ class TestOracleUserProfile:
             mock_smart_oracle.return_value = "Error: Document not found"
             mock_reason.return_value = {
                 "answer": "Fallback answer",
-                "model_used": "gemini-2.5-flash",
+                "model_used": "gemini-3-flash-preview",
                 "reasoning_time_ms": 100,
             }
 

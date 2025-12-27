@@ -372,7 +372,7 @@ class TestGeminiTestEndpoint:
             assert data["success"] is True
             assert "message" in data
             assert "test_response" in data
-            assert data["model"] == "gemini-2.5-flash"
+            assert data["model"] == "gemini-3-flash-preview"
 
     def test_gemini_test_long_response(self, test_client):
         """Test Gemini test with long response (truncation)"""

@@ -267,7 +267,7 @@ class TestAllOracleRouterEndpoints:
                 """,
                 "What is KITAS?",
                 "KITAS is a temporary residence permit",
-                "gemini-2.5-flash",
+                "gemini-3-flash-preview",
                 200,
             )
 

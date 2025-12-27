@@ -82,8 +82,8 @@ def test_init_custom_model(mock_genai_client):
         with patch("services.gemini_service.GENAI_AVAILABLE", True):
             with patch("services.gemini_service.settings") as mock_settings:
                 mock_settings.google_api_key = "test-api-key"
-                service = GeminiJakselService(model_name="gemini-2.5-pro")
-                assert service.model_name == "gemini-2.5-pro"
+                service = GeminiJakselService(model_name="gemini-3-flash-preview")
+                assert service.model_name == "gemini-3-flash-preview"
 
 
 def test_init_custom_model_with_prefix(mock_genai_client):
@@ -93,8 +93,8 @@ def test_init_custom_model_with_prefix(mock_genai_client):
             with patch("services.gemini_service.settings") as mock_settings:
                 mock_settings.google_api_key = "test-api-key"
                 # New SDK strips 'models/' prefix
-                service = GeminiJakselService(model_name="models/gemini-2.5-pro")
-                assert service.model_name == "gemini-2.5-pro"
+                service = GeminiJakselService(model_name="models/gemini-3-flash-preview")
+                assert service.model_name == "gemini-3-flash-preview"
 
 
 def test_init_few_shot_history(mock_genai_client):

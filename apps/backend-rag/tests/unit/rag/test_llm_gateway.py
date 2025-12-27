@@ -91,9 +91,9 @@ class TestLLMGatewayInitialization:
                 assert gateway._genai_client is not None
                 assert gateway._available is True
 
-                # Verify model names are set (updated to Gemini 2.5 series)
-                assert gateway.model_name_pro == "gemini-2.5-pro"
-                assert gateway.model_name_flash == "gemini-2.5-flash"
+                # Verify model names are set (Gemini 3 Flash Preview primary)
+                assert gateway.model_name_pro == "gemini-3-flash-preview"
+                assert gateway.model_name_flash == "gemini-3-flash-preview"
                 assert gateway.model_name_fallback == "gemini-2.0-flash"
 
                 # Verify OpenRouter client is not initialized yet (lazy)
@@ -131,9 +131,9 @@ class TestLLMGatewaySendMessage:
             tier=TIER_FLASH,
         )
 
-        # Assertions (updated to Gemini 2.5 Flash)
+        # Assertions (Gemini 3 Flash Preview)
         assert text == "Flash response to your query"
-        assert model_name == "gemini-2.5-flash"
+        assert model_name == "gemini-3-flash-preview"
         assert response_obj == mock_response
 
     @pytest.mark.asyncio
@@ -152,7 +152,7 @@ class TestLLMGatewaySendMessage:
         )
 
         assert text == "Pro response with deep analysis"
-        assert model_name == "gemini-2.5-pro"
+        assert model_name == "gemini-3-flash-preview"
         assert response_obj == mock_response
 
     @pytest.mark.asyncio
@@ -267,8 +267,8 @@ class TestLLMGatewayFallbackCascade:
         )
 
         assert text == "Flash fallback response"
-        # Pro fails -> Flash 2.5 is tried next
-        assert model_name == "gemini-2.5-flash"
+        # Pro fails -> Flash 3 is tried next (same model)
+        assert model_name == "gemini-3-flash-preview"
 
     @pytest.mark.asyncio
     async def test_fallback_lite_raises_when_all_fail(self, llm_gateway, mock_genai_client):
@@ -443,8 +443,8 @@ class TestLLMGatewayEdgeCases:
 
         # Should return empty string when text attribute missing
         assert text == ""
-        # TIER_FLASH uses gemini-2.5-flash
-        assert model_name == "gemini-2.5-flash"
+        # TIER_FLASH uses gemini-3-flash-preview
+        assert model_name == "gemini-3-flash-preview"
 
     @pytest.mark.asyncio
     async def test_fallback_tier_uses_gemini_2_0(self, llm_gateway, mock_genai_client):
@@ -515,15 +515,15 @@ class TestLLMGatewayCreateChatWithHistory:
 
     def test_create_chat_different_tiers(self, llm_gateway, mock_genai_client):
         """Test creating chat with different model tiers."""
-        # Pro tier
+        # Pro tier (same as flash now)
         llm_gateway.create_chat_with_history(model_tier=TIER_PRO)
         call_args = mock_genai_client.create_chat.call_args
-        assert call_args[1]["model"] == "gemini-2.5-pro"
+        assert call_args[1]["model"] == "gemini-3-flash-preview"
 
         mock_genai_client.create_chat.reset_mock()
 
-        # Lite tier (uses same model as Flash in current implementation)
+        # Lite tier (uses same model as Flash)
         llm_gateway.create_chat_with_history(model_tier=TIER_LITE)
         call_args = mock_genai_client.create_chat.call_args
-        # TIER_LITE uses model_name_flash (gemini-2.5-flash) in create_chat_with_history
-        assert call_args[1]["model"] == "gemini-2.5-flash"
+        # TIER_LITE uses model_name_flash (gemini-3-flash-preview)
+        assert call_args[1]["model"] == "gemini-3-flash-preview"

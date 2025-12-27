@@ -25,8 +25,8 @@ def test_token_estimator_init():
 
 def test_token_estimator_init_gemini():
     """Test TokenEstimator initialization with Gemini model"""
-    estimator = TokenEstimator(model="gemini-2.5-pro")
-    assert estimator.model == "gemini-2.5-pro"
+    estimator = TokenEstimator(model="gemini-3-flash-preview")
+    assert estimator.model == "gemini-3-flash-preview"
 
 
 def test_estimate_tokens_approximate():
@@ -111,7 +111,7 @@ def test_estimate_approximate_method():
 
 def test_token_estimator_gemini_fallback():
     """Test TokenEstimator handles Gemini models correctly"""
-    estimator = TokenEstimator(model="gemini-2.5-pro")
+    estimator = TokenEstimator(model="gemini-3-flash-preview")
 
     # Should not raise error even if tiktoken doesn't recognize Gemini
     text = "Hello world"

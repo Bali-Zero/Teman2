@@ -120,3 +120,4 @@ async def test_retry_handler_exponential_backoff():
     assert delays[0] == pytest.approx(0.1)
     assert delays[1] == pytest.approx(0.2)
 
+

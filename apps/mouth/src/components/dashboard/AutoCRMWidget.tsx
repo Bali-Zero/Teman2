@@ -64,7 +64,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
       const data = await api.crm.getAutoCRMStats(7);
       setStats(data);
       // Navigate to clients page
-      router.push('/clienti');
+      router.push('/clients');
     } catch (err) {
       console.error('Failed to create client:', err);
       const message = err instanceof Error ? err.message : 'Unknown error';
@@ -129,7 +129,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
           size="sm"
           variant="outline"
           className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10"
-          onClick={() => router.push('/clienti/nuovo')}
+          onClick={() => router.push('/clients/new')}
         >
           <UserPlus className="w-3 h-3 mr-1" />
           New Client
@@ -138,7 +138,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
           size="sm"
           variant="outline"
           className="flex-1 bg-white/5 border-white/10 text-white hover:bg-white/10"
-          onClick={() => router.push('/pratiche')}
+          onClick={() => router.push('/cases')}
         >
           <FolderKanban className="w-3 h-3 mr-1" />
           Practices
@@ -252,7 +252,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <span className="text-sm font-medium text-green-400">{stats.clients_created}</span>
             {stats.clients_created > 0 && (
               <button
-                onClick={() => router.push('/clienti')}
+                onClick={() => router.push('/clients')}
                 className="text-xs text-white/60 hover:text-white/90 transition-colors"
               >
                 <ArrowRight className="w-3 h-3" />
@@ -271,7 +271,7 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
             <span className="text-sm font-medium text-green-400">{stats.practices_created}</span>
             {stats.practices_created > 0 && (
               <button
-                onClick={() => router.push('/pratiche')}
+                onClick={() => router.push('/cases')}
                 className="text-xs text-white/60 hover:text-white/90 transition-colors"
               >
                 <ArrowRight className="w-3 h-3" />
@@ -328,9 +328,9 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
                   className="text-xs p-2 rounded bg-white/5 hover:bg-white/10 cursor-pointer transition-colors"
                   onClick={() => {
                     if (extraction.client_id) {
-                      router.push(`/clienti/${extraction.client_id}`);
+                      router.push(`/clients/${extraction.client_id}`);
                     } else if (extraction.practice_id) {
-                      router.push(`/pratiche/${extraction.practice_id}`);
+                      router.push(`/cases/${extraction.practice_id}`);
                     }
                   }}
                 >
@@ -352,13 +352,13 @@ export function AutoCRMWidget({ className }: AutoCRMWidgetProps) {
         <div className="pt-2 border-t border-white/10">
           <div className="flex gap-2">
             <button
-              onClick={() => router.push('/clienti')}
+              onClick={() => router.push('/clients')}
               className="flex-1 text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             >
               View All Clients
             </button>
             <button
-              onClick={() => router.push('/pratiche')}
+              onClick={() => router.push('/cases')}
               className="flex-1 text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition-colors"
             >
               View Practices

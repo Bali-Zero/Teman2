@@ -6,8 +6,6 @@
 import type {
   AgenticRAGQueryRequest,
   AgenticRAGQueryResponse,
-  CellGiantQueryRequest,
-  CellGiantQueryResponse,
   ApiError,
   UserMemory,
   CollectiveMemory,
@@ -94,17 +92,6 @@ export class ZantaraSDK {
       }
       throw error;
     }
-  }
-
-  // ============================================================================
-  // Legacy Methods (DEPRECATED)
-  // ============================================================================
-
-  /** @deprecated Use queryAgenticRAG() instead */
-  async queryCellGiant(
-    request: CellGiantQueryRequest
-  ): Promise<CellGiantQueryResponse> {
-    return this.queryAgenticRAG(request as unknown as AgenticRAGQueryRequest) as Promise<CellGiantQueryResponse>;
   }
 
   // ============================================================================

@@ -53,7 +53,7 @@ class TestZantaraAIClient:
                 client = ZantaraAIClient(api_key="test_key")
 
                 assert client.api_key == "test_key"
-                assert client.model == "gemini-2.5-flash"
+                assert client.model == "gemini-3-flash-preview"
 
     def test_init_without_api_key_mock_mode(self):
         """Test ZantaraAIClient initialization without API key (mock mode)"""

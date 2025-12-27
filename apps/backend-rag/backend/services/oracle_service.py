@@ -57,7 +57,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Note: Request/Response models are typically defined in routers or a shared schemas file.
 # Since they are currently in the router, we will assume the service receives typed arguments
-# or Pydantic objects passed from the router. For now, we import them if needed or just use type hints.
+from services.rag.agentic import create_agentic_rag
+from services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+from services.rag.agentic.schema import CoreResult
+from services.rag.agentic.entity_extractor import EntityExtractionService
 
 # ---------------------------------------------------------------------------
 # HELPER FUNCTIONS (Backward Compatibility)
@@ -161,6 +164,11 @@ class OracleService:
         self.document_retrieval = DocumentRetrievalService()
         self.analytics = OracleAnalyticsService()
 
+        # Adapter State
+        self._orchestrator: Optional[AgenticRAGOrchestrator] = None
+        self._db_pool: Optional[asyncpg.Pool] = None
+        self._entity_extractor = EntityExtractionService()
+
         # Lazy loaded services
         self._followup_service: Optional[FollowupService] = None
         self._citation_service: Optional[CitationService] = None
@@ -170,6 +178,33 @@ class OracleService:
         self._memory_service: Optional[MemoryServicePostgres] = None
         self._fact_extractor: Optional[MemoryFactExtractor] = None
         self._memory_orchestrator: Optional[MemoryOrchestrator] = None
+
+    async def _get_db_pool(self) -> asyncpg.Pool:
+        """Lazy load asyncpg pool for Agentic RAG tools"""
+        if not self._db_pool:
+            try:
+                self._db_pool = await asyncpg.create_pool(dsn=config.database_url)
+            except Exception as e:
+                logger.error(f"Failed to create asyncpg pool: {e}")
+                # Fallback or re-raise depending on criticality.
+                # RAG might partially work without DB (except for Memory/Team tools)
+                raise
+        return self._db_pool
+
+    async def _get_orchestrator(self, search_service: SearchService) -> AgenticRAGOrchestrator:
+        """Lazy load orchestrator with injected dependencies"""
+        if not self._orchestrator:
+            pool = await self._get_db_pool()
+            self._orchestrator = create_agentic_rag(
+                retriever=search_service,
+                db_pool=pool,
+                semantic_cache=None, # Oracle specific cache logic if needed
+                clarification_service=self.clarification_service
+            )
+            # Inject pre-initialized entity extractor if needed, or rely on factory
+            # Factory creates new one. We can inject our shared one if we modify factory or set it after.
+            self._orchestrator.entity_extractor = self._entity_extractor
+        return self._orchestrator
 
     @property
     def followup_service(self) -> FollowupService:
@@ -341,214 +376,45 @@ class OracleService:
                 user_language=user_profile.get("language") if user_profile else None,
             )
 
-            classification = await self.intent_classifier.classify_intent(request_query)
-            detected_mode = classification.get("mode", "default")
+            # --- CORE ADAPTER LOGIC: Delegate to AgenticRAGOrchestrator ---
+            orchestrator = await self._get_orchestrator(search_service)
 
-            clarification_needed = False
-            clarification_question = None
-            try:
-                ambiguity_result = self.clarification_service.detect_ambiguity(request_query)
-                if (
-                    ambiguity_result.get("is_ambiguous")
-                    and ambiguity_result.get("confidence", 0) > 0.7
-                ):
-                    clarification_needed = True
-                    clarification_question = ambiguity_result.get("suggested_question")
-            except (ValueError, RuntimeError, KeyError) as e:
-                logger.warning(f"ClarificationService error: {e}", exc_info=True)
-
-            # 2b. Golden Answers
-            golden_answer = None
-            golden_answer_used = False
-            if self.golden_answer_service:
-                try:
-                    if not self.golden_answer_service.pool:
-                        await self.golden_answer_service.connect()
-                    golden_answer = await self.golden_answer_service.lookup_golden_answer(
-                        query=request_query, _user_id=request_user_email
-                    )
-                    if golden_answer:
-                        golden_answer_used = True
-                except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-                    logger.warning(f"GoldenAnswerService error: {e}", exc_info=True)
-
-            prompt_context = PromptContext(
-                query=request_query,
-                language=target_language,
-                mode=detected_mode,
-                emotional_state="neutral",
-                user_name=user_name,
-                user_role=user_role,
-            )
-
-            # 3. Semantic Search (Refactored to use SearchService with Reranking & Metrics)
-            search_start = time.time()
-
-            # Keep explicit routing for analytics details
-            routing_stats = search_service.query_router.route_query(request_query)
-            collection_used = routing_stats["collection_name"]
-
-            # Determine user access level based on role
-            user_level = 3 if user_role == "admin" else 1
-
-            # Execute search via centralized service (Enables Metrics, Reranking, Early Exit)
-            try:
-                search_response = await search_service.search_with_reranking(
-                    query=request_query,
-                    user_level=user_level,
-                    limit=request_limit,
-                    collection_override=collection_used,
-                    tier_filter=None,  # Use default tier filtering
-                )
-
-                # Check for early exit optimization
-                if search_response.get("early_exit"):
-                    logger.info("🚀 OracleService benefited from Early Exit optimization")
-
-            except Exception as e:
-                logger.error(f"SearchService error: {e}", exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Search service failed: {str(e)}",
-                )
-
-            search_time = (time.time() - search_start) * 1000
-
-            # 4. Process Results (Map from SearchService format to Oracle format)
-            documents = []
-            sources = []
-
-            for result in search_response.get("results", []):
-                # Extract data from standardized format
-                doc_content = result.get("text", "")
-                metadata = result.get("metadata", {})
-                score = result.get("score", 0.0)
-                doc_id = result.get("id") or metadata.get("id")
-
-                # Prepare document text for reasoning
-                documents.append(doc_content)
-
-                # Prepare source metadata for citation
-                sources.append(
-                    {
-                        "content": doc_content[:500] + "..."
-                        if len(doc_content) > 500
-                        else doc_content,
-                        "metadata": metadata,
-                        "relevance": round(score, 4),
-                        "source_collection": collection_used,
-                        "document_id": doc_id,
-                        "is_reranked": search_response.get("reranked", False),
-                    }
-                )
-
-            # 5. Reasoning
-            answer = None
-            model_used = None
-            reasoning_result = None
-
-            conv_history_dicts = None
+            # Prepare conversation history
+            conv_history_dicts = []
             if request_conversation_history:
                 conv_history_dicts = [
                     {"role": msg.role, "content": msg.content}
                     for msg in request_conversation_history
                 ]
 
-            # Identity Check
-            query_lower = request_query.lower()
-            identity_patterns = [
-                "chi sono io",
-                "who am i",
-                "siapa saya",
-                "mi riconosci",
-                "recognize me",
-            ]
-            is_identity_query = any(pattern in query_lower for pattern in identity_patterns)
+            # EXECUTE RAG
+            # We map user parameters to orchestrator inputs
+            rag_result: CoreResult = await orchestrator.process_query(
+                query=request_query,
+                user_id=request_user_email or "anonymous",
+                conversation_history=conv_history_dicts,
+                session_id=request_session_id
+            )
 
-            if is_identity_query and user_profile:
-                # Identity Logic
-                user_role = user_profile.get("role", "team member")
-                if target_language in ["it", "italian"]:
-                    answer = f"Ciao {user_name}! Sei {user_role}. Sono Zantara."
-                elif target_language in ["id", "indonesian"]:
-                    answer = f"Halo {user_name}! Kamu adalah {user_role}. Saya Zantara."
-                else:
-                    answer = f"Hey {user_name}! You're {user_role}. I'm Zantara."
-                model_used = "user_profile_identity"
-            elif golden_answer and golden_answer.get("answer"):
-                answer = golden_answer["answer"]
-                model_used = f"golden_answer ({golden_answer.get('match_type', 'exact')})"
-            elif request_use_ai and documents:
-                # Smart Oracle / Standard Reasoning
-                best_result = sources[0] if sources else None
-                best_filename = None
-                if best_result and best_result.get("metadata"):
-                    best_filename = best_result["metadata"].get("filename") or best_result[
-                        "metadata"
-                    ].get("source")
+            # --- MAP RESULT TO LEGACY FORMAT ---
+            answer = rag_result.answer
+            sources = rag_result.sources
+            model_used = rag_result.model_used
+            execution_time = rag_result.timings.get("total", 0) * 1000
 
-                if best_filename:
-                    smart_response = await smart_oracle(request_query, best_filename)
-                    if smart_response and not smart_response.startswith("Error"):
-                        reasoning_result = await self.reasoning_engine.reason_with_gemini(
-                            documents=[smart_response],
-                            query=request_query,
-                            context=prompt_context,
-                            use_full_docs=True,
-                            user_memory_facts=user_memory_facts,
-                            conversation_history=conv_history_dicts,
-                        )
-                        answer = reasoning_result["answer"]
-                        model_used = f"{reasoning_result['model_used']} (Smart Oracle)"
-                    else:
-                        reasoning_result = await self.reasoning_engine.reason_with_gemini(
-                            documents=documents,
-                            query=request_query,
-                            context=prompt_context,
-                            use_full_docs=False,
-                            user_memory_facts=user_memory_facts,
-                            conversation_history=conv_history_dicts,
-                        )
-                        answer = reasoning_result["answer"]
-                        model_used = reasoning_result["model_used"]
-                else:
-                    reasoning_result = await self.reasoning_engine.reason_with_gemini(
-                        documents=documents,
-                        query=request_query,
-                        context=prompt_context,
-                        use_full_docs=False,
-                        user_memory_facts=user_memory_facts,
-                        conversation_history=conv_history_dicts,
-                    )
-                    answer = reasoning_result["answer"]
-                    model_used = reasoning_result["model_used"]
+            # Extract internal metrics for analytics (approximate mapping)
+            search_time = 0 # Not explicit in CoreResult yet, could add to timings
+            reasoning_time = 0
 
-                reasoning_time = (
-                    reasoning_result.get("reasoning_time_ms", 0) if reasoning_result else 0
-                )
+            # Handle Clarification / Abstain / Identity
+            clarification_needed = rag_result.is_ambiguous
+            clarification_question = rag_result.clarification_question
 
-            elif request_use_ai and not documents:
-                # Conversational Fallback
-                try:
-                    reasoning_result = await self.reasoning_engine.reason_with_gemini(
-                        documents=[],
-                        query=request_query,
-                        context=prompt_context,
-                        use_full_docs=False,
-                        user_memory_facts=user_memory_facts,
-                        conversation_history=conv_history_dicts,
-                    )
-                    answer = reasoning_result["answer"]
-                    model_used = f"{reasoning_result['model_used']} (conversational)"
-                    reasoning_time = reasoning_result.get("reasoning_time_ms", 0)
-                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
-                    logger.error(f"Error in conversational AI: {e}", exc_info=True)
+            # Router stats are optional in the refactored AgenticRAG CoreResult
+            routing_stats: dict[str, Any] = {}
 
-            if not answer:
-                answer = f"I'm sorry {user_name}, I couldn't find specific information. Could you rephrase?"
-                model_used = "default_response"
-
-            execution_time = (time.time() - start_time) * 1000
+            # Initialize routing stats for analytics
+            routing_stats = rag_result.timings if hasattr(rag_result, "timings") else {}
 
             # Analytics (delegated to OracleAnalyticsService)
             analytics_data = self.analytics.build_analytics_data(
@@ -557,54 +423,15 @@ class OracleService:
                 user_profile=user_profile,
                 model_used=model_used,
                 execution_time_ms=execution_time,
-                document_count=len(documents),
+                document_count=rag_result.document_count,
                 session_id=request_session_id,
-                collection_used=collection_used,
+                collection_used=rag_result.collection_used,
                 routing_stats=routing_stats,
                 search_time_ms=search_time,
                 reasoning_time_ms=reasoning_time,
             )
             analytics_data["language_preference"] = target_language
             await self.analytics.store_query_analytics(analytics_data)
-
-            # Followups & Citations
-            followup_questions = []
-            try:
-                followup_questions = await self.followup_service.get_followups(
-                    query=request_query, response=answer or "", use_ai=True
-                )
-            except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
-                logger.debug("Failed to generate followup questions", exc_info=True)
-                pass
-
-            citations = []
-            try:
-                citations = self.citation_service.extract_sources_from_rag(sources)
-            except (ValueError, KeyError, TypeError):
-                logger.debug("Failed to extract citations", exc_info=True)
-                pass
-
-            if answer and not clarification_needed:
-                # OPTIONAL: Check if AI response itself asks for clarification
-                # Currently disabled as detect_clarification_in_response is not implemented
-                # try:
-                #     response_analysis = self.clarification_service.detect_clarification_in_response(answer)
-                #     if response_analysis.get("has_clarification_question"):
-                #         clarification_needed = True
-                # except (ValueError, RuntimeError, KeyError, AttributeError):
-                #     logger.debug("Failed to detect clarification in response", exc_info=True)
-                pass
-
-            # 🧠 MEMORY PERSISTENCE: Extract and save facts from conversation
-            if answer and request_user_email:
-                # Run memory saving in background to not block response
-                asyncio.create_task(
-                    self._save_memory_facts(
-                        user_email=request_user_email,
-                        user_message=request_query,
-                        ai_response=answer,
-                    )
-                )
 
             # Return dict matching OracleQueryResponse
             return {
@@ -615,21 +442,21 @@ class OracleService:
                 "answer_language": target_language,
                 "model_used": model_used,
                 "sources": sources if request_include_sources else [],
-                "document_count": len(documents),
-                "collection_used": collection_used,
-                "routing_reason": f"Routed to {collection_used}",
+                "document_count": rag_result.document_count,
+                "collection_used": rag_result.collection_used,
+                "routing_reason": f"Routed to {rag_result.collection_used}",
                 "domain_confidence": routing_stats.get("domain_scores", {}),
-                "user_profile": user_profile,  # Router will convert to Pydantic
+                "user_profile": user_profile,
                 "language_detected": target_language,
                 "execution_time_ms": execution_time,
                 "search_time_ms": search_time,
                 "reasoning_time_ms": reasoning_time,
-                "followup_questions": followup_questions,
-                "citations": citations,
+                "followup_questions": [], # Orchestrator could provide these if asked
+                "citations": rag_result.sources, # Use RAG sources as citations
                 "clarification_needed": clarification_needed,
                 "clarification_question": clarification_question,
                 "personality_used": personality_used,
-                "golden_answer_used": golden_answer_used,
+                "golden_answer_used": "golden" in model_used,
                 "user_memory_facts": user_memory_facts,
             }
 
