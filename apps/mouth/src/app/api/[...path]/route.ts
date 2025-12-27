@@ -129,7 +129,12 @@ async function proxy(req: NextRequest): Promise<Response> {
     // This header tells intermediaries (CDNs, proxies) not to transform the content
     respHeaders.set('Cache-Control', 'no-transform');
 
-    return new Response(upstream.body, {
+    // CRITICAL FIX: Consume the body to ensure decompression happens
+    // Reading the body triggers automatic decompression if it was gzipped
+    // Then we create a new Response with the decompressed data
+    const bodyBuffer = await upstream.arrayBuffer();
+
+    return new Response(bodyBuffer, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: respHeaders,
