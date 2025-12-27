@@ -150,7 +150,7 @@ class TestClockInEndpoint:
             "message": "Successfully clocked in",
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-in",
                 json={
@@ -183,7 +183,7 @@ class TestClockInEndpoint:
             "message": "Successfully clocked in",
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-in",
                 json={
@@ -209,7 +209,7 @@ class TestClockInEndpoint:
             "clocked_in_at": "2025-12-23T08:30:00+08:00",
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-in",
                 json={
@@ -226,7 +226,7 @@ class TestClockInEndpoint:
 
     def test_clock_in_service_unavailable(self, client):
         """Test clock-in when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.post(
                 "/api/team/clock-in",
                 json={
@@ -242,7 +242,7 @@ class TestClockInEndpoint:
         """Test clock-in when service raises exception"""
         mock_timesheet_service.clock_in.side_effect = Exception("Database connection failed")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-in",
                 json={
@@ -287,7 +287,7 @@ class TestClockOutEndpoint:
             "message": "Successfully clocked out. Worked 8.5 hours",
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-out",
                 json={
@@ -317,7 +317,7 @@ class TestClockOutEndpoint:
             "message": "Not currently clocked in",
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-out",
                 json={
@@ -333,7 +333,7 @@ class TestClockOutEndpoint:
 
     def test_clock_out_service_unavailable(self, client):
         """Test clock-out when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.post(
                 "/api/team/clock-out",
                 json={
@@ -349,7 +349,7 @@ class TestClockOutEndpoint:
         """Test clock-out when service raises exception"""
         mock_timesheet_service.clock_out.side_effect = Exception("Database error")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-out",
                 json={
@@ -382,7 +382,7 @@ class TestMyStatusEndpoint:
             "week_days": 4,
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get("/api/team/my-status?user_id=user_123")
 
         assert response.status_code == 200
@@ -407,7 +407,7 @@ class TestMyStatusEndpoint:
             "week_days": 0,
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get("/api/team/my-status?user_id=user_123")
 
         assert response.status_code == 200
@@ -423,7 +423,7 @@ class TestMyStatusEndpoint:
 
     def test_get_my_status_service_unavailable(self, client):
         """Test status when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.get("/api/team/my-status?user_id=user_123")
 
         assert response.status_code == 503
@@ -432,7 +432,7 @@ class TestMyStatusEndpoint:
         """Test status when service raises exception"""
         mock_timesheet_service.get_my_status.side_effect = Exception("Query failed")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get("/api/team/my-status?user_id=user_123")
 
         assert response.status_code == 500
@@ -465,7 +465,7 @@ class TestTeamStatusEndpoint:
             },
         ]
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/status",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -480,7 +480,7 @@ class TestTeamStatusEndpoint:
 
     def test_get_team_status_forbidden_non_admin(self, client, mock_timesheet_service):
         """Test team status with non-admin user"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/status",
                 headers={"X-User-Email": "user@example.com"},
@@ -491,14 +491,14 @@ class TestTeamStatusEndpoint:
 
     def test_get_team_status_no_auth(self, client, mock_timesheet_service):
         """Test team status without authentication"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get("/api/team/status")
 
         assert response.status_code == 401
 
     def test_get_team_status_service_unavailable(self, client):
         """Test team status when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.get(
                 "/api/team/status",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -510,7 +510,7 @@ class TestTeamStatusEndpoint:
         """Test team status when service raises exception"""
         mock_timesheet_service.get_team_online_status.side_effect = Exception("Database error")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/status",
                 headers={"X-User-Email": "admin@zantara.io"},
@@ -540,7 +540,7 @@ class TestDailyHoursEndpoint:
             },
         ]
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/hours",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -556,7 +556,7 @@ class TestDailyHoursEndpoint:
         """Test daily hours for specific date"""
         mock_timesheet_service.get_daily_hours.return_value = []
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/hours?date=2025-12-20",
                 headers={"X-User-Email": "admin@balizero.com"},
@@ -570,7 +570,7 @@ class TestDailyHoursEndpoint:
 
     def test_get_daily_hours_invalid_date_format(self, client, mock_timesheet_service):
         """Test daily hours with invalid date format"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/hours?date=invalid-date",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -581,7 +581,7 @@ class TestDailyHoursEndpoint:
 
     def test_get_daily_hours_forbidden_non_admin(self, client, mock_timesheet_service):
         """Test daily hours with non-admin user"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/hours",
                 headers={"X-User-Email": "user@example.com"},
@@ -591,7 +591,7 @@ class TestDailyHoursEndpoint:
 
     def test_get_daily_hours_service_unavailable(self, client):
         """Test daily hours when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.get(
                 "/api/team/hours",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -603,7 +603,7 @@ class TestDailyHoursEndpoint:
         """Test daily hours when service raises exception"""
         mock_timesheet_service.get_daily_hours.side_effect = Exception("Query error")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/hours",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -633,7 +633,7 @@ class TestWeeklySummaryEndpoint:
             },
         ]
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/weekly",
                 headers={"X-User-Email": "admin@zantara.io"},
@@ -649,7 +649,7 @@ class TestWeeklySummaryEndpoint:
         """Test weekly summary for specific week"""
         mock_timesheet_service.get_weekly_summary.return_value = []
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/weekly?week_start=2025-12-16",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -660,7 +660,7 @@ class TestWeeklySummaryEndpoint:
 
     def test_get_weekly_summary_invalid_date(self, client, mock_timesheet_service):
         """Test weekly summary with invalid date"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/weekly?week_start=bad-date",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -671,7 +671,7 @@ class TestWeeklySummaryEndpoint:
 
     def test_get_weekly_summary_forbidden(self, client, mock_timesheet_service):
         """Test weekly summary with non-admin"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/weekly",
                 headers={"X-User-Email": "user@example.com"},
@@ -681,7 +681,7 @@ class TestWeeklySummaryEndpoint:
 
     def test_get_weekly_summary_service_unavailable(self, client):
         """Test weekly summary when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.get(
                 "/api/team/activity/weekly",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -693,7 +693,7 @@ class TestWeeklySummaryEndpoint:
         """Test weekly summary service error"""
         mock_timesheet_service.get_weekly_summary.side_effect = Exception("DB error")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/weekly",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -723,7 +723,7 @@ class TestMonthlySummaryEndpoint:
             },
         ]
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/monthly",
                 headers={"X-User-Email": "admin@zantara.io"},
@@ -739,7 +739,7 @@ class TestMonthlySummaryEndpoint:
         """Test monthly summary for specific month"""
         mock_timesheet_service.get_monthly_summary.return_value = []
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/monthly?month_start=2025-11-01",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -750,7 +750,7 @@ class TestMonthlySummaryEndpoint:
 
     def test_get_monthly_summary_invalid_date(self, client, mock_timesheet_service):
         """Test monthly summary with invalid date"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/monthly?month_start=invalid",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -761,7 +761,7 @@ class TestMonthlySummaryEndpoint:
 
     def test_get_monthly_summary_forbidden(self, client, mock_timesheet_service):
         """Test monthly summary with non-admin"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/monthly",
                 headers={"X-User-Email": "user@example.com"},
@@ -771,7 +771,7 @@ class TestMonthlySummaryEndpoint:
 
     def test_get_monthly_summary_service_unavailable(self, client):
         """Test monthly summary when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.get(
                 "/api/team/activity/monthly",
                 headers={"X-User-Email": "admin@balizero.com"},
@@ -783,7 +783,7 @@ class TestMonthlySummaryEndpoint:
         """Test monthly summary service error"""
         mock_timesheet_service.get_monthly_summary.side_effect = Exception("Connection error")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/activity/monthly",
                 headers={"X-User-Email": "admin@balizero.com"},
@@ -805,7 +805,7 @@ class TestExportTimesheetEndpoint:
         csv_data = "Email,Date,Clock In,Clock Out,Hours Worked\nuser1@example.com,2025-12-23,09:00,17:30,8.5"
         mock_timesheet_service.export_timesheet_csv.return_value = csv_data
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=2025-12-23",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -819,7 +819,7 @@ class TestExportTimesheetEndpoint:
 
     def test_export_timesheet_invalid_format(self, client, mock_timesheet_service):
         """Test export with invalid format"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=2025-12-23&format=json",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -830,7 +830,7 @@ class TestExportTimesheetEndpoint:
 
     def test_export_timesheet_invalid_start_date(self, client, mock_timesheet_service):
         """Test export with invalid start date"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export?start_date=bad-date&end_date=2025-12-23",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -841,7 +841,7 @@ class TestExportTimesheetEndpoint:
 
     def test_export_timesheet_invalid_end_date(self, client, mock_timesheet_service):
         """Test export with invalid end date"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=invalid",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -852,7 +852,7 @@ class TestExportTimesheetEndpoint:
 
     def test_export_timesheet_missing_parameters(self, client, mock_timesheet_service):
         """Test export without required parameters"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -862,7 +862,7 @@ class TestExportTimesheetEndpoint:
 
     def test_export_timesheet_forbidden(self, client, mock_timesheet_service):
         """Test export with non-admin user"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=2025-12-23",
                 headers={"X-User-Email": "user@example.com"},
@@ -872,7 +872,7 @@ class TestExportTimesheetEndpoint:
 
     def test_export_timesheet_service_unavailable(self, client):
         """Test export when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=2025-12-23",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -884,7 +884,7 @@ class TestExportTimesheetEndpoint:
         """Test export when service raises exception"""
         mock_timesheet_service.export_timesheet_csv.side_effect = Exception("Export failed")
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=2025-12-23",
                 headers={"X-User-Email": "admin@zantara.io"},
@@ -906,7 +906,7 @@ class TestHealthCheckEndpoint:
         """Test health check when service is available"""
         mock_timesheet_service.running = True
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get("/api/team/health")
 
         assert response.status_code == 200
@@ -917,7 +917,7 @@ class TestHealthCheckEndpoint:
 
     def test_health_check_unavailable(self, client):
         """Test health check when service is unavailable"""
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=None):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=None):
             response = client.get("/api/team/health")
 
         assert response.status_code == 200
@@ -930,7 +930,7 @@ class TestHealthCheckEndpoint:
         """Test health check when service exists but auto-logout not running"""
         mock_timesheet_service.running = False
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get("/api/team/health")
 
         assert response.status_code == 200
@@ -953,7 +953,7 @@ class TestEdgeCases:
 
         admin_emails = ["zero@balizero.com", "admin@zantara.io", "admin@balizero.com"]
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             for email in admin_emails:
                 response = client.get(
                     "/api/team/status",
@@ -971,7 +971,7 @@ class TestEdgeCases:
             "message": "Successfully clocked in",
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             for _ in range(3):
                 response = client.post(
                     "/api/team/clock-in",
@@ -989,7 +989,7 @@ class TestEdgeCases:
             "message": "Successfully clocked in",
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.post(
                 "/api/team/clock-in",
                 json={"user_id": "user_123", "email": "test@example.com", "metadata": {}},
@@ -1006,7 +1006,7 @@ class TestEdgeCases:
         """Test export defaults to CSV format"""
         mock_timesheet_service.export_timesheet_csv.return_value = "CSV data"
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get(
                 "/api/team/export?start_date=2025-12-01&end_date=2025-12-23&format=csv",
                 headers={"X-User-Email": "zero@balizero.com"},
@@ -1027,7 +1027,7 @@ class TestEdgeCases:
             "week_days": 0,
         }
 
-        with patch("services.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
+        with patch("services.analytics.team_timesheet_service.get_timesheet_service", return_value=mock_timesheet_service):
             response = client.get("/api/team/my-status?user_id=user_123")
 
         assert response.status_code == 200

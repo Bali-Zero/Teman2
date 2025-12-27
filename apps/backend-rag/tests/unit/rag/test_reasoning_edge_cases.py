@@ -104,12 +104,15 @@ class TestReasoningEdgeCases:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Action: vector_search('XYZ')", "gemini-2.0-flash", None),
-                ("Answer: I couldn't find information", "gemini-2.0-flash", None),
-            ]
-        )
+        call_count = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return ("Action: vector_search('XYZ')", "gemini-2.0-flash", None)
+            else:
+                return ("Answer: I couldn't find information", "gemini-2.0-flash", None)
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         mock_tool_call = ToolCall(
@@ -225,12 +228,15 @@ class TestReasoningEdgeCases:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Action: vector_search('KITAS')", "gemini-2.0-flash", None),
-                ("Answer: KITAS info", "gemini-2.0-flash", None),
-            ]
-        )
+        call_count = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+            else:
+                return ("Answer: KITAS info", "gemini-2.0-flash", None)
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         mock_tool_call = ToolCall(

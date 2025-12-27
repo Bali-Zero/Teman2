@@ -56,12 +56,15 @@ class TestReasoningToolExecution:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Thought: I need to search for KITAS information. Action: vector_search('KITAS')", "gemini-2.0-flash", None),
-                ("Answer: KITAS is a temporary residence permit", "gemini-2.0-flash", None),
-            ]
-        )
+        call_count = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return ("Thought: I need to search for KITAS information. Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+            else:
+                return ("Answer: KITAS is a temporary residence permit", "gemini-2.0-flash", None)
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         # Mock parse_tool_call to return a valid tool call
@@ -181,12 +184,15 @@ class TestReasoningToolExecution:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Action: vector_search('KITAS')", "gemini-2.0-flash", None),
-                ("Answer: I encountered an error", "gemini-2.0-flash", None),
-            ]
-        )
+        call_count = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+            else:
+                return ("Answer: I encountered an error", "gemini-2.0-flash", None)
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         mock_tool_call = ToolCall(

@@ -38,7 +38,7 @@ class TestIntelligentRouter:
 
     def test_intelligent_router_init(self, mock_search_service):
         """Test IntelligentRouter initialization"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_create.return_value = MagicMock()
 
             from backend.services.intelligent_router import IntelligentRouter
@@ -50,7 +50,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_route_chat(self, mock_search_service):
         """Test routing chat message"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Test response", "sources": []}
@@ -68,7 +68,7 @@ class TestIntelligentRouter:
 
     def test_get_stats(self, mock_search_service):
         """Test getting router stats"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_create.return_value = MagicMock()
 
             from backend.services.intelligent_router import IntelligentRouter
@@ -86,7 +86,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_route_chat_with_conversation_history(self, mock_search_service):
         """Test routing chat with conversation history"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={
@@ -113,7 +113,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_route_chat_empty_message(self, mock_search_service):
         """Test routing empty chat message"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Empty message response", "sources": []}
@@ -131,7 +131,7 @@ class TestIntelligentRouter:
     async def test_route_chat_very_long_message(self, mock_search_service):
         """Test routing very long chat message"""
         long_message = "test " * 1000
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Response", "sources": []}
@@ -149,7 +149,7 @@ class TestIntelligentRouter:
     async def test_route_chat_special_characters(self, mock_search_service):
         """Test routing chat with special characters"""
         special_message = "test query with émojis 🎉 and spéciál chars @#$%"
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Response", "sources": []}
@@ -166,7 +166,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_route_chat_orchestrator_error(self, mock_search_service):
         """Test routing chat handles orchestrator errors"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(side_effect=Exception("Orchestrator error"))
             mock_create.return_value = mock_orchestrator
@@ -186,7 +186,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_route_chat_updates_stats(self, mock_search_service):
         """Test route_chat updates statistics"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Response", "sources": []}
@@ -207,7 +207,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_stream_chat(self, mock_search_service):
         """Test streaming chat response"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
 
             async def mock_stream(*args, **kwargs):
@@ -230,7 +230,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_stream_chat_empty_response(self, mock_search_service):
         """Test streaming chat with empty response"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
 
             async def mock_empty_stream(*args, **kwargs):
@@ -253,7 +253,7 @@ class TestIntelligentRouter:
     @pytest.mark.asyncio
     async def test_stream_chat_error_handling(self, mock_search_service):
         """Test streaming chat handles errors"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
 
             async def mock_error_stream(*args, **kwargs):
@@ -281,7 +281,7 @@ class TestIntelligentRouter:
 
     def test_get_stats_initial_state(self, mock_search_service):
         """Test get_stats returns initial state"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_create.return_value = MagicMock()
 
             from backend.services.intelligent_router import IntelligentRouter
@@ -297,7 +297,7 @@ class TestIntelligentRouter:
 
     def test_get_stats_after_multiple_queries(self, mock_search_service):
         """Test get_stats after multiple queries"""
-        with patch("backend.services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("backend.services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Response", "sources": []}

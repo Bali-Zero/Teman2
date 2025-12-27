@@ -48,7 +48,7 @@ class TestWorkSessionService:
 
         with (
             patch(
-                "services.work_session_service.asyncpg.create_pool",
+                "services.misc.work_session_service.asyncpg.create_pool",
                 new_callable=AsyncMock,
                 return_value=mock_db_pool,
             ),
@@ -84,7 +84,7 @@ class TestWorkSessionService:
             with (
                 patch("pathlib.Path.mkdir"),
                 patch("pathlib.Path.exists", return_value=True),
-                patch("services.work_session_service.WorkSessionService._write_to_log"),
+                patch("services.misc.work_session_service.WorkSessionService._write_to_log"),
             ):
                 from services.misc.work_session_service import WorkSessionService
 
@@ -121,13 +121,13 @@ class TestWorkSessionService:
     async def test_end_session(self, mock_db_pool):
         """Test ending a session"""
         mock_db_pool.execute = AsyncMock()
-        with patch("services.work_session_service.asyncpg.create_pool", return_value=mock_db_pool):
+        with patch("services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool):
             with patch("app.core.config.settings") as mock_settings:
                 mock_settings.database_url = "postgresql://test:test@localhost/test"
                 with (
                     patch("pathlib.Path.mkdir"),
                     patch("pathlib.Path.exists", return_value=True),
-                    patch("services.work_session_service.WorkSessionService._write_to_log"),
+                    patch("services.misc.work_session_service.WorkSessionService._write_to_log"),
                 ):
                     from services.misc.work_session_service import WorkSessionService
 
@@ -144,7 +144,7 @@ class TestWorkSessionService:
         mock_db_pool.fetchrow = AsyncMock(
             return_value={"status": "active", "session_start": "2025-01-01 09:00:00"}
         )
-        with patch("services.work_session_service.asyncpg.create_pool", return_value=mock_db_pool):
+        with patch("services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool):
             with patch("app.core.config.settings") as mock_settings:
                 mock_settings.database_url = "postgresql://test:test@localhost/test"
                 with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):

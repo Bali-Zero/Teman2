@@ -38,8 +38,8 @@ class TestZantaraTools:
     def test_zantara_tools_init(self):
         """Test ZantaraTools initialization"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
@@ -55,8 +55,8 @@ class TestZantaraTools:
     async def test_execute_tool_get_pricing(self):
         """Test executing get_pricing tool"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_pricing = MagicMock()
             mock_pricing.get_pricing = MagicMock(return_value={"visa": {"price": 100}})
@@ -75,8 +75,8 @@ class TestZantaraTools:
     async def test_execute_tool_search_team_member(self):
         """Test executing search_team_member tool"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab_instance = MagicMock()
@@ -94,8 +94,8 @@ class TestZantaraTools:
     async def test_execute_tool_unknown(self):
         """Test executing unknown tool"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
@@ -116,8 +116,8 @@ class TestZantaraTools:
     async def test_execute_tool_get_pricing_with_query(self):
         """Test get_pricing tool with search query"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_pricing = MagicMock()
             mock_pricing.loaded = True
@@ -139,8 +139,8 @@ class TestZantaraTools:
     async def test_execute_tool_get_pricing_not_loaded(self):
         """Test get_pricing when prices not loaded"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_pricing = MagicMock()
             mock_pricing.loaded = False
@@ -160,8 +160,8 @@ class TestZantaraTools:
     async def test_execute_tool_get_pricing_error(self):
         """Test get_pricing handles errors gracefully"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_pricing = MagicMock()
             mock_pricing.loaded = True
@@ -182,8 +182,8 @@ class TestZantaraTools:
     async def test_execute_tool_search_team_member_empty_query(self):
         """Test search_team_member with empty query"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
@@ -201,8 +201,8 @@ class TestZantaraTools:
     async def test_execute_tool_search_team_member_no_results(self):
         """Test search_team_member with no results"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab_instance = MagicMock()
@@ -222,8 +222,8 @@ class TestZantaraTools:
     async def test_execute_tool_get_team_members_list(self):
         """Test get_team_members_list tool"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab_instance = MagicMock()
@@ -245,8 +245,8 @@ class TestZantaraTools:
     async def test_execute_tool_get_team_members_list_with_department(self):
         """Test get_team_members_list with department filter"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab_instance = MagicMock()
@@ -267,8 +267,8 @@ class TestZantaraTools:
     async def test_execute_tool_error_handling(self):
         """Test execute_tool handles exceptions gracefully"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab_instance = MagicMock()
@@ -287,8 +287,8 @@ class TestZantaraTools:
     def test_get_tool_definitions(self):
         """Test get_tool_definitions returns correct structure"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
@@ -308,8 +308,8 @@ class TestZantaraTools:
     def test_get_tool_definitions_structure(self):
         """Test tool definitions have correct structure"""
         with (
-            patch("backend.services.zantara_tools.get_pricing_service") as mock_get_pricing,
-            patch("backend.services.zantara_tools.CollaboratorService") as mock_collab,
+            patch("backend.services.misc.zantara_tools.get_pricing_service") as mock_get_pricing,
+            patch("backend.services.misc.zantara_tools.CollaboratorService") as mock_collab,
         ):
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()

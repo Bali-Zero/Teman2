@@ -394,7 +394,7 @@ def test_login_success(client_with_db, test_user_data):
 
     with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
         with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("services.audit_service.get_audit_service") as mock_audit:
+            with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
                 mock_audit_service = MagicMock()
                 mock_audit_service.pool = True
                 mock_audit_service.log_auth_event = AsyncMock()
@@ -427,7 +427,7 @@ def test_login_invalid_email(client_with_db):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=None)
 
-    with patch("services.audit_service.get_audit_service") as mock_audit:
+    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -448,7 +448,7 @@ def test_login_invalid_password(client_with_db, test_user_data):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=test_user_data)
 
-    with patch("services.audit_service.get_audit_service") as mock_audit:
+    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -480,7 +480,7 @@ def test_login_missing_password(client_with_db):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=None)  # No user found
 
-    with patch("services.audit_service.get_audit_service") as mock_audit:
+    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -522,7 +522,7 @@ def test_login_database_error(client_with_db):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
-    with patch("services.audit_service.get_audit_service") as mock_audit:
+    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -543,7 +543,7 @@ def test_login_inactive_user(client_with_db, test_user_data):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=None)  # Query filters by active=true
 
-    with patch("services.audit_service.get_audit_service") as mock_audit:
+    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -566,7 +566,7 @@ def test_login_token_expiration(client_with_db, test_user_data):
     with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
         with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
             with patch("app.routers.auth.JWT_ACCESS_TOKEN_EXPIRE_HOURS", 24):
-                with patch("services.audit_service.get_audit_service") as mock_audit:
+                with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
                     mock_audit_service = MagicMock()
                     mock_audit_service.pool = True
                     mock_audit_service.log_auth_event = AsyncMock()
@@ -873,7 +873,7 @@ def test_login_and_access_protected_endpoint(client_with_db, test_user_data):
 
     with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
         with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("services.audit_service.get_audit_service") as mock_audit:
+            with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
                 mock_audit_service = MagicMock()
                 mock_audit_service.pool = True
                 mock_audit_service.log_auth_event = AsyncMock()
@@ -915,7 +915,7 @@ def test_multiple_concurrent_logins(client_with_db, test_user_data):
 
     with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
         with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("services.audit_service.get_audit_service") as mock_audit:
+            with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
                 mock_audit_service = MagicMock()
                 mock_audit_service.pool = True
                 mock_audit_service.log_auth_event = AsyncMock()

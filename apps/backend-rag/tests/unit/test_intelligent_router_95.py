@@ -33,7 +33,7 @@ class TestIntelligentRouterInit:
 
     def test_init_with_search_service(self):
         """Test initialization with search service"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
@@ -53,7 +53,7 @@ class TestIntelligentRouterInit:
 
     def test_init_without_services(self):
         """Test initialization without services"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
@@ -69,7 +69,7 @@ class TestIntelligentRouterInit:
 
     def test_init_with_collaborator_service(self):
         """Test initialization stores collaborator service"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
@@ -93,7 +93,7 @@ class TestInitialize:
     @pytest.mark.asyncio
     async def test_initialize_calls_orchestrator(self):
         """Test initialize calls orchestrator initialize"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.initialize = AsyncMock()
             mock_create.return_value = mock_orchestrator
@@ -117,7 +117,7 @@ class TestRouteChat:
     @pytest.mark.asyncio
     async def test_route_chat_success(self):
         """Test successful chat routing"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={
@@ -147,7 +147,7 @@ class TestRouteChat:
     @pytest.mark.asyncio
     async def test_route_chat_with_conversation_history(self):
         """Test chat routing with conversation history"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Response with context", "sources": []}
@@ -175,7 +175,7 @@ class TestRouteChat:
     @pytest.mark.asyncio
     async def test_route_chat_with_optional_params(self):
         """Test chat routing with optional parameters"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={"answer": "Result", "sources": []}
@@ -206,7 +206,7 @@ class TestRouteChat:
     @pytest.mark.asyncio
     async def test_route_chat_error_handling(self):
         """Test chat routing error handling"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(side_effect=Exception("Query failed"))
             mock_create.return_value = mock_orchestrator
@@ -230,7 +230,7 @@ class TestStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_success(self):
         """Test successful chat streaming"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
 
             async def mock_stream(*args, **kwargs):
@@ -260,7 +260,7 @@ class TestStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_with_optional_params(self):
         """Test streaming with optional parameters"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
 
             async def mock_stream(*args, **kwargs):
@@ -292,7 +292,7 @@ class TestStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_error_handling(self):
         """Test streaming error handling"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
 
             async def mock_stream(*args, **kwargs):
@@ -321,7 +321,7 @@ class TestGetStats:
 
     def test_get_stats_returns_dict(self):
         """Test get_stats returns proper dictionary"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 
@@ -338,7 +338,7 @@ class TestGetStats:
 
     def test_get_stats_model_info(self):
         """Test get_stats contains model info"""
-        with patch("services.intelligent_router.create_agentic_rag") as mock_create:
+        with patch("services.routing.intelligent_router.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 

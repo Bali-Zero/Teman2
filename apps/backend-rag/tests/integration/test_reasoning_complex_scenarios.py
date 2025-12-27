@@ -202,6 +202,8 @@ class TestReasoningComplexScenarios:
                 return ("Action: tool1()", "gemini-2.0-flash", None)
             elif call_idx == 2:
                 return ("Action: tool2()", "gemini-2.0-flash", None)
+            elif call_idx == 3:
+                return ("Final Answer: Success", "gemini-2.0-flash", None)
             else:
                 return ("Final Answer: Success", "gemini-2.0-flash", None)
         
