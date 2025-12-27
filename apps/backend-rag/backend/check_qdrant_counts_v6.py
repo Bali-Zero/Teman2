@@ -12,7 +12,7 @@ from qdrant_client import QdrantClient, AsyncQdrantClient
 import sys
 sys.path.append('/Users/antonellosiano/Desktop/nuzantara/apps/backend-rag/backend')
 
-from config import settings
+from app.core.config import settings
 from qdrant_client import AsyncQdrantClient
 
 async def check_stats():

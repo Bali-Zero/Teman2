@@ -28,28 +28,28 @@ class TestConversationTrainer:
     async def test_analyze_winning_patterns_no_conversations(self):
         """Test: Returns None when no high-rated conversations found"""
         # Mock asyncpg pool and connection
-            mock_pool = MagicMock()
-            mock_conn = AsyncMock()
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
 
-            # Setup pool context manager
-            mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
+        # Setup pool context manager
+        mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
 
-            # Setup fetch return value (empty list)
-            mock_conn.fetch.return_value = []
+        # Setup fetch return value (empty list)
+        mock_conn.fetch.return_value = []
 
-            trainer = ConversationTrainer(db_pool=mock_pool)
-            result = await trainer.analyze_winning_patterns(days_back=7)
+        trainer = ConversationTrainer(db_pool=mock_pool)
+        result = await trainer.analyze_winning_patterns(days_back=7)
 
-            assert result is None
-            mock_pool.acquire.assert_called_once()
-            mock_conn.fetch.assert_called_once()
+        assert result is None
+        mock_pool.acquire.assert_called_once()
+        mock_conn.fetch.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_analyze_winning_patterns_with_conversations(self):
         """Test: Analyzes patterns from high-rated conversations"""
         # Mock asyncpg pool and connection
-            mock_pool = MagicMock()
-            mock_conn = AsyncMock()
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
 
             # Setup pool context manager
             mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
