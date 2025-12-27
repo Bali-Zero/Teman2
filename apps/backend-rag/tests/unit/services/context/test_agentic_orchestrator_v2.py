@@ -33,6 +33,7 @@ def mock_genai_client():
     mock_client = MagicMock()
     mock_client.is_available = True
     mock_client.generate_content = AsyncMock(return_value={"text": "Test response"})
+    mock_client._auth_method = "test"
     return mock_client
 
 
@@ -403,7 +404,7 @@ class TestAgenticRAGOrchestrator:
         """Create AgenticRAGOrchestrator instance with mocks"""
         with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
             with patch(
-                "services.context.agentic_orchestrator_v2.GenAIClient",
+                "llm.genai_client.get_genai_client",
                 return_value=mock_genai_client,
             ):
                 from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
@@ -438,7 +439,7 @@ class TestAgenticRAGOrchestrator:
         """Test orchestrator can be initialized without services"""
         with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
             with patch(
-                "services.context.agentic_orchestrator_v2.GenAIClient",
+                "llm.genai_client.get_genai_client",
                 return_value=mock_genai_client,
             ):
                 from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
@@ -562,7 +563,7 @@ class TestAgenticRAGOrchestrator:
         """Test process_query works without memory service"""
         with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
             with patch(
-                "services.context.agentic_orchestrator_v2.GenAIClient",
+                "llm.genai_client.get_genai_client",
                 return_value=mock_genai_client,
             ):
                 from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
@@ -585,7 +586,7 @@ class TestAgenticRAGOrchestrator:
         """Test process_query works without search service"""
         with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
             with patch(
-                "services.context.agentic_orchestrator_v2.GenAIClient",
+                "llm.genai_client.get_genai_client",
                 return_value=mock_genai_client,
             ):
                 from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator
@@ -735,7 +736,7 @@ class TestAgenticRAGOrchestrator:
 
         with patch("services.context.agentic_orchestrator_v2.GENAI_AVAILABLE", True):
             with patch(
-                "services.context.agentic_orchestrator_v2.GenAIClient",
+                "llm.genai_client.get_genai_client",
                 return_value=mock_client,
             ):
                 from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestrator

@@ -71,10 +71,9 @@ class TestCitationHandling:
         )
 
         tool_execution_counter = {"count": 0}
-        # Mock tracing to avoid generator issues
-        with patch("services.rag.agentic.reasoning.trace_span") as mock_trace:
-            mock_trace.return_value.__enter__ = MagicMock()
-            mock_trace.return_value.__exit__ = MagicMock(return_value=None)
+        # Mock tracing properly using contextlib.nullcontext
+        from contextlib import nullcontext
+        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -138,10 +137,9 @@ class TestCitationHandling:
         )
 
         tool_execution_counter = {"count": 0}
-        # Mock tracing to avoid generator issues
-        with patch("services.rag.agentic.reasoning.trace_span") as mock_trace:
-            mock_trace.return_value.__enter__ = MagicMock()
-            mock_trace.return_value.__exit__ = MagicMock(return_value=None)
+        # Mock tracing properly using contextlib.nullcontext
+        from contextlib import nullcontext
+        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -192,10 +190,9 @@ class TestCitationHandling:
         )
 
         tool_execution_counter = {"count": 0}
-        # Mock tracing to avoid generator issues
-        with patch("services.rag.agentic.reasoning.trace_span") as mock_trace:
-            mock_trace.return_value.__enter__ = MagicMock()
-            mock_trace.return_value.__exit__ = MagicMock(return_value=None)
+        # Mock tracing properly using contextlib.nullcontext
+        from contextlib import nullcontext
+        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
