@@ -30,6 +30,7 @@ export function FeedbackWidget({
   const [isVisible, setIsVisible] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'positive' | 'negative' | 'issue' | null>(null);
   const [message, setMessage] = useState('');
+  const [correctionText, setCorrectionText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -59,12 +60,12 @@ export function FeedbackWidget({
       const ratingMap: Record<'positive' | 'negative' | 'issue', number> = {
         positive: 5,
         negative: 2,
-        issue: 3,
+        issue: 1, // Changed to 1 to guarantee review queue trigger
       };
       const rating = ratingMap[feedbackType];
 
-      // Send feedback to backend API
-      const response = await fetch('/api/feedback/rate-conversation', {
+      // Send feedback to backend API (P1 - New endpoint)
+      const response = await fetch('/api/v2/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,8 +75,8 @@ export function FeedbackWidget({
           session_id: activeSessionId,
           rating: rating,
           feedback_type: feedbackType,
-          feedback_text: message.trim() || `User selected: ${feedbackType}`,
-          turn_count: turnCount,
+          feedback_text: message.trim() || null,
+          correction_text: correctionText.trim() || null,
         }),
       });
 
@@ -138,7 +139,11 @@ export function FeedbackWidget({
               <ThumbsUp className="w-6 h-6 text-[var(--success)]" />
             </div>
             <h3 className="text-sm font-semibold text-[var(--foreground)]">Thank you!</h3>
-            <p className="text-xs text-[var(--foreground-muted)] mt-1">Your feedback helps us improve.</p>
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              {correctionText.trim()
+                ? "Thanks! I've learned from this update."
+                : 'Your feedback helps us improve.'}
+            </p>
           </motion.div>
         ) : (
           <>
@@ -194,7 +199,7 @@ export function FeedbackWidget({
                 </Button>
               </div>
             ) : (
-              /* Step 2: Optional message + submit */
+              /* Step 2: Optional message + correction (if negative/issue) + submit */
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -214,6 +219,27 @@ export function FeedbackWidget({
                     rows={3}
                   />
                 </div>
+
+                {/* Correction Textarea - Show only for negative or issue feedback */}
+                {(feedbackType === 'negative' || feedbackType === 'issue') && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <label className="text-xs text-[var(--foreground-muted)] block mb-1.5">
+                      Help us learn: What was the correct answer?
+                    </label>
+                    <textarea
+                      value={correctionText}
+                      onChange={(e) => setCorrectionText(e.target.value)}
+                      placeholder="If the AI gave an incorrect answer, please provide the correct information here..."
+                      className="w-full p-2.5 text-sm bg-[var(--background)] border border-[var(--border)] rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]"
+                      rows={3}
+                    />
+                  </motion.div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -221,6 +247,7 @@ export function FeedbackWidget({
                     onClick={() => {
                       setFeedbackType(null);
                       setMessage('');
+                      setCorrectionText('');
                     }}
                     disabled={isSubmitting}
                     className="text-[var(--foreground-muted)]"

@@ -30,6 +30,81 @@ from .tool_executor import execute_tool, parse_tool_call
 logger = logging.getLogger(__name__)
 
 
+def calculate_evidence_score(
+    sources: list[dict] | None,
+    context_gathered: list[str],
+    query: str,
+) -> float:
+    """
+    Calculate evidence score based on source quality and context relevance.
+
+    Formula:
+    - base_score = 0.0
+    - If at least 1 source with score > 0.8 -> +0.5
+    - If > 3 total sources -> +0.2
+    - If context contains query keywords -> +0.3
+    - MAX Score = 1.0
+
+    Args:
+        sources: List of source dictionaries with 'score' field
+        context_gathered: List of context strings from tool results
+        query: Original user query
+
+    Returns:
+        Evidence score between 0.0 and 1.0
+    """
+    base_score = 0.0
+
+    # Check for high-quality sources (score > 0.8)
+    if sources:
+        high_quality_sources = [
+            s for s in sources if isinstance(s, dict) and s.get("score", 0.0) > 0.8
+        ]
+        if len(high_quality_sources) >= 1:
+            base_score += 0.5
+
+        # Check for multiple sources (> 3)
+        if len(sources) > 3:
+            base_score += 0.2
+    elif context_gathered:
+        # Fallback: if no sources but we have context, check if context is substantial
+        total_context_length = sum(len(ctx) for ctx in context_gathered)
+        if total_context_length > 500:  # Substantial context
+            base_score += 0.3
+
+    # Check if context contains query keywords
+    if context_gathered:
+        query_lower = query.lower()
+        # Extract meaningful keywords (words longer than 3 chars, excluding common words)
+        stop_words = {
+            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+            "have", "has", "had", "do", "does", "did", "will", "would", "could",
+            "should", "may", "might", "must", "can", "this", "that", "these",
+            "those", "i", "you", "he", "she", "it", "we", "they", "what", "which",
+            "who", "whom", "whose", "where", "when", "why", "how", "all", "each",
+            "every", "both", "few", "more", "most", "other", "some", "such", "no",
+            "nor", "not", "only", "own", "same", "so", "than", "too", "very",
+            "il", "la", "lo", "gli", "le", "un", "una", "uno", "di", "a", "da",
+            "in", "con", "su", "per", "tra", "fra", "che", "chi", "cosa", "come",
+            "dove", "quando", "perché", "quale", "quali",
+        }
+        query_keywords = [
+            word.lower()
+            for word in query.split()
+            if len(word) > 3 and word.lower() not in stop_words
+        ]
+
+        if query_keywords:
+            context_text = " ".join(context_gathered).lower()
+            matching_keywords = sum(1 for kw in query_keywords if kw in context_text)
+            # If at least 30% of keywords match, add score
+            if matching_keywords / len(query_keywords) >= 0.3:
+                base_score += 0.3
+
+    # Cap at 1.0
+    return min(base_score, 1.0)
+
+
 class ReasoningEngine:
     """
     Executes the ReAct (Reasoning + Acting) loop for agentic RAG.
@@ -212,27 +287,79 @@ class ReasoningEngine:
                     step = AgentStep(step_number=state.current_step, thought=text_response)
                     state.steps.append(step)
 
+        # ==================== EVIDENCE SCORE CALCULATION ====================
+        # Calculate evidence score after ReAct loop
+        sources = state.sources if hasattr(state, "sources") else None
+        evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
+        logger.info(f"🛡️ [Uncertainty] Evidence Score: {evidence_score:.2f}")
+        # Store evidence_score in state for downstream use
+        if not hasattr(state, "evidence_score"):
+            state.evidence_score = evidence_score
+        else:
+            state.evidence_score = evidence_score
+
+        # ==================== POLICY ENFORCEMENT ====================
+        # If final_answer already exists but evidence is weak, override it
+        if state.final_answer and evidence_score < 0.3:
+            logger.warning(
+                f"🛡️ [Uncertainty] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
+            )
+            state.final_answer = (
+                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                "Posso aiutarti con altro?"
+            )
+
         # ==================== FINAL ANSWER GENERATION ====================
         # Generate final answer if not present
         if not state.final_answer and state.context_gathered:
-            context = "\n\n".join(state.context_gathered)
-            final_prompt = f"""
+            # POLICY ENFORCEMENT: Check evidence score before generating answer
+            if evidence_score < 0.3:
+                # ABSTAIN: Skip LLM generation, return uncertainty message
+                logger.warning(f"🛡️ [Uncertainty] Triggered ABSTAIN (Score: {evidence_score:.2f})")
+                state.final_answer = (
+                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                    "Posso aiutarti con altro?"
+                )
+            else:
+                # Generate answer with optional warning for weak evidence
+                context = "\n\n".join(state.context_gathered)
+                warning_note = ""
+                if evidence_score >= 0.3 and evidence_score < 0.6:
+                    warning_note = (
+                        "\n\nWARNING: Evidence is weak. Use precautionary language "
+                        "(e.g., 'Based on limited information...', 'It appears that...'). "
+                        "Do NOT be definitive."
+                    )
+                    logger.info(f"🛡️ [Uncertainty] Weak evidence detected (Score: {evidence_score:.2f}), adding warning")
+
+                final_prompt = f"""
 Based on the information gathered:
 {context}
+{warning_note}
 
 Provide a final, comprehensive answer to: {query}
 """
-            try:
-                state.final_answer, model_used_name, _ = await llm_gateway.send_message(
-                    chat,
-                    final_prompt,
-                    system_prompt,
-                    tier=model_tier,
-                    enable_function_calling=False,
-                )
-            except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
-                logger.error("Failed to generate final answer", exc_info=True)
-                state.final_answer = "I apologize, but I couldn't generate a final answer based on the gathered information."
+                try:
+                    state.final_answer, model_used_name, _ = await llm_gateway.send_message(
+                        chat,
+                        final_prompt,
+                        system_prompt,
+                        tier=model_tier,
+                        enable_function_calling=False,
+                    )
+                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                    logger.error("Failed to generate final answer", exc_info=True)
+                    state.final_answer = "I apologize, but I couldn't generate a final answer based on the gathered information."
+        elif not state.final_answer:
+            # No context gathered at all
+            logger.warning("🛡️ [Uncertainty] No context gathered, triggering ABSTAIN")
+            state.final_answer = (
+                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                "Posso aiutarti con altro?"
+            )
 
         # Filter out stub responses
         if state.final_answer and (
@@ -308,6 +435,251 @@ Do not invent information. If the context is insufficient, admit it.
 
         return state, model_used_name, conversation_messages
 
+    async def execute_react_loop_stream(
+        self,
+        state: AgentState,
+        llm_gateway: Any,
+        chat: Any,
+        initial_prompt: str,
+        system_prompt: str,
+        query: str,
+        user_id: str,
+        model_tier: int,
+        tool_execution_counter: dict,
+    ):
+        """
+        Execute the ReAct reasoning loop with streaming output.
+
+        This is the streaming version of execute_react_loop that yields events
+        as they occur during the reasoning process.
+
+        Yields:
+            Events with types: "thinking", "tool_call", "observation", "token"
+        """
+        # ==================== REACT LOOP ====================
+        while state.current_step < state.max_steps:
+            state.current_step += 1
+
+            # Get model response
+            try:
+                if state.current_step == 1:
+                    message = initial_prompt
+                else:
+                    last_observation = state.steps[-1].observation if state.steps else ""
+                    message = f"Observation: {last_observation}\n\nContinue with your next thought or provide final answer."
+
+                # Yield thinking event
+                yield {"type": "thinking", "data": f"Step {state.current_step}: Processing..."}
+
+                text_response, model_used_name, response_obj = await llm_gateway.send_message(
+                    chat,
+                    message,
+                    system_prompt,
+                    tier=model_tier,
+                    enable_function_calling=True,
+                )
+
+            except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
+                logger.error(f"Error during chat interaction: {e}", exc_info=True)
+                yield {"type": "error", "data": {"message": str(e)}}
+                break
+
+            # Parse for tool calls
+            tool_call = None
+
+            # Check for native function call
+            if hasattr(response_obj, "candidates") and response_obj.candidates:
+                for candidate in response_obj.candidates:
+                    if hasattr(candidate, "content") and candidate.content and hasattr(candidate.content, "parts") and candidate.content.parts:
+                        for part in candidate.content.parts:
+                            tool_call = parse_tool_call(part, use_native=True)
+                            if tool_call:
+                                break
+                        if tool_call:
+                            break
+
+            # Fallback to regex parsing
+            if not tool_call:
+                tool_call = parse_tool_call(text_response, use_native=False)
+
+            if tool_call:
+                # Yield tool call event
+                yield {"type": "tool_call", "data": {"tool": tool_call.tool_name, "args": tool_call.arguments}}
+
+                logger.info(f"🔧 [Agent Stream] Calling tool: {tool_call.tool_name}")
+                tool_result = await execute_tool(
+                    self.tool_map,
+                    tool_call.tool_name,
+                    tool_call.arguments,
+                    user_id,
+                    tool_execution_counter,
+                )
+
+                # Handle citation from vector_search
+                if tool_call.tool_name == "vector_search":
+                    try:
+                        parsed_result = json.loads(tool_result)
+                        if isinstance(parsed_result, dict) and "sources" in parsed_result:
+                            tool_result = parsed_result.get("content", "")
+                            new_sources = parsed_result.get("sources", [])
+                            if not hasattr(state, "sources"):
+                                state.sources = []
+                            state.sources.extend(new_sources)
+                    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+                        pass
+
+                tool_call.result = tool_result
+
+                step = AgentStep(
+                    step_number=state.current_step,
+                    thought=text_response,
+                    action=tool_call,
+                    observation=tool_result,
+                )
+                state.steps.append(step)
+                state.context_gathered.append(tool_result)
+
+                # Yield observation event
+                yield {"type": "observation", "data": tool_result[:500] if len(tool_result) > 500 else tool_result}
+
+                # Early exit optimization
+                if (
+                    tool_call.tool_name == "vector_search"
+                    and len(tool_result) > 500
+                    and "No relevant documents" not in tool_result
+                ):
+                    logger.info("🚀 [Stream Early Exit] Sufficient context from retrieval.")
+                    break
+
+            else:
+                # No tool call - check for final answer
+                if "Final Answer:" in text_response or state.current_step >= state.max_steps:
+                    if "Final Answer:" in text_response:
+                        state.final_answer = text_response.split("Final Answer:")[-1].strip()
+                    else:
+                        state.final_answer = text_response
+
+                    step = AgentStep(
+                        step_number=state.current_step, thought=text_response, is_final=True
+                    )
+                    state.steps.append(step)
+                    break
+                else:
+                    step = AgentStep(step_number=state.current_step, thought=text_response)
+                    state.steps.append(step)
+
+        # ==================== EVIDENCE SCORE CALCULATION ====================
+        # Calculate evidence score after ReAct loop
+        sources = state.sources if hasattr(state, "sources") else None
+        evidence_score = calculate_evidence_score(sources, state.context_gathered, query)
+        logger.info(f"🛡️ [Uncertainty Stream] Evidence Score: {evidence_score:.2f}")
+        # Store evidence_score in state for downstream use
+        if not hasattr(state, "evidence_score"):
+            state.evidence_score = evidence_score
+        else:
+            state.evidence_score = evidence_score
+
+        # Yield evidence score event
+        yield {"type": "evidence_score", "data": {"score": evidence_score}}
+
+        # ==================== POLICY ENFORCEMENT ====================
+        # If final_answer already exists but evidence is weak, override it
+        if state.final_answer and evidence_score < 0.3:
+            logger.warning(
+                f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
+            )
+            state.final_answer = (
+                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                "Posso aiutarti con altro?"
+            )
+
+        # ==================== FINAL ANSWER GENERATION ====================
+        if not state.final_answer and state.context_gathered:
+            # POLICY ENFORCEMENT: Check evidence score before generating answer
+            if evidence_score < 0.3:
+                # ABSTAIN: Skip LLM generation, return uncertainty message
+                logger.warning(f"🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: {evidence_score:.2f})")
+                state.final_answer = (
+                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                    "Posso aiutarti con altro?"
+                )
+            else:
+                # Generate answer with optional warning for weak evidence
+                context = "\n\n".join(state.context_gathered)
+                warning_note = ""
+                if evidence_score >= 0.3 and evidence_score < 0.6:
+                    warning_note = (
+                        "\n\nWARNING: Evidence is weak. Use precautionary language "
+                        "(e.g., 'Based on limited information...', 'It appears that...'). "
+                        "Do NOT be definitive."
+                    )
+                    logger.info(f"🛡️ [Uncertainty Stream] Weak evidence detected (Score: {evidence_score:.2f}), adding warning")
+
+                final_prompt = f"""
+Based on the information gathered:
+{context}
+{warning_note}
+
+Provide a final, comprehensive answer to: {query}
+"""
+                try:
+                    state.final_answer, _, _ = await llm_gateway.send_message(
+                        chat,
+                        final_prompt,
+                        system_prompt,
+                        tier=model_tier,
+                        enable_function_calling=False,
+                    )
+                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                    state.final_answer = "I apologize, but I couldn't generate a final answer."
+        elif not state.final_answer:
+            # No context gathered at all
+            logger.warning("🛡️ [Uncertainty Stream] No context gathered, triggering ABSTAIN")
+            state.final_answer = (
+                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                "Posso aiutarti con altro?"
+            )
+
+        # Filter stub responses
+        if state.final_answer and (
+            "no further action needed" in state.final_answer.lower()
+            or "observation: none" in state.final_answer.lower()
+        ):
+            state.final_answer = "Mi dispiace, non ho capito bene la tua richiesta. Potresti riformularla?"
+
+        # Process through pipeline
+        if state.final_answer and self.response_pipeline:
+            try:
+                pipeline_data = {
+                    "response": state.final_answer,
+                    "query": query,
+                    "context_chunks": state.context_gathered,
+                    "sources": state.sources if hasattr(state, "sources") else [],
+                }
+                processed = await self.response_pipeline.process(pipeline_data)
+                state.final_answer = processed["response"]
+                if "citations" in processed:
+                    state.sources = processed["citations"]
+            except (ValueError, RuntimeError, KeyError) as e:
+                logger.error(f"❌ [Pipeline Stream] Processing failed: {e}")
+                state.final_answer = post_process_response(state.final_answer, query)
+
+        # Stream final answer token by token
+        if state.final_answer:
+            # Stream in chunks for better UX
+            chunk_size = 20  # characters per chunk
+            answer = state.final_answer
+            for i in range(0, len(answer), chunk_size):
+                chunk = answer[i:i + chunk_size]
+                yield {"type": "token", "data": chunk}
+
+        # Yield sources if available
+        if hasattr(state, "sources") and state.sources:
+            yield {"type": "sources", "data": state.sources}
+
 
 def detect_team_query(query: str) -> tuple[bool, str, str]:
     """
@@ -335,6 +707,8 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
     ql = q.lower()
 
     # 1) List-all team requests
+    # NOTE: "dipendenti" alone is TOO BROAD - matches tax questions like "PPh 21 per i dipendenti"
+    # Only match when explicitly asking about Bali Zero team
     list_all_markers = (
         "list all team",
         "list team",
@@ -343,10 +717,13 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
         "lista team",
         "elenco team",
         "tutti i membri",
-        "quanti dipendenti",
-        "dipendenti",
-        "staff",
-        "personale",
+        "quanti dipendenti",  # "how many employees" - team context
+        "vostri dipendenti",  # "your employees" - explicit team context
+        "i dipendenti bali",  # "bali zero employees" - explicit
+        "dipendenti del team",  # "team employees" - explicit
+        "tutto lo staff",
+        "vostro staff",
+        "il vostro personale",
     )
     if any(marker in ql for marker in list_all_markers):
         return True, "list_all", ""
@@ -404,17 +781,21 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
 
     # 4) Name lookup patterns (keep original casing from the original query)
     # Handle Italian keyboard variations: è, e, e', e' (curly apostrophe)
+    # IMPORTANT: Patterns must be specific to avoid matching casual questions like
+    # "conosci qualche ristorante?" which should NOT route to team_knowledge
     name_patterns = (
         # Italian "chi è" with all keyboard variations (accented, apostrophe, plain)
         r"\bchi\s*[eè]['']?\s*(?P<term>[^?.,!;:\n]{1,64})",
         # English patterns
         r"\bwho\s+is\s+(?P<term>[^?.,!;:\n]{1,64})",
         r"\btell\s+me\s+about\s+(?P<term>[^?.,!;:\n]{1,64})",
-        # Italian info/dimmi/parlami patterns
+        # Italian info/dimmi/parlami patterns - ONLY for people (with team context)
         r"\binfo(?:rmazioni)?\s+su\s+(?P<term>[^?.,!;:\n]{1,64})",
         r"\bdimmi\s+(?:di\s+)?(?P<term>[^?.,!;:\n]{1,64})",
         r"\bparlami\s+di\s+(?P<term>[^?.,!;:\n]{1,64})",
-        r"\bconosci\s+(?P<term>[^?.,!;:\n]{1,64})",
+        # "conosci" ONLY for people - exclude casual words like ristorante, posto, luogo, etc.
+        # Pattern: "conosci [Name]" but NOT "conosci qualche/un/una [place]"
+        r"\bconosci\s+(?!qualche|qualcuno|qualcosa|un\s|una\s|il\s|la\s|dei\s|delle\s|alcuni|alcune|ristorante|posto|luogo|bar|cafe|hotel)(?P<term>[A-Z][a-zA-Zàèéìòù\s]{1,30})",
     )
     for pat in name_patterns:
         m = re.search(pat, q, flags=re.IGNORECASE)

@@ -1,66 +1,49 @@
 """
-Feedback Router
-Handles conversation ratings and feedback collection
+Feedback Router - P1 Implementation
+Handles conversation ratings, feedback collection, and review queue management
 """
 
 import logging
-from typing import Any
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+from app.dependencies import get_database_pool
+from app.schemas.feedback import (
+    ConversationRatingResponse,
+    FeedbackResponse,
+    RateConversationRequest,
+    ReviewQueueStatsResponse,
+)
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/feedback", tags=["feedback"])
+router = APIRouter(prefix="/api/v2/feedback", tags=["feedback"])
 
 
-class RateConversationRequest(BaseModel):
-    """Request model for rating a conversation"""
-
-    session_id: str = Field(..., description="Session ID of the conversation")
-    rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
-    feedback_type: str | None = Field(
-        None, description="Type of feedback: 'positive', 'negative', or 'issue'"
-    )
-    feedback_text: str | None = Field(None, description="Optional feedback text")
-    turn_count: int | None = Field(None, description="Number of turns in conversation")
-
-
-class RateConversationResponse(BaseModel):
-    """Response model for rating a conversation"""
-
-    success: bool
-    message: str
-    rating_id: str | None = None
-
-
-@router.post("/rate-conversation", response_model=RateConversationResponse)
-async def rate_conversation(
+@router.post("/", response_model=FeedbackResponse)
+async def submit_feedback(
     request: RateConversationRequest,
     req: Request,
-) -> RateConversationResponse:
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> FeedbackResponse:
     """
-    Rate a conversation and save feedback
+    Submit conversation rating and feedback
 
-    This endpoint saves user ratings and feedback for conversations.
-    High-rated conversations (rating >= 4) are used by ConversationTrainer agent
-    to improve system prompts.
+    CRITICAL LOGIC:
+    - If rating <= 2 OR correction_text is NOT empty -> Creates entry in review_queue with status 'pending'
+    - All feedback is saved to conversation_ratings table
 
     Args:
-        request: Rating request with session_id, rating, and optional feedback
-        req: FastAPI request object (for accessing app.state)
+        request: Rating request with session_id, rating, and optional feedback/correction
+        req: FastAPI request object (for accessing user info)
+        db_pool: Database connection pool
 
     Returns:
-        Success response with rating_id
+        Success response with optional review_queue_id if created
     """
     try:
-        # Get database pool from app.state
-        db_pool: asyncpg.Pool | None = getattr(req.app.state, "db_pool", None)
-        if not db_pool:
-            raise HTTPException(status_code=503, detail="Database not available")
-
         # Get user_id from request state (set by auth middleware if authenticated)
         user_id: UUID | None = None
         if hasattr(req.state, "user_id"):
@@ -75,14 +58,6 @@ async def rate_conversation(
                     except (ValueError, TypeError):
                         logger.warning(f"Invalid user_id format: {user_id_str}")
 
-        # Validate session_id format (should be UUID)
-        try:
-            session_uuid = UUID(request.session_id)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail=f"Invalid session_id format: {request.session_id}"
-            )
-
         # Validate feedback_type if provided
         if request.feedback_type and request.feedback_type not in ["positive", "negative", "issue"]:
             raise HTTPException(
@@ -92,65 +67,103 @@ async def rate_conversation(
 
         # Insert rating into database
         async with db_pool.acquire() as conn:
-            rating_id = await conn.fetchval(
-                """
-                INSERT INTO conversation_ratings (
-                    session_id,
+            async with conn.transaction():
+                # Combine feedback_text and correction_text if both exist
+                combined_feedback = request.feedback_text or ""
+                if request.correction_text:
+                    if combined_feedback:
+                        combined_feedback = f"{combined_feedback}\n\n[Correction]: {request.correction_text}"
+                    else:
+                        combined_feedback = f"[Correction]: {request.correction_text}"
+
+                # Insert into conversation_ratings
+                rating_id = await conn.fetchval(
+                    """
+                    INSERT INTO conversation_ratings (
+                        session_id,
+                        user_id,
+                        rating,
+                        feedback_type,
+                        feedback_text,
+                        turn_count
+                    )
+                    VALUES ($1, $2, $3, $4, $5, NULL)
+                    RETURNING id
+                    """,
+                    request.session_id,
                     user_id,
-                    rating,
-                    feedback_type,
-                    feedback_text,
-                    turn_count
+                    request.rating,
+                    request.feedback_type,
+                    combined_feedback if combined_feedback else None,
                 )
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING id::text
-                """,
-                session_uuid,
-                user_id,
-                request.rating,
-                request.feedback_type,
-                request.feedback_text,
-                request.turn_count,
-            )
 
-            logger.info(
-                f"✅ Conversation rated: session_id={request.session_id}, "
-                f"rating={request.rating}, rating_id={rating_id}"
-            )
+                logger.info(
+                    f"✅ Conversation rated: session_id={request.session_id}, "
+                    f"rating={request.rating}, rating_id={rating_id}"
+                )
 
-            return RateConversationResponse(
-                success=True,
-                message="Rating saved successfully",
-                rating_id=rating_id,
-            )
+                # CRITICAL LOGIC: Create review_queue entry if rating <= 2 OR correction_text provided
+                review_queue_id: UUID | None = None
+                should_review = request.rating <= 2 or (request.correction_text and request.correction_text.strip())
+
+                if should_review:
+                    # Determine priority based on rating
+                    priority = "urgent" if request.rating == 1 else "high" if request.rating == 2 else "medium"
+
+                    review_queue_id = await conn.fetchval(
+                        """
+                        INSERT INTO review_queue (
+                            source_feedback_id,
+                            status,
+                            priority
+                        )
+                        VALUES ($1, 'pending', $2)
+                        RETURNING id
+                        """,
+                        rating_id,
+                        priority,
+                    )
+
+                    logger.info(
+                        f"📋 Review queue entry created: review_queue_id={review_queue_id}, "
+                        f"rating={request.rating}, has_correction={bool(request.correction_text)}"
+                    )
+
+                return FeedbackResponse(
+                    success=True,
+                    review_queue_id=review_queue_id,
+                    message="Feedback saved successfully" + (
+                        " and added to review queue" if review_queue_id else ""
+                    ),
+                )
 
     except HTTPException:
         raise
     except asyncpg.PostgresError as e:
-        logger.error(f"Database error saving rating: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        logger.error(f"Database error saving feedback: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}") from e
     except Exception as e:
-        logger.error(f"Unexpected error saving rating: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        logger.error(f"Unexpected error saving feedback: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
-@router.get("/ratings/{session_id}")
-async def get_conversation_rating(session_id: str, req: Request) -> dict[str, Any]:
+@router.get("/ratings/{session_id}", response_model=ConversationRatingResponse)
+async def get_conversation_rating(
+    session_id: str,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> ConversationRatingResponse:
     """
     Get rating for a specific conversation session
 
     Args:
-        session_id: Session ID of the conversation
+        session_id: Session ID of the conversation (UUID)
         req: FastAPI request object
+        db_pool: Database connection pool
 
     Returns:
         Rating data if found, 404 if not found
     """
     try:
-        db_pool: asyncpg.Pool | None = getattr(req.app.state, "db_pool", None)
-        if not db_pool:
-            raise HTTPException(status_code=503, detail="Database not available")
-
         try:
             session_uuid = UUID(session_id)
         except ValueError:
@@ -160,8 +173,9 @@ async def get_conversation_rating(session_id: str, req: Request) -> dict[str, An
             rating = await conn.fetchrow(
                 """
                 SELECT
-                    id::text as rating_id,
-                    session_id::text,
+                    id,
+                    session_id,
+                    user_id,
                     rating,
                     feedback_type,
                     feedback_text,
@@ -178,13 +192,72 @@ async def get_conversation_rating(session_id: str, req: Request) -> dict[str, An
             if not rating:
                 raise HTTPException(status_code=404, detail="Rating not found for this session")
 
-            return {
-                "success": True,
-                "rating": dict(rating),
-            }
+            return ConversationRatingResponse(**dict(rating))
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error retrieving rating: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
+
+
+@router.get("/stats", response_model=ReviewQueueStatsResponse)
+async def get_feedback_stats(
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> ReviewQueueStatsResponse:
+    """
+    Get feedback statistics (Admin only - mock for now)
+
+    Returns:
+        Statistics about review queue and feedback
+    """
+    try:
+        # TODO: Add admin authentication check
+        # For now, this is a mock endpoint
+
+        async with db_pool.acquire() as conn:
+            # Get review queue stats
+            stats = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'pending') as total_pending,
+                    COUNT(*) FILTER (WHERE status = 'resolved') as total_resolved,
+                    COUNT(*) FILTER (WHERE status = 'ignored') as total_ignored,
+                    COUNT(*) as total_reviews
+                FROM review_queue
+                """
+            )
+
+            # Get low ratings count (ratings <= 2)
+            low_ratings = await conn.fetchval(
+                """
+                SELECT COUNT(*)
+                FROM conversation_ratings
+                WHERE rating <= 2
+                """
+            )
+
+            # Get corrections count (feedbacks with correction_text)
+            # Note: We don't have correction_text column in conversation_ratings yet
+            # This is a placeholder for future implementation
+            corrections_count = await conn.fetchval(
+                """
+                SELECT COUNT(*)
+                FROM review_queue rq
+                JOIN conversation_ratings cr ON rq.source_feedback_id = cr.id
+                WHERE cr.feedback_text IS NOT NULL AND cr.feedback_text != ''
+                """
+            )
+
+            return ReviewQueueStatsResponse(
+                total_pending=stats["total_pending"] or 0,
+                total_resolved=stats["total_resolved"] or 0,
+                total_ignored=stats["total_ignored"] or 0,
+                total_reviews=stats["total_reviews"] or 0,
+                low_ratings_count=low_ratings or 0,
+                corrections_count=corrections_count or 0,
+            )
+
+    except Exception as e:
+        logger.error(f"Error retrieving feedback stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e

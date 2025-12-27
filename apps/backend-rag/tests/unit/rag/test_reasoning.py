@@ -79,6 +79,10 @@ class TestReActLoopExecution:
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="test query")
+        # Add sufficient context to avoid ABSTAIN from Uncertainty AI
+        state.context_gathered = ["Mathematical calculation: 2+2 equals 4"]
+        state.sources = [{"id": 1, "title": "Math source", "score": 0.9}]
+        
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             return_value=("Final Answer: This is the answer", "gemini-2.0-flash", None)
@@ -114,6 +118,8 @@ class TestReActLoopExecution:
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="test query")
+        # Add sources to ensure sufficient evidence_score to avoid ABSTAIN
+        state.sources = [{"id": 1, "title": "Calculator source", "score": 0.9}]
 
         llm_gateway = AsyncMock()
         # First call: tool call, Second call: final answer
@@ -142,8 +148,10 @@ class TestReActLoopExecution:
                 None,  # Second call returns None (so it parses final answer)
             ],
         ):
+            # Provide context that matches query keywords to avoid ABSTAIN
+            tool_result = "Calculation result: 2+2 equals 4. Mathematical operation completed."
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value="Tool result: 42"
+                "services.rag.agentic.reasoning.execute_tool", return_value=tool_result
             ):
                 result_state, model_name, messages = await engine.execute_react_loop(
                     state=state,
@@ -157,11 +165,12 @@ class TestReActLoopExecution:
                     tool_execution_counter={},
                 )
 
+        # Tool result is added to context_gathered with matching keywords, so evidence_score should be sufficient
         assert result_state.final_answer == "Based on the calculation, the answer is 42"
         assert result_state.current_step == 2
         assert len(result_state.steps) == 2
         assert result_state.steps[0].action.tool_name == "calculator"
-        assert result_state.steps[0].observation == "Tool result: 42"
+        assert result_state.steps[0].observation == "Calculation result: 2+2 equals 4. Mathematical operation completed."
 
     @pytest.mark.asyncio
     async def test_execute_react_loop_early_exit_on_vector_search(self):
@@ -420,8 +429,10 @@ class TestFinalAnswerGeneration:
             "services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
+            # Provide substantial context with keywords to avoid ABSTAIN
+            substantial_context = "Test information and details about the query. " * 20
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value="Context from tool"
+                "services.rag.agentic.reasoning.execute_tool", return_value=substantial_context
             ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -429,7 +440,7 @@ class TestFinalAnswerGeneration:
                     chat=chat,
                     initial_prompt="test",
                     system_prompt="",
-                    query="test",
+                    query="test query information",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter={},
