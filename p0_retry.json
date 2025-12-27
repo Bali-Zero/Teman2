@@ -1,0 +1,73 @@
+Note: Unnecessary use of -X or --request, POST is already inferred.
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Host nuzantara-rag.fly.dev:443 was resolved.
+* IPv6: (none)
+* IPv4: 66.241.124.44
+*   Trying 66.241.124.44:443...
+* Connected to nuzantara-rag.fly.dev (66.241.124.44) port 443
+* ALPN: curl offers h2,http/1.1
+* (304) (OUT), TLS handshake, Client hello (1):
+} [326 bytes data]
+*  CAfile: /etc/ssl/cert.pem
+*  CApath: none
+* (304) (IN), TLS handshake, Server hello (2):
+{ [122 bytes data]
+* (304) (IN), TLS handshake, Unknown (8):
+{ [19 bytes data]
+* (304) (IN), TLS handshake, Certificate (11):
+{ [2030 bytes data]
+* (304) (IN), TLS handshake, CERT verify (15):
+{ [78 bytes data]
+* (304) (IN), TLS handshake, Finished (20):
+{ [36 bytes data]
+* (304) (OUT), TLS handshake, Finished (20):
+} [36 bytes data]
+* SSL connection using TLSv1.3 / AEAD-CHACHA20-POLY1305-SHA256 / [blank] / UNDEF
+* ALPN: server accepted h2
+* Server certificate:
+*  subject: CN=*.fly.dev
+*  start date: Dec 21 23:24:02 2025 GMT
+*  expire date: Mar 21 23:24:01 2026 GMT
+*  subjectAltName: host "nuzantara-rag.fly.dev" matched cert's "*.fly.dev"
+*  issuer: C=US; O=Let's Encrypt; CN=E7
+*  SSL certificate verify ok.
+* using HTTP/2
+* [HTTP/2] [1] OPENED stream for https://nuzantara-rag.fly.dev/api/agentic-rag/query
+* [HTTP/2] [1] [:method: POST]
+* [HTTP/2] [1] [:scheme: https]
+* [HTTP/2] [1] [:authority: nuzantara-rag.fly.dev]
+* [HTTP/2] [1] [:path: /api/agentic-rag/query]
+* [HTTP/2] [1] [user-agent: curl/8.7.1]
+* [HTTP/2] [1] [accept: */*]
+* [HTTP/2] [1] [authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3ZGZlNTZiMi1mZjYzLTRkNDAtYjc4Yi05MGMwMTgxMjdhMDIiLCJlbWFpbCI6Inplcm9AYmFsaXplcm8uY29tIiwicm9sZSI6IkZvdW5kZXIiLCJleHAiOjE3NjY5NDEzOTJ9.qnGPct4MDkL5KfEK-B7hO851tRkAstmDcW2IFf-XheE]
+* [HTTP/2] [1] [content-type: application/json]
+* [HTTP/2] [1] [content-length: 72]
+> POST /api/agentic-rag/query HTTP/2
+> Host: nuzantara-rag.fly.dev
+> User-Agent: curl/8.7.1
+> Accept: */*
+> Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3ZGZlNTZiMi1mZjYzLTRkNDAtYjc4Yi05MGMwMTgxMjdhMDIiLCJlbWFpbCI6Inplcm9AYmFsaXplcm8uY29tIiwicm9sZSI6IkZvdW5kZXIiLCJleHAiOjE3NjY5NDEzOTJ9.qnGPct4MDkL5KfEK-B7hO851tRkAstmDcW2IFf-XheE
+> Content-Type: application/json
+> Content-Length: 72
+> 
+} [72 bytes data]
+* upload completely sent off: 72 bytes
+100    72    0     0  100    72      0     62  0:00:01  0:00:01 --:--:--    62100    72    0     0  100    72      0     33  0:00:02  0:00:02 --:--:--    33100    72    0     0  100    72      0     22  0:00:03  0:00:03 --:--:--    22100    72    0     0  100    72      0     17  0:00:04  0:00:04 --:--:--    17100    72    0     0  100    72      0     13  0:00:05  0:00:05 --:--:--    13100    72    0     0  100    72      0     11  0:00:06  0:00:06 --:--:--     0100    72    0     0  100    72      0     10  0:00:07  0:00:07 --:--:--     0100    72    0     0  100    72      0      8  0:00:09  0:00:08  0:00:01     0100    72    0     0  100    72      0      7  0:00:10  0:00:09  0:00:01     0100    72    0     0  100    72      0      7  0:00:10  0:00:10 --:--:--     0100    72    0     0  100    72      0      6  0:00:12  0:00:11  0:00:01     0100    72    0     0  100    72      0      5  0:00:14  0:00:12  0:00:02     0100    72    0     0  100    72      0      5  0:00:14  0:00:13  0:00:01     0100    72    0     0  100    72      0      5  0:00:14  0:00:14 --:--:--     0< HTTP/2 200 
+< date: Sat, 27 Dec 2025 17:16:56 GMT
+< server: Fly/fbde0e6c3 (2025-12-17)
+< content-length: 6434
+< content-type: application/json
+< x-auth-type: unknown
+< x-correlation-id: 536a0284-af77-48b2-beb0-d59569f3a0e4
+< x-request-id: 23ce630b-6f54-4796-943c-767765dc8a93
+< x-ratelimit-limit: 120
+< x-ratelimit-remaining: 119
+< x-ratelimit-reset: 1766855877
+< via: 2 fly.io
+< fly-request-id: 01KDGD0DYTXWFMNXFDS2SC731Y-sin
+< 
+{ [736 bytes data]
+{"answer":"Ciao Zero, ecco i prezzi ufficiali 2025 per l'Investor KITAS di 2 anni, così puoi girarli subito al cliente o usarli per il preventivo:\n\n**Investor KITAS (Validità 2 Anni):**\n\n*   **Offshore (Nuova pratica fuori dall'Indonesia):** 17.000.000 IDR\n*   **Onshore (Pratica fatta in Indonesia/Conversione):** 19.000.000 IDR\n*   **Extension (Rinnovo di un KITAS esistente):** 18.000.000 IDR\n\nQuesti prezzi includono le tasse governative e la nostra assistenza completa. Se il cliente ha fretta, ricordati che abbiamo anche il servizio **Urgent (2 giorni)** a un costo extra di 2.500.000 IDR.\n\nFammi sapere se ti serve altro o se vuoi che prepari una bozza di messaggio per il cliente","sources":["{'official_notice': '🔒 PREZZI UFFICIALI BALI ZERO 2025', 'search_query': 'Investor KITAS 2 years', 'results': {'single_entry_visas': {'C1 Tourism': {'price': '2.300.000 IDR', 'notes': 'Single entry, 60 days'}, 'C2 Business': {'price': '3.600.000 IDR', 'notes': 'Single entry, 60 days'}, 'C22A&B Internship (60 Days)': {'price': '4.800.000 IDR', 'duration': '60 days'}, 'C22A&B Internship (180 Days)': {'price': '5.800.000 IDR', 'duration': '180 days'}}, 'multiple_entry_visas': {'D12 Business Investigation (1 Year)': {'price': '7.500.000 IDR', 'validity': '1 Year'}, 'D12 Business Investigation (2 Years)': {'price': '10.000.000 IDR', 'validity': '2 Years'}}, 'kitas_permits': {'Freelance E23 (Offshore)': {'price': '25.800.000 IDR', 'validity': '6 months'}, 'Freelance E23 (Altus/Onshore)': {'price': '27.500.000 IDR', 'validity': '6 months'}, 'Working KITAS (Offshore)': {'price': '34.500.000 IDR', 'validity': '1 year'}, 'Working KITAS (Altus/Onshore)': {'price': '36.000.000 IDR', 'validity': '1 year'}, 'Working KITAS (Extend)': {'price': '31.500.000 IDR'}, 'Investor KITAS 2 Years (Offshore)': {'price': '17.000.000 IDR'}, 'Investor KITAS 2 Years (Altus/Onshore)': {'price': '19.000.000 IDR'}, 'Investor KITAS 2 Years (Extend)': {'price': '18.000.000 IDR'}, 'Dependent 2 Years (Offshore)': {'price': '15.000.000 IDR'}, 'Dependent 2 Years (Altus/Onshore)': {'price': '18.000.000 IDR'}, 'Dependent 2 Years (Extend)': {'price': '15.000.000 IDR'}, 'Spouse 2 Years (Offshore)': {'price': '15.000.000 IDR'}, 'Spouse 2 Years (Altus/Onshore)': {'price': '18.000.000 IDR'}, 'Spouse 2 Years (Extend)': {'price': '15.000.000 IDR'}}, 'kitap_permits': {'Investor KITAP + MERP': {'price': '50.000.000 IDR', 'notes': 'Plus ACC 5 mill'}, 'MERP 2 Year': {'price': '5.000.000 IDR'}}, 'company_services': {'New Company (PT PMA)': {'price': '20.000.000 IDR'}}, 'other_process': {'ACC Boarding Pass': {'price': '1.200.000 IDR'}, 'Passport 5 Years': {'price': '1.300.000 IDR'}, 'Passport 10 Years': {'price': '2.000.000 IDR'}, 'Electronic Passport 5 Years': {'price': '2.000.000 IDR'}, 'Electronic Passport 10 Years': {'price': '2.500.000 IDR'}, 'SKCK': {'price': '2.000.000 IDR'}}, 'urgent_services': {'Urgent 2 Hari': {'price': '2.500.000 IDR'}}}, 'contact_info': {'email': 'info@balizero.com', 'whatsapp': '+62 813 3805 1876', 'location': 'Canggu, Bali, Indonesia', 'hours': 'Mon-Fri 9AM-6PM, Sat 10AM-2PM', 'website': 'https://ayo.balizero.com'}, 'disclaimer': {'it': '⚠️ Questi sono i prezzi UFFICIALI di Bali Zero 2025. Per preventivi personalizzati contattare direttamente.', 'id': '⚠️ Ini adalah harga RESMI Bali Zero 2025. Untuk penawaran khusus hubungi langsung.', 'en': '⚠️ These are OFFICIAL Bali Zero 2025 prices. Contact directly for personalized quotes.'}}","{'official_notice': '🔒 PREZZI UFFICIALI BALI ZERO 2025', 'search_query': 'investor kitas 2 years', 'results': {'single_entry_visas': {'C1 Tourism': {'price': '2.300.000 IDR', 'notes': 'Single entry, 60 days'}, 'C2 Business': {'price': '3.600.000 IDR', 'notes': 'Single entry, 60 days'}, 'C22A&B Internship (60 Days)': {'price': '4.800.000 IDR', 'duration': '60 days'}, 'C22A&B Internship (180 Days)': {'price': '5.800.000 IDR', 'duration': '180 days'}}, 'multiple_entry_visas': {'D12 Business Investigation (1 Year)': {'price': '7.500.000 IDR', 'validity': '1 Year'}, 'D12 Business Investigation (2 Years)100  6506  100  6434  100    72    434      4  0:00:18  0:00:14  0:00:04  1393100  6506  100  6434  100    72    434      4  0:00:18  0:00:14  0:00:04  1779
+* Connection #0 to host nuzantara-rag.fly.dev left intact
+': {'price': '10.000.000 IDR', 'validity': '2 Years'}}, 'kitas_permits': {'Freelance E23 (Offshore)': {'price': '25.800.000 IDR', 'validity': '6 months'}, 'Freelance E23 (Altus/Onshore)': {'price': '27.500.000 IDR', 'validity': '6 months'}, 'Working KITAS (Offshore)': {'price': '34.500.000 IDR', 'validity': '1 year'}, 'Working KITAS (Altus/Onshore)': {'price': '36.000.000 IDR', 'validity': '1 year'}, 'Working KITAS (Extend)': {'price': '31.500.000 IDR'}, 'Investor KITAS 2 Years (Offshore)': {'price': '17.000.000 IDR'}, 'Investor KITAS 2 Years (Altus/Onshore)': {'price': '19.000.000 IDR'}, 'Investor KITAS 2 Years (Extend)': {'price': '18.000.000 IDR'}, 'Dependent 2 Years (Offshore)': {'price': '15.000.000 IDR'}, 'Dependent 2 Years (Altus/Onshore)': {'price': '18.000.000 IDR'}, 'Dependent 2 Years (Extend)': {'price': '15.000.000 IDR'}, 'Spouse 2 Years (Offshore)': {'price': '15.000.000 IDR'}, 'Spouse 2 Years (Altus/Onshore)': {'price': '18.000.000 IDR'}, 'Spouse 2 Years (Extend)': {'price': '15.000.000 IDR'}}, 'kitap_permits': {'Investor KITAP + MERP': {'price': '50.000.000 IDR', 'notes': 'Plus ACC 5 mill'}, 'MERP 2 Year': {'price': '5.000.000 IDR'}}, 'company_services': {'New Company (PT PMA)': {'price': '20.000.000 IDR'}}, 'other_process': {'ACC Boarding Pass': {'price': '1.200.000 IDR'}, 'Passport 5 Years': {'price': '1.300.000 IDR'}, 'Passport 10 Years': {'price': '2.000.000 IDR'}, 'Electronic Passport 5 Years': {'price': '2.000.000 IDR'}, 'Electronic Passport 10 Years': {'price': '2.500.000 IDR'}, 'SKCK': {'price': '2.000.000 IDR'}}, 'urgent_services': {'Urgent 2 Hari': {'price': '2.500.000 IDR'}}}, 'contact_info': {'email': 'info@balizero.com', 'whatsapp': '+62 813 3805 1876', 'location': 'Canggu, Bali, Indonesia', 'hours': 'Mon-Fri 9AM-6PM, Sat 10AM-2PM', 'website': 'https://ayo.balizero.com'}, 'disclaimer': {'it': '⚠️ Questi sono i prezzi UFFICIALI di Bali Zero 2025. Per preventivi personalizzati contattare direttamente.', 'id': '⚠️ Ini adalah harga RESMI Bali Zero 2025. Untuk penawaran khusus hubungi langsung.', 'en': '⚠️ These are OFFICIAL Bali Zero 2025 prices. Contact directly for personalized quotes.'}}"],"context_length":2,"execution_time":14.666362762451172,"route_used":null,"tools_called":0,"total_steps":0,"debug_info":{"model":"gemini-3-flash-preview","cache_hit":false}}

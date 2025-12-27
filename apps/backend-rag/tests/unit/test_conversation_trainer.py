@@ -19,17 +19,10 @@ class TestConversationTrainer:
 
     def test_init(self):
         """Test: ConversationTrainer initializes with settings"""
-        with patch("app.core.config.settings") as mock_settings:
-            # GitHub token removed - platform agnostic
-            # mock_settings.github_token = "test_token"
+        mock_pool = MagicMock()
+        trainer = ConversationTrainer(db_pool=mock_pool)
 
-            mock_pool = MagicMock()
-            trainer = ConversationTrainer(db_pool=mock_pool)
-
-            assert trainer.db_pool == mock_pool
-            # GitHub token removed - platform agnostic
-        # assert trainer.github_token == "test_token"
-        # db_url is no longer stored on the instance
+        assert trainer.db_pool == mock_pool
 
     @pytest.mark.asyncio
     async def test_analyze_winning_patterns_no_conversations(self):

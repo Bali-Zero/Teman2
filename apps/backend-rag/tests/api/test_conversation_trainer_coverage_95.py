@@ -29,8 +29,6 @@ os.environ.setdefault("DEEPSEEK_API_KEY", "test_deepseek_api_key_for_testing")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test_whatsapp_verify_token")
 os.environ.setdefault("INSTAGRAM_VERIFY_TOKEN", "test_instagram_verify_token")
-# GitHub token removed - platform agnostic
-# os.environ.setdefault("GITHUB_TOKEN", "test_github_token")
 
 # Add backend directory to Python path
 backend_path = Path(__file__).parent.parent.parent / "backend"
@@ -238,9 +236,6 @@ class TestConversationTrainerAPI:
             mock_subprocess.run.return_value = MagicMock(returncode=0)
 
             trainer = ConversationTrainer()
-            # GitHub token removed - platform agnostic
-            # trainer.github_token = "test_token"
-
             result = await trainer.create_improvement_pr(improved_prompt, analysis)
 
             assert result is not None
@@ -255,9 +250,6 @@ class TestConversationTrainerAPI:
         analysis = {"successful_patterns": ["pattern1"]}
 
         trainer = ConversationTrainer()
-        # GitHub token removed - platform agnostic
-        # trainer.github_token = None
-
         result = await trainer.create_improvement_pr(improved_prompt, analysis)
 
         # Should return None or handle gracefully
