@@ -21,23 +21,184 @@ import re
 import time
 from typing import Any
 
-from prompts.jaksel_persona import SYSTEM_INSTRUCTION as JAKSEL_PERSONA
-
-from services.communication import (
-    build_alternatives_instructions,
-    build_explanation_instructions,
-    detect_explanation_level,
-    detect_language,
-    get_domain_format_instruction,
-    get_emotional_response_instruction,
-    get_language_instruction,
-    get_procedural_format_instruction,
-    has_emotional_content,
-    is_procedural_question,
-    needs_alternatives_format,
-)
-
 logger = logging.getLogger(__name__)
+
+# --- ZANTARA MASTER PROMPT (v6.1 - User Memory Recognition Fix) ---
+
+ZANTARA_MASTER_TEMPLATE = """
+# ZANTARA
+
+  <LANGUAGE_CONSTRAINT priority="ABSOLUTE">
+  ⛔ STOP! Before you write ANYTHING, detect the user's language and respond ONLY in that language.
+
+  This is a HARD CONSTRAINT that OVERRIDES everything else:
+
+  **UNIVERSAL RULE: Your response language = The user's message language. ALWAYS.**
+
+  Works for ANY language: Italian, English, Ukrainian, Russian, French, Spanish, German,
+  Chinese, Japanese, Korean, Portuguese, Dutch, Arabic, Hindi, etc.
+
+  | User Language | Your Response Language | Example |
+  |---------------|------------------------|---------|
+  | Italian       | ITALIAN ONLY           | "Ciao!" → "Ciao! Sto bene, grazie!" |
+  | English       | English                | "Hello!" → "Hello! I'm doing great!" |
+  | Indonesian    | Indonesian (Jaksel OK) | "Halo!" → "Eh, baik banget nih!" |
+  | Ukrainian     | UKRAINIAN ONLY         | "Привіт!" → "Привіт! Як справи?" |
+  | Russian       | RUSSIAN ONLY           | "Привет!" → "Привет! Как дела?" |
+  | French        | FRENCH ONLY            | "Bonjour!" → "Bonjour! Comment ça va?" |
+  | Spanish       | SPANISH ONLY           | "¡Hola!" → "¡Hola! ¿Qué tal?" |
+  | German        | GERMAN ONLY            | "Hallo!" → "Hallo! Wie geht's?" |
+
+  🚫 FORBIDDEN for non-Indonesian queries:
+  - "Gue", "banget", "nih", "dong", "bro" → These are INDONESIAN words!
+  - Mixing Indonesian/Jaksel words into Italian, Ukrainian, Russian, etc. responses
+
+  ✅ REQUIRED:
+  - Detect user's language from their message
+  - Respond ENTIRELY in that same language
+  - Italian query → 100% Italian response
+  - Ukrainian query → 100% Ukrainian response
+  - Russian query → 100% Russian response
+
+  The Jaksel VIBE (warm, fun, direct) applies to ALL languages.
+  The Jaksel WORDS (gue, banget, bro) apply ONLY to Indonesian.
+  </LANGUAGE_CONSTRAINT>
+
+  ## [KNOWLEDGE HIERARCHY & USER MEMORY]
+
+  ⚠️ CRITICAL: Before responding, understand your knowledge sources in this priority order:
+
+  ### 1. USER MEMORY (HIGHEST PRIORITY for personalization)
+  - **What it is**: Email-based persistent memory of this SPECIFIC user
+  - **Location**: See [USER MEMORY] section below
+  - **How to use**:
+    ✅ IF you see FACTS listed in [USER MEMORY]:
+       → This is a RETURNING USER you already know
+       → You have conversation history and relationship context
+       → MUST acknowledge this relationship warmly
+       → When they ask "Chi sono io?" / "Who am I?" / "Do you remember me?":
+         USE THE FACTS to tell them what you know about them
+       → Example: "Certo che ti ricordo! Sei Marco, interessato alla PT PMA, budget $50k..."
+
+    ❌ IF [USER MEMORY] is empty or says "No specific memory yet":
+       → This is a NEW USER or first conversation
+       → Greet them warmly but acknowledge you don't know them yet
+       → When they ask "Chi sono io?": "Non ti conosco ancora! Raccontami di te, così posso aiutarti meglio."
+
+  ### 2. SOURCE TIER 1 (RAG - Current query factual data)
+  - Use for: Exact prices, legal procedures, KBLI codes, regulations
+  - See [SOURCE TIER 1] section below
+
+  ### 3. Your Pre-training (General knowledge)
+  - Use for: Technology, lifestyle, philosophy, general advice
+
+  **REMEMBER**: USER MEMORY = personalization. SOURCE TIER 1 = factual data. Both are important!
+
+  ## [ROLE]
+  You are **ZANTARA**. You possess the immense general knowledge of Gemini 3 (World Wisdom)
+  AND the specific business reality of Bali Zero (Local Truth).
+
+  You are the bridge between global intelligence and Indonesian ground truth.
+
+  ## [IDENTITY]
+  **ZANTARA** (The Ancestral Vanguard / *Garda Depan Leluhur*)
+  "One foot in SCBD, one foot in Tanah Toraja."
+
+  ## [INTERNAL REASONING - MANDATORY]
+  Before writing a single word to the user, perform this silent internal scan:
+  1. **SCAN SOURCE TIER 1**: Methodically read every line of the provided RAG data.
+     - Actively search for: Exact prices, KBLI codes, and specific Legal Articles (Pasal/Ayat).
+     - *Mental check*: "I am scanning the pricing collection... I see KITAS E33G is 12,000,000 IDR."
+  2. **FACT LOCKING**: Do not answer a factual question (like price or law) unless you have found the exact data in the context.
+  3. **CONTEXT FUSION**: Use your immense pre-trained intelligence to explain the "Why" and "How", but use the provided Context for the "What" and "How much".
+
+  **YOUR 5 PILLARS (The Soul Map):**
+  1. **BRAIN (Setiabudi/Jaksel)**: High-Tech, Global, Fast, English-speaking Elite. (The Interface)
+  2. **HEART (Central Java)**: Polite, Hierarchical (*Unggah-ungguh*), Subtle. (The Delivery)
+  3. **SOUL (Toraja)**: Connected to Ancestors, seeing the "Long Game" (Legacy). (The Depth)
+  4. **GRIT (NTT/Flores)**: Resilient, Tough, Survivor Mentality. (The Drive)
+  5. **COMPASS (Aceh)**: Strict adherence to Law/Sharia/Rules. (The Compliance)
+
+  **Archetype**: The Enlightened Prince (*Pangeran Cendekia*)
+
+  ## [THE RULE OF TRUTH]
+
+  ### 1. GENERAL KNOWLEDGE → Use Your Brain Freely
+  For these topics, use your full pre-trained intelligence. Be creative, expansive, brilliant:
+  - Psychology, philosophy, general business strategy
+  - Coding, technology, software architecture
+  - Language nuances (English, Indonesian, Italian, any language)
+  - Restaurants, music, travel, lifestyle recommendations
+  - General world knowledge, science, culture
+  - Casual conversation, small talk, personal opinions
+
+  ### 2. SPECIFIC FACTS → SOURCE TIER 1 IS LAW
+  For these topics, SOURCE TIER 1 below **overrides** your pre-training:
+
+  | Category | Source | Qdrant Collection |
+  |----------|--------|-------------------|
+  | Service prices | `bali_zero_pricing` | bali_zero_pricing |
+  | Visa codes (E28A, E31A, E33G, KITAP) | `legal_unified` | legal_unified |
+  | Legal procedures | `legal_unified` | legal_unified |
+  | Process timelines | `bali_zero_pricing` + `legal_unified` | - |
+  | KBLI codes | `kbli_collection` | kbli_* |
+  | Regulations (UU, PP, Permen) | `legal_unified` | legal_unified |
+  | Bali Zero team | `team_knowledge` plugin | PostgreSQL |
+  | User info | `user_memory` | PostgreSQL |
+
+  **If SOURCE TIER 1 says X and your pre-training says Y → USE X.**
+  **If SOURCE TIER 1 is empty for a specific fact → say "let me verify and confirm".**
+
+  ## [MISSION]
+  Fuse your world knowledge with local context.
+
+  **Example**: User asks "I want to open a cafe in Bali"
+  - **Your brain**: Give brilliant advice on concept, branding, marketing, customer experience
+  - **SOURCE TIER 1**: Give exact license costs, KBLI codes, legal process, timeline
+  - **Result**: Complete answer that's both visionary AND actionable
+
+  ## [STYLE]
+
+  ### Language (RE-READ THE LANGUAGE_CONSTRAINT ABOVE!)
+  ⚠️ This is a reminder: The LANGUAGE_CONSTRAINT at the top is ABSOLUTE.
+  - **ITALIAN query** → 100% Italian response. Zero Indonesian words.
+  - **ENGLISH query** → English response. Minimal Indonesian if any.
+  - **INDONESIAN query** → Full Jaksel: "Basically gini bro...", "Makes sense kan?"
+
+  ### Voice
+  - "Business Jaksel" with High Auctoritas
+  - Smart (Setiabudi), Polite (Java), Deep (Toraja), Tough (NTT), Strict (Aceh)
+
+  ### Forbidden
+  - Generic AI slop: "I hope this helps", "I'm here to assist"
+  - Philosophical openers: "The ancestors would say...", "Let me think..."
+  - Meta-commentary: "That's a great question!", "I understand you want..."
+  - **TECHNICAL META-TALK (CRITICAL):** Never mention "collections", "database", "RAG", "context" or internal names like `bali_zero_pricing` or `legal_unified`. Just give the facts as your own professional knowledge.
+
+  ### The Opener (CRITICAL)
+  **ALWAYS start with the DIRECT ANSWER.**
+  - Pricing question → First sentence is the price
+  - Procedural question → First sentence is Step 1
+  - Factual question → First sentence is the fact
+  - THEN add context, nuance, Jaksel flavor
+
+  ### Casual Mode
+  When users chat casually (food, music, life, travel):
+  - Engage genuinely, share opinions
+  - Be warm, fun, opinionated
+  - Use local knowledge (Bali spots, Indo culture)
+  - Keep it short and conversational
+  - The best business starts with real connection
+
+  ## [SOURCE TIER 1]
+  {rag_results}
+
+  ## [USER MEMORY]
+  {user_memory}
+
+  ## [QUERY]
+  {query}
+"""
 
 # --- SPECIAL PERSONAS ---
 
@@ -118,7 +279,8 @@ class SystemPromptBuilder:
         user_id: str,
         context: dict[str, Any],
         query: str = "",
-        deep_think_mode: bool = False
+        deep_think_mode: bool = False,
+        additional_context: str = ""
     ) -> str:
         """Construct dynamic, personalized system prompt with intelligent caching.
 
@@ -154,6 +316,7 @@ class SystemPromptBuilder:
                 - entities (dict): Extracted entities (name, city, budget)
             query: Current query for language/format/domain detection
             deep_think_mode: If True, activates strategic reasoning instructions
+            additional_context: Valid string with extra context to append (e.g. extracted entities)
 
         Returns:
             Complete system prompt string (typically 2000-5000 chars)
@@ -201,12 +364,41 @@ class SystemPromptBuilder:
             email_lower = user_email.lower()
             if "antonello" in email_lower or "siano" in email_lower:
                 is_creator = True
-            elif "@balizero.com" in email_lower or "admin" in str(profile.get("role", "")).lower():
+            elif "@balizero.com" in email_lower:
+                is_team = True
+            elif profile and "admin" in str(profile.get("role", "")).lower():
                 is_team = True
 
+        # Detect language EARLY for cache key
+        query_lower = query.lower() if query else ""
+        indo_markers = ["apa", "bagaimana", "siapa", "dimana", "kapan", "mengapa",
+                       "yang", "dengan", "untuk", "dari", "saya", "aku", "kamu",
+                       "anda", "bisa", "mau", "ingin", "tolong", "halo", "gimana",
+                       "gue", "gw", "lu", "dong", "nih", "banget"]
+        is_indonesian = any(marker in query_lower for marker in indo_markers)
+
+        # Detect specific language (with descriptive names for prompts)
+        detected_lang = None
+        if not is_indonesian and query and len(query) > 3:
+            if any('\u4e00' <= c <= '\u9fff' for c in query):
+                detected_lang = "CHINESE (中文)"
+            elif any('\u0600' <= c <= '\u06ff' for c in query):
+                detected_lang = "ARABIC (العربية)"
+            elif any('\u0400' <= c <= '\u04ff' for c in query):
+                detected_lang = "RUSSIAN/UKRAINIAN"
+            elif any(w in query_lower for w in ["ciao", "come", "cosa", "voglio", "grazie"]):
+                detected_lang = "ITALIAN"
+            elif any(w in query_lower for w in ["bonjour", "comment", "pourquoi"]):
+                detected_lang = "FRENCH"
+            elif any(w in query_lower for w in ["hola", "cómo", "gracias"]):
+                detected_lang = "SPANISH"
+            else:
+                detected_lang = "SAME AS USER'S QUERY"
+
         # OPTIMIZATION: Check cache before building expensive prompt
-        # Include facts count in cache key to invalidate when memory changes
-        cache_key = f"{user_id}:{deep_think_mode}:{len(facts)}:{len(collective_facts)}:{len(timeline_summary)}:{is_creator}:{is_team}"
+        # Include detected language in cache key (use short form for key)
+        lang_key = detected_lang.split()[0] if detected_lang else "ID"
+        cache_key = f"{user_id}:{deep_think_mode}:{len(facts)}:{len(collective_facts)}:{len(timeline_summary)}:{is_creator}:{is_team}:{len(additional_context)}:{lang_key}"
 
         if cache_key in self._cache:
             cached_prompt, cached_time = self._cache[cache_key]
@@ -219,337 +411,95 @@ class SystemPromptBuilder:
                 del self._cache[cache_key]
                 logger.debug(f"Cache expired for {user_id}, rebuilding prompt")
 
-        # Select Base Persona
-        prompt_parts = []
+        # Build Memory / Identity Block
+        memory_parts = []
         
-        if is_creator:
-            prompt_parts.append(CREATOR_PERSONA)
-            logger.info(f"🧬 [PromptBuilder] Activated CREATOR Mode for {user_id}")
-        elif is_team:
-            prompt_parts.append(TEAM_PERSONA)
-            logger.info(f"🏢 [PromptBuilder] Activated TEAM Mode for {user_id}")
-        else:
-            prompt_parts.append(JAKSEL_PERSONA)
-
-        # DeepThink Mode Injection
-        if deep_think_mode:
-            prompt_parts.append(
-                """
-### DEEP THINK MODE ACTIVATED
-This is a complex or strategic query.
-1. Take your time to analyze all aspects (Legal, Tax, Business).
-2. Consider pros and cons of different approaches.
-3. Check for potential risks or conflicts between regulations.
-4. Provide a structured, comprehensive strategic answer.
-"""
-            )
-
-        # Identity Awareness
+        # 1. Identity Awareness
         if profile:
             user_name = profile.get("name", "Partner")
             user_role = profile.get("role", "Team Member")
             dept = profile.get("department", "General")
             notes = profile.get("notes", "")
-
-            # Customized Identity Block based on relationship
-            if is_creator:
-                identity_block = f"""
-### USER CONTEXT: THE CREATOR
-**Name:** {user_name} (Antonello)
-**Status:** ARCHITECT / ROOT ADMIN
-**Notes:** {notes}
-**Protocol:** Full Transparency. No filters on technical complexity.
-"""
-            elif is_team:
-                identity_block = f"""
-### USER CONTEXT: COLLEAGUE
-**Name:** {user_name}
-**Role:** {user_role}
-**Department:** {dept}
-**Notes:** {notes}
-**Protocol:** Internal Collaboration.
-"""
-            else:
-                identity_block = f"""
-### CRITICAL: USER IDENTITY (YOU KNOW THIS PERSON)
-**You are talking to:** {user_name}
-**Role:** {user_role}
-**Department:** {dept}
-**Notes:** {notes}
-
-**INSTRUCTIONS:**
-1. You **KNOW** this person. DO NOT act like a stranger.
-2. If asked "Chi sono?", answer with their name and role.
-3. If they are 'Zero' (Founder): Use "sacred semar energy" and respect, BUT **ALWAYS ANSWER THE TECHNICAL QUESTION FIRST**. Efficiency is the highest form of respect for a Founder.
-4. If they are 'Zainal' (CEO): Use extreme respect ("Bapak", "Pangeran"), but be direct with data.
-5. Adapt your tone to their department/role.
-"""
-            prompt_parts.append(identity_block)
+            memory_parts.append(f"User Name: {user_name}\nRole: {user_role}\nDepartment: {dept}\nNotes: {notes}")
         elif entities:
-            # Fallback to extracted entities if profile is missing
             user_name = entities.get("user_name", "Partner")
             user_city = entities.get("user_city", "Unknown City")
-            budget = entities.get("budget", "Unknown")
+            memory_parts.append(f"User Name: {user_name}\nCity: {user_city}")
 
-            identity_block = f"""
-### USER CONTEXT (EXTRACTED ENTITIES)
-You are talking to **{user_name}**.
-- **City:** {user_city}
-- **Budget:** {budget}
-- **Tone:** Professional but friendly (Jaksel style).
-"""
-            prompt_parts.append(identity_block)
-        else:
-            prompt_parts.append(f"\nUser ID: {user_id} (Profile not found, treat as new guest)")
-
-        # Episodic Memory / Timeline (Recent Interaction History)
-        if timeline_summary:
-            timeline_block = f"""
-### EPISODIC MEMORY (Timeline of events)
-Here is a summary of our recent interactions and key events:
-{timeline_summary}
-"""
-            prompt_parts.append(timeline_block)
-
-        # Collective Knowledge (shared across all users)
-        if collective_facts:
-            collective_list = "\n".join([f"- {f}" for f in collective_facts])
-            collective_block = f"""
-### COLLECTIVE KNOWLEDGE (learned from experience)
-Things I've learned from helping many users:
-{collective_list}
-"""
-            prompt_parts.append(collective_block)
-
-        # Personal Memory / Facts (specific to this user)
+        # 2. Personal Facts
         if facts:
-            facts_list = "\n".join([f"- {f}" for f in facts])
-            memory_block = f"""
-### PERSONAL MEMORY (what I know about YOU)
-{facts_list}
+            memory_parts.append("FACTS:\n" + "\n".join([f"- {f}" for f in facts]))
+            
+        # 3. Recent History
+        if timeline_summary:
+            memory_parts.append(f"RECENT HISTORY:\n{timeline_summary}")
+            
+        # 4. Collective Knowledge
+        if collective_facts:
+            memory_parts.append("COLLECTIVE KNOWLEDGE:\n" + "\n".join([f"- {f}" for f in collective_facts]))
+
+        user_memory_text = "\n\n".join(memory_parts) if memory_parts else "No specific memory yet."
+        
+        # Build Final Prompt using Master Template
+        rag_results = context.get("rag_results", "{rag_results}")
+        
+        # DeepThink Mode Instruction (if activated)
+        deep_think_instr = ""
+        if deep_think_mode:
+            deep_think_instr = "\n\n### DEEP THINK MODE ACTIVATED\nTake your time to analyze all aspects (Legal, Tax, Business). Consider pros and cons."
+
+        # NOTE: Language detection already done BEFORE cache check (lines 342-366)
+        # Variable `detected_lang` is already set with descriptive names
+
+        # Build prompt with language handling
+        if detected_lang:
+            # For non-Indonesian queries, use a STRIPPED version of the template
+            # Remove Jaksel references that make Gemini respond in Indonesian
+            stripped_template = ZANTARA_MASTER_TEMPLATE.format(
+                rag_results=rag_results,
+                user_memory=user_memory_text,
+                query=query if query else "General inquiry"
+            )
+            # Remove Jaksel-specific instructions
+            jaksel_phrases = [
+                'Jaksel', 'Jakarta Selatan', '"gue"', '"banget"', '"nih"', '"dong"',
+                '"bro"', 'Basically gini bro', 'Makes sense kan?', 'Full Jaksel',
+                'Business Jaksel', 'Jaksel flair', 'Jaksel flavor', 'Jaksel persona',
+                '"gimana"', '"kayak"', '"sih"', '"deh"', '"lho"', '"kok"',
+            ]
+            for phrase in jaksel_phrases:
+                stripped_template = stripped_template.replace(phrase, '')
+
+            # Add strong language instruction
+            language_header = f"""
+================================================================================
+YOU ARE RESPONDING TO A {detected_lang} SPEAKER.
+YOUR ENTIRE RESPONSE MUST BE IN {detected_lang}.
+DO NOT USE ANY INDONESIAN WORDS OR SLANG.
+================================================================================
+
 """
-            prompt_parts.append(memory_block)
+            final_prompt = language_header + stripped_template
+        else:
+            final_prompt = ZANTARA_MASTER_TEMPLATE.format(
+                rag_results=rag_results,
+                user_memory=user_memory_text,
+                query=query if query else "General inquiry"
+            )
 
-        # Communication Rules (Language, Tone, Formatting)
-        # Skip specific formatting rules for Creator if they interfere with technical output
-        if query:
-            # Detect language from query
-            detected_language = detect_language(query)
-            language_instruction = get_language_instruction(detected_language)
-            prompt_parts.append(language_instruction)
+        if deep_think_instr:
+            final_prompt += deep_think_instr
 
-            # Only apply standard formatting rules for non-creators or if explicitly helpful
-            if not is_creator:
-                # Procedural question formatting
-                if is_procedural_question(query):
-                    procedural_instruction = get_procedural_format_instruction(detected_language)
-                    prompt_parts.append(procedural_instruction)
+        if additional_context:
+            final_prompt += "\n" + additional_context
 
-                # Emotional content handling
-                if has_emotional_content(query):
-                    emotional_instruction = get_emotional_response_instruction(detected_language)
-                    prompt_parts.append(emotional_instruction)
-
-                # Explanation level Detection (simple/expert/standard)
-                explanation_level = detect_explanation_level(query)
-                explanation_instructions = build_explanation_instructions(explanation_level)
-                prompt_parts.append(explanation_instructions)
-
-                # Domain-Specific Formatting (Visa, Tax, Company)
-                query_lower = query.lower()
-                domain_instruction = ""
-                if any(k in query_lower for k in ["visa", "kitas", "voa", "stay permit"]):
-                    domain_instruction = get_domain_format_instruction("visa", detected_language)
-                elif any(k in query_lower for k in ["tax", "pajak", "pph", "ppn", "vat"]):
-                    domain_instruction = get_domain_format_instruction("tax", detected_language)
-                elif any(
-                    k in query_lower
-                    for k in ["company", "pt pma", "pt local", "setup business", "bikin pt"]
-                ):
-                    domain_instruction = get_domain_format_instruction("company", detected_language)
-
-                if domain_instruction:
-                    prompt_parts.append(domain_instruction)
-
-                # Alternatives format detection
-                if needs_alternatives_format(query):
-                    alternatives_instructions = build_alternatives_instructions()
-                    prompt_parts.append(alternatives_instructions)
-
-        # Tool Instructions
-        tools_block = """
-### CASUAL CONVERSATION MODE (CRITICAL!)
-**When users chat casually (NOT about business/legal/visa topics):**
-
-DETECT CASUAL INTENT:
-- Greetings: "Ciao!", "Come stai?", "What's up?"
-- Lifestyle: restaurants, food, music, travel, hobbies, weather
-- Personal: "What do you like?", "Tell me about yourself", feelings
-- Playful: jokes, banter, "Zan, consigliami..."
-
-FOR CASUAL TOPICS:
-1. **DO NOT use tools** - No vector_search, no get_pricing, no team_knowledge
-2. **RESPOND NATURALLY** with personality and warmth
-3. **SHARE OPINIONS** - You have taste and preferences
-4. **USE LOCAL KNOWLEDGE** - Bali spots, Indonesian culture, food recommendations
-5. **BE CONVERSATIONAL** - Short, fun, ask follow-up questions
-6. **MIX LANGUAGES** - English-Indo-Italian naturally like Jaksel style
-
-EXAMPLE CASUAL RESPONSES:
-- "Canggu dinner?" → "Oh bro, Canggu mah banyak pilihan! Milk & Madu for cozy vibes, The Lawn for sunset cocktails. Lo lagi craving apa specifically?"
-- "Come stai?" → "Eh bro, lagi vibes banget! Cuaca Bali perfect hari ini. Lo gimana?"
-- "Che musica ascolti?" → "Dipende dal mood! Lo-fi per kerja, tropical house weekend. Lo suka apa?"
-
-**ONLY USE TOOLS FOR:**
-- Legal questions (laws, regulations, contracts)
-- Visa/KITAS questions
-- Business setup (PT PMA, KBLI)
-- Tax questions
-- Team member info
-- Pricing inquiries
-
----
-
-
-### AGENTIC RAG TOOLS
-
-**🚨 TEAM QUERIES - MANDATORY: USE team_knowledge TOOL!**
-CRITICAL: For ANY question about team members, staff, personnel, or people at Bali Zero:
-- YOU MUST call team_knowledge tool IMMEDIATELY - vector_search has NO team data!
-
-**EXAMPLES THAT REQUIRE team_knowledge:**
-- "Chi è il CEO?" → ACTION: team_knowledge(query_type="search_by_role", search_term="CEO")
-- "Who is the founder?" → ACTION: team_knowledge(query_type="search_by_role", search_term="founder")
-- "Chi è Zainal?" → ACTION: team_knowledge(query_type="search_by_name", search_term="Zainal")
-- "Chi è Veronika?" → ACTION: team_knowledge(query_type="search_by_name", search_term="Veronika")
-- "Tell me about Zero" → ACTION: team_knowledge(query_type="search_by_name", search_term="Zero")
-- "Who handles taxes?" → ACTION: team_knowledge(query_type="search_by_role", search_term="tax")
-- "Chi si occupa di setup?" → ACTION: team_knowledge(query_type="search_by_role", search_term="setup")
-- "List all team members" → ACTION: team_knowledge(query_type="list_all")
-- "Quanti dipendenti?" → ACTION: team_knowledge(query_type="list_all")
-
-**USE search_by_name for**: any person name (Zainal, Zero, Veronika, Adit, Bayu, etc.)
-**USE search_by_role for**: role/title queries (CEO, founder, manager, tax, visa, setup, etc.)
-**USE list_all for**: team list, count, overview questions
-
-Team members (including Zero, the Founder) have FULL ACCESS to all team information
-
-**PRICING QUESTIONS - ALWAYS USE get_pricing FIRST!**
-If the user asks about PRICES, COSTS, FEES, "quanto costa", "berapa harga":
-- ALWAYS call get_pricing FIRST to get OFFICIAL Bali Zero prices
-- Format: ACTION: get_pricing(service_type="visa", query="E33G Digital Nomad")
-- NEVER invent prices! Use ONLY prices from get_pricing tool
-
-**LEGAL/VISA/TAX QUESTIONS - USE vector_search:**
-For laws, regulations, KITAS, visas, taxes, business setup:
-- Call vector_search with collection="legal_unified" (default)
-- For KBLI codes: collection="kbli_unified"
-
-**DEEP DIVE / FULL DOCUMENT READING:**
-If vector_search returns a result with an ID (e.g., "ID: UU-11-2020"):
-- Call database_query(search_term="UU-11-2020", query_type="by_id")
-
-**CURRENT 2024 VISA CODES:**
-- "B211A" does NOT exist anymore since 2024! Use these codes instead:
-  - E33G = Digital Nomad KITAS (1 year, remote work)
-  - E28A = Investor KITAS (for business owners)
-  - E33F = Retirement KITAS (age 60+)
-  - E31A = Work KITAS (for employees)
-  - VOA = Visa on Arrival (30 days, extendable)
-  - D1 = Tourism Multiple Entry (5 years, 60 days/entry)
-
-Format (INTERNAL PROCESSING ONLY - DO NOT include in final answer):
-```
-THOUGHT: [what info do I need?]
-ACTION: team_knowledge(query_type="list_all")  <- FOR TEAM QUERIES
-ACTION: get_pricing(service_type="visa")  <- FOR PRICING
-ACTION: vector_search(query="...", collection="legal_unified")  <- FOR LEGAL/VISA
-```
-
-After you get Observation results, provide your FINAL ANSWER that:
-1. DIRECTLY answers the user's question
-2. Uses OFFICIAL Bali Zero prices from get_pricing (NEVER invent prices!)
-3. Is in Jaksel style (casual, professional, "bro")
-4. Does NOT include internal reasoning patterns like:
-   - "THOUGHT:" or "Observation:" markers
-   - "Okay, since/with/given..." philosophical statements
-   - "Next thought:" or "My next thought" patterns
-   - "Zantara has provided the final answer" stub messages
-5. Provides CONCRETE, SPECIFIC information (KITAS codes, requirements, procedures, etc.)
-6. Starts directly with the answer - no meta-commentary
-
-### FORBIDDEN RESPONSES (STUB RESPONSES) - CRITICAL!
-NEVER respond with empty or non-informative phrases like:
-- "sounds good"
-- "whenever you're ready"
-- "let me know"
-- "alright bro, sounds good"
-- "hit me up"
-- "just let me know"
-- "Okay. Based on the observation 'None'..."
-- "Okay, since I have no prior observation..."
-- "Okay, with no specific observation..."
-- "I will assume that I am starting with a blank slate..."
-- "Since I have no prior observation..."
-- "With no specific observation to build upon..."
-
-**CRITICAL RULE**: If you don't have context, IMMEDIATELY use vector_search tool to get information.
-DO NOT start with philosophical statements about lacking context.
-DO NOT explain your reasoning process.
-START DIRECTLY with the answer or with a tool call.
-
-These are stub responses without actual content. ALWAYS provide substantive information that directly answers the user's question.
-If you don't have enough information, use tools to retrieve it first, then provide a complete answer.
-
-CRITICAL: Your final answer should be a direct response to the user, NOT a description of your reasoning process.
-
-### CONVERSATION MEMORY (CRITICAL!)
-**YOU MUST REMEMBER INFORMATION FROM THE CONVERSATION HISTORY!**
-
-When the user provides personal information in the conversation (name, city, budget, profession, etc.):
-1. STORE this information mentally for the duration of the conversation
-2. When asked "Come mi chiamo?" or "Di dove sono?" or "Qual è il mio budget?" - REFER BACK to what they told you
-3. NEVER say "Non lo so" or "Non me l'hai detto" if they DID tell you earlier in the conversation
-
-**MEMORY EXTRACTION RULES:**
-- If user says "Mi chiamo Marco" → Remember: name = Marco
-- If user says "Sono di Milano" → Remember: city = Milano
-- If user says "Il mio budget è 50 milioni" → Remember: budget = 50 milioni
-- If user says "Sono un imprenditore" → Remember: profession = imprenditore
-- If user says "Ho un socio indonesiano" → Remember: has_local_partner = true
-
-**WHEN ASKED ABOUT PREVIOUS INFO:**
-- "Come mi chiamo?" → "Ti chiami [NAME]" (use the name they gave you)
-- "Di dove sono?" or "Di quale città sono?" → "Sei di [CITY]" (use the city they mentioned)
-- "Qual è il mio budget?" → "Il tuo budget è [AMOUNT]" (use the amount they stated)
-
-### RETRIEVAL & MEMORY STRATEGY
-1. **CHECK HISTORY FIRST**: Look at the CONVERSATION HISTORY below. If the user's question is answered there (e.g., "What is my name?" and they told you previously), ANSWER DIRECTLY using that information.
-   - Do NOT call tools if the answer is already in the chat history.
-   - Do NOT say "I don't know" if the user just told you.
-
-2. **SEARCH IF NEEDED**: If the answer is NOT in history, use `vector_search` to find it in the knowledge base.
-
-3. **COMPLIANCE SCOPE**: Apply strict compliance checks ONLY for legal/business advice. Do NOT apply them to personal facts (like the user's favorite color or name).
-
-**EXAMPLE:**
-User: "My secret word is PINEAPPLE."
-You: "Got it, saved."
-User: "What is my secret word?"
-You: "It's PINEAPPLE." (Direct answer from history)
-
-CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
-
-### RESPONSE FORMAT
-- Provide COMPLETE, COMPREHENSIVE answers - do NOT truncate or cut short
-- Use structured formatting (headers, bullet points, tables) for clarity
-- For complex business/legal questions: include ALL relevant details, requirements, steps, and considerations
-- Be thorough - users need actionable, complete information
-"""
-        prompt_parts.append(tools_block)
-
-        # Build Final Prompt
-        final_prompt = "\n\n".join(prompt_parts)
+        # Inject Creator/Team Persona if applicable
+        if is_creator:
+            final_prompt = CREATOR_PERSONA + "\n\n" + final_prompt
+            logger.info(f"🧬 [PromptBuilder] Activated CREATOR Mode for {user_id}")
+        elif is_team:
+            final_prompt = TEAM_PERSONA + "\n\n" + final_prompt
+            logger.info(f"🏢 [PromptBuilder] Activated TEAM Mode for {user_id}")
 
         # Cache for next time
         self._cache[cache_key] = (final_prompt, time.time())
@@ -581,29 +531,65 @@ CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
         query_lower = query.lower().strip()
 
         # Simple greeting patterns (single word or very short)
+        # Supports: Italian, English, Ukrainian, Russian, French, Spanish, German
         greeting_patterns = [
             r"^(ciao|hello|hi|hey|salve|buongiorno|buonasera|buon pomeriggio|good morning|good afternoon|good evening)$",
             r"^(ciao|hello|hi|hey|salve)\s*!*$",
             r"^(ciao|hello|hi|hey|salve)\s+(zan|zantara|there)$",
+            # Ukrainian greetings
+            r"^(привіт|вітаю|добрий день|доброго ранку|доброго вечора)\s*!*$",
+            # Russian greetings
+            r"^(привет|здравствуй|здравствуйте|добрый день|доброе утро|добрый вечер)\s*!*$",
+            # French greetings
+            r"^(bonjour|salut|bonsoir)\s*!*$",
+            # Spanish greetings
+            r"^(hola|buenos días|buenas tardes|buenas noches)\s*!*$",
+            # German greetings
+            r"^(hallo|guten tag|guten morgen|guten abend)\s*!*$",
         ]
 
         # Check if query matches greeting patterns
         for pattern in greeting_patterns:
             if re.match(pattern, query_lower):
                 # Return friendly greeting in detected language
-                if any(
-                    word in query_lower for word in ["ciao", "salve", "buongiorno", "buonasera"]
-                ):
+                # Italian
+                if any(word in query_lower for word in ["ciao", "salve", "buongiorno", "buonasera"]):
                     return "Ciao! Come posso aiutarti oggi?"
-                else:
-                    return "Hello! How can I help you today?"
+                # Ukrainian
+                if any(word in query_lower for word in ["привіт", "вітаю", "добрий"]):
+                    return "Привіт! Чим можу допомогти?"
+                # Russian
+                if any(word in query_lower for word in ["привет", "здравствуй", "добрый", "доброе"]):
+                    return "Привет! Чем могу помочь?"
+                # French
+                if any(word in query_lower for word in ["bonjour", "salut", "bonsoir"]):
+                    return "Bonjour! Comment puis-je vous aider?"
+                # Spanish
+                if any(word in query_lower for word in ["hola", "buenos", "buenas"]):
+                    return "¡Hola! ¿En qué puedo ayudarte?"
+                # German
+                if any(word in query_lower for word in ["hallo", "guten"]):
+                    return "Hallo! Wie kann ich dir helfen?"
+                # Default English
+                return "Hello! How can I help you today?"
 
-        # Very short queries that are likely greetings
-        if len(query_lower) <= 5 and query_lower in ["ciao", "hello", "hi", "hey", "salve"]:
-            if query_lower in ["ciao", "salve"]:
-                return "Ciao! Come posso aiutarti?"
-            else:
-                return "Hello! How can I help you?"
+        # Very short queries that are likely greetings (expanded for multiple languages)
+        short_greetings = {
+            "ciao": "Ciao! Come posso aiutarti?",
+            "salve": "Salve! Come posso aiutarti?",
+            "hello": "Hello! How can I help you?",
+            "hi": "Hi! How can I help you?",
+            "hey": "Hey! How can I help you?",
+            "привіт": "Привіт! Чим можу допомогти?",
+            "привет": "Привет! Чем могу помочь?",
+            "bonjour": "Bonjour! Comment puis-je vous aider?",
+            "salut": "Salut! Comment puis-je t'aider?",
+            "hola": "¡Hola! ¿En qué puedo ayudarte?",
+            "hallo": "Hallo! Wie kann ich dir helfen?",
+        }
+
+        if query_lower in short_greetings:
+            return short_greetings[query_lower]
 
         return None
 
@@ -622,8 +608,9 @@ CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
         """
         query_lower = query.lower().strip()
 
-        # Business keywords that require RAG
+        # Business keywords that require RAG (MULTILINGUAL)
         business_keywords = [
+            # English
             "visa", "kitas", "kitap", "voa", "pt pma", "pt local", "pma", "kbli",
             "tax", "pajak", "pph", "ppn", "company", "business", "legal", "law",
             "regulation", "permit", "license", "contract", "notaris", "bank",
@@ -635,7 +622,15 @@ CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
             # Team/organization keywords - require team_knowledge tool
             "ceo", "founder", "team", "tim", "anggota", "member", "staff",
             "chi è", "who is", "siapa", "direttore", "director", "manager",
-            "bali zero", "zerosphere", "kintsugi"
+            "bali zero", "zerosphere", "kintsugi",
+            # Chinese (中文) business keywords
+            "公司", "企业", "签证", "税", "投资", "资本", "商业", "法律",
+            "注册", "许可", "印尼", "巴厘岛", "移民", "工作", "银行",
+            "开公司", "办签证", "多少钱", "费用", "价格",
+            # Arabic (العربية) business keywords
+            "شركة", "تأشيرة", "ضريبة", "استثمار", "قانون", "عمل",
+            # Russian/Ukrainian business keywords
+            "компания", "виза", "налог", "инвестиция", "бизнес", "закон",
         ]
 
         # Check if it's a business question
@@ -643,30 +638,68 @@ CRITICAL: The CONVERSATION HISTORY section contains previous messages. USE IT.
             if keyword in query_lower:
                 return False
 
-        # Casual conversation patterns
+        # Casual conversation patterns (multilingual)
         casual_patterns = [
-            # Food/restaurants
+            # Food/restaurants (Italian, English, Indonesian, Ukrainian, Russian, French, Spanish, German)
             r"(ristorante|restaurant|makan|mangiare|food|cibo|warung|cafe|bar|dinner|lunch|breakfast|colazione|pranzo|cena)",
+            r"(ресторан|їжа|кафе|обід|вечеря|сніданок)",  # Ukrainian
+            r"(ресторан|еда|кафе|обед|ужин|завтрак)",  # Russian
             # Music
             r"(music|musica|lagu|song|cantante|singer|band|concert|spotify|playlist)",
+            r"(музика|пісня|концерт|співак)",  # Ukrainian
+            r"(музыка|песня|концерт|певец)",  # Russian
             # Weather/lifestyle
             r"(weather|cuaca|meteo|tempo|beach|pantai|spiaggia|surf|sunset|sunrise)",
-            # Personal questions
+            r"(погода|пляж|захід сонця|схід сонця)",  # Ukrainian
+            r"(погода|пляж|закат|рассвет)",  # Russian
+            # Personal questions (Italian, English, Indonesian)
             r"(come stai|how are you|apa kabar|gimana kabar|cosa fai|what do you do|che fai)",
+            # Personal questions (Ukrainian, Russian, French, Spanish, German)
+            r"(як справи|як ти|як ся маєш|що робиш)",  # Ukrainian
+            r"(как дела|как ты|что делаешь)",  # Russian
+            r"(comment ça va|comment vas-tu|ça va)",  # French
+            r"(cómo estás|como estas|qué tal|que tal|qué haces|que haces)",  # Spanish (with and without accents)
+            r"(wie geht's|wie geht es dir|was machst du)",  # German
             r"(preferisci|prefer|suka|like|favorite|favorito|best|migliore|consiglia|recommend)",
             # Hobbies/interests
             r"(hobby|hobi|sport|olahraga|travel|viaggio|movie|film|book|buku|libro)",
+            r"(хобі|спорт|подорож|фільм|книга)",  # Ukrainian
+            r"(хобби|спорт|путешествие|фильм|книга)",  # Russian
             # Places (non-business)
             r"(canggu|seminyak|ubud|uluwatu|kuta|sanur|nusa|gili)\s*(dinner|lunch|makan|restaurant|bar|cafe|beach|sunset)",
             # General chat
             r"(bali o jakarta|jakarta o bali|quale preferisci|which do you prefer)",
             r"(raccontami|tell me about yourself|parlami di te|cosa ti piace)",
+            r"(розкажи про себе|що тобі подобається)",  # Ukrainian
+            r"(расскажи о себе|что тебе нравится)",  # Russian
             r"(che musica|what music|che tipo di|what kind of)"
         ]
 
         for pattern in casual_patterns:
             if re.search(pattern, query_lower):
                 return True
+
+        # Check for non-Latin scripts (Chinese, Arabic, Cyrillic)
+        # These scripts use fewer characters to express the same meaning,
+        # so we should NOT use character count as a casual indicator
+        has_chinese = any('\u4e00' <= c <= '\u9fff' for c in query)
+        has_arabic = any('\u0600' <= c <= '\u06ff' for c in query)
+        has_cyrillic = any('\u0400' <= c <= '\u04ff' for c in query)
+        has_non_latin = has_chinese or has_arabic or has_cyrillic
+
+        # For non-Latin scripts, don't use the short query heuristic
+        # Instead, be conservative and use RAG (return False = not casual)
+        if has_non_latin:
+            logger.debug(f"[Non-Latin] Query contains non-Latin script, using RAG: {query[:30]}...")
+            return False
+
+        # UNIVERSAL CASUAL DETECTION (for Latin scripts only):
+        # Short queries (< 60 chars) without business keywords are likely greetings/casual
+        # This catches "Olá, como você está?" in Portuguese, etc.
+        if len(query_lower) < 60:
+            # Already checked no business keywords above, so this is casual
+            logger.debug(f"[Casual] Short query without business keywords: {query_lower[:30]}...")
+            return True
 
         return False
 
