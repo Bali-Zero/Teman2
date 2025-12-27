@@ -4,7 +4,7 @@ Centralizes scheduling of all autonomous agents and background tasks.
 
 Managed Services:
 1. Auto-Ingestion Orchestrator - Daily regulatory updates (every 24h)
-2. Backend Self-Healing Agent - Continuous health monitoring (every 30s)
+2. Backend Self-Healing Agent - Health monitoring and auto-fix (every 5min)
 3. Conversation Trainer Agent - Learn from successful conversations (every 6h)
 4. Client Value Predictor Agent - Nurture high-value clients (every 12h)
 5. Knowledge Graph Builder Agent - Build knowledge graphs (every 4h)
@@ -261,7 +261,7 @@ async def create_and_start_scheduler(
             logger.error(f"❌ Failed to register Auto-Ingestion: {e}")
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # 2. BACKEND SELF-HEALING AGENT (every 30 seconds)
+    # 2. BACKEND SELF-HEALING AGENT (every 5 minutes)
     # ═══════════════════════════════════════════════════════════════════════════
     if self_healing_enabled:
         try:
@@ -269,7 +269,7 @@ async def create_and_start_scheduler(
 
             healing_agent = BackendSelfHealingAgent(
                 service_name="nuzantara-backend",
-                check_interval=30,
+                check_interval=300,  # 5 minutes
                 auto_fix_enabled=True,
             )
 
@@ -283,10 +283,10 @@ async def create_and_start_scheduler(
             scheduler.register_task(
                 name="self_healing",
                 task_func=run_self_healing,
-                interval_seconds=30,  # 30 seconds
+                interval_seconds=300,  # 5 minutes
                 enabled=True,
             )
-            logger.info("✅ Backend Self-Healing Agent registered (30s interval)")
+            logger.info("✅ Backend Self-Healing Agent registered (5min interval)")
         except Exception as e:
             logger.error(f"❌ Failed to register Self-Healing Agent: {e}")
 
