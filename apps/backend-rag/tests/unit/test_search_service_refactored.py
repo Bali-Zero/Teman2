@@ -98,7 +98,7 @@ class TestSearchServiceRefactored:
         """Create SearchService with mocked dependencies"""
         with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
             with patch(
-                "services.collection_health_service.CollectionHealthService",
+                "services.ingestion.collection_health_service.CollectionHealthService",
                 return_value=Mock(),
             ):
                 service = SearchService(
@@ -129,7 +129,7 @@ class TestSearchServiceRefactored:
                 mock_embedder.provider = "openai"
                 mock_embedder.dimensions = 1536
                 mock_create.return_value = mock_embedder
-                with patch("services.collection_health_service.CollectionHealthService"):
+                with patch("services.ingestion.collection_health_service.CollectionHealthService"):
                     service = SearchService()
                     assert service.collection_manager is not None
                     assert service.conflict_resolver is not None

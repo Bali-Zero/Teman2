@@ -30,14 +30,14 @@ class TestSemanticCache:
     @pytest.fixture
     def cache(self, mock_redis):
         """Create SemanticCache instance"""
-        from services.semantic_cache import SemanticCache
+        from services.search.semantic_cache import SemanticCache
 
         return SemanticCache(mock_redis)
 
     @pytest.fixture
     def cache_custom(self, mock_redis):
         """Create SemanticCache with custom parameters"""
-        from services.semantic_cache import SemanticCache
+        from services.search.semantic_cache import SemanticCache
 
         return SemanticCache(
             mock_redis, similarity_threshold=0.9, default_ttl=7200, max_cache_size=5000

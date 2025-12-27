@@ -50,7 +50,7 @@ def mock_pool():
 def memory_service(mock_pool):
     """Create MemoryServicePostgres instance with mocked pool"""
     pool, conn = mock_pool
-    with patch("services.memory_service_postgres.asyncpg.create_pool", return_value=pool):
+    with patch("services.memory.memory_service_postgres.asyncpg.create_pool", return_value=pool):
         with patch("app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             service = MemoryServicePostgres()
@@ -119,7 +119,7 @@ async def test_connect_success():
             return mock_pool
 
         with patch(
-            "services.memory_service_postgres.asyncpg.create_pool", side_effect=mock_create_pool
+            "services.memory.memory_service_postgres.asyncpg.create_pool", side_effect=mock_create_pool
         ):
             await service.connect()
 
@@ -141,7 +141,7 @@ async def test_connect_exception():
         mock_settings.database_url = "postgresql://test"
         service = MemoryServicePostgres()
         with patch(
-            "services.memory_service_postgres.asyncpg.create_pool",
+            "services.memory.memory_service_postgres.asyncpg.create_pool",
             side_effect=Exception("Connection error"),
         ):
             await service.connect()

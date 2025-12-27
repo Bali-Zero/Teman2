@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.ai_crm_extractor import AICRMExtractor, get_extractor
+from services.crm.ai_crm_extractor import AICRMExtractor, get_extractor
 
 # ============================================================================
 # Fixtures
@@ -50,7 +50,7 @@ def test_init_with_client(mock_ai_client):
 
 def test_init_without_client():
     """Test initialization without AI client"""
-    with patch("services.ai_crm_extractor.ZantaraAIClient") as mock_client_class:
+    with patch("services.crm.ai_crm_extractor.ZantaraAIClient") as mock_client_class:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
@@ -61,7 +61,7 @@ def test_init_without_client():
 
 def test_init_exception():
     """Test initialization with exception"""
-    with patch("services.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")):
+    with patch("services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")):
         with pytest.raises(Exception):
             AICRMExtractor()
 
@@ -403,7 +403,7 @@ async def test_should_create_practice_false_no_code(extractor):
 
 def test_get_extractor_singleton(mock_ai_client):
     """Test get_extractor returns singleton"""
-    with patch("services.ai_crm_extractor._extractor_instance", None):
+    with patch("services.crm.ai_crm_extractor._extractor_instance", None):
         extractor1 = get_extractor(ai_client=mock_ai_client)
         extractor2 = get_extractor(ai_client=mock_ai_client)
 
@@ -412,7 +412,7 @@ def test_get_extractor_singleton(mock_ai_client):
 
 def test_get_extractor_exception():
     """Test get_extractor with exception"""
-    with patch("services.ai_crm_extractor._extractor_instance", None):
-        with patch("services.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")):
+    with patch("services.crm.ai_crm_extractor._extractor_instance", None):
+        with patch("services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")):
             with pytest.raises(Exception):
                 get_extractor()

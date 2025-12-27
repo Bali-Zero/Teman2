@@ -26,7 +26,7 @@ if str(backend_path) not in sys.path:
 @pytest.fixture(autouse=True)
 def reset_singleton():
     """Reset singleton before each test"""
-    from services import memory_fallback
+    from services.memory import memory_fallback
 
     # Reset both the singleton instance and the module-level cache
     memory_fallback.InMemoryConversationCache._instance = None

@@ -14,7 +14,7 @@ class TestModelTier:
 
     def test_model_tier_values(self):
         """Test all ModelTier values exist"""
-        from services.openrouter_client import ModelTier
+        from services.llm_clients.openrouter_client import ModelTier
 
         assert ModelTier.FAST.value == "fast"
         assert ModelTier.BALANCED.value == "balanced"
@@ -27,7 +27,7 @@ class TestFallbackChains:
 
     def test_fallback_chains_exist(self):
         """Test all fallback chains are configured"""
-        from services.openrouter_client import FALLBACK_CHAINS, ModelTier
+        from services.llm_clients.openrouter_client import FALLBACK_CHAINS, ModelTier
 
         assert ModelTier.RAG in FALLBACK_CHAINS
         assert ModelTier.POWERFUL in FALLBACK_CHAINS
@@ -40,7 +40,7 @@ class TestFallbackChains:
 
     def test_model_info_exists(self):
         """Test MODEL_INFO contains expected models"""
-        from services.openrouter_client import MODEL_INFO
+        from services.llm_clients.openrouter_client import MODEL_INFO
 
         assert "google/gemini-2.0-flash-exp:free" in MODEL_INFO
         assert "meta-llama/llama-3.3-70b-instruct:free" in MODEL_INFO
@@ -52,7 +52,7 @@ class TestCompletionResult:
 
     def test_completion_result_defaults(self):
         """Test CompletionResult with default values"""
-        from services.openrouter_client import CompletionResult
+        from services.llm_clients.openrouter_client import CompletionResult
 
         result = CompletionResult(content="Hello", model_used="test-model", model_name="Test Model")
 
@@ -65,7 +65,7 @@ class TestCompletionResult:
 
     def test_completion_result_full(self):
         """Test CompletionResult with all values"""
-        from services.openrouter_client import CompletionResult
+        from services.llm_clients.openrouter_client import CompletionResult
 
         result = CompletionResult(
             content="Response",
@@ -86,13 +86,13 @@ class TestOpenRouterClient:
     @pytest.fixture
     def mock_settings(self):
         """Mock settings"""
-        with patch("services.openrouter_client.settings") as mock:
+        with patch("services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = "test-api-key"
             yield mock
 
     def test_init_with_api_key(self, mock_settings):
         """Test initialization with explicit API key"""
-        from services.openrouter_client import ModelTier, OpenRouterClient
+        from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 
         client = OpenRouterClient(api_key="explicit-key")
 
@@ -102,7 +102,7 @@ class TestOpenRouterClient:
 
     def test_init_from_settings(self, mock_settings):
         """Test initialization from settings"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient()
 
@@ -110,29 +110,29 @@ class TestOpenRouterClient:
 
     def test_init_from_env(self):
         """Test initialization from environment"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
-        with patch("services.openrouter_client.settings") as mock_settings:
+        with patch("services.llm_clients.openrouter_client.settings") as mock_settings:
             mock_settings.openrouter_api_key = None
             with patch.dict("os.environ", {"OPENROUTER_API_KEY": "env-key"}):
-                with patch("services.openrouter_client.os.getenv", return_value="env-key"):
+                with patch("services.llm_clients.openrouter_client.os.getenv", return_value="env-key"):
                     client = OpenRouterClient()
                     assert client.api_key == "env-key"
 
     def test_init_no_key_warning(self):
         """Test warning when no API key"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
-        with patch("services.openrouter_client.settings") as mock_settings:
+        with patch("services.llm_clients.openrouter_client.settings") as mock_settings:
             mock_settings.openrouter_api_key = None
-            with patch("services.openrouter_client.os.getenv", return_value=None):
-                with patch("services.openrouter_client.logger") as mock_logger:
+            with patch("services.llm_clients.openrouter_client.os.getenv", return_value=None):
+                with patch("services.llm_clients.openrouter_client.logger") as mock_logger:
                     client = OpenRouterClient(api_key=None)
                     mock_logger.warning.assert_called()
 
     def test_get_fallback_chain_default(self, mock_settings):
         """Test get_fallback_chain with default tier"""
-        from services.openrouter_client import FALLBACK_CHAINS, ModelTier, OpenRouterClient
+        from services.llm_clients.openrouter_client import FALLBACK_CHAINS, ModelTier, OpenRouterClient
 
         client = OpenRouterClient(default_tier=ModelTier.BALANCED)
         chain = client.get_fallback_chain()
@@ -141,7 +141,7 @@ class TestOpenRouterClient:
 
     def test_get_fallback_chain_explicit(self, mock_settings):
         """Test get_fallback_chain with explicit tier"""
-        from services.openrouter_client import FALLBACK_CHAINS, ModelTier, OpenRouterClient
+        from services.llm_clients.openrouter_client import FALLBACK_CHAINS, ModelTier, OpenRouterClient
 
         client = OpenRouterClient()
         chain = client.get_fallback_chain(ModelTier.FAST)
@@ -150,7 +150,7 @@ class TestOpenRouterClient:
 
     def test_get_headers(self, mock_settings):
         """Test _get_headers returns correct headers"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
         headers = client._get_headers()
@@ -163,11 +163,11 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_no_api_key(self, mock_settings):
         """Test complete raises error without API key"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
-        with patch("services.openrouter_client.settings") as mock:
+        with patch("services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = None
-            with patch("services.openrouter_client.os.getenv", return_value=None):
+            with patch("services.llm_clients.openrouter_client.os.getenv", return_value=None):
                 client = OpenRouterClient(api_key=None)
                 client.api_key = None  # Force no key
 
@@ -177,7 +177,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_with_model_id(self, mock_settings):
         """Test complete with specific model ID"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -213,7 +213,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_with_fallback(self, mock_settings):
         """Test complete with fallback chain"""
-        from services.openrouter_client import ModelTier, OpenRouterClient
+        from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -246,7 +246,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_with_tools(self, mock_settings):
         """Test complete with tools"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -276,11 +276,11 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_stream_no_api_key(self, mock_settings):
         """Test complete_stream raises error without API key"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
-        with patch("services.openrouter_client.settings") as mock:
+        with patch("services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = None
-            with patch("services.openrouter_client.os.getenv", return_value=None):
+            with patch("services.llm_clients.openrouter_client.os.getenv", return_value=None):
                 client = OpenRouterClient(api_key=None)
                 client.api_key = None
 
@@ -291,7 +291,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_stream_success(self, mock_settings):
         """Test complete_stream with successful streaming"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -320,7 +320,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_stream_with_model_id(self, mock_settings):
         """Test complete_stream with specific model"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -346,7 +346,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_complete_stream_json_error(self, mock_settings):
         """Test complete_stream handles JSON decode errors"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -374,7 +374,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_check_credits_success(self, mock_settings):
         """Test check_credits success"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -396,11 +396,11 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_check_credits_no_key(self, mock_settings):
         """Test check_credits without API key"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
-        with patch("services.openrouter_client.settings") as mock:
+        with patch("services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = None
-            with patch("services.openrouter_client.os.getenv", return_value=None):
+            with patch("services.llm_clients.openrouter_client.os.getenv", return_value=None):
                 client = OpenRouterClient(api_key=None)
                 client.api_key = None
 
@@ -411,7 +411,7 @@ class TestOpenRouterClient:
     @pytest.mark.asyncio
     async def test_check_credits_error(self, mock_settings):
         """Test check_credits with error response"""
-        from services.openrouter_client import OpenRouterClient
+        from services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -435,7 +435,7 @@ class TestConvenienceFunctions:
     @pytest.fixture
     def mock_client(self):
         """Mock the singleton client"""
-        with patch("services.openrouter_client.openrouter_client") as mock:
+        with patch("services.llm_clients.openrouter_client.openrouter_client") as mock:
             mock.complete = AsyncMock()
             mock.complete_stream = AsyncMock()
             yield mock
@@ -443,7 +443,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete_simple(self, mock_client):
         """Test smart_complete with simple prompt"""
-        from services.openrouter_client import CompletionResult, smart_complete
+        from services.llm_clients.openrouter_client import CompletionResult, smart_complete
 
         mock_client.complete.return_value = CompletionResult(
             content="4", model_used="test", model_name="Test"
@@ -462,7 +462,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete_with_system(self, mock_client):
         """Test smart_complete with system prompt"""
-        from services.openrouter_client import CompletionResult, smart_complete
+        from services.llm_clients.openrouter_client import CompletionResult, smart_complete
 
         mock_client.complete.return_value = CompletionResult(
             content="OK", model_used="test", model_name="Test"
@@ -480,7 +480,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete_stream_simple(self, mock_client):
         """Test smart_complete_stream with simple prompt"""
-        from services.openrouter_client import smart_complete_stream
+        from services.llm_clients.openrouter_client import smart_complete_stream
 
         async def mock_stream(*args, **kwargs):
             yield "Hello"
@@ -497,7 +497,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete_stream_with_system(self, mock_client):
         """Test smart_complete_stream with system prompt"""
-        from services.openrouter_client import smart_complete_stream
+        from services.llm_clients.openrouter_client import smart_complete_stream
 
         async def mock_stream(*args, **kwargs):
             yield "OK"
@@ -519,7 +519,7 @@ class TestSingleton:
 
     def test_singleton_exists(self):
         """Test openrouter_client singleton is created"""
-        from services.openrouter_client import ModelTier, OpenRouterClient, openrouter_client
+        from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient, openrouter_client
 
         assert isinstance(openrouter_client, OpenRouterClient)
         assert openrouter_client.default_tier == ModelTier.RAG

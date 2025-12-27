@@ -33,7 +33,7 @@ class TestFollowupServiceInit:
 
     def test_init_with_zantara_client(self):
         """Test initialization with ZANTARA AI client"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -45,7 +45,7 @@ class TestFollowupServiceInit:
 
     def test_init_without_zantara_client(self):
         """Test initialization when ZANTARA AI fails"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("Client init failed")
 
             from services.misc.followup_service import FollowupService
@@ -65,7 +65,7 @@ class TestGenerateFollowups:
 
     def test_generate_followups_ai_success_string_result(self):
         """Test generate_followups with AI returning string"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.generate_response.return_value = "Question 1?\nQuestion 2?\nQuestion 3?"
             mock_client_class.return_value = mock_client
@@ -82,7 +82,7 @@ class TestGenerateFollowups:
 
     def test_generate_followups_ai_returns_coroutine(self):
         """Test generate_followups handles coroutine from AI"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
 
             async def mock_async_response(*args, **kwargs):
@@ -100,7 +100,7 @@ class TestGenerateFollowups:
 
     def test_generate_followups_fallback_no_client(self):
         """Test generate_followups falls back when no client"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("Client not available")
 
             from services.misc.followup_service import FollowupService
@@ -113,7 +113,7 @@ class TestGenerateFollowups:
 
     def test_generate_followups_fallback_ai_exception(self):
         """Test generate_followups falls back on AI exception"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.generate_response.side_effect = Exception("AI error")
             mock_client_class.return_value = mock_client
@@ -127,7 +127,7 @@ class TestGenerateFollowups:
 
     def test_generate_followups_with_language(self):
         """Test generate_followups with language parameter"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -148,7 +148,7 @@ class TestGetTopicBasedFollowups:
 
     def test_business_english(self):
         """Test business followups in English"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -161,7 +161,7 @@ class TestGetTopicBasedFollowups:
 
     def test_business_italian(self):
         """Test business followups in Italian"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -173,7 +173,7 @@ class TestGetTopicBasedFollowups:
 
     def test_immigration_english(self):
         """Test immigration followups in English"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -185,7 +185,7 @@ class TestGetTopicBasedFollowups:
 
     def test_tax_indonesian(self):
         """Test tax followups in Indonesian"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -197,7 +197,7 @@ class TestGetTopicBasedFollowups:
 
     def test_casual_topic(self):
         """Test casual topic followups"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -209,7 +209,7 @@ class TestGetTopicBasedFollowups:
 
     def test_technical_topic(self):
         """Test technical topic followups"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -221,7 +221,7 @@ class TestGetTopicBasedFollowups:
 
     def test_unknown_topic_fallback(self):
         """Test unknown topic falls back to business"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -233,7 +233,7 @@ class TestGetTopicBasedFollowups:
 
     def test_unknown_language_fallback(self):
         """Test unknown language falls back to English"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -255,7 +255,7 @@ class TestGenerateDynamicFollowups:
     @pytest.mark.asyncio
     async def test_dynamic_no_client_fallback(self):
         """Test dynamic generation falls back when no client"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -268,7 +268,7 @@ class TestGenerateDynamicFollowups:
     @pytest.mark.asyncio
     async def test_dynamic_ai_success(self):
         """Test dynamic generation with AI success"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.chat_async = AsyncMock(
                 return_value={"text": "1. First question?\n2. Second question?\n3. Third question?"}
@@ -288,7 +288,7 @@ class TestGenerateDynamicFollowups:
     @pytest.mark.asyncio
     async def test_dynamic_ai_parse_failure_fallback(self):
         """Test dynamic generation falls back on parse failure"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.chat_async = AsyncMock(return_value={"text": "No numbered list here"})
             mock_client_class.return_value = mock_client
@@ -303,7 +303,7 @@ class TestGenerateDynamicFollowups:
     @pytest.mark.asyncio
     async def test_dynamic_ai_exception_fallback(self):
         """Test dynamic generation falls back on exception"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.chat_async = AsyncMock(side_effect=Exception("AI failed"))
             mock_client_class.return_value = mock_client
@@ -318,7 +318,7 @@ class TestGenerateDynamicFollowups:
     @pytest.mark.asyncio
     async def test_dynamic_with_context(self):
         """Test dynamic generation with conversation context"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.chat_async = AsyncMock(
                 return_value={"text": "1. Context question?\n2. Another?\n3. More?"}
@@ -345,7 +345,7 @@ class TestBuildFollowupGenerationPrompt:
 
     def test_build_prompt_english(self):
         """Test building prompt in English"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -360,7 +360,7 @@ class TestBuildFollowupGenerationPrompt:
 
     def test_build_prompt_italian(self):
         """Test building prompt in Italian"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -372,7 +372,7 @@ class TestBuildFollowupGenerationPrompt:
 
     def test_build_prompt_indonesian(self):
         """Test building prompt in Indonesian"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -384,7 +384,7 @@ class TestBuildFollowupGenerationPrompt:
 
     def test_build_prompt_with_context(self):
         """Test building prompt with conversation context"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -407,7 +407,7 @@ class TestParseFollowupList:
 
     def test_parse_numbered_list(self):
         """Test parsing numbered list with dots"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -424,7 +424,7 @@ class TestParseFollowupList:
 
     def test_parse_numbered_list_parentheses(self):
         """Test parsing numbered list with parentheses"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -438,7 +438,7 @@ class TestParseFollowupList:
 
     def test_parse_removes_quotes(self):
         """Test parsing removes surrounding quotes"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -453,7 +453,7 @@ class TestParseFollowupList:
 
     def test_parse_empty_text(self):
         """Test parsing empty text"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -466,7 +466,7 @@ class TestParseFollowupList:
 
     def test_parse_no_numbered_list(self):
         """Test parsing text without numbered list"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -489,7 +489,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_immigration_visa(self):
         """Test detecting immigration topic with visa keyword"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -501,7 +501,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_immigration_kitas(self):
         """Test detecting immigration topic with KITAS keyword"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -513,7 +513,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_tax(self):
         """Test detecting tax topic"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -525,7 +525,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_tax_pajak(self):
         """Test detecting tax topic with Indonesian keyword"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -537,7 +537,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_technical(self):
         """Test detecting technical topic"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -549,7 +549,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_casual_hello(self):
         """Test detecting casual topic with hello"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -561,7 +561,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_casual_ciao(self):
         """Test detecting casual topic with ciao"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -573,7 +573,7 @@ class TestDetectTopicFromQuery:
 
     def test_detect_default_business(self):
         """Test default to business topic"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -594,7 +594,7 @@ class TestDetectLanguageFromQuery:
 
     def test_detect_italian(self):
         """Test detecting Italian language"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -606,7 +606,7 @@ class TestDetectLanguageFromQuery:
 
     def test_detect_indonesian(self):
         """Test detecting Indonesian language"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -618,7 +618,7 @@ class TestDetectLanguageFromQuery:
 
     def test_detect_default_english(self):
         """Test default to English language"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -640,7 +640,7 @@ class TestGetFollowups:
     @pytest.mark.asyncio
     async def test_get_followups_with_ai(self):
         """Test get_followups using AI"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.chat_async = AsyncMock(
                 return_value={"text": "1. Question one?\n2. Question two?\n3. Question three?"}
@@ -657,7 +657,7 @@ class TestGetFollowups:
     @pytest.mark.asyncio
     async def test_get_followups_without_ai(self):
         """Test get_followups without AI"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService
@@ -670,7 +670,7 @@ class TestGetFollowups:
     @pytest.mark.asyncio
     async def test_get_followups_with_context(self):
         """Test get_followups with conversation context"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.chat_async = AsyncMock(return_value={"text": "1. Q1?\n2. Q2?\n3. Q3?"})
             mock_client_class.return_value = mock_client
@@ -696,7 +696,7 @@ class TestHealthCheck:
     @pytest.mark.asyncio
     async def test_health_check_with_client(self):
         """Test health check with AI client available"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -712,7 +712,7 @@ class TestHealthCheck:
     @pytest.mark.asyncio
     async def test_health_check_without_client(self):
         """Test health check without AI client"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client_class.side_effect = Exception("No client")
 
             from services.misc.followup_service import FollowupService

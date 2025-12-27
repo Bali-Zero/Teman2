@@ -81,7 +81,7 @@ def mock_compliance_item():
 @pytest.fixture
 def mock_alert():
     """Mock ComplianceAlert object"""
-    from services.proactive_compliance_monitor import AlertSeverity
+    from services.misc.proactive_compliance_monitor import AlertSeverity
 
     alert = MagicMock()
     alert.alert_id = "alert-123"
@@ -376,7 +376,7 @@ async def test_get_compliance_alerts_auto_notify_error(mock_alert):
 @pytest.mark.asyncio
 async def test_get_compliance_alerts_with_dict_alert():
     """Test get compliance alerts with dict-based alert (not object)"""
-    from services.proactive_compliance_monitor import AlertSeverity
+    from services.misc.proactive_compliance_monitor import AlertSeverity
 
     dict_alert = {
         "alert_id": "alert-456",
@@ -673,7 +673,7 @@ async def test_get_compliance_alerts_empty_list():
 @pytest.mark.asyncio
 async def test_get_compliance_alerts_multiple_severities():
     """Test get compliance alerts with multiple severity levels"""
-    from services.proactive_compliance_monitor import AlertSeverity
+    from services.misc.proactive_compliance_monitor import AlertSeverity
 
     # Create simple objects instead of MagicMock to avoid attribute issues
     class MockAlert:

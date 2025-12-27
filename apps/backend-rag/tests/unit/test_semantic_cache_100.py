@@ -20,7 +20,7 @@ def mock_redis():
 @pytest.fixture
 def cache_service(mock_redis):
     """Create SemanticCache instance"""
-    from services.semantic_cache import SemanticCache
+    from services.search.semantic_cache import SemanticCache
 
     return SemanticCache(
         redis_client=mock_redis, similarity_threshold=0.95, default_ttl=3600, max_cache_size=1000
@@ -32,7 +32,7 @@ class TestSemanticCacheInit:
 
     def test_init_default_values(self, mock_redis):
         """Test initialization with default values"""
-        from services.semantic_cache import SemanticCache
+        from services.search.semantic_cache import SemanticCache
 
         cache = SemanticCache(mock_redis)
 
@@ -45,7 +45,7 @@ class TestSemanticCacheInit:
 
     def test_init_custom_values(self, mock_redis):
         """Test initialization with custom values"""
-        from services.semantic_cache import SemanticCache
+        from services.search.semantic_cache import SemanticCache
 
         cache = SemanticCache(
             mock_redis, similarity_threshold=0.9, default_ttl=7200, max_cache_size=5000
@@ -237,7 +237,7 @@ class TestCosineSimilarity:
 
     def test_identical_vectors(self, cache_service):
         """Test similarity of identical vectors"""
-        from services.semantic_cache import SemanticCache
+        from services.search.semantic_cache import SemanticCache
 
         vec = np.array([1.0, 2.0, 3.0], dtype=np.float32)
         similarity = SemanticCache._cosine_similarity(vec, vec)
@@ -246,7 +246,7 @@ class TestCosineSimilarity:
 
     def test_orthogonal_vectors(self, cache_service):
         """Test similarity of orthogonal vectors"""
-        from services.semantic_cache import SemanticCache
+        from services.search.semantic_cache import SemanticCache
 
         vec1 = np.array([1.0, 0.0, 0.0], dtype=np.float32)
         vec2 = np.array([0.0, 1.0, 0.0], dtype=np.float32)
@@ -256,7 +256,7 @@ class TestCosineSimilarity:
 
     def test_opposite_vectors(self, cache_service):
         """Test similarity of opposite vectors"""
-        from services.semantic_cache import SemanticCache
+        from services.search.semantic_cache import SemanticCache
 
         vec1 = np.array([1.0, 2.0, 3.0], dtype=np.float32)
         vec2 = np.array([-1.0, -2.0, -3.0], dtype=np.float32)

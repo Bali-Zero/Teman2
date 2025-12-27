@@ -179,35 +179,35 @@ async def test_send_alert_all_levels(alert_service):
 
 def test_log_alert_critical(alert_service):
     """Test logging critical alerts"""
-    with patch("services.alert_service.logger") as mock_logger:
+    with patch("services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Critical Alert", "Critical message", AlertLevel.CRITICAL)
         mock_logger.critical.assert_called_once()
 
 
 def test_log_alert_error(alert_service):
     """Test logging error alerts"""
-    with patch("services.alert_service.logger") as mock_logger:
+    with patch("services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Error Alert", "Error message", AlertLevel.ERROR)
         mock_logger.error.assert_called_once()
 
 
 def test_log_alert_warning(alert_service):
     """Test logging warning alerts"""
-    with patch("services.alert_service.logger") as mock_logger:
+    with patch("services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Warning Alert", "Warning message", AlertLevel.WARNING)
         mock_logger.warning.assert_called_once()
 
 
 def test_log_alert_info(alert_service):
     """Test logging info alerts"""
-    with patch("services.alert_service.logger") as mock_logger:
+    with patch("services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Info Alert", "Info message", AlertLevel.INFO)
         mock_logger.info.assert_called_once()
 
 
 def test_log_alert_with_metadata(alert_service):
     """Test logging alerts with metadata"""
-    with patch("services.alert_service.logger") as mock_logger:
+    with patch("services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert(
             "Test Alert", "Test message", AlertLevel.INFO, metadata={"key": "value", "num": 123}
         )

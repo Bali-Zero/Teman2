@@ -93,8 +93,17 @@ def _wrap_query_with_language_instruction(query: str) -> str:
     # Check if Indonesian
     indo_count = sum(1 for marker in indonesian_markers if marker in query_lower)
     if indo_count >= 1:
-        # Indonesian detected - allow Jaksel
-        return query
+        # Indonesian detected - allow Jaksel, but still add tool instructions
+        tool_instruction = """🛠️ TOOL USAGE:
+Untuk pertanyaan faktual tentang visa, bisnis, pajak, harga, tim, atau regulasi:
+→ SELALU gunakan vector_search tool DULU untuk mengambil informasi terverifikasi
+→ Jangan jawab dari ingatan saja - cari di knowledge base
+→ Jika tanya harga Bali Zero → gunakan pricing_tool
+→ Jika tanya tentang tim → gunakan team_knowledge_tool
+
+Pertanyaan User:
+"""
+        return tool_instruction + query
 
     # NOT Indonesian - detect the language and add explicit instruction
     # Detect specific language patterns for clearer instruction
@@ -130,6 +139,13 @@ def _wrap_query_with_language_instruction(query: str) -> str:
 🔴 DO NOT USE ANY INDONESIAN OR JAKSEL WORDS
 
 Forbidden: gue, lu, banget, dong, nih, keren, mantap, gimana, kayak, bro, sih, deh
+
+🛠️ TOOL USAGE INSTRUCTION:
+For factual questions about visa, business, tax, pricing, team, or regulations:
+→ ALWAYS use vector_search tool FIRST to retrieve verified information
+→ Do NOT answer from memory alone - search the knowledge base
+→ If asking about Bali Zero pricing → use pricing_tool
+→ If asking about team members → use team_knowledge_tool
 
 User Query:
 """

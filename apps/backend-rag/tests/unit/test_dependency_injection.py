@@ -243,7 +243,7 @@ def test_get_auto_crm_lazy_initialization():
 
     mock_service = MagicMock()
     # AutoCRMService is imported from services, not defined in conversations module
-    with patch("services.auto_crm_service.AutoCRMService", return_value=mock_service):
+    with patch("services.crm.auto_crm_service.AutoCRMService", return_value=mock_service):
         result = get_auto_crm()
 
         assert result == mock_service

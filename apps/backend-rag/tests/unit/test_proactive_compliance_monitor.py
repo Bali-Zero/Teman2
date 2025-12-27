@@ -12,7 +12,7 @@ import pytest
 @pytest.fixture
 def compliance_monitor():
     """Create ProactiveComplianceMonitor instance"""
-    from services.proactive_compliance_monitor import ProactiveComplianceMonitor
+    from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
 
     # ProactiveComplianceMonitor doesn't use dependency injection in __init__
     # It gets services via get_search_service(), get_memory_service(), get_alert_service()
@@ -31,7 +31,7 @@ def test_init(compliance_monitor):
 
 def test_init_custom_interval():
     """Test initialization and setting custom check interval"""
-    from services.proactive_compliance_monitor import ProactiveComplianceMonitor
+    from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
 
     monitor = ProactiveComplianceMonitor()
     # Set interval after initialization

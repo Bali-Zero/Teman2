@@ -129,14 +129,14 @@ class VectorSearchTool(BaseTool):
             # Execute Search across all targets
             for target_col in target_collections_list:
                 try:
-                    # Use standard search
+                    # Use standard search (metadata_filter not supported by search_with_reranking)
                     if hasattr(self.retriever, "search_with_reranking"):
                         res = await self.retriever.search_with_reranking(
-                            query=query, user_level=1, limit=3, collection_override=target_col, metadata_filter=filters
+                            query=query, user_level=1, limit=3, collection_override=target_col
                         )
                     else:
                         res = await self.retriever.search(
-                            query=query, user_level=1, limit=3, collection_override=target_col, metadata_filter=filters
+                            query=query, user_level=1, limit=3, collection_override=target_col
                         )
 
                     for chunk in res.get("results", []):

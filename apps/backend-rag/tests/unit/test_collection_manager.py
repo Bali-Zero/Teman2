@@ -23,7 +23,7 @@ class TestCollectionManagerInit:
 
     def test_init_default(self):
         """Test default initialization"""
-        with patch("services.collection_manager.settings") as mock_settings:
+        with patch("services.ingestion.collection_manager.settings") as mock_settings:
             mock_settings.qdrant_url = "http://localhost:6333"
 
             manager = CollectionManager()
@@ -65,7 +65,7 @@ class TestCollectionManagerGetCollection:
         """Test getting collection with alias"""
         manager = CollectionManager()
 
-        with patch("services.collection_manager.QdrantClient") as mock_client_class:
+        with patch("services.ingestion.collection_manager.QdrantClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -80,7 +80,7 @@ class TestCollectionManagerGetCollection:
         manager = CollectionManager()
 
         with patch(
-            "services.collection_manager.QdrantClient", side_effect=Exception("Connection error")
+            "services.ingestion.collection_manager.QdrantClient", side_effect=Exception("Connection error")
         ):
             result = manager.get_collection("visa_oracle")
 
@@ -90,7 +90,7 @@ class TestCollectionManagerGetCollection:
         """Test getting collection by direct name"""
         manager = CollectionManager()
 
-        with patch("services.collection_manager.QdrantClient") as mock_client_class:
+        with patch("services.ingestion.collection_manager.QdrantClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -118,7 +118,7 @@ class TestCollectionManagerListCollections:
         """Test getting all collection clients"""
         manager = CollectionManager()
 
-        with patch("services.collection_manager.QdrantClient") as mock_client_class:
+        with patch("services.ingestion.collection_manager.QdrantClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 

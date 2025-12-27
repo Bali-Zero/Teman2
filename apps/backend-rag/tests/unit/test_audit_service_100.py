@@ -12,7 +12,7 @@ import pytest
 @pytest.fixture(autouse=True)
 def mock_settings():
     """Mock settings for all tests"""
-    with patch("services.audit_service.settings") as mock:
+    with patch("services.monitoring.audit_service.settings") as mock:
         mock.database_url = "postgresql://user:pass@localhost/db"
         yield mock
 
@@ -43,7 +43,7 @@ class TestAuditService:
         """Test initialization without database URL"""
         from services.monitoring.audit_service import AuditService
 
-        with patch("services.audit_service.settings") as mock:
+        with patch("services.monitoring.audit_service.settings") as mock:
             mock.database_url = None
             service = AuditService()
 
@@ -57,7 +57,7 @@ class TestAuditService:
         service = AuditService()
 
         with patch(
-            "services.audit_service.asyncpg.create_pool", new_callable=AsyncMock
+            "services.monitoring.audit_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock_create:
             mock_pool = AsyncMock()
             mock_create.return_value = mock_pool
@@ -72,7 +72,7 @@ class TestAuditService:
         """Test connect when service is disabled"""
         from services.monitoring.audit_service import AuditService
 
-        with patch("services.audit_service.settings") as mock:
+        with patch("services.monitoring.audit_service.settings") as mock:
             mock.database_url = None
             service = AuditService()
 
@@ -87,7 +87,7 @@ class TestAuditService:
 
         service = AuditService()
 
-        with patch("services.audit_service.asyncpg.create_pool") as mock_create:
+        with patch("services.monitoring.audit_service.asyncpg.create_pool") as mock_create:
             mock_create.side_effect = Exception("Connection failed")
 
             await service.connect()
@@ -158,7 +158,7 @@ class TestAuditService:
         """Test auth event logging when disabled"""
         from services.monitoring.audit_service import AuditService
 
-        with patch("services.audit_service.settings") as mock:
+        with patch("services.monitoring.audit_service.settings") as mock:
             mock.database_url = None
             service = AuditService()
 
@@ -249,7 +249,7 @@ class TestAuditService:
         """Test system event logging when disabled"""
         from services.monitoring.audit_service import AuditService
 
-        with patch("services.audit_service.settings") as mock:
+        with patch("services.monitoring.audit_service.settings") as mock:
             mock.database_url = None
             service = AuditService()
 

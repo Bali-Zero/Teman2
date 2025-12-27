@@ -48,6 +48,9 @@ def parse_native_function_call(function_call_part: Any) -> ToolCall | None:
 
     try:
         fc = function_call_part.function_call
+        # fc can be None even if the attribute exists
+        if fc is None:
+            return None
         tool_name = fc.name
         arguments = dict(fc.args) if fc.args else {}
 

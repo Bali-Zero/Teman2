@@ -13,7 +13,7 @@ class TestAuditServiceInit:
 
     def test_init_with_url(self):
         """Test initialization with database URL"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             from services.monitoring.audit_service import AuditService
@@ -26,7 +26,7 @@ class TestAuditServiceInit:
 
     def test_init_with_settings(self):
         """Test initialization with settings URL"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://settings"
 
             from services.monitoring.audit_service import AuditService
@@ -38,7 +38,7 @@ class TestAuditServiceInit:
 
     def test_init_without_url(self):
         """Test initialization without database URL"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
             from services.monitoring.audit_service import AuditService
@@ -54,11 +54,11 @@ class TestConnect:
     @pytest.mark.asyncio
     async def test_connect_success(self):
         """Test successful connection"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             with patch(
-                "services.audit_service.asyncpg.create_pool", new_callable=AsyncMock
+                "services.monitoring.audit_service.asyncpg.create_pool", new_callable=AsyncMock
             ) as mock_pool:
                 mock_pool.return_value = MagicMock()
 
@@ -73,7 +73,7 @@ class TestConnect:
     @pytest.mark.asyncio
     async def test_connect_disabled(self):
         """Test connect when disabled"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
             from services.monitoring.audit_service import AuditService
@@ -86,11 +86,11 @@ class TestConnect:
     @pytest.mark.asyncio
     async def test_connect_failure(self):
         """Test connection failure"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://invalid"
 
             with patch(
-                "services.audit_service.asyncpg.create_pool", new_callable=AsyncMock
+                "services.monitoring.audit_service.asyncpg.create_pool", new_callable=AsyncMock
             ) as mock_pool:
                 mock_pool.side_effect = Exception("Connection failed")
 
@@ -108,7 +108,7 @@ class TestClose:
     @pytest.mark.asyncio
     async def test_close_with_pool(self):
         """Test closing with pool"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             from services.monitoring.audit_service import AuditService
@@ -123,7 +123,7 @@ class TestClose:
     @pytest.mark.asyncio
     async def test_close_without_pool(self):
         """Test closing without pool"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             from services.monitoring.audit_service import AuditService
@@ -139,7 +139,7 @@ class TestLogAuthEvent:
 
     @pytest.fixture
     def service(self):
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             from services.monitoring.audit_service import AuditService
@@ -197,7 +197,7 @@ class TestLogAuthEvent:
     @pytest.mark.asyncio
     async def test_log_auth_event_disabled(self):
         """Test logging when disabled"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
             from services.monitoring.audit_service import AuditService
@@ -233,7 +233,7 @@ class TestLogSystemEvent:
 
     @pytest.fixture
     def service(self):
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             from services.monitoring.audit_service import AuditService
@@ -282,7 +282,7 @@ class TestLogSystemEvent:
     @pytest.mark.asyncio
     async def test_log_system_event_disabled(self):
         """Test logging when disabled"""
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
 
             from services.monitoring.audit_service import AuditService
@@ -323,7 +323,7 @@ class TestGetAuditService:
         # Reset singleton
         audit_service._audit_service = None
 
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             result = audit_service.get_audit_service()
@@ -338,7 +338,7 @@ class TestGetAuditService:
         # Reset singleton
         audit_service._audit_service = None
 
-        with patch("services.audit_service.settings") as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
 
             svc1 = audit_service.get_audit_service()

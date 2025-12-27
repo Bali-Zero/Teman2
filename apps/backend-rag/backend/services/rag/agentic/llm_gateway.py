@@ -306,6 +306,17 @@ class LLMGateway:
 
                 config_kwargs["tools"] = [types.Tool(function_declarations=function_declarations)]
 
+                # CRITICAL: Add tool_config to encourage function calling
+                # Mode "AUTO" lets model decide, but with tools registered it will use them
+                # FunctionCallingConfig ensures the model knows it should use tools
+                try:
+                    config_kwargs["tool_config"] = types.ToolConfig(
+                        function_calling_config=types.FunctionCallingConfig(mode="AUTO")
+                    )
+                    logger.debug(f"🔧 [LLMGateway] Tool config set with {len(function_declarations)} functions")
+                except (AttributeError, TypeError) as e:
+                    logger.warning(f"⚠️ [LLMGateway] Could not set tool_config: {e}")
+
             return types.GenerateContentConfig(**config_kwargs)
 
         # Helper to call model
@@ -331,12 +342,18 @@ class LLMGateway:
                 # Extract text, handling function call responses
                 try:
                     text_content = response.text if hasattr(response, "text") else ""
+                    # text_content can be None if Gemini returns a function call
+                    if text_content is None:
+                        text_content = ""
+                        set_span_attribute("has_function_call", "true")
+                    else:
+                        set_span_attribute("has_function_call", "false")
                     set_span_attribute("response_length", len(text_content))
-                    set_span_attribute("has_function_call", "false")
                 except ValueError:
                     # Function call detected - reasoning.py will extract it from response_obj
                     text_content = ""
                     set_span_attribute("has_function_call", "true")
+                    set_span_attribute("response_length", 0)
 
                 set_span_status("ok")
                 return text_content, response
