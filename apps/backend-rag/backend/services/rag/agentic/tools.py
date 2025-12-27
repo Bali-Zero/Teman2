@@ -35,7 +35,7 @@ class VectorSearchTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Search the knowledge base. Available collections:\n- 'visa_oracle' (PREFERRED for visas): KITAS, KITAP, E33G, E28A, immigration - use this FIRST for visa questions.\n- 'training_conversations': Training data with detailed pricing and procedures.\n- 'legal_unified': Laws, regulations, tax codes.\n- 'kbli_unified': Business classification codes (KBLI)."
+        return "Search the knowledge base. Available collections:\n- 'visa_oracle' (PREFERRED for visas): KITAS, KITAP, E33G, E28A, immigration - use this FIRST for visa questions.\n- 'bali_zero_pricing': Official Bali Zero service prices - use this for pricing/cost questions.\n- 'training_conversations': Training data with detailed pricing and procedures.\n- 'legal_unified': Laws, regulations, tax codes.\n- 'kbli_unified': Business classification codes (KBLI)."
 
     @property
     def parameters_schema(self) -> dict:
@@ -47,11 +47,12 @@ class VectorSearchTool(BaseTool):
                     "type": "string",
                     "enum": [
                         "visa_oracle",
+                        "bali_zero_pricing",
                         "training_conversations",
                         "legal_unified",
                         "kbli_unified",
                     ],
-                    "description": "Collection to search. Use 'visa_oracle' for visas/immigration, 'training_conversations' for detailed procedures/pricing, 'legal_unified' for laws, 'kbli_unified' for business codes.",
+                    "description": "Collection to search. Use 'visa_oracle' for visas/immigration, 'bali_zero_pricing' for pricing/costs, 'training_conversations' for procedures, 'legal_unified' for laws, 'kbli_unified' for business codes.",
                 },
                 "top_k": {
                     "type": "integer",
@@ -97,6 +98,10 @@ class VectorSearchTool(BaseTool):
             company_pattern = r"\b(company|pt pma|pma|business|license|oss|kbli|sector|setup|incorporation|sharia)\b"
             is_company = bool(re.search(company_pattern, query_lower))
 
+            # PRICING (Dec 2025 FIX: Route pricing queries to bali_zero_pricing collection)
+            pricing_pattern = r"\b(price|cost|charge|fee|how much|pricing|rate|expensive|cheap|payment|pay|harga|biaya|tarif|berapa|costa|quanto|prezzo|costo|tariffa|pagamento)\b"
+            is_pricing = bool(re.search(pricing_pattern, query_lower))
+
             # TAX / LEGAL / REAL ESTATE
             # These primarily rely on legal_unified, but training helps for explanation
 
@@ -116,6 +121,9 @@ class VectorSearchTool(BaseTool):
                 target_collections.add("visa_oracle")
             if is_company:
                 target_collections.add("kbli_unified")
+            if is_pricing:
+                target_collections.add("bali_zero_pricing")
+                logger.info("💰 [Federated Search] Pricing query detected → adding bali_zero_pricing")
 
             # Convert to list
             target_collections_list = list(target_collections)

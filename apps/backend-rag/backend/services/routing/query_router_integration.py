@@ -116,15 +116,13 @@ class QueryRouterIntegration:
         # Detect pricing query
         is_pricing = self.is_pricing_query(query)
         if is_pricing:
-            # FALLBACK: bali_zero_pricing does not exist in Prod yet.
-            # Route to legal_unified_hybrid + visa_oracle (via federated search)
-            # We set primary explicitly to legal_unified_hybrid to ensure validity.
-            collection_name = "legal_unified_hybrid"
-            logger.info("💰 PRICING QUERY DETECTED → Routing to legal_unified_hybrid (Backup for bali_zero_pricing)")
+            # Route to bali_zero_pricing (29 docs) with legal_unified_hybrid as fallback
+            collection_name = "bali_zero_pricing"
+            logger.info("💰 PRICING QUERY DETECTED → Routing to bali_zero_pricing (primary)")
             return {
                 "collection_name": collection_name,
-                "collections": ["legal_unified_hybrid", "visa_oracle"], # Expanded context
-                "confidence": 0.8, # Lower confidence since it's a fallback
+                "collections": ["bali_zero_pricing", "legal_unified_hybrid"],
+                "confidence": 0.95,
                 "is_pricing": True,
             }
 
