@@ -12,7 +12,7 @@ class TestMemoryFactExtractor:
     @pytest.fixture
     def extractor(self):
         """Create MemoryFactExtractor instance"""
-        from services.memory_fact_extractor import MemoryFactExtractor
+        from services.memory.memory_fact_extractor import MemoryFactExtractor
 
         return MemoryFactExtractor()
 
