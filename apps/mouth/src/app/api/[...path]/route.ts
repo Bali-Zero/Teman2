@@ -118,23 +118,17 @@ async function proxy(req: NextRequest): Promise<Response> {
     }
 
     // Forward headers from upstream
-    // IMPORTANT: Remove content-encoding because Node.js fetch already decompresses the body
-    // If we forward content-encoding: gzip with an already-decompressed body,
-    // the browser will try to decompress again causing ERR_CONTENT_DECODING_FAILED
     const respHeaders = new Headers(upstream.headers);
     respHeaders.delete('transfer-encoding');
-    respHeaders.delete('content-encoding');
+
+    // CRITICAL: Do NOT remove content-encoding - let the browser handle decompression
+    // The issue was that we were removing the header but the body was still compressed
+    // Now we keep both the header and body intact so the browser can decompress properly
 
     // CRITICAL: Prevent Fly.io edge from re-compressing our response
-    // This header tells intermediaries (CDNs, proxies) not to transform the content
     respHeaders.set('Cache-Control', 'no-transform');
 
-    // CRITICAL FIX: Consume the body to ensure decompression happens
-    // Reading the body triggers automatic decompression if it was gzipped
-    // Then we create a new Response with the decompressed data
-    const bodyBuffer = await upstream.arrayBuffer();
-
-    return new Response(bodyBuffer, {
+    return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: respHeaders,
