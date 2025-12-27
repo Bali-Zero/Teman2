@@ -866,7 +866,7 @@ async def test_run_autonomous_research_with_services():
     mock_request.app.state = mock_state
 
     with patch(
-        "services.autonomous_research_service.AutonomousResearchService",
+        "services.misc.autonomous_research_service.AutonomousResearchService",
         return_value=mock_research_service,
     ):
         result = await run_autonomous_research(
@@ -906,7 +906,7 @@ async def test_run_autonomous_research_different_depths():
 
     for depth in ["quick", "standard", "deep"]:
         with patch(
-            "services.autonomous_research_service.AutonomousResearchService",
+            "services.misc.autonomous_research_service.AutonomousResearchService",
             return_value=mock_research_service,
         ):
             result = await run_autonomous_research(
@@ -932,7 +932,7 @@ async def test_run_autonomous_research_exception():
     mock_research_service.research = AsyncMock(side_effect=Exception("Research failed"))
 
     with patch(
-        "services.autonomous_research_service.AutonomousResearchService",
+        "services.misc.autonomous_research_service.AutonomousResearchService",
         return_value=mock_research_service,
     ):
         with pytest.raises(HTTPException) as exc_info:

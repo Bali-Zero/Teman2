@@ -18,7 +18,7 @@ if str(backend_path) not in sys.path:
 class TestPersonalityService:
     """Unit tests for PersonalityService"""
 
-    @patch("backend.services.personality_service.TEAM_MEMBERS", [])
+    @patch("backend.services.misc.personality_service.TEAM_MEMBERS", [])
     def test_personality_service_init(self):
         """Test PersonalityService initialization"""
         from backend.services.personality_service import PersonalityService
@@ -27,7 +27,7 @@ class TestPersonalityService:
         assert service is not None
         assert hasattr(service, "personality_profiles")
 
-    @patch("backend.services.personality_service.TEAM_MEMBERS", [])
+    @patch("backend.services.misc.personality_service.TEAM_MEMBERS", [])
     def test_personality_profiles(self):
         """Test personality profiles exist"""
         from backend.services.personality_service import PersonalityService
@@ -36,7 +36,7 @@ class TestPersonalityService:
         assert isinstance(service.personality_profiles, dict)
         assert len(service.personality_profiles) > 0
 
-    @patch("backend.services.personality_service.TEAM_MEMBERS", [])
+    @patch("backend.services.misc.personality_service.TEAM_MEMBERS", [])
     def test_jaksel_personality(self):
         """Test Jaksel personality profile"""
         from backend.services.personality_service import PersonalityService

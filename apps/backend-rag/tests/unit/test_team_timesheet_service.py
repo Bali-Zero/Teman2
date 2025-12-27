@@ -147,7 +147,7 @@ async def test_clock_in_notifies_admin(timesheet_service, mock_db_pool):
     mock_conn.fetchrow = AsyncMock(return_value=None)
     mock_db_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
 
-    with patch("services.notification_hub.notification_hub") as mock_hub:
+    with patch("services.compliance.notifications.notification_hub") as mock_hub:
         mock_hub.send = AsyncMock()
 
         await timesheet_service.clock_in("user123", "user@example.com")
@@ -593,7 +593,7 @@ async def test_clock_in_notification_failure(timesheet_service, mock_db_pool):
     mock_db_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
 
     # Patch notification_hub import inside the method
-    with patch("services.notification_hub.notification_hub") as mock_hub:
+    with patch("services.compliance.notifications.notification_hub") as mock_hub:
         mock_hub.send = AsyncMock(side_effect=Exception("Notification failed"))
 
         # Should still succeed even if notification fails
@@ -675,7 +675,7 @@ async def test_clock_out_notification_failure(timesheet_service, mock_db_pool):
     mock_db_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
 
     # Patch notification_hub import inside the method
-    with patch("services.notification_hub.notification_hub") as mock_hub:
+    with patch("services.compliance.notifications.notification_hub") as mock_hub:
         mock_hub.send = AsyncMock(side_effect=Exception("Notification failed"))
 
         # Should still succeed even if notification fails

@@ -23,7 +23,7 @@ class TestFollowupServiceInit:
 
     def test_init_with_ai_client(self):
         """Test initialization with AI client"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client_class:
+        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
 
@@ -33,7 +33,7 @@ class TestFollowupServiceInit:
 
     def test_init_without_ai_client(self):
         """Test initialization when AI client fails"""
-        with patch("services.followup_service.ZantaraAIClient", side_effect=Exception("AI error")):
+        with patch("services.misc.followup_service.ZantaraAIClient", side_effect=Exception("AI error")):
             service = FollowupService()
 
             assert service.zantara_client is None

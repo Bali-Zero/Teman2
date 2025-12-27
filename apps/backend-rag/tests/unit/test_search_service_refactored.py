@@ -122,7 +122,7 @@ class TestSearchServiceRefactored:
 
     def test_initialization_without_dependencies(self):
         """Test SearchService creates dependencies if not provided"""
-        with patch("services.search_service.settings") as mock_settings:
+        with patch("services.search.search_service.settings") as mock_settings:
             mock_settings.qdrant_url = "http://test:6333"
             with patch("core.embeddings.create_embeddings_generator") as mock_create:
                 mock_embedder = Mock()
