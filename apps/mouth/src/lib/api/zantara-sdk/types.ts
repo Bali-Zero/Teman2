@@ -4,9 +4,10 @@
  */
 
 // ============================================================================
-// Cell-Giant Architecture Types
+// Legacy Types (DEPRECATED - kept for backward compatibility)
 // ============================================================================
 
+/** @deprecated Use AgenticRAGQueryRequest/Response instead */
 export type CellGiantPhase = 'giant' | 'cell' | 'zantara';
 
 export type PhaseStatus = 'started' | 'complete';
@@ -467,4 +468,5 @@ export interface PaginatedResponse<T> {
   page_size: number;
   has_more: boolean;
 }
+
 

@@ -160,7 +160,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
     );
   };
 
-  // Cell-Giant Phase Visualizer
+  // Phase Visualizer (deprecated - kept for backward compatibility)
   const PhaseVisualizer = () => {
     if (!currentPhaseName) return null;
     
@@ -333,7 +333,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
               )}
             </div>
 
-            {/* Phase Visualizer (Only if in Cell-Giant mode) */}
+            {/* Phase Visualizer (deprecated - kept for backward compatibility) */}
             {currentPhaseName && <PhaseVisualizer />}
 
             {/* Multi-color Progress Bar (Fallback if no phases) */}

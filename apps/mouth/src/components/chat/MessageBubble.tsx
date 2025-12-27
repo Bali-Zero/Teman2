@@ -393,7 +393,7 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
                               <span className="text-emerald-400">Tool Completed</span>
                             )}
 
-                            {/* CELL-GIANT REASONING STEPS */}
+                            {/* Reasoning Steps (deprecated Cell-Giant phases - kept for backward compatibility) */}
                             {step.type === 'reasoning_step' && (
                               <div className="flex flex-col gap-1 mt-1 mb-2">
                                 <div className="flex items-center gap-1.5 font-medium">

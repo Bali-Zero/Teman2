@@ -125,6 +125,10 @@ async function proxy(req: NextRequest): Promise<Response> {
     respHeaders.delete('transfer-encoding');
     respHeaders.delete('content-encoding');
 
+    // CRITICAL: Prevent Fly.io edge from re-compressing our response
+    // This header tells intermediaries (CDNs, proxies) not to transform the content
+    respHeaders.set('Cache-Control', 'no-transform');
+
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,

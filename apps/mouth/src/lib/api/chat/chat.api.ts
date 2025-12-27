@@ -5,39 +5,10 @@ import type { AgenticQueryResponse } from './chat.types';
 /**
  * Chat/Streaming API methods
  *
- * Supports two modes:
- * - Standard: Uses agentic-rag with tool-based reasoning
- * - Cell-Giant: Uses Giant (deep reasoning) + Cell (corrections) + Zantara (synthesis)
+ * Uses Zantara AI v2.0 - Single LLM architecture with RAG
  */
 export class ChatApi {
   constructor(private client: ApiClientBase) {}
-
-  /**
-   * Detect if query should use Cell-Giant mode.
-   * Cell-Giant is better for complex business questions about Indonesia.
-   */
-  private shouldUseCellGiant(query: string): boolean {
-    const cellGiantPatterns = [
-      // Company setup
-      /\b(pt\s*pma|pma|penanaman\s*modal|foreign\s*company|societa)\b/i,
-      // Visa & Immigration
-      /\b(kitas|kitap|visa|e33g|e31a|digital\s*nomad|work\s*permit)\b/i,
-      // Business types
-      /\b(ghost\s*kitchen|restaurant|f&b|cafe|bar)\b/i,
-      // Legal & Compliance
-      /\b(kbli|nib|oss|izin|permit|license|legale|compliance)\b/i,
-      // Tax
-      /\b(pajak|tax|pph|ppn|npwp|fiscal)\b/i,
-      // Capital & Investment
-      /\b(capital|modal|investimento|miliardi?|billion)\b/i,
-      // Property
-      /\b(property|hak\s*pakai|lease|sewa|tanah)\b/i,
-      // Employment
-      /\b(karyawan|employee|pkwt|bpjs|hiring)\b/i,
-    ];
-
-    return cellGiantPatterns.some(pattern => pattern.test(query));
-  }
 
   async sendMessage(
     message: string,
@@ -63,7 +34,7 @@ export class ChatApi {
     };
   }
 
-  // SSE streaming via backend `/api/agentic-rag/stream` or `/api/agentic-rag/stream/cell-giant`
+  // SSE streaming via backend `/api/agentic-rag/stream` (Zantara AI v2.0)
   async sendMessageStreaming(
     message: string,
     conversationId: string | undefined,
@@ -91,22 +62,16 @@ export class ChatApi {
     correlationId?: string,
     idleTimeoutMs: number = 60000, // 60s idle timeout (reset on data)
     maxTotalTimeMs: number = 600000, // 10min max total time
-    useCellGiant?: boolean | 'auto' // 'auto' = detect based on query
+    _useCellGiant?: boolean | 'auto' // DEPRECATED: No longer used, kept for backward compatibility
   ): Promise<void> {
-    // Determine if we should use Cell-Giant mode
-    const cellGiantMode = useCellGiant === true ||
-      (useCellGiant === 'auto' && this.shouldUseCellGiant(message));
-
-    const endpoint = cellGiantMode
-      ? '/api/agentic-rag/stream/cell-giant'
-      : '/api/agentic-rag/stream';
+    // Always use standard Zantara AI endpoint (v2.0)
+    const endpoint = '/api/agentic-rag/stream';
 
     console.log('ChatApi: sendMessageStreaming called', {
       correlationId,
       timeoutMs,
       idleTimeoutMs,
       maxTotalTimeMs,
-      cellGiantMode,
       endpoint
     });
     const controller = new AbortController();
@@ -221,7 +186,7 @@ export class ChatApi {
 
       const baseUrl = this.client.getBaseUrl();
       const fullUrl = `${baseUrl}${endpoint}`;
-      console.log('ChatApi: about to fetch', { baseUrl, url: fullUrl, cellGiantMode });
+      console.log('ChatApi: about to fetch', { baseUrl, url: fullUrl });
       const response = await fetch(fullUrl, {
         method: 'POST',
         headers: streamHeaders,
@@ -320,7 +285,7 @@ export class ChatApi {
 
             if (!isRecord(data) || typeof data.type !== 'string') continue;
 
-            // Handle Cell-Giant reasoning events (Rich)
+            // Handle reasoning events
             if (data.type === 'reasoning_step') {
               resetIdleTimeout();
               if (

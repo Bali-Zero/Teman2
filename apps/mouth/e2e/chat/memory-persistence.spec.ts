@@ -75,28 +75,6 @@ test.describe('Memory Persistence', () => {
   }
 
   test.describe('Memory Context Fetching', () => {
-    // TODO: Re-enable when useMemoryContext hook is integrated in chat page
-    // The hook exists but is not yet used in src/app/(workspace)/chat/page.tsx
-    test.skip('should fetch memory context on authenticated page load', async ({ page }) => {
-      await setupAuthenticatedUser(page);
-
-      // Track memory context API call
-      let memoryContextCalled = false;
-
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        memoryContextCalled = true;
-        await route.fulfill({ json: mockMemoryContext });
-      });
-
-      await page.goto('/chat');
-
-      // Wait for page to load and API calls to complete
-      await page.waitForLoadState('networkidle');
-
-      // Verify memory context was fetched
-      expect(memoryContextCalled).toBe(true);
-    });
-
     test('should handle empty memory context for new users', async ({ page }) => {
       await setupAuthenticatedUser(page);
 
@@ -229,90 +207,6 @@ test.describe('Memory Persistence', () => {
   });
 
   test.describe('Memory Persistence Across Sessions', () => {
-    // TODO: Re-enable when useMemoryContext hook is integrated in chat page
-    test.skip('should preserve memory context after page refresh', async ({ page }) => {
-      await setupAuthenticatedUser(page);
-
-      let memoryFetchCount = 0;
-
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        memoryFetchCount++;
-        await route.fulfill({ json: mockMemoryContext });
-      });
-
-      // First page load
-      await page.goto('/chat');
-      await page.waitForLoadState('networkidle');
-      expect(memoryFetchCount).toBe(1);
-
-      // Refresh page
-      await page.reload();
-      await page.waitForLoadState('networkidle');
-
-      // Memory should be fetched again (same context)
-      expect(memoryFetchCount).toBe(2);
-    });
-
-    // TODO: Re-enable when message saving integration is complete
-    test.skip('should accumulate facts from new conversations', async ({ page }) => {
-      await setupAuthenticatedUser(page);
-
-      // Initial memory with 3 facts
-      let currentFacts = ['Name: Roberto', 'Location: Torino', 'Profession: Lawyer'];
-
-      await page.route('**/api/bali-zero/conversations/memory/context', async (route) => {
-        await route.fulfill({
-          json: {
-            success: true,
-            user_id: testUser.email,
-            profile_facts: currentFacts,
-            counters: { conversations: currentFacts.length },
-            has_data: true,
-          },
-        });
-      });
-
-      // Mock chat that will extract new fact (Age: 45)
-      await page.route('**/api/agentic-rag/stream', async (route) => {
-        const chunks = [
-          'data: {"type": "token", "content": "Capisco, hai 45 anni. "}\n\n',
-          'data: {"type": "token", "content": "Ottima esperienza per aprire uno studio!"}\n\n',
-          'data: [DONE]\n\n',
-        ];
-        await route.fulfill({
-          status: 200,
-          contentType: 'text/event-stream',
-          body: chunks.join(''),
-        });
-      });
-
-      let savedMessages: unknown[] = [];
-      await page.route('**/api/bali-zero/conversations/save', async (route) => {
-        const request = route.request();
-        const body = JSON.parse(request.postData() || '{}');
-        savedMessages = body.messages || [];
-
-        // After save, update facts (simulating backend extraction)
-        currentFacts = [...currentFacts, 'Age: 45'];
-
-        await route.fulfill({
-          json: { success: true, conversation_id: 1, messages_saved: savedMessages.length },
-        });
-      });
-
-      await page.goto('/chat');
-      await page.waitForLoadState('networkidle');
-
-      // Send message with new personal info
-      await page.fill('textarea[placeholder="Type your message..."]', 'Ho 45 anni');
-      await page.keyboard.press('Enter');
-
-      // Wait for response
-      await expect(page.getByText(/Capisco, hai 45 anni/)).toBeVisible({ timeout: 10000 });
-
-      // Verify message was saved
-      expect(savedMessages.length).toBeGreaterThan(0);
-    });
   });
 
   test.describe('Memory Context Security', () => {

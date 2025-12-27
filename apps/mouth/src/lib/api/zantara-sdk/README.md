@@ -24,33 +24,28 @@ const sdk = createZantaraSDK({
 });
 ```
 
-### Use Cell-Giant Streaming
+### Use Agentic RAG Streaming (Zantara AI v2.0)
 
 ```typescript
-import { useCellGiantStream } from '@/hooks/useCellGiantStream';
+import { useChat } from '@/hooks/useChat';
 
 function ChatComponent() {
-  const { stream, tokens, phase, isStreaming, metadata } = useCellGiantStream(
-    'https://api.zantara.com',
-    'your-api-key'
-  );
+  const { sendMessage, isStreaming, response } = useChat();
 
   const handleQuery = async () => {
-    await stream({
-      query: 'How to set up PT PMA?',
-      user_id: 'user123',
-    });
+    await sendMessage('How to set up PT PMA?');
   };
 
   return (
     <div>
-      {phase && <div>Phase: {phase}</div>}
-      {tokens && <div>{tokens}</div>}
-      {metadata && <div>Quality: {metadata.giant_quality_score}</div>}
+      {isStreaming && <div>Zantara AI is thinking...</div>}
+      {response && <div>{response}</div>}
     </div>
   );
 }
 ```
+
+**Note**: Zantara AI v2.0 uses a single-LLM architecture powered by Gemini 3 Flash.
 
 ### Use Memory Components
 
@@ -168,10 +163,7 @@ function PricingPage() {
 
 ### SDK Methods
 
-#### Cell-Giant
-- `queryCellGiant(request: CellGiantQueryRequest): Promise<CellGiantQueryResponse>`
-
-#### Agentic RAG
+#### Agentic RAG (Zantara AI)
 - `queryAgenticRAG(request: AgenticRAGQueryRequest): Promise<AgenticRAGQueryResponse>`
 
 #### Memory
@@ -213,20 +205,8 @@ function PricingPage() {
 
 ## React Hooks
 
-### `useCellGiantStream(baseUrl, apiKey)`
-Returns:
-- `stream(request)` - Start streaming query
-- `stop()` - Stop streaming
-- `reset()` - Reset state
-- `tokens` - Accumulated response text
-- `phase` - Current phase (giant/cell/zantara)
-- `phaseStatus` - Phase status (started/complete)
-- `metadata` - Pipeline metadata
-- `isStreaming` - Streaming status
-- `isComplete` - Completion status
-- `error` - Error message
-
 ### `useAgenticRAGStream(baseUrl, apiKey)`
+The primary hook for streaming Zantara AI responses.
 Returns:
 - `stream(request)` - Start streaming query
 - `stop()` - Stop streaming
@@ -268,7 +248,6 @@ Returns:
 
 All types are exported from `@/lib/api/zantara-sdk/types`. Key types include:
 
-- `CellGiantQueryRequest`, `CellGiantQueryResponse`
 - `AgenticRAGQueryRequest`, `AgenticRAGQueryResponse`
 - `UserMemory`, `CollectiveMemory`, `EpisodicEvent`
 - `ClientJourney`, `JourneyProgress`, `JourneyStep`
@@ -280,4 +259,5 @@ All types are exported from `@/lib/api/zantara-sdk/types`. Key types include:
 ## Examples
 
 See the component files for complete implementation examples. All components are fully typed and ready to use.
+
 

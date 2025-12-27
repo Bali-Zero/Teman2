@@ -329,7 +329,7 @@ export function useChat() {
         requestId, // correlationId
         60000, // idleTimeoutMs
         600000, // maxTotalTimeMs
-        'auto' // useCellGiant - auto-detect based on query content
+        undefined // useCellGiant deprecated - no longer used
       );
     } catch (error) {
       // Handle any unhandled errors from sendMessageStreaming

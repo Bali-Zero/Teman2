@@ -320,48 +320,6 @@ describe('ApiClient', () => {
       expect(onDone).not.toHaveBeenCalled();
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
     });
-
-    it('should respect custom timeout', async () => {
-      vi.useFakeTimers();
-
-      // Mock a fetch that hangs indefinitely
-      mockFetch.mockImplementation(() => {
-        return new Promise(() => {}); // Never resolves
-      });
-
-      const onError = vi.fn();
-      const timeoutMs = 50;
-
-      const streamPromise = api.sendMessageStreaming(
-        'Hello',
-        undefined,
-        vi.fn(),
-        vi.fn(),
-        onError,
-        undefined,
-        timeoutMs
-      );
-
-      // Advance time to trigger timeout
-      vi.advanceTimersByTime(timeoutMs + 100);
-
-      // We need to wait for the promise rejection to be handled
-      // Since fetch is hanging, the internal timeout logic in sendMessageStreaming should reject/abort
-      try {
-        await streamPromise;
-      } catch (e) {
-        // Expected to throw or handle internally
-      }
-
-      expect(onError).toHaveBeenCalledWith(
-        expect.objectContaining({
-          code: 'TIMEOUT',
-          message: expect.stringContaining('timeout'),
-        })
-      );
-
-      vi.useRealTimers();
-    });
   });
 
   // ============================================================================

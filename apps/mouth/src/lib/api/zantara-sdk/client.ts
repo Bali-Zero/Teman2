@@ -97,19 +97,14 @@ export class ZantaraSDK {
   }
 
   // ============================================================================
-  // Cell-Giant Architecture
+  // Legacy Methods (DEPRECATED)
   // ============================================================================
 
+  /** @deprecated Use queryAgenticRAG() instead */
   async queryCellGiant(
     request: CellGiantQueryRequest
   ): Promise<CellGiantQueryResponse> {
-    return this.request<CellGiantQueryResponse>(
-      '/api/agentic-rag/query/cell-giant',
-      {
-        method: 'POST',
-        body: JSON.stringify(request),
-      }
-    );
+    return this.queryAgenticRAG(request as unknown as AgenticRAGQueryRequest) as Promise<CellGiantQueryResponse>;
   }
 
   // ============================================================================
@@ -373,4 +368,5 @@ export class ZantaraSDK {
 export function createZantaraSDK(config: ZantaraSDKConfig): ZantaraSDK {
   return new ZantaraSDK(config);
 }
+
 

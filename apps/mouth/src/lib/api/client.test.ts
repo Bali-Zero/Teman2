@@ -228,11 +228,6 @@ describe('ApiClientBase', () => {
       });
     });
 
-    it.skip('should handle request timeout', async () => {
-      // Skipped: Complex timeout test requires careful timer handling
-      // The timeout functionality is tested in integration tests
-    });
-
     it('should handle HTTP errors', async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
@@ -255,4 +250,3 @@ describe('ApiClientBase', () => {
     });
   });
 });
-

@@ -1,26 +1,72 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Brain, User, Globe, ChevronDown, ChevronUp, Loader2, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { UserMemoryContext } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logError, logWarn, logInfo, LogCategory } from '@/lib/logging/structured-logger';
+
+// Circuit breaker configuration
+const CIRCUIT_BREAKER_THRESHOLD = 3; // Number of failures before opening circuit
+const CIRCUIT_BREAKER_TIMEOUT = 300000; // 5 minutes before attempting to close circuit
+const POLL_INTERVAL = 120000; // 2 minutes
 
 export function MemoryPulse() {
   const [memory, setMemory] = useState<UserMemoryContext | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Circuit breaker state
+  const failureCount = useRef(0);
+  const circuitOpen = useRef(false);
+  const circuitOpenedAt = useRef<number | null>(null);
+
   const loadMemory = async () => {
+    // Circuit breaker: skip request if circuit is open and timeout hasn't passed
+    if (circuitOpen.current && circuitOpenedAt.current) {
+      const timeSinceOpened = Date.now() - circuitOpenedAt.current;
+      if (timeSinceOpened < CIRCUIT_BREAKER_TIMEOUT) {
+        logInfo(LogCategory.MEMORY, 'Circuit breaker open, skipping memory pulse request', {
+          failureCount: failureCount.current,
+          timeRemaining: Math.round((CIRCUIT_BREAKER_TIMEOUT - timeSinceOpened) / 1000) + 's'
+        });
+        return;
+      }
+      // Timeout passed, attempt to close circuit
+      logInfo(LogCategory.MEMORY, 'Circuit breaker timeout passed, attempting to close circuit');
+      circuitOpen.current = false;
+      circuitOpenedAt.current = null;
+      failureCount.current = 0;
+    }
+
     setIsLoading(true);
     try {
       // Use the new memory context endpoint
       const response = await api.getUserMemoryContext();
       if (response && response.success) {
         setMemory(response);
+        // Reset circuit breaker on success
+        failureCount.current = 0;
+        circuitOpen.current = false;
+        circuitOpenedAt.current = null;
       }
     } catch (error) {
-      console.error('Failed to load memory pulse:', error);
+      failureCount.current++;
+      logError(LogCategory.MEMORY, 'Failed to load memory pulse', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        failureCount: failureCount.current,
+        circuitOpen: circuitOpen.current
+      });
+
+      // Open circuit breaker if threshold reached
+      if (failureCount.current >= CIRCUIT_BREAKER_THRESHOLD && !circuitOpen.current) {
+        circuitOpen.current = true;
+        circuitOpenedAt.current = Date.now();
+        logWarn(LogCategory.MEMORY,
+          `Circuit breaker opened after ${CIRCUIT_BREAKER_THRESHOLD} failures. Will retry in ${CIRCUIT_BREAKER_TIMEOUT / 1000} seconds`
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -29,7 +75,7 @@ export function MemoryPulse() {
   useEffect(() => {
     loadMemory();
     // Refresh memory every 2 minutes or when a new chat starts
-    const interval = setInterval(loadMemory, 120000);
+    const interval = setInterval(loadMemory, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, []);
 

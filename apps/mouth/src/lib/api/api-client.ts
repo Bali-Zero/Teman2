@@ -58,6 +58,27 @@ export class ApiClient extends ApiClientBase {
   }
 
   // ============================================================================
+  // Generic HTTP Methods (for simple endpoints)
+  // ============================================================================
+
+  /**
+   * Simple GET request for endpoints that don't need domain-specific logic.
+   */
+  async get<T>(endpoint: string): Promise<T> {
+    return this.request<T>(endpoint, { method: 'GET' });
+  }
+
+  /**
+   * Simple POST request for endpoints that don't need domain-specific logic.
+   */
+  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  // ============================================================================
   // CRM (exposed directly)
   // ============================================================================
 
@@ -138,7 +159,7 @@ export class ApiClient extends ApiClientBase {
     correlationId?: string,
     idleTimeoutMs: number = 60000,
     maxTotalTimeMs: number = 600000,
-    useCellGiant?: boolean | 'auto'
+    _useCellGiant?: boolean | 'auto' // DEPRECATED: No longer used
   ): Promise<void> {
     return this.chatApi.sendMessageStreaming(
       message,
@@ -153,7 +174,7 @@ export class ApiClient extends ApiClientBase {
       correlationId,
       idleTimeoutMs,
       maxTotalTimeMs,
-      useCellGiant
+      _useCellGiant
     );
   }
 
