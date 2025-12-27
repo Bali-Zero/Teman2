@@ -40,14 +40,14 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 
 | Service | Path | Stack | Status | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 31 routers (199 endpoints), 154 services, 25 migrations (23 tables). Handles RAG, AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
+| **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 34 routers (213 endpoints), 152 services, 26 migrations (62 tables). Handles Agentic RAG (ReAct pattern), AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
 | **Frontend** | `apps/mouth` | **Next.js 16** (React 19) | ✅ **PRIMARY** | The modern user interface. Uses Tailwind CSS 4, TypeScript, shadcn/ui components, and lightweight state management. |
 
 
 ### 2.2 Infrastructure
 - **Database:** PostgreSQL (asyncpg with connection pooling, 23 tables), Qdrant Cloud (Vector, **53,757 documents** across 4 active collections), Redis (Cache/Queue).
 - **Deployment:** Fly.io (Docker-based, multi-region Singapore).
-- **Testing & Deployment:** Local testing and manual deployment workflow (see [docs/WORKFLOW.md](docs/WORKFLOW.md)). All testing and deployment is done locally - no automated CI/CD pipelines.
+- **Testing & Deployment:** Local testing and manual deployment workflow. All testing and deployment is done locally - no automated CI/CD pipelines. Deploy via `flyctl deploy` from local machine.
 - **Observability:** Prometheus, Grafana, Jaeger, Alertmanager.
 
 ---
@@ -83,21 +83,27 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
     -   `./scripts/fly-frontend.sh <command>`
 
 ### 3.5 🚨 NO CI/CD DEPLOYMENT
--   **DIVIETO ASSOLUTO:** Non usare MAI GitHub Actions o altri strumenti CI/CD per il deploy in produzione.
--   **WORKFLOW:** Il deploy è **SOLO MANUALE** e **DA LOCALE** (Local-to-Fly).
--   **MOTIVO:** Manteniamo il controllo totale sulla build e sui tempi di rilascio. GitHub serve solo come backup e storico.
+-   **DIVIETO ASSOLUTO:** Non usare MAI CI/CD automatizzati per il deploy in produzione.
+-   **WORKFLOW:** Il deploy è **SOLO MANUALE** e **DA LOCALE** tramite `flyctl deploy`.
+-   **MOTIVO:** Manteniamo il controllo totale sulla build e sui tempi di rilascio.
 
 ---
 
 ## 4. 🧩 KEY FEATURES & MODULES
 
-### 4.1 RAG Engine
-Located in `apps/backend-rag/backend/services/`. Handles context retrieval from Qdrant to ground AI responses in business data.
-- **SearchService**: Multi-collection vector search with tier-based access control
-- **AgenticRagOrchestrator**: Central brain (v2). Routes queries (Fast/Pro/DeepThink), orchestrates Hybrid Search + Reranking, and generates Evidence Packs.
-- **GoldenRouterService**: High-confidence answer routing
-- **RerankerService**: Ultra-precision re-ranking using ZeroEntropy (zerank-2) or Jina v2.
-- **GenAIClient** (`llm/genai_client.py`): Unified wrapper for Google's `google-genai` SDK v1.56+ (migrated from deprecated `google-generativeai` in Dec 2025)
+### 4.1 RAG Engine (Agentic RAG v6.0)
+Located in `apps/backend-rag/backend/services/rag/agentic/`. Implements ReAct pattern for intelligent query processing.
+
+**Core Components:**
+- **AgenticRagOrchestrator** (`orchestrator.py`): Central brain. Coordinates ReAct loop, tool execution, and response generation.
+- **ReasoningEngine** (`reasoning.py`): ReAct loop (Thought→Action→Observation). Native function calling with regex fallback.
+- **LLMGateway** (`llm_gateway.py`): Multi-tier LLM cascade: Gemini 3 Flash Preview → 2.0 Flash fallback.
+- **Tools** (`tools.py`): VectorSearchTool, PricingTool, TeamKnowledgeTool, CalculatorTool, VisionTool.
+
+**Supporting Services:**
+- **SearchService**: Hybrid search (Dense 0.7 + BM25 Sparse 0.3) with federated collection routing.
+- **RerankerService**: Ultra-precision re-ranking using ZeroEntropy (zerank-2).
+- **GenAIClient** (`llm/genai_client.py`): Unified wrapper for Google's `google-genai` SDK v1.56+.
 
 ### 4.2 Intelligent Router
 Located in `apps/backend-rag/backend/services/intelligent_router.py`. Orchestrates incoming requests, routing them to the appropriate AI model or tool based on intent.
@@ -166,27 +172,64 @@ New capabilities for high-trust enterprise responses:
 
 | Directory | Purpose |
 | :--- | :--- |
-| `apps/backend-rag/backend/app/routers/` | 27 API routers |
-| `apps/backend-rag/backend/services/` | 73 business services |
+| `apps/backend-rag/backend/app/routers/` | **34** API routers (213 endpoints) |
+| `apps/backend-rag/backend/services/` | **152** business services |
+| `apps/backend-rag/backend/services/rag/agentic/` | **Core**: Orchestrator, ReAct, LLM Gateway, Tools |
+| `apps/backend-rag/backend/services/memory/` | Memory system (Facts, Episodic, Collective) |
 | `apps/backend-rag/backend/core/` | Core utilities (embeddings, chunking, plugins) |
-| `apps/backend-rag/backend/llm/` | LLM clients: `genai_client.py` (Google), `zantara_ai_client.py`, retry handler, prompt manager |
-| `apps/backend-rag/backend/migrations/` | 8 database migrations |
+| `apps/backend-rag/backend/llm/` | LLM clients: `genai_client.py` (Google) |
+| `apps/backend-rag/backend/migrations/` | **26** database migrations |
 | `apps/backend-rag/backend/middleware/` | Auth, rate limiting, error monitoring |
 | `apps/mouth/src/app/` | Next.js App Router pages |
 | `apps/mouth/src/components/` | React components (shadcn/ui based) |
-| `apps/mouth/src/lib/api/` | API client layer |
-| `apps/mouth/src/lib/store/` | Zustand state management |
-| `docs/` | Project documentation (100+ files) |
+| `apps/mouth/src/lib/api/` | API client layer (Zantara SDK) |
+| `docs/` | Project documentation |
 | `scripts/` | Deployment, testing, analysis scripts |
-| `config/` | Prometheus, Alertmanager configuration |
 
 ---
 
-## 6. 🚀 IMMEDIATE ACTION PROTOCOL
+## 6. 📖 ESSENTIAL FILES (Read First!)
 
-1.  **Context Acquisition:** Read `task.md` (if present) to understand the current objective.
-2.  **Architecture Reference:** Check `docs/LIVING_ARCHITECTURE.md` for auto-generated API documentation.
-3.  **Environment Check:** Verify that critical environment variables (API keys, DB URLs) are loaded.
-4.  **Execution:** Proceed with your task, adhering strictly to the standards above.
+**Per nuovi AI/sviluppatori - leggi questi file in ordine:**
+
+### Tier 1: Documentazione (5 min)
+```
+docs/AI_ONBOARDING.md              # ← SEI QUI - Regole e struttura
+docs/ai/AI_HANDOVER_PROTOCOL.md    # Golden rules, tech stack
+docs/SYSTEM_MAP_4D.md              # Mappa completa del sistema
+```
+
+### Tier 2: Configurazione (2 min)
+```
+apps/backend-rag/backend/app/core/config.py   # Tutte le env vars
+apps/backend-rag/fly.toml                      # Deploy config
+```
+
+### Tier 3: Core Architecture - Agentic RAG (10 min)
+```
+apps/backend-rag/backend/services/rag/agentic/
+├── orchestrator.py      # Il cervello - coordina tutto
+├── reasoning.py         # ReAct loop (Thought→Action→Observation)
+├── llm_gateway.py       # LLM cascade (Flash→Lite→OpenRouter)
+├── tools.py             # I 5 tool disponibili
+└── __init__.py          # Exports pubblici
+```
+
+### Tier 4: Entry Points (3 min)
+```
+apps/backend-rag/backend/app/main_cloud.py              # FastAPI app
+apps/backend-rag/backend/services/intelligent_router.py # Request routing
+apps/backend-rag/backend/services/memory/orchestrator.py # Memory system
+```
+
+---
+
+## 7. 🚀 IMMEDIATE ACTION PROTOCOL
+
+1.  **Read Essential Files:** Segui l'ordine in Section 6 sopra.
+2.  **Context Acquisition:** Read `task.md` (if present) to understand the current objective.
+3.  **Architecture Reference:** Check `docs/LIVING_ARCHITECTURE.md` for auto-generated API documentation.
+4.  **Environment Check:** Verify that critical environment variables (API keys, DB URLs) are loaded.
+5.  **Execution:** Proceed with your task, adhering strictly to the standards above.
 
 **Maintain the standard. Build for the future.**

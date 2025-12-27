@@ -31,27 +31,24 @@ nuzantara/
 - **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
 - **Backend**: Python 3.11+, FastAPI, PostgreSQL, Redis, Qdrant
 - **AI Providers**:
-  - OpenAI (GPT-4o, text-embedding-3-small)
-  - Anthropic (Claude 3.5 Sonnet)
-  - Google Gemini via `google-genai` SDK v1.56+ (Flash 2.0, Pro 1.5)
+  - Google Gemini via `google-genai` SDK (2.5 Flash, 2.0 Flash, 2.5 Pro)
+  - OpenAI (text-embedding-3-small for embeddings)
+  - OpenRouter (fallback)
   - ZeroEntropy (zerank-2 reranking)
 - **Deployment**: Docker, Fly.io (Singapore region)
 - **Database**: PostgreSQL, Redis, Qdrant Vector DB
 
-### 🚀 Ultra Hybrid Features (v5.5)
+### 🚀 Agentic RAG v6.0
 
-The system now runs on the **Ultra Hybrid** architecture, featuring:
+The system now runs on the **Agentic RAG** architecture, featuring:
 
-- **🧠 Quality Routing**: Automatically routes queries to **Fast** (Flash), **Pro**, or **DeepThink** (Reasoning) tiers based on complexity.
-- **🧬 Cell-Giant Architecture**: A three-phase reasoning system:
-  1. **Giant**: Deep strategic reasoning powered by Gemini Pro.
-  2. **Cell**: Real-time legal verification and calibration using verified Bali Zero KB.
-  3. **Zantara**: Synthesis into a unique professional persona.
+- **🧠 ReAct Pattern**: Thought→Action→Observation loop for intelligent multi-step reasoning.
+- **🔧 Tool Execution**: VectorSearchTool, PricingTool, TeamKnowledgeTool, CalculatorTool, VisionTool.
+- **⚡ LLM Cascade**: Gemini 3 Flash Preview → 2.0 Flash fallback for reliability.
 - **🔎 Ultra Reranking**: Uses **ZeroEntropy** (zerank-2) for state-of-the-art document retrieval accuracy.
-- **📚 Evidence Pack**: All business answers include standard formatting and verified citations.
+- **📚 Federated Search**: Hybrid search (Dense + BM25) across multiple knowledge collections.
+- **🧠 Memory System**: Facts, Episodic, and Collective memory for personalized responses.
 - **🛡️ Privacy-by-Design**: Automated PII redaction in logs.
-
-See [**Ultra Features Documentation**](./docs/ULTRA_FEATURES.md) for details.
 
 ## 🚀 Quick Start
 
@@ -93,7 +90,7 @@ pip install -r requirements.txt
 cd ../..
 ```
 
-> Note: the root uses npm workspaces. Some satellite apps (e.g. `apps/zantara-media`) may use pnpm as an optional alternative.
+> Note: the root uses npm workspaces.
 
 ### 4. Run Locally (recommended: Docker Compose)
 
@@ -117,21 +114,6 @@ cd apps/mouth
 npm run dev
 ```
 
-### 6. Evidence Pack UI Integration
-
-The frontend now displays **Verification Score** and **Citation Card** for assistant messages.
-
-- **Verification Score**: A numeric confidence metric rendered within each `MessageBubble` when the backend includes `verification_score`.
-- **Citation Card**: A reusable `CitationCard` component that elegantly presents source `title` and `content` arrays.
-
-These UI elements are conditionally rendered based on the presence of `verification_score` and `sources` fields in the API response. See `src/components/CitationCard.tsx` and the updated `MessageBubble` component for implementation details.
-
-
-```bash
-cd apps/mouth
-npm run dev
-```
-
 ### 6. Access the Applications
 
 - **Frontend**: http://localhost:3000
@@ -149,18 +131,29 @@ Nuzantara usa un **workflow completamente locale**:
 4. **Deployment Manuale**: Deploy su Fly.io usando gli script helper
 
 **🚨 ATTENZIONE: NO CI/CD DEPLOYMENT**
-Non configurare MAI GitHub Actions per il deploy automatico. Il repository GitHub serve esclusivamente come backup e storico. Il deploy deve rimanere **manuale e locale** per garantire il controllo totale.
+Il deploy è **manuale e locale** tramite `flyctl deploy` per garantire il controllo totale sulla build e sui tempi di rilascio.
 
-**Workflow Completo**: Vedi [docs/AI_ONBOARDING.md](docs/AI_ONBOARDING.md) per standards e procedure.
+**Workflow Completo**: Vedi [docs/AI_ONBOARDING.md](docs/AI_ONBOARDING.md) per standards e procedure. Deploy manuale tramite `flyctl deploy`.
 
-**Nota**: Nessun deploy automatico. Il CI (se usato) esegue solo gate di sicurezza/verifica; il deploy resta manuale.
+**Nota**: Nessun deploy automatico. Il deploy resta manuale tramite `flyctl deploy`.
+
+## 📖 Onboarding (Start Here!)
+
+**Per nuovi AI/sviluppatori - leggi questi file in ordine:**
+
+| # | File | Tempo | Cosa Impari |
+|---|------|-------|-------------|
+| 1 | [`docs/AI_ONBOARDING.md`](docs/AI_ONBOARDING.md) | 5 min | Regole, struttura, standards |
+| 2 | [`docs/ai/AI_HANDOVER_PROTOCOL.md`](docs/ai/AI_HANDOVER_PROTOCOL.md) | 2 min | Golden rules, tech stack |
+| 3 | [`backend/app/core/config.py`](apps/backend-rag/backend/app/core/config.py) | 2 min | Tutte le env vars |
+| 4 | [`services/rag/agentic/orchestrator.py`](apps/backend-rag/backend/services/rag/agentic/orchestrator.py) | 5 min | Il cervello del sistema |
+| 5 | [`services/rag/agentic/tools.py`](apps/backend-rag/backend/services/rag/agentic/tools.py) | 3 min | I 5 tool disponibili |
 
 ## 📚 Documentation
 
-- [**AI Onboarding**](docs/AI_ONBOARDING.md) - **Start Here - System overview and standards**
-- [**Living Architecture**](docs/LIVING_ARCHITECTURE.md) - Auto-generated API & module reference
+- [**AI Onboarding**](docs/AI_ONBOARDING.md) - **START HERE** - System overview and standards
 - [**System Map 4D**](docs/SYSTEM_MAP_4D.md) - Space, Time, Logic, Scale dimensions
-- [**System Overview**](docs/SYSTEM_OVERVIEW.md) - Quick stats and endpoint summary
+- [**Living Architecture**](docs/LIVING_ARCHITECTURE.md) - Auto-generated API & module reference
 - [**Deploy Checklist**](docs/operations/DEPLOY_CHECKLIST.md) - Deployment procedures
 
 ### 🦟 Flyctl Management (Crucial)
