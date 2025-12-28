@@ -242,7 +242,10 @@ class TestReasoningExactCoverage:
 
         # Should handle ResourceExhausted in warning policy (lines 391-393)
         assert result_state.final_answer is not None
-        assert "apologize" in result_state.final_answer.lower() or "couldn't" in result_state.final_answer.lower()
+        # Error message can be in Italian or English
+        assert ("apologize" in result_state.final_answer.lower() or 
+                "couldn't" in result_state.final_answer.lower() or
+                "dispiace" in result_state.final_answer.lower())
 
     @pytest.mark.asyncio
     async def test_final_answer_stub_filtering_exact_line_408(self):
