@@ -82,6 +82,7 @@ class ToolCall:
     result: str | None = None
     success: bool = True
     error: str | None = None
+    execution_time: float = 0.0  # Duration in seconds for metrics
 
 
 @dataclass

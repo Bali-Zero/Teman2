@@ -87,6 +87,29 @@ rag_parallel_searches = Counter(
     "zantara_rag_parallel_searches_total", "Parallel collection searches executed"
 )
 
+# RAG Query Metrics (Dec 2025 - Dashboard Alignment)
+rag_queries_total = Counter(
+    "zantara_rag_queries_total",
+    "Total RAG queries processed",
+    ["collection", "route_used", "status"]
+)
+rag_tool_calls_total = Counter(
+    "zantara_rag_tool_calls_total",
+    "Total tool calls in agentic RAG",
+    ["tool_name", "status"]
+)
+rag_fallback_count = Counter(
+    "zantara_rag_fallback_count_total",
+    "LLM model fallback events",
+    ["from_model", "to_model"]
+)
+rag_context_length = Histogram(
+    "zantara_rag_context_length_tokens",
+    "Context length in tokens per query",
+    ["collection"],
+    buckets=[100, 500, 1000, 2000, 4000, 8000, 16000, 32000]
+)
+
 # Boot time tracking
 BOOT_TIME = time.time()
 
@@ -217,6 +240,48 @@ class MetricsCollector:
     def record_db_query(self, duration: float):
         """Record database query duration"""
         db_query_duration.observe(duration)
+
+    def record_rag_query(
+        self,
+        collection: str,
+        route_used: str,
+        status: str,
+        context_tokens: int = 0,
+    ):
+        """Record a RAG query with routing and status info.
+
+        Args:
+            collection: Collection searched (e.g., 'visa_oracle', 'legal_unified')
+            route_used: Routing method ('fast', 'pro', 'deep_think', 'federated')
+            status: Query outcome ('success', 'error', 'fallback', 'cache_hit')
+            context_tokens: Number of tokens in the context (for histogram)
+        """
+        rag_queries_total.labels(
+            collection=collection,
+            route_used=route_used,
+            status=status
+        ).inc()
+
+        if context_tokens > 0:
+            rag_context_length.labels(collection=collection).observe(context_tokens)
+
+    def record_tool_call(self, tool_name: str, status: str):
+        """Record a tool call in agentic RAG.
+
+        Args:
+            tool_name: Name of the tool (e.g., 'vector_search', 'pricing', 'calculator')
+            status: Call outcome ('success', 'error', 'timeout')
+        """
+        rag_tool_calls_total.labels(tool_name=tool_name, status=status).inc()
+
+    def record_llm_fallback(self, from_model: str, to_model: str):
+        """Record an LLM model fallback event.
+
+        Args:
+            from_model: Model that failed (e.g., 'gemini-3-flash-preview')
+            to_model: Fallback model used (e.g., 'gemini-2.0-flash')
+        """
+        rag_fallback_count.labels(from_model=from_model, to_model=to_model).inc()
 
 
 # Global metrics collector instance

@@ -291,7 +291,7 @@ class ReasoningEngine:
                         logger.info(
                             f"🔧 [Agent] Calling tool: {tool_call.tool_name} with {tool_call.arguments}"
                         )
-                        tool_result = await execute_tool(
+                        tool_result, tool_duration = await execute_tool(
                             self.tool_map,
                             tool_call.tool_name,
                             tool_call.arguments,
@@ -299,7 +299,10 @@ class ReasoningEngine:
                             tool_execution_counter,
                         )
 
+                        # Store tool timing for metrics (attached to step later)
+                        tool_call.execution_time = tool_duration
                         set_span_attribute("tool_result_length", len(tool_result) if tool_result else 0)
+                        set_span_attribute("tool_duration_ms", int(tool_duration * 1000))
 
                         # --- CITATION HANDLING ---
                         # FIX Edge Case 3: Handle empty content from vector_search
@@ -642,13 +645,14 @@ Do not invent information. If the context is insufficient, admit it.
                 yield {"type": "tool_call", "data": {"tool": tool_call.tool_name, "args": tool_call.arguments}}
 
                 logger.info(f"🔧 [Agent Stream] Calling tool: {tool_call.tool_name}")
-                tool_result = await execute_tool(
+                tool_result, tool_duration = await execute_tool(
                     self.tool_map,
                     tool_call.tool_name,
                     tool_call.arguments,
                     user_id,
                     tool_execution_counter,
                 )
+                tool_call.execution_time = tool_duration
 
                 # Handle citation from vector_search
                 # FIX Edge Case 3 (streaming): Handle empty content from vector_search

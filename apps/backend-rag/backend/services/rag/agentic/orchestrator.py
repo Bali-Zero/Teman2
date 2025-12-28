@@ -645,20 +645,9 @@ User says: {query}"""
                 )
                 loop_duration = time.time() - loop_start
                 timings["reasoning"] = loop_duration
-                
-                # Extract timings from tool results if available
-                # (This relies on tool execution logic propagating these values - we'll need to check execute_tool)
-                
-                # Estimate LLM time from total reasoning time minus tool time
-                # Ideally, ReasoningEngine returns this split, but for now we approximate
-                timings["llm"] = loop_duration * 0.7  # Rough heuristic if not granular
-                
-                # Check for specific metrics in state steps
-                for step in state.steps:
-                    if step.action and step.action.tool_name == "vector_search":
-                        # If the tool result contains metadata with timings, parse it
-                        # Assuming tool execution might return structured data or we parse it from logs
-                        pass
+
+                # Note: Granular timing extraction moved to post-loop processing
+                # where we iterate over state.steps and use step.action.execution_time
 
                 set_span_attribute("model_used", model_used_name)
                 set_span_attribute("steps_count", len(state.steps))
@@ -681,25 +670,46 @@ User says: {query}"""
 
         # Calculate context used (sum of observation lengths)
         context_used = sum(len(s.observation or "") for s in state.steps)
-        
-        # 🔍 Extract granular timings from steps if available in observation metadata
-        # We need to look at how tool results are stored.
-        # If vector_search tool returns a dict or string with timing info, we scrape it here.
-        search_latency_accum = 0.0
-        embedding_latency_accum = 0.0
-        
-        for step in state.steps:
-            if step.action and step.action.tool_name == "vector_search":
-                 # Heuristic: assign 200ms if not explicitly available, 
-                 # or try to extract if the tool was modified to return it.
-                 # For now, we will add a placeholder that we will refine in the next step by modifying the tool itself.
-                 search_latency_accum += 0.200 # Default fallback
-                 embedding_latency_accum += 0.050 # Default fallback
 
-        if search_latency_accum > 0:
+        # 🔍 Extract REAL timings from tool execution_time (Dec 2025 fix)
+        # Each ToolCall now has execution_time populated by execute_tool()
+        search_latency_accum = 0.0
+        tool_latency_accum = 0.0
+        collections_used = set()
+
+        for step in state.steps:
+            if step.action:
+                # Get real execution time from the tool call
+                tool_time = getattr(step.action, "execution_time", 0.0)
+                tool_latency_accum += tool_time
+
+                if step.action.tool_name == "vector_search":
+                    search_latency_accum += tool_time
+                    # Try to extract collection from arguments
+                    if step.action.arguments:
+                        col = step.action.arguments.get("collection")
+                        if col:
+                            collections_used.add(col)
+
+        # Calculate timing breakdown
+        if tool_latency_accum > 0:
             timings["search"] = search_latency_accum
-            timings["embedding"] = embedding_latency_accum
-            timings["llm"] = max(0, timings["reasoning"] - search_latency_accum) # Adjust LLM time
+            timings["tools"] = tool_latency_accum
+            # LLM time = total reasoning time minus tool execution time
+            timings["llm"] = max(0, timings["reasoning"] - tool_latency_accum)
+        else:
+            # No tools executed - all time was LLM
+            timings["llm"] = timings["reasoning"]
+
+        # 📊 Record RAG query metrics for Prometheus/Grafana
+        primary_collection = next(iter(collections_used), "unknown")
+        route_used = "agentic" if tool_execution_counter["count"] > 0 else "direct"
+        metrics_collector.record_rag_query(
+            collection=primary_collection,
+            route_used=route_used,
+            status="success",
+            context_tokens=context_used,
+        )
 
         # Record token usage metrics for Prometheus
         metrics_collector.record_llm_token_usage(

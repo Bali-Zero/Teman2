@@ -4,24 +4,24 @@
     "tags": ["rag", "performance", "slo"],
     "timezone": "browser",
     "schemaVersion": 16,
-    "version": 1,
+    "version": 2,
     "refresh": "30s",
     "panels": [
       {
         "id": 1,
-        "title": "RAG Query Latency (P50, P95, P99)",
+        "title": "RAG Pipeline Latency (P50, P95, P99)",
         "type": "graph",
         "targets": [
           {
-            "expr": "histogram_quantile(0.50, rate(rag_query_duration_seconds_bucket[5m]))",
+            "expr": "histogram_quantile(0.50, rate(zantara_rag_pipeline_duration_seconds_bucket[5m]))",
             "legendFormat": "P50"
           },
           {
-            "expr": "histogram_quantile(0.95, rate(rag_query_duration_seconds_bucket[5m]))",
+            "expr": "histogram_quantile(0.95, rate(zantara_rag_pipeline_duration_seconds_bucket[5m]))",
             "legendFormat": "P95"
           },
           {
-            "expr": "histogram_quantile(0.99, rate(rag_query_duration_seconds_bucket[5m]))",
+            "expr": "histogram_quantile(0.99, rate(zantara_rag_pipeline_duration_seconds_bucket[5m]))",
             "legendFormat": "P99"
           }
         ],
@@ -39,7 +39,7 @@
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(rag_queries_total[5m])",
+            "expr": "rate(zantara_rag_queries_total[5m])",
             "legendFormat": "{{collection}} - {{route_used}} - {{status}}"
           }
         ],
@@ -57,8 +57,12 @@
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(rag_cache_hits_total[5m]) / (rate(rag_cache_hits_total[5m]) + rate(rag_cache_misses_total[5m]))",
-            "legendFormat": "{{collection}}"
+            "expr": "rate(zantara_cache_hits_total[5m]) / (rate(zantara_cache_hits_total[5m]) + rate(zantara_cache_misses_total[5m]))",
+            "legendFormat": "Global Cache"
+          },
+          {
+            "expr": "zantara_rag_cache_hit_rate",
+            "legendFormat": "RAG Cache"
           }
         ],
         "yaxes": [
@@ -75,7 +79,7 @@
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(rag_tool_calls_total[5m])",
+            "expr": "rate(zantara_rag_tool_calls_total[5m])",
             "legendFormat": "{{tool_name}} - {{status}}"
           }
         ],
@@ -89,12 +93,12 @@
       },
       {
         "id": 5,
-        "title": "Fallback Rate",
+        "title": "LLM Fallback Rate",
         "type": "graph",
         "targets": [
           {
-            "expr": "rate(rag_fallback_count_total[5m])",
-            "legendFormat": "{{from_model}} -> {{to_model}}"
+            "expr": "rate(zantara_rag_fallback_count_total[5m])",
+            "legendFormat": "{{from_model}} → {{to_model}}"
           }
         ],
         "yaxes": [
@@ -111,7 +115,7 @@
         "type": "graph",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, rate(rag_context_length_tokens_bucket[5m]))",
+            "expr": "histogram_quantile(0.95, rate(zantara_rag_context_length_tokens_bucket[5m]))",
             "legendFormat": "P95 - {{collection}}"
           }
         ],
@@ -122,8 +126,51 @@
           }
         ],
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Vector Search Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(zantara_rag_vector_search_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(zantara_rag_vector_search_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Latency"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 8,
+        "title": "Embedding Generation Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(zantara_rag_embedding_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.50, rate(zantara_rag_embedding_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          }
+        ],
+        "yaxes": [
+          {
+            "format": "s",
+            "label": "Latency"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
       }
     ]
   }
 }
-

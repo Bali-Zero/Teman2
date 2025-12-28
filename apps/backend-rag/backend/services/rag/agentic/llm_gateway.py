@@ -43,6 +43,7 @@ import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
+from app.metrics import metrics_collector
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from llm.genai_client import GenAIClient, GENAI_AVAILABLE, types, get_genai_client
 from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
@@ -400,12 +401,14 @@ class LLMGateway:
                     f"⚠️ LLMGateway: Gemini 3 Flash quota exceeded, falling back to 2.0: {e}"
                 )
                 add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": "quota"})
+                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
                 model_tier = TIER_FALLBACK
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
                     f"❌ LLMGateway: Gemini 3 Flash error: {e}. Trying 2.0 fallback.", exc_info=True
                 )
                 add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": str(e)[:100]})
+                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
                 model_tier = TIER_FALLBACK
 
         # 2. Try Flash (Tier 0) - gemini-3-flash-preview (Standard)
@@ -421,6 +424,7 @@ class LLMGateway:
             except (ResourceExhausted, ServiceUnavailable) as e:
                 logger.warning(f"⚠️ LLMGateway: Gemini 3 Flash Preview quota exceeded, trying 2.0 fallback: {e}")
                 add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": "quota"})
+                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
                 model_tier = TIER_FALLBACK
             except (ValueError, RuntimeError, AttributeError) as e:
                 logger.error(
@@ -428,6 +432,7 @@ class LLMGateway:
                     exc_info=True,
                 )
                 add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": str(e)[:100]})
+                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
                 model_tier = TIER_FALLBACK
 
         # 3. Try Gemini 2.0 Flash (Fallback Tier) - gemini-2.0-flash

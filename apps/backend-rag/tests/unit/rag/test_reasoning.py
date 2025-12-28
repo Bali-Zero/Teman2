@@ -157,7 +157,7 @@ class TestReActLoopExecution:
             # Provide context that matches query keywords to avoid ABSTAIN
             tool_result = "Calculation result: 2+2 equals 4. Mathematical operation completed."
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=tool_result
+                "services.rag.agentic.reasoning.execute_tool", return_value=(tool_result, 0.1)
             ):
                 result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
@@ -199,7 +199,7 @@ class TestReActLoopExecution:
             "services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value=rich_content):
+            with patch("services.rag.agentic.reasoning.execute_tool", return_value=(rich_content, 0.15)):
                 result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -293,7 +293,7 @@ class TestToolCallParsing:
                 None,
             ],  # First iteration: native returns tool_call, Second iteration: both return None
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value="result"):
+            with patch("services.rag.agentic.reasoning.execute_tool", return_value=("result", 0.05)):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -349,7 +349,7 @@ class TestCitationHandling:
             "services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value=vector_result):
+            with patch("services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -388,7 +388,7 @@ class TestCitationHandling:
             "services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value=vector_result):
+            with patch("services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -438,7 +438,7 @@ class TestFinalAnswerGeneration:
             # Provide substantial context with keywords to avoid ABSTAIN
             substantial_context = "Test information and details about the query. " * 20
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=substantial_context
+                "services.rag.agentic.reasoning.execute_tool", return_value=(substantial_context, 0.3)
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,

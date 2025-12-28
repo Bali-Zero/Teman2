@@ -82,6 +82,7 @@ class ToolCall:
     result: Optional[str] = None
     success: bool = True
     error: Optional[str] = None
+    execution_time: float = 0.0  # Duration in seconds for metrics
 
 
 @dataclass
