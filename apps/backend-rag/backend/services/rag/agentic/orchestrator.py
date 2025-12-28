@@ -371,6 +371,23 @@ class AgenticRAGOrchestrator:
             f"🧠 [Context] Loaded context for {user_id or 'anonymous'} (Facts: {len(user_context.get('facts', []))})"
         )
 
+        # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST!)
+        is_injection, injection_response = self.prompt_builder.detect_prompt_injection(query)
+        if is_injection:
+            logger.warning(f"🛡️ [Security] Blocked prompt injection/off-topic request")
+            return CoreResult(
+                answer=injection_response,
+                sources=[],
+                verification_score=1.0,
+                evidence_score=1.0,
+                is_ambiguous=False,
+                entities={},
+                model_used="security-gate",
+                timings={"total": time.time() - start_time},
+                verification_status="blocked",
+                document_count=0
+            )
+
         # 0. Check Greetings (skip RAG for simple greetings)
         # INJECT CONTEXT: Now check_greetings knows who the user is
         greeting_response = self.prompt_builder.check_greetings(query, context=user_context)
@@ -476,7 +493,7 @@ User says: {query}"""
                     history_to_use=history_to_use, model_tier=TIER_FLASH
                 )
 
-                casual_response, model_used, _ = await self.llm_gateway.send_message(
+                casual_response, model_used, _, _ = await self.llm_gateway.send_message(
                     casual_chat,
                     casual_prompt,
                     system_prompt="",
@@ -743,7 +760,6 @@ User says: {query}"""
                     user_id,
                     memory_orchestrator,
                     query=query,
-                    conversation_history=conversation_history,
                     session_id=session_id
                 )
                 set_span_attribute("facts_count", len(user_context.get("facts", [])))
@@ -760,6 +776,17 @@ User says: {query}"""
             history_to_use = []
 
         logger.info(f"🧠 [Stream Context] Loaded context for {user_id or 'anonymous'}")
+
+        # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST!)
+        is_injection, injection_response = self.prompt_builder.detect_prompt_injection(query)
+        if is_injection:
+            logger.warning(f"🛡️ [Security Stream] Blocked prompt injection/off-topic request")
+            yield {"type": "metadata", "data": {"status": "blocked", "route": "security-gate"}}
+            for token in injection_response.split():
+                yield {"type": "token", "data": token + " "}
+                await asyncio.sleep(0.01)
+            yield {"type": "done", "data": None}
+            return
 
         # Check Greetings first (skip RAG for simple greetings)
         # INJECT CONTEXT
@@ -888,7 +915,7 @@ User says: """ + query
                     history_to_use=history_to_use, model_tier=TIER_FLASH
                 )
 
-                casual_response, model_used, _ = await self.llm_gateway.send_message(
+                casual_response, model_used, _, _ = await self.llm_gateway.send_message(
                     casual_chat,
                     casual_prompt,
                     system_prompt="",

@@ -419,6 +419,41 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 └──────────────────────────────────────────────────────────────┘
 ```
 
+### Observability Stack (Local Docker)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   MONITORING STACK                            │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Prometheus (9090)          Grafana (3001)                   │
+│  ├─ Scrape interval: 15s    ├─ 5 dashboards                  │
+│  ├─ Retention: 30 days      ├─ RAG, System, Qdrant           │
+│  ├─ 2 scrape jobs           ├─ Errors, Security              │
+│  └─ Alert rules: 12         └─ Admin: admin/changeme123      │
+│                                                              │
+│  Alertmanager (9093)        Jaeger (16686)                   │
+│  ├─ 4 receivers             ├─ OTLP gRPC: 4317               │
+│  ├─ Severity routing        ├─ OTLP HTTP: 4318               │
+│  └─ Inhibition rules        └─ OpenTelemetry traces          │
+│                                                              │
+│  JSON Exporter (7979)       Backend /metrics                 │
+│  ├─ Qdrant metrics → Prom   ├─ 55+ metriche Prometheus       │
+│  └─ Cache TTL: 30s          └─ FastAPI instrumentator        │
+│                                                              │
+│  CONFIG FILES                                                │
+│  ├─ config/prometheus/prometheus.yml                         │
+│  ├─ config/prometheus/alerts.yml                             │
+│  ├─ config/alertmanager/alertmanager.yml                     │
+│  └─ config/grafana/dashboards/*.json                         │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Alert Critici** (runbook: `docs/operations/ALERTS_RUNBOOK.md`):
+- `CriticalQdrantErrorRate` → Error rate > 5% per 2m
+- `CriticalQdrantSearchLatency` → Search > 1000ms per 2m
+- `QdrantMetricsEndpointDown` → Backend unreachable per 1m
+
 ### Environment Variables (62+)
 
 | Categoria | Variabili Chiave |

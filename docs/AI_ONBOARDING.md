@@ -171,6 +171,48 @@ New capabilities for high-trust enterprise responses:
 - **Standard Output:** Enforced markdown templates for Visa, Tax, and Company Setup queries.
 - **Privacy:** Automated PII redaction in all logs.
 
+### 4.8 Observability Stack
+
+Full monitoring e tracing per production debugging:
+
+| Servizio | Porta | Funzione |
+|----------|-------|----------|
+| **Prometheus** | 9090 | Metrics collection (scrape 15s) |
+| **Grafana** | 3001 | Dashboards e visualizzazione |
+| **Alertmanager** | 9093 | Alert routing e notifiche |
+| **Jaeger** | 16686 | Distributed tracing (OpenTelemetry) |
+
+**Dashboard Disponibili** (5 totali):
+- `rag-dashboard.json` - RAG latency, cache hit rate, tool calls
+- `system-health-dashboard.json` - CPU, RAM, uptime
+- `qdrant-health-dashboard.json` - Vector DB metrics
+- `error-tracking-dashboard.json` - 4xx/5xx per endpoint
+- `security-dashboard.json` - Failed logins, rate limits
+
+**Metriche Esposte** (`/metrics`):
+```
+zantara_rag_pipeline_duration_seconds    # RAG totale
+zantara_llm_prompt_tokens_total          # Token usage
+zantara_cache_hits_total                 # Cache performance
+zantara_http_requests_total              # Request count
+```
+
+**Comandi Utili:**
+```bash
+# Avvia stack monitoring locale
+docker compose up prometheus grafana jaeger
+
+# Accesso
+open http://localhost:3001   # Grafana (admin/changeme123)
+open http://localhost:9090   # Prometheus
+open http://localhost:16686  # Jaeger
+```
+
+**Alert Critici** (vedi [ALERTS_RUNBOOK.md](operations/ALERTS_RUNBOOK.md)):
+- `CriticalQdrantErrorRate` - Error rate > 5% per 2m
+- `CriticalQdrantSearchLatency` - Latency > 1000ms per 2m
+- `QdrantMetricsEndpointDown` - Backend unreachable
+
 ---
 
 ## 5. 📁 KEY DIRECTORIES

@@ -185,6 +185,14 @@ BUSINESS_KEYWORDS = [
     "211a",
     "e33g",
     "e28a",
+    # Indonesian tax terms (critical for tax_genius routing)
+    "pph",      # Pajak Penghasilan - Income Tax (PPh 21, PPh 23, PPh 26, etc.)
+    "ppn",      # Pajak Pertambahan Nilai - VAT
+    "pbb",      # Pajak Bumi dan Bangunan - Land/Building Tax
+    "npwp",     # Nomor Pokok Wajib Pajak - Tax ID Number
+    "spt",      # Surat Pemberitahuan - Tax Return
+    "withholding",
+    "ritenuta",  # Italian: withholding tax
     # Italian business keywords (added for RAG activation)
     "legale",
     "leggi",
