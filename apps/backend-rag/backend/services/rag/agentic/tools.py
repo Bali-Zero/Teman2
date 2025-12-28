@@ -35,7 +35,7 @@ class VectorSearchTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Search the knowledge base. Available collections:\n- 'visa_oracle' (PREFERRED for visas): KITAS, KITAP, E33G, E28A, immigration - use this FIRST for visa questions.\n- 'bali_zero_pricing': Official Bali Zero service prices - use this for pricing/cost questions.\n- 'training_conversations': Training data with detailed pricing and procedures.\n- 'legal_unified': Laws, regulations, tax codes.\n- 'kbli_unified': Business classification codes (KBLI)."
+        return "Search the knowledge base. Available collections:\n- 'visa_oracle' (PREFERRED for visas): KITAS, KITAP, E33G, E28A, immigration - use this FIRST for visa questions.\n- 'bali_zero_pricing': Official Bali Zero service prices - use this for pricing/cost questions.\n- 'training_conversations': Training data with detailed pricing and procedures.\n- 'tax_genius' (PREFERRED for taxes): PPh, PPN, withholding tax, corporate tax, tax treaties (P3B) - use this FIRST for tax questions.\n- 'legal_unified': Laws, regulations, general legal matters.\n- 'kbli_unified': Business classification codes (KBLI)."
 
     @property
     def parameters_schema(self) -> dict:
@@ -49,10 +49,11 @@ class VectorSearchTool(BaseTool):
                         "visa_oracle",
                         "bali_zero_pricing",
                         "training_conversations",
+                        "tax_genius",
                         "legal_unified",
                         "kbli_unified",
                     ],
-                    "description": "Collection to search. Use 'visa_oracle' for visas/immigration, 'bali_zero_pricing' for pricing/costs, 'training_conversations' for procedures, 'legal_unified' for laws, 'kbli_unified' for business codes.",
+                    "description": "Collection to search. Use 'visa_oracle' for visas/immigration, 'bali_zero_pricing' for pricing/costs, 'tax_genius' for taxes (PPh, PPN, P3B treaties), 'training_conversations' for procedures, 'legal_unified' for laws, 'kbli_unified' for business codes.",
                 },
                 "top_k": {
                     "type": "integer",
@@ -102,8 +103,9 @@ class VectorSearchTool(BaseTool):
             pricing_pattern = r"\b(price|cost|charge|fee|how much|pricing|rate|expensive|cheap|payment|pay|harga|biaya|tarif|berapa|costa|quanto|prezzo|costo|tariffa|pagamento)\b"
             is_pricing = bool(re.search(pricing_pattern, query_lower))
 
-            # TAX / LEGAL / REAL ESTATE
-            # These primarily rely on legal_unified, but training helps for explanation
+            # TAX (Dec 2025 FIX: Route tax queries to tax_genius collection)
+            tax_pattern = r"\b(tax|pajak|pph|ppn|pbb|npwp|withholding|vat|income tax|corporate tax|p3b|treaty|fiscal|tasse|imposta|imposte|ritenuta|iva|aliquota|double taxation)\b"
+            is_tax = bool(re.search(tax_pattern, query_lower))
 
             target_collections = set()
 
@@ -124,6 +126,9 @@ class VectorSearchTool(BaseTool):
             if is_pricing:
                 target_collections.add("bali_zero_pricing")
                 logger.info("💰 [Federated Search] Pricing query detected → adding bali_zero_pricing")
+            if is_tax:
+                target_collections.add("tax_genius")
+                logger.info("🧾 [Federated Search] Tax query detected → adding tax_genius")
 
             # Convert to list
             target_collections_list = list(target_collections)

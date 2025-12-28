@@ -19,7 +19,7 @@ class TestQueryRouter:
 
     def test_query_router_init(self):
         """Test QueryRouter initialization"""
-        from backend.services.query_router import QueryRouter
+        from backend.services.routing.query_router import QueryRouter
 
         router = QueryRouter()
         assert router is not None
@@ -28,7 +28,7 @@ class TestQueryRouter:
 
     def test_visa_keywords(self):
         """Test VISA_KEYWORDS constant"""
-        from backend.services.query_router import QueryRouter
+        from backend.services.routing.query_router import QueryRouter
 
         router = QueryRouter()
         assert isinstance(router.VISA_KEYWORDS, list)
@@ -36,7 +36,7 @@ class TestQueryRouter:
 
     def test_kbli_keywords(self):
         """Test KBLI_KEYWORDS constant"""
-        from backend.services.query_router import QueryRouter
+        from backend.services.routing.query_router import QueryRouter
 
         router = QueryRouter()
         assert isinstance(router.KBLI_KEYWORDS, list)
@@ -44,7 +44,7 @@ class TestQueryRouter:
 
     def test_tax_keywords(self):
         """Test TAX_KEYWORDS constant"""
-        from backend.services.query_router import QueryRouter
+        from backend.services.routing.query_router import QueryRouter
 
         router = QueryRouter()
         assert isinstance(router.TAX_KEYWORDS, list)
