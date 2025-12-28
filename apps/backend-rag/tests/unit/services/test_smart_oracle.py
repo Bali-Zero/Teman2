@@ -49,10 +49,10 @@ class MockDriveFile:
 class TestGetDriveService:
     """Test suite for get_drive_service function"""
 
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.json.loads")
-    @patch("services.smart_oracle.service_account.Credentials.from_service_account_info")
-    @patch("services.smart_oracle.build")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.json.loads")
+    @patch("services.oracle.smart_oracle.service_account.Credentials.from_service_account_info")
+    @patch("services.oracle.smart_oracle.build")
     def test_get_drive_service_success(self, mock_build, mock_from_account_info, mock_json_loads, mock_settings):
         """Test successful Drive service initialization"""
         # Setup mocks
@@ -73,8 +73,8 @@ class TestGetDriveService:
         mock_from_account_info.assert_called_once()
         mock_build.assert_called_once_with("drive", "v3", credentials=mock_creds)
 
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.build")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.build")
     def test_get_drive_service_missing_credentials(self, mock_build, mock_settings):
         """Test Drive service with missing credentials"""
         mock_settings.google_credentials_json = None
@@ -85,8 +85,8 @@ class TestGetDriveService:
 
         assert service is None
 
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.json.loads")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.json.loads")
     def test_get_drive_service_invalid_json(self, mock_json_loads, mock_settings):
         """Test Drive service with invalid JSON credentials"""
         mock_settings.google_credentials_json = "invalid_json"
@@ -97,10 +97,10 @@ class TestGetDriveService:
         # Should attempt fallback
         assert service is None or service is not None  # Depends on build mock availability
 
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.json.loads")
-    @patch("services.smart_oracle.service_account.Credentials.from_service_account_info")
-    @patch("services.smart_oracle.build")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.json.loads")
+    @patch("services.oracle.smart_oracle.service_account.Credentials.from_service_account_info")
+    @patch("services.oracle.smart_oracle.build")
     def test_get_drive_service_credentials_error(
         self, mock_build, mock_from_account_info, mock_json_loads, mock_settings
     ):
@@ -114,10 +114,10 @@ class TestGetDriveService:
 
         assert service is None
 
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.json.loads")
-    @patch("services.smart_oracle.service_account.Credentials.from_service_account_info")
-    @patch("services.smart_oracle.build")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.json.loads")
+    @patch("services.oracle.smart_oracle.service_account.Credentials.from_service_account_info")
+    @patch("services.oracle.smart_oracle.build")
     def test_get_drive_service_build_fallback(
         self, mock_build, mock_from_account_info, mock_json_loads, mock_settings
     ):
@@ -140,7 +140,7 @@ class TestGetDriveService:
 class TestDownloadPdfFromDrive:
     """Test suite for download_pdf_from_drive function"""
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_no_service(self, mock_get_service):
         """Test download when Drive service is unavailable"""
         mock_get_service.return_value = None
@@ -149,7 +149,7 @@ class TestDownloadPdfFromDrive:
 
         assert result is None
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_success(self, mock_get_service):
         """Test successful PDF download from Drive"""
         # Setup mock Drive service
@@ -175,8 +175,8 @@ class TestDownloadPdfFromDrive:
         pdf_content = b"fake pdf content"
         mock_fh = io.BytesIO(pdf_content)
 
-        with patch("services.smart_oracle.io.BytesIO", return_value=mock_fh):
-            with patch("services.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
+        with patch("services.oracle.smart_oracle.io.BytesIO", return_value=mock_fh):
+            with patch("services.oracle.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
                 # Mock downloader behavior
                 mock_downloader = MagicMock()
                 mock_downloader.next_chunk.side_effect = [
@@ -193,7 +193,7 @@ class TestDownloadPdfFromDrive:
                     assert result == "/tmp/test_document.pdf"
                     mock_file.assert_called_once_with("/tmp/test_document.pdf", "wb")
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_not_found_first_attempt(self, mock_get_service):
         """Test PDF download when file not found on first search"""
         mock_service = MagicMock()
@@ -218,8 +218,8 @@ class TestDownloadPdfFromDrive:
         pdf_content = b"fake pdf content"
         mock_fh = io.BytesIO(pdf_content)
 
-        with patch("services.smart_oracle.io.BytesIO", return_value=mock_fh):
-            with patch("services.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
+        with patch("services.oracle.smart_oracle.io.BytesIO", return_value=mock_fh):
+            with patch("services.oracle.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
                 mock_downloader = MagicMock()
                 mock_downloader.next_chunk.side_effect = [(MagicMock(), True)]
                 mock_downloader_class.return_value = mock_downloader
@@ -229,7 +229,7 @@ class TestDownloadPdfFromDrive:
 
                     assert result == "/tmp/test document.pdf"
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_not_found_both_attempts(self, mock_get_service):
         """Test PDF download when file not found in both search attempts"""
         mock_service = MagicMock()
@@ -245,7 +245,7 @@ class TestDownloadPdfFromDrive:
         assert result is None
         assert mock_service.files().list.call_count == 2
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_drive_error(self, mock_get_service):
         """Test PDF download when Drive API raises error"""
         mock_service = MagicMock()
@@ -258,7 +258,7 @@ class TestDownloadPdfFromDrive:
 
         assert result is None
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_with_path_cleaning(self, mock_get_service):
         """Test PDF download with complex filename that needs cleaning"""
         mock_service = MagicMock()
@@ -277,8 +277,8 @@ class TestDownloadPdfFromDrive:
         pdf_content = b"fake pdf content"
         mock_fh = io.BytesIO(pdf_content)
 
-        with patch("services.smart_oracle.io.BytesIO", return_value=mock_fh):
-            with patch("services.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
+        with patch("services.oracle.smart_oracle.io.BytesIO", return_value=mock_fh):
+            with patch("services.oracle.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
                 mock_downloader = MagicMock()
                 mock_downloader.next_chunk.side_effect = [(MagicMock(), True)]
                 mock_downloader_class.return_value = mock_downloader
@@ -291,7 +291,7 @@ class TestDownloadPdfFromDrive:
                     assert "complex_name_2024" in call_args[1]["q"]
                     assert result is not None
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_download_exception(self, mock_get_service):
         """Test PDF download when download process fails"""
         mock_service = MagicMock()
@@ -305,7 +305,7 @@ class TestDownloadPdfFromDrive:
         mock_service.files().list.return_value = mock_files_list
 
         # Mock download failure
-        with patch("services.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
+        with patch("services.oracle.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
             mock_downloader_class.side_effect = Exception("Download failed")
 
             result = download_pdf_from_drive("test.pdf")
@@ -317,11 +317,11 @@ class TestSmartOracle:
     """Test suite for smart_oracle async function"""
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.os.remove")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.os.remove")
     async def test_smart_oracle_success(
         self, mock_remove, mock_settings, mock_genai_module, mock_genai_client, mock_download
     ):
@@ -352,7 +352,7 @@ class TestSmartOracle:
         mock_remove.assert_called_once_with("/tmp/test.pdf")
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
     async def test_smart_oracle_pdf_not_found(self, mock_download):
         """Test smart oracle when PDF cannot be downloaded"""
         mock_download.return_value = None
@@ -362,8 +362,8 @@ class TestSmartOracle:
         assert result == "Original document not found in Drive storage. Unable to perform deep analysis."
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
     async def test_smart_oracle_genai_unavailable(self, mock_genai_client, mock_download):
         """Test smart oracle when GenAI client is unavailable"""
         mock_download.return_value = "/tmp/test.pdf"
@@ -374,23 +374,23 @@ class TestSmartOracle:
         assert result == "AI service not available. Please check configuration."
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
     async def test_smart_oracle_genai_client_none(self, mock_genai_client, mock_download):
         """Test smart oracle when GenAI client is None"""
         mock_download.return_value = "/tmp/test.pdf"
 
         # Patch the module-level _genai_client to None
-        with patch("services.smart_oracle._genai_client", None):
+        with patch("services.oracle.smart_oracle._genai_client", None):
             result = await smart_oracle("What is this document about?", "test.pdf")
 
             assert result == "AI service not available. Please check configuration."
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
-    @patch("services.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.settings")
     async def test_smart_oracle_ai_processing_error(
         self, mock_settings, mock_genai_module, mock_genai_client, mock_download
     ):
@@ -409,26 +409,26 @@ class TestSmartOracle:
         assert result == "Error processing the document with AI."
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
     async def test_smart_oracle_genai_module_none(self, mock_genai_module, mock_genai_client, mock_download):
         """Test smart oracle when genai module is None"""
         mock_download.return_value = "/tmp/test.pdf"
         mock_genai_client.is_available = True
 
         # Patch genai module to None
-        with patch("services.smart_oracle.genai", None):
+        with patch("services.oracle.smart_oracle.genai", None):
             result = await smart_oracle("What is this document about?", "test.pdf")
 
             assert result == "GenAI SDK not available."
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.os.remove")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.os.remove")
     async def test_smart_oracle_generate_content_error(
         self, mock_remove, mock_settings, mock_genai_module, mock_genai_client, mock_download
     ):
@@ -452,11 +452,11 @@ class TestSmartOracle:
         assert result == "Error processing the document with AI."
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.os.remove")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.os.remove")
     async def test_smart_oracle_empty_response(
         self, mock_remove, mock_settings, mock_genai_module, mock_genai_client, mock_download
     ):
@@ -479,11 +479,11 @@ class TestSmartOracle:
         assert result == "No response generated."
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.os.remove")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.os.remove")
     async def test_smart_oracle_file_cleanup_on_error(
         self, mock_remove, mock_settings, mock_genai_module, mock_genai_client, mock_download
     ):
@@ -507,7 +507,7 @@ class TestSmartOracle:
 class TestDriveConnection:
     """Test suite for test_drive_connection function"""
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_drive_connection_no_service(self, mock_get_service):
         """Test drive connection when service is unavailable"""
         mock_get_service.return_value = None
@@ -516,7 +516,7 @@ class TestDriveConnection:
 
         assert result is False
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_drive_connection_success(self, mock_get_service):
         """Test successful drive connection"""
         mock_service = MagicMock()
@@ -540,7 +540,7 @@ class TestDriveConnection:
             fields="files(id, name, mimeType)"
         )
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_drive_connection_empty_results(self, mock_get_service):
         """Test drive connection with empty file list"""
         mock_service = MagicMock()
@@ -556,7 +556,7 @@ class TestDriveConnection:
         # Should still return True as connection succeeded
         assert result is True
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_drive_connection_api_error(self, mock_get_service):
         """Test drive connection when API call fails"""
         mock_service = MagicMock()
@@ -569,7 +569,7 @@ class TestDriveConnection:
 
         assert result is False
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_drive_connection_execute_error(self, mock_get_service):
         """Test drive connection when execute() fails"""
         mock_service = MagicMock()
@@ -588,9 +588,9 @@ class TestDriveConnection:
 class TestModuleLevelInitialization:
     """Test suite for module-level initialization logic"""
 
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.GENAI_AVAILABLE", True)
-    @patch("services.smart_oracle.GenAIClient")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.GENAI_AVAILABLE", True)
+    @patch("services.oracle.smart_oracle.GenAIClient")
     def test_module_init_success(self, mock_genai_client_class, mock_settings):
         """Test module-level GenAI client initialization succeeds"""
         # This test verifies the initialization logic at module load
@@ -606,9 +606,9 @@ class TestModuleLevelInitialization:
 
         assert client is not None
 
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.GENAI_AVAILABLE", True)
-    @patch("services.smart_oracle.GenAIClient")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.GENAI_AVAILABLE", True)
+    @patch("services.oracle.smart_oracle.GenAIClient")
     def test_module_init_failure(self, mock_genai_client_class, mock_settings):
         """Test module-level GenAI client initialization fails gracefully"""
         mock_settings.google_api_key = "test_key"
@@ -628,7 +628,7 @@ class TestModuleLevelInitialization:
 class TestEdgeCases:
     """Test suite for edge cases and boundary conditions"""
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_unicode_filename(self, mock_get_service):
         """Test download with Unicode characters in filename"""
         mock_service = MagicMock()
@@ -643,8 +643,8 @@ class TestEdgeCases:
         pdf_content = b"fake pdf content"
         mock_fh = io.BytesIO(pdf_content)
 
-        with patch("services.smart_oracle.io.BytesIO", return_value=mock_fh):
-            with patch("services.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
+        with patch("services.oracle.smart_oracle.io.BytesIO", return_value=mock_fh):
+            with patch("services.oracle.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
                 mock_downloader = MagicMock()
                 mock_downloader.next_chunk.side_effect = [(MagicMock(), True)]
                 mock_downloader_class.return_value = mock_downloader
@@ -654,7 +654,7 @@ class TestEdgeCases:
 
                     assert result is not None
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_very_long_filename(self, mock_get_service):
         """Test download with very long filename"""
         mock_service = MagicMock()
@@ -670,8 +670,8 @@ class TestEdgeCases:
         pdf_content = b"fake pdf content"
         mock_fh = io.BytesIO(pdf_content)
 
-        with patch("services.smart_oracle.io.BytesIO", return_value=mock_fh):
-            with patch("services.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
+        with patch("services.oracle.smart_oracle.io.BytesIO", return_value=mock_fh):
+            with patch("services.oracle.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
                 mock_downloader = MagicMock()
                 mock_downloader.next_chunk.side_effect = [(MagicMock(), True)]
                 mock_downloader_class.return_value = mock_downloader
@@ -681,7 +681,7 @@ class TestEdgeCases:
 
                     assert result is not None
 
-    @patch("services.smart_oracle.get_drive_service")
+    @patch("services.oracle.smart_oracle.get_drive_service")
     def test_download_pdf_special_characters_in_name(self, mock_get_service):
         """Test download with special characters in filename"""
         mock_service = MagicMock()
@@ -698,8 +698,8 @@ class TestEdgeCases:
         pdf_content = b"fake pdf content"
         mock_fh = io.BytesIO(pdf_content)
 
-        with patch("services.smart_oracle.io.BytesIO", return_value=mock_fh):
-            with patch("services.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
+        with patch("services.oracle.smart_oracle.io.BytesIO", return_value=mock_fh):
+            with patch("services.oracle.smart_oracle.MediaIoBaseDownload") as mock_downloader_class:
                 mock_downloader = MagicMock()
                 mock_downloader.next_chunk.side_effect = [(MagicMock(), True)]
                 mock_downloader_class.return_value = mock_downloader
@@ -710,11 +710,11 @@ class TestEdgeCases:
                     assert result is not None
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.os.remove")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.os.remove")
     async def test_smart_oracle_large_pdf(
         self, mock_remove, mock_settings, mock_genai_module, mock_genai_client, mock_download
     ):
@@ -740,11 +740,11 @@ class TestEdgeCases:
         assert result == large_response
 
     @pytest.mark.asyncio
-    @patch("services.smart_oracle.download_pdf_from_drive")
-    @patch("services.smart_oracle._genai_client")
-    @patch("services.smart_oracle.genai")
-    @patch("services.smart_oracle.settings")
-    @patch("services.smart_oracle.os.remove")
+    @patch("services.oracle.smart_oracle.download_pdf_from_drive")
+    @patch("services.oracle.smart_oracle._genai_client")
+    @patch("services.oracle.smart_oracle.genai")
+    @patch("services.oracle.smart_oracle.settings")
+    @patch("services.oracle.smart_oracle.os.remove")
     async def test_smart_oracle_complex_query(
         self, mock_remove, mock_settings, mock_genai_module, mock_genai_client, mock_download
     ):
