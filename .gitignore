@@ -155,3 +155,8 @@ ZANTARA_JAKSEL/models/
 docs/*.log
 docs/*.json
 docs/generated/
+)/
+*.JPG
+*.HEIC
+*.PNG
+coverage.json

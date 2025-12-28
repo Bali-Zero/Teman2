@@ -24,11 +24,39 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from services.tools.definitions import AgentState, AgentStep
+from services.llm_clients.pricing import TokenUsage
 
 from .response_processor import post_process_response
 from .tool_executor import execute_tool, parse_tool_call
 
 logger = logging.getLogger(__name__)
+
+
+def is_valid_tool_call(tool_call: Any) -> bool:
+    """
+    Validate that a tool call has all required fields.
+
+    FIX Edge Case 2: Prevents using partially parsed tool calls that could
+    cause downstream errors when execute_tool is called with None arguments.
+
+    Args:
+        tool_call: ToolCall object or None
+
+    Returns:
+        True if tool_call is valid and complete, False otherwise
+    """
+    if tool_call is None:
+        return False
+    if not hasattr(tool_call, "tool_name") or not tool_call.tool_name:
+        return False
+    if not isinstance(tool_call.tool_name, str):
+        return False
+    if not hasattr(tool_call, "arguments"):
+        return False
+    # arguments can be empty dict {} but not None
+    if tool_call.arguments is None:
+        return False
+    return True
 
 
 def calculate_evidence_score(
@@ -151,7 +179,7 @@ class ReasoningEngine:
         user_id: str,
         model_tier: int,
         tool_execution_counter: dict,
-    ) -> tuple[AgentState, str, list[dict]]:
+    ) -> tuple[AgentState, str, list[dict], TokenUsage]:
         """
         Execute the ReAct reasoning loop.
 
@@ -167,10 +195,11 @@ class ReasoningEngine:
             tool_execution_counter: Counter for tool usage tracking
 
         Returns:
-            Tuple of (updated_state, model_name_used, conversation_messages)
+            Tuple of (updated_state, model_name_used, conversation_messages, token_usage)
         """
         conversation_messages = []
         model_used_name = "unknown"
+        accumulated_usage = TokenUsage()  # Track total token usage across ReAct loop
 
         # ==================== REACT LOOP ====================
         # 🔍 TRACING: Span for entire ReAct loop
@@ -195,7 +224,7 @@ class ReasoningEngine:
                             last_observation = state.steps[-1].observation if state.steps else ""
                             message = f"Observation: {last_observation}\n\nContinue with your next thought or provide final answer."
 
-                        text_response, model_used_name, response_obj = await llm_gateway.send_message(
+                        text_response, model_used_name, response_obj, step_usage = await llm_gateway.send_message(
                             chat,
                             message,
                             system_prompt,
@@ -203,7 +232,11 @@ class ReasoningEngine:
                             enable_function_calling=True,
                         )
 
+                        # Accumulate token usage
+                        accumulated_usage = accumulated_usage + step_usage
+
                         set_span_attribute("model_used", model_used_name)
+                        set_span_attribute("step_tokens", step_usage.total_tokens)
                         conversation_messages.append({"role": "user", "content": message})
                         conversation_messages.append({"role": "assistant", "content": text_response})
 
@@ -218,7 +251,16 @@ class ReasoningEngine:
                     # Check for function call in response parts (native mode)
                     if hasattr(response_obj, "candidates") and response_obj.candidates:
                         for candidate in response_obj.candidates:
-                            if hasattr(candidate, "content") and hasattr(candidate.content, "parts"):
+                            # FIX Edge Case 1: Proper None check for candidate.content
+                            # The old check `hasattr(candidate.content, "parts")` fails when
+                            # candidate.content is None because hasattr(None, "parts") = False
+                            # but we still try to iterate. Now we explicitly check for None.
+                            if (
+                                hasattr(candidate, "content")
+                                and candidate.content is not None
+                                and hasattr(candidate.content, "parts")
+                                and candidate.content.parts  # Ensure parts is not None/empty
+                            ):
                                 for part in candidate.content.parts:
                                     tool_call = parse_tool_call(part, use_native=True)
                                     if tool_call:
@@ -228,13 +270,21 @@ class ReasoningEngine:
                                 if tool_call:
                                     break
 
-                    # Fallback to regex parsing if no native function call found
-                    if not tool_call:
-                        tool_call = parse_tool_call(text_response, use_native=False)
-                        if tool_call:
-                            set_span_attribute("function_call_mode", "regex")
+                    # FIX Edge Case 2: Validate tool call before using
+                    # A partially parsed tool_call (e.g., with None arguments) would
+                    # pass the `if tool_call` check but fail in execute_tool.
+                    # Use is_valid_tool_call to ensure all required fields are present.
 
-                    if tool_call:
+                    # Fallback to regex parsing if no valid native function call found
+                    if not is_valid_tool_call(tool_call):
+                        tool_call = parse_tool_call(text_response, use_native=False)
+                        if is_valid_tool_call(tool_call):
+                            set_span_attribute("function_call_mode", "regex")
+                        else:
+                            # Neither native nor regex produced a valid tool call
+                            tool_call = None
+
+                    if is_valid_tool_call(tool_call):
                         set_span_attribute("tool_name", tool_call.tool_name)
                         add_span_event("tool.call", {"tool": tool_call.tool_name, "args": str(tool_call.arguments)[:200]})
 
@@ -252,19 +302,40 @@ class ReasoningEngine:
                         set_span_attribute("tool_result_length", len(tool_result) if tool_result else 0)
 
                         # --- CITATION HANDLING ---
+                        # FIX Edge Case 3: Handle empty content from vector_search
+                        # If content is empty but sources exist, we should:
+                        # 1. Log a warning (sources without content are less useful)
+                        # 2. Keep the original tool_result (JSON string) if content is empty
+                        # 3. Only add non-empty content to context_gathered
                         if tool_call.tool_name == "vector_search":
                             try:
                                 parsed_result = json.loads(tool_result)
                                 if isinstance(parsed_result, dict) and "sources" in parsed_result:
-                                    tool_result = parsed_result.get("content", "")
+                                    content = parsed_result.get("content", "")
                                     new_sources = parsed_result.get("sources", [])
-                                    if not hasattr(state, "sources"):
-                                        state.sources = []
-                                    state.sources.extend(new_sources)
-                                    set_span_attribute("sources_collected", len(new_sources))
-                                    logger.info(
-                                        f"📚 [Agent] Collected {len(new_sources)} sources from vector_search"
-                                    )
+
+                                    # Only extract content if it's meaningful (>10 chars after strip)
+                                    if content and len(content.strip()) > 10:
+                                        tool_result = content
+                                        if not hasattr(state, "sources"):
+                                            state.sources = []
+                                        state.sources.extend(new_sources)
+                                        set_span_attribute("sources_collected", len(new_sources))
+                                        logger.info(
+                                            f"📚 [Agent] Collected {len(new_sources)} sources from vector_search"
+                                        )
+                                    else:
+                                        # Empty content - log warning and keep original result
+                                        logger.warning(
+                                            f"⚠️ [Agent] Vector search returned empty content with "
+                                            f"{len(new_sources)} sources. Keeping original result."
+                                        )
+                                        set_span_attribute("empty_content_warning", "true")
+                                        # Still collect sources for evidence scoring even if content is empty
+                                        if new_sources:
+                                            if not hasattr(state, "sources"):
+                                                state.sources = []
+                                            state.sources.extend(new_sources)
                             except json.JSONDecodeError:
                                 pass
                             except (KeyError, ValueError, TypeError) as e:
@@ -280,7 +351,13 @@ class ReasoningEngine:
                             observation=tool_result,
                         )
                         state.steps.append(step)
-                        state.context_gathered.append(tool_result)
+
+                        # FIX Edge Case 3: Only append non-empty context
+                        # Empty strings pollute context_gathered and affect evidence scoring
+                        if tool_result and len(tool_result.strip()) > 0:
+                            state.context_gathered.append(tool_result)
+                        else:
+                            logger.warning("⚠️ [Agent] Skipping empty tool_result for context_gathered")
 
                         # OPTIMIZATION: Early exit
                         if (
@@ -381,13 +458,14 @@ Based on the information gathered:
 Provide a final, comprehensive answer to: {query}
 """
                 try:
-                    state.final_answer, model_used_name, _ = await llm_gateway.send_message(
+                    state.final_answer, model_used_name, _, final_usage = await llm_gateway.send_message(
                         chat,
                         final_prompt,
                         system_prompt,
                         tier=model_tier,
                         enable_function_calling=False,
                     )
+                    accumulated_usage = accumulated_usage + final_usage
                 except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
                     logger.error("Failed to generate final answer", exc_info=True)
                     state.final_answer = "I apologize, but I couldn't generate a final answer based on the gathered information."
@@ -447,13 +525,14 @@ Do not invent information. If the context is insufficient, admit it.
 """
 
                         # Retry with same model (disable function calling for final answer)
-                        corrected_answer, _, _ = await llm_gateway.send_message(
+                        corrected_answer, _, _, correction_usage = await llm_gateway.send_message(
                             chat,
                             rephrase_prompt,
                             system_prompt,
                             tier=model_tier,
                             enable_function_calling=False,
                         )
+                        accumulated_usage = accumulated_usage + correction_usage
                         logger.info("🛡️ [Pipeline] Self-correction applied.")
 
                         # Re-run pipeline on corrected answer
@@ -479,7 +558,14 @@ Do not invent information. If the context is insufficient, admit it.
                     # Fallback to basic post-processing
                     state.final_answer = post_process_response(state.final_answer, query)
 
-        return state, model_used_name, conversation_messages
+        # Log total token usage for the entire ReAct loop
+        logger.info(
+            f"📊 [ReAct] Total token usage: {accumulated_usage.prompt_tokens} prompt + "
+            f"{accumulated_usage.completion_tokens} completion = {accumulated_usage.total_tokens} total "
+            f"(${accumulated_usage.cost_usd:.6f})"
+        )
+
+        return state, model_used_name, conversation_messages, accumulated_usage
 
     async def execute_react_loop_stream(
         self,
@@ -517,7 +603,7 @@ Do not invent information. If the context is insufficient, admit it.
                 # Yield thinking event
                 yield {"type": "thinking", "data": f"Step {state.current_step}: Processing..."}
 
-                text_response, model_used_name, response_obj = await llm_gateway.send_message(
+                text_response, model_used_name, response_obj, _ = await llm_gateway.send_message(
                     chat,
                     message,
                     system_prompt,
@@ -544,11 +630,14 @@ Do not invent information. If the context is insufficient, admit it.
                         if tool_call:
                             break
 
-            # Fallback to regex parsing
-            if not tool_call:
+            # FIX Edge Case 2 (streaming): Validate tool call before using
+            # Fallback to regex parsing if no valid native function call found
+            if not is_valid_tool_call(tool_call):
                 tool_call = parse_tool_call(text_response, use_native=False)
+                if not is_valid_tool_call(tool_call):
+                    tool_call = None
 
-            if tool_call:
+            if is_valid_tool_call(tool_call):
                 # Yield tool call event
                 yield {"type": "tool_call", "data": {"tool": tool_call.tool_name, "args": tool_call.arguments}}
 
@@ -562,15 +651,33 @@ Do not invent information. If the context is insufficient, admit it.
                 )
 
                 # Handle citation from vector_search
+                # FIX Edge Case 3 (streaming): Handle empty content from vector_search
                 if tool_call.tool_name == "vector_search":
                     try:
                         parsed_result = json.loads(tool_result)
                         if isinstance(parsed_result, dict) and "sources" in parsed_result:
-                            tool_result = parsed_result.get("content", "")
+                            content = parsed_result.get("content", "")
                             new_sources = parsed_result.get("sources", [])
-                            if not hasattr(state, "sources"):
-                                state.sources = []
-                            state.sources.extend(new_sources)
+
+                            # Only extract content if it's meaningful (>10 chars after strip)
+                            if content and len(content.strip()) > 10:
+                                tool_result = content
+                                if not hasattr(state, "sources"):
+                                    state.sources = []
+                                state.sources.extend(new_sources)
+                                logger.info(
+                                    f"📚 [Agent Stream] Collected {len(new_sources)} sources"
+                                )
+                            else:
+                                # Empty content - log warning, still collect sources
+                                logger.warning(
+                                    f"⚠️ [Agent Stream] Vector search returned empty content "
+                                    f"with {len(new_sources)} sources"
+                                )
+                                if new_sources:
+                                    if not hasattr(state, "sources"):
+                                        state.sources = []
+                                    state.sources.extend(new_sources)
                     except (json.JSONDecodeError, KeyError, ValueError, TypeError):
                         pass
 
@@ -583,7 +690,10 @@ Do not invent information. If the context is insufficient, admit it.
                     observation=tool_result,
                 )
                 state.steps.append(step)
-                state.context_gathered.append(tool_result)
+
+                # FIX Edge Case 3 (streaming): Only append non-empty context
+                if tool_result and len(tool_result.strip()) > 0:
+                    state.context_gathered.append(tool_result)
 
                 # Yield observation event
                 yield {"type": "observation", "data": tool_result[:500] if len(tool_result) > 500 else tool_result}
@@ -671,7 +781,7 @@ Based on the information gathered:
 Provide a final, comprehensive answer to: {query}
 """
                 try:
-                    state.final_answer, _, _ = await llm_gateway.send_message(
+                    state.final_answer, _, _, _ = await llm_gateway.send_message(
                         chat,
                         final_prompt,
                         system_prompt,

@@ -35,6 +35,10 @@ from google.api_core.exceptions import ResourceExhausted
 
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
+from services.llm_clients.pricing import TokenUsage
+
+def mock_token_usage():
+    return TokenUsage(prompt_tokens=10, completion_tokens=20)
 
 # ============================================================================
 # Test ReasoningEngine Initialization
@@ -85,11 +89,11 @@ class TestReActLoopExecution:
         
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: This is the answer", "gemini-2.0-flash", None)
+            return_value=("Final Answer: This is the answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
-        result_state, model_name, messages = await engine.execute_react_loop(
+        result_state, model_name, messages, _ = await engine.execute_react_loop(
             state=state,
             llm_gateway=llm_gateway,
             chat=chat,
@@ -129,11 +133,13 @@ class TestReActLoopExecution:
                     "Thought: Need to calculate\nAction: calculator\nInput: 2+2",
                     "gemini-2.0-flash",
                     None,
+                    mock_token_usage(),
                 ),
                 (
                     "Final Answer: Based on the calculation, the answer is 42",
                     "gemini-2.0-flash",
                     None,
+                    mock_token_usage(),
                 ),
             ]
         )
@@ -153,7 +159,7 @@ class TestReActLoopExecution:
             with patch(
                 "services.rag.agentic.reasoning.execute_tool", return_value=tool_result
             ):
-                result_state, model_name, messages = await engine.execute_react_loop(
+                result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -182,7 +188,7 @@ class TestReActLoopExecution:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Search for info", "gemini-2.0-flash", None)
+            return_value=("Thought: Search for info", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -194,7 +200,7 @@ class TestReActLoopExecution:
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch("services.rag.agentic.reasoning.execute_tool", return_value=rich_content):
-                result_state, model_name, messages = await engine.execute_react_loop(
+                result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -222,12 +228,12 @@ class TestReActLoopExecution:
         llm_gateway = AsyncMock()
         # Never provide final answer
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Still thinking...", "gemini-2.0-flash", None)
+            return_value=("Thought: Still thinking...", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, model_name, messages = await engine.execute_react_loop(
+            result_state, model_name, messages, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -288,7 +294,7 @@ class TestToolCallParsing:
             ],  # First iteration: native returns tool_call, Second iteration: both return None
         ):
             with patch("services.rag.agentic.reasoning.execute_tool", return_value="result"):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -322,7 +328,7 @@ class TestCitationHandling:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Search", "gemini-2.0-flash", None)
+            return_value=("Thought: Search", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -344,7 +350,7 @@ class TestCitationHandling:
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch("services.rag.agentic.reasoning.execute_tool", return_value=vector_result):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -371,7 +377,7 @@ class TestCitationHandling:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Search", "gemini-2.0-flash", None)
+            return_value=("Thought: Search", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -383,7 +389,7 @@ class TestCitationHandling:
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch("services.rag.agentic.reasoning.execute_tool", return_value=vector_result):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -419,8 +425,8 @@ class TestFinalAnswerGeneration:
         # First call: tool execution (adds to context), Second call: generate final answer from context
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Search for info", "gemini-2.0-flash", None),
-                ("Generated final answer based on context", "gemini-2.0-flash", None),
+                ("Thought: Search for info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Generated final answer based on context", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
@@ -434,7 +440,7 @@ class TestFinalAnswerGeneration:
             with patch(
                 "services.rag.agentic.reasoning.execute_tool", return_value=substantial_context
             ):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -460,11 +466,11 @@ class TestFinalAnswerGeneration:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: No further action needed", "gemini-2.0-flash", None)
+            return_value=("Final Answer: No further action needed", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
-        result_state, _, _ = await engine.execute_react_loop(
+        result_state, _, __, ___ = await engine.execute_react_loop(
             state=state,
             llm_gateway=llm_gateway,
             chat=chat,
@@ -507,11 +513,11 @@ class TestPipelineProcessing:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: Raw answer", "gemini-2.0-flash", None)
+            return_value=("Final Answer: Raw answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
-        result_state, _, _ = await engine.execute_react_loop(
+        result_state, _, __, ___ = await engine.execute_react_loop(
             state=state,
             llm_gateway=llm_gateway,
             chat=chat,
@@ -558,13 +564,13 @@ class TestPipelineProcessing:
         # First: final answer, Second: corrected answer
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Final Answer: Initial answer", "gemini-2.0-flash", None),
-                ("Corrected answer after review", "gemini-2.0-flash", None),
+                ("Final Answer: Initial answer", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Corrected answer after review", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
 
-        result_state, _, _ = await engine.execute_react_loop(
+        result_state, _, __, ___ = await engine.execute_react_loop(
             state=state,
             llm_gateway=llm_gateway,
             chat=chat,
@@ -602,7 +608,7 @@ class TestErrorHandling:
         llm_gateway.send_message = AsyncMock(side_effect=ResourceExhausted("Quota exceeded"))
         chat = MagicMock()
 
-        result_state, _, _ = await engine.execute_react_loop(
+        result_state, _, __, ___ = await engine.execute_react_loop(
             state=state,
             llm_gateway=llm_gateway,
             chat=chat,
@@ -631,7 +637,7 @@ class TestErrorHandling:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: Raw answer", "gemini-2.0-flash", None)
+            return_value=("Final Answer: Raw answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -639,7 +645,7 @@ class TestErrorHandling:
             "services.rag.agentic.reasoning.post_process_response",
             return_value="Fallback processed",
         ):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,

@@ -37,6 +37,29 @@ ai_requests = Counter("zantara_ai_requests_total", "Total AI requests", ["model"
 ai_latency = Histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])
 ai_tokens_used = Counter("zantara_ai_tokens_used_total", "Total AI tokens used", ["model"])
 
+# LLM Token Usage Metrics (Detailed)
+llm_prompt_tokens = Counter(
+    "zantara_llm_prompt_tokens_total",
+    "Total prompt/input tokens used",
+    ["model", "endpoint"]
+)
+llm_completion_tokens = Counter(
+    "zantara_llm_completion_tokens_total",
+    "Total completion/output tokens used",
+    ["model", "endpoint"]
+)
+llm_cost_usd = Counter(
+    "zantara_llm_cost_usd_total",
+    "Total LLM cost in USD",
+    ["model"]
+)
+llm_request_tokens = Histogram(
+    "zantara_llm_request_tokens",
+    "Tokens per request distribution",
+    ["model", "type"],  # type = "prompt" or "completion"
+    buckets=[10, 50, 100, 500, 1000, 2000, 5000, 10000, 20000]
+)
+
 # Database Metrics
 db_connections_active = Gauge("zantara_db_connections_active", "Active database connections")
 db_query_duration = Histogram("zantara_db_query_duration_seconds", "Database query duration")
@@ -153,6 +176,39 @@ class MetricsCollector:
         ai_latency.labels(model=model).observe(latency)
         if tokens > 0:
             ai_tokens_used.labels(model=model).inc(tokens)
+
+    def record_llm_token_usage(
+        self,
+        model: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        cost_usd: float,
+        endpoint: str = "chat",
+    ):
+        """Record detailed LLM token usage metrics.
+
+        Args:
+            model: Model name (e.g., 'gemini-3-flash-preview')
+            prompt_tokens: Number of input/prompt tokens
+            completion_tokens: Number of output/completion tokens
+            cost_usd: Cost in USD for this request
+            endpoint: API endpoint that triggered the request
+        """
+        # Increment counters
+        llm_prompt_tokens.labels(model=model, endpoint=endpoint).inc(prompt_tokens)
+        llm_completion_tokens.labels(model=model, endpoint=endpoint).inc(completion_tokens)
+        llm_cost_usd.labels(model=model).inc(cost_usd)
+
+        # Record token distributions
+        if prompt_tokens > 0:
+            llm_request_tokens.labels(model=model, type="prompt").observe(prompt_tokens)
+        if completion_tokens > 0:
+            llm_request_tokens.labels(model=model, type="completion").observe(completion_tokens)
+
+        # Also update legacy counter for backward compatibility
+        total_tokens = prompt_tokens + completion_tokens
+        if total_tokens > 0:
+            ai_tokens_used.labels(model=model).inc(total_tokens)
 
     def update_db_connections(self, count: int):
         """Update database connection count"""

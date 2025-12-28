@@ -31,7 +31,7 @@ nuzantara/
 - **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
 - **Backend**: Python 3.11+, FastAPI, PostgreSQL, Redis, Qdrant
 - **AI Providers**:
-  - Google Gemini via `google-genai` SDK (2.5 Flash, 2.0 Flash, 2.5 Pro)
+  - Google Gemini via `google-genai` SDK (3 Flash Preview → 2.0 Flash fallback)
   - OpenAI (text-embedding-3-small for embeddings)
   - OpenRouter (fallback)
   - ZeroEntropy (zerank-2 reranking)

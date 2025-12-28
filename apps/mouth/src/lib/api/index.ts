@@ -30,6 +30,9 @@ export interface ApiError extends Error {
   message: string;
 }
 
+// Export API client interface for type-safe dependency injection
+export type { IApiClient, ApiRequestOptions } from './types/api-client.types';
+
 // In local dev, proxy `/api/*` through Next to avoid CORS and keep auth headers same-origin.
 
 // In local dev, proxy `/api/*` through Next to avoid CORS and keep auth headers same-origin.

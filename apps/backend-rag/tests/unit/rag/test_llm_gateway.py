@@ -125,7 +125,7 @@ class TestLLMGatewaySendMessage:
         )
 
         # Send message with Flash tier
-        text, model_name, response_obj = await llm_gateway.send_message(
+        text, model_name, response_obj, _ = await llm_gateway.send_message(
             chat=None,
             message="What is KITAS?",
             tier=TIER_FLASH,
@@ -145,7 +145,7 @@ class TestLLMGatewaySendMessage:
             return_value=mock_response
         )
 
-        text, model_name, response_obj = await llm_gateway.send_message(
+        text, model_name, response_obj, _ = await llm_gateway.send_message(
             chat=None,
             message="Analyze this complex legal document",
             tier=TIER_PRO,
@@ -164,7 +164,7 @@ class TestLLMGatewaySendMessage:
             return_value=mock_response
         )
 
-        text, model_name, response_obj = await llm_gateway.send_message(
+        text, model_name, response_obj, _ = await llm_gateway.send_message(
             chat=None,
             message="Simple question",
             tier=TIER_LITE,
@@ -231,7 +231,7 @@ class TestLLMGatewayFallbackCascade:
         mock_genai_client._client.aio.models.generate_content = mock_generate_content
 
         # Send message (should fallback to 2.0)
-        text, model_name, response_obj = await llm_gateway.send_message(
+        text, model_name, response_obj, _ = await llm_gateway.send_message(
             chat=None,
             message="Test query",
             tier=TIER_FLASH,
@@ -260,7 +260,7 @@ class TestLLMGatewayFallbackCascade:
 
         mock_genai_client._client.aio.models.generate_content = mock_generate_content
 
-        text, model_name, response_obj = await llm_gateway.send_message(
+        text, model_name, response_obj, _ = await llm_gateway.send_message(
             chat=None,
             message="Test query",
             tier=TIER_PRO,
@@ -435,7 +435,7 @@ class TestLLMGatewayEdgeCases:
             return_value=mock_response
         )
 
-        text, model_name, response_obj = await llm_gateway.send_message(
+        text, model_name, response_obj, _ = await llm_gateway.send_message(
             chat=None,
             message="Test",
             tier=TIER_FLASH,
@@ -456,7 +456,7 @@ class TestLLMGatewayEdgeCases:
             return_value=mock_response
         )
 
-        text, model_name, response_obj = await llm_gateway.send_message(
+        text, model_name, response_obj, _ = await llm_gateway.send_message(
             chat=None,
             message="Test query",
             tier=TIER_FALLBACK,
@@ -472,7 +472,7 @@ class TestLLMGatewayEdgeCases:
 
         async def mock_generate_content(model, contents, config=None):
             call_count[0] += 1
-            if "2.5-flash" in model:
+            if "3-flash" in model:
                 raise ValueError("Some error")
             # Fallback to 2.0 succeeds
             mock_response = MagicMock()
@@ -481,7 +481,7 @@ class TestLLMGatewayEdgeCases:
 
         mock_genai_client._client.aio.models.generate_content = mock_generate_content
 
-        text, model_name, _ = await llm_gateway.send_message(
+        text, model_name, _, __ = await llm_gateway.send_message(
             chat=None,
             message="Test",
             tier=TIER_FLASH,

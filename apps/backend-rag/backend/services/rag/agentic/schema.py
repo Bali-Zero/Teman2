@@ -40,6 +40,12 @@ class CoreResult(BaseModel):
     context_used: int = 0
     tools_called: list[str] = Field(default_factory=list)
 
+    # Token usage tracking
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    cost_usd: float = 0.0
+
     # Extra structured outputs
     entities: dict[str, Any] = Field(default_factory=dict)
     timings: dict[str, float] = Field(default_factory=dict)

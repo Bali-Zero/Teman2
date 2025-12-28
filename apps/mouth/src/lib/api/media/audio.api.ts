@@ -1,10 +1,10 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
 
 /**
  * Audio Services API methods
  */
 export class AudioApi {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   async transcribeAudio(audioBlob: Blob, mimeType: string = 'audio/webm'): Promise<string> {
     const formData = new FormData();

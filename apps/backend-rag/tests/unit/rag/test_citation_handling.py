@@ -31,6 +31,10 @@ if str(backend_path) not in sys.path:
 
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
+from services.llm_clients.pricing import TokenUsage
+
+def mock_token_usage():
+    return TokenUsage(prompt_tokens=10, completion_tokens=20)
 
 
 @pytest.mark.unit
@@ -57,12 +61,15 @@ class TestCitationHandling:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Action: vector_search('KITAS')", "gemini-2.0-flash", None),
-                ("Answer: KITAS is a permit", "gemini-2.0-flash", None),
-            ]
-        )
+        call_idx = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_idx
+            call_idx += 1
+            if call_idx == 1:
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+            else:
+                return ("Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         mock_tool_call = ToolCall(
@@ -75,7 +82,7 @@ class TestCitationHandling:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -106,9 +113,9 @@ class TestCitationHandling:
                 return '{"content": "KITAS info", "sources": [{"id": "doc1", "score": 0.9}]}'
             else:
                 return '{"content": "More KITAS info", "sources": [{"id": "doc2", "score": 0.85}]}'
-        
+
         mock_tool.execute = AsyncMock(side_effect=mock_execute)
-        
+
         tool_map = {
             "vector_search": mock_tool
         }
@@ -124,10 +131,10 @@ class TestCitationHandling:
             nonlocal call_idx
             call_idx += 1
             if call_idx <= 2:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
             else:
-                return ("Answer: KITAS is a permit", "gemini-2.0-flash", None)
-        
+                return ("Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -141,7 +148,7 @@ class TestCitationHandling:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -181,9 +188,9 @@ class TestCitationHandling:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
             else:
-                return ("Answer: KITAS info", "gemini-2.0-flash", None)
+                return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -197,7 +204,7 @@ class TestCitationHandling:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -233,12 +240,15 @@ class TestCitationHandling:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Action: vector_search('KITAS')", "gemini-2.0-flash", None),
-                ("Answer: KITAS is a permit", "gemini-2.0-flash", None),
-            ]
-        )
+        call_idx = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_idx
+            call_idx += 1
+            if call_idx == 1:
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+            else:
+                return ("Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         mock_tool_call = ToolCall(

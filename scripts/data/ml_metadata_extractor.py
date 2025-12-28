@@ -51,7 +51,7 @@ class MLMetadataExtractor:
         if not ML_AVAILABLE:
             raise RuntimeError("ZantaraAIClient non disponibile")
 
-        # Con Ultra plan, usa Gemini 2.5 Pro per migliore qualità e meno restrizioni
+        # Usa Gemini 3 Flash Preview per migliore qualità e velocità
         self.ai_client = ZantaraAIClient(model=model)
         self.model = model
         print(f"   🤖 ML Extractor inizializzato con modello: {model}")

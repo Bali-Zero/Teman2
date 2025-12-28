@@ -33,6 +33,10 @@ if str(backend_path) not in sys.path:
 
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
+from services.llm_clients.pricing import TokenUsage
+
+def mock_token_usage():
+    return TokenUsage(prompt_tokens=10, completion_tokens=20)
 
 
 @pytest.mark.unit
@@ -59,7 +63,7 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -72,7 +76,7 @@ class TestReasoningEdgeCases:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -109,9 +113,9 @@ class TestReasoningEdgeCases:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('XYZ')", "gemini-2.0-flash", None)
+                return ("Action: vector_search('XYZ')", "gemini-2.0-flash", None, mock_token_usage())
             else:
-                return ("Answer: I couldn't find information", "gemini-2.0-flash", None)
+                return ("Answer: I couldn't find information", "gemini-2.0-flash", None, mock_token_usage())
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -124,7 +128,7 @@ class TestReasoningEdgeCases:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -152,7 +156,7 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: The answer is 4", "gemini-2.0-flash", None)
+            return_value=("Final Answer: The answer is 4", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -160,7 +164,7 @@ class TestReasoningEdgeCases:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -195,7 +199,7 @@ class TestReasoningEdgeCases:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -233,9 +237,9 @@ class TestReasoningEdgeCases:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
             else:
-                return ("Answer: KITAS info", "gemini-2.0-flash", None)
+                return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -248,7 +252,7 @@ class TestReasoningEdgeCases:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -278,8 +282,8 @@ class TestReasoningEdgeCases:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought", "gemini-2.0-flash", None),
-                ("Cautious answer", "gemini-2.0-flash", None),
+                ("Thought", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Cautious answer", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
@@ -288,7 +292,7 @@ class TestReasoningEdgeCases:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -316,7 +320,7 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer: KITAS is a permit", "gemini-2.0-flash", None)
+            return_value=("Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -324,7 +328,7 @@ class TestReasoningEdgeCases:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -352,7 +356,7 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -391,7 +395,7 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -430,7 +434,7 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -475,7 +479,7 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 

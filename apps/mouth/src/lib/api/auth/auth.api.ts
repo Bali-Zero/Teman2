@@ -1,4 +1,4 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
 import { UserProfile } from '@/types';
 import type { BackendLoginResponse, LoginResponse } from './auth.types';
 
@@ -6,15 +6,13 @@ import type { BackendLoginResponse, LoginResponse } from './auth.types';
  * Authentication API methods
  */
 export class AuthApi {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   async login(email: string, pin: string): Promise<LoginResponse> {
-    // Access protected request method via type assertion
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (this.client as any).request('/api/auth/login', {
+    const response = await this.client.request<BackendLoginResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, pin }),
-    }) as BackendLoginResponse;
+    });
 
     if (!response.success || !response.data) {
       throw new Error(response.message || 'Login failed');
@@ -39,16 +37,14 @@ export class AuthApi {
 
   async logout(): Promise<void> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (this.client as any).request('/api/auth/logout', { method: 'POST' });
+      await this.client.request<void>('/api/auth/logout', { method: 'POST' });
     } finally {
       this.client.clearToken();
     }
   }
 
   async getProfile(): Promise<UserProfile> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const profile = await (this.client as any).request('/api/auth/profile') as UserProfile;
+    const profile = await this.client.request<UserProfile>('/api/auth/profile');
     this.client.setUserProfile(profile);
     return profile;
   }

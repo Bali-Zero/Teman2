@@ -46,6 +46,7 @@ from app.core.config import settings
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from llm.genai_client import GenAIClient, GENAI_AVAILABLE, types, get_genai_client
 from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
+from services.llm_clients.pricing import TokenUsage, create_token_usage
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,8 @@ class LLMGateway:
     Attributes:
         gemini_tools (list): Function declarations for native tool calling
         _genai_client (GenAIClient): Centralized GenAI client instance
-        model_name_pro (str): Gemini 2.5 Pro model name
-        model_name_flash (str): Gemini 2.5 Flash model name
+        model_name_pro (str): Gemini 3 Flash Preview model name (same as flash)
+        model_name_flash (str): Gemini 3 Flash Preview model name
         _openrouter_client (OpenRouterClient): Lazy-loaded OpenRouter client
 
     Note:
@@ -174,7 +175,7 @@ class LLMGateway:
         tier: int = TIER_FLASH,
         enable_function_calling: bool = True,
         conversation_messages: list[dict] | None = None,
-    ) -> tuple[str, str, Any]:
+    ) -> tuple[str, str, Any, TokenUsage]:
         """Send message to LLM with tier-based routing and automatic fallback.
 
         Main public API for sending messages to language models. Implements
@@ -194,21 +195,22 @@ class LLMGateway:
             conversation_messages: Conversation history for OpenRouter fallback
 
         Returns:
-            Tuple of (response_text, model_name_used, response_object)
+            Tuple of (response_text, model_name_used, response_object, token_usage)
             - response_text (str): Generated response content
             - model_name_used (str): Model that generated the response
             - response_object (Any): Full response object (for function call parsing)
+            - token_usage (TokenUsage): Token counts and cost information
 
         Raises:
             RuntimeError: If all models fail (including OpenRouter)
 
         Example:
-            >>> response, model, obj = await gateway.send_message(
+            >>> response, model, obj, usage = await gateway.send_message(
             ...     chat=chat_session,
             ...     message="What is the capital of Indonesia?",
             ...     tier=TIER_FLASH,
             ... )
-            >>> print(f"[{model}] {response}")
+            >>> print(f"[{model}] {response} (cost: ${usage.cost_usd:.6f})")
         """
         return await self._send_with_fallback(
             chat=chat,
@@ -227,7 +229,7 @@ class LLMGateway:
         model_tier: int,
         enable_function_calling: bool,
         conversation_messages: list[dict],
-    ) -> tuple[str, str, Any]:
+    ) -> tuple[str, str, Any, TokenUsage]:
         """Send message with tier-based routing, native function calling, and cascade fallback.
 
         Implements intelligent model selection with automatic degradation:
@@ -320,8 +322,8 @@ class LLMGateway:
             return types.GenerateContentConfig(**config_kwargs)
 
         # Helper to call model
-        async def _call_model(model_name: str, with_tools: bool = False) -> tuple[str, Any]:
-            """Call a specific model and return (text, response)."""
+        async def _call_model(model_name: str, with_tools: bool = False) -> tuple[str, Any, TokenUsage]:
+            """Call a specific model and return (text, response, token_usage)."""
             if not self._genai_client or not self._genai_client.is_available:
                 raise RuntimeError("GenAI client not available")
 
@@ -338,6 +340,28 @@ class LLMGateway:
                     contents=message,
                     config=config,
                 )
+
+                # Extract token usage from response
+                prompt_tokens = 0
+                completion_tokens = 0
+                if hasattr(response, "usage_metadata") and response.usage_metadata:
+                    prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
+                    completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+
+                token_usage = create_token_usage(
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    model=model_name,
+                )
+
+                # Log token usage for monitoring
+                logger.debug(
+                    f"📊 [LLMGateway] Token usage: {prompt_tokens} prompt + {completion_tokens} completion "
+                    f"= {token_usage.total_tokens} total (${token_usage.cost_usd:.6f})"
+                )
+                set_span_attribute("prompt_tokens", prompt_tokens)
+                set_span_attribute("completion_tokens", completion_tokens)
+                set_span_attribute("cost_usd", token_usage.cost_usd)
 
                 # Extract text, handling function call responses
                 try:
@@ -356,17 +380,20 @@ class LLMGateway:
                     set_span_attribute("response_length", 0)
 
                 set_span_status("ok")
-                return text_content, response
+                return text_content, response, token_usage
+
+        # Track accumulated token usage across fallbacks
+        accumulated_usage = TokenUsage()
 
         # 1. Try PRO Tier (if requested) - same as flash (gemini-3-flash-preview)
         if model_tier == TIER_PRO and self._available:
             try:
-                text_content, response = await _call_model(
+                text_content, response, token_usage = await _call_model(
                     self.model_name_pro,
                     with_tools=enable_function_calling,
                 )
                 logger.debug("✅ LLMGateway: Gemini 3 Flash Preview (pro tier) response received")
-                return (text_content, "gemini-3-flash-preview", response)
+                return (text_content, "gemini-3-flash-preview", response, token_usage)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
                 logger.warning(
@@ -384,12 +411,12 @@ class LLMGateway:
         # 2. Try Flash (Tier 0) - gemini-3-flash-preview (Standard)
         if model_tier <= TIER_FLASH and self._available:
             try:
-                text_content, response = await _call_model(
+                text_content, response, token_usage = await _call_model(
                     self.model_name_flash,
                     with_tools=enable_function_calling,
                 )
                 logger.debug("✅ LLMGateway: Gemini 3 Flash Preview response received")
-                return (text_content, "gemini-3-flash-preview", response)
+                return (text_content, "gemini-3-flash-preview", response, token_usage)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
                 logger.warning(f"⚠️ LLMGateway: Gemini 3 Flash Preview quota exceeded, trying 2.0 fallback: {e}")
@@ -406,12 +433,12 @@ class LLMGateway:
         # 3. Try Gemini 2.0 Flash (Fallback Tier) - gemini-2.0-flash
         if model_tier in (TIER_LITE, TIER_FALLBACK) and self._available:
             try:
-                text_content, response = await _call_model(
+                text_content, response, token_usage = await _call_model(
                     self.model_name_fallback,
                     with_tools=enable_function_calling,
                 )
                 logger.debug("✅ LLMGateway: Gemini 2.0 Flash (fallback) response received")
-                return (text_content, "gemini-2.0-flash", response)
+                return (text_content, "gemini-2.0-flash", response, token_usage)
 
             except (ResourceExhausted, ServiceUnavailable) as e:
                 logger.error(

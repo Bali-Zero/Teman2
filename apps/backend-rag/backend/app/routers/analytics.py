@@ -250,6 +250,110 @@ async def get_feedback_stats(
 
 
 # ============================================================================
+# LLM TOKEN USAGE ENDPOINT
+# ============================================================================
+
+class LLMUsageStats(BaseModel):
+    """LLM token usage and cost statistics"""
+    total_prompt_tokens: int = 0
+    total_completion_tokens: int = 0
+    total_tokens: int = 0
+    total_cost_usd: float = 0.0
+    usage_by_model: list[dict] = []
+    usage_by_endpoint: list[dict] = []
+    daily_trend: list[dict] = []
+    generated_at: str = ""
+
+
+@router.get("/llm-usage", response_model=LLMUsageStats)
+async def get_llm_usage_stats(
+    request: Request,
+    user: dict = Depends(verify_founder_access)
+) -> LLMUsageStats:
+    """Get detailed LLM token usage and cost statistics.
+
+    This endpoint provides:
+    - Total tokens used (prompt + completion)
+    - Total cost in USD
+    - Breakdown by model
+    - Breakdown by endpoint
+    - Daily trend data
+    """
+    from prometheus_client import REGISTRY
+    from datetime import datetime, timezone
+
+    # Extract metrics from Prometheus registry
+    usage_by_model: dict[str, dict] = {}
+    usage_by_endpoint: dict[str, dict] = {}
+    total_prompt = 0
+    total_completion = 0
+    total_cost = 0.0
+
+    try:
+        # Get all metrics from the registry
+        for metric in REGISTRY.collect():
+            # llm_prompt_tokens_total
+            if metric.name == "zantara_llm_prompt_tokens_total":
+                for sample in metric.samples:
+                    if sample.name.endswith("_total"):
+                        model = sample.labels.get("model", "unknown")
+                        endpoint = sample.labels.get("endpoint", "unknown")
+                        value = int(sample.value)
+                        total_prompt += value
+
+                        if model not in usage_by_model:
+                            usage_by_model[model] = {"model": model, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+                        usage_by_model[model]["prompt_tokens"] += value
+
+                        if endpoint not in usage_by_endpoint:
+                            usage_by_endpoint[endpoint] = {"endpoint": endpoint, "prompt_tokens": 0, "completion_tokens": 0}
+                        usage_by_endpoint[endpoint]["prompt_tokens"] += value
+
+            # llm_completion_tokens_total
+            elif metric.name == "zantara_llm_completion_tokens_total":
+                for sample in metric.samples:
+                    if sample.name.endswith("_total"):
+                        model = sample.labels.get("model", "unknown")
+                        endpoint = sample.labels.get("endpoint", "unknown")
+                        value = int(sample.value)
+                        total_completion += value
+
+                        if model not in usage_by_model:
+                            usage_by_model[model] = {"model": model, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+                        usage_by_model[model]["completion_tokens"] += value
+
+                        if endpoint not in usage_by_endpoint:
+                            usage_by_endpoint[endpoint] = {"endpoint": endpoint, "prompt_tokens": 0, "completion_tokens": 0}
+                        usage_by_endpoint[endpoint]["completion_tokens"] += value
+
+            # llm_cost_usd_total
+            elif metric.name == "zantara_llm_cost_usd_total":
+                for sample in metric.samples:
+                    if sample.name.endswith("_total"):
+                        model = sample.labels.get("model", "unknown")
+                        value = float(sample.value)
+                        total_cost += value
+
+                        if model not in usage_by_model:
+                            usage_by_model[model] = {"model": model, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+                        usage_by_model[model]["cost_usd"] += value
+
+    except Exception as e:
+        logger.warning(f"Failed to collect LLM metrics: {e}")
+
+    return LLMUsageStats(
+        total_prompt_tokens=total_prompt,
+        total_completion_tokens=total_completion,
+        total_tokens=total_prompt + total_completion,
+        total_cost_usd=round(total_cost, 6),
+        usage_by_model=list(usage_by_model.values()),
+        usage_by_endpoint=list(usage_by_endpoint.values()),
+        daily_trend=[],  # Would need time-series DB for this
+        generated_at=datetime.now(timezone.utc).isoformat()
+    )
+
+
+# ============================================================================
 # ALERTS ENDPOINT
 # ============================================================================
 

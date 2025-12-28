@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { SchedulerStatus } from '../SchedulerStatus';
+import { SchedulerStatus } from './SchedulerStatus';
 
 describe('SchedulerStatus', () => {
   describe('Rendering', () => {

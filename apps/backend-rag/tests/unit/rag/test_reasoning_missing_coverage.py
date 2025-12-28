@@ -39,6 +39,10 @@ if str(backend_path) not in sys.path:
 
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
+from services.llm_clients.pricing import TokenUsage
+
+def mock_token_usage():
+    return TokenUsage(prompt_tokens=10, completion_tokens=20)
 
 
 @pytest.mark.unit
@@ -54,7 +58,7 @@ class TestReasoningMissingCoverage:
         mock_tool.execute = AsyncMock(
             return_value='{"content": "KITAS info", "invalid_key": "value"}'
         )
-        
+
         tool_map = {
             "vector_search": mock_tool
         }
@@ -65,12 +69,15 @@ class TestReasoningMissingCoverage:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Action: vector_search('KITAS')", "gemini-2.0-flash", None),
-                ("Answer: KITAS info", "gemini-2.0-flash", None),
-            ]
-        )
+        call_idx = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_idx
+            call_idx += 1
+            if call_idx == 1:
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+            else:
+                return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         mock_tool_call = ToolCall(
@@ -82,7 +89,7 @@ class TestReasoningMissingCoverage:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -109,7 +116,7 @@ class TestReasoningMissingCoverage:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Still thinking...", "gemini-2.0-flash", None)
+            return_value=("Thought: Still thinking...", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -117,7 +124,7 @@ class TestReasoningMissingCoverage:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -147,8 +154,8 @@ class TestReasoningMissingCoverage:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought", "gemini-2.0-flash", None),
-                ("Cautious answer about KITAS", "gemini-2.0-flash", None),
+                ("Thought", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Cautious answer about KITAS", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
@@ -157,7 +164,7 @@ class TestReasoningMissingCoverage:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -185,7 +192,7 @@ class TestReasoningMissingCoverage:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer: KITAS is a permit", "gemini-2.0-flash", None)
+            return_value=("Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -193,7 +200,7 @@ class TestReasoningMissingCoverage:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -248,8 +255,8 @@ class TestReasoningMissingCoverage:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Answer", "gemini-2.0-flash", None),
-                ("Corrected answer with citations", "gemini-2.0-flash", None),
+                ("Answer", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Corrected answer with citations", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
@@ -258,7 +265,7 @@ class TestReasoningMissingCoverage:
         from contextlib import nullcontext
         with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-                result_state, _, _ = await engine.execute_react_loop(
+                result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
@@ -292,7 +299,7 @@ class TestReasoningMissingCoverage:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -343,12 +350,15 @@ class TestReasoningMissingCoverage:
         state.sources = []
 
         llm_gateway = AsyncMock()
-        llm_gateway.send_message = AsyncMock(
-            side_effect=[
-                ("Action: vector_search('KITAS')", "gemini-2.0-flash", None),
-                ("Answer: KITAS info", "gemini-2.0-flash", None),
-            ]
-        )
+        call_idx = 0
+        def mock_send_message(*args, **kwargs):
+            nonlocal call_idx
+            call_idx += 1
+            if call_idx == 1:
+                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+            else:
+                return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+        llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         mock_tool_call = ToolCall(
@@ -430,7 +440,7 @@ class TestReasoningMissingCoverage:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer: KITAS is a permit", "gemini-2.0-flash", None)
+            return_value=("Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -513,7 +523,7 @@ class TestReasoningMissingCoverage:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -539,4 +549,5 @@ class TestReasoningMissingCoverage:
 
         # Should handle pipeline error gracefully
         assert len(events) > 0
+
 

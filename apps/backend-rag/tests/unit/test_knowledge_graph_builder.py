@@ -19,14 +19,14 @@ class TestKnowledgeGraphBuilder:
 
     def test_knowledge_graph_builder_init(self):
         """Test KnowledgeGraphBuilder initialization"""
-        from backend.services.knowledge_graph_builder import KnowledgeGraphBuilder
+        from backend.services.misc.knowledge_graph_builder import KnowledgeGraphBuilder
 
         builder = KnowledgeGraphBuilder()
         assert builder is not None
 
     def test_create_entity(self):
         """Test creating entity"""
-        from backend.services.knowledge_graph_builder import Entity, EntityType
+        from backend.services.misc.knowledge_graph_builder import Entity, EntityType
 
         entity = Entity(
             entity_id="kbli_56101",
@@ -41,7 +41,7 @@ class TestKnowledgeGraphBuilder:
 
     def test_create_relationship(self):
         """Test creating relationship"""
-        from backend.services.knowledge_graph_builder import Relationship, RelationType
+        from backend.services.misc.knowledge_graph_builder import Relationship, RelationType
 
         relationship = Relationship(
             relationship_id="rel1",
@@ -56,7 +56,7 @@ class TestKnowledgeGraphBuilder:
 
     def test_entity_type_enum(self):
         """Test EntityType enum values"""
-        from backend.services.knowledge_graph_builder import EntityType
+        from backend.services.misc.knowledge_graph_builder import EntityType
 
         assert EntityType.KBLI_CODE == "kbli_code"
         assert EntityType.LEGAL_ENTITY == "legal_entity"
@@ -64,7 +64,7 @@ class TestKnowledgeGraphBuilder:
 
     def test_relation_type_enum(self):
         """Test RelationType enum values"""
-        from backend.services.knowledge_graph_builder import RelationType
+        from backend.services.misc.knowledge_graph_builder import RelationType
 
         assert RelationType.REQUIRES == "requires"
         assert RelationType.RELATED_TO == "related_to"

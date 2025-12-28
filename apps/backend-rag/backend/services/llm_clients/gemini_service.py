@@ -29,8 +29,8 @@ class GeminiJakselService:
             model_name: "gemini-3-flash-preview" (Fast/Medium thinking) or "gemini-3-pro-preview" (High thinking)
 
         Note:
-            - Free tier: 2.0 Flash (high quota), 2.5 Pro (lower quota)
-            - Ultra plan: Both unlimited for normal use
+            - Primary: 3 Flash Preview (fast, cost-effective)
+            - Fallback: 2.0 Flash (stable, reliable)
             - Automatic fallback to OpenRouter free models on 429
         """
         # Store model name (new SDK doesn't need 'models/' prefix)

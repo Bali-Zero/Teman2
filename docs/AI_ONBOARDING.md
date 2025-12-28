@@ -141,7 +141,7 @@ See [Debug Guide](../docs/DEBUG_GUIDE.md) for complete documentation.
 A specialized module that applies "Jakarta Selatan" persona to ALL responses.
 - **Primary Endpoint:** `https://jaksel.balizero.com` (Oracle Cloud VM + Ollama)
 - **Model:** `zantara:latest` (Gemma 9B Fine-tuned)
-- **Fallback:** Gemini 2.5 Flash with style-transfer prompt (now integrated in Agentic RAG)
+- **Fallback:** Gemini 3 Flash Preview with style-transfer prompt (now integrated in Agentic RAG)
 
 ### 4.4 CRM System
 Full-featured Customer Relationship Management:

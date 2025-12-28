@@ -1,17 +1,16 @@
 import { UserProfile } from '@/types';
+import type { IApiClient, ApiRequestOptions } from './types/api-client.types';
 
 /**
  * Base API client with token management and request handling.
  * This is the core class that all domain-specific API modules extend or use.
+ * Implements IApiClient interface for type-safe dependency injection.
  */
-export class ApiClientBase {
+export class ApiClientBase implements IApiClient {
   protected baseUrl: string;
   protected token: string | null = null;
   protected csrfToken: string | null = null; // CSRF token for cookie-based auth
   protected userProfile: UserProfile | null = null;
-  // NuzantaraClient removed - was importing from non-existent generated file
-  // If needed, can be re-added when generated client is available
-  public readonly client: any = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -91,7 +90,7 @@ export class ApiClientBase {
     return this.userProfile?.role === 'admin';
   }
 
-  protected getAdminHeaders(): Record<string, string> {
+  getAdminHeaders(): Record<string, string> {
     if (!this.userProfile || this.userProfile.role !== 'admin') {
       throw new Error('Admin access required');
     }
@@ -100,10 +99,11 @@ export class ApiClientBase {
 
   /**
    * Core request method with CSRF token handling, timeout, and error handling.
+   * Public method implementing IApiClient interface.
    */
-  protected async request<T>(
+  async request<T>(
     endpoint: string,
-    options: RequestInit = {},
+    options: ApiRequestOptions = {},
     timeoutMs: number = 30000
   ): Promise<T> {
     const headers: Record<string, string> = {

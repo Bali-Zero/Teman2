@@ -41,15 +41,14 @@ export default function AgentsPage() {
 
   const loadAgentsStatus = useCallback(async () => {
     try {
-      const response =
-        await api.client.autonomousTier1.getAutonomousAgentsStatusApiAutonomousAgentsStatusGet();
+      // Use direct API request since generated client is not available
+      const response = await api.get<{ agents?: AgentStatus[] }>('/api/autonomous-agents/status');
 
       console.log('Backend response:', response);
 
       // Transform backend response to our format
-      // Backend now returns proper AgentStatus format!
       const agentsData: AgentStatus[] =
-        response.agents?.map((agent: any) => ({
+        response.agents?.map((agent) => ({
           name: agent.name,
           description: agent.description,
           status: agent.status || 'idle',
@@ -73,8 +72,8 @@ export default function AgentsPage() {
 
   const loadSchedulerStatus = useCallback(async () => {
     try {
-      const response =
-        await api.client.autonomousTier1.getSchedulerStatusApiAutonomousAgentsSchedulerStatusGet();
+      // Use direct API request since generated client is not available
+      const response = await api.get<SchedulerStatusData>('/api/autonomous-agents/scheduler/status');
       setSchedulerStatus(response);
     } catch (err) {
       console.error('Failed to load scheduler status:', err);
@@ -108,19 +107,14 @@ export default function AgentsPage() {
     async (agentName: string) => {
       try {
         setError(null);
-        // Map agent names to API endpoints
+        // Map agent names to API endpoints (using direct API calls)
         const agentEndpoints: Record<string, () => Promise<unknown>> = {
           'Conversation Quality Trainer': () =>
-            api.client.autonomousTier1.runConversationTrainerApiAutonomousAgentsConversationTrainerRunPost(
-              PAGINATION.TRAINER_DAYS_BACK
-            ),
+            api.post(`/api/autonomous-agents/conversation-trainer/run?days_back=${PAGINATION.TRAINER_DAYS_BACK}`),
           'Client LTV Predictor': () =>
-            api.client.autonomousTier1.runClientValuePredictorApiAutonomousAgentsClientValuePredictorRunPost(),
+            api.post('/api/autonomous-agents/client-value-predictor/run'),
           'Knowledge Graph Builder': () =>
-            api.client.autonomousTier1.runKnowledgeGraphBuilderApiAutonomousAgentsKnowledgeGraphBuilderRunPost(
-              PAGINATION.KG_BUILDER_DAYS_BACK,
-              false
-            ),
+            api.post(`/api/autonomous-agents/knowledge-graph-builder/run?days_back=${PAGINATION.KG_BUILDER_DAYS_BACK}&rebuild=false`),
         };
 
         const endpoint = agentEndpoints[agentName];

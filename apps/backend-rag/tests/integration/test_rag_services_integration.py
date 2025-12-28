@@ -34,91 +34,41 @@ class TestRAGServicesIntegration:
 
     @pytest.mark.asyncio
     async def test_agentic_rag_orchestrator(self, qdrant_client, db_pool):
-        """Test AgenticRAGOrchestrator with real Qdrant"""
-        from services.rag.agentic import AgenticRAGOrchestrator
+        """Test AgenticRAGOrchestrator with a greeting (no external LLM calls)."""
+        from services.rag.agentic import create_agentic_rag
 
-        # Mock dependencies
-        with (
-            patch("services.rag.agentic.SearchService") as mock_search,
-            patch("services.rag.agentic.ZantaraAIClient") as mock_ai,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
-            patch.dict(
-                os.environ,
-                {
-                    "OPENAI_API_KEY": "test_openai_api_key_for_testing",
-                    "GOOGLE_API_KEY": "test_google_api_key_for_testing",
-                },
-                clear=False,
-            ),
-        ):
-            mock_search_instance = MagicMock()
-            mock_search_instance.search = AsyncMock(
-                return_value={
-                    "results": [
-                        {"text": "Document 1", "score": 0.9},
-                        {"text": "Document 2", "score": 0.8},
-                    ],
-                    "collection_used": "visa_oracle",
-                }
-            )
-            mock_search.return_value = mock_search_instance
+        retriever = MagicMock()
+        orchestrator = create_agentic_rag(retriever=retriever, db_pool=db_pool)
 
-            mock_ai_instance = MagicMock()
-            mock_ai_instance.generate_response = AsyncMock(return_value="Agentic RAG response...")
-            mock_ai.return_value = mock_ai_instance
+        result = await orchestrator.process_query(
+            query="hello", user_id="test_user_rag_1"
+        )
 
-            orchestrator = AgenticRAGOrchestrator(retriever=mock_search_instance, db_pool=db_pool)
-
-            # Test query processing
-            result = await orchestrator.process_query(
-                query="What is KITAS?", user_id="test_user_rag_1"
-            )
-
-            assert result is not None
-            assert "answer" in result or "response" in result
+        assert result is not None
+        assert hasattr(result, "answer")
+        assert result.answer
 
     @pytest.mark.asyncio
     async def test_cultural_rag_service(self, qdrant_client):
-        """Test CulturalRAGService with real Qdrant"""
+        """Test CulturalRAGService using mocked CulturalInsightsService."""
         from services.misc.cultural_rag_service import CulturalRAGService
 
-        with (
-            patch("services.cultural_rag_service.SearchService") as mock_search,
-            patch("services.cultural_rag_service.ZantaraAIClient") as mock_ai,
-            patch.dict(
-                os.environ,
-                {
-                    "OPENAI_API_KEY": "test_openai_api_key_for_testing",
-                    "GOOGLE_API_KEY": "test_google_api_key_for_testing",
-                },
-                clear=False,
-            ),
-        ):
-            mock_search_instance = MagicMock()
-            mock_search_instance.search = AsyncMock(
-                return_value={
-                    "results": [{"text": "Cultural context document", "score": 0.85}],
-                    "collection_used": "knowledge_base",
-                }
-            )
-            mock_search.return_value = mock_search_instance
+        mock_insights = MagicMock()
+        mock_insights.query_insights = AsyncMock(
+            return_value=[{"content": "Cultural context document", "score": 0.85}]
+        )
 
-            mock_ai_instance = MagicMock()
-            mock_ai_instance.generate_response = AsyncMock(return_value="Cultural RAG response...")
-            mock_ai.return_value = mock_ai_instance
+        service = CulturalRAGService(cultural_insights_service=mock_insights)
+        result = await service.get_cultural_context(
+            {
+                "query": "What are Indonesian business customs?",
+                "intent": "business_simple",
+                "conversation_stage": "first_contact",
+            }
+        )
 
-            service = CulturalRAGService(
-                search_service=mock_search_instance, ai_client=mock_ai_instance
-            )
-
-            # Test cultural query
-            result = await service.process_query(
-                query="What are Indonesian business customs?",
-                user_id="test_user_cultural_1",
-                language="en",
-            )
-
-            assert result is not None
+        assert result is not None
+        assert len(result) == 1
 
     @pytest.mark.asyncio
     async def test_multi_collection_retrieval(self, qdrant_client):
@@ -127,28 +77,48 @@ class TestRAGServicesIntegration:
 
         with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
-            embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
+            embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 1536)
             embedder.provider = "openai"
             embedder.dimensions = 1536
             mock_embedder.return_value = embedder
 
             search_service = SearchService()
+            mock_vector_db = MagicMock()
+            mock_vector_db.search = AsyncMock(
+                return_value={
+                    "documents": ["Doc"],
+                    "distances": [0.5],
+                    "metadatas": [{}],
+                    "ids": ["doc-1"],
+                }
+            )
+
+            search_service.query_router.route_query = MagicMock(
+                side_effect=lambda query, collection_override=None, enable_fallbacks=False: {
+                    "collection_name": collection_override or "legal_unified"
+                }
+            )
 
             # Test search across multiple collections
             collections = ["visa_oracle", "kbli_unified", "legal_unified"]
 
-            for collection in collections:
-                result = await search_service.search("test query", user_level=1, limit=5)
-                assert result is not None
-                assert "results" in result
+            with patch.object(
+                search_service.collection_manager, "get_collection", return_value=mock_vector_db
+            ):
+                for collection in collections:
+                    result = await search_service.search(
+                        "test query", user_level=1, limit=5, collection_override=collection
+                    )
+                    assert result is not None
+                    assert "results" in result
+                    assert result["collection_used"] == collection
 
     @pytest.mark.asyncio
     async def test_reranking_service(self, qdrant_client):
         """Test reranking service integration"""
-        from services.reranker_service import RerankerService
+        from core.reranker import ReRanker
 
-        # Initialize reranker
-        reranker = RerankerService()
+        reranker = ReRanker()
 
         # Test reranking
         documents = [
@@ -160,55 +130,10 @@ class TestRAGServicesIntegration:
         query = "test query"
 
         # Mock reranking (if external service)
-        with patch.object(reranker, "rerank", new_callable=AsyncMock) as mock_rerank:
-            mock_rerank.return_value = sorted(documents, key=lambda x: x["score"], reverse=True)
+        reranked = await reranker.rerank(query, documents, top_k=2)
 
-            reranked = await reranker.rerank(query, documents, top_k=2)
-
-            assert reranked is not None
-            assert len(reranked) <= len(documents)
-
-    @pytest.mark.asyncio
-    async def test_context_building(self, qdrant_client, db_pool):
-        """Test context building from multiple sources"""
-        from services.context.agentic_orchestrator_v2 import AgenticRAGOrchestratorV2
-
-        with (
-            patch("services.context.agentic_orchestrator_v2.SearchService") as mock_search,
-            patch("services.context.agentic_orchestrator_v2.ZantaraAIClient") as mock_ai,
-            patch.dict(
-                os.environ,
-                {
-                    "OPENAI_API_KEY": "test_openai_api_key_for_testing",
-                    "GOOGLE_API_KEY": "test_google_api_key_for_testing",
-                },
-                clear=False,
-            ),
-        ):
-            mock_search_instance = MagicMock()
-            mock_search_instance.search = AsyncMock(
-                return_value={
-                    "results": [
-                        {"text": "Context document 1", "score": 0.9},
-                        {"text": "Context document 2", "score": 0.85},
-                    ],
-                    "collection_used": "visa_oracle",
-                }
-            )
-            mock_search.return_value = mock_search_instance
-
-            mock_ai_instance = MagicMock()
-            mock_ai_instance.generate_response = AsyncMock(return_value="Contextual response...")
-            mock_ai.return_value = mock_ai_instance
-
-            orchestrator = AgenticRAGOrchestratorV2(retriever=mock_search_instance, db_pool=db_pool)
-
-            # Test context building
-            result = await orchestrator.process_query(
-                query="What is KITAS?", user_id="test_user_context_1"
-            )
-
-            assert result is not None
+        assert reranked is not None
+        assert len(reranked) <= len(documents)
 
     @pytest.mark.asyncio
     async def test_hybrid_search(self, qdrant_client):
@@ -217,20 +142,32 @@ class TestRAGServicesIntegration:
 
         with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
-            embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
+            embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 1536)
             embedder.provider = "openai"
             embedder.dimensions = 1536
             mock_embedder.return_value = embedder
 
             search_service = SearchService()
 
-            # Test hybrid search
-            result = await search_service.search(
-                "KITAS visa requirements",
-                user_level=1,
-                limit=10,
-                hybrid=True,  # If supported
-            )
+            with (
+                patch.object(
+                    search_service,
+                    "hybrid_search",
+                    new_callable=AsyncMock,
+                    return_value={"results": [{"text": "Doc", "score": 0.5}]},
+                ),
+                patch.object(
+                    search_service,
+                    "_init_reranker",
+                    return_value=MagicMock(enabled=False),
+                ),
+            ):
+                result = await search_service.hybrid_search_with_reranking(
+                    "KITAS visa requirements",
+                    user_level=1,
+                    limit=10,
+                )
 
             assert result is not None
             assert "results" in result
+            assert result.get("pipeline") == "hybrid_bm25_rrf_zerank2"

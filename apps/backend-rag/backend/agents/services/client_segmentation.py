@@ -103,3 +103,4 @@ class ClientSegmentationService:
         return False, ""
 
 
+

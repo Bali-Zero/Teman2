@@ -54,6 +54,8 @@ from .session_fact_extractor import SessionFactExtractor
 from .schema import CoreResult
 from .tool_executor import execute_tool, parse_tool_call
 from services.tools.definitions import AgentState, AgentStep, BaseTool
+from services.llm_clients.pricing import TokenUsage
+from app.metrics import metrics_collector
 
 logger = logging.getLogger(__name__)
 
@@ -598,6 +600,9 @@ User says: {query}"""
             "reasoning": 0.0
         }
 
+        # Initialize token usage for tracking (default if exception occurs)
+        token_usage = TokenUsage()
+
         with trace_span("react.loop", {
             "model_tier": model_tier,
             "user_id": user_id or "anonymous",
@@ -609,6 +614,7 @@ User says: {query}"""
                     state,
                     model_used_name,
                     conversation_messages,
+                    token_usage,
                 ) = await self.reasoning_engine.execute_react_loop(
                     state=state,
                     llm_gateway=self.llm_gateway,
@@ -632,7 +638,7 @@ User says: {query}"""
                 
                 # Check for specific metrics in state steps
                 for step in state.steps:
-                    if step.action and step.action.tool == "vector_search":
+                    if step.action and step.action.tool_name == "vector_search":
                         # If the tool result contains metadata with timings, parse it
                         # Assuming tool execution might return structured data or we parse it from logs
                         pass
@@ -666,7 +672,7 @@ User says: {query}"""
         embedding_latency_accum = 0.0
         
         for step in state.steps:
-            if step.action and step.action.tool == "vector_search":
+            if step.action and step.action.tool_name == "vector_search":
                  # Heuristic: assign 200ms if not explicitly available, 
                  # or try to extract if the tool was modified to return it.
                  # For now, we will add a placeholder that we will refine in the next step by modifying the tool itself.
@@ -678,6 +684,15 @@ User says: {query}"""
             timings["embedding"] = embedding_latency_accum
             timings["llm"] = max(0, timings["reasoning"] - search_latency_accum) # Adjust LLM time
 
+        # Record token usage metrics for Prometheus
+        metrics_collector.record_llm_token_usage(
+            model=model_used_name,
+            prompt_tokens=token_usage.prompt_tokens,
+            completion_tokens=token_usage.completion_tokens,
+            cost_usd=token_usage.cost_usd,
+            endpoint="chat",
+        )
+
         # Build CoreResult
         return CoreResult(
             answer=state.final_answer,
@@ -687,8 +702,10 @@ User says: {query}"""
             is_ambiguous=False,
             entities=extracted_entities,
             model_used=model_used_name,
-            completion_tokens=0, # TODO: Track tokens
-            prompt_tokens=0, # TODO: Track tokens,
+            prompt_tokens=token_usage.prompt_tokens,
+            completion_tokens=token_usage.completion_tokens,
+            total_tokens=token_usage.total_tokens,
+            cost_usd=token_usage.cost_usd,
             verification_status="passed" if getattr(state, "verification_score", 0.0) > 0.7 else "unchecked",
             document_count=len(sources),
             timings=timings,

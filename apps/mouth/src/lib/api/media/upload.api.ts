@@ -1,10 +1,10 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
 
 /**
  * File upload API methods
  */
 export class UploadApi {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   async uploadFile(
     file: File

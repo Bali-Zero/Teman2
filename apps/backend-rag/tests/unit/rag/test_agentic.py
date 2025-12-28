@@ -127,7 +127,7 @@ def test_build_system_prompt_with_simple_explanation(prompt_builder):
 
     # Prompt should be substantial and contain core identity
     assert len(prompt) > 100
-    assert "Zantara" in prompt or "assistant" in prompt.lower()
+    assert "zantara" in prompt.lower() or "assistant" in prompt.lower()
 
 
 def test_build_system_prompt_with_expert_explanation(prompt_builder):
@@ -138,7 +138,7 @@ def test_build_system_prompt_with_expert_explanation(prompt_builder):
     prompt = prompt_builder.build_system_prompt("test_user@example.com", context, query)
 
     assert len(prompt) > 100
-    assert "Zantara" in prompt or "assistant" in prompt.lower()
+    assert "zantara" in prompt.lower() or "assistant" in prompt.lower()
 
 
 def test_build_system_prompt_with_alternatives(prompt_builder):

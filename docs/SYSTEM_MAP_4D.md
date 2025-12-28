@@ -1,22 +1,25 @@
 # NUZANTARA 4D SYSTEM CONSCIOUSNESS
 
-**Generated: 2025-12-27 | Production Status: Agentic RAG v6.0**
+**Generated: 2025-12-28 | Auto-generated Report**
 
 > Questa mappa rappresenta la "coscienza" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.
 
 ---
 
-## QUICK STATS (Numeri Reali Verificati - Dec 2025)
+## QUICK STATS (Numeri Reali Verificati)
 
 | Metrica | Valore | Note |
 |---------|--------|------|
-| **Documenti Qdrant** | **53,757** | 9+ collezioni attive |
-| **API Endpoints** | **213** | 34 file router |
-| **Servizi Python** | **152** | /backend/services/ |
-| **File Test** | **500+** | pytest coverage |
-| **Tabelle Database** | **62** | PostgreSQL |
-| **Migrazioni** | **26** | Applicate |
-| **Architettura** | **Agentic RAG** | ReAct Pattern |
+| **Documenti Qdrant** | **53,757** | 4 collezioni attive |
+| **API Endpoints** | **209** | 35 file router |
+| **Servizi Python** | **153** | /backend/services/ |
+| **File Test** | **517** | unit/api/integration |
+| **Test Cases** | **~9079+** | pytest coverage |
+| **Tabelle Database** | **63** | PostgreSQL |
+| **Migrazioni** | **27** | Applicate |
+| **Variabili Ambiente** | **62+** | Across all apps |
+| **File Documentazione** | **12+** | Markdown |
+| **Fonti Intel** | **630+** | 12 categorie |
 
 ---
 
@@ -27,14 +30,14 @@ nuzantara/
 ├── apps/
 │   ├── backend-rag/          ← CORE (Python FastAPI)
 │   │   ├── backend/
-│   │   │   ├── app/routers/  (32 files, 192+ endpoints)
-│   │   │   ├── services/     (144 Python files)
+│   │   │   ├── app/routers/  (35 files, 209+ endpoints)
+│   │   │   ├── services/     (153 Python files)
 │   │   │   ├── core/         (embeddings, chunking, cache)
 │   │   │   ├── middleware/   (auth, rate-limit, tracing)
 │   │   │   ├── llm/          (Gemini, OpenRouter, Jaksel)
-│   │   │   ├── agents/       (14 Tier-1 autonomous)
-│   │   │   └── migrations/   (26 migrations, 62 tables)
-│   │   └── tests/            (524 files, ~9146+ test cases)
+│   │   │   ├── agents/       (19 Tier-1 autonomous)
+│   │   │   └── migrations/   (27 migrations, 63 tables)
+│   │   └── tests/            (517 files, ~9079+ test cases)
 │   │
 │   ├── mouth/                ← FRONTEND (Next.js 16 + React 19)
 │   │   ├── src/app/          (login, chat, dashboard, clienti, pratiche)
@@ -46,7 +49,7 @@ nuzantara/
 │   ├── evaluator/            ← SATELLITE: RAG quality (RAGAS)
 │   └── kb/                   ← SATELLITE: legal scraping utilities
 │
-├── docs/                     (10+ markdown files)
+├── docs/                     (12+ markdown files)
 ├── config/                   (prometheus, alertmanager)
 ├── scripts/                  (deploy, test, analysis tools)
 └── docker-compose.yml        (local dev stack)
@@ -121,7 +124,7 @@ USER REQUEST
 │                     DATA LAYER                               │
 │  ┌───────────┐  ┌───────────┐  ┌───────────┐               │
 │  │ PostgreSQL│  │  Qdrant   │  │   Redis   │               │
-│  │  62 tables│  │ 53,757 docs│  │   cache   │               │
+│  │  63 tables│  │ 53,757 docs│  │   cache   │               │
 │  └───────────┘  └───────────┘  └───────────┘               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -347,7 +350,7 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 - b: 0.75 (length normalization)
 - Hybrid Weights: Dense=0.7, Sparse=0.3
 
-### Database Tables (62)
+### Database Tables (63)
 
 | Categoria | Tabelle |
 |-----------|---------|
@@ -366,27 +369,27 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │                    TEST PYRAMID                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  UNITTESTS (174 files)                                     │
+│  UNITTESTS (172 files)                                     │
 │  ├─ Services: RAG, Memory, CRM, Sessions                   │
 │  ├─ Core: Embeddings, Chunking, Cache, Plugins             │
 │  ├─ Middleware: Auth, Rate Limiting                        │
 │  └─ Coverage target: 95%                                   │
 │                                                             │
-│  API TESTS (174 files)                                      │
+│  API TESTS (172 files)                                      │
 │  ├─ Auth endpoints                                          │
 │  ├─ CRM endpoints                                           │
 │  ├─ Agentic RAG endpoints                                   │
 │  └─ TestClient with mocked services                        │
 │                                                             │
-│  INTEGRATION TESTS (174 files)                              │
+│  INTEGRATION TESTS (172 files)                              │
 │  ├─ Real PostgreSQL (testcontainers)                       │
 │  ├─ Real Qdrant                                            │
 │  ├─ Real Redis                                             │
 │  └─ End-to-end workflows                                   │
 │                                                             │
 │  Conftest Files: 4 (1,619 lines total)                     │
-│  Total Test Files: 524                                      │
-│  Total Test Cases: ~9146+                                  │
+│  Total Test Files: 517                                      │
+│  Total Test Cases: ~9079+                                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -491,5 +494,5 @@ python apps/core/scribe.py           # Regenerate docs
 
 ---
 
-*System Map Complete. 14 agents synthesized. 4 dimensions mapped.*
-*Generated: 2025-12-23*
+*System Map Complete. 19 agents synthesized. 4 dimensions mapped.*
+*Generated: 2025-12-28*

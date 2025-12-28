@@ -77,3 +77,4 @@ class ReviewQueue(SQLModel, table=True):
     # Relationships
     source_feedback: ConversationRating = Relationship(back_populates="review_queue_entries")
 
+

@@ -10,7 +10,7 @@ Description:
 Production-ready hybrid RAG system integrating:
 - Qdrant Vector Database (Semantic Search)
 - Google Drive Integration (PDF Document Repository)
-- Google Gemini 2.5 Flash (Reasoning Engine)
+- Google Gemini 3 Flash Preview (Reasoning Engine)
 - User Identity & Localization System (PostgreSQL)
 - Multimodal Capabilities (Text + Audio)
 - Comprehensive Error Handling & Logging

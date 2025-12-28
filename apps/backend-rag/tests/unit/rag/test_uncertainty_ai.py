@@ -32,6 +32,10 @@ if str(backend_path) not in sys.path:
 
 from services.rag.agentic.reasoning import ReasoningEngine, calculate_evidence_score
 from services.tools.definitions import AgentState, ToolCall
+from services.llm_clients.pricing import TokenUsage
+
+def mock_token_usage():
+    return TokenUsage(prompt_tokens=10, completion_tokens=20)
 
 # ============================================================================
 # Test Evidence Score Calculation
@@ -188,12 +192,12 @@ class TestAbstainPolicy:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: No info found", "gemini-2.0-flash", None)
+            return_value=("Thought: No info found", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -222,12 +226,12 @@ class TestAbstainPolicy:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Found something", "gemini-2.0-flash", None)
+            return_value=("Thought: Found something", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -255,12 +259,12 @@ class TestAbstainPolicy:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: Existing answer", "gemini-2.0-flash", None)
+            return_value=("Final Answer: Existing answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -287,12 +291,12 @@ class TestAbstainPolicy:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: No info", "gemini-2.0-flash", None)
+            return_value=("Thought: No info", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -337,14 +341,14 @@ class TestWarningPolicy:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Found info", "gemini-2.0-flash", None),
-                ("Generated answer with caution", "gemini-2.0-flash", None),
+                ("Thought: Found info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Generated answer with caution", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -392,14 +396,14 @@ class TestWarningPolicy:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Found info", "gemini-2.0-flash", None),
-                ("Confident answer", "gemini-2.0-flash", None),
+                ("Thought: Found info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Confident answer", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -449,14 +453,14 @@ class TestNormalGeneration:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Found info", "gemini-2.0-flash", None),
-                ("Comprehensive answer", "gemini-2.0-flash", None),
+                ("Thought: Found info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Comprehensive answer", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -496,7 +500,7 @@ class TestUncertaintyStreaming:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: No info", "gemini-2.0-flash", None)
+            return_value=("Thought: No info", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -540,8 +544,8 @@ class TestUncertaintyStreaming:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Found info", "gemini-2.0-flash", None),
-                ("Cautious answer", "gemini-2.0-flash", None),
+                ("Thought: Found info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Cautious answer", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
@@ -596,14 +600,14 @@ class TestUncertaintyEdgeCases:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Found info", "gemini-2.0-flash", None),
-                ("Answer", "gemini-2.0-flash", None),
+                ("Thought: Found info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Answer", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -633,14 +637,14 @@ class TestUncertaintyEdgeCases:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Found info", "gemini-2.0-flash", None),
-                ("Answer", "gemini-2.0-flash", None),
+                ("Thought: Found info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Answer", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -669,14 +673,14 @@ class TestUncertaintyEdgeCases:
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
             side_effect=[
-                ("Thought: Found info", "gemini-2.0-flash", None),
-                ("Answer", "gemini-2.0-flash", None),
+                ("Thought: Found info", "gemini-2.0-flash", None, mock_token_usage()),
+                ("Answer", "gemini-2.0-flash", None, mock_token_usage()),
             ]
         )
         chat = MagicMock()
 
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,

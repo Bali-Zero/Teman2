@@ -1,4 +1,4 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
 import { UserMemoryContext } from '@/types';
 import type {
   ConversationHistoryResponse,
@@ -10,7 +10,7 @@ import type {
  * Conversations API methods
  */
 export class ConversationsApi {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   // Get conversation history (returns messages from most recent conversation)
   async getConversationHistory(sessionId?: string): Promise<ConversationHistoryResponse> {
@@ -18,10 +18,9 @@ export class ConversationsApi {
     if (sessionId) params.append('session_id', sessionId);
     params.append('limit', '50');
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(
+    return this.client.request<ConversationHistoryResponse>(
       `/api/bali-zero/conversations/history?${params.toString()}`
-    ) as Promise<ConversationHistoryResponse>;
+    );
   }
 
   async saveConversation(
@@ -34,8 +33,7 @@ export class ConversationsApi {
     sessionId?: string,
     metadata?: Record<string, unknown>
   ): Promise<{ success: boolean; conversation_id: number; messages_saved: number }> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request('/api/bali-zero/conversations/save', {
+    return this.client.request('/api/bali-zero/conversations/save', {
       method: 'POST',
       body: JSON.stringify({
         messages,
@@ -51,8 +49,7 @@ export class ConversationsApi {
     const params = new URLSearchParams();
     if (sessionId) params.append('session_id', sessionId);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(`/api/bali-zero/conversations/clear?${params.toString()}`, {
+    return this.client.request(`/api/bali-zero/conversations/clear?${params.toString()}`, {
       method: 'DELETE',
     });
   }
@@ -64,8 +61,7 @@ export class ConversationsApi {
     total_messages: number;
     last_conversation: string | null;
   }> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request('/api/bali-zero/conversations/stats');
+    return this.client.request('/api/bali-zero/conversations/stats');
   }
 
   // List all conversations with title and preview
@@ -77,36 +73,32 @@ export class ConversationsApi {
     params.append('limit', limit.toString());
     params.append('offset', offset.toString());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(
+    return this.client.request<ConversationListResponse>(
       `/api/bali-zero/conversations/list?${params.toString()}`
-    ) as Promise<ConversationListResponse>;
+    );
   }
 
   // Get a single conversation by ID
   async getConversation(conversationId: number): Promise<SingleConversationResponse> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(
+    return this.client.request<SingleConversationResponse>(
       `/api/bali-zero/conversations/${conversationId}`
-    ) as Promise<SingleConversationResponse>;
+    );
   }
 
   // Delete a single conversation by ID
   async deleteConversation(
     conversationId: number
   ): Promise<{ success: boolean; deleted_id: number }> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(`/api/bali-zero/conversations/${conversationId}`, {
+    return this.client.request(`/api/bali-zero/conversations/${conversationId}`, {
       method: 'DELETE',
     });
   }
 
   // Get user memory context (profile facts, summary, counters)
   async getUserMemoryContext(): Promise<UserMemoryContext> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request(
+    return this.client.request<UserMemoryContext>(
       '/api/bali-zero/conversations/memory/context'
-    ) as Promise<UserMemoryContext>;
+    );
   }
 }
 

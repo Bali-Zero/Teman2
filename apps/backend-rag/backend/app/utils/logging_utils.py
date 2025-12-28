@@ -145,3 +145,4 @@ def log_database_operation(
     logger.debug(f"🗄️ {operation} {table}", extra={"context": context})
 
 
+

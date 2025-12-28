@@ -1,4 +1,4 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
 import { AgentStep } from '@/types';
 import type { AgenticQueryResponse } from './chat.types';
 
@@ -8,7 +8,7 @@ import type { AgenticQueryResponse } from './chat.types';
  * Uses Zantara AI v2.0 - Single LLM architecture with RAG
  */
 export class ChatApi {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   async sendMessage(
     message: string,
@@ -18,15 +18,14 @@ export class ChatApi {
     sources: Array<{ title?: string; content?: string }>;
   }> {
     const userProfile = this.client.getUserProfile();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = (await (this.client as any).request('/api/agentic-rag/query', {
+    const response = await this.client.request<AgenticQueryResponse>('/api/agentic-rag/query', {
       method: 'POST',
       body: JSON.stringify({
         query: message,
         user_id: userId || userProfile?.id || 'anonymous',
         enable_vision: false,
       }),
-    })) as AgenticQueryResponse;
+    });
 
     return {
       response: response.answer,

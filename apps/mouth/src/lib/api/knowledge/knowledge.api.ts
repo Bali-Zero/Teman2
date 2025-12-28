@@ -1,11 +1,11 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
 import type { KnowledgeSearchResponse, TierLevel } from './knowledge.types';
 
 /**
  * Knowledge Search API methods
  */
 export class KnowledgeApi {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   async searchDocs(params: {
     query: string;
@@ -22,8 +22,7 @@ export class KnowledgeApi {
       tier_filter,
     } = params;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (this.client as any).request('/api/search/', {
+    return this.client.request<KnowledgeSearchResponse>('/api/search/', {
       method: 'POST',
       body: JSON.stringify({
         query,
@@ -32,7 +31,7 @@ export class KnowledgeApi {
         collection,
         tier_filter: tier_filter ?? null,
       }),
-    }) as Promise<KnowledgeSearchResponse>;
+    });
   }
 }
 

@@ -107,7 +107,7 @@ class ReasoningEngineService:
         conversation_history: Optional[list[dict]] = None,
     ) -> dict[str, Any]:
         """
-        Advanced reasoning with Google Gemini 2.5 Flash using Zantara Identity Layer.
+        Advanced reasoning with Google Gemini 3 Flash Preview using Zantara Identity Layer.
 
         Args:
             documents: List of document texts
