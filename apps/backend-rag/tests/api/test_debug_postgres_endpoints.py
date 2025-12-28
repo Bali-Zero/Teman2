@@ -240,6 +240,10 @@ class TestPostgresQueryEndpoint:
         """Test successful query execution."""
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
+            mock_tx = MagicMock()
+            mock_tx.__aenter__ = AsyncMock(return_value=None)
+            mock_tx.__aexit__ = AsyncMock(return_value=None)
+            mock_conn.transaction = MagicMock(return_value=mock_tx)
             mock_row = MagicMock()
             mock_row._row_desc = [MagicMock(name="id"), MagicMock(name="name")]
             mock_row.__getitem__ = MagicMock(side_effect=lambda k: {"id": 1, "name": "test"}[k])
@@ -282,12 +286,20 @@ class TestPostgresQueryEndpoint:
 
         assert response.status_code == 400
         data = response.json()
-        assert "forbidden" in data["detail"].lower() or "DROP" in data["detail"]
+        assert (
+            "multiple statements" in data["detail"].lower()
+            or "forbidden" in data["detail"].lower()
+            or "drop" in data["detail"].lower()
+        )
 
     def test_execute_query_limit_enforced(self, client, auth_headers):
         """Test that query limit is enforced."""
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
+            mock_tx = MagicMock()
+            mock_tx.__aenter__ = AsyncMock(return_value=None)
+            mock_tx.__aexit__ = AsyncMock(return_value=None)
+            mock_conn.transaction = MagicMock(return_value=mock_tx)
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn
@@ -307,6 +319,10 @@ class TestPostgresQueryEndpoint:
         """Test error handling when database query fails."""
         with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
+            mock_tx = MagicMock()
+            mock_tx.__aenter__ = AsyncMock(return_value=None)
+            mock_tx.__aexit__ = AsyncMock(return_value=None)
+            mock_conn.transaction = MagicMock(return_value=mock_tx)
             mock_conn.fetch = AsyncMock(side_effect=Exception("Database error"))
             mock_conn.close = AsyncMock()
             mock_connect.return_value = mock_conn

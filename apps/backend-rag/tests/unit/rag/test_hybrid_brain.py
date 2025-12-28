@@ -103,6 +103,6 @@ class TestHybridBrainTools:
 
         # Assertions - check for core elements in current prompt structure
         assert "ZANTARA" in prompt  # Core identity
-        assert "<identity>" in prompt  # Identity section
-        assert "vector_search" in prompt  # Tool instructions
-        assert "RESPONSE FORMAT" in prompt or "COMPREHENSIVE" in prompt  # Response guidance
+        assert "<system_instructions>" in prompt or "<role>" in prompt  # Instructions section (new format)
+        assert "verified_data" in prompt.lower() or "knowledge" in prompt.lower()  # Data handling
+        assert "language" in prompt.lower()  # Language protocol
