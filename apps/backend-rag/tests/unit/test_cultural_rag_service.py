@@ -29,7 +29,7 @@ class TestCulturalRAGService:
 
     def test_cultural_rag_service_init(self, mock_cultural_insights_service):
         """Test CulturalRAGService initialization"""
-        from backend.services.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
         assert service is not None
@@ -38,7 +38,7 @@ class TestCulturalRAGService:
     @pytest.mark.asyncio
     async def test_get_cultural_context(self, mock_cultural_insights_service):
         """Test getting cultural context"""
-        from backend.services.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
         mock_cultural_insights_service.query_insights = AsyncMock(
@@ -54,7 +54,7 @@ class TestCulturalRAGService:
     @pytest.mark.asyncio
     async def test_get_cultural_context_empty(self, mock_cultural_insights_service):
         """Test getting cultural context with empty results"""
-        from backend.services.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
         mock_cultural_insights_service.query_insights = AsyncMock(return_value=[])
@@ -67,7 +67,7 @@ class TestCulturalRAGService:
 
     def test_build_cultural_prompt_injection(self, mock_cultural_insights_service):
         """Test building cultural prompt injection"""
-        from backend.services.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
         chunks = [{"content": "test content", "metadata": {"topic": "greeting"}}]
@@ -79,7 +79,7 @@ class TestCulturalRAGService:
 
     def test_build_cultural_prompt_injection_empty(self, mock_cultural_insights_service):
         """Test building cultural prompt injection with empty chunks"""
-        from backend.services.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
         chunks = []
@@ -91,7 +91,7 @@ class TestCulturalRAGService:
     @pytest.mark.asyncio
     async def test_get_cultural_topics_coverage(self, mock_cultural_insights_service):
         """Test getting cultural topics coverage"""
-        from backend.services.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
         coverage = await service.get_cultural_topics_coverage()

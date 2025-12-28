@@ -19,14 +19,14 @@ class TestCollaboratorService:
 
     def test_collaborator_service_init(self):
         """Test CollaboratorService initialization"""
-        from backend.services.collaborator_service import CollaboratorService
+        from backend.services.crm.collaborator_service import CollaboratorService
 
         service = CollaboratorService()
         assert service is not None
 
     def test_list_members(self):
         """Test listing members"""
-        from backend.services.collaborator_service import CollaboratorService
+        from backend.services.crm.collaborator_service import CollaboratorService
 
         service = CollaboratorService()
         members = service.list_members()
@@ -35,7 +35,7 @@ class TestCollaboratorService:
 
     def test_search_members(self):
         """Test searching members"""
-        from backend.services.collaborator_service import CollaboratorService
+        from backend.services.crm.collaborator_service import CollaboratorService
 
         service = CollaboratorService()
         members = service.search_members("test")
@@ -44,7 +44,7 @@ class TestCollaboratorService:
 
     def test_search_members_empty_query(self):
         """Test searching members with empty query"""
-        from backend.services.collaborator_service import CollaboratorService
+        from backend.services.crm.collaborator_service import CollaboratorService
 
         service = CollaboratorService()
         members = service.search_members("")

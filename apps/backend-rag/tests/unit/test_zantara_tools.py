@@ -44,7 +44,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             assert tools is not None
@@ -63,7 +63,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = mock_pricing
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("get_pricing", {"service_type": "visa"})
@@ -83,7 +83,7 @@ class TestZantaraTools:
             mock_collab_instance.search_members = AsyncMock(return_value=[{"name": "John"}])
             mock_collab.return_value = mock_collab_instance
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("search_team_member", {"query": "John"})
@@ -100,7 +100,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("unknown_tool", {})
@@ -125,7 +125,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = mock_pricing
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool(
@@ -147,7 +147,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = mock_pricing
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("get_pricing", {"service_type": "visa"})
@@ -169,7 +169,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = mock_pricing
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("get_pricing", {"service_type": "visa"})
@@ -188,7 +188,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("search_team_member", {"query": ""})
@@ -209,7 +209,7 @@ class TestZantaraTools:
             mock_collab_instance.search_members = MagicMock(return_value=[])
             mock_collab.return_value = mock_collab_instance
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("search_team_member", {"query": "nonexistent"})
@@ -231,7 +231,7 @@ class TestZantaraTools:
             mock_collab_instance.get_team_stats = MagicMock(return_value={"total": 0})
             mock_collab.return_value = mock_collab_instance
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("get_team_members_list", {})
@@ -254,7 +254,7 @@ class TestZantaraTools:
             mock_collab_instance.get_team_stats = MagicMock(return_value={"total": 0})
             mock_collab.return_value = mock_collab_instance
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("get_team_members_list", {"department": "technology"})
@@ -275,7 +275,7 @@ class TestZantaraTools:
             mock_collab_instance.search_members = MagicMock(side_effect=Exception("Service error"))
             mock_collab.return_value = mock_collab_instance
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             result = await tools.execute_tool("search_team_member", {"query": "test"})
@@ -293,7 +293,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             definitions = tools.get_tool_definitions()
@@ -314,7 +314,7 @@ class TestZantaraTools:
             mock_get_pricing.return_value = MagicMock()
             mock_collab.return_value = MagicMock()
 
-            from backend.services.zantara_tools import ZantaraTools
+            from backend.services.misc.zantara_tools import ZantaraTools
 
             tools = ZantaraTools()
             definitions = tools.get_tool_definitions()
@@ -328,7 +328,7 @@ class TestZantaraTools:
 
     def test_get_zantara_tools_singleton(self):
         """Test get_zantara_tools returns singleton"""
-        from backend.services.zantara_tools import get_zantara_tools
+        from backend.services.misc.zantara_tools import get_zantara_tools
 
         tools1 = get_zantara_tools()
         tools2 = get_zantara_tools()
