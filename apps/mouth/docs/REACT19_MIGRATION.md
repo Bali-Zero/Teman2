@@ -247,8 +247,15 @@ async function ChatLayout({ children }) {
 ### Phase 4: Testing & Rollout (✅ COMPLETED)
 - [x] Manual testing of new chat flow
 - [x] Full migration (replaced old chat page)
+- [x] Production deployment (2025-12-28)
 - [ ] Add E2E tests for new chat flow
 - [ ] Monitor error rates and performance
+
+### Phase 5: Production Deployment (✅ COMPLETED - 2025-12-28)
+- [x] Build verification passed
+- [x] Deployed to https://nuzantara-mouth.fly.dev/
+- [x] 2/2 machines healthy
+- [x] Login flow verified working
 
 ## File Structure (After Rollout)
 
@@ -291,11 +298,28 @@ The chat component needs:
 
 These require client-side interactivity. The hybrid approach (Server Actions + Client Components) gives us the best of both worlds.
 
-### Backwards Compatibility
-The legacy `/chat` route remains functional during migration. Once validated, we can:
-1. Move `chat-v2` to `chat`
-2. Archive old implementation
-3. Update imports
+### Native Web Streams (Not AI SDK RSC)
+During implementation, we discovered AI SDK v6 removed the `ai/rsc` module. Instead, we use native Web Streams API:
+
+```tsx
+// Server Action returns ReadableStream<StreamEvent>
+return new ReadableStream<StreamEvent>({
+  async start(controller) {
+    // Process SSE and enqueue typed events
+    controller.enqueue({ type: 'token', data: content });
+  }
+});
+
+// Client consumes with async iteration
+const reader = stream.getReader();
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  // Handle StreamEvent
+}
+```
+
+This approach is more portable and doesn't depend on Vercel-specific APIs.
 
 ## References
 
