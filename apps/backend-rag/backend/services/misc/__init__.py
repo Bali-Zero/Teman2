@@ -17,7 +17,8 @@ from .cultural_rag_service import CulturalRAGService
 from .emotional_attunement import EmotionalAttunementService, ToneStyle
 from .graph_extractor import GraphExtractor
 from .graph_service import GraphService
-from .knowledge_graph_builder import KnowledgeGraphBuilder, Entity, EntityType, Relationship, RelationType
+# KnowledgeGraphBuilder moved to autonomous_agents, importing here for backward compatibility
+from ..autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder, Entity, EntityType, Relationship, RelationType
 from .mcp_client_service import MCPClientService
 from .migration_runner import MigrationRunner
 from .performance_optimizer import PerformanceMonitor, async_timed, timed

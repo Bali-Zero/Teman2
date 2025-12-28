@@ -61,6 +61,14 @@ def register_shutdown_handlers(app: FastAPI) -> None:
             await autonomous_scheduler.stop()
             logger.info("✅ Autonomous Scheduler stopped (all agents terminated)")
 
+        # Shutdown Metrics Pusher
+        metrics_pusher_task = getattr(app.state, "metrics_pusher_task", None)
+        if metrics_pusher_task:
+            metrics_pusher_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await metrics_pusher_task
+            logger.info("✅ Metrics Pusher stopped")
+
         # Plugin System shutdown not needed
 
         # Close HTTP clients
