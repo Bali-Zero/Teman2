@@ -207,7 +207,8 @@ class TestReasoningExactCoverage:
         # Set evidence_score to trigger warning policy (0.3 <= score < 0.6)
         state.context_gathered = ["Some information about KITAS"]
         state.sources = [{"id": 1, "score": 0.5}]
-        state.evidence_score = 0.4  # Weak evidence
+        # Don't set evidence_score - let it be calculated, then it will be 0.4 (weak)
+        # But we need to ensure final_answer is None so it tries to generate
 
         llm_gateway = AsyncMock()
         from google.api_core.exceptions import ResourceExhausted
@@ -241,6 +242,7 @@ class TestReasoningExactCoverage:
 
         # Should handle ResourceExhausted in warning policy (lines 391-393)
         assert result_state.final_answer is not None
+        assert "apologize" in result_state.final_answer.lower() or "couldn't" in result_state.final_answer.lower()
 
     @pytest.mark.asyncio
     async def test_final_answer_stub_filtering_exact_line_408(self):

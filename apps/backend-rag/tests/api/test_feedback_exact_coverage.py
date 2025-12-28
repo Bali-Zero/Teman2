@@ -163,11 +163,14 @@ class TestFeedbackExactCoverage:
         mock_request.state.user_id = None
         mock_request.state.user_profile = None
 
-        request_data = RateConversationRequest(
+        # Create request with invalid feedback_type using model_construct to bypass Pydantic validation
+        request_data = RateConversationRequest.model_construct(
             session_id=session_id,
             rating=5,
             feedback_type="invalid_type"  # Invalid type (line 63)
         )
+        # Manually set the attribute to bypass Pydantic validation
+        request_data.feedback_type = "invalid_type"
 
         with pytest.raises(HTTPException) as exc_info:
             await submit_feedback(request_data, mock_request, pool)
