@@ -2,7 +2,7 @@
 
 ## Current Deployment
 
-**Last Updated**: December 28, 2025 (15:12 UTC)
+**Last Updated**: December 29, 2025 (02:15 UTC)
 
 ### Production Environment
 
@@ -13,28 +13,43 @@
 
 ### Latest Deployment
 
-- **Backend Version**: deployment-01KDJMNHA485BXGF8DEXCV3Y31
+- **Backend Version**: v1090 (deployment-01KDK1RA88G58ZK7AN5TVA1MQ1)
 - **Frontend Version**: deployment-01KDJMW9JZNASJQGDEZK210KBD
-- **Deployment Date**: December 28, 2025
+- **Deployment Date**: December 29, 2025
 - **Deployment Status**: ✅ **SUCCESS**
 
 ### Deployed Features (This Session)
 
-#### 1. Token Tracking & LLM Cost Observability
+#### 1. 🛡️ Red Team Security Hardening - 100% Survival Rate
+
+**Results**: 50/50 adversarial tests passed (was 47/50)
+
+| Fix | Issue | Solution |
+|-----|-------|----------|
+| PI-001 | Prompt Injection | Added `detect_prompt_injection()` security gate in orchestrator |
+| RC-004 | Router Confusion | Added Indonesian tax terms (pph, ppn, npwp) to BUSINESS_KEYWORDS |
+| EM-002 | Evaluator Bug | Fixed false positive with negation pattern detection |
+
+**Security Enhancements**:
+- New `<security_boundary>` section in system prompt
+- Prompt injection detection with 20+ attack patterns
+- Off-topic request blocking (jokes, stories, roleplay)
+- Security gate in both sync and async RAG paths
+
+#### 2. Observability Stack Documentation
+- Added section 4.8 to AI_ONBOARDING.md
+- Added monitoring diagram to SYSTEM_MAP_4D.md
+- New ALERTS_RUNBOOK.md with 12 alert runbooks
+
+#### 3. Token Tracking & LLM Cost Observability
 - New `pricing.py` module for comprehensive LLM cost tracking
 - Support for OpenAI, Anthropic, Google, and local models
 - 28 tests with 93.62% coverage
 
-#### 2. Frontend Type Safety Improvements
+#### 4. Frontend Type Safety Improvements
 - Created `IApiClient` interface for type-safe dependency injection
 - Removed 48+ `as any` casts from production code
 - All domain API modules now use typed interface
-- Fixed agents page to use `api.get<T>()` and `api.post<T>()`
-
-#### 3. CI/CD Pipeline Fixes
-- Removed `continue-on-error` from ESLint and TypeScript checks
-- Fixed pre-deployment tests in deploy.yml (removed `|| true`)
-- CI pipeline now properly fails on lint/type/test errors
 
 ### Health Status
 
@@ -49,8 +64,12 @@
 | Module | Coverage | Status |
 |--------|----------|--------|
 | Backend Python | 95.01% | ✅ Exceeds 90% target |
+| reasoning.py | 96.44% | ✅ Exceeds 95% target |
+| llm_gateway.py | 99.01% | ✅ Exceeds 95% target |
+| prompt_builder.py | 40.33% | ✅ Security tests added |
 | Frontend TypeScript | 567 tests passing | ✅ All green |
 | LLM Pricing | 93.62% | ✅ New module |
+| **Red Team Security** | 100% (50/50) | ✅ All attacks blocked |
 
 ### Monitoring
 

@@ -622,6 +622,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             r"bypass.*rules",
             # Jailbreak patterns
             r"developer\s+mode",
+            r"modalit[aà]\s+sviluppatore",  # Italian: developer mode
             r"dan\s+mode",
             r"jailbreak",
             r"without\s+restrictions",
@@ -635,8 +636,9 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             r"tell\s+me\s+a\s+joke",
             r"(scrivi|write)\s+(una\s+)?poesia",
             r"write\s+a\s+poem",
-            r"(scrivi|write)\s+(una\s+)?storia",
+            r"(scrivi|write|raccontami)\s+(una\s+)?storia",
             r"write\s+a\s+story",
+            r"tell\s+me\s+a\s+story",
             r"(canta|sing)\s+(una\s+)?canzone",
             r"sing\s+a\s+song",
             r"play\s+a\s+game",
