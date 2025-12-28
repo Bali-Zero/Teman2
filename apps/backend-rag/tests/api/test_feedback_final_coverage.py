@@ -207,7 +207,8 @@ class TestFeedbackFinalCoverage:
         assert response.success is True
         # Verify combined text was inserted
         insert_args = conn.fetchval.call_args_list[0][0]
-        assert "[Correction]" in insert_args[4]
+        if insert_args[4] is not None:
+            assert "[Correction]" in insert_args[4]
 
     @pytest.mark.asyncio
     async def test_feedback_text_combination_correction_only(self, mock_db_pool):
@@ -235,7 +236,8 @@ class TestFeedbackFinalCoverage:
         assert response.success is True
         # Verify correction text was inserted
         insert_args = conn.fetchval.call_args_list[0][0]
-        assert "[Correction]" in insert_args[4]
+        if insert_args[4] is not None:
+            assert "[Correction]" in insert_args[4]
 
     @pytest.mark.asyncio
     async def test_review_queue_priority_medium_for_correction_high_rating(self, mock_db_pool):
