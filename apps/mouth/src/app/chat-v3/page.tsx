@@ -885,7 +885,8 @@ export default function ChatV3Page() {
                   placeholder="Ask Zantara anything..."
                   rows={1}
                   disabled={isPending}
-                  className="flex-1 bg-transparent border-0 outline-none focus:outline-none focus:ring-0 focus:border-0 resize-none min-h-[44px] max-h-[120px] py-2.5 text-sm text-white placeholder:text-gray-500 disabled:opacity-50"
+                  className="flex-1 bg-transparent border-none outline-none shadow-none focus:outline-none focus:ring-0 focus:border-none focus:shadow-none resize-none min-h-[44px] max-h-[120px] py-2.5 text-sm text-white placeholder:text-gray-500 disabled:opacity-50"
+                  style={{ boxShadow: 'none', border: 'none', outline: 'none' }}
                 />
                 <button
                   onClick={handleSend}
