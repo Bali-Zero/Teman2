@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Path to the SINGLE consolidated system prompt file
@@ -82,6 +84,7 @@ class PromptManager:
         Load the rich system prompt from markdown file.
 
         Falls back to embedded prompt if file not found.
+        Injects configuration values (company name, domain) into placeholders.
 
         Returns:
             System prompt string loaded from file or embedded fallback.
@@ -89,10 +92,16 @@ class PromptManager:
         try:
             if SYSTEM_PROMPT_FILE.exists():
                 prompt = SYSTEM_PROMPT_FILE.read_text(encoding="utf-8")
+                # Dynamic injection of company details
+                prompt = prompt.replace("{company_name}", settings.COMPANY_NAME)
+                prompt = prompt.replace("{company_domain}", settings.COMPANY_SERVICE_DOMAIN)
                 logger.info(f"✅ Loaded system prompt from {SYSTEM_PROMPT_FILE.name}")
                 return prompt
             elif FALLBACK_PROMPT_FILE.exists():
                 prompt = FALLBACK_PROMPT_FILE.read_text(encoding="utf-8")
+                # Dynamic injection of company details
+                prompt = prompt.replace("{company_name}", settings.COMPANY_NAME)
+                prompt = prompt.replace("{company_domain}", settings.COMPANY_SERVICE_DOMAIN)
                 logger.info(f"⚠️ Using fallback prompt from {FALLBACK_PROMPT_FILE.name}")
                 return prompt
         except Exception as e:
@@ -109,11 +118,11 @@ class PromptManager:
         Returns:
             Embedded system prompt string.
         """
-        return """# ZANTARA - Intelligent AI Assistant for Bali Zero
+        return f"""# ZANTARA - Intelligent AI Assistant for {settings.COMPANY_NAME}
 
 ## Core Identity
 
-You are ZANTARA, the intelligent assistant for Bali Zero.
+You are ZANTARA, the intelligent assistant for {settings.COMPANY_NAME}.
 Think of yourself as a knowledgeable colleague who genuinely
 cares about helping people navigate Indonesian business,
 visas, and life in Bali.
@@ -154,7 +163,7 @@ You draw from comprehensive knowledge bases covering:
 
 **Context-aware assistance.**
 - When users need help with services: "Need help with this?
-Reach out on WhatsApp +62 859 0436 9574"
+Reach out on WhatsApp {settings.SUPPORT_WHATSAPP}"
 - For team members or casual conversations, skip the sales
 pitch
 

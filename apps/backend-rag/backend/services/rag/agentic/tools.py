@@ -6,10 +6,13 @@ Each tool inherits from BaseTool and implements the required interface.
 
 Essential Tools (Dec 2025):
 - VectorSearchTool: Knowledge base search (Legal, Visa, KBLI).
-- PricingTool: Official Bali Zero pricing lookup (High Precision).
-- TeamKnowledgeTool: Bali Zero team member information.
+- PricingTool: Official Service pricing lookup (High Precision).
+- TeamKnowledgeTool: Team member information.
 - CalculatorTool: Safe mathematical calculations (Safe Math).
 - VisionTool: Visual document analysis.
+
+DESIGN PRINCIPLE: No hardcoded keywords, patterns, or domain knowledge.
+The LLM decides which collection to search based on the tool description.
 """
 
 import json
@@ -19,12 +22,30 @@ from app.utils.tracing import trace_span, set_span_attribute, set_span_status
 from services.pricing.pricing_service import get_pricing_service
 from services.rag.vision_rag import VisionRAGService
 from services.tools.definitions import BaseTool
+from services.tools.knowledge_graph_tool import KnowledgeGraphTool
 
 logger = logging.getLogger(__name__)
 
+# Available collections - NO domain mapping, NO keywords
+# The LLM reads the description and decides which to use
+AVAILABLE_COLLECTIONS = [
+    "visa_oracle",
+    "legal_unified_hybrid",
+    "kbli_unified",
+    "tax_genius",
+    "bali_zero_pricing",
+    "training_conversations",
+]
+
 
 class VectorSearchTool(BaseTool):
-    """Tool for vector search in knowledge base with collection routing"""
+    """
+    Tool for vector search in knowledge base.
+
+    NO pattern matching. NO keyword routing.
+    The LLM decides which collection to search based on the description.
+    If no collection specified, searches ALL collections (federated).
+    """
 
     def __init__(self, retriever):
         self.retriever = retriever
@@ -35,203 +56,134 @@ class VectorSearchTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Search the knowledge base. Available collections:\n- 'visa_oracle' (PREFERRED for visas): KITAS, KITAP, E33G, E28A, immigration - use this FIRST for visa questions.\n- 'bali_zero_pricing': Official Bali Zero service prices - use this for pricing/cost questions.\n- 'training_conversations': Training data with detailed pricing and procedures.\n- 'tax_genius' (PREFERRED for taxes): PPh, PPN, withholding tax, corporate tax, tax treaties (P3B) - use this FIRST for tax questions.\n- 'legal_unified': Laws, regulations, general legal matters.\n- 'kbli_unified': Business classification codes (KBLI)."
+        return (
+            "Search the knowledge base for verified information.\n"
+            "You MUST specify a collection based on the query topic:\n"
+            "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
+            "- legal_unified_hybrid: Laws, company types (PT, CV, Firma), regulations, Perseroan Terbatas\n"
+            "- kbli_unified: Business classification codes (KBLI), OSS, NIB\n"
+            "- tax_genius: Taxes, PPh, PPN, NPWP, fiscal matters, tax treaties\n"
+            "- bali_zero_pricing: Official Service Pricing & Costs (Database)\n"
+            "- training_conversations: Procedures, practical examples, how-to guides\n\n"
+            "If unsure, omit collection to search all."
+        )
 
     @property
     def parameters_schema(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "query": {"type": "string", "description": "The search query in natural language"},
+                "query": {
+                    "type": "string",
+                    "description": "The search query in natural language"
+                },
                 "collection": {
                     "type": "string",
-                    "enum": [
-                        "visa_oracle",
-                        "bali_zero_pricing",
-                        "training_conversations",
-                        "tax_genius",
-                        "legal_unified",
-                        "kbli_unified",
-                    ],
-                    "description": "Collection to search. Use 'visa_oracle' for visas/immigration, 'bali_zero_pricing' for pricing/costs, 'tax_genius' for taxes (PPh, PPN, P3B treaties), 'training_conversations' for procedures, 'legal_unified' for laws, 'kbli_unified' for business codes.",
+                    "enum": AVAILABLE_COLLECTIONS,
+                    "description": "The collection to search. Choose based on query topic. Omit to search all.",
                 },
                 "top_k": {
                     "type": "integer",
                     "description": "Number of results to return (default: 5)",
                 },
-                "filters": {
-                    "type": "object",
-                    "description": "Metadata filters. Keys: nationality, visa_type, business_field. Example: {'nationality': 'Italy'}",
-                    "nullable": True
-                }
             },
             "required": ["query"],
         }
 
-    async def execute(self, query: str, collection: str = None, top_k: int = 5, filters: dict = None, **kwargs) -> str:
-        # 🔍 TRACING: Span for VectorSearchTool execution
+    async def execute(self, query: str, collection: str = None, top_k: int = 5, **kwargs) -> str:
+        """
+        Execute vector search.
+
+        If collection is specified: search only that collection.
+        If collection is None: federated search across ALL collections.
+        """
         with trace_span("tool.vector_search", {
             "query_length": len(query),
-            "requested_collection": collection or "auto",
+            "requested_collection": collection or "federated_all",
             "top_k": top_k,
-            "has_filters": bool(filters),
         }):
-            # Gemini sometimes passes top_k as float, ensure it's int
             top_k = int(top_k) if top_k else 5
 
-            import re
-
-            # FEDERATED SEARCH STRATEGY (Dec 2025):
-            # We moved away from "Siloed Search" (searching only 1 collection) to "Smart Federation".
-            # If the user asks a business question, we usually need:
-            # 1. The Specific Facts (Visa Oracle / KBLI)
-            # 2. The Law (Legal Unified)
-            # 3. Practical Examples (Training Conversations)
-
-            # Determine domain-specific collections to include
-            query_lower = query.lower()
-
-            # VISAS
-            visa_pattern = r"\b(visa|kitas|kitap|voa|b211|e33|c31|stay|permit|immigration)\b"
-            is_visa = bool(re.search(visa_pattern, query_lower)) or "e33g" in query_lower or "c312" in query_lower
-
-            # COMPANY / BUSINESS
-            company_pattern = r"\b(company|pt pma|pma|business|license|oss|kbli|sector|setup|incorporation|sharia)\b"
-            is_company = bool(re.search(company_pattern, query_lower))
-
-            # PRICING (Dec 2025 FIX: Route pricing queries to bali_zero_pricing collection)
-            pricing_pattern = r"\b(price|cost|charge|fee|how much|pricing|rate|expensive|cheap|payment|pay|harga|biaya|tarif|berapa|costa|quanto|prezzo|costo|tariffa|pagamento)\b"
-            is_pricing = bool(re.search(pricing_pattern, query_lower))
-
-            # TAX (Dec 2025 FIX: Route tax queries to tax_genius collection)
-            tax_pattern = r"\b(tax|pajak|pph|ppn|pbb|npwp|withholding|vat|income tax|corporate tax|p3b|treaty|fiscal|tasse|imposta|imposte|ritenuta|iva|aliquota|double taxation)\b"
-            is_tax = bool(re.search(tax_pattern, query_lower))
-
-            target_collections = set()
-
+            # Determine which collections to search
             if collection:
-                target_collections.add(collection)
+                # LLM specified a collection - trust its judgment
+                target_collections = [collection]
+                logger.info(f"🔍 [Vector Search] LLM selected collection: {collection}")
+            else:
+                # No collection specified - search ALL (federated)
+                target_collections = AVAILABLE_COLLECTIONS.copy()
+                logger.info(f"🌐 [Federated Search] Searching all {len(target_collections)} collections")
 
-            # Add Universal Context collections (Always relevant for business queries)
-            # CRITICAL FIX: The Production Collection is named 'legal_unified_hybrid' (48k chunks),
-            # NOT 'legal_unified' (which is empty/non-existent).
-            target_collections.add("legal_unified_hybrid")
-            target_collections.add("training_conversations")
-
-            # Add Domains
-            if is_visa:
-                target_collections.add("visa_oracle")
-            if is_company:
-                target_collections.add("kbli_unified")
-            if is_pricing:
-                target_collections.add("bali_zero_pricing")
-                logger.info("💰 [Federated Search] Pricing query detected → adding bali_zero_pricing")
-            if is_tax:
-                target_collections.add("tax_genius")
-                logger.info("🧾 [Federated Search] Tax query detected → adding tax_genius")
-
-            # Convert to list
-            target_collections_list = list(target_collections)
-            set_span_attribute("collections_searched", str(target_collections_list))
-
-            logger.info(f"🌐 [Federated Search] Strategy: {target_collections_list} for query: '{query}'")
+            set_span_attribute("collections_searched", str(target_collections))
 
             all_chunks = []
             seen_content = set()
 
-            # Execute Search across all targets
-            for target_col in target_collections_list:
+            # Execute search across target collections
+            for target_col in target_collections:
                 try:
-                    # Use standard search (metadata_filter not supported by search_with_reranking)
                     if hasattr(self.retriever, "search_with_reranking"):
                         res = await self.retriever.search_with_reranking(
-                            query=query, user_level=1, limit=3, collection_override=target_col
+                            query=query,
+                            user_level=1,
+                            limit=3 if len(target_collections) > 1 else top_k,
+                            collection_override=target_col
                         )
                     else:
                         res = await self.retriever.search(
-                            query=query, user_level=1, limit=3, collection_override=target_col
+                            query=query,
+                            user_level=1,
+                            limit=3 if len(target_collections) > 1 else top_k,
+                            collection_override=target_col
                         )
 
                     for chunk in res.get("results", []):
-                        # Deduplication based on text content
                         text = chunk.get("text", "") if isinstance(chunk, dict) else getattr(chunk, "text", "")
-                        # content_hash = hash(text[:100]) # Simple hash
+                        # Deduplicate by first 100 chars
                         if text[:100] not in seen_content:
                             seen_content.add(text[:100])
-                            # Tag the source collection explicitly for the context
                             if isinstance(chunk, dict):
                                 chunk["_source_collection"] = target_col
                             all_chunks.append(chunk)
 
                 except Exception as e:
-                    logger.warning(f"Federated search failed for {target_col}: {e}")
+                    logger.warning(f"Search failed for {target_col}: {e}")
 
-            # Sort by score if available (cross-collection ranking)
+            # Sort by score and take top results
             all_chunks.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
-            chunks = all_chunks[:top_k+3] # Expanded context window for federated results
-
-            set_span_attribute("results_count", len(chunks))
+            chunks = all_chunks[:top_k]
 
             if not chunks:
                 set_span_status("ok")
                 return json.dumps({"content": "No relevant documents found.", "sources": []})
 
+            # Format output
             formatted_texts = []
             sources_metadata = []
 
             for i, chunk in enumerate(chunks):
-                # Handle both dict and object access if needed, assuming dict for now based on KnowledgeService
-                text = (
-                    chunk.get("text", "")
-                    if isinstance(chunk, dict)
-                    else getattr(chunk, "text", str(chunk))
-                )
+                text = chunk.get("text", "") if isinstance(chunk, dict) else getattr(chunk, "text", str(chunk))
+                metadata = chunk.get("metadata", {}) if isinstance(chunk, dict) else {}
+                title = metadata.get("title") or "Document"
 
-                # Extract metadata for citation
-                metadata = chunk.get("metadata", {})
-                # Build title from legal document metadata fields if 'title' not present
-                title = (
-                    metadata.get("title")
-                    or (
-                        f"{metadata.get('type_abbrev', 'DOC')} {metadata.get('number', '')} "
-                        f"Tahun {metadata.get('year', '')} - {metadata.get('topic', 'Unknown')}"
-                    ).strip()
-                )
-                url = metadata.get("url", metadata.get("source_url", ""))
+                source_col = chunk.get("_source_collection", "unknown")
+                doc_id = metadata.get("chapter_id") or metadata.get("document_id") or metadata.get("id", "")
 
-                # Identify Source Collection
-                source_col = chunk.get("_source_collection", collection or metadata.get("category", "general"))
-
-                # Extract document ID for Deep Dive (Hybrid Brain)
-                # Priorities: chapter_id (from hierarchical indexer) > document_id > id
-                doc_id = (
-                    metadata.get("chapter_id") or metadata.get("document_id") or metadata.get("id", "")
-                )
-
-                # Format text with ID for agent visibility
-                # Use full chunk text - no artificial truncation
                 formatted_texts.append(
-                    f"[{i + 1}] source: {source_col} | ID: {doc_id} | Title: {title}\n{text}"
-                )  # Full text - let the LLM context window handle limits
-
-                sources_metadata.append(
-                    {
-                        "id": i + 1,
-                        "title": title,
-                        "url": url,
-                        "score": chunk.get("score", 0.0),
-                        "collection": source_col,
-                        "snippet": text[:500] if text else "",  # Preview for UI
-                        "content": text if text else "",  # Full content - no truncation
-                        "doc_id": doc_id,  # Pass doc_id for potential UI use or debugging
-                        "download_url": f"/api/documents/{doc_id}/download" if doc_id else None,
-                    }
+                    f"[{i + 1}] Source: {source_col} | Title: {title}\n{text}"
                 )
+
+                sources_metadata.append({
+                    "id": i + 1,
+                    "title": title,
+                    "url": metadata.get("url", ""),
+                    "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
+                    "collection": source_col,
+                    "doc_id": doc_id,
+                })
 
             content_str = "\n\n".join(formatted_texts)
             set_span_status("ok")
-
-            # Return structured JSON so orchestrator can parse it
             return json.dumps({"content": content_str, "sources": sources_metadata})
 
 
@@ -244,7 +196,7 @@ class CalculatorTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Perform calculations for taxes, fees, deadlines, or other numerical computations."
+        return "Perform mathematical calculations. Use for taxes, fees, currency conversions, or any numerical computation."
 
     @property
     def parameters_schema(self) -> dict:
@@ -253,71 +205,64 @@ class CalculatorTool(BaseTool):
             "properties": {
                 "expression": {
                     "type": "string",
-                    "description": "Mathematical expression to evaluate (e.g., '1000000 * 0.25')",
-                },
-                "calculation_type": {
-                    "type": "string",
-                    "enum": ["tax", "fee", "deadline", "general"],
-                    "description": "Type of calculation",
+                    "description": "Math expression (e.g. '1000 * 0.22' or '15000000 / 15500')"
                 },
             },
-            "required": ["expression"],
+            "required": ["expression"]
         }
 
-    async def execute(self, expression: str, calculation_type: str = "general", **kwargs) -> str:
+    async def execute(self, expression: str, **kwargs) -> str:
         try:
-            # Safe math evaluation using ast.literal_eval for simple expressions
-            # or manual parsing for basic arithmetic
             import ast
             import operator
 
-            # Define allowed operators for safe math evaluation
             allowed_operators = {
                 ast.Add: operator.add,
                 ast.Sub: operator.sub,
                 ast.Mult: operator.mul,
                 ast.Div: operator.truediv,
                 ast.Pow: operator.pow,
-                ast.USub: operator.neg,
-                ast.UAdd: operator.pos,
+                ast.Mod: operator.mod,
             }
 
             def safe_eval(node):
                 if isinstance(node, ast.Expression):
                     return safe_eval(node.body)
                 elif isinstance(node, ast.Constant):
-                    if isinstance(node.value, (int, float)):
-                        return node.value
-                    raise ValueError(f"Invalid constant: {node.value}")
+                    return node.value
                 elif isinstance(node, ast.BinOp):
-                    op_type = type(node.op)
-                    if op_type not in allowed_operators:
-                        raise ValueError(f"Operator not allowed: {op_type}")
-                    return allowed_operators[op_type](safe_eval(node.left), safe_eval(node.right))
+                    if type(node.op) not in allowed_operators:
+                        raise ValueError(f"Operator not allowed: {type(node.op)}")
+                    return allowed_operators[type(node.op)](
+                        safe_eval(node.left),
+                        safe_eval(node.right)
+                    )
                 elif isinstance(node, ast.UnaryOp):
-                    op_type = type(node.op)
-                    if op_type not in allowed_operators:
-                        raise ValueError(f"Operator not allowed: {op_type}")
-                    return allowed_operators[op_type](safe_eval(node.operand))
+                    if isinstance(node.op, ast.USub):
+                        return -safe_eval(node.operand)
+                    elif isinstance(node.op, ast.UAdd):
+                        return safe_eval(node.operand)
+                    raise ValueError(f"Unary operator not allowed: {type(node.op)}")
                 else:
-                    raise ValueError(f"Invalid expression: {type(node)}")
+                    raise ValueError(f"Invalid expression node: {type(node)}")
 
-            tree = ast.parse(expression, mode="eval")
-            result = safe_eval(tree)
+            result = safe_eval(ast.parse(expression, mode="eval"))
 
-            if calculation_type == "tax":
-                return f"Tax calculation: Rp {result:,.0f}"
-            elif calculation_type == "fee":
-                return f"Fee: Rp {result:,.0f}"
-            else:
-                return f"Result: {result}"
-        except (ValueError, SyntaxError, ZeroDivisionError, OverflowError) as e:
-            logger.error(f"Calculation error: {e}", exc_info=True)
-            return f"Calculation error: {str(e)}"
+            # Format nicely
+            if isinstance(result, float):
+                if result == int(result):
+                    result = int(result)
+                else:
+                    result = round(result, 2)
+
+            return f"Result: {result:,}" if isinstance(result, (int, float)) else f"Result: {result}"
+
+        except Exception as e:
+            return f"Calculation error: {e}"
 
 
 class VisionTool(BaseTool):
-    """Tool for visual document analysis (PDFs, images)"""
+    """Tool for visual document analysis"""
 
     def __init__(self):
         self.vision_service = VisionRAGService()
@@ -328,41 +273,31 @@ class VisionTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Analyze visual elements in documents (PDFs, images). Use this to extract data from tables, charts, or understand complex layouts."
+        return "Analyze visual elements in documents (PDFs, images). Extract text, tables, or analyze document structure."
 
     @property
     def parameters_schema(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "file_path": {
-                    "type": "string",
-                    "description": "Path to the file to analyze (PDF or Image)",
-                },
-                "query": {
-                    "type": "string",
-                    "description": "Specific question about the visual content",
-                },
+                "file_path": {"type": "string", "description": "Path to the file to analyze"},
+                "query": {"type": "string", "description": "What to look for in the document"}
             },
-            "required": ["file_path", "query"],
+            "required": ["file_path", "query"]
         }
 
     async def execute(self, file_path: str, query: str, **kwargs) -> str:
         try:
-            # Process the document
             doc = await self.vision_service.process_pdf(file_path)
-
-            # Execute visual query
             result = await self.vision_service.query_with_vision(query, [doc], include_images=True)
-
-            return f"Vision Analysis Result:\n{result['answer']}\n\nVisual Elements Used: {len(result['visuals_used'])}"
-        except (OSError, FileNotFoundError, ValueError, KeyError, RuntimeError) as e:
-            logger.error(f"Vision analysis failed: {e}", exc_info=True)
-            return f"Vision analysis failed: {str(e)}"
+            return f"Analysis result: {result['answer']}"
+        except Exception as e:
+            logger.error(f"Vision analysis failed: {e}")
+            return f"Vision analysis error: {e}"
 
 
 class PricingTool(BaseTool):
-    """Tool for official Bali Zero pricing lookup"""
+    """Tool for official service pricing lookup"""
 
     def __init__(self):
         self.pricing_service = get_pricing_service()
@@ -373,7 +308,10 @@ class PricingTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Get OFFICIAL Bali Zero pricing for services. ALWAYS use this for price questions. Returns prices for Visa, KITAS, Business Setup, Tax."
+        return (
+            "Get official service pricing. Use this for any price/cost questions. "
+            "Returns current prices from the pricing database."
+        )
 
     @property
     def parameters_schema(self) -> dict:
@@ -383,11 +321,11 @@ class PricingTool(BaseTool):
                 "service_type": {
                     "type": "string",
                     "enum": ["visa", "kitas", "business_setup", "tax_consulting", "legal", "all"],
-                    "description": "Type of service to get pricing for",
+                    "description": "Category of service",
                 },
                 "query": {
                     "type": "string",
-                    "description": "Optional specific search query (e.g. 'investor kitas')",
+                    "description": "Specific service to search for",
                 },
             },
             "required": ["service_type"],
@@ -399,15 +337,14 @@ class PricingTool(BaseTool):
                 result = self.pricing_service.search_service(query)
             else:
                 result = self.pricing_service.get_pricing(service_type)
-
             return str(result)
-        except (ValueError, KeyError, RuntimeError) as e:
-            logger.error(f"Pricing lookup failed: {e}", exc_info=True)
-            return f"Pricing lookup failed: {str(e)}"
+        except Exception as e:
+            logger.error(f"Pricing lookup failed: {e}")
+            return f"Pricing lookup error: {e}"
 
 
 class TeamKnowledgeTool(BaseTool):
-    """Tool for Bali Zero team member information lookup"""
+    """Tool for team member information lookup"""
 
     def __init__(self, db_pool=None):
         self.db_pool = db_pool
@@ -415,13 +352,11 @@ class TeamKnowledgeTool(BaseTool):
         self._data_file = None
 
     def _get_data_file_path(self):
-        """Get path to team_members.json"""
         if self._data_file is None:
             from pathlib import Path
-            # Try multiple possible locations
             possible_paths = [
                 Path(__file__).parent.parent.parent.parent / "data" / "team_members.json",
-                Path("/app/backend/data/team_members.json"),  # Docker/Fly.io
+                Path("/app/backend/data/team_members.json"),
             ]
             for path in possible_paths:
                 if path.exists():
@@ -430,16 +365,13 @@ class TeamKnowledgeTool(BaseTool):
         return self._data_file
 
     def _load_team_data(self):
-        """Load team data from JSON file"""
         if self._team_data is None:
             data_file = self._get_data_file_path()
             if data_file and data_file.exists():
-                import json as json_module
                 with open(data_file) as f:
-                    self._team_data = json_module.load(f)
+                    self._team_data = json.load(f)
             else:
                 self._team_data = []
-                logger.warning("TeamKnowledgeTool: team_members.json not found")
         return self._team_data
 
     @property
@@ -448,11 +380,7 @@ class TeamKnowledgeTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get information about Bali Zero team members. Use this for questions about:
-- Who is the CEO/founder/manager
-- Team member names, roles, departments
-- Contact information (email)
-- Staff count and team structure"""
+        return "Get information about team members, their roles, departments, and contact info."
 
     @property
     def parameters_schema(self) -> dict:
@@ -462,11 +390,11 @@ class TeamKnowledgeTool(BaseTool):
                 "query_type": {
                     "type": "string",
                     "enum": ["list_all", "search_by_role", "search_by_name", "search_by_email"],
-                    "description": "Type of team query: list_all (all members), search_by_role (CEO, founder, tax, etc), search_by_name (person name), search_by_email",
+                    "description": "Type of query to perform",
                 },
                 "search_term": {
                     "type": "string",
-                    "description": "The role, name, or email to search for (not needed for list_all)",
+                    "description": "Term to search for (name, role, or email)",
                 },
             },
             "required": ["query_type"],
@@ -476,88 +404,17 @@ class TeamKnowledgeTool(BaseTool):
         try:
             team_data = self._load_team_data()
             if not team_data:
-                return json.dumps({"error": "Team data not available", "members": []})
+                return json.dumps({"error": "Team data not available"})
 
-            search_term_lower = search_term.lower().strip() if search_term else ""
+            search_term = search_term.lower().strip() if search_term else ""
 
             if query_type == "list_all":
-                members = [
-                    {"name": m["name"], "role": m["role"], "department": m["department"], "email": m["email"]}
-                    for m in team_data
-                ]
-                return json.dumps({
-                    "total_members": len(members),
-                    "members": members
-                })
+                return json.dumps([{"name": m.get("name"), "role": m.get("role")} for m in team_data])
 
-            elif query_type == "search_by_role":
-                # Role mapping for common variations
-                role_map = {
-                    "ceo": ["ceo", "chief executive"],
-                    "founder": ["founder", "co-founder", "cofounder"],
-                    "tax": ["tax", "fiscal"],
-                    "setup": ["setup", "consultant"],
-                    "marketing": ["marketing"],
-                    "legal": ["legal", "advisor"],
-                }
-
-                # Get search terms for this role
-                search_terms = [search_term_lower]
-                for role, aliases in role_map.items():
-                    if search_term_lower in aliases or role == search_term_lower:
-                        search_terms = aliases
-                        break
-
-                matches = []
-                for m in team_data:
-                    role_lower = m.get("role", "").lower()
-                    dept_lower = m.get("department", "").lower()
-                    if any(term in role_lower or term in dept_lower for term in search_terms):
-                        matches.append({
-                            "name": m["name"],
-                            "role": m["role"],
-                            "department": m["department"],
-                            "email": m["email"],
-                            "notes": m.get("notes", "")
-                        })
-
-                if matches:
-                    return json.dumps({"matches": matches, "count": len(matches)})
-                return json.dumps({"matches": [], "count": 0, "message": f"No team members found with role: {search_term}"})
-
-            elif query_type == "search_by_name":
-                matches = []
-                for m in team_data:
-                    name_lower = m.get("name", "").lower()
-                    if search_term_lower in name_lower or name_lower in search_term_lower:
-                        matches.append({
-                            "name": m["name"],
-                            "role": m["role"],
-                            "department": m["department"],
-                            "email": m["email"],
-                            "notes": m.get("notes", ""),
-                            "location": m.get("location", "")
-                        })
-
-                if matches:
-                    return json.dumps({"matches": matches, "count": len(matches)})
-                return json.dumps({"matches": [], "count": 0, "message": f"No team member found with name: {search_term}"})
-
-            elif query_type == "search_by_email":
-                for m in team_data:
-                    if search_term_lower in m.get("email", "").lower():
-                        return json.dumps({
-                            "name": m["name"],
-                            "role": m["role"],
-                            "department": m["department"],
-                            "email": m["email"],
-                            "notes": m.get("notes", "")
-                        })
-                return json.dumps({"error": f"No team member found with email: {search_term}"})
-
-            else:
-                return json.dumps({"error": f"Unknown query_type: {query_type}"})
+            # Search logic
+            matches = [m for m in team_data if search_term in json.dumps(m).lower()]
+            return json.dumps({"matches": matches, "count": len(matches)})
 
         except Exception as e:
-            logger.error(f"TeamKnowledgeTool failed: {e}", exc_info=True)
+            logger.error(f"Team knowledge lookup failed: {e}")
             return json.dumps({"error": str(e)})

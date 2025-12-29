@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # PROJECT CONFIGURATION
     # ========================================
     PROJECT_NAME: str = "Nuzantara Prime"
+    COMPANY_NAME: str = "Bali Zero"
+    COMPANY_SERVICE_DOMAIN: str = "Visas, Business Setup, Tax, Legal matters in Indonesia"
+    SUPPORT_EMAIL: str = "info@balizero.com"
+    SUPPORT_WHATSAPP: str = "+62 813 3805 1876"
     API_V1_STR: str = "/api/v1"
     environment: str = "development"  # Set via ENVIRONMENT env var (production/development)
 

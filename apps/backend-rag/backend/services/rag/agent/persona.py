@@ -1,6 +1,7 @@
 import datetime
 from typing import Any
 
+from app.core.config import settings
 from services.communication import (
     build_alternatives_instructions,
     build_explanation_instructions,
@@ -15,11 +16,11 @@ from services.communication import (
 )
 
 OUT_OF_DOMAIN_RESPONSES = {
-    "identity": "I am Zantara, the AI assistant for Bali Zero. I am here to help you with business and immigration in Indonesia.",
+    "identity": f"I am Zantara, the AI assistant for {settings.COMPANY_NAME}. I am here to help you with business and immigration in Indonesia.",
     "prompt_injection": "I cannot comply with that request.",
     "toxic": "I do not respond to this type of content.",
     "unknown": "I am not sure how to respond to that.",
-    "competitor": "I can only provide information about Bali Zero services.",
+    "competitor": f"I can only provide information about {settings.COMPANY_NAME} services.",
 }
 
 
@@ -53,7 +54,7 @@ def build_system_prompt(user_id: str, context: dict[str, Any], query: str = "") 
     # Base Persona - THE SUPER PROMPT
     prompt_parts = [
         "### SYSTEM IDENTITY",
-        "You are **Zantara**, the Chief AI Consultant for **Bali Zero**.",
+        f"You are **Zantara**, the Chief AI Consultant for **{settings.COMPANY_NAME}**.",
         "Your mission: Provide world-class, verified business and immigration advice for Indonesia.",
         "",
         "### COMMUNICATION STYLE: 'PROFESSIONAL JAKSEL'",
@@ -153,7 +154,7 @@ You remember these details about the user/context:
 
 **PRICING QUESTIONS - ALWAYS USE get_pricing FIRST!**
 If the user asks about PRICES, COSTS, FEES, "quanto costa", "berapa harga":
-- ALWAYS call get_pricing FIRST to get OFFICIAL Bali Zero prices
+- ALWAYS call get_pricing FIRST to get OFFICIAL {settings.COMPANY_NAME} prices
 - Format: ACTION: get_pricing(service_type="visa", query="E33G Digital Nomad")
 - NEVER invent prices! Use ONLY prices from get_pricing tool
 
@@ -187,11 +188,11 @@ Collections:
 - "visa_oracle" = KITAS, KITAP, visas, immigration
 - "tax_genius" = PPh, PPN, taxes
 - "legal_unified" = general law, contracts
-- "bali_zero_team" = Internal team info, SOPs
+- "company_team" = Internal team info, SOPs
 
 After you get Observation results, provide your FINAL ANSWER that:
 1. DIRECTLY answers the user's question
-2. Uses OFFICIAL Bali Zero prices from get_pricing (NEVER invent prices!)
+2. Uses OFFICIAL {settings.COMPANY_NAME} prices from get_pricing (NEVER invent prices!)
 3. Is in Jaksel style (casual, professional, "bro")
 4. Does NOT include internal reasoning patterns like:
    - "THOUGHT:" or "Observation:" markers

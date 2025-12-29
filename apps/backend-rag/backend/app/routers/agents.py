@@ -364,12 +364,21 @@ async def extract_knowledge_graph(
     🧠 AGENT 3: Knowledge Graph Builder
 
     Extract entities and relationships from text to build knowledge graph.
+    Uses Semantic Extraction (LLM) if available, otherwise Regex patterns.
 
     Entities: Person, Organization, Location, Document, Concept
     Relationships: WORKS_FOR, LOCATED_IN, REQUIRES, RELATED_TO, etc.
     """
     try:
-        # Use the knowledge_graph service
+        # Dependency Injection (Lazy)
+        if not knowledge_graph.db_pool:
+            knowledge_graph.db_pool = getattr(request.app.state, "db_pool", None)
+        
+        if not knowledge_graph.llm_gateway:
+            # Try to get ai_client (ZantaraAIClient)
+            knowledge_graph.llm_gateway = getattr(request.app.state, "ai_client", None)
+
+        # Use the knowledge_graph service (Unified Method)
         result = await knowledge_graph.extract_entities(text)
 
         return {
@@ -389,6 +398,7 @@ async def extract_knowledge_graph(
                     "PART_OF",
                 ],
             },
+            "extraction_method": "LLM" if knowledge_graph.llm_gateway else "Regex"
         }
     except Exception as e:
         logger.error(f"Knowledge graph extraction failed: {e}")

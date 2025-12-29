@@ -22,6 +22,7 @@ from typing import Any
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
+from app.core.config import settings
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from services.tools.definitions import AgentState, AgentStep
 from services.llm_clients.pricing import TokenUsage
@@ -843,7 +844,7 @@ Provide a final, comprehensive answer to: {query}
 
 def detect_team_query(query: str) -> tuple[bool, str, str]:
     """
-    Heuristically detect if a user query is asking about the Bali Zero / Nuzantara team.
+    Heuristically detect if a user query is asking about the company team.
 
     This helper is used by the AgenticRAGOrchestrator to optionally pre-route to the
     `team_knowledge` tool (when available) before running the full ReAct loop.
@@ -879,7 +880,7 @@ def detect_team_query(query: str) -> tuple[bool, str, str]:
         "tutti i membri",
         "quanti dipendenti",  # "how many employees" - team context
         "vostri dipendenti",  # "your employees" - explicit team context
-        "i dipendenti bali",  # "bali zero employees" - explicit
+        f"i dipendenti {settings.COMPANY_NAME.lower()}",  # "company employees" - explicit
         "dipendenti del team",  # "team employees" - explicit
         "tutto lo staff",
         "vostro staff",

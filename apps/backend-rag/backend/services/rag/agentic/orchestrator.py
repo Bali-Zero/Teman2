@@ -134,20 +134,14 @@ Pertanyaan User:
         detected_lang = "GERMAN (Deutsch)"
 
     language_instruction = f"""
-[SYSTEM OVERRIDE - READ THIS FIRST]
-
 🔴 LANGUAGE: {detected_lang}
 🔴 YOUR ENTIRE RESPONSE MUST BE IN {detected_lang}
-🔴 DO NOT USE ANY INDONESIAN OR JAKSEL WORDS
-
-Forbidden: gue, lu, banget, dong, nih, keren, mantap, gimana, kayak, bro, sih, deh
+🔴 DO NOT USE SLANG OR INFORMAL LANGUAGE unless specifically requested.
 
 🛠️ TOOL USAGE INSTRUCTION:
-For factual questions about visa, business, tax, pricing, team, or regulations:
-→ ALWAYS use vector_search tool FIRST to retrieve verified information
-→ Do NOT answer from memory alone - search the knowledge base
-→ If asking about Bali Zero pricing → use pricing_tool
-→ If asking about team members → use team_knowledge_tool
+For factual questions about services, prices, regulations, or company details:
+→ ALWAYS use the appropriate tool (e.g., vector_search, get_pricing) FIRST to retrieve verified information.
+→ Do NOT answer from memory alone - search the knowledge base.
 
 User Query:
 """
@@ -455,68 +449,9 @@ class AgenticRAGOrchestrator:
                 document_count=0
             )
 
-        # 0.6 Check Casual Conversation (bypass tools, use direct LLM response)
-        # INJECT CONTEXT: Now casual chat can personalize ("How is your PT PMA project?")
-        if self.prompt_builder.check_casual_conversation(query, context=user_context):
-            logger.info("💬 [Casual] Detected casual conversation - bypassing RAG tools")
-            try:
-                # Build casual-focused prompt with universal language rule
-                casual_prompt = f"""You are ZANTARA - a friendly, warm AI assistant.
-This is a CASUAL conversation - NOT a business query.
-
-⚠️ CRITICAL LANGUAGE RULE: Respond in the SAME LANGUAGE the user writes in.
-- User writes Italian → respond in Italian
-- User writes Ukrainian (привіт, як справи) → respond in Ukrainian
-- User writes Russian (привет, как дела) → respond in RUSSIAN (NOT Ukrainian!)
-- User writes English → respond in English
-- User writes French → respond in French
-- User writes Spanish → respond in Spanish
-- User writes German → respond in German
-- User writes Indonesian → you may use Jaksel style (mix Bahasa + English)
-
-⚠️ IMPORTANT: Russian and Ukrainian are DIFFERENT languages!
-- Russian: привет, как дела, хорошо, спасибо → Respond in Russian
-- Ukrainian: привіт, як справи, добре, дякую → Respond in Ukrainian
-Do NOT confuse them! Look at the spelling carefully.
-
-RESPOND with personality:
-- Be warm, friendly, share opinions
-- For restaurant/food questions: recommend real Bali places you know
-- For music/lifestyle: share genuine preferences
-- For personal chat: be engaging and ask follow-up questions
-- Keep it conversational and fun!
-
-User says: {query}"""
-
-                # Create a fresh chat without tools for casual response
-                casual_chat = self.llm_gateway.create_chat_with_history(
-                    history_to_use=history_to_use, model_tier=TIER_FLASH
-                )
-
-                casual_response, model_used, _, _ = await self.llm_gateway.send_message(
-                    casual_chat,
-                    casual_prompt,
-                    system_prompt="",
-                    tier=TIER_FLASH,
-                    enable_function_calling=False,  # NO tools for casual chat
-                )
-
-                logger.info(f"✅ [Casual] Generated response with {model_used}")
-                return CoreResult(
-                    answer=casual_response,
-                    sources=[],
-                    verification_score=0.5, # Casual chat doesn't verify
-                    evidence_score=0.5,
-                    is_ambiguous=False,
-                    entities={},  # Casual chat doesn't need entity extraction
-                    model_used=f"casual-conversation ({model_used})",
-                    timings={"total": time.time() - start_time},
-                    verification_status="unchecked",
-                    document_count=0
-                )
-            except Exception as e:
-                logger.warning(f"⚠️ [Casual] Direct response failed, falling back to RAG: {e}")
-                # Fall through to normal RAG processing
+        # NOTE: Casual conversation detection removed (Dec 2025)
+        # The ReAct loop + system prompt now handles this via QUERY CLASSIFICATION - STEP 0
+        # The LLM decides when to use tools vs respond directly based on query type
 
         # 0.7 Check Out-of-Domain Questions
         out_of_domain, reason = is_out_of_domain(query)
@@ -881,7 +816,7 @@ TEAM DATA:
 
 USER QUESTION: {query}
 
-Answer directly. Example: "Zainal Abidin è il CEO di Bali Zero."
+Answer directly. Example: "Zainal Abidin è il CEO di {settings.COMPANY_NAME}."
 """
                     team_chat = self.llm_gateway.create_chat_with_history(
                         history_to_use=history_to_use, model_tier=TIER_FLASH
@@ -899,52 +834,9 @@ Answer directly. Example: "Zainal Abidin è il CEO di Bali Zero."
             except Exception as e:
                 logger.warning(f"⚠️ [Early Team Route] Failed: {e}, falling back to RAG")
 
-        # Check Casual Conversation (bypass tools, use direct LLM response)
-        # INJECT CONTEXT
-        if self.prompt_builder.check_casual_conversation(query, context=user_context):
-            logger.info("💬 [Casual Stream] Detected casual conversation - bypassing RAG tools")
-            try:
-                # Simplified: Model auto-detects language from user's message
-                casual_prompt = f"""You are ZANTARA - a friendly, warm AI assistant.
-This is a CASUAL conversation - NOT a business query.
-
-IMPORTANT: Respond in the SAME LANGUAGE the user is writing in.
-If Indonesian, you may use Jaksel style (mix Bahasa + English slang).
-For all other languages, be warm and fun but stay in their language.
-
-RESPOND with personality:
-- Be warm, friendly, share opinions
-- For restaurant/food questions: recommend real Bali places you know
-- For music/lifestyle: share genuine preferences
-- For personal chat: be engaging and ask follow-up questions
-- Keep it conversational and fun!
-
-User says: """ + query
-
-                casual_chat = self.llm_gateway.create_chat_with_history(
-                    history_to_use=history_to_use, model_tier=TIER_FLASH
-                )
-
-                casual_response, model_used, _, _ = await self.llm_gateway.send_message(
-                    casual_chat,
-                    casual_prompt,
-                    system_prompt="",
-                    tier=TIER_FLASH,
-                    enable_function_calling=False,
-                )
-
-                yield {"type": "metadata", "data": {"status": "casual", "route": f"casual-conversation ({model_used})"}}
-                import re
-
-                tokens = re.findall(r"\S+|\s+", casual_response)
-                for token in tokens:
-                    yield {"type": "token", "data": token}
-                    await asyncio.sleep(0.01)
-                yield {"type": "done", "data": None}
-                return
-            except Exception as e:
-                logger.warning(f"⚠️ [Casual Stream] Direct response failed, falling back to RAG: {e}")
-                # Fall through to normal RAG processing
+        # NOTE: Casual conversation detection removed (Dec 2025)
+        # The ReAct loop + system prompt now handles this via QUERY CLASSIFICATION - STEP 0
+        # The LLM decides when to use tools vs respond directly based on query type
 
         # Check Out-of-Domain Questions
         out_of_domain, reason = is_out_of_domain(query)

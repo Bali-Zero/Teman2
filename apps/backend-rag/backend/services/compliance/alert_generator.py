@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
+from app.core.config import settings
 from .compliance_tracker import ComplianceItem
 from .severity_calculator import AlertSeverity
 
@@ -78,7 +79,7 @@ class AlertGeneratorService:
         # Generate message based on severity
         if severity == AlertSeverity.CRITICAL:
             message = f"⚠️ OVERDUE: {item.title} was due on {item.deadline}"
-            action = "URGENT ACTION REQUIRED - Contact Bali Zero immediately"
+            action = f"URGENT ACTION REQUIRED - Contact {settings.COMPANY_NAME} immediately"
         elif severity == AlertSeverity.URGENT:
             message = f"🚨 URGENT: {item.title} is due in {days_until} days"
             action = "Start renewal process immediately"

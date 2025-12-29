@@ -1,18 +1,18 @@
-"""
-Bali Zero Official Pricing Service
-Loads official prices from JSON (NO AI GENERATION)
-"""
+"""Official Pricing Service
+Loads official prices from JSON (NO AI GENERATION)"""
 
 import json
 import logging
 from pathlib import Path
 from typing import Any
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
 class PricingService:
-    """Official Bali Zero pricing - NO AI GENERATION ALLOWED"""
+    """Official Service Pricing - NO AI GENERATION ALLOWED"""
 
     def __init__(self):
         self.prices: dict[str, Any] = {}
@@ -23,6 +23,7 @@ class PricingService:
         """Load official prices from JSON file"""
         try:
             # Path to official prices JSON
+            # Note: File name is kept for backward compatibility with existing data
             json_path = (
                 Path(__file__).parent.parent / "data" / "bali_zero_official_prices_2025.json"
             )
@@ -37,7 +38,7 @@ class PricingService:
                 self.prices = json.load(f)
 
             self.loaded = True
-            logger.info(f"Loaded official Bali Zero prices from {json_path}")
+            logger.info(f"Loaded official prices from {json_path}")
 
             # Count services
             service_count = 0
@@ -61,7 +62,7 @@ class PricingService:
 
     def get_pricing(self, service_type: str = "all") -> dict[str, Any]:
         """
-        Get pricing for specific service type (FIXED: Added missing method)
+        Get pricing for specific service type
 
         Args:
             service_type: Type of service (visa, kitas, business_setup, tax_consulting, legal, all)
@@ -72,7 +73,7 @@ class PricingService:
         if not self.loaded:
             return {
                 "error": "Official prices not loaded",
-                "fallback_contact": {"email": "info@balizero.com", "whatsapp": "+62 813 3805 1876"},
+                "fallback_contact": {"email": settings.SUPPORT_EMAIL, "whatsapp": settings.SUPPORT_WHATSAPP},
             }
 
         # Map service types to specific methods
@@ -97,7 +98,7 @@ class PricingService:
         if not self.loaded:
             return {
                 "error": "Official prices not loaded",
-                "fallback_contact": {"email": "info@balizero.com", "whatsapp": "+62 813 3805 1876"},
+                "fallback_contact": {"email": settings.SUPPORT_EMAIL, "whatsapp": settings.SUPPORT_WHATSAPP},
             }
         return self.prices
 
@@ -167,7 +168,7 @@ class PricingService:
 
         if results:
             return {
-                "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
+                "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025",
                 "search_query": query,
                 "results": results,
                 "contact_info": self.prices.get("contact_info", {}),
@@ -175,10 +176,10 @@ class PricingService:
             }
         else:
             return {
-                "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
+                "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025",
                 "search_query": query,
                 "message": f"No service found for '{query}'",
-                "suggestion": "Contact info@balizero.com for custom quotes",
+                "suggestion": f"Contact {settings.SUPPORT_EMAIL} for custom quotes",
                 "contact_info": self.prices.get("contact_info", {}),
             }
 
@@ -189,7 +190,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - VISA",
+            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - VISA",
             "single_entry_visas": services.get("single_entry_visas", {}),
             "multiple_entry_visas": services.get("multiple_entry_visas", {}),
             "contact_info": self.prices.get("contact_info", {}),
@@ -203,7 +204,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - KITAS",
+            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - KITAS",
             "kitas_permits": services.get("kitas_permits", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
@@ -217,7 +218,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - BUSINESS",
+            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - BUSINESS",
             "business_legal_services": services.get("business_legal_services", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
@@ -231,7 +232,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - TAX",
+            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - TAX",
             "taxation_services": services.get("taxation_services", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
@@ -244,7 +245,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - PACKAGES",
+            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - PACKAGES",
             "quick_quotes": services.get("quick_quotes", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
@@ -267,10 +268,10 @@ class PricingService:
         Returns a concise string suitable for injection into LLM context
         """
         if not self.loaded:
-            return "⚠️ Official prices not available. Contact info@balizero.com"
+            return f"⚠️ Official prices not available. Contact {settings.SUPPORT_EMAIL}"
 
         context_parts = [
-            "🔒 BALI ZERO OFFICIAL PRICES 2025 (DO NOT GENERATE - USE THESE EXACT VALUES)",
+            f"🔒 {settings.COMPANY_NAME.upper()} OFFICIAL PRICES 2025 (DO NOT GENERATE - USE THESE EXACT VALUES)",
             "",
         ]
 
@@ -322,7 +323,7 @@ class PricingService:
         # Contact info
         contact = self.prices.get("contact_info", {})
         context_parts.append(
-            f"Contact: {contact.get('email', '')} | WhatsApp: {contact.get('whatsapp', '')}"
+            f"Contact: {contact.get('email', settings.SUPPORT_EMAIL)} | WhatsApp: {contact.get('whatsapp', settings.SUPPORT_WHATSAPP)}"
         )
 
         return "\n".join(context_parts)

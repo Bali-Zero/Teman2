@@ -9,7 +9,7 @@ uvicorn[standard]>=0.40.0  # Upgraded for async improvements
 sentry-sdk[fastapi]>=2.0.0  # Error monitoring
 pydantic>=2.12.0  # Compatible with MCP 1.25+, google-genai 1.56+
 pydantic-settings>=2.5.2  # Compatible with pydantic 2.12+
-python-multipart>=0.0.9  # Required by mcp 1.25+
+python-multipart>=0.0.9  # Upgraded for mcp 1.25+ compatibility
 
 # Vector Database
 qdrant-client>=1.12.0  # Upgraded to support urllib3>=2.0.0

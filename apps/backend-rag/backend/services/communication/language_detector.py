@@ -5,7 +5,7 @@ Responsibility: Detect language from user queries and provide language-specific 
 for the ZANTARA persona (Garda Depan Leluhur).
 
 Supported languages:
-- Italian (it) - Primary language for Bali Zero clients
+- Italian (it) - Primary language for clients
 - English (en) - International clients
 - Indonesian (id) - Local context
 - Auto - Adaptive detection
@@ -14,10 +14,12 @@ Supported languages:
 import re
 from typing import Literal
 
+from app.core.config import settings
+
 
 def detect_language(text: str) -> Literal["it", "en", "id"]:
     """
-    Detect language from query text with Italian focus for Bali Zero clients.
+    Detect language from query text with Italian focus.
 
     Args:
         text: User query text
@@ -26,7 +28,7 @@ def detect_language(text: str) -> Literal["it", "en", "id"]:
         Language code: "it" (Italian), "en" (English), or "id" (Indonesian)
     """
     if not text:
-        return "it"  # Default to Italian for Bali Zero
+        return "it"  # Default to Italian
 
     text_lower = text.lower()
 

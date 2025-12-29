@@ -1,6 +1,7 @@
 import logging
 import re
 from typing import Optional
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,8 @@ OUT_OF_DOMAIN_RESPONSES = {
         "Posso invece aiutarti con visa, KITAS, o business in Indonesia?"
     ),
     "off_topic": (
-        "Questo argomento è fuori dalla mia area di competenza. Sono Zantara, "
-        "l'assistente AI di Bali Zero, specializzato in visa, immigrazione, "
+        f"Questo argomento è fuori dalla mia area di competenza. Sono Zantara, "
+        f"l'assistente AI di {settings.COMPANY_NAME}, specializzato in visa, immigrazione, "
         "setup aziendale (PT PMA) e questioni legali per stranieri in Indonesia. "
         "Come posso aiutarti in questi ambiti?"
     ),

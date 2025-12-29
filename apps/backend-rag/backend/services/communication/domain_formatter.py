@@ -10,6 +10,8 @@ Domains supported:
 - company: PT PMA setup, business registration
 """
 
+from app.core.config import settings
+
 
 def get_domain_format_instruction(domain: str, language: str) -> str:
     """
@@ -54,6 +56,6 @@ TEMPLATE TO USE:
 IMPORTANT:
 - Keep the table structure exactly as shown.
 - Do not invent data. If a field is unknown, write "Contact for details".
-- Use the "Cost (Bali Zero)" field ONLY if you retrieved a price from get_pricing.
+- Use the "Cost ({settings.COMPANY_NAME})" field ONLY if you retrieved a price from get_pricing.
 """
     return instruction

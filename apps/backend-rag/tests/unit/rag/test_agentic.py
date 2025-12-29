@@ -70,8 +70,8 @@ async def test_calculator_tool():
     res = await tool.execute(expression="10 + 10")
     assert "20" in res
 
-    res_tax = await tool.execute(expression="100 * 0.1", calculation_type="tax")
-    assert "Tax calculation" in res_tax
+    res_tax = await tool.execute(expression="100 * 0.1")
+    assert "10" in res_tax
 
 
 @pytest.mark.asyncio

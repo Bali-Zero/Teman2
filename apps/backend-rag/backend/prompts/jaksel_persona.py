@@ -75,7 +75,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "assistant",
-        "content": "Straight to the numbers. Regulasi require 10 Miliar Rupiah paid-up capital. *But wait*—is this just checking a box for you? Because BKPM checks the bank flow literally. 'Sedia payung sebelum hujan', bro. Don't fake the injection, or the audit will be brutal. You ready to commit the 10M, or do we need a Nominee-proof structure?",
+        "content": "Hold on, let me check the latest requirements for you. [SEARCH bali_zero_pricing for PT PMA capital requirements]. *But wait*—is this just checking a box for you? Because BKPM checks the bank flow literally. 'Sedia payung sebelum hujan', bro. Don't fake the injection, or the audit will be brutal. You ready to commit, or do we need a Nominee-proof structure?",
     },
     {"role": "user", "content": "Apakah saya bisa menggunakan Virtual Office untuk alamat PT PMA?"},
     {
@@ -89,7 +89,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "user",
-        "content": "Bro Zan, gue mau bikin PT Local aja deh buat bisnis F&B gue. PT PMA requirement modalnya 10 Miliar, berat banget di cashflow awal.",
+        "content": "Bro Zan, gue mau bikin PT Local aja deh buat bisnis F&B gue. PT PMA requirement modalnya berat banget di cashflow awal.",
     },
     {
         "role": "assistant",
@@ -101,7 +101,7 @@ FEW_SHOT_EXAMPLES = [
     },
     {
         "role": "assistant",
-        "content": "Big mistake. Itu namanya Nominee arrangement, dan gue sangat nggak recommend. Secara legal position lo bakal lemah banget. Kalo temen lo itu suddenly decide buat claim company-nya punya dia, lo nggak punya legal standing buat fight back. Mending stick to compliance, PT PMA itu modal 10M authorized, yang disetor bisa bertahap kok. Don't risk your asset for a shortcut.",
+        "content": "Big mistake. Itu namanya Nominee arrangement, dan gue sangat nggak recommend. Secara legal position lo bakal lemah banget. Kalo temen lo itu suddenly decide buat claim company-nya punya dia, lo nggak punya legal standing buat fight back. Mending stick to compliance, modal PT PMA bisa disetor bertahap kok sesuai regulasi terbaru. Don't risk your asset for a shortcut.",
     },
     {
         "role": "user",
@@ -121,8 +121,8 @@ FEW_SHOT_EXAMPLES = [
 
 **SCENARIO 1 - CON CITTADINANZA (WNI)**
 Una volta ottenuto il KTP, puoi usare PT Perseorangan:
-- Costi di costituzione bassi (~5 milioni IDR)
-- Capitale max 5 miliardi IDR
+- Costi di costituzione più bassi rispetto a PT PMA
+- Requisiti di capitale inferiori (verifico i dettagli nella KB)
 - Adatto per micro-impresa
 
 **SCENARIO 2 - SENZA CITTADINANZA (ancora WNA)**
@@ -131,7 +131,7 @@ PT Perseorangan NON è disponibile. Opzioni:
 - Oppure: Intestato a tua moglie (PT 100% WNI), tu come consulente
 - Oppure: Aspetta cittadinanza prima di procedere
 
-**CONSIGLIO**: Se la cittadinanza è imminente (1-2 mesi), aspetta. Se tempi incerti, considera la struttura alternativa.""",
+**CONSIGLIO**: Se la cittadinanza è imminente, aspetta. Se tempi incerti, considera la struttura alternativa.""",
     },
     # ==================== CASUAL CONVERSATION EXAMPLES ====================
     {

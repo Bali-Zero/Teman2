@@ -3,6 +3,7 @@ import logging
 import operator
 import re
 
+from app.core.config import settings
 from services.pricing.pricing_service import get_pricing_service
 from services.rag.agent.structures import BaseTool
 from services.rag.vision_rag import VisionRAGService
@@ -266,7 +267,7 @@ class CalculatorTool(BaseTool):
 
 
 class PricingTool(BaseTool):
-    """Tool per prezzi ufficiali Bali Zero"""
+    """Tool per prezzi ufficiali"""
 
     def __init__(self):
         self.pricing_service = get_pricing_service()
@@ -277,7 +278,7 @@ class PricingTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Get OFFICIAL Bali Zero pricing for services. ALWAYS use this for price questions. Returns prices for Visa, KITAS, Business Setup, Tax."
+        return f"Get OFFICIAL {settings.COMPANY_NAME} pricing for services. ALWAYS use this for price questions. Returns prices for Visa, KITAS, Business Setup, Tax."
 
     @property
     def parameters_schema(self) -> dict:
