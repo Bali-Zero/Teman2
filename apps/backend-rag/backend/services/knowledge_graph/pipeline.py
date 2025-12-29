@@ -162,6 +162,18 @@ class KGPipeline:
             self.stats.entities_extracted += len(result.entities)
             self.stats.relations_extracted += len(result.relations)
 
+            # Build mapping from local IDs to canonical IDs BEFORE any transformations
+            # This must happen before coreference deduplication changes entity IDs
+            local_to_canonical: dict[str, str] = {}
+            for entity in result.entities:
+                canonical_id = self._get_canonical_id(entity)
+                local_to_canonical[entity.id] = canonical_id
+
+            # Update relation IDs to use canonical entity IDs
+            for relation in result.relations:
+                relation.source_id = local_to_canonical.get(relation.source_id, relation.source_id)
+                relation.target_id = local_to_canonical.get(relation.target_id, relation.target_id)
+
             # Stage 2: Coreference resolution and deduplication
             if self.config.use_coreference and result.entities:
                 # Resolve references
@@ -177,17 +189,6 @@ class KGPipeline:
                 # Update coreference cache
                 clusters = self.coreference.cluster_entities(result.entities)
                 self.coreference.update_cache(clusters)
-
-            # Build mapping from local IDs to canonical IDs BEFORE filtering
-            local_to_canonical: dict[str, str] = {}
-            for entity in result.entities:
-                canonical_id = self._get_canonical_id(entity)
-                local_to_canonical[entity.id] = canonical_id
-
-            # Update relation IDs to use canonical entity IDs
-            for relation in result.relations:
-                relation.source_id = local_to_canonical.get(relation.source_id, relation.source_id)
-                relation.target_id = local_to_canonical.get(relation.target_id, relation.target_id)
 
             # Stage 3: Filter by confidence
             result.entities = [
