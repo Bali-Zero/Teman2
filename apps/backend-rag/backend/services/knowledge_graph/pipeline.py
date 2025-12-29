@@ -188,21 +188,23 @@ class KGPipeline:
                 if r.confidence >= self.config.min_confidence
             ]
 
-            # Update global registry
+            # Build mapping from local IDs to canonical IDs BEFORE updating entity IDs
+            local_to_canonical: dict[str, str] = {}
+            for entity in result.entities:
+                canonical_id = self._get_canonical_id(entity)
+                local_to_canonical[entity.id] = canonical_id
+
+            # Update relation IDs to use canonical entity IDs (before normalizing entities)
+            for relation in result.relations:
+                relation.source_id = local_to_canonical.get(relation.source_id, relation.source_id)
+                relation.target_id = local_to_canonical.get(relation.target_id, relation.target_id)
+
+            # Update global registry and normalize entity IDs
             for entity in result.entities:
                 canonical_id = self._get_canonical_id(entity)
                 if canonical_id not in self.entity_registry:
                     self.entity_registry[canonical_id] = entity
                 entity.id = canonical_id  # Normalize ID
-
-            # Update relation IDs to use canonical entity IDs
-            for relation in result.relations:
-                relation.source_id = self._get_canonical_id_by_local(
-                    relation.source_id, result.entities
-                )
-                relation.target_id = self._get_canonical_id_by_local(
-                    relation.target_id, result.entities
-                )
 
             return result
 
