@@ -178,6 +178,17 @@ class KGPipeline:
                 clusters = self.coreference.cluster_entities(result.entities)
                 self.coreference.update_cache(clusters)
 
+            # Build mapping from local IDs to canonical IDs BEFORE filtering
+            local_to_canonical: dict[str, str] = {}
+            for entity in result.entities:
+                canonical_id = self._get_canonical_id(entity)
+                local_to_canonical[entity.id] = canonical_id
+
+            # Update relation IDs to use canonical entity IDs
+            for relation in result.relations:
+                relation.source_id = local_to_canonical.get(relation.source_id, relation.source_id)
+                relation.target_id = local_to_canonical.get(relation.target_id, relation.target_id)
+
             # Stage 3: Filter by confidence
             result.entities = [
                 e for e in result.entities
@@ -188,16 +199,14 @@ class KGPipeline:
                 if r.confidence >= self.config.min_confidence
             ]
 
-            # Build mapping from local IDs to canonical IDs BEFORE updating entity IDs
-            local_to_canonical: dict[str, str] = {}
-            for entity in result.entities:
-                canonical_id = self._get_canonical_id(entity)
-                local_to_canonical[entity.id] = canonical_id
+            # Get set of valid entity canonical IDs after filtering
+            valid_entity_ids = {self._get_canonical_id(e) for e in result.entities}
 
-            # Update relation IDs to use canonical entity IDs (before normalizing entities)
-            for relation in result.relations:
-                relation.source_id = local_to_canonical.get(relation.source_id, relation.source_id)
-                relation.target_id = local_to_canonical.get(relation.target_id, relation.target_id)
+            # Filter out relations that reference non-existent entities
+            result.relations = [
+                r for r in result.relations
+                if r.source_id in valid_entity_ids and r.target_id in valid_entity_ids
+            ]
 
             # Update global registry and normalize entity IDs
             for entity in result.entities:
