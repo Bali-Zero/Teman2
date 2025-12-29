@@ -745,16 +745,20 @@ export default function ChatV3Page() {
           ) : (
             /* Chat Messages */
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-              {/* Show ThinkingIndicator when processing */}
-              {isPending && (
-                <ThinkingIndicator
-                  isVisible={isPending}
-                  currentStatus={currentStatus}
-                  elapsedTime={thinkingElapsedTime}
-                />
-              )}
+              {optimisticMessages.map((message) => {
+                // Show ThinkingIndicator for streaming assistant messages without content
+                if (message.role === 'assistant' && message.isStreaming && !message.content) {
+                  return (
+                    <ThinkingIndicator
+                      key={message.id}
+                      isVisible={true}
+                      currentStatus={currentStatus}
+                      elapsedTime={thinkingElapsedTime}
+                    />
+                  );
+                }
 
-              {optimisticMessages.map((message) => (
+                return (
                 <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'assistant' && (
                     <div className="relative flex-shrink-0">
@@ -790,20 +794,11 @@ export default function ChatV3Page() {
                         ? 'bg-[#2a2a2a] rounded-br-md'
                         : 'bg-[#2a2a2a] rounded-bl-md border border-white/[0.06]'
                     } ${message.isPending ? 'opacity-70' : ''}`}>
-                      {message.isStreaming && !message.content ? (
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-                          <span className="text-sm text-gray-400">
-                            {currentStatus || 'Thinking...'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="text-sm whitespace-pre-wrap leading-relaxed text-gray-100">
-                          {message.content.split('**').map((part, i) =>
-                            i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
-                          )}
-                        </div>
-                      )}
+                      <div className="text-sm whitespace-pre-wrap leading-relaxed text-gray-100">
+                        {message.content.split('**').map((part, i) =>
+                          i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
+                        )}
+                      </div>
                     </div>
 
                     {message.role === 'assistant' && !message.isStreaming && (
@@ -840,7 +835,8 @@ export default function ChatV3Page() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -889,7 +885,7 @@ export default function ChatV3Page() {
                   placeholder="Ask Zantara anything..."
                   rows={1}
                   disabled={isPending}
-                  className="flex-1 bg-transparent border-0 focus:outline-none resize-none min-h-[44px] max-h-[120px] py-2.5 text-sm text-white placeholder:text-gray-500 disabled:opacity-50"
+                  className="flex-1 bg-transparent border-0 outline-none focus:outline-none focus:ring-0 focus:border-0 resize-none min-h-[44px] max-h-[120px] py-2.5 text-sm text-white placeholder:text-gray-500 disabled:opacity-50"
                 />
                 <button
                   onClick={handleSend}
@@ -923,11 +919,6 @@ export default function ChatV3Page() {
         </div>
       </main>
 
-      <div className="fixed top-4 right-4 z-50">
-        <div className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold rounded-full shadow-lg">
-          V3 - CONNECTED
-        </div>
-      </div>
     </div>
   );
 }
