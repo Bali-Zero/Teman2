@@ -398,10 +398,13 @@ export default function ChatV3Page() {
       try {
         const conv = await api.getConversation(id);
         if (conv && conv.messages) {
-          setMessages(conv.messages.map((m: ChatMessage) => ({
-            ...m,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setMessages(conv.messages.map((m: any) => ({
             id: m.id || generateId(),
-            timestamp: m.timestamp || new Date(),
+            role: m.role as 'user' | 'assistant',
+            content: m.content || '',
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+            sources: m.sources,
           })));
           if (conv.session_id) {
             setSessionId(conv.session_id);
