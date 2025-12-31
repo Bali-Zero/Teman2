@@ -107,6 +107,9 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/oracle/health",  # Oracle health check (public)
             "/api/debug/migrate",  # Temporary debug endpoint
             "/api/legal/parent-documents",  # Internal ingestion endpoint (no auth)
+            "/api/portal/invite/validate/",  # Client invitation validation (public)
+            "/api/portal/invite/complete",  # Client registration completion (public)
+            "/api/integrations/zoho/callback",  # Zoho OAuth callback (public)
         ]
 
         logger.info(

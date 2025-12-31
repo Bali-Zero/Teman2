@@ -72,7 +72,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     const checkAuth = () => {
       // Force re-read from localStorage to ensure we have the latest token
       const token = api.getToken();
-      
+
       if (!token) {
         router.push('/login');
         return;
@@ -83,6 +83,15 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         try {
           // Load profile first (critical), clock status can fail gracefully
           await loadUserProfile();
+
+          // Check if user is a client - redirect to portal
+          const profile = api.getUserProfile();
+          if (profile?.role === 'client') {
+            // Clients should use the portal, not the team workspace
+            router.push('/portal');
+            return;
+          }
+
           // Load clock status with timeout - don't block if it fails
           await Promise.race([
             loadClockStatus(),

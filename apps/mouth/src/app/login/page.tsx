@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     try {
       // 2. Real API call
-      await api.login(email, pin);
+      const loginResponse = await api.login(email, pin);
 
       // 3. Success
       setLoginStage('success');
@@ -40,10 +40,14 @@ export default function LoginPage() {
         throw new Error('Token not saved after login');
       }
 
+      // Get redirect path based on user role
+      // Clients go to /portal, team members go to /dashboard
+      const redirectTo = loginResponse.user?.role === 'client' ? '/portal' : '/dashboard';
+
       // Use window.location.replace for a clean redirect without history entry
       // This ensures a full page reload so the layout can properly read the token
       setTimeout(() => {
-        window.location.replace('/dashboard');
+        window.location.replace(redirectTo);
       }, 1500);
     } catch (error) {
       // 4. Failure

@@ -38,6 +38,7 @@ export const navigation: NavSection[] = [
       { title: 'Dashboard', href: '/dashboard', icon: 'Home' },
       { title: 'Zantara AI', href: '/chat', icon: 'MessageSquare' },
       { title: 'WhatsApp', href: '/whatsapp', icon: 'MessageCircle' },
+      { title: 'Email', href: '/email', icon: 'Mail' },
     ],
   },
   {
@@ -68,6 +69,7 @@ export const routeTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/chat': 'Zantara AI',
   '/whatsapp': 'WhatsApp',
+  '/email': 'Email',
   '/clients': 'Clients',
   '/clients/new': 'New Client',
   '/cases': 'Cases',
