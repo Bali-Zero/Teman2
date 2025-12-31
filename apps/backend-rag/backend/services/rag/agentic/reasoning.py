@@ -70,7 +70,7 @@ def calculate_evidence_score(
 
     Formula:
     - base_score = 0.0
-    - If at least 1 source with score > 0.8 -> +0.5
+    - If at least 1 source with score > 0.3 -> +0.5 (lowered: re-ranker gives low scores)
     - If > 3 total sources -> +0.2
     - If context contains query keywords -> +0.3
     - MAX Score = 1.0
@@ -85,10 +85,10 @@ def calculate_evidence_score(
     """
     base_score = 0.0
 
-    # Check for high-quality sources (score > 0.8)
+    # Check for high-quality sources (score > 0.3, lowered because re-ranker gives low scores)
     if sources:
         high_quality_sources = [
-            s for s in sources if isinstance(s, dict) and s.get("score", 0.0) > 0.8
+            s for s in sources if isinstance(s, dict) and s.get("score", 0.0) > 0.3
         ]
         if len(high_quality_sources) >= 1:
             base_score += 0.5
@@ -135,6 +135,48 @@ def calculate_evidence_score(
     return min(base_score, 1.0)
 
 
+def _validate_context_quality(
+    query: str,
+    context_items: list[str],
+) -> float:
+    """
+    Validate context quality and return score (0.0-1.0).
+    
+    Args:
+        query: Original user query
+        context_items: List of context strings from tool results
+        
+    Returns:
+        Quality score between 0.0 and 1.0
+    """
+    if not context_items:
+        return 0.0
+    
+    # Check minimum items
+    if len(context_items) < 1:
+        return 0.0
+    
+    # Simple heuristic: check if context contains query keywords
+    query_keywords = set(query.lower().split())
+    quality_scores = []
+    
+    for item in context_items:
+        item_lower = item.lower()
+        matching_keywords = sum(1 for kw in query_keywords if kw in item_lower)
+        relevance = matching_keywords / max(len(query_keywords), 1)
+        quality_scores.append(relevance)
+    
+    # Average quality
+    avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+    
+    # Penalize if too few items
+    item_count_penalty = min(len(context_items) / 5.0, 1.0)  # Prefer 5+ items
+    
+    final_score = avg_quality * 0.7 + item_count_penalty * 0.3
+    
+    return min(final_score, 1.0)
+
+
 class ReasoningEngine:
     """
     Executes the ReAct (Reasoning + Acting) loop for agentic RAG.
@@ -168,6 +210,16 @@ class ReasoningEngine:
         """
         self.tool_map = tool_map
         self.response_pipeline = response_pipeline
+        self._min_context_quality_score = 0.3
+        self._min_context_items = 1
+    
+    def _validate_context_quality(
+        self,
+        query: str,
+        context_items: list[str],
+    ) -> float:
+        """Validate context quality and return score (0.0-1.0)."""
+        return _validate_context_quality(query, context_items)
 
     async def execute_react_loop(
         self,
@@ -363,6 +415,36 @@ class ReasoningEngine:
                         else:
                             logger.warning("⚠️ [Agent] Skipping empty tool_result for context_gathered")
 
+                        # Validate context quality before using
+                        if state.context_gathered:
+                            quality_score = self._validate_context_quality(
+                                query=query,
+                                context_items=state.context_gathered,
+                            )
+                            
+                            if quality_score < self._min_context_quality_score:
+                                logger.warning(
+                                    f"⚠️ Context quality too low ({quality_score:.2f} < {self._min_context_quality_score})",
+                                    extra={
+                                        "quality_score": quality_score,
+                                        "context_items": len(state.context_gathered),
+                                        "step": state.current_step,
+                                    }
+                                )
+                                try:
+                                    from app.metrics import reasoning_low_context_quality_total
+                                    reasoning_low_context_quality_total.inc()
+                                except ImportError:
+                                    pass
+                                
+                                # Try to gather more context if not at max steps
+                                if state.current_step < state.max_steps:
+                                    logger.info(f"🔄 [Agent] Low quality context, continuing to gather more...")
+                                    continue  # Try another tool
+                                else:
+                                    # Last step - use what we have but warn
+                                    logger.warning("Using low-quality context due to max steps reached")
+
                         # OPTIMIZATION: Early exit
                         if (
                             tool_call.tool_name == "vector_search"
@@ -420,7 +502,8 @@ class ReasoningEngine:
 
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
-        if state.final_answer and evidence_score < 0.3:
+        # Skip evidence check for general tasks (translation, summarization, etc.)
+        if state.final_answer and evidence_score < 0.3 and not state.skip_rag:
             logger.warning(
                 f"🛡️ [Uncertainty] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
             )
@@ -429,12 +512,15 @@ class ReasoningEngine:
                 "nei documenti ufficiali per rispondere alla tua domanda specifica. "
                 "Posso aiutarti con altro?"
             )
+        elif state.skip_rag and evidence_score < 0.3:
+            logger.info(f"🏷️ [General Task] Skipping evidence check (skip_rag=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
         # Generate final answer if not present
         if not state.final_answer and state.context_gathered:
             # POLICY ENFORCEMENT: Check evidence score before generating answer
-            if evidence_score < 0.3:
+            # Skip for general tasks (translation, summarization, etc.)
+            if evidence_score < 0.3 and not state.skip_rag:
                 # ABSTAIN: Skip LLM generation, return uncertainty message
                 logger.warning(f"🛡️ [Uncertainty] Triggered ABSTAIN (Score: {evidence_score:.2f})")
                 state.final_answer = (
@@ -475,12 +561,29 @@ Provide a final, comprehensive answer to: {query}
                     state.final_answer = "I apologize, but I couldn't generate a final answer based on the gathered information."
         elif not state.final_answer:
             # No context gathered at all
-            logger.warning("🛡️ [Uncertainty] No context gathered, triggering ABSTAIN")
-            state.final_answer = (
-                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                "Posso aiutarti con altro?"
-            )
+            # For general tasks, this is OK - generate answer without RAG context
+            if state.skip_rag:
+                logger.info("🏷️ [General Task] No context needed, proceeding with LLM generation")
+                # Generate answer directly for general tasks
+                try:
+                    state.final_answer, model_used_name, _, final_usage = await llm_gateway.send_message(
+                        chat,
+                        f"Please answer this request: {query}",
+                        system_prompt,
+                        tier=model_tier,
+                        enable_function_calling=False,
+                    )
+                    accumulated_usage = accumulated_usage + final_usage
+                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                    logger.error("Failed to generate answer for general task", exc_info=True)
+                    state.final_answer = "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
+            else:
+                logger.warning("🛡️ [Uncertainty] No context gathered, triggering ABSTAIN")
+                state.final_answer = (
+                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                    "Posso aiutarti con altro?"
+                )
 
         # Filter out stub responses
         if state.final_answer and (
@@ -745,7 +848,8 @@ Do not invent information. If the context is insufficient, admit it.
 
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
-        if state.final_answer and evidence_score < 0.3:
+        # Skip evidence check for general tasks (translation, summarization, etc.)
+        if state.final_answer and evidence_score < 0.3 and not state.skip_rag:
             logger.warning(
                 f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
             )
@@ -754,11 +858,14 @@ Do not invent information. If the context is insufficient, admit it.
                 "nei documenti ufficiali per rispondere alla tua domanda specifica. "
                 "Posso aiutarti con altro?"
             )
+        elif state.skip_rag and evidence_score < 0.3:
+            logger.info(f"🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
         if not state.final_answer and state.context_gathered:
             # POLICY ENFORCEMENT: Check evidence score before generating answer
-            if evidence_score < 0.3:
+            # Skip for general tasks (translation, summarization, etc.)
+            if evidence_score < 0.3 and not state.skip_rag:
                 # ABSTAIN: Skip LLM generation, return uncertainty message
                 logger.warning(f"🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: {evidence_score:.2f})")
                 state.final_answer = (
@@ -797,12 +904,27 @@ Provide a final, comprehensive answer to: {query}
                     state.final_answer = "I apologize, but I couldn't generate a final answer."
         elif not state.final_answer:
             # No context gathered at all
-            logger.warning("🛡️ [Uncertainty Stream] No context gathered, triggering ABSTAIN")
-            state.final_answer = (
-                "Mi dispiace, non ho trovato informazioni verificate sufficienti "
-                "nei documenti ufficiali per rispondere alla tua domanda specifica. "
-                "Posso aiutarti con altro?"
-            )
+            # For general tasks, this is OK - generate answer without RAG context
+            if state.skip_rag:
+                logger.info("🏷️ [General Task Stream] No context needed, proceeding with LLM generation")
+                try:
+                    state.final_answer, _, _, _ = await llm_gateway.send_message(
+                        chat,
+                        f"Please answer this request: {query}",
+                        system_prompt,
+                        tier=model_tier,
+                        enable_function_calling=False,
+                    )
+                except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
+                    logger.error("Failed to generate answer for general task", exc_info=True)
+                    state.final_answer = "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
+            else:
+                logger.warning("🛡️ [Uncertainty Stream] No context gathered, triggering ABSTAIN")
+                state.final_answer = (
+                    "Mi dispiace, non ho trovato informazioni verificate sufficienti "
+                    "nei documenti ufficiali per rispondere alla tua domanda specifica. "
+                    "Posso aiutarti con altro?"
+                )
 
         # Filter stub responses
         if state.final_answer and (
