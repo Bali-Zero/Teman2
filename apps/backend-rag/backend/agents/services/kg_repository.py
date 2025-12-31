@@ -2,6 +2,8 @@
 Knowledge Graph Repository
 
 Responsibility: Database operations for knowledge graph (entities, relationships, queries).
+
+UPDATED 2025-12-31: Migrated from legacy kg_entities/kg_relationships to kg_nodes/kg_edges schema.
 """
 
 import json
@@ -19,7 +21,7 @@ DEFAULT_TOP_K = 10
 
 
 class KnowledgeGraphRepository:
-    """Service for knowledge graph database operations"""
+    """Service for knowledge graph database operations using kg_nodes/kg_edges schema"""
 
     def __init__(self, db_pool: asyncpg.Pool):
         """
@@ -30,6 +32,20 @@ class KnowledgeGraphRepository:
         """
         self.db_pool = db_pool
 
+    def _generate_entity_id(self, entity_type: str, canonical_name: str) -> str:
+        """
+        Generate a canonical entity_id from type and name.
+
+        Args:
+            entity_type: Type of entity (law, topic, company, etc.)
+            canonical_name: Normalized entity name
+
+        Returns:
+            Canonical entity ID like "law_pp_number_32_2023"
+        """
+        name_normalized = canonical_name.upper().strip().replace(" ", "_").lower()
+        return f"{entity_type.lower()}_{name_normalized}"
+
     async def upsert_entity(
         self,
         entity_type: str,
@@ -37,7 +53,8 @@ class KnowledgeGraphRepository:
         canonical_name: str,
         metadata: dict[str, Any],
         conn: asyncpg.Connection,
-    ) -> int:
+        source_chunk_id: str | None = None,
+    ) -> str:
         """
         Insert or update entity, return entity_id.
 
@@ -47,97 +64,153 @@ class KnowledgeGraphRepository:
             canonical_name: Normalized entity name
             metadata: Additional metadata
             conn: Database connection (must be in transaction)
+            source_chunk_id: Optional source chunk ID for provenance
 
         Returns:
-            Entity ID
+            Entity ID (TEXT)
         """
-        row = await conn.fetchrow(
+        entity_id = self._generate_entity_id(entity_type, canonical_name)
+        chunk_ids = [source_chunk_id] if source_chunk_id else []
+
+        await conn.execute(
             """
-            INSERT INTO kg_entities (type, name, canonical_name, metadata, mention_count, last_seen_at)
-            VALUES ($1, $2, $3, $4, 1, NOW())
-            ON CONFLICT (type, canonical_name)
-            DO UPDATE SET
-                mention_count = kg_entities.mention_count + 1,
-                last_seen_at = NOW(),
-                metadata = kg_entities.metadata || EXCLUDED.metadata
-            RETURNING id
+            INSERT INTO kg_nodes (
+                entity_id, entity_type, name, properties,
+                confidence, source_chunk_ids, created_at, updated_at
+            )
+            VALUES ($1, $2, $3, $4, 1.0, $5, NOW(), NOW())
+            ON CONFLICT (entity_id) DO UPDATE SET
+                properties = kg_nodes.properties || $4,
+                source_chunk_ids = (
+                    SELECT array_agg(DISTINCT elem)
+                    FROM unnest(
+                        COALESCE(kg_nodes.source_chunk_ids, ARRAY[]::text[]) || $5
+                    ) elem
+                ),
+                updated_at = NOW()
             """,
+            entity_id,
             entity_type,
             name,
-            canonical_name,
             json.dumps(metadata),
+            chunk_ids,
         )
 
-        return row["id"] if row else 0
+        return entity_id
 
     async def upsert_relationship(
         self,
-        source_id: int,
-        target_id: int,
+        source_id: str,
+        target_id: str,
         rel_type: str,
         strength: float,
         evidence: str,
         source_ref: dict[str, Any],
         conn: asyncpg.Connection,
+        source_chunk_id: str | None = None,
     ):
         """
         Insert or update relationship.
 
         Args:
-            source_id: Source entity ID
-            target_id: Target entity ID
+            source_id: Source entity ID (TEXT)
+            target_id: Target entity ID (TEXT)
             rel_type: Relationship type
-            strength: Relationship strength (0-1)
+            strength: Relationship strength (0-1), maps to confidence
             evidence: Evidence text
             source_ref: Source reference metadata
             conn: Database connection (must be in transaction)
+            source_chunk_id: Optional source chunk ID for provenance
         """
+        relationship_id = f"{source_id}_{rel_type}_{target_id}"
+        chunk_ids = [source_chunk_id] if source_chunk_id else []
+
+        properties = {
+            "evidence": [evidence] if evidence else [],
+            "source_references": [source_ref] if source_ref else [],
+        }
+
         await conn.execute(
             """
-            INSERT INTO kg_relationships (
-                source_entity_id, target_entity_id, relationship_type,
-                strength, evidence, source_references
+            INSERT INTO kg_edges (
+                relationship_id, source_entity_id, target_entity_id,
+                relationship_type, properties, confidence,
+                source_chunk_ids, created_at
             )
-            VALUES ($1, $2, $3, $4, ARRAY[$5], $6::jsonb)
-            ON CONFLICT (source_entity_id, target_entity_id, relationship_type)
-            DO UPDATE SET
-                strength = (kg_relationships.strength + EXCLUDED.strength) / 2,
-                evidence = array_append(kg_relationships.evidence, EXCLUDED.evidence[1]),
-                source_references = kg_relationships.source_references || EXCLUDED.source_references,
-                updated_at = NOW()
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ON CONFLICT (relationship_id) DO UPDATE SET
+                confidence = (kg_edges.confidence + EXCLUDED.confidence) / 2,
+                properties = jsonb_set(
+                    kg_edges.properties,
+                    '{evidence}',
+                    COALESCE(kg_edges.properties->'evidence', '[]'::jsonb) ||
+                    COALESCE(EXCLUDED.properties->'evidence', '[]'::jsonb)
+                ),
+                source_chunk_ids = (
+                    SELECT array_agg(DISTINCT elem)
+                    FROM unnest(
+                        COALESCE(kg_edges.source_chunk_ids, ARRAY[]::text[]) || $7
+                    ) elem
+                )
             """,
+            relationship_id,
             source_id,
             target_id,
             rel_type,
+            json.dumps(properties),
             strength,
-            evidence,
-            json.dumps([source_ref]),
+            chunk_ids,
         )
 
     async def add_entity_mention(
         self,
-        entity_id: int,
+        entity_id: str,
         source_type: str,
         source_id: str,
         context: str,
         conn: asyncpg.Connection,
     ):
         """
-        Add entity mention record.
+        Add entity mention by updating source_chunk_ids on kg_nodes.
+
+        Note: The legacy kg_entity_mentions table is deprecated.
+        Mentions are now tracked via source_chunk_ids array in kg_nodes.
 
         Args:
-            entity_id: Entity ID
+            entity_id: Entity ID (TEXT)
             source_type: Type of source (conversation, document, etc.)
             source_id: Source identifier
-            context: Context where entity was mentioned
+            context: Context where entity was mentioned (stored in properties)
             conn: Database connection (must be in transaction)
         """
+        # Update the entity's source_chunk_ids and add mention context to properties
+        mention_ref = f"{source_type}:{source_id}"
+
         await conn.execute(
             """
-            INSERT INTO kg_entity_mentions (entity_id, source_type, source_id, context)
-            VALUES ($1, $2, $3, $4)
+            UPDATE kg_nodes
+            SET
+                source_chunk_ids = (
+                    SELECT array_agg(DISTINCT elem)
+                    FROM unnest(
+                        COALESCE(source_chunk_ids, ARRAY[]::text[]) || ARRAY[$2]
+                    ) elem
+                ),
+                properties = jsonb_set(
+                    COALESCE(properties, '{}'::jsonb),
+                    '{mentions}',
+                    COALESCE(properties->'mentions', '[]'::jsonb) ||
+                    jsonb_build_array(jsonb_build_object(
+                        'source_type', $3,
+                        'source_id', $4,
+                        'context', $5
+                    ))
+                ),
+                updated_at = NOW()
+            WHERE entity_id = $1
             """,
             entity_id,
+            mention_ref,
             source_type,
             source_id,
             context[:500] if context else "",
@@ -158,11 +231,14 @@ class KnowledgeGraphRepository:
 
         try:
             async with self.db_pool.acquire() as conn:
-                # Top entities by type
+                # Top entities by mention count (approximated by source_chunk_ids length)
                 top_entities_rows = await conn.fetch(
                     """
-                    SELECT type, name, mention_count
-                    FROM kg_entities
+                    SELECT
+                        entity_type as type,
+                        name,
+                        COALESCE(array_length(source_chunk_ids, 1), 0) as mention_count
+                    FROM kg_nodes
                     ORDER BY mention_count DESC
                     LIMIT $1
                     """,
@@ -178,12 +254,13 @@ class KnowledgeGraphRepository:
                 hubs_rows = await conn.fetch(
                     """
                     SELECT
-                        e.type,
-                        e.name,
-                        COUNT(DISTINCT r.id) as connection_count
-                    FROM kg_entities e
-                    JOIN kg_relationships r ON e.id = r.source_entity_id OR e.id = r.target_entity_id
-                    GROUP BY e.id, e.type, e.name
+                        n.entity_type as type,
+                        n.name,
+                        COUNT(DISTINCT e.relationship_id) as connection_count
+                    FROM kg_nodes n
+                    JOIN kg_edges e ON n.entity_id = e.source_entity_id
+                                    OR n.entity_id = e.target_entity_id
+                    GROUP BY n.entity_id, n.entity_type, n.name
                     ORDER BY connection_count DESC
                     LIMIT $1
                     """,
@@ -203,7 +280,7 @@ class KnowledgeGraphRepository:
                 rel_rows = await conn.fetch(
                     """
                     SELECT relationship_type, COUNT(*) as count
-                    FROM kg_relationships
+                    FROM kg_edges
                     GROUP BY relationship_type
                     ORDER BY count DESC
                     """
@@ -250,62 +327,37 @@ class KnowledgeGraphRepository:
         """
         try:
             async with self.db_pool.acquire() as conn:
-                # Check if the function exists (created by migration 021)
-                func_exists = await conn.fetchval(
+                # Search kg_nodes by checking source_chunk_ids for user references
+                # or by checking properties for user-related mentions
+                rows = await conn.fetch(
                     """
-                    SELECT EXISTS(
-                        SELECT 1 FROM information_schema.routines
-                        WHERE routine_name = 'get_user_memory_entities'
+                    SELECT
+                        n.entity_id,
+                        n.entity_type as type,
+                        n.name,
+                        COALESCE(array_length(n.source_chunk_ids, 1), 0) as mention_count
+                    FROM kg_nodes n
+                    WHERE EXISTS (
+                        SELECT 1 FROM unnest(n.source_chunk_ids) chunk
+                        WHERE chunk LIKE $1
                     )
-                    """
+                    OR n.properties::text LIKE $1
+                    ORDER BY mention_count DESC
+                    LIMIT $2
+                    """,
+                    f"%{user_id}%",
+                    limit,
                 )
 
-                if func_exists:
-                    # Use the optimized function
-                    rows = await conn.fetch(
-                        "SELECT * FROM get_user_memory_entities($1) LIMIT $2",
-                        user_id,
-                        limit,
-                    )
-                    return [
-                        {
-                            "entity_id": row["entity_id"],
-                            "type": row["entity_type"],
-                            "name": row["entity_name"],
-                            "mentions": row["mention_count"],
-                        }
-                        for row in rows
-                    ]
-                else:
-                    # Fallback: replicate SQL function logic
-                    # Query memory_facts.related_entities and unnest, matching the function's behavior
-                    rows = await conn.fetch(
-                        """
-                        SELECT
-                            ke.id as entity_id,
-                            ke.type,
-                            ke.name,
-                            COUNT(*)::BIGINT as mention_count
-                        FROM memory_facts mf
-                        CROSS JOIN UNNEST(mf.related_entities) AS entity_id_val
-                        JOIN kg_entities ke ON ke.id = entity_id_val
-                        WHERE mf.user_id = $1
-                        GROUP BY ke.id, ke.type, ke.name
-                        ORDER BY mention_count DESC
-                        LIMIT $2
-                        """,
-                        user_id,
-                        limit,
-                    )
-                    return [
-                        {
-                            "entity_id": row["entity_id"],  # VARCHAR(64)
-                            "type": row["type"],
-                            "name": row["name"],
-                            "mentions": row["mention_count"],
-                        }
-                        for row in rows
-                    ]
+                return [
+                    {
+                        "entity_id": row["entity_id"],
+                        "type": row["type"],
+                        "name": row["name"],
+                        "mentions": row["mention_count"],
+                    }
+                    for row in rows
+                ]
 
         except Exception as e:
             logger.warning(f"Error getting user related entities: {e}")
@@ -326,25 +378,29 @@ class KnowledgeGraphRepository:
         """
         try:
             async with self.db_pool.acquire() as conn:
-                # Text-based search (can be enhanced with embeddings)
+                # Text-based search
                 query_pattern = f"%{query}%"
                 rows = await conn.fetch(
                     """
                     SELECT
-                        e.id,
-                        e.type,
-                        e.name,
-                        e.canonical_name,
-                        e.metadata,
-                        e.mention_count,
-                        array_agg(DISTINCT r.relationship_type) as relationship_types
-                    FROM kg_entities e
-                    LEFT JOIN kg_relationships r ON e.id = r.source_entity_id OR e.id = r.target_entity_id
+                        n.entity_id,
+                        n.entity_type as type,
+                        n.name,
+                        n.description,
+                        n.properties,
+                        COALESCE(array_length(n.source_chunk_ids, 1), 0) as mention_count,
+                        array_agg(DISTINCT e.relationship_type)
+                            FILTER (WHERE e.relationship_type IS NOT NULL) as relationship_types
+                    FROM kg_nodes n
+                    LEFT JOIN kg_edges e ON n.entity_id = e.source_entity_id
+                                         OR n.entity_id = e.target_entity_id
                     WHERE
-                        e.name ILIKE $1
-                        OR e.canonical_name ILIKE $1
-                    GROUP BY e.id, e.type, e.name, e.canonical_name, e.metadata, e.mention_count
-                    ORDER BY e.mention_count DESC
+                        n.name ILIKE $1
+                        OR n.entity_id ILIKE $1
+                        OR n.description ILIKE $1
+                    GROUP BY n.entity_id, n.entity_type, n.name, n.description,
+                             n.properties, n.source_chunk_ids
+                    ORDER BY mention_count DESC
                     LIMIT $2
                     """,
                     query_pattern,
@@ -353,11 +409,11 @@ class KnowledgeGraphRepository:
 
                 return [
                     {
-                        "entity_id": row["id"],
+                        "entity_id": row["entity_id"],
                         "type": row["type"],
                         "name": row["name"],
-                        "canonical_name": row["canonical_name"],
-                        "metadata": row["metadata"],
+                        "description": row["description"],
+                        "properties": row["properties"],
                         "mentions": row["mention_count"],
                         "relationships": row["relationship_types"] or [],
                     }
@@ -389,27 +445,27 @@ class KnowledgeGraphRepository:
 
         try:
             async with self.db_pool.acquire() as conn:
-                # Simple text search for now (can be enhanced with embeddings)
+                # Text search (can be enhanced with embeddings in future)
                 query_pattern = f"%{query}%"
                 rows = await conn.fetch(
                     """
                     SELECT
-                        e.id,
-                        e.type,
-                        e.name,
-                        e.mention_count,
-                        e.metadata,
-                        COUNT(DISTINCT m.id) as mention_count_in_sources
-                    FROM kg_entities e
-                    LEFT JOIN kg_entity_mentions m ON e.id = m.entity_id
+                        n.entity_id,
+                        n.entity_type as type,
+                        n.name,
+                        COALESCE(array_length(n.source_chunk_ids, 1), 0) as mention_count,
+                        n.properties,
+                        n.confidence
+                    FROM kg_nodes n
                     WHERE
-                        e.name ILIKE $1
-                        OR e.canonical_name ILIKE $2
-                        OR e.metadata::text ILIKE $3
-                    GROUP BY e.id, e.type, e.name, e.mention_count, e.metadata
-                    ORDER BY mention_count_in_sources DESC
-                    LIMIT $4
+                        n.name ILIKE $1
+                        OR n.entity_id ILIKE $2
+                        OR n.properties::text ILIKE $3
+                        OR n.description ILIKE $4
+                    ORDER BY mention_count DESC, confidence DESC
+                    LIMIT $5
                     """,
+                    query_pattern,
                     query_pattern,
                     query_pattern,
                     query_pattern,
@@ -418,12 +474,12 @@ class KnowledgeGraphRepository:
 
                 return [
                     {
-                        "entity_id": row["id"],
+                        "entity_id": row["entity_id"],
                         "type": row["type"],
                         "name": row["name"],
                         "mentions": row["mention_count"],
-                        "metadata": row["metadata"],
-                        "source_mentions": row["mention_count_in_sources"],
+                        "properties": row["properties"],
+                        "confidence": row["confidence"],
                     }
                     for row in rows
                 ]
@@ -435,134 +491,166 @@ class KnowledgeGraphRepository:
             logger.error(f"Unexpected error in semantic search: {e}", exc_info=True)
             return []
 
-    async def get_user_related_entities(
-        self, user_id: str, limit: int = 10
-    ) -> list[dict[str, Any]]:
+    async def get_entity_by_id(self, entity_id: str) -> dict[str, Any] | None:
         """
-        Get entities related to a user's memories.
+        Get a single entity by its ID.
 
         Args:
-            user_id: User identifier
-            limit: Maximum entities to return
+            entity_id: Entity ID (TEXT)
 
         Returns:
-            List of entities with type, name, and mention count
+            Entity dict or None if not found
         """
         try:
             async with self.db_pool.acquire() as conn:
-                # Check if the function exists (created by migration 021)
-                func_exists = await conn.fetchval(
+                row = await conn.fetchrow(
                     """
-                    SELECT EXISTS(
-                        SELECT 1 FROM information_schema.routines
-                        WHERE routine_name = 'get_user_memory_entities'
-                    )
-                    """
+                    SELECT
+                        entity_id, entity_type, name, description,
+                        properties, confidence, source_collection,
+                        source_chunk_ids, created_at, updated_at
+                    FROM kg_nodes
+                    WHERE entity_id = $1
+                    """,
+                    entity_id,
                 )
 
-                if func_exists:
-                    # Use the optimized function
-                    # FIX: Column name is 'mention_count' (matches RETURNS TABLE definition)
-                    rows = await conn.fetch(
-                        "SELECT * FROM get_user_memory_entities($1) LIMIT $2",
-                        user_id,
-                        limit,
-                    )
-                    return [
-                        {
-                            "entity_id": row["entity_id"],  # VARCHAR(64)
-                            "type": row["entity_type"],
-                            "name": row["entity_name"],
-                            "mentions": row["mention_count"],  # FIX: matches SQL column name
-                        }
-                        for row in rows
-                    ]
-                else:
-                    # Fallback: direct query (entity_id is VARCHAR(64))
-                    rows = await conn.fetch(
-                        """
-                        SELECT DISTINCT
-                            ke.id as entity_id,
-                            ke.type,
-                            ke.name,
-                            ke.mention_count
-                        FROM kg_entity_mentions km
-                        JOIN kg_entities ke ON ke.id = km.entity_id
-                        WHERE km.source_type = 'conversation'
-                        AND km.source_id LIKE $1
-                        ORDER BY ke.mention_count DESC
-                        LIMIT $2
-                        """,
-                        f"%{user_id}%",
-                        limit,
-                    )
-                    return [
-                        {
-                            "entity_id": row["entity_id"],  # VARCHAR(64)
-                            "type": row["type"],
-                            "name": row["name"],
-                            "mentions": row["mention_count"],
-                        }
-                        for row in rows
-                    ]
+                if not row:
+                    return None
+
+                return {
+                    "entity_id": row["entity_id"],
+                    "type": row["entity_type"],
+                    "name": row["name"],
+                    "description": row["description"],
+                    "properties": row["properties"],
+                    "confidence": row["confidence"],
+                    "source_collection": row["source_collection"],
+                    "source_chunk_ids": row["source_chunk_ids"] or [],
+                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                    "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+                }
 
         except Exception as e:
-            logger.warning(f"Error getting user related entities: {e}")
-            return []
+            logger.error(f"Error getting entity by ID: {e}")
+            return None
 
-    async def get_entity_context_for_query(
-        self, query: str, limit: int = 5
+    async def get_entity_relationships(
+        self, entity_id: str, limit: int = 20
     ) -> list[dict[str, Any]]:
         """
-        Get relevant entities for a query to enrich AI context.
+        Get relationships for an entity.
 
         Args:
-            query: User's query text
-            limit: Maximum entities to return
+            entity_id: Entity ID (TEXT)
+            limit: Maximum relationships to return
 
         Returns:
-            List of relevant entities with descriptions
+            List of relationships with connected entities
         """
         try:
             async with self.db_pool.acquire() as conn:
-                # Text-based search (can be enhanced with embeddings)
-                query_pattern = f"%{query}%"
                 rows = await conn.fetch(
                     """
                     SELECT
-                        e.id,
-                        e.type,
-                        e.name,
-                        e.canonical_name,
-                        e.metadata,
-                        e.mention_count,
-                        array_agg(DISTINCT r.relationship_type) FILTER (WHERE r.relationship_type IS NOT NULL) as relationship_types
-                    FROM kg_entities e
-                    LEFT JOIN kg_relationships r ON e.id = r.source_entity_id OR e.id = r.target_entity_id
-                    WHERE
-                        e.name ILIKE $1
-                        OR e.canonical_name ILIKE $1
-                    GROUP BY e.id, e.type, e.name, e.canonical_name, e.metadata, e.mention_count
-                    ORDER BY e.mention_count DESC
+                        e.relationship_id,
+                        e.relationship_type,
+                        e.confidence,
+                        e.properties,
+                        e.source_chunk_ids,
+                        CASE
+                            WHEN e.source_entity_id = $1 THEN 'outgoing'
+                            ELSE 'incoming'
+                        END as direction,
+                        CASE
+                            WHEN e.source_entity_id = $1 THEN n.entity_id
+                            ELSE n2.entity_id
+                        END as connected_entity_id,
+                        CASE
+                            WHEN e.source_entity_id = $1 THEN n.name
+                            ELSE n2.name
+                        END as connected_entity_name,
+                        CASE
+                            WHEN e.source_entity_id = $1 THEN n.entity_type
+                            ELSE n2.entity_type
+                        END as connected_entity_type
+                    FROM kg_edges e
+                    LEFT JOIN kg_nodes n ON e.target_entity_id = n.entity_id
+                    LEFT JOIN kg_nodes n2 ON e.source_entity_id = n2.entity_id
+                    WHERE e.source_entity_id = $1 OR e.target_entity_id = $1
+                    ORDER BY e.confidence DESC
                     LIMIT $2
                     """,
-                    query_pattern,
+                    entity_id,
                     limit,
                 )
 
                 return [
                     {
-                        "entity_id": row["id"],  # VARCHAR(64)
-                        "type": row["type"],
-                        "name": row["name"],
-                        "canonical_name": row["canonical_name"],
-                        "metadata": row["metadata"],
-                        "mentions": row["mention_count"],
-                        "relationships": row["relationship_types"] or [],
+                        "relationship_id": row["relationship_id"],
+                        "type": row["relationship_type"],
+                        "direction": row["direction"],
+                        "confidence": row["confidence"],
+                        "properties": row["properties"],
+                        "connected_entity": {
+                            "id": row["connected_entity_id"],
+                            "name": row["connected_entity_name"],
+                            "type": row["connected_entity_type"],
+                        },
                     }
                     for row in rows
                 ]
 
         except Exception as e:
-            logger.warning(f"Error getting entity context: {e}")
+            logger.error(f"Error getting entity relationships: {e}")
             return []
+
+    async def get_graph_stats(self) -> dict[str, Any]:
+        """
+        Get overall knowledge graph statistics.
+
+        Returns:
+            Dictionary with node and edge counts, type distributions
+        """
+        try:
+            async with self.db_pool.acquire() as conn:
+                # Node stats
+                node_count = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes")
+                edge_count = await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
+
+                # Type distributions
+                node_types = await conn.fetch(
+                    """
+                    SELECT entity_type, COUNT(*) as count
+                    FROM kg_nodes
+                    GROUP BY entity_type
+                    ORDER BY count DESC
+                    """
+                )
+
+                edge_types = await conn.fetch(
+                    """
+                    SELECT relationship_type, COUNT(*) as count
+                    FROM kg_edges
+                    GROUP BY relationship_type
+                    ORDER BY count DESC
+                    """
+                )
+
+                return {
+                    "total_nodes": node_count,
+                    "total_edges": edge_count,
+                    "node_types": {row["entity_type"]: row["count"] for row in node_types},
+                    "edge_types": {row["relationship_type"]: row["count"] for row in edge_types},
+                    "generated_at": datetime.now().isoformat(),
+                }
+
+        except Exception as e:
+            logger.error(f"Error getting graph stats: {e}")
+            return {
+                "total_nodes": 0,
+                "total_edges": 0,
+                "node_types": {},
+                "edge_types": {},
+                "generated_at": datetime.now().isoformat(),
+            }

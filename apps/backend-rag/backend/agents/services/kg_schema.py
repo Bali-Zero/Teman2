@@ -2,6 +2,10 @@
 Knowledge Graph Schema Service
 
 Responsibility: Manage knowledge graph database schema.
+
+Updated Dec 2025 to use unified schema (kg_nodes/kg_edges).
+Tables are created via migrations (028, 029), this service
+just verifies they exist.
 """
 
 import logging
@@ -24,75 +28,57 @@ class KnowledgeGraphSchema:
         self.db_pool = db_pool
 
     async def init_schema(self):
-        """Create knowledge graph tables if they don't exist"""
+        """
+        Verify knowledge graph tables exist.
+
+        The actual table creation is handled by migrations 028 and 029.
+        This method verifies the tables exist and logs their status.
+        """
         try:
-            async with self.db_pool.acquire() as conn, conn.transaction():
-                # Entities table
-                await conn.execute(
+            async with self.db_pool.acquire() as conn:
+                # Check if new schema tables exist
+                kg_nodes_exists = await conn.fetchval(
                     """
-                    CREATE TABLE IF NOT EXISTS kg_entities (
-                        id SERIAL PRIMARY KEY,
-                        type VARCHAR(50) NOT NULL,
-                        name TEXT NOT NULL,
-                        canonical_name TEXT,
-                        metadata JSONB DEFAULT '{}',
-                        mention_count INTEGER DEFAULT 1,
-                        first_seen_at TIMESTAMP DEFAULT NOW(),
-                        last_seen_at TIMESTAMP DEFAULT NOW(),
-                        created_at TIMESTAMP DEFAULT NOW(),
-                        UNIQUE(type, canonical_name)
-                    );
-
-                    CREATE INDEX IF NOT EXISTS idx_kg_entities_type ON kg_entities(type);
-                    CREATE INDEX IF NOT EXISTS idx_kg_entities_canonical ON kg_entities(canonical_name);
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables
+                        WHERE table_schema = 'public'
+                        AND table_name = 'kg_nodes'
+                    )
                     """
                 )
 
-                # Relationships table
-                await conn.execute(
+                kg_edges_exists = await conn.fetchval(
                     """
-                    CREATE TABLE IF NOT EXISTS kg_relationships (
-                        id SERIAL PRIMARY KEY,
-                        source_entity_id INTEGER REFERENCES kg_entities(id),
-                        target_entity_id INTEGER REFERENCES kg_entities(id),
-                        relationship_type VARCHAR(50) NOT NULL,
-                        strength FLOAT DEFAULT 1.0,
-                        evidence TEXT[],
-                        source_references JSONB DEFAULT '[]',
-                        created_at TIMESTAMP DEFAULT NOW(),
-                        updated_at TIMESTAMP DEFAULT NOW(),
-                        UNIQUE(source_entity_id, target_entity_id, relationship_type)
-                    );
-
-                    CREATE INDEX IF NOT EXISTS idx_kg_rel_source ON kg_relationships(source_entity_id);
-                    CREATE INDEX IF NOT EXISTS idx_kg_rel_target ON kg_relationships(target_entity_id);
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables
+                        WHERE table_schema = 'public'
+                        AND table_name = 'kg_edges'
+                    )
                     """
                 )
 
-                # Entity mentions table
-                await conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS kg_entity_mentions (
-                        id SERIAL PRIMARY KEY,
-                        entity_id INTEGER REFERENCES kg_entities(id),
-                        source_type VARCHAR(50) NOT NULL,
-                        source_id TEXT NOT NULL,
-                        context TEXT,
-                        created_at TIMESTAMP DEFAULT NOW()
-                    );
+                if kg_nodes_exists and kg_edges_exists:
+                    # Get counts for logging
+                    nodes_count = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes")
+                    edges_count = await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
+                    logger.info(
+                        f"✅ Knowledge graph schema verified: "
+                        f"{nodes_count:,} nodes, {edges_count:,} edges"
+                    )
+                else:
+                    missing = []
+                    if not kg_nodes_exists:
+                        missing.append("kg_nodes")
+                    if not kg_edges_exists:
+                        missing.append("kg_edges")
+                    logger.warning(
+                        f"⚠️ Knowledge graph tables missing: {', '.join(missing)}. "
+                        f"Run migrations 028 and 029 to create them."
+                    )
 
-                    CREATE INDEX IF NOT EXISTS idx_kg_mentions_entity ON kg_entity_mentions(entity_id);
-                    CREATE INDEX IF NOT EXISTS idx_kg_mentions_source ON kg_entity_mentions(source_type, source_id);
-                    """
-                )
-
-            logger.info("✅ Knowledge graph schema initialized")
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error initializing schema: {e}", exc_info=True)
+            logger.error(f"Database error verifying schema: {e}", exc_info=True)
             raise
         except Exception as e:
-            logger.error(f"Unexpected error initializing schema: {e}", exc_info=True)
+            logger.error(f"Unexpected error verifying schema: {e}", exc_info=True)
             raise
-
-
-

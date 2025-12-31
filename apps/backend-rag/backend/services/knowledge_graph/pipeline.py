@@ -31,6 +31,9 @@ class PipelineConfig:
     model: str = "claude-sonnet-4-20250514"
     api_key: str | None = None
 
+    # Extractor type: "claude" or "gemini"
+    extractor_type: str = "claude"
+
     # Extraction settings
     two_stage_extraction: bool = False  # Faster single-stage by default
     use_coreference: bool = True
@@ -96,17 +99,26 @@ class KGPipeline:
         """
         self.config = config or PipelineConfig()
 
-        # Initialize components
-        self.extractor = KGExtractor(
-            model=self.config.model,
-            api_key=self.config.api_key,
-        )
-
-        self.coreference = CoreferenceResolver(
-            use_llm=self.config.use_coreference,
-            model=self.config.model,
-            api_key=self.config.api_key,
-        )
+        # Initialize extractor based on type
+        if self.config.extractor_type == "gemini":
+            from .extractor_gemini import GeminiKGExtractor
+            self.extractor = GeminiKGExtractor(
+                model=self.config.model,
+            )
+            # Disable LLM coreference with Gemini (use heuristics only to save cost)
+            self.coreference = CoreferenceResolver(
+                use_llm=False,
+            )
+        else:
+            self.extractor = KGExtractor(
+                model=self.config.model,
+                api_key=self.config.api_key,
+            )
+            self.coreference = CoreferenceResolver(
+                use_llm=self.config.use_coreference,
+                model=self.config.model,
+                api_key=self.config.api_key,
+            )
 
         # Database connection
         self._db_pool: asyncpg.Pool | None = None
