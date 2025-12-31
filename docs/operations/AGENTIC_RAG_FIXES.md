@@ -305,7 +305,7 @@ Prima di modificare il sistema di evidence/abstain:
 | v1175 | 2025-12-30 | Evidence threshold 0.8→0.3 |
 | v1177 | 2025-12-31 | Trusted tools bypass (calculator, pricing, team) |
 | v1178 | 2025-12-31 | LLM Gateway images parameter fix |
-| v1179 | 2025-12-31 | Added team_knowledge to trusted_tool_names |
+| v1179 | 2025-12-31 | Image gen URL cleaning (chat.api.ts) + team_knowledge trusted |
 
 ---
 

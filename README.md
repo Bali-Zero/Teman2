@@ -38,17 +38,36 @@ nuzantara/
 - **Deployment**: Docker, Fly.io (Singapore region)
 - **Database**: PostgreSQL, Redis, Qdrant Vector DB
 
-### 🚀 Agentic RAG v6.0
+### 🚀 Agentic RAG v6.5 + Conscious GraphRAG
 
-The system now runs on the **Agentic RAG** architecture, featuring:
+The system now runs on the **Agentic RAG** architecture with **Conscious GraphRAG**, featuring:
 
 - **🧠 ReAct Pattern**: Thought→Action→Observation loop for intelligent multi-step reasoning.
-- **🔧 Tool Execution**: VectorSearchTool, PricingTool, TeamKnowledgeTool, CalculatorTool, VisionTool.
+- **🔧 Tool Execution**: VectorSearchTool, PricingTool, TeamKnowledgeTool, CalculatorTool, VisionTool, **KnowledgeGraphTool**.
 - **⚡ LLM Cascade**: Gemini 3 Flash Preview → 2.0 Flash fallback for reliability.
 - **🔎 Ultra Reranking**: Uses **ZeroEntropy** (zerank-2) for state-of-the-art document retrieval accuracy.
 - **📚 Federated Search**: Hybrid search (Dense + BM25) across multiple knowledge collections.
 - **🧠 Memory System**: Facts, Episodic, and Collective memory for personalized responses.
 - **🛡️ Privacy-by-Design**: Automated PII redaction in logs.
+- **🕸️ Knowledge Graph**: PostgreSQL-backed graph with `source_chunk_ids` for full provenance tracking.
+
+#### GraphRAG Architecture (v6.5 - Dec 2025)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Conscious GraphRAG                      │
+├─────────────────────────────────────────────────────────┤
+│  PostgreSQL                                              │
+│  ├── kg_nodes (entity_id, type, name, source_chunk_ids) │
+│  └── kg_edges (source, target, relationship, chunks)    │
+├─────────────────────────────────────────────────────────┤
+│  KnowledgeGraphBuilder ← LLMGateway (Hybrid Extraction) │
+│  └── Regex patterns + LLM semantic extraction           │
+├─────────────────────────────────────────────────────────┤
+│  KnowledgeGraphTool (Agentic)                           │
+│  └── Traversal queries with provenance tracking         │
+└─────────────────────────────────────────────────────────┘
+```
 
 ## 📊 Test Coverage
 
@@ -138,6 +157,14 @@ Nuzantara usa un **workflow completamente locale**:
 3. **Build Test**: Verifica build Docker localmente prima di deploy
 4. **Deployment Manuale**: Deploy su Fly.io usando gli script helper
 
+### ⚖️ Separation of Data and Logic (Crucial)
+
+To maintain system integrity and avoid frequent code updates for business changes, **NEVER** hardcode "Volatile Data" in the codebase:
+- **Specific Prices**: Never write prices (e.g., `15.000.000 IDR`) in the code. Use the Knowledge Base (KB) or configuration files.
+- **Employee Names**: Do not use specific names (e.g., `if "Zainal" in query`) in the logic. Use the dynamic `team_knowledge` tools.
+- **Legal Details**: Do not hardcode specific visa or tax requirements (e.g., `60k USD income`). These must be retrieved from the KB.
+- **Contact Info**: Do not hardcode addresses or specific contact details in response strings. Use `settings` or the KB.
+
 **🚨 ATTENZIONE: NO CI/CD DEPLOYMENT**
 Il deploy è **manuale e locale** tramite `flyctl deploy` per garantire il controllo totale sulla build e sui tempi di rilascio.
 
@@ -162,6 +189,7 @@ Il deploy è **manuale e locale** tramite `flyctl deploy` per garantire il contr
 - [**AI Onboarding**](docs/AI_ONBOARDING.md) - **START HERE** - System overview and standards
 - [**System Map 4D**](docs/SYSTEM_MAP_4D.md) - Space, Time, Logic, Scale dimensions
 - [**Living Architecture**](docs/LIVING_ARCHITECTURE.md) - Auto-generated API & module reference
+- [**Race Conditions & Locking**](docs/RACE_CONDITIONS_LOCKING.md) - Locking behavior and race condition prevention
 - [**Deploy Checklist**](docs/operations/DEPLOY_CHECKLIST.md) - Deployment procedures
 
 ### 🦟 Flyctl Management (Crucial)
@@ -204,14 +232,14 @@ python3 apps/core/scribe_frontend.py
 
 ## 📊 Knowledge Base
 
-The platform uses **Qdrant Vector Database** with **53,757+ documents** across 4 main collections:
+The platform uses **Qdrant Vector Database** with **54,154 documents** across 7 active collections:
 
-- **Business Codes (KBLI)**: 8,886 documents (`kbli_unified`)
-- **Legal Framework**: 5,041 documents (`legal_unified`)
-- **Visa & Immigration**: 1,612 documents (`visa_oracle`)
-- **Tax Regulations**: 895 documents (`tax_genius`)
-- **General Knowledge Base**: 37,272+ documents (`knowledge_base`, `zantara_books`)
-- **Team & Pricing**: 51 documents (`bali_zero_team`, `bali_zero_pricing`)
+- **Business Codes (KBLI)**: ~8,886 documents (`kbli_unified`)
+- **Legal Framework**: ~5,041 documents (`legal_unified_hybrid`)
+- **Visa & Immigration**: ~1,612 documents (`visa_oracle`)
+- **Tax Regulations**: ~332 documents (`tax_genius`)
+- **Team & Pricing**: ~51 documents (`bali_zero_team`, `bali_zero_pricing`)
+- **Training Conversations**: dynamic (`training_conversations`)
 
 All documents use **OpenAI embeddings** (1536-dim) for semantic search. See [ARCHITECTURE.md](./docs/ARCHITECTURE.md#3-qdrant-vector-database-structure) for detailed structure.
 
@@ -219,6 +247,17 @@ All documents use **OpenAI embeddings** (1536-dim) for semantic search. See [ARC
 
 - **Bali Zero** - Lead Developer & Architect
 - **Nuzantara Team** - Development & Support
+
+---
+
+## 📝 Recent Changes (Dec 2025)
+
+### v6.5.0 - Conscious GraphRAG (2025-12-31)
+- ✅ **LLM Gateway Injection**: KnowledgeGraphBuilder now receives LLM for semantic extraction
+- ✅ **Pricing Service Fix**: Corrected JSON path (`backend/data/` vs `backend/services/data/`)
+- ✅ **DB Migrations 028-029**: Knowledge Graph tables (`kg_nodes`, `kg_edges`) with `source_chunk_ids`
+- ✅ **Category Alignment**: Updated PricingService to match actual JSON schema
+- ✅ **conversation_trainer Fix**: Fixed `timedelta` interval bug for asyncpg
 
 ---
 
