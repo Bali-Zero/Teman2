@@ -52,6 +52,7 @@ import {
   sendMessageStream,
   saveConversation,
   type ChatMessage,
+  type ChatImage,
   type Source,
   type StreamEvent,
 } from './actions';
@@ -90,7 +91,11 @@ export default function ChatPage() {
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Image attachment state
+  const [attachedImages, setAttachedImages] = useState<Array<{ id: string; base64: string; name: string; size: number }>>([]);
 
   // Transitions
   const [isPending, startMessageTransition] = useTransition();
@@ -236,6 +241,60 @@ export default function ChatPage() {
     }
   }, [showToast]);
 
+  // Handle image attachment for chat
+  const handleImageAttach = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('Image must be less than 10MB', 'error');
+        return;
+      }
+      if (attachedImages.length >= 5) {
+        showToast('Maximum 5 images allowed', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setAttachedImages(prev => [
+          ...prev,
+          {
+            id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            base64: base64String,
+            name: file.name,
+            size: file.size,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input to allow selecting same file again
+    e.target.value = '';
+  }, [attachedImages.length, showToast]);
+
+  // Remove attached image
+  const removeAttachedImage = useCallback((imageId: string) => {
+    setAttachedImages(prev => prev.filter(img => img.id !== imageId));
+  }, []);
+
+  // Handle image button clicks
+  const handleImageButtonClick = useCallback(() => {
+    imageInputRef.current?.click();
+  }, []);
+
+  // Handle screenshot/camera button (opens file picker for now)
+  const handleScreenshotClick = useCallback(() => {
+    imageInputRef.current?.click();
+  }, []);
+
   // User avatar component
   const UserAvatarDisplay = ({ size = 'sm' }: { size?: 'sm' | 'md' }) => {
     const sizeClasses = size === 'sm' ? 'w-8 h-8' : 'w-9 h-9';
@@ -265,17 +324,25 @@ export default function ChatPage() {
   // ============================================
   const handleSend = useCallback(async () => {
     const trimmedInput = input.trim();
-    if (!trimmedInput || isPending) return;
+    const hasImages = attachedImages.length > 0;
+
+    // Allow sending if there's text OR images
+    if ((!trimmedInput && !hasImages) || isPending) return;
 
     const userProfile = api.getUserProfile();
     const userId = userProfile?.email || 'anonymous';
 
+    // Capture images before clearing
+    const imagesToSend = [...attachedImages];
+
     setInput('');
+    setAttachedImages([]); // Clear images after capturing
 
     const userMessage: OptimisticMessage = {
       id: generateId(),
       role: 'user',
-      content: trimmedInput,
+      content: trimmedInput || (hasImages ? '[Image attached]' : ''),
+      images: imagesToSend.length > 0 ? imagesToSend : undefined,
       timestamp: new Date(),
       isPending: false,
     };
@@ -378,7 +445,7 @@ export default function ChatPage() {
       setCurrentStatus('');
       showToast('Failed to send message', 'error');
     }
-  }, [input, isPending, messages, sessionId, addOptimisticMessage, showToast]);
+  }, [input, isPending, messages, sessionId, addOptimisticMessage, showToast, attachedImages]);
 
   // ============================================
   // Conversation Management
@@ -495,6 +562,16 @@ export default function ChatPage() {
         ref={fileInputRef}
         onChange={handleAvatarChange}
         accept="image/*"
+        className="hidden"
+      />
+
+      {/* Hidden file input for chat image attachments */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        onChange={handleImageAttach}
+        accept="image/*"
+        multiple
         className="hidden"
       />
 
@@ -794,6 +871,21 @@ export default function ChatPage() {
                         ? 'bg-[#2a2a2a] rounded-br-md'
                         : 'bg-[#2a2a2a] rounded-bl-md border border-white/[0.06]'
                     } ${message.isPending ? 'opacity-70' : ''}`}>
+                      {/* Display attached images for user messages */}
+                      {message.role === 'user' && message.images && message.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {message.images.map((img) => (
+                            <Image
+                              key={img.id}
+                              src={img.base64}
+                              alt={img.name}
+                              width={120}
+                              height={120}
+                              className="w-32 h-32 object-cover rounded-lg border border-white/10"
+                            />
+                          ))}
+                        </div>
+                      )}
                       <div className="text-sm whitespace-pre-wrap leading-relaxed text-gray-100">
                         {message.content.split('**').map((part, i) =>
                           i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
@@ -850,21 +942,34 @@ export default function ChatPage() {
             <div className="bg-[#333333] rounded-2xl border border-white/[0.1] shadow-xl shadow-black/30 overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
                 <div className="flex items-center gap-1">
-                  <button className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all">
+                  <button
+                    onClick={handleImageButtonClick}
+                    title="Attach file"
+                    className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+                  >
                     <Paperclip className="w-4 h-4" />
                   </button>
-                  <button className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all">
+                  <button
+                    onClick={handleImageButtonClick}
+                    title="Add image"
+                    className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+                  >
                     <ImageIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={handleMicClick}
+                    title="Voice input"
                     className={`p-2 rounded-lg transition-all ${
                       isRecording ? 'text-red-400 bg-red-500/10 animate-pulse' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
                     }`}
                   >
                     <Mic className="w-4 h-4" />
                   </button>
-                  <button className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all">
+                  <button
+                    onClick={handleScreenshotClick}
+                    title="Add screenshot"
+                    className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+                  >
                     <Camera className="w-4 h-4" />
                   </button>
                 </div>
@@ -877,12 +982,40 @@ export default function ChatPage() {
                 </div>
               </div>
 
+              {/* Image Preview Area */}
+              {attachedImages.length > 0 && (
+                <div className="px-3 py-2 border-b border-white/[0.06]">
+                  <div className="flex flex-wrap gap-2">
+                    {attachedImages.map((img) => (
+                      <div key={img.id} className="relative group">
+                        <Image
+                          src={img.base64}
+                          alt={img.name}
+                          width={80}
+                          height={80}
+                          className="w-20 h-20 object-cover rounded-lg border border-white/10"
+                        />
+                        <button
+                          onClick={() => removeAttachedImage(img.id)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-gray-300 px-1 py-0.5 rounded-b-lg truncate">
+                          {img.name.length > 12 ? img.name.slice(0, 12) + '...' : img.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-end gap-3 p-3">
                 <textarea
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask Zantara anything..."
+                  placeholder={attachedImages.length > 0 ? "Add a message about this image..." : "Ask Zantara anything..."}
                   rows={1}
                   disabled={isPending}
                   className="flex-1 bg-transparent border-none outline-none shadow-none focus:outline-none focus:ring-0 focus:border-none focus:shadow-none resize-none min-h-[44px] max-h-[120px] py-2.5 text-sm text-white placeholder:text-gray-500 disabled:opacity-50"
@@ -890,9 +1023,9 @@ export default function ChatPage() {
                 />
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim() || isPending}
+                  disabled={(!input.trim() && attachedImages.length === 0) || isPending}
                   className={`p-2.5 rounded-xl transition-all ${
-                    input.trim() && !isPending
+                    (input.trim() || attachedImages.length > 0) && !isPending
                       ? 'bg-white text-black shadow-lg shadow-white/20'
                       : 'bg-white/10 text-gray-500'
                   }`}

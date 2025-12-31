@@ -3,10 +3,18 @@
 import { cookies } from 'next/headers';
 
 // Types
+export interface ChatImage {
+  id: string;
+  base64: string;
+  name: string;
+  size: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  images?: ChatImage[];
   sources?: Source[];
   steps?: AgentStep[];
   timestamp: Date;
@@ -95,7 +103,12 @@ export async function sendMessageStream(
             query: lastUserMessage.content,
             user_id: userId,
             session_id: sessionId,
-            conversation_history: messages.slice(-10).map(m => ({
+            images: lastUserMessage.images?.map(img => ({
+              base64: img.base64,
+              name: img.name,
+            })),
+            enable_vision: (lastUserMessage.images?.length ?? 0) > 0,
+            conversation_history: messages.slice(-200).map(m => ({
               role: m.role,
               content: m.content,
             })),

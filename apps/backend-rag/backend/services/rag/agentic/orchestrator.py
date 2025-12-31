@@ -46,6 +46,7 @@ from services.response.cleaner import (
     is_out_of_domain,
 )
 from services.rag.agentic.entity_extractor import EntityExtractionService
+from services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 
 from .context_manager import get_user_context
 from .llm_gateway import LLMGateway
@@ -291,6 +292,11 @@ class AgenticRAGOrchestrator:
         logger.debug("AgenticRAGOrchestrator: Initializing EntityExtractionService...")
         self.entity_extractor = entity_extractor or EntityExtractionService(llm_gateway=self.llm_gateway)
         logger.debug("AgenticRAGOrchestrator: EntityExtractionService initialized")
+
+        # Initialize KG-Enhanced Retrieval Service
+        self.kg_retrieval = KGEnhancedRetrieval(db_pool) if db_pool else None
+        if self.kg_retrieval:
+            logger.info("✅ KG-Enhanced Retrieval initialized")
 
         # Initialize Follow-up & Golden Answer services
         self.followup_service = FollowupService()
@@ -638,16 +644,27 @@ class AgenticRAGOrchestrator:
         # Initialize state components for ReAct
         state = AgentState(query=query)
 
-        # Build system prompt
+        # Build system prompt with KG context
         system_context_for_prompt = ""
         if any(extracted_entities.values()):
             system_context_for_prompt = f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
+
+        # KG-Enhanced Retrieval: Get graph context for query
+        kg_context = None
+        if self.kg_retrieval:
+            try:
+                kg_context = await self.kg_retrieval.get_context_for_query(query, max_depth=1)
+                if kg_context and kg_context.graph_summary:
+                    system_context_for_prompt += "\n" + kg_context.graph_summary
+                    logger.info(f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context")
+            except Exception as e:
+                logger.warning(f"⚠️ [KG] Failed to get graph context: {e}")
 
         system_prompt = self.prompt_builder.build_system_prompt(
             user_id=user_id or "anonymous",
             context=user_context,
             query=query,
-            additional_context=system_context_for_prompt # Inject extracted entities
+            additional_context=system_context_for_prompt # Inject extracted entities + KG context
         )
 
         # Create chat session
@@ -814,8 +831,9 @@ class AgenticRAGOrchestrator:
         user_id: str = "anonymous",
         conversation_history: list[dict] | None = None,
         session_id: str | None = None,
+        images: list[dict] | None = None,  # Vision images: [{"base64": ..., "name": ...}]
     ) -> AsyncGenerator[dict, None]:
-        """Stream query with comprehensive error handling."""
+        """Stream query with comprehensive error handling. Supports vision with images."""
         correlation_id = str(uuid.uuid4())
         event_error_count = 0
         
@@ -832,7 +850,12 @@ class AgenticRAGOrchestrator:
             "user_id": user_id,
             "query_length": len(query),
             "session_id": session_id or "none",
+            "images_count": len(images) if images else 0,
         })
+
+        # Log vision mode if images are attached
+        if images:
+            logger.info(f"🖼️ Vision mode: {len(images)} images attached to query")
 
         # UNIVERSAL CONTEXT LOADING (Stream)
         with trace_span("context.load_user_stream", {"user_id": user_id}):
@@ -1120,14 +1143,24 @@ Respond in the SAME language the user is using."""
         # --- QUALITY ROUTING: REACT LOOP STREAMING (Full Agentic Architecture) ---
         logger.info(f"🧠 [Stream] Processing query with ReAct loop for user {user_id}")
 
-        # Build system prompt
+        # Build system prompt with KG context
         system_context_for_prompt = ""
         if any(extracted_entities.values()):
             system_context_for_prompt = f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
 
+        # KG-Enhanced Retrieval: Get graph context for query
+        if self.kg_retrieval:
+            try:
+                kg_context = await self.kg_retrieval.get_context_for_query(query, max_depth=1)
+                if kg_context and kg_context.graph_summary:
+                    system_context_for_prompt += "\n" + kg_context.graph_summary
+                    logger.info(f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context")
+            except Exception as e:
+                logger.warning(f"⚠️ [KG] Failed to get graph context: {e}")
+
         system_prompt = self.prompt_builder.build_system_prompt(
             user_id, user_context, query, deep_think_mode=deep_think_mode,
-            additional_context=system_context_for_prompt # Inject extracted entities
+            additional_context=system_context_for_prompt # Inject extracted entities + KG context
         )
 
         # Create chat session
@@ -1237,13 +1270,19 @@ Respond in the SAME language the user is using."""
                         
                 except Exception as e:
                     event_error_count += 1
+                    # Use error classification for better error handling
+                    from app.core.error_classification import ErrorClassifier, get_error_context
+                    error_category, error_severity = ErrorClassifier.classify_error(e)
+                    error_context = get_error_context(
+                        e,
+                        correlation_id=correlation_id,
+                        user_id=user_id,
+                        event_error_count=event_error_count,
+                    )
+                    
                     logger.exception(
                         f"❌ [Stream] Unexpected error processing event",
-                        extra={
-                            "correlation_id": correlation_id,
-                            "user_id": user_id,
-                            "error": str(e),
-                        }
+                        extra=error_context
                     )
                     metrics_collector.stream_event_processing_error_total.inc()
                     
@@ -1282,13 +1321,19 @@ Respond in the SAME language the user is using."""
                 },
             }
         except Exception as e:
+            # Use error classification for better error handling
+            from app.core.error_classification import ErrorClassifier, get_error_context
+            error_category, error_severity = ErrorClassifier.classify_error(e)
+            error_context = get_error_context(
+                e,
+                correlation_id=correlation_id,
+                user_id=user_id,
+                query=query[:100],
+            )
+            
             logger.exception(
                 f"❌ [Stream] Fatal error in stream_query",
-                extra={
-                    "correlation_id": correlation_id,
-                    "user_id": user_id,
-                    "query": query[:100],
-                }
+                extra=error_context
             )
             add_span_event("react.stream.error", {"error": str(e)})
             # Yield final error event
