@@ -40,12 +40,12 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 
 | Service | Path | Stack | Status | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 34 routers (213 endpoints), 152 services, 26 migrations (62 tables). Handles Agentic RAG (ReAct pattern), AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
+| **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 38 routers (250 endpoints), 169 services, 32 migrations (65+ tables). Handles Agentic RAG (ReAct pattern), AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
 | **Frontend** | `apps/mouth` | **Next.js 16** (React 19) | ✅ **PRIMARY** | The modern user interface. Uses Tailwind CSS 4, TypeScript, shadcn/ui components, and lightweight state management. |
 
 
 ### 2.2 Infrastructure
-- **Database:** PostgreSQL (asyncpg with connection pooling, 65 tables), Qdrant Cloud (Vector, **54,089 documents** across 8 active collections), Redis (Cache/Queue).
+- **Database:** PostgreSQL (asyncpg with connection pooling, 65+ tables), Qdrant Cloud (Vector, **54,154 documents** across 7 active collections), Redis (Cache/Queue).
 - **Deployment:** Fly.io (Docker-based, multi-region Singapore).
 - **Testing & Deployment:** Local testing and manual deployment workflow. All testing and deployment is done locally - no automated CI/CD pipelines. Deploy via `flyctl deploy` from local machine.
 - **Observability:** Prometheus, Grafana, Jaeger, Alertmanager.
@@ -55,7 +55,7 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 | Collezione | Docs | Scopo | Query Router Keywords |
 |------------|------|-------|----------------------|
 | `visa_oracle` | ~1,612 | Immigration, KITAS, KITAP | visa, kitas, kitap, immigration |
-| `legal_unified` | ~5,041 | Laws, regulations (PP, UU) | legal, law, regulation |
+| `legal_unified_hybrid` | ~5,041 | Laws, regulations (PP, UU) | legal, law, regulation |
 | `kbli_unified` | ~8,886 | Business classification codes | kbli, business code |
 | `tax_genius` | 332 | PPh 21, PPN/VAT, taxes | tax, pajak, pph, ppn |
 | `bali_zero_pricing` | ~29 | Service pricing | price, cost, quanto costa |
@@ -116,7 +116,7 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 
 ## 4. 🧩 KEY FEATURES & MODULES
 
-### 4.1 RAG Engine (Agentic RAG v6.0)
+### 4.1 RAG Engine (Agentic RAG v6.5)
 Located in `apps/backend-rag/backend/services/rag/agentic/`. Implements ReAct pattern for intelligent query processing.
 
 **Core Components:**
@@ -193,39 +193,48 @@ New capabilities for high-trust enterprise responses:
 
 ### 4.8 Observability Stack
 
-Full monitoring e tracing per production debugging:
+Full monitoring, tracing, e quality control per production debugging:
 
-| Servizio | Porta | Funzione |
-|----------|-------|----------|
-| **Prometheus** | 9090 | Metrics collection (scrape 15s) |
-| **Grafana** | 3001 | Dashboards e visualizzazione |
-| **Alertmanager** | 9093 | Alert routing e notifiche |
-| **Jaeger** | 16686 | Distributed tracing (OpenTelemetry) |
+| Servizio | Porta | Funzione | Auto-Start |
+|----------|-------|----------|------------|
+| **Prometheus** | 9090 | Metrics collection (scrape 15s) | `docker compose up` |
+| **Grafana** | 3001 | Dashboards (auto-provisioned) | `docker compose up` |
+| **Alertmanager** | 9093 | Alert routing e notifiche | `docker compose up` |
+| **Jaeger** | 16686 | Distributed tracing (OpenTelemetry) | `docker compose up` |
+| **SonarQube** | 9000 | Code quality analysis | `docker compose up` |
 
-**Dashboard Disponibili** (5 totali):
+**Grafana Dashboard Auto-Provisioning:**
+I dashboard sono caricati automaticamente all'avvio. Non serve import manuale.
+
+**Dashboard Disponibili** (6 totali in `config/grafana/dashboards/`):
 - `rag-dashboard.json` - RAG latency, cache hit rate, tool calls
 - `system-health-dashboard.json` - CPU, RAM, uptime
 - `qdrant-health-dashboard.json` - Vector DB metrics
 - `error-tracking-dashboard.json` - 4xx/5xx per endpoint
 - `security-dashboard.json` - Failed logins, rate limits
+- `lock-contention-dashboard.json` - Race conditions, memory locks
 
-**Metriche Esposte** (`/metrics`):
+**Metriche Esposte** (`/metrics` - ~50 metriche Prometheus):
 ```
 zantara_rag_pipeline_duration_seconds    # RAG totale
 zantara_llm_prompt_tokens_total          # Token usage
 zantara_cache_hits_total                 # Cache performance
 zantara_http_requests_total              # Request count
+zantara_memory_lock_contention_seconds   # Lock contention
+zantara_llm_fallback_count_total         # Model fallbacks
 ```
 
 **Comandi Utili:**
 ```bash
-# Avvia stack monitoring locale
-docker compose up prometheus grafana jaeger
+# Avvia TUTTO lo stack monitoring
+docker compose up prometheus grafana alertmanager jaeger sonarqube
 
-# Accesso
+# Accesso UI
 open http://localhost:3001   # Grafana (admin/changeme123)
 open http://localhost:9090   # Prometheus
+open http://localhost:9093   # Alertmanager
 open http://localhost:16686  # Jaeger
+open http://localhost:9000   # SonarQube (admin/admin)
 ```
 
 **Alert Critici** (vedi [ALERTS_RUNBOOK.md](operations/ALERTS_RUNBOOK.md)):
@@ -233,19 +242,44 @@ open http://localhost:16686  # Jaeger
 - `CriticalQdrantSearchLatency` - Latency > 1000ms per 2m
 - `QdrantMetricsEndpointDown` - Backend unreachable
 
+### 4.9 Sentinel (Quality Control)
+
+**Sentinel** è il guardian della qualità del codice. Esegui SEMPRE prima di chiedere review.
+
+```bash
+# Esegui quality check completo
+./sentinel
+
+# Output salvato in: sentinel-results/sentinel-run-TIMESTAMP.log
+```
+
+**Fasi Sentinel:**
+1. **Auto-Healing** - Ruff linting + formatting automatico
+2. **Testing** - Pytest con coverage
+3. **Health Checks** - Qdrant connectivity
+
+**Enhanced Mode** (opzionale - richiede setup):
+```bash
+# Installa tool avanzati (semgrep + codeql)
+./scripts/setup-deep-analysis.sh
+
+# Poi sentinel userà automaticamente la modalità enhanced
+./sentinel
+```
+
 ---
 
 ## 5. 📁 KEY DIRECTORIES
 
 | Directory | Purpose |
 | :--- | :--- |
-| `apps/backend-rag/backend/app/routers/` | **34** API routers (213 endpoints) |
-| `apps/backend-rag/backend/services/` | **152** business services |
+| `apps/backend-rag/backend/app/routers/` | **38** API routers (250 endpoints) |
+| `apps/backend-rag/backend/services/` | **169** business services |
 | `apps/backend-rag/backend/services/rag/agentic/` | **Core**: Orchestrator, ReAct, LLM Gateway, Tools |
 | `apps/backend-rag/backend/services/memory/` | Memory system (Facts, Episodic, Collective) |
 | `apps/backend-rag/backend/core/` | Core utilities (embeddings, chunking, plugins) |
 | `apps/backend-rag/backend/llm/` | LLM clients: `genai_client.py` (Google) |
-| `apps/backend-rag/backend/migrations/` | **26** database migrations |
+| `apps/backend-rag/backend/migrations/` | **32** database migrations |
 | `apps/backend-rag/backend/middleware/` | Auth, rate limiting, error monitoring |
 | `apps/mouth/src/app/` | Next.js App Router pages |
 | `apps/mouth/src/components/` | React components (shadcn/ui based) |
@@ -325,6 +359,7 @@ Questi tool bypassano l'evidence check perché forniscono evidence propria:
 | 2025-12-30 | Evidence threshold 0.8→0.3 | `reasoning.py` | v1175 |
 | 2025-12-31 | Trusted tools bypass | `reasoning.py` | v1177 |
 | 2025-12-31 | LLM Gateway images param | `llm_gateway.py` | v1178 |
+| 2025-12-31 | Image gen URL cleaning | `chat.api.ts` | v1179 |
 
 ### 7.4 Debug Patterns nei Log
 
@@ -416,9 +451,11 @@ fly logs -a nuzantara-rag | grep "Native Function Call"
 | AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
 | System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
 | **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
+| **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Per debugging e monitoring |
 | AI Handover Protocol | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Per golden rules |
 | Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
+| Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
 
 ---
 
-**Last Updated:** 2025-12-31 | **Deployed Version:** v1178
+**Last Updated:** 2025-12-31 | **Deployed Version:** v1179

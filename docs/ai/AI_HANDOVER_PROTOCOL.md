@@ -66,16 +66,20 @@ Use these tools to diagnose and fix issues autonomously:
     *   **Command:** `./sentinel` (Root)
     *   **Purpose:** Runs Linting (Ruff), Tests (Pytest), and Infrastructure Checks (Qdrant).
     *   **Rule:** ALWAYS run this before asking the user for review.
+    *   **Logs:** `sentinel-results/sentinel-run-TIMESTAMP.log`
 
 2.  **Scribe (Documentation):**
     *   **Command:** `python apps/core/scribe.py`
     *   **Purpose:** Generates `docs/LIVING_ARCHITECTURE.md`. Use it to understand the codebase structure.
 
-3.  **Observability (Diagnostics):**
-    *   **Prometheus:** `http://localhost:9090` (Metrics)
-    *   **Grafana:** `http://localhost:3001` (Dashboards, User/Pass: `admin`)
-    *   **Jaeger:** `http://localhost:16686` (Tracing/Waterfall)
-    *   **Qdrant UI:** `http://localhost:6333/dashboard` (Vector Inspection)
+3.  **Observability Stack** (Auto-start con `docker compose up`):
+    *   **Grafana:** `http://localhost:3001` (Dashboard auto-provisioned, `admin/changeme123`)
+    *   **Prometheus:** `http://localhost:9090` (Metrics query)
+    *   **Alertmanager:** `http://localhost:9093` (Alert routing)
+    *   **Jaeger:** `http://localhost:16686` (Distributed tracing)
+    *   **SonarQube:** `http://localhost:9000` (Code quality, `admin/admin`)
+    *   **Qdrant UI:** `http://localhost:6333/dashboard` (Vector inspection)
+    *   **Guida completa:** `docs/operations/OBSERVABILITY_GUIDE.md`
 
 ### 6. CRITICAL FIXES (Dec 2025) - MUST READ
 
@@ -97,6 +101,7 @@ Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
 | 2025-12-30 | Evidence threshold 0.8→0.3 | `reasoning.py:88` | v1175 |
 | 2025-12-31 | Trusted tools bypass | `reasoning.py:867-883` | v1177 |
 | 2025-12-31 | LLM Gateway images param | `llm_gateway.py` | v1178 |
+| 2025-12-31 | Image gen URL cleaning | `chat.api.ts` | v1179 |
 
 #### 6.3 Trusted Tools
 
@@ -112,7 +117,23 @@ Questi tool bypassano l'evidence check perché forniscono evidence propria:
 
 **NON modificare il trusted tools check senza capire il flusso completo.**
 
-#### 6.4 Debug Pattern nei Log
+#### 6.4 Image Generation (Frontend)
+
+Il frontend ha un sistema di pulizia per le risposte di generazione immagini:
+
+**File:** `apps/mouth/src/lib/api/chat/chat.api.ts`
+
+**Funzione:** `cleanImageResponse()` - Rimuove:
+- URL pollinations.ai dal testo
+- Pattern "Versione 1", "Versione 2" (multiple options)
+- Intro lines ("Ecco le opzioni", "Ecco i risultati")
+- Outro lines ("Spero che queste vadano bene")
+
+**UI:**
+- Sparkles icon (✨) nella chat bar apre modal "Genera Immagine"
+- Paperclip gestisce sia file attachment che image upload (vision)
+
+#### 6.5 Debug Pattern nei Log
 
 ```bash
 fly logs -a nuzantara-rag | grep -E "Evidence|Trusted|ABSTAIN"
@@ -138,6 +159,8 @@ Maintain code quality. If you see legacy code violating these rules, **refactor 
 | AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
 | System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
 | **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
+| **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Per debugging e monitoring |
 | Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
+| Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
 
 ---
