@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams, notFound } from 'next/navigation';
 import {
   Plane,
@@ -16,7 +17,9 @@ import {
   MessageCircle,
   FileText,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  X,
+  Info
 } from 'lucide-react';
 
 /**
@@ -26,12 +29,22 @@ import {
 export default function ServiceDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const [selectedPackage, setSelectedPackage] = React.useState<typeof SERVICES_DATA.visa.packages[0] | null>(null);
 
   const service = SERVICES_DATA[slug];
 
   if (!service) {
     notFound();
   }
+
+  // Close modal on escape key
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedPackage(null);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#051C2C]">
@@ -101,6 +114,16 @@ export default function ServiceDetailPage() {
             {/* Sidebar - CTA */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 bg-gradient-to-br from-[#e85c41] to-[#d14832] rounded-xl p-6">
+                {/* BALI ZERO Logo */}
+                <div className="flex justify-center mb-4">
+                  <Image
+                    src="/images/balizero-logo.png"
+                    alt="Bali Zero"
+                    width={52}
+                    height={52}
+                    className="rounded-full border-2 border-white/30"
+                  />
+                </div>
                 <h3 className="text-white font-medium mb-2">Free Consultation</h3>
                 <p className="text-white/80 text-sm mb-4">
                   Get expert advice on your specific situation
@@ -117,7 +140,7 @@ export default function ServiceDetailPage() {
                   href="/chat"
                   className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border border-white/40 text-white font-medium hover:bg-white/10 transition-colors"
                 >
-                  <MessageCircle className="w-4 h-4" />
+                  <Image src="/images/zantara-lotus.png" alt="" width={24} height={24} />
                   Ask Zantara AI
                 </Link>
               </div>
@@ -135,11 +158,12 @@ export default function ServiceDetailPage() {
             {service.packages.map((pkg, index) => (
               <div
                 key={pkg.name}
-                className={`rounded-xl border p-6 ${
+                className={`rounded-xl border p-6 cursor-pointer transition-all hover:scale-[1.02] ${
                   pkg.popular
-                    ? 'border-[#2251ff] bg-[#2251ff]/10'
-                    : 'border-white/10 bg-[#0a2540]'
+                    ? 'border-[#2251ff] bg-[#2251ff]/10 hover:border-[#2251ff]'
+                    : 'border-white/10 bg-[#0a2540] hover:border-white/30'
                 }`}
+                onClick={() => setSelectedPackage(pkg)}
               >
                 {pkg.popular && (
                   <span className="inline-block px-3 py-1 rounded-full bg-[#2251ff] text-white text-xs font-medium mb-4">
@@ -150,8 +174,14 @@ export default function ServiceDetailPage() {
                 <p className="text-white/50 text-sm mb-4">{pkg.description}</p>
 
                 <div className="mb-6">
-                  <span className="text-3xl font-bold text-white">{pkg.price}</span>
-                  <span className="text-white/40 text-sm ml-2">IDR</span>
+                  {pkg.price === 'Contact' ? (
+                    <span className="text-2xl font-bold text-[#2251ff]">Contact for quote</span>
+                  ) : (
+                    <>
+                      <span className="text-3xl font-bold text-white">{pkg.price}</span>
+                      <span className="text-white/40 text-sm ml-2">IDR</span>
+                    </>
+                  )}
                 </div>
 
                 <ul className="space-y-3 mb-6">
@@ -163,23 +193,22 @@ export default function ServiceDetailPage() {
                   ))}
                 </ul>
 
-                <Link
-                  href="https://wa.me/6285904369574"
-                  target="_blank"
-                  className={`flex items-center justify-center w-full px-4 py-3 rounded-lg font-medium transition-colors ${
+                <button
+                  className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
                     pkg.popular
                       ? 'bg-[#2251ff] text-white hover:bg-[#1a41cc]'
                       : 'border border-white/20 text-white hover:bg-white/10'
                   }`}
                 >
-                  Get Started
-                </Link>
+                  <Info className="w-4 h-4" />
+                  More Details
+                </button>
               </div>
             ))}
           </div>
 
           <p className="text-white/40 text-sm text-center mt-8">
-            * Prices exclude government fees. Contact us for a detailed quote.
+            * All-inclusive pricing. No hidden fees.
           </p>
         </div>
       </section>
@@ -279,6 +308,92 @@ export default function ServiceDetailPage() {
           </div>
         </div>
       </section>
+
+      {/* Modal Popup */}
+      {selectedPackage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={() => setSelectedPackage(null)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-[#0a2540] rounded-2xl border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedPackage(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+
+            {/* Modal Content */}
+            <div className="p-8">
+              {/* Header */}
+              {selectedPackage.popular && (
+                <span className="inline-block px-3 py-1 rounded-full bg-[#2251ff] text-white text-xs font-medium mb-4">
+                  Most Popular
+                </span>
+              )}
+              <h2 className="font-serif text-2xl text-white mb-2">{selectedPackage.name}</h2>
+              <p className="text-white/60 mb-6">{selectedPackage.description}</p>
+
+              {/* Price */}
+              <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
+                {selectedPackage.price === 'Contact' ? (
+                  <span className="text-2xl font-bold text-[#2251ff]">Contact for quote</span>
+                ) : (
+                  <div>
+                    <span className="text-3xl font-bold text-white">{selectedPackage.price}</span>
+                    <span className="text-white/40 text-sm ml-2">IDR</span>
+                    <p className="text-[#22c55e] text-sm mt-1">All-inclusive pricing</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Features */}
+              <h3 className="text-white font-medium mb-3">What's Included:</h3>
+              <ul className="space-y-3 mb-6">
+                {selectedPackage.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-3 text-white/80">
+                    <Check className="w-5 h-5 text-[#22c55e] mt-0.5 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Additional Info */}
+              <div className="bg-[#051C2C] rounded-xl p-4 mb-6">
+                <h4 className="text-white/60 text-sm uppercase tracking-wider mb-2">Our Service Includes:</h4>
+                <ul className="text-white/70 text-sm space-y-1">
+                  <li>• Document preparation & review</li>
+                  <li>• Government submission & liaison</li>
+                  <li>• Status tracking & updates</li>
+                  <li>• Dedicated support throughout</li>
+                </ul>
+              </div>
+
+              {/* WhatsApp CTA */}
+              <Link
+                href={`https://wa.me/6285904369574?text=${encodeURIComponent(`Hi, I'm interested in ${selectedPackage.name}. Can you help me?`)}`}
+                target="_blank"
+                className="flex items-center justify-center gap-2 w-full px-6 py-4 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#20BD5A] transition-colors mb-3"
+              >
+                <Phone className="w-5 h-5" />
+                Chat on WhatsApp
+              </Link>
+
+              <Link
+                href="/chat"
+                className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
+              >
+                <Image src="/images/zantara-lotus.png" alt="" width={24} height={24} />
+                Ask Zantara AI
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -288,50 +403,225 @@ const SERVICES_DATA: Record<string, ServiceData> = {
   visa: {
     name: 'Visa & Immigration',
     slug: 'visa',
-    tagline: 'Stay and work legally in Indonesia',
-    description: 'Navigate Indonesia\'s immigration system with confidence. We handle KITAS, KITAP, Golden Visa, and all permit types with full government compliance and ongoing support.',
+    tagline: 'Complete visa solutions for living and working in Indonesia',
+    description: 'Navigate Indonesia\'s immigration system with confidence. From short-term visit visas to permanent residency, we handle all visa types with full government compliance and ongoing support.',
     icon: Plane,
     bgColor: 'bg-rose-500/10',
     iconColor: 'text-rose-400',
-    timeline: '2-8 weeks',
+    timeline: '3 days - 8 weeks',
     documentsRequired: '5-10 docs',
-    validity: '1-10 years',
+    validity: '30 days - Permanent',
     packages: [
+      // === VISIT VISAS (C) ===
       {
-        name: 'Tourist Visa Extension',
-        description: 'Extend your 60-day visa',
-        price: '3.500.000',
+        name: 'C1 Visit Visa',
+        description: 'Tourism, friends/family, meetings',
+        price: '2.300.000',
         features: [
-          '30-day extension',
-          'Immigration handling',
-          'Document preparation',
-          'Pick-up & delivery',
+          '60 days initial (max 180 days)',
+          '3-5 working days processing',
+          'Extension: 1.700.000 IDR each',
         ],
         popular: false,
       },
       {
-        name: 'KITAS (Work/Investor)',
-        description: 'Stay permit for 1-2 years',
-        price: '18.000.000',
+        name: 'C2 Business Visa',
+        description: 'Business activities & meetings',
+        price: '3.600.000',
         features: [
-          'Full application handling',
-          'Sponsor arrangement',
+          '60 days (extendable to 180)',
+          'Single entry visa',
+          'Extension: 1.700.000 IDR each',
+        ],
+        popular: false,
+      },
+      {
+        name: 'C7 Professional Visa',
+        description: 'Chefs, yoga instructors, photographers',
+        price: '4.500.000',
+        features: [
+          '30 days validity',
+          'Event participation visa',
+          'Including urgent processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'C7AB Music Visa',
+        description: 'Musical performances & events',
+        price: '4.500.000',
+        features: [
+          'For music performances',
+          'Event-based validity',
+          'Including urgent processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'C22A Academic Internship',
+        description: 'Academic internship programs',
+        price: '4.800.000',
+        features: [
+          '60 days (or 5.8M for 180 days)',
+          'For academic requirements',
+          'Educational institutions',
+        ],
+        popular: false,
+      },
+      {
+        name: 'C22B Skills Development',
+        description: 'Company training programs',
+        price: '4.800.000',
+        features: [
+          '60 days (or 5.8M for 180 days)',
+          'Company-sponsored training',
+          'Professional development',
+        ],
+        popular: false,
+      },
+      // === MULTIPLE ENTRY VISAS (D) ===
+      {
+        name: 'D1 Multiple Entry Visit',
+        description: 'Tourism & family visits',
+        price: 'Contact',
+        features: [
+          '1 or 2 years validity',
+          'Multiple entries allowed',
+          'Meetings, exhibitions, tourism',
+        ],
+        popular: false,
+      },
+      {
+        name: 'D2 Multiple Entry Business',
+        description: 'Frequent business travelers',
+        price: 'Contact',
+        features: [
+          '1 or 2 years validity',
+          'Multiple entries allowed',
+          'Business activities & shopping',
+        ],
+        popular: false,
+      },
+      {
+        name: 'D12 Investment Investigation',
+        description: 'Pre-investment site visits',
+        price: '7.500.000',
+        features: [
+          '1 year (or 10M for 2 years)',
+          'Site visits & feasibility studies',
+          'Path to investor visa',
+        ],
+        popular: false,
+      },
+      // === KITAS (WORK & STAY PERMITS) - Ordered by code ===
+      {
+        name: 'Working KITAS (E23)',
+        description: 'Employment permit with sponsor',
+        price: '34.500.000',
+        features: [
+          '1 year validity (renewable)',
+          'Company sponsorship required',
+          'IMTA & RPTKA included',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Freelance KITAS (E23)',
+        description: 'For freelancers & remote workers',
+        price: '26.000.000',
+        features: [
+          'Up to 6 months validity',
+          'Work without specific employer',
           'IMTA work permit included',
-          'Multiple entry permit',
-          'Airport pick-up assistance',
         ],
         popular: true,
       },
       {
-        name: 'Golden Visa',
-        description: '5-10 year premium stay',
-        price: '35.000.000',
+        name: 'Investor KITAS (E28A)',
+        description: 'For PT PMA investors',
+        price: '17.000.000',
         features: [
-          'Investment guidance',
-          'Premium processing',
-          'Family inclusion',
-          'Dedicated case manager',
-          'VIP immigration service',
+          '2 years validity',
+          'Multiple entry/exit',
+          'Extension: 18.000.000 IDR',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Spouse KITAS (E31A)',
+        description: 'Married to Indonesian citizen',
+        price: '11.000.000',
+        features: [
+          '1 year (or 15M for 2 years)',
+          'Marriage certificate required',
+          'Multiple entry permit',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Dependent KITAS (E31B/F)',
+        description: 'Family of KITAS holders',
+        price: '11.000.000',
+        features: [
+          '1 year (or 15M for 2 years)',
+          'For spouse & children',
+          'Linked to main permit holder',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Retirement KITAS (E33F)',
+        description: 'For retirees aged 60+',
+        price: '14.000.000',
+        features: [
+          '1 year validity',
+          'Age 60 and above',
+          'Extension: 10.000.000 IDR',
+        ],
+        popular: false,
+      },
+      // === KITAP (PERMANENT RESIDENCE) ===
+      {
+        name: 'Investor KITAP',
+        description: 'Permanent residence for investors',
+        price: '55.000.000',
+        features: [
+          'Permanent residence + MERP',
+          'Consecutive KITAS required',
+          'Expedited processing available',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Working KITAP',
+        description: 'Permanent residence for workers',
+        price: 'Contact',
+        features: [
+          'Permanent residence',
+          '4 consecutive KITAS required',
+          'For established workers',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Family KITAP',
+        description: 'Family of Indonesian citizens',
+        price: '33.000.000',
+        features: [
+          'Permanent residence + MERP',
+          'For Indonesian citizen families',
+          'Expedited processing available',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Retirement KITAP',
+        description: 'Permanent residence for retirees',
+        price: '45.000.000',
+        features: [
+          'Permanent residence + MERP',
+          'Consecutive KITAS required',
+          'For established retirees',
         ],
         popular: false,
       },
@@ -350,82 +640,90 @@ const SERVICES_DATA: Record<string, ServiceData> = {
       documents: [
         'Valid passport (min 18 months validity)',
         'Passport-size photos (4x6, red background)',
-        'Sponsorship letter',
-        'CV/Resume',
-        'Educational certificates',
-        'Health insurance proof',
+        'Sponsorship letter (for KITAS)',
+        'CV/Resume and educational certificates',
+        'Proof of income/financial capacity',
+        'Medical check-up results',
+        'Police clearance from home country',
       ],
       eligibility: [
         'No criminal record',
         'Valid sponsor (company or individual)',
         'Meet minimum investment (for investor visa)',
         'Relevant qualifications (for work visa)',
+        'Age 60+ for retirement KITAS',
       ],
     },
     faqs: [
       {
         question: 'How long does KITAS processing take?',
-        answer: 'Standard KITAS processing takes 4-8 weeks from document submission. We offer expedited processing for urgent cases.',
+        answer: 'Processing varies by type: Investor KITAS ~2 weeks, Freelance KITAS 30-45 days, Working KITAS 45-60 days. Offshore applications may be faster.',
       },
       {
         question: 'Can I work while my KITAS is being processed?',
         answer: 'No, you cannot legally work until your KITAS and IMTA are approved. You can stay on a visitor visa during processing.',
       },
       {
-        question: 'What is the Golden Visa?',
-        answer: 'The Golden Visa is Indonesia\'s premium residency program for high-net-worth individuals and investors, offering 5-10 year stays with simplified renewals.',
+        question: 'What\'s the difference between offshore and onshore pricing?',
+        answer: 'Offshore means applying from outside Indonesia (often faster), onshore means converting from within Indonesia. Onshore is typically 2-4 million IDR more.',
+      },
+      {
+        question: 'What is the path to permanent residency (KITAP)?',
+        answer: 'After holding KITAS for 4-5 consecutive years, you can apply for KITAP which grants permanent residence. We help with the transition.',
       },
     ],
   },
   company: {
-    name: 'Company Setup',
+    name: 'Company Setup & Licenses',
     slug: 'company',
-    tagline: 'Launch your business in Indonesia',
-    description: 'Start your Indonesian business the right way. We handle PT PMA formation, business licensing, virtual offices, and ongoing compliance so you can focus on growth.',
+    tagline: 'From licenses to structure — launch your business fast',
+    description: 'Start your Indonesian business the right way. We handle PT PMA/PMDN formation, business licensing through OSS, special permits like alcohol licenses, and ongoing compliance so you can focus on growth.',
     icon: Building2,
     bgColor: 'bg-orange-500/10',
     iconColor: 'text-orange-400',
-    timeline: '4-12 weeks',
+    timeline: '2-12 weeks',
     documentsRequired: '10-15 docs',
     validity: 'Perpetual',
     packages: [
       {
-        name: 'Virtual Office',
-        description: 'Business address & mail handling',
-        price: '5.000.000',
+        name: 'Company Revision',
+        description: 'Changes to existing company',
+        price: '7.000.000',
         features: [
-          'Prestigious Bali address',
-          'Mail & package handling',
-          'Meeting room access (2hrs/mo)',
-          'Phone answering service',
+          'Director/shareholder changes',
+          'Business activity updates',
+          'Address changes',
+          'Capital adjustments',
+          'Ministry of Law filing',
         ],
         popular: false,
       },
       {
-        name: 'PT PMA Setup',
-        description: 'Foreign-owned company',
-        price: '35.000.000',
+        name: 'Alcohol License',
+        description: 'SIUP-MB for alcohol sales',
+        price: '15.000.000',
+        features: [
+          'Restaurant/bar alcohol permit',
+          'Full OSS registration',
+          'Category A/B/C licensing',
+          'Compliance documentation',
+          'Renewal guidance',
+        ],
+        popular: false,
+      },
+      {
+        name: 'PT PMA/PMDN Setup',
+        description: 'Full company establishment',
+        price: '20.000.000',
         features: [
           'Company registration',
-          'NIB & business licenses',
+          'Deed of establishment',
+          'NIB & OSS licenses',
           'Tax registration (NPWP)',
           'Bank account assistance',
-          'Virtual office (1 year)',
+          'Company stamp',
         ],
         popular: true,
-      },
-      {
-        name: 'Full Business Package',
-        description: 'Company + Director KITAS',
-        price: '55.000.000',
-        features: [
-          'Everything in PT PMA Setup',
-          'Director KITAS (1 year)',
-          'Annual compliance (1 year)',
-          'Dedicated account manager',
-          'Priority support',
-        ],
-        popular: false,
       },
     ],
     included: [
@@ -433,15 +731,15 @@ const SERVICES_DATA: Record<string, ServiceData> = {
       'Deed of establishment',
       'Ministry of Law approval',
       'NIB (Business ID Number)',
-      'OSS licenses',
+      'OSS licenses & permits',
       'Tax registration (NPWP/PKP)',
       'Company stamp',
       'Digital document copies',
     ],
     requirements: {
       documents: [
-        'Shareholder passports',
-        'Director passport & KITAS',
+        'Shareholder passports/KTP',
+        'Director passport & KITAS (if foreign)',
         'Proof of address (all shareholders)',
         'Company name options (3)',
         'Business plan summary',
@@ -465,15 +763,19 @@ const SERVICES_DATA: Record<string, ServiceData> = {
       },
       {
         question: 'How long does PT PMA setup take?',
-        answer: 'Typically 6-10 weeks for full registration. Expedited processing available for additional fee.',
+        answer: 'Typically 4-8 weeks for full registration including all licenses. Expedited processing available.',
+      },
+      {
+        question: 'Do I need a physical office for my company?',
+        answer: 'Yes, Indonesian law requires a registered business address. We can help with virtual office solutions that meet legal requirements.',
       },
     ],
   },
   tax: {
-    name: 'Tax & Compliance',
+    name: 'Tax Consulting',
     slug: 'tax',
-    tagline: 'Stay compliant, optimize taxes',
-    description: 'Indonesian tax compliance made simple. We handle personal and corporate tax filings, annual reports, and strategic tax planning to keep you legal and optimized.',
+    tagline: "Navigate Indonesia's tax system with confidence",
+    description: 'Indonesian tax compliance made simple. From NPWP registration to annual SPT filing, corporate tax planning to personal income optimization — we handle it all with expert precision.',
     icon: Calculator,
     bgColor: 'bg-amber-500/10',
     iconColor: 'text-amber-400',
@@ -482,40 +784,40 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     validity: 'Annual',
     packages: [
       {
-        name: 'Personal Tax (SPT)',
-        description: 'Annual tax return filing',
-        price: '2.500.000',
+        name: 'Tax Registration (NPWP)',
+        description: 'Get your Indonesian Tax ID',
+        price: 'Contact',
         features: [
+          'Personal or corporate NPWP',
+          'Full documentation support',
+          'Tax office registration',
+          'Digital NPWP card',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Tax Filing (SPT)',
+        description: 'Annual tax return submission',
+        price: 'Contact',
+        features: [
+          'Personal & corporate SPT',
           'Income calculation',
           'Deduction optimization',
           'E-filing submission',
           'Payment guidance',
         ],
-        popular: false,
-      },
-      {
-        name: 'Corporate Monthly',
-        description: 'Ongoing tax compliance',
-        price: '5.000.000',
-        features: [
-          'Monthly tax calculation',
-          'PPh 21/23/25/29 filing',
-          'VAT filing (if applicable)',
-          'Quarterly reports',
-          'Tax consultation (2hrs/mo)',
-        ],
         popular: true,
       },
       {
-        name: 'Full Compliance',
-        description: 'Tax + accounting + audit',
-        price: '12.000.000',
+        name: 'Corporate Tax Planning',
+        description: 'Strategic tax optimization',
+        price: 'Contact',
         features: [
-          'Everything in Corporate Monthly',
-          'Full bookkeeping',
-          'Financial statements',
-          'Annual audit preparation',
-          'Tax planning strategy',
+          'Tax structure review',
+          'Compliance assessment',
+          'Withholding tax (PPh 21/23/26)',
+          'VAT registration & filing',
+          'Transfer pricing support',
         ],
         popular: false,
       },
@@ -523,7 +825,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     included: [
       'NPWP registration/update',
       'Tax calculation & filing',
-      'Payment slip preparation',
+      'Payment slip preparation (SSP)',
       'Archive of all filings',
       'Deadline reminders',
       'Tax office liaison',
@@ -532,17 +834,18 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     ],
     requirements: {
       documents: [
-        'NPWP (Tax ID)',
-        'Previous year tax returns',
-        'Income statements',
+        'NPWP (Tax ID) or application docs',
+        'Previous year tax returns (if any)',
+        'Income statements/certificates',
         'Bank statements',
         'Business financial records',
         'Employee data (for corporate)',
       ],
       eligibility: [
-        'Valid NPWP',
+        'Valid passport/KTP',
         'Indonesian resident status (for personal)',
-        'Active company (for corporate)',
+        'Active company with NIB (for corporate)',
+        'KITAS holders must file taxes',
       ],
     },
     faqs: [
@@ -552,62 +855,79 @@ const SERVICES_DATA: Record<string, ServiceData> = {
       },
       {
         question: 'Do expats need to file Indonesian taxes?',
-        answer: 'Yes, if you stay 183+ days in Indonesia, you\'re a tax resident and must file. We can help determine your status and obligations.',
+        answer: 'Yes, if you stay 183+ days in Indonesia, you\'re a tax resident and must file. KITAS holders are automatically tax residents. We can help determine your status.',
       },
       {
         question: 'What are the tax rates in Indonesia?',
         answer: 'Personal income tax ranges from 5-35%. Corporate tax is 22% (20% for public companies). We can help optimize your structure.',
       },
+      {
+        question: 'What is the difference between PPh 21, 23, and 26?',
+        answer: 'PPh 21 is employee income tax, PPh 23 is withholding on services/royalties, and PPh 26 is withholding for non-residents. Each has different rates and filing requirements.',
+      },
     ],
   },
   property: {
-    name: 'Property Services',
+    name: 'Real Estate Services',
     slug: 'property',
-    tagline: 'Secure your Indonesian property',
-    description: 'Navigate Indonesian property law with confidence. We provide due diligence, lease agreements, and ownership structures to protect your investment.',
+    tagline: 'Secure property with legal clarity and guidance',
+    description: 'Navigate Indonesian property law with confidence. From due diligence to leasehold agreements, building permits to ownership structures — we protect your investment every step of the way.',
     icon: Home,
     bgColor: 'bg-emerald-500/10',
     iconColor: 'text-emerald-400',
-    timeline: '1-4 weeks',
+    timeline: '1-8 weeks',
     documentsRequired: 'Varies',
     validity: 'Per transaction',
     packages: [
       {
-        name: 'Due Diligence',
-        description: 'Property legal check',
-        price: '5.000.000',
+        name: 'Legal Due Diligence',
+        description: 'Complete property verification',
+        price: 'Contact',
         features: [
-          'Certificate verification',
-          'Ownership history check',
-          'Zoning compliance',
-          'Encumbrance search',
-          'Written report',
+          'Certificate authenticity check',
+          'Ownership history verification',
+          'Zoning & land use compliance',
+          'Encumbrance/lien search',
+          'Detailed written report',
         ],
         popular: false,
       },
       {
-        name: 'Lease Agreement',
-        description: 'Long-term rental contract',
-        price: '7.500.000',
+        name: 'Leasehold Agreement (Hak Sewa)',
+        description: 'Long-term rental contracts',
+        price: 'Contact',
         features: [
-          'Contract drafting',
-          'Negotiation support',
-          'Notarization',
-          'Registration assistance',
-          'Renewal clause included',
+          'Contract drafting in English/Indonesian',
+          'Terms negotiation support',
+          'Notarization & legalization',
+          'Registration at land office',
+          'Up to 25+25+25 year terms',
         ],
         popular: true,
       },
       {
-        name: 'Full Acquisition',
-        description: 'Purchase with PT structure',
-        price: '25.000.000',
+        name: 'IMB & Building Permits',
+        description: 'Construction permits',
+        price: 'Contact',
         features: [
-          'Due diligence included',
-          'PT PMA setup for property',
-          'Purchase agreement',
-          'Title transfer assistance',
-          'Ongoing compliance setup',
+          'Building permit application (IMB/PBG)',
+          'Site plan approval',
+          'Environmental compliance (AMDAL/UKL-UPL)',
+          'Occupancy certificate (SLF)',
+          'Renovation permits',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Ownership Structures (PT PMA)',
+        description: 'Foreign ownership solutions',
+        price: 'Contact',
+        features: [
+          'PT PMA for property holding',
+          'Hak Guna Bangunan (HGB) rights',
+          'Asset protection setup',
+          'Tax-efficient structuring',
+          'Succession planning',
         ],
         popular: false,
       },
@@ -615,41 +935,45 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     included: [
       'Property inspection coordination',
       'Legal document review',
-      'Ownership verification',
-      'Tax assessment review',
+      'Ownership & title verification',
+      'Tax assessment review (PBB/BPHTB)',
       'Contract drafting/review',
       'Notary coordination',
-      'Registration assistance',
-      'Post-purchase support',
+      'Land office registration',
+      'Post-transaction support',
     ],
     requirements: {
       documents: [
-        'Property certificate copy',
-        'Owner ID/company docs',
+        'Property certificate copy (SHM/HGB/SHGB)',
+        'Owner ID/company documents',
         'Tax payment receipts (PBB)',
-        'Building permit (IMB)',
-        'Land use certificate',
-        'Buyer identification',
+        'Building permit (IMB/PBG)',
+        'Site plan & location permit',
+        'Buyer identification (passport/KTP)',
       ],
       eligibility: [
-        'Foreigners can lease (max 80 years)',
-        'PT PMA can own land/buildings',
-        'Right of Use (Hak Pakai) for individuals',
-        'Investment minimum may apply',
+        'Foreigners can lease (up to 80 years total)',
+        'PT PMA can hold HGB rights',
+        'Hak Pakai available for KITAS holders',
+        'Investment thresholds may apply',
       ],
     },
     faqs: [
       {
         question: 'Can foreigners own property in Indonesia?',
-        answer: 'Foreigners cannot own freehold land but can hold long-term leases (up to 80 years) or own through a PT PMA company structure.',
+        answer: 'Foreigners cannot own freehold (Hak Milik) but can hold long-term leases (Hak Sewa up to 80 years), Hak Pakai (Right of Use), or own through a PT PMA company.',
       },
       {
-        question: 'What is Hak Pakai?',
-        answer: 'Hak Pakai (Right of Use) allows foreigners to own buildings on leased land for 30 years, extendable to 80 years total.',
+        question: 'What is Hak Guna Bangunan (HGB)?',
+        answer: 'HGB is a right to build and own structures on land. PT PMA companies can hold HGB for 30+20+20 years (70 years total), renewable.',
       },
       {
         question: 'Is nominee ownership safe?',
-        answer: 'Nominee arrangements are legally risky. We recommend proper structures like PT PMA or long-term leases for security.',
+        answer: 'Nominee arrangements are legally risky and can result in total loss of your investment. We strongly recommend proper structures like PT PMA or notarized leases.',
+      },
+      {
+        question: 'What is the difference between IMB and PBG?',
+        answer: 'IMB (Izin Mendirikan Bangunan) is the old building permit system. PBG (Persetujuan Bangunan Gedung) is the new system under OSS. We handle both.',
       },
     ],
   },
