@@ -12,6 +12,7 @@ Non-critical services will log errors and continue with degraded functionality.
 import asyncio
 import json
 import logging
+import random
 
 import asyncpg
 from fastapi import FastAPI
@@ -288,60 +289,216 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
         return None
 
     logger.info(f"DEBUG: DATABASE_URL is set: {settings.database_url[:15]}...")
-    try:
-        # Create asyncpg pool for team timesheet service
-        async def init_db_connection(conn):
-            await conn.set_type_codec(
-                "jsonb",
-                encoder=json.dumps,
-                decoder=json.loads,
-                schema="pg_catalog",
+    
+    max_retries = 5
+    base_delay = 2.0
+    import random
+    
+    for attempt in range(max_retries):
+        try:
+            logger.info(f"Database initialization attempt {attempt + 1}/{max_retries}")
+            
+            # Create asyncpg pool for team timesheet service
+            async def init_db_connection(conn):
+                await conn.set_type_codec(
+                    "jsonb",
+                    encoder=json.dumps,
+                    decoder=json.loads,
+                    schema="pg_catalog",
+                )
+                await conn.set_type_codec(
+                    "json",
+                    encoder=json.dumps,
+                    decoder=json.loads,
+                    schema="pg_catalog",
+                )
+                # Validate connection
+                await conn.execute("SELECT 1")
+
+            db_pool = await asyncpg.create_pool(
+                dsn=settings.database_url,
+                min_size=getattr(settings, 'db_pool_min_size', None) or 5,
+                max_size=getattr(settings, 'db_pool_max_size', None) or 20,
+                command_timeout=getattr(settings, 'db_command_timeout', None) or 60,
+                init=init_db_connection,
             )
-            await conn.set_type_codec(
-                "json",
-                encoder=json.dumps,
-                decoder=json.loads,
-                schema="pg_catalog",
+
+            # Verify pool works
+            async with db_pool.acquire() as conn:
+                result = await conn.fetchval("SELECT 1")
+                if result != 1:
+                    raise ValueError("Pool validation failed")
+
+            from services.analytics.team_timesheet_service import init_timesheet_service
+
+            ts_service = init_timesheet_service(db_pool)
+            app.state.ts_service = ts_service
+            app.state.db_pool = db_pool  # Store pool for other services
+
+            # Start background tasks
+            await ts_service.start_auto_logout_monitor()
+            
+            # Start health check task
+            app.state.db_health_check_task = asyncio.create_task(
+                _database_health_check_loop(db_pool)
             )
+            
+            service_registry.register("database", ServiceStatus.HEALTHY, critical=False)
+            logger.info("✅ Database services initialized successfully")
+            try:
+                from app.metrics import database_init_success_total
+                database_init_success_total.inc()
+            except ImportError:
+                pass
+            
+            return db_pool
+            
+        except (asyncpg.PostgresError, ValueError, ConnectionError) as e:
+            error_type = type(e).__name__
+            is_transient = _is_transient_error(e)
+            
+            logger.warning(
+                f"⚠️ Database initialization failed (attempt {attempt + 1}/{max_retries}): {e}",
+                extra={
+                    "attempt": attempt + 1,
+                    "error_type": error_type,
+                    "is_transient": is_transient,
+                }
+            )
+            
+            try:
+                from app.metrics import database_init_failed_total
+                database_init_failed_total.labels(
+                    error_type=error_type,
+                    is_transient=str(is_transient)
+                ).inc()
+            except ImportError:
+                pass
+            
+            if attempt < max_retries - 1 and is_transient:
+                # Exponential backoff with jitter
+                delay = base_delay * (2 ** attempt) + (random.random() * 0.5)
+                logger.info(f"Retrying in {delay:.2f}s...")
+                await asyncio.sleep(delay)
+            else:
+                # Permanent error or max retries reached
+                service_registry.register(
+                    "database",
+                    ServiceStatus.UNAVAILABLE,
+                    error=str(e),
+                    critical=False,
+                )
+                logger.error(f"❌ Database initialization failed permanently: {e}")
+                try:
+                    from app.metrics import database_init_permanent_failure_total
+                    database_init_permanent_failure_total.inc()
+                except ImportError:
+                    pass
+                app.state.ts_service = None
+                app.state.db_pool = None
+                app.state.db_init_error = str(e)
+                return None
+        except Exception as e:
+            # Catch-all for unexpected errors
+            error_type = type(e).__name__
+            is_transient = _is_transient_error(e)
+            
+            logger.warning(
+                f"⚠️ Unexpected database error (attempt {attempt + 1}/{max_retries}): {e}",
+                extra={
+                    "attempt": attempt + 1,
+                    "error_type": error_type,
+                    "is_transient": is_transient,
+                }
+            )
+            
+            try:
+                from app.metrics import database_init_failed_total
+                database_init_failed_total.labels(
+                    error_type=error_type,
+                    is_transient=str(is_transient)
+                ).inc()
+            except ImportError:
+                pass
+            
+            if attempt < max_retries - 1 and is_transient:
+                delay = base_delay * (2 ** attempt) + (random.random() * 0.5)
+                logger.info(f"Retrying in {delay:.2f}s...")
+                await asyncio.sleep(delay)
+            else:
+                service_registry.register(
+                    "database", ServiceStatus.UNAVAILABLE, error=str(e), critical=False
+                )
+                logger.error(f"❌ Unexpected error initializing database: {e}")
+                app.state.ts_service = None
+                app.state.db_pool = None
+                app.state.db_init_error = str(e)
+                return None
+    
+    return None
 
-        db_pool = await asyncpg.create_pool(
-            dsn=settings.database_url,
-            min_size=5,
-            max_size=20,
-            command_timeout=60,
-            init=init_db_connection,
-        )
 
-        from services.analytics.team_timesheet_service import init_timesheet_service
+def _is_transient_error(error: Exception) -> bool:
+    """Determine if error is transient and retryable."""
+    error_msg = str(error).lower()
+    
+    transient_patterns = [
+        "connection",
+        "timeout",
+        "temporarily unavailable",
+        "too many connections",
+        "server closed",
+        "network",
+    ]
+    
+    return any(pattern in error_msg for pattern in transient_patterns)
 
-        ts_service = init_timesheet_service(db_pool)
-        app.state.ts_service = ts_service
-        app.state.db_pool = db_pool  # Store pool for other services
 
-        # Start background tasks
-        await ts_service.start_auto_logout_monitor()
-        service_registry.register("database", ServiceStatus.HEALTHY, critical=False)
-        logger.info("✅ Team Timesheet Service initialized with auto-logout monitor")
-        return db_pool
-    except (asyncpg.PostgresError, ValueError, ConnectionError) as e:
-        service_registry.register(
-            "database", ServiceStatus.UNAVAILABLE, error=str(e), critical=False
-        )
-        logger.error(f"❌ Failed to initialize Team Timesheet Service: {e}")
-        app.state.ts_service = None
-        app.state.db_pool = None
-        app.state.db_init_error = str(e)
-        return None
-    except Exception as e:
-        # Catch-all for unexpected errors
-        service_registry.register(
-            "database", ServiceStatus.UNAVAILABLE, error=str(e), critical=False
-        )
-        logger.error(f"❌ Unexpected error initializing database: {e}")
-        app.state.ts_service = None
-        app.state.db_pool = None
-        app.state.db_init_error = str(e)
-        return None
+async def _database_health_check_loop(db_pool: asyncpg.Pool):
+    """Periodic health check for database pool."""
+    check_interval = 30  # seconds
+    from app.core.service_health import service_registry, ServiceStatus
+    
+    while True:
+        try:
+            await asyncio.sleep(check_interval)
+            
+            # Check pool health
+            try:
+                async with db_pool.acquire() as conn:
+                    await conn.execute("SELECT 1")
+                
+                # Pool is healthy
+                service_registry.register("database", ServiceStatus.HEALTHY)
+                try:
+                    from app.metrics import database_health_check_success_total
+                    database_health_check_success_total.inc()
+                except ImportError:
+                    pass
+                
+            except Exception as e:
+                logger.warning(f"Database health check failed: {e}")
+                service_registry.register(
+                    "database",
+                    ServiceStatus.DEGRADED,
+                    error=str(e),
+                )
+                try:
+                    from app.metrics import database_health_check_failed_total
+                    database_health_check_failed_total.inc()
+                except ImportError:
+                    pass
+                
+                # Try to recover
+                if _is_transient_error(e):
+                    logger.info("Attempting database recovery...")
+                    # Recovery logic could be added here
+                    
+        except asyncio.CancelledError:
+            logger.info("Database health check loop cancelled")
+            break
+        except Exception as e:
+            logger.exception(f"Error in database health check loop: {e}")
 
 
 async def _init_crm_memory(
@@ -535,7 +692,7 @@ async def _init_background_services(
             db_pool=db_pool,
             ai_client=ai_client,
             search_service=search_service,
-            auto_ingestion_enabled=True,  # Daily regulatory updates
+            auto_ingestion_enabled=False,  # Disabled - scraper service not configured
             self_healing_enabled=True,  # Continuous health monitoring
             conversation_trainer_enabled=True,  # Learn from conversations
             client_value_predictor_enabled=True,  # Nurture high-value clients

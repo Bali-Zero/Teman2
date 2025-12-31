@@ -57,10 +57,10 @@ class ClientScoringService:
                         AVG(conv.rating) as avg_rating,
                         ARRAY_AGG(DISTINCT p.status) as practice_statuses,
                         COUNT(DISTINCT p.id) as practice_count
-                    FROM crm_clients c
-                    LEFT JOIN crm_interactions i ON c.id = i.client_id
+                    FROM clients c
+                    LEFT JOIN interactions i ON c.id = i.client_id
                     LEFT JOIN conversations conv ON c.id::text = conv.client_id
-                    LEFT JOIN crm_practices p ON c.id = p.client_id
+                    LEFT JOIN practices p ON c.id = p.client_id
                     WHERE c.id = $1
                     GROUP BY c.id, c.name, c.email, c.phone, c.created_at
                     """,
@@ -116,10 +116,10 @@ class ClientScoringService:
                         AVG(conv.rating) as avg_rating,
                         ARRAY_AGG(DISTINCT p.status) as practice_statuses,
                         COUNT(DISTINCT p.id) as practice_count
-                    FROM crm_clients c
-                    LEFT JOIN crm_interactions i ON c.id = i.client_id
+                    FROM clients c
+                    LEFT JOIN interactions i ON c.id = i.client_id
                     LEFT JOIN conversations conv ON c.id::text = conv.client_id
-                    LEFT JOIN crm_practices p ON c.id = p.client_id
+                    LEFT JOIN practices p ON c.id = p.client_id
                     WHERE c.id = ANY($1::int[])
                     GROUP BY c.id, c.name, c.email, c.phone, c.created_at
                     """,

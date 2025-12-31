@@ -28,8 +28,10 @@ from app.routers import (
     health,
     ingest,
     intel,
+    knowledge_visa,
     legal_ingest,
     media,
+    newsletter,
     nusantara_health,
     oracle_ingest,
     oracle_universal,
@@ -110,12 +112,18 @@ def include_routers(api: FastAPI) -> None:
     # Integrations routers
     api.include_router(zoho_email.router)
 
+    # Blog routers
+    api.include_router(newsletter.router)
+
     # Performance router (productivity removed - will be MCP)
     api.include_router(performance.router)
 
     # Module routers (Prime Standard)
     api.include_router(identity_router, prefix="/api/auth")
     api.include_router(knowledge_router)
+
+    # Knowledge Base - Visa Types
+    api.include_router(knowledge_visa.router)
 
     # Additional routers (included directly on app instance)
     api.include_router(team_activity.router)

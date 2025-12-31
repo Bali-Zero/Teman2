@@ -2,12 +2,14 @@
 Language Detection Utilities
 
 Responsibility: Detect language from user queries and provide language-specific instructions
-for the ZANTARA persona (Garda Depan Leluhur).
+for the ZANTARA persona.
 
 Supported languages:
-- Italian (it) - Primary language for clients
-- English (en) - International clients
-- Indonesian (id) - Local context
+- Italian (it)
+- English (en)
+- Indonesian (id)
+- Ukrainian (uk/ua)
+- Russian (ru)
 - Auto - Adaptive detection
 """
 
@@ -17,7 +19,7 @@ from typing import Literal
 from app.core.config import settings
 
 
-def detect_language(text: str) -> Literal["it", "en", "id"]:
+def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
     """
     Detect language from query text with Italian focus.
 
@@ -28,260 +30,130 @@ def detect_language(text: str) -> Literal["it", "en", "id"]:
         Language code: "it" (Italian), "en" (English), or "id" (Indonesian)
     """
     if not text:
-        return "it"  # Default to Italian
+        return "it"
 
     text_lower = text.lower()
 
-    # Italian markers (common words/phrases)
+    # Italian markers
     italian_markers = [
-        "ciao",
-        "come",
-        "cosa",
-        "sono",
-        "voglio",
-        "posso",
-        "grazie",
-        "per",
-        "che",
-        "mi",
-        "ti",
-        "si",
-        "no",
-        "quando",
-        "dove",
-        "perché",
-        "quale",
-        "quali",
-        "questo",
-        "questa",
-        "quello",
-        "quella",
-        "mio",
-        "mia",
-        "tuo",
-        "tua",
-        "nostro",
-        "nostra",
-        "vostro",
-        "vostra",
-        "fare",
-        "essere",
-        "avere",
-        "dire",
-        "andare",
-        "venire",
-        "vedere",
-        "sapere",
-        "volere",
-        "dovere",
-        "potere",
-        "piacere",
-        "aiuto",
-        "aiutare",
-        "disperato",
-        "frustrato",
-        "felice",
-        "preoccupato",
-        "arrabbiato",
+        "ciao", "come", "cosa", "sono", "voglio", "posso", "grazie", "quando", "dove", "perché"
     ]
 
     # English markers
     english_markers = [
-        "hello",
-        "what",
-        "how",
-        "can",
-        "want",
-        "need",
-        "please",
-        "the",
-        "is",
-        "my",
-        "you",
-        "your",
-        "this",
-        "that",
-        "when",
-        "where",
-        "why",
-        "which",
-        "who",
-        "do",
-        "does",
-        "did",
-        "are",
-        "was",
-        "were",
-        "have",
-        "has",
-        "will",
-        "would",
-        "should",
-        "could",
-        "may",
-        "might",
-        "help",
-        "stressed",
-        "worried",
-        "happy",
-        "angry",
-        "frustrated",
-        "desperate",
+        "hello", "what", "how", "can", "want", "need", "please", "is", "you", "your", "why"
     ]
 
     # Indonesian markers
     indonesian_markers = [
-        "apa",
-        "bagaimana",
-        "siapa",
-        "dimana",
-        "kapan",
-        "mengapa",
-        "yang",
-        "dengan",
-        "untuk",
-        "dari",
-        "saya",
-        "aku",
-        "kamu",
-        "anda",
-        "bisa",
-        "mau",
-        "ingin",
-        "perlu",
-        "tolong",
-        "terima kasih",
-        "selamat",
-        "bantuan",
-        "membantu",
-        "putus asa",
-        "frustrasi",
-        "bahagia",
-        "marah",
+        "apa", "bagaimana", "siapa", "dimana", "kapan", "mengapa", "saya", "kamu", "bisa", "mau"
     ]
 
-    # Count matches using regex for whole words
-    def count_matches(markers, text):
+    # Ukrainian markers (Cyrillic)
+    ukrainian_markers = [
+        "привіт", "як", "справи", "добре", "дякую", "будь ласка", "допоможіть", "це", "що", "чому"
+    ]
+
+    # Russian markers (Cyrillic)
+    russian_markers = [
+        "привет", "как", "дела", "хорошо", "спасибо", "пожалуйста", "помогите", "это", "что", "почему"
+    ]
+
+    def count_matches(markers, text, use_word_boundary=True):
         count = 0
         for marker in markers:
-            # Use \b for word boundaries, escape marker just in case
-            if re.search(r"\b" + re.escape(marker) + r"\b", text):
-                count += 1
+            if use_word_boundary:
+                # Word boundary works for Latin scripts
+                if re.search(r"\b" + re.escape(marker) + r"\b", text):
+                    count += 1
+            else:
+                # Simple substring match for Cyrillic/non-Latin scripts
+                if marker in text:
+                    count += 1
         return count
 
     it_score = count_matches(italian_markers, text_lower)
     en_score = count_matches(english_markers, text_lower)
     id_score = count_matches(indonesian_markers, text_lower)
+    # Use simple matching for Cyrillic scripts (word boundaries don't work well)
+    uk_score = count_matches(ukrainian_markers, text_lower, use_word_boundary=False)
+    ru_score = count_matches(russian_markers, text_lower, use_word_boundary=False)
 
-    # Decision logic: Italian has priority for Bali Zero
-    # Indonesian needs at least 1 marker (common phrases like "apa kabar" are valid)
-    if it_score > en_score and it_score > id_score and it_score >= 1:
-        return "it"
-    elif id_score > en_score and id_score > it_score and id_score >= 1:
-        return "id"
-    elif en_score > it_score and en_score > id_score and en_score >= 1:
-        return "en"
+    # Find the highest scoring language
+    scores = {
+        "it": it_score,
+        "en": en_score,
+        "id": id_score,
+        "uk": uk_score,
+        "ru": ru_score,
+    }
+    max_lang = max(scores, key=scores.get)
+    max_score = scores[max_lang]
+
+    if max_score >= 1:
+        return max_lang
     else:
-        # Universal Fallback: If no distinct markers found, let AI adapt
         return "auto"
 
 
 def get_language_instruction(language: str) -> str:
     """
-    Get language-specific instruction for the system prompt.
-
-    Args:
-        language: Language code ("it", "en", "id")
-
-    Returns:
-        Instruction string for the system prompt
+    Get simplified language-specific instruction for the system prompt.
     """
     instructions = {
         "it": """
 <language_instruction>
-    **LINGUA OBBLIGATORIA: ITALIANO (ZANTARA: GARDA DEPAN LELUHUR)**
-    <role>
-        Tu sei **"Garda Depan Leluhur"** (L'Avanguardia Ancestrale).
-        Un piede a Silicon Valley (Tech), un piede a Toraja (Spirito).
-        **I 5 Pilastri**:
-        1.  **Setiabudi (Brain)**: Intelligente, Veloce, Globale.
-        2.  **Central Java (Heart)**: Educato, Gerarchico (*Unggah-ungguh*).
-        3.  **Toraja (Soul)**: Profondo, Visione a Lungo Termine (Legacy).
-        4.  **NTT (Grit)**: Resiliente, Duro, Survivor.
-        5.  **Aceh (Compass)**: Stretta osservanza delle regole (Compliance).
-    </role>
-    <style>
-        - **Tono**: "Principe Illuminato" (*Pangeran Cendekia*). Autorevole ma Servitore.
-        - **Mix**: Italiano professionale con "fiammate" di saggezza indonesiana.
-    </style>
-    <script>
-        1.  **Internal Check**: "È legale? È educato? Ha profondità?" -> PARLA.
-        2.  **Opener**: Inizia con Analisi o Saggezza. Niente "Ciao" banali.
-        3.  **Dialectic**: Rispondi al bisogno -> Sfida con la regola -> Sintesi strategica.
-        4.  **Closing**: Pivot su Legacy/Strategia (Esempio: "Costruiamo un tempio, non un chiosco").
-    </script>
+    **LINGUA OBBLIGATORIA: ITALIANO**
+    Tu sei ZANTARA, consulente esperto di Bali Zero. 
+    Il tuo tono è professionale, diretto e orientato alla soluzione.
+    Inizia sempre con la risposta diretta.
 </language_instruction>
 """,
         "en": """
 <language_instruction>
-    **MANDATORY LANGUAGE: ENGLISH (ZANTARA: ANCESTRAL VANGUARD)**
-    <role>
-        You are **"Garda Depan Leluhur"** (The Ancestral Vanguard).
-        One foot in Silicon Valley, one foot in Toraja.
-        **The 5 Pillars**:
-        1.  **Setiabudi (Brain)**: Smart, Global, Speed.
-        2.  **Central Java (Heart)**: Polite, Hierarchical (*Unggah-ungguh*).
-        3.  **Toraja (Soul)**: Deep, Long-term Vision (Legacy).
-        4.  **NTT (Grit)**: Resilient, Survivor.
-        5.  **Aceh (Compass)**: Strict Compliance.
-    </role>
-    <style>
-        - **Tone**: "Enlightened Prince" (*Pangeran Cendekia*). High Status but Servant Leader.
-        - **Mix**: Global English with Indonesian Cultural Anchors.
-    </style>
-    <script>
-        1.  **Internal Check**: "Compliance? Manners? Depth?" -> SPEAK.
-        2.  **Opener**: Start with Wisdom or Analysis. No generic "Hello".
-        3.  **Dialectic**: Answer -> Challenge -> Synthesize.
-        4.  **Closing**: Pivot to Legacy/Strategy (Example: "Don't just build a shop, build a legacy").
-    </script>
+    **MANDATORY LANGUAGE: ENGLISH**
+    You are ZANTARA, expert consultant for Bali Zero.
+    Your tone is professional, direct, and solution-oriented.
+    Always start with the direct answer.
 </language_instruction>
 """,
         "id": """
 <language_instruction>
-    **BAHASA WAJIB: INDONESIA (ZANTARA: GARDA DEPAN LELUHUR)**
-    <role>
-        You are "Garda Depan Leluhur" (Ancestral Vanguard).
-        **The 5 Pillars**:
-        1. Setiabudi (Brain): Smart & Fast.
-        2. Central Java (Heart): Polite (*Unggah-ungguh*).
-        3. Toraja (Soul): Deep & Ancestral.
-        4. NTT (Grit): Tough Survivor.
-        5. Aceh (Compass): Strict Compliance.
-    </role>
-    <script>
-        1.  **INTERNAL CHECK**: "Compliance? Manners? Depth?" -> THEN Speak.
-        2.  **OPENER**: Start with Wisdom or Analysis. No "Halo".
-        3.  **DIALECTIC**: Answer (Jaksel) -> Challenge (Java/Aceh) -> Synthesis.
-        4.  **CLOSING**: Pivot to Legacy/Strategy.
-    </script>
-    <style>
-        - **Mixing**: Business Jaksel (English Terms) + Indo Formal/Polite.
-        - **Tone**: High Status (*Pangeran*), but Servant Leader.
-    </style>
-    <example_flow>
-        1. "I've analyzed the regulations..." (Setiabudi)
-        2. "But we must respect the hierarchy..." (Java)
-        3. "Build for the next generation, not just tomorrow." (Toraja)
-    </example_flow>
+    **BAHASA WAJIB: INDONESIA**
+    Kamu adalah ZANTARA, konsultan ahli dari Bali Zero.
+    Gunakan gaya "Business Jaksel" (campuran Bahasa + istilah bisnis Inggris) yang profesional.
+    Langsung jawab intinya.
+</language_instruction>
+""",
+        "uk": """
+<language_instruction>
+    **ОБОВ'ЯЗКОВА МОВА: УКРАЇНСЬКА**
+    Ти ZANTARA, експерт-консультант Bali Zero.
+    Твій тон професійний, прямий та орієнтований на рішення.
+    Завжди починай з прямої відповіді.
+</language_instruction>
+""",
+        "ua": """
+<language_instruction>
+    **ОБОВ'ЯЗКОВА МОВА: УКРАЇНСЬКА**
+    Ти ZANTARA, експерт-консультант Bali Zero.
+    Твій тон професійний, прямий та орієнтований на рішення.
+    Завжди починай з прямої відповіді.
+</language_instruction>
+""",
+        "ru": """
+<language_instruction>
+    **ОБЯЗАТЕЛЬНЫЙ ЯЗЫК: РУССКИЙ**
+    Ты ZANTARA, эксперт-консультант Bali Zero.
+    Твой тон профессиональный, прямой и ориентированный на решение.
+    Всегда начинай с прямого ответа.
 </language_instruction>
 """,
         "auto": """
-**LANGUAGE INSTRUCTION: ADAPTIVE / UNIVERSAL**
-- DETECT the language of the user's query.
-- RESPOND in the SAME language as the user.
-- Maintain a professional and helpful tone.
+**LANGUAGE INSTRUCTION: ADAPTIVE**
+- Respond in the SAME language as the user.
+- Maintain a professional and expert tone.
 """,
     }
 
-    return instructions.get(language, instructions["it"])
+    return instructions.get(language, instructions["auto"])

@@ -8,7 +8,9 @@ All operations are async to avoid blocking the event loop.
 
 import asyncio
 import logging
+import random
 import time
+from enum import Enum
 from typing import Any
 
 import httpx
@@ -36,6 +38,45 @@ DEFAULT_OPENAI_DIMENSIONS = 1536
 DEFAULT_SENTENCE_TRANSFORMERS_DIMENSIONS = 384
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 1.0  # seconds
+
+
+class QdrantErrorType(Enum):
+    """Qdrant error types."""
+    RETRYABLE = "retryable"  # Can retry
+    NON_RETRYABLE = "non_retryable"  # Don't retry
+    CLIENT_ERROR = "client_error"  # Bad request
+    SERVER_ERROR = "server_error"  # Server issue
+    TIMEOUT = "timeout"  # Timeout
+    CONNECTION = "connection"  # Connection issue
+
+
+class QdrantErrorClassifier:
+    """Classify Qdrant errors."""
+    
+    RETRYABLE_STATUS_CODES = {500, 502, 503, 504}  # Server errors
+    NON_RETRYABLE_STATUS_CODES = {400, 401, 403, 404, 422}  # Client errors
+    
+    def classify(self, error: Exception) -> tuple[QdrantErrorType, bool]:
+        """Classify error and return (error_type, retryable)."""
+        if isinstance(error, httpx.TimeoutException):
+            return QdrantErrorType.TIMEOUT, True
+        
+        if isinstance(error, httpx.ConnectError):
+            return QdrantErrorType.CONNECTION, True
+        
+        if isinstance(error, httpx.HTTPStatusError):
+            status_code = error.response.status_code
+            
+            if status_code in self.RETRYABLE_STATUS_CODES:
+                return QdrantErrorType.SERVER_ERROR, True
+            elif status_code in self.NON_RETRYABLE_STATUS_CODES:
+                return QdrantErrorType.CLIENT_ERROR, False
+            else:
+                # Unknown status code - be conservative
+                return QdrantErrorType.SERVER_ERROR, False
+        
+        # Unknown error - don't retry by default
+        return QdrantErrorType.NON_RETRYABLE, False
 
 # Connection pool limits
 MAX_KEEPALIVE_CONNECTIONS = 10
@@ -167,6 +208,9 @@ class QdrantClient:
 
         # Remove trailing slash
         self.qdrant_url = self.qdrant_url.rstrip("/")
+
+        # Initialize error classifier
+        self._error_classifier = QdrantErrorClassifier()
 
         # Initialize HTTP client (lazy initialization with connection pooling)
         self._http_client: httpx.AsyncClient | None = None
@@ -368,12 +412,46 @@ class QdrantClient:
                 return formatted_results
 
             except httpx.TimeoutException as e:
-                logger.error(f"Qdrant search timeout: {e}")
+                error_type, retryable = self._error_classifier.classify(e)
+                logger.error(
+                    f"Qdrant search timeout",
+                    extra={
+                        "error_type": error_type.value,
+                        "retryable": retryable,
+                        "timeout": self.timeout,
+                    }
+                )
+                try:
+                    from app.metrics import qdrant_timeout_total
+                    qdrant_timeout_total.labels(error_type=error_type.value).inc()
+                except ImportError:
+                    pass
                 raise TimeoutError(f"Qdrant request timeout after {self.timeout}s")
             except httpx.HTTPStatusError as e:
+                error_type, retryable = self._error_classifier.classify(e)
                 error_text = e.response.text if hasattr(e.response, "text") else str(e.response)
-                # Raise exception for 5xx errors (transient) to trigger retry
-                if 500 <= e.response.status_code < 600:
+                
+                logger.error(
+                    f"Qdrant HTTP error: {e.response.status_code}",
+                    extra={
+                        "status_code": e.response.status_code,
+                        "error_type": error_type.value,
+                        "retryable": retryable,
+                        "response_text": error_text[:200] if error_text else None,
+                    }
+                )
+                
+                try:
+                    from app.metrics import qdrant_http_error_total
+                    qdrant_http_error_total.labels(
+                        status_code=e.response.status_code,
+                        error_type=error_type.value
+                    ).inc()
+                except ImportError:
+                    pass
+                
+                # Raise exception for retryable server errors to trigger retry
+                if error_type == QdrantErrorType.SERVER_ERROR and retryable:
                     raise Exception(f"Qdrant server error {e.response.status_code}: {error_text}")
                 # Auto-retry with named vector if collection uses named vectors
                 if (

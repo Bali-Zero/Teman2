@@ -154,108 +154,162 @@ class CollectiveMemoryService:
         content_hash = self._hash_content(content)
 
         async with self.pool.acquire() as conn:
-            try:
-                # Check if fact already exists
-                existing = await conn.fetchrow(
-                    "SELECT id, source_count, is_promoted FROM collective_memories WHERE content_hash = $1",
-                    content_hash,
-                )
-
-                if existing:
-                    # Fact exists - try to add user as confirmer
-                    memory_id = existing["id"]
-
-                    # Check if user already contributed
-                    already_contributed = await conn.fetchval(
+            async with conn.transaction():
+                try:
+                    # RACE CONDITION PROTECTION: Use SELECT FOR UPDATE to lock row
+                    # This prevents concurrent contributions from causing duplicate promotions
+                    existing = await conn.fetchrow(
                         """
-                        SELECT EXISTS(
-                            SELECT 1 FROM collective_memory_sources
-                            WHERE memory_id = $1 AND user_id = $2 AND action IN ('contribute', 'confirm')
-                        )
+                        SELECT id, source_count, is_promoted
+                        FROM collective_memories
+                        WHERE content_hash = $1
+                        FOR UPDATE
                         """,
-                        memory_id,
-                        user_id,
+                        content_hash,
                     )
 
-                    if already_contributed:
+                    if existing:
+                        # Fact exists - try to add user as confirmer
+                        memory_id = existing["id"]
+                        fact_was_promoted = existing["is_promoted"]
+
+                        # Check if user already contributed (within transaction)
+                        already_contributed = await conn.fetchrow(
+                            """
+                            SELECT id FROM collective_memory_sources
+                            WHERE memory_id = $1 AND user_id = $2 AND action IN ('contribute', 'confirm')
+                            """,
+                            memory_id,
+                            user_id,
+                        )
+
+                        if already_contributed:
+                            return {
+                                "status": "already_contributed",
+                                "memory_id": memory_id,
+                                "is_promoted": existing["is_promoted"],
+                            }
+
+                        # Add confirmation atomically
+                        await conn.execute(
+                            """
+                            INSERT INTO collective_memory_sources (memory_id, user_id, conversation_id, action)
+                            VALUES ($1, $2, $3, 'confirm')
+                            """,
+                            memory_id,
+                            user_id,
+                            conversation_id,
+                        )
+
+                        # Atomic increment with promotion check
+                        # The trigger will update source_count, but we need to check promotion atomically
+                        updated = await conn.fetchrow(
+                            """
+                            UPDATE collective_memories
+                            SET last_confirmed_at = NOW()
+                            WHERE id = $1
+                            RETURNING id, source_count, is_promoted, confidence
+                            """,
+                            memory_id,
+                        )
+
+                        # Recalculate source_count manually to ensure accuracy
+                        actual_source_count = await conn.fetchval(
+                            """
+                            SELECT COUNT(DISTINCT user_id)
+                            FROM collective_memory_sources
+                            WHERE memory_id = $1 AND action IN ('contribute', 'confirm')
+                            """,
+                            memory_id,
+                        )
+
+                        # Check if we just crossed the promotion threshold
+                        should_promote = (
+                            actual_source_count >= self.PROMOTION_THRESHOLD
+                            and not fact_was_promoted
+                        )
+
+                        if should_promote:
+                            # Atomically promote if threshold crossed
+                            await conn.execute(
+                                """
+                                UPDATE collective_memories
+                                SET is_promoted = TRUE,
+                                    source_count = $2
+                                WHERE id = $1 AND NOT is_promoted
+                                """,
+                                memory_id,
+                                actual_source_count,
+                            )
+                            # Re-fetch to get updated status
+                            updated = await conn.fetchrow(
+                                """
+                                SELECT id, source_count, is_promoted, confidence
+                                FROM collective_memories
+                                WHERE id = $1
+                                """,
+                                memory_id,
+                            )
+                            logger.info(
+                                f"🎉 [Collective] Fact #{memory_id} promoted to collective "
+                                f"(sources: {actual_source_count})"
+                            )
+
+                        logger.info(
+                            f"🧠 [Collective] User {user_id} confirmed fact #{memory_id} "
+                            f"(sources: {actual_source_count}, promoted: {updated['is_promoted']})"
+                        )
+
                         return {
-                            "status": "already_contributed",
+                            "status": "confirmed",
                             "memory_id": memory_id,
-                            "is_promoted": existing["is_promoted"],
+                            "source_count": actual_source_count,
+                            "is_promoted": updated["is_promoted"],
+                            "confidence": updated["confidence"],
                         }
 
-                    # Add confirmation
-                    await conn.execute(
-                        """
-                        INSERT INTO collective_memory_sources (memory_id, user_id, conversation_id, action)
-                        VALUES ($1, $2, $3, 'confirm')
-                        """,
-                        memory_id,
-                        user_id,
-                        conversation_id,
-                    )
+                    else:
+                        # New fact - create it atomically
+                        memory_id = await conn.fetchval(
+                            """
+                            INSERT INTO collective_memories (content, content_hash, category, metadata, source_count)
+                            VALUES ($1, $2, $3, $4, 1)
+                            RETURNING id
+                            """,
+                            content,
+                            content_hash,
+                            category,
+                            json.dumps(metadata or {}),
+                        )
 
-                    # Get updated stats (trigger updates them)
-                    updated = await conn.fetchrow(
-                        "SELECT source_count, is_promoted, confidence FROM collective_memories WHERE id = $1",
-                        memory_id,
-                    )
+                        # Add contributor
+                        await conn.execute(
+                            """
+                            INSERT INTO collective_memory_sources (memory_id, user_id, conversation_id, action)
+                            VALUES ($1, $2, $3, 'contribute')
+                            """,
+                            memory_id,
+                            user_id,
+                            conversation_id,
+                        )
 
-                    logger.info(
-                        f"🧠 [Collective] User {user_id} confirmed fact #{memory_id} "
-                        f"(sources: {updated['source_count']}, promoted: {updated['is_promoted']})"
-                    )
+                        # Sync to Qdrant for semantic search
+                        await self._sync_to_qdrant(memory_id, content, category, metadata)
 
-                    return {
-                        "status": "confirmed",
-                        "memory_id": memory_id,
-                        "source_count": updated["source_count"],
-                        "is_promoted": updated["is_promoted"],
-                        "confidence": updated["confidence"],
-                    }
+                        logger.info(
+                            f"🧠 [Collective] New fact #{memory_id} from {user_id}: {content[:50]}..."
+                        )
 
-                else:
-                    # New fact - create it
-                    memory_id = await conn.fetchval(
-                        """
-                        INSERT INTO collective_memories (content, content_hash, category, metadata)
-                        VALUES ($1, $2, $3, $4)
-                        RETURNING id
-                        """,
-                        content,
-                        content_hash,
-                        category,
-                        json.dumps(metadata or {}),
-                    )
+                        return {
+                            "status": "created",
+                            "memory_id": memory_id,
+                            "source_count": 1,
+                            "is_promoted": False,
+                        }
 
-                    # Add contributor
-                    await conn.execute(
-                        """
-                        INSERT INTO collective_memory_sources (memory_id, user_id, conversation_id, action)
-                        VALUES ($1, $2, $3, 'contribute')
-                        """,
-                        memory_id,
-                        user_id,
-                        conversation_id,
-                    )
-
-                    # Sync to Qdrant for semantic search
-                    await self._sync_to_qdrant(memory_id, content, category, metadata)
-
-                    logger.info(
-                        f"🧠 [Collective] New fact #{memory_id} from {user_id}: {content[:50]}..."
-                    )
-
-                    return {
-                        "status": "created",
-                        "memory_id": memory_id,
-                        "source_count": 1,
-                        "is_promoted": False,
-                    }
-
-            except Exception as e:
-                logger.error(f"Failed to add collective contribution: {e}")
-                return {"status": "error", "error": str(e)}
+                except Exception as e:
+                    logger.error(f"Failed to add collective contribution: {e}")
+                    return {"status": "error", "error": str(e)}
 
     async def refute_fact(
         self,

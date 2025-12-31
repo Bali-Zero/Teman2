@@ -171,7 +171,7 @@ class ClientValuePredictor:
         async def _run():
             async with self.db_pool.acquire() as conn:
                 # Get all active clients
-                rows = await conn.fetch("SELECT id::text FROM crm_clients WHERE status = 'active'")
+                rows = await conn.fetch("SELECT id::text FROM clients WHERE status = 'active'")
                 client_ids = [row["id"] for row in rows]
 
             if not client_ids:
@@ -206,7 +206,7 @@ class ClientValuePredictor:
                         # Update client score in DB
                         await conn.execute(
                             """
-                            UPDATE crm_clients
+                            UPDATE clients
                             SET
                                 metadata = metadata || $1::jsonb,
                                 updated_at = NOW()
@@ -241,7 +241,7 @@ class ClientValuePredictor:
                                 # Log interaction
                                 await conn.execute(
                                     """
-                                    INSERT INTO crm_interactions (client_id, type, notes, created_at)
+                                    INSERT INTO interactions (client_id, type, notes, created_at)
                                     VALUES ($1, 'whatsapp_nurture', $2, NOW())
                                     """,
                                     int(client_id),

@@ -23,9 +23,9 @@ class PricingService:
         """Load official prices from JSON file"""
         try:
             # Path to official prices JSON
-            # Note: File name is kept for backward compatibility with existing data
+            # Note: File is in backend/data/ (3 levels up from services/pricing/)
             json_path = (
-                Path(__file__).parent.parent / "data" / "bali_zero_official_prices_2025.json"
+                Path(__file__).parent.parent.parent / "data" / "bali_zero_official_prices_2025.json"
             )
 
             if not json_path.exists():
@@ -47,13 +47,14 @@ class PricingService:
                 "multiple_entry_visas",
                 "kitas_permits",
                 "kitap_permits",
-                "business_legal_services",
-                "taxation_services",
+                "company_services",
+                "other_process",
+                "urgent_services",
             ]:
                 if category in self.prices.get("services", {}):
                     service_count += len(self.prices["services"][category])
 
-            logger.info(f"{service_count} services loaded across 6 categories")
+            logger.info(f"{service_count} services loaded across 7 categories")
 
         except Exception as e:
             logger.error(f"Error loading official prices: {e}")
@@ -168,7 +169,7 @@ class PricingService:
 
         if results:
             return {
-                "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025",
+                "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
                 "search_query": query,
                 "results": results,
                 "contact_info": self.prices.get("contact_info", {}),
@@ -176,7 +177,7 @@ class PricingService:
             }
         else:
             return {
-                "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025",
+                "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
                 "search_query": query,
                 "message": f"No service found for '{query}'",
                 "suggestion": f"Contact {settings.SUPPORT_EMAIL} for custom quotes",
@@ -190,7 +191,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - VISA",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - VISA",
             "single_entry_visas": services.get("single_entry_visas", {}),
             "multiple_entry_visas": services.get("multiple_entry_visas", {}),
             "contact_info": self.prices.get("contact_info", {}),
@@ -204,7 +205,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - KITAS",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - KITAS",
             "kitas_permits": services.get("kitas_permits", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
@@ -212,30 +213,32 @@ class PricingService:
         }
 
     def get_business_prices(self) -> dict[str, Any]:
-        """Get business & legal service prices"""
+        """Get business & company service prices"""
         if not self.loaded:
             return {"error": "Prices not loaded"}
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - BUSINESS",
-            "business_legal_services": services.get("business_legal_services", {}),
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - BUSINESS",
+            "company_services": services.get("company_services", {}),
+            "other_process": services.get("other_process", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
             "important_warnings": self.prices.get("important_warnings", {}),
         }
 
     def get_tax_prices(self) -> dict[str, Any]:
-        """Get taxation service prices"""
+        """Get urgent service prices (no dedicated tax category)"""
         if not self.loaded:
             return {"error": "Prices not loaded"}
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - TAX",
-            "taxation_services": services.get("taxation_services", {}),
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - URGENT SERVICES",
+            "urgent_services": services.get("urgent_services", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
+            "note": "Tax consulting not in price list - contact for custom quote",
         }
 
     def get_quick_quotes(self) -> dict[str, Any]:
@@ -245,7 +248,7 @@ class PricingService:
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": f"🔒 PREZZI UFFICIALI {settings.COMPANY_NAME.upper()} 2025 - PACKAGES",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - PACKAGES",
             "quick_quotes": services.get("quick_quotes", {}),
             "contact_info": self.prices.get("contact_info", {}),
             "disclaimer": self.prices.get("disclaimer", {}),
@@ -271,7 +274,7 @@ class PricingService:
             return f"⚠️ Official prices not available. Contact {settings.SUPPORT_EMAIL}"
 
         context_parts = [
-            f"🔒 {settings.COMPANY_NAME.upper()} OFFICIAL PRICES 2025 (DO NOT GENERATE - USE THESE EXACT VALUES)",
+            "🔒 BALI ZERO OFFICIAL PRICES 2025 (DO NOT GENERATE - USE THESE EXACT VALUES)",
             "",
         ]
 
@@ -285,29 +288,31 @@ class PricingService:
                 context_parts.append(f"- {name}: {price}")
             # Multiple entry
             for name, data in services.get("multiple_entry_visas", {}).items():
-                price_1y = data.get("price_1y", "")
-                price_2y = data.get("price_2y", "")
-                context_parts.append(f"- {name}: {price_1y} (1y) / {price_2y} (2y)")
+                price = data.get("price", "Contact")
+                validity = data.get("validity", "")
+                context_parts.append(f"- {name}: {price} ({validity})")
             context_parts.append("")
 
         if service_type == "kitas" or service_type is None:
-            context_parts.append("## Long-stay Permit Prices")  # Generic - no specific codes
+            context_parts.append("## KITAS/KITAP PERMITS")
             for name, data in services.get("kitas_permits", {}).items():
-                offshore = data.get("offshore", data.get("price_1y_off", "Contact"))
-                onshore = data.get("onshore", data.get("price_1y_on", "Contact"))
-                context_parts.append(f"- {name}: {offshore} (offshore) / {onshore} (onshore)")
-            context_parts.append("")
-
-        if service_type == "business" or service_type is None:
-            context_parts.append("## BUSINESS SERVICES")
-            for name, data in services.get("business_legal_services", {}).items():
+                price = data.get("price", "Contact")
+                context_parts.append(f"- {name}: {price}")
+            for name, data in services.get("kitap_permits", {}).items():
                 price = data.get("price", "Contact")
                 context_parts.append(f"- {name}: {price}")
             context_parts.append("")
 
-        if service_type == "tax" or service_type is None:
-            context_parts.append("## TAX SERVICES")
-            for name, data in services.get("taxation_services", {}).items():
+        if service_type == "business" or service_type is None:
+            context_parts.append("## COMPANY SERVICES")
+            for name, data in services.get("company_services", {}).items():
+                price = data.get("price", "Contact")
+                context_parts.append(f"- {name}: {price}")
+            context_parts.append("")
+
+        if service_type == "other" or service_type is None:
+            context_parts.append("## OTHER SERVICES")
+            for name, data in services.get("other_process", {}).items():
                 price = data.get("price", "Contact")
                 context_parts.append(f"- {name}: {price}")
             context_parts.append("")

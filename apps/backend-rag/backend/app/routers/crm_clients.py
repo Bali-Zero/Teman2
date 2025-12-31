@@ -126,9 +126,25 @@ class ClientResponse(BaseModel):
     assigned_to: str | None
     first_contact_date: datetime | None
     last_interaction_date: datetime | None
-    tags: list[str]
+    tags: list[str] = []  # Default to empty list if None
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("uuid", mode="before")
+    @classmethod
+    def convert_uuid_to_string(cls, v):
+        """Convert UUID object to string if needed"""
+        if v is None:
+            return ""
+        return str(v)
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def ensure_tags_list(cls, v):
+        """Ensure tags is always a list"""
+        if v is None:
+            return []
+        return v
 
 
 # ================================================
@@ -219,15 +235,33 @@ async def list_clients(
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
-    List all clients with optional filtering
+    List clients with role-based access control.
 
+    ACCESS CONTROL:
+    - zero@balizero.com: Can see ALL clients (admin access)
+    - Other team members: Can only see clients assigned to them
+
+    FILTERS:
     - **status**: Filter by client status
-    - **assigned_to**: Filter by assigned team member
+    - **assigned_to**: Filter by assigned team member (only works for admin)
     - **search**: Search in name, email, phone fields
     - **limit**: Max results (default: 50, max: 200)
     - **offset**: For pagination
     """
     try:
+        # Get current user from authentication middleware
+        current_user = getattr(request.state, "user", None)
+        current_user_email = current_user.get("email", "") if current_user else ""
+
+        # Admin email that can see all clients
+        ADMIN_EMAIL = "zero@balizero.com"
+        is_admin = current_user_email.lower() == ADMIN_EMAIL.lower()
+
+        logger.info(
+            f"📋 [CRM Clients] User {current_user_email} requesting clients list "
+            f"(admin={is_admin}, assigned_to_filter={assigned_to})"
+        )
+
         async with db_pool.acquire() as conn:
             # Build query dynamically with explicit columns
             query_parts = [
@@ -243,7 +277,15 @@ async def list_clients(
                 params.append(status)
                 param_index += 1
 
-            if assigned_to:
+            # Access control: Non-admin users can only see their own clients
+            if not is_admin:
+                # Force filter to current user's email, ignore any assigned_to parameter
+                query_parts.append(f" AND assigned_to = ${param_index}")
+                params.append(current_user_email)
+                param_index += 1
+                logger.info(f"🔒 [CRM Clients] Filtered to assigned_to={current_user_email}")
+            elif assigned_to:
+                # Admin can filter by any assigned_to value
                 query_parts.append(f" AND assigned_to = ${param_index}")
                 params.append(assigned_to)
                 param_index += 1
@@ -264,7 +306,9 @@ async def list_clients(
             query = " ".join(query_parts)
             rows = await conn.fetch(query, *params)
 
-            return [ClientResponse(**dict(row)) for row in rows]
+            clients = [ClientResponse(**dict(row)) for row in rows]
+            logger.info(f"📋 [CRM Clients] Returning {len(clients)} clients for {current_user_email}")
+            return clients
 
     except HTTPException:
         raise

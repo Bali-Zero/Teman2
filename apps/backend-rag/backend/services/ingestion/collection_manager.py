@@ -5,7 +5,9 @@ Manages Qdrant collection lifecycle and access
 Extracted from SearchService to follow Single Responsibility Principle.
 """
 
+import asyncio
 import logging
+from collections import defaultdict
 from typing import Any
 
 from core.qdrant_db import QdrantClient
@@ -31,6 +33,15 @@ class CollectionManager:
         """
         self.qdrant_url = qdrant_url or settings.qdrant_url
         self._collections_cache: dict[str, QdrantClient] = {}
+
+        # Race condition protection: read-write locks per collection
+        # Write locks: exclusive access during ingestion
+        # Read semaphores: allow concurrent searches
+        self._collection_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self._collection_read_semaphores: dict[str, asyncio.Semaphore] = defaultdict(
+            lambda: asyncio.Semaphore(20)  # Allow 20 concurrent reads per collection
+        )
+        self._lock_timeout = 30.0  # seconds (longer for ingestion operations)
 
         # Collection definitions (lazy initialization)
         self.collection_definitions = {
@@ -153,5 +164,91 @@ class CollectionManager:
         definition = self.collection_definitions[name].copy()
         definition["actual_name"] = definition.get("alias") or name
         return definition
+
+    async def search_with_lock(
+        self,
+        collection_name: str,
+        query_embedding: list[float],
+        limit: int = 5,
+        filter: dict | None = None,
+    ) -> dict[str, Any]:
+        """
+        Search collection with read lock protection.
+
+        RACE CONDITION PROTECTION: Uses read semaphore to allow concurrent
+        searches while blocking during ingestion.
+
+        Args:
+            collection_name: Collection to search
+            query_embedding: Query embedding vector
+            limit: Max results
+            filter: Optional Qdrant filter
+
+        Returns:
+            Search results dict
+        """
+        collection = self.get_collection(collection_name)
+        if not collection:
+            return {"documents": [], "ids": [], "metadatas": [], "distances": []}
+
+        semaphore = self._collection_read_semaphores[collection_name]
+
+        async with semaphore:
+            # Multiple searches can proceed concurrently
+            return await collection.search(
+                query_embedding=query_embedding, filter=filter, limit=limit
+            )
+
+    async def ingest_with_lock(
+        self,
+        collection_name: str,
+        documents: list[str],
+        embeddings: list[list[float]],
+        metadatas: list[dict] | None = None,
+        ids: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Ingest documents with write lock protection.
+
+        RACE CONDITION PROTECTION: Uses write lock to ensure exclusive access
+        during ingestion, preventing corruption during concurrent searches.
+
+        Args:
+            collection_name: Collection to ingest into
+            documents: List of document texts
+            embeddings: List of embedding vectors
+            metadatas: Optional metadata list
+            ids: Optional ID list
+
+        Returns:
+            Ingestion result dict
+
+        Raises:
+            RuntimeError: If lock acquisition times out
+        """
+        collection = self.get_collection(collection_name)
+        if not collection:
+            raise ValueError(f"Collection {collection_name} not found")
+
+        lock = self._collection_locks[collection_name]
+
+        try:
+            # Acquire write lock with timeout
+            await asyncio.wait_for(lock.acquire(), timeout=self._lock_timeout)
+            try:
+                # Exclusive write access
+                return await collection.upsert_documents(
+                    chunks=documents,
+                    embeddings=embeddings,
+                    metadatas=metadatas or [],
+                    ids=ids or [],
+                )
+            finally:
+                lock.release()
+        except asyncio.TimeoutError:
+            raise RuntimeError(
+                f"Ingestion lock timeout for {collection_name} "
+                f"(timeout: {self._lock_timeout}s)"
+            )
 
 

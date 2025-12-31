@@ -5,6 +5,7 @@ Agentic RAG API Router
 import hashlib
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -17,6 +18,55 @@ from app.utils.tracing import trace_span, set_span_attribute, set_span_status, a
 from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
 
 logger = logging.getLogger(__name__)
+
+
+def clean_image_generation_response(text: str) -> str:
+    """
+    Post-process AI response to remove ugly URLs from image generation.
+    Uses line-by-line filtering for robustness.
+    """
+    if not text or "pollinations" not in text.lower():
+        return text
+
+    # Process line by line for better control
+    lines = text.split('\n')
+    cleaned_lines = []
+
+    skip_patterns = [
+        r'pollinations\.ai',  # Any line with pollinations URL
+        r'^\s*\[Visualizza',  # Lines starting with [Visualizza
+        r'^\s*\d+\.\s*\*{0,2}Versione',  # "1. Versione..." or "1. **Versione..."
+        r'^\s*\d+\.\s*\*{0,2}(Prima|Seconda|Opzione)',  # Numbered options
+        r'^Ecco le opzioni',  # "Ecco le opzioni..."
+        r'^Ecco (due|le)',  # "Ecco due/le immagini..."
+        r'^Ho (creato|generato) (due|le)',  # "Ho creato due..."
+        r'^Ti propongo',  # "Ti propongo due..."
+        r'^\s*\(https?://',  # Lines starting with (http...
+        r'^Spero che queste opzioni',  # "Spero che queste opzioni..."
+    ]
+
+    for line in lines:
+        should_skip = False
+        for pattern in skip_patterns:
+            if re.search(pattern, line, re.IGNORECASE):
+                should_skip = True
+                break
+        if not should_skip:
+            cleaned_lines.append(line)
+
+    text = '\n'.join(cleaned_lines)
+
+    # Clean up multiple newlines and spaces
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'  +', ' ', text)
+    text = text.strip()
+
+    # If almost everything was removed, provide a default response
+    if len(text) < 20:
+        text = "Ecco l'immagine che hai richiesto! 🎨"
+
+    return text
+
 
 router = APIRouter(
     prefix="/api/agentic-rag",
@@ -461,11 +511,15 @@ async def stream_agentic_rag(
                             break
                         continue
                     
+                    # Post-process token events to clean image generation URLs
+                    if event.get("type") == "token" and isinstance(event.get("data"), str):
+                        event["data"] = clean_image_generation_response(event["data"])
+
                     # Serialize and yield
                     event_json = json.dumps(event)
                     yield f"data: {event_json}\n\n"
                     events_yielded += 1
-                    
+
                     # Reset error count on success
                     error_count = 0
                     

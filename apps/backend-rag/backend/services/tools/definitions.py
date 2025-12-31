@@ -102,6 +102,7 @@ class AgentState:
     final_answer: Optional[str] = None
     max_steps: int = 3  # Optimized: reduced from 5 to 3 for faster responses
     current_step: int = 0
+    skip_rag: bool = False  # Skip RAG evidence requirements for general tasks (translation, etc.)
 
 
 class BaseTool(ABC):
