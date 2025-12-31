@@ -27,6 +27,7 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 3.  **ASYNC FIRST:** This is a FastAPI project. Use `async def`, `await`, and `asyncpg`. Do NOT introduce blocking `requests` calls in endpoints; use `httpx`.
 4.  **TYPE HINTS:** Every new function MUST have type hints (`def func(x: int) -> str:`).
 5.  **NO HARDCODING:** Secrets and URLs come from `os.getenv()`. Never commit keys.
+6.  **SEPARATION OF DATA AND LOGIC:** Never hardcode "Volatile Data" (Prices, Employee names, specific Law details, Addresses) in the logic. These belong in the Knowledge Base (Qdrant/Postgres) or `settings`.
 
 ### 2. TECH STACK
 - **Backend:** Python 3.11, FastAPI, Uvicorn.
@@ -76,6 +77,61 @@ Use these tools to diagnose and fix issues autonomously:
     *   **Jaeger:** `http://localhost:16686` (Tracing/Waterfall)
     *   **Qdrant UI:** `http://localhost:6333/dashboard` (Vector Inspection)
 
+### 6. CRITICAL FIXES (Dec 2025) - MUST READ
+
+> **ATTENZIONE:** Prima di modificare `reasoning.py` o il sistema di evidence scoring, leggi:
+> `docs/operations/AGENTIC_RAG_FIXES.md`
+
+#### 6.1 Evidence Score System
+Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
+- **< 0.3** → ABSTAIN (rifiuta di rispondere)
+- **0.3-0.6** → Risponde con cautela
+- **> 0.6** → Risposta normale
+
+**File critico:** `backend/services/rag/agentic/reasoning.py`
+
+#### 6.2 Fix Applicati
+
+| Data | Fix | File | Problema |
+|------|-----|------|----------|
+| 2025-12-30 | Evidence threshold | `reasoning.py:88` | Soglia troppo alta (0.8→0.3) |
+| 2025-12-31 | Trusted tools bypass | `reasoning.py:867-883` | Calculator tool ignorato |
+
+#### 6.3 Trusted Tools
+
+Questi tool bypassano l'evidence check perché forniscono evidence propria:
+- `calculator` - Calcoli matematici
+- `pricing_lookup` - Prezzi servizi
+- `team_lookup` - Info team
+
+**NON modificare il trusted tools check senza capire il flusso completo.**
+
+#### 6.4 Debug Pattern nei Log
+
+```bash
+fly logs -a nuzantara-rag | grep -E "Evidence|Trusted|ABSTAIN"
+```
+
+| Pattern | Significato |
+|---------|-------------|
+| `🛡️ [Uncertainty] Evidence Score: X.XX` | Score calcolato |
+| `🧮 [Trusted Tool] X used successfully` | Bypass attivo |
+| `🛡️ [Uncertainty] Triggered ABSTAIN` | Sistema rifiuta |
+
+---
+
 **YOUR MISSION:**
 Maintain code quality. If you see legacy code violating these rules, **refactor it** before adding new features. Use the Toolkit to verify your work.
+
+---
+
+### 7. DOCUMENTATION INDEX
+
+| Doc | Path | Quando Leggerlo |
+|-----|------|-----------------|
+| AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
+| System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
+| **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
+| Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
+
 ---

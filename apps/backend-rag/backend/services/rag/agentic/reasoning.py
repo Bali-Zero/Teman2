@@ -500,10 +500,25 @@ class ReasoningEngine:
                 state.evidence_score = evidence_score
             set_span_status("ok")
 
+        # ==================== TRUSTED TOOLS CHECK ====================
+        # Check if trusted tools (calculator, pricing, team) were used successfully
+        # These tools provide their own evidence and don't need KB sources
+        trusted_tools_used = False
+        trusted_tool_names = {"calculator", "pricing_lookup", "team_lookup"}
+        for step in state.steps:
+            if step.action and hasattr(step.action, "tool_name"):
+                if step.action.tool_name in trusted_tool_names and step.observation:
+                    # Tool was used and produced output
+                    if "error" not in step.observation.lower():
+                        trusted_tools_used = True
+                        logger.info(f"🧮 [Trusted Tool] {step.action.tool_name} used successfully, bypassing evidence check")
+                        break
+
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
         # Skip evidence check for general tasks (translation, summarization, etc.)
-        if state.final_answer and evidence_score < 0.3 and not state.skip_rag:
+        # Also skip if trusted tools were used successfully
+        if state.final_answer and evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
             logger.warning(
                 f"🛡️ [Uncertainty] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
             )
@@ -514,13 +529,16 @@ class ReasoningEngine:
             )
         elif state.skip_rag and evidence_score < 0.3:
             logger.info(f"🏷️ [General Task] Skipping evidence check (skip_rag=True)")
+        elif trusted_tools_used and evidence_score < 0.3:
+            logger.info(f"🧮 [Trusted Tool] Skipping evidence check (trusted_tools_used=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
         # Generate final answer if not present
         if not state.final_answer and state.context_gathered:
             # POLICY ENFORCEMENT: Check evidence score before generating answer
             # Skip for general tasks (translation, summarization, etc.)
-            if evidence_score < 0.3 and not state.skip_rag:
+            # Also skip if trusted tools were used successfully
+            if evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
                 # ABSTAIN: Skip LLM generation, return uncertainty message
                 logger.warning(f"🛡️ [Uncertainty] Triggered ABSTAIN (Score: {evidence_score:.2f})")
                 state.final_answer = (
@@ -846,10 +864,29 @@ Do not invent information. If the context is insufficient, admit it.
         # Yield evidence score event
         yield {"type": "evidence_score", "data": {"score": evidence_score}}
 
+        # ==================== TRUSTED TOOLS CHECK ====================
+        # Check if trusted tools (calculator, pricing, team) were used successfully
+        # These tools provide their own evidence and don't need KB sources
+        trusted_tools_used = False
+        trusted_tool_names = {"calculator", "pricing_lookup", "team_lookup"}
+        logger.info(f"🔍 [Trusted Tools Debug] Checking {len(state.steps)} steps for trusted tools")
+        for step in state.steps:
+            tool_name = step.action.tool_name if step.action and hasattr(step.action, "tool_name") else "no_action"
+            obs_preview = step.observation[:50] if step.observation else "None"
+            logger.info(f"🔍 [Step Debug] tool={tool_name}, obs={obs_preview}")
+            if step.action and hasattr(step.action, "tool_name"):
+                if step.action.tool_name in trusted_tool_names and step.observation:
+                    # Tool was used and produced output
+                    if "error" not in step.observation.lower():
+                        trusted_tools_used = True
+                        logger.info(f"🧮 [Trusted Tool Stream] {step.action.tool_name} used successfully, bypassing evidence check")
+                        break
+
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
         # Skip evidence check for general tasks (translation, summarization, etc.)
-        if state.final_answer and evidence_score < 0.3 and not state.skip_rag:
+        # Also skip if trusted tools were used successfully
+        if state.final_answer and evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
             logger.warning(
                 f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
             )
@@ -860,12 +897,15 @@ Do not invent information. If the context is insufficient, admit it.
             )
         elif state.skip_rag and evidence_score < 0.3:
             logger.info(f"🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
+        elif trusted_tools_used and evidence_score < 0.3:
+            logger.info(f"🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
         if not state.final_answer and state.context_gathered:
             # POLICY ENFORCEMENT: Check evidence score before generating answer
             # Skip for general tasks (translation, summarization, etc.)
-            if evidence_score < 0.3 and not state.skip_rag:
+            # Also skip if trusted tools were used successfully
+            if evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
                 # ABSTAIN: Skip LLM generation, return uncertainty message
                 logger.warning(f"🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: {evidence_score:.2f})")
                 state.final_answer = (
