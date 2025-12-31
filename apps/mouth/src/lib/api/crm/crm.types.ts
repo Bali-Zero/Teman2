@@ -136,10 +136,12 @@ export interface AutoCRMStats {
 }
 
 export interface CreatePracticeParams {
-  client_id?: number; // Optional if creating simultaneous, but usually required
-  title: string;
+  client_id: number; // Required by backend
   practice_type_code: string;
-  description?: string;
-  priority?: string;
+  status?: string; // inquiry, quotation_sent, in_progress, completed, etc.
+  priority?: string; // normal, high, urgent
+  notes?: string; // Maps from frontend "title"
+  internal_notes?: string;
+  quoted_price?: number;
   start_date?: string;
 }

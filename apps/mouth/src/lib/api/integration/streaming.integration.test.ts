@@ -385,10 +385,10 @@ describe('Streaming Integration Tests', () => {
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
       expect(body.conversation_history).toBeDefined();
-      expect(body.conversation_history.length).toBeLessThanOrEqual(10); // Should limit to last 10
+      expect(body.conversation_history.length).toBeLessThanOrEqual(200); // Should limit to last 200
     });
 
-    it('should limit conversation history to last 10 messages', async () => {
+    it('should limit conversation history to last 200 messages', async () => {
       const mockReader = {
         read: vi.fn().mockResolvedValueOnce({ done: true }),
         cancel: vi.fn(),
@@ -401,8 +401,8 @@ describe('Streaming Integration Tests', () => {
         },
       });
 
-      // Create 15 messages
-      const conversationHistory = Array.from({ length: 15 }, (_, i) => ({
+      // Create 210 messages
+      const conversationHistory = Array.from({ length: 210 }, (_, i) => ({
         role: i % 2 === 0 ? 'user' : 'assistant',
         content: `Message ${i}`,
       }));
@@ -420,9 +420,9 @@ describe('Streaming Integration Tests', () => {
 
       const callArgs = mockFetch.mock.calls[0];
       const body = JSON.parse(callArgs[1].body);
-      expect(body.conversation_history.length).toBe(10);
-      // Should be last 10 messages
-      expect(body.conversation_history[0].content).toBe('Message 5');
+      expect(body.conversation_history.length).toBe(200);
+      // Should be last 200 messages
+      expect(body.conversation_history[0].content).toBe('Message 10');
     });
   });
 });

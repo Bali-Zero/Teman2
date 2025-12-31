@@ -14,6 +14,7 @@ import Image from 'next/image';
 import {
   Send,
   ImageIcon,
+  Sparkles,
   Menu,
   Bell,
   ChevronDown,
@@ -26,6 +27,9 @@ import {
   ThumbsDown,
   RefreshCw,
   X,
+  Volume2,
+  VolumeX,
+  Square,
   MessageSquare,
   Settings,
   HelpCircle,
@@ -47,14 +51,12 @@ import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { ThinkingIndicator } from '@/components/chat/ThinkingIndicator';
 import { SearchDocsModal } from '@/components/search/SearchDocsModal';
 
-// Server Actions
+// Server Actions & Types
 import {
-  sendMessageStream,
   saveConversation,
   type ChatMessage,
   type ChatImage,
   type Source,
-  type StreamEvent,
 } from './actions';
 
 // Types
@@ -88,6 +90,8 @@ export default function ChatPage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSearchDocsOpen, setIsSearchDocsOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [isImageGenOpen, setIsImageGenOpen] = useState(false);
+  const [imageGenPrompt, setImageGenPrompt] = useState('');
 
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +100,11 @@ export default function ChatPage() {
 
   // Image attachment state
   const [attachedImages, setAttachedImages] = useState<Array<{ id: string; base64: string; name: string; size: number }>>([]);
+
+  // TTS (Text-to-Speech) state
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Transitions
   const [isPending, startMessageTransition] = useTransition();
@@ -295,6 +304,20 @@ export default function ChatPage() {
     imageInputRef.current?.click();
   }, []);
 
+  // Handle image generation submit
+  const handleImageGenSubmit = useCallback(() => {
+    if (!imageGenPrompt.trim()) return;
+    // Set the input to the generation request and close modal
+    setInput(`Genera un'immagine: ${imageGenPrompt.trim()}`);
+    setImageGenPrompt('');
+    setIsImageGenOpen(false);
+    // Focus textarea to allow user to send
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea');
+      textarea?.focus();
+    }, 100);
+  }, [imageGenPrompt]);
+
   // User avatar component
   const UserAvatarDisplay = ({ size = 'sm' }: { size?: 'sm' | 'md' }) => {
     const sizeClasses = size === 'sm' ? 'w-8 h-8' : 'w-9 h-9';
@@ -320,7 +343,7 @@ export default function ChatPage() {
   };
 
   // ============================================
-  // Send Message with Streaming
+  // Send Message with Streaming (Client-side API)
   // ============================================
   const handleSend = useCallback(async () => {
     const trimmedInput = input.trim();
@@ -364,70 +387,89 @@ export default function ChatPage() {
     const newMessages = [...messages, userMessage, assistantMessage];
     setMessages(newMessages);
 
+    // Build conversation history for context
+    const conversationHistory = newMessages
+      .filter(m => !m.isStreaming)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    // Track accumulated content for streaming
+    let accumulatedContent = '';
+
     try {
-      const stream = await sendMessageStream(
-        newMessages.filter(m => !m.isStreaming),
+      // Use client-side API with callbacks (fixes Server Action stream issue)
+      await api.sendMessageStreaming(
+        trimmedInput || '[Image attached]',
         sessionId,
-        userId
-      );
+        // onChunk - called for each token
+        (chunk: string) => {
+          accumulatedContent = chunk; // API already accumulates
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMessage.id
+                ? { ...m, content: chunk, isPending: false }
+                : m
+            )
+          );
+        },
+        // onDone - called when complete
+        (fullResponse, sources, metadata) => {
+          // Handle generated image from metadata (cast to access generated_image)
+          const imageUrl = (metadata as { generated_image?: string } | undefined)?.generated_image;
 
-      const reader = stream.getReader();
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMessage.id
+                ? {
+                    ...m,
+                    content: fullResponse,
+                    sources: sources as Source[],
+                    isStreaming: false,
+                    isPending: false,
+                    // Add imageUrl if image was generated
+                    ...(imageUrl ? { imageUrl } : {})
+                  }
+                : m
+            )
+          );
+          setCurrentStatus('');
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const event = value as StreamEvent;
-
-        switch (event.type) {
-          case 'token':
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantMessage.id
-                  ? { ...m, content: event.data as string, isPending: false }
-                  : m
-              )
+          // Save conversation
+          startTransition(async () => {
+            await saveConversation(
+              newMessages.filter(m => !m.isStreaming).map(m => ({
+                ...m,
+                content: m.id === assistantMessage.id ? fullResponse : m.content
+              })),
+              sessionId
             );
-            break;
-
-          case 'status':
-            setCurrentStatus(event.data as string);
-            break;
-
-          case 'sources':
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantMessage.id
-                  ? { ...m, sources: event.data as Source[] }
-                  : m
-              )
-            );
-            break;
-
-          case 'error':
-            throw new Error(event.data as string);
-
-          case 'done':
-            break;
-        }
-      }
-
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantMessage.id
-            ? { ...m, isStreaming: false, isPending: false }
-            : m
-        )
+          });
+        },
+        // onError - called on error
+        (error: Error) => {
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMessage.id
+                ? {
+                    ...m,
+                    content: 'Sorry, there was an error processing your request. Please try again.',
+                    isPending: false,
+                    isStreaming: false,
+                  }
+                : m
+            )
+          );
+          setCurrentStatus('');
+          showToast('Failed to send message', 'error');
+        },
+        // onStep - called for status updates
+        (step) => {
+          if (step.type === 'status' && typeof step.data === 'string') {
+            setCurrentStatus(step.data);
+          }
+        },
+        120000, // timeoutMs
+        conversationHistory // conversation history for context
       );
-
-      setCurrentStatus('');
-
-      startTransition(async () => {
-        await saveConversation(
-          messages.filter(m => !m.isStreaming),
-          sessionId
-        );
-      });
 
     } catch (error) {
       setMessages(prev =>
@@ -531,6 +573,67 @@ export default function ChatPage() {
     };
     processAudio();
   }, [audioBlob, audioMimeType, showToast]);
+
+  // ============================================
+  // Text-to-Speech (TTS)
+  // ============================================
+  const handleTTS = useCallback(async (messageId: string, text: string) => {
+    // If already playing this message, stop it
+    if (playingMessageId === messageId) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setPlayingMessageId(null);
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    try {
+      setTtsLoading(messageId);
+      const audioBlob = await api.generateSpeech(text, 'nova');
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setPlayingMessageId(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        showToast('Audio playback failed', 'error');
+        setPlayingMessageId(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      setTtsLoading(null);
+      setPlayingMessageId(messageId);
+      await audio.play();
+    } catch {
+      setTtsLoading(null);
+      setPlayingMessageId(null);
+      showToast('TTS generation failed', 'error');
+    }
+  }, [playingMessageId, showToast]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // ============================================
   // Keyboard shortcuts
@@ -701,6 +804,62 @@ export default function ChatPage() {
         onInsert={(text) => setInput((prev) => (prev ? `${prev}\n${text}` : text))}
         initialQuery={input}
       />
+
+      {/* Image Generation Modal */}
+      {isImageGenOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#2a2a2a] rounded-2xl border border-white/10 shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Genera Immagine</h3>
+                  <p className="text-xs text-gray-400">Descrivi cosa vuoi creare</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsImageGenOpen(false)}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-5">
+              <textarea
+                value={imageGenPrompt}
+                onChange={(e) => setImageGenPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleImageGenSubmit();
+                  }
+                }}
+                placeholder="Es: Un unicorno magico in una foresta incantata..."
+                className="w-full h-28 px-4 py-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                autoFocus
+              />
+              <div className="mt-4 flex justify-end gap-3">
+                <button
+                  onClick={() => setIsImageGenOpen(false)}
+                  className="px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleImageGenSubmit}
+                  disabled={!imageGenPrompt.trim()}
+                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Genera
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
@@ -891,6 +1050,20 @@ export default function ChatPage() {
                           i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
                         )}
                       </div>
+
+                      {/* Generated image from image generation tool */}
+                      {message.imageUrl && (
+                        <div className="mt-3 relative rounded-lg overflow-hidden border border-white/10">
+                          <Image
+                            src={message.imageUrl}
+                            alt="Generated content"
+                            width={512}
+                            height={512}
+                            className="w-full h-auto max-w-md"
+                            unoptimized
+                          />
+                        </div>
+                      )}
                     </div>
 
                     {message.role === 'assistant' && !message.isStreaming && (
@@ -901,8 +1074,27 @@ export default function ChatPage() {
                             showToast('Copied to clipboard', 'success');
                           }}
                           className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300"
+                          title="Copy to clipboard"
                         >
                           <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleTTS(message.id, message.content)}
+                          className={`p-1.5 hover:bg-white/5 rounded transition-colors ${
+                            playingMessageId === message.id
+                              ? 'text-emerald-400 bg-emerald-400/10'
+                              : 'text-gray-500 hover:text-gray-300'
+                          }`}
+                          title={playingMessageId === message.id ? 'Stop speaking' : 'Read aloud'}
+                          disabled={ttsLoading === message.id}
+                        >
+                          {ttsLoading === message.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : playingMessageId === message.id ? (
+                            <Square className="w-3.5 h-3.5" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
                         </button>
                         <button className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300">
                           <ThumbsUp className="w-3.5 h-3.5" />
@@ -944,17 +1136,17 @@ export default function ChatPage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={handleImageButtonClick}
-                    title="Attach file"
+                    title="Attach file or image"
                     className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
                   >
                     <Paperclip className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={handleImageButtonClick}
-                    title="Add image"
-                    className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+                    onClick={() => setIsImageGenOpen(true)}
+                    title="Generate image with AI"
+                    className="p-2 rounded-lg text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
                   >
-                    <ImageIcon className="w-4 h-4" />
+                    <Sparkles className="w-4 h-4" />
                   </button>
                   <button
                     onClick={handleMicClick}

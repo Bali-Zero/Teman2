@@ -3,6 +3,49 @@ import { AgentStep } from '@/types';
 import type { AgenticQueryResponse } from './chat.types';
 
 /**
+ * Clean image generation response to remove ugly pollinations URLs
+ * NOTE: This is duplicated in actions.ts for server-side use.
+ * Keep both in sync if making changes.
+ */
+function cleanImageResponse(text: string): string {
+  if (!text || !text.toLowerCase().includes('pollinations')) {
+    return text;
+  }
+
+  // Process line by line
+  const lines = text.split('\n');
+  const cleanedLines = lines.filter(line => {
+    const lineLower = line.toLowerCase();
+    // Skip lines with pollinations URLs
+    if (lineLower.includes('pollinations')) return false;
+    // Skip [Visualizza Immagine] lines
+    if (line.trim().startsWith('[Visualizza')) return false;
+    // Skip numbered version lines like "1. **Versione..." or "1. Versione..."
+    if (/^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)/i.test(line)) return false;
+    // Skip intro lines that mention "opzioni" or "varianti" for images
+    if (/ecco le opzioni|ho (elaborato|generato|creato) due|ti propongo|due varianti|ecco i risultati/i.test(lineLower)) return false;
+    // Skip "Spero che queste opzioni" outro lines
+    if (/spero che queste|se hai bisogno di|vadano bene per/i.test(lineLower)) return false;
+    // Skip lines starting with (http...
+    if (line.trim().startsWith('(http')) return false;
+    // Skip lines that are just URLs
+    if (/^https?:\/\//i.test(line.trim())) return false;
+    return true;
+  });
+
+  let result = cleanedLines.join('\n');
+  // Clean up multiple newlines
+  result = result.replace(/\n{3,}/g, '\n\n').trim();
+
+  // If almost everything was removed, provide default
+  if (result.length < 30) {
+    result = "Ecco l'immagine che hai richiesto! 🎨";
+  }
+
+  return result;
+}
+
+/**
  * Chat/Streaming API methods
  *
  * Uses Zantara AI v2.0 - Single LLM architecture with RAG
@@ -51,6 +94,7 @@ export class ChatApi {
         collective_memory_facts?: string[];
         golden_answer_used?: boolean;
         followup_questions?: string[];
+        generated_image?: string;
       }
     ) => void,
     onError: (error: Error) => void,
@@ -65,13 +109,6 @@ export class ChatApi {
     // Always use standard Zantara AI endpoint (v2.0)
     const endpoint = '/api/agentic-rag/stream';
 
-    console.log('ChatApi: sendMessageStreaming called', {
-      correlationId,
-      timeoutMs,
-      idleTimeoutMs,
-      maxTotalTimeMs,
-      endpoint
-    });
     const controller = new AbortController();
     let timedOut = false;
     let userCancelled = false;
@@ -156,8 +193,8 @@ export class ChatApi {
 
       // Add conversation history directly (fallback when DB is unavailable)
       if (conversationHistory && conversationHistory.length > 0) {
-        // Send last 10 messages for context
-        requestBody.conversation_history = conversationHistory.slice(-10);
+        // Send last 200 messages for context (~100 turns of conversation)
+        requestBody.conversation_history = conversationHistory.slice(-200);
       }
 
       // Build headers with CSRF token for state-changing request
@@ -184,7 +221,6 @@ export class ChatApi {
 
       const baseUrl = this.client.getBaseUrl();
       const fullUrl = `${baseUrl}${endpoint}`;
-      console.log('ChatApi: about to fetch', { baseUrl, url: fullUrl });
       const response = await fetch(fullUrl, {
         method: 'POST',
         headers: streamHeaders,
@@ -192,7 +228,6 @@ export class ChatApi {
         credentials: 'include', // Send httpOnly cookies
         signal: signalToUse,
       });
-      console.log('ChatApi: fetch returned', { status: response.status, ok: response.ok });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -208,6 +243,7 @@ export class ChatApi {
       let fullResponse = '';
       let sources: Array<{ title?: string; content?: string }> = [];
       let finalMetadata: Record<string, unknown> | undefined = undefined;
+      let generatedImageUrl: string | undefined = undefined;  // Track generated images
       let readerCancelled = false;
       // requestAborted already declared above in function scope
 
@@ -351,7 +387,9 @@ export class ChatApi {
               resetIdleTimeout();
               // Only call callback if not aborted
               if (!signalToUse.aborted && !requestAborted) {
-                onChunk(text);
+                // Clean accumulated response to remove ugly pollinations URLs
+                const cleanedResponse = cleanImageResponse(fullResponse);
+                onChunk(cleanedResponse);
               }
             } else if (data.type === 'status') {
               // Reset idle timeout on status update (data arrival)
@@ -405,6 +443,12 @@ export class ChatApi {
                 : [];
             } else if (data.type === 'metadata') {
               finalMetadata = isRecord(data.data) ? data.data : undefined;
+            } else if (data.type === 'image') {
+              // Handle generated images from image generation tool
+              resetIdleTimeout();
+              if (isRecord(data.data) && typeof data.data.url === 'string') {
+                generatedImageUrl = data.data.url;
+              }
             } else if (data.type === 'error') {
               const errorData = data.data;
               if (isRecord(errorData) && typeof errorData.message === 'string') {
@@ -455,7 +499,13 @@ export class ChatApi {
 
         // Only call onDone if not aborted
         if (!signalToUse.aborted && !requestAborted) {
-          onDone(fullResponse, sources, finalMetadata);
+          // Merge generated image into metadata if present
+          const metadataWithImage = generatedImageUrl
+            ? { ...finalMetadata, generated_image: generatedImageUrl }
+            : finalMetadata;
+          // Clean final response to remove ugly pollinations URLs
+          const cleanedFinalResponse = cleanImageResponse(fullResponse);
+          onDone(cleanedFinalResponse, sources, metadataWithImage);
         }
       }
     } catch (error) {

@@ -59,6 +59,8 @@ export interface Message {
     collective_memory_facts?: string[];
     golden_answer_used?: boolean;
     followup_questions?: string[];
+    // Generated images from image generation tool
+    generated_image?: string;
   };
 }
 

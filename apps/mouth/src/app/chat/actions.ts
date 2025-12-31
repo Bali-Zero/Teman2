@@ -19,6 +19,7 @@ export interface ChatMessage {
   steps?: AgentStep[];
   timestamp: Date;
   metadata?: MessageMetadata;
+  imageUrl?: string; // Generated image URL from image generation tool
 }
 
 export interface Source {
@@ -48,6 +49,49 @@ export interface StreamEvent {
 
 // Backend API URL
 const BACKEND_URL = process.env.BACKEND_RAG_URL || 'https://nuzantara-rag.fly.dev';
+
+/**
+ * Clean image generation response to remove ugly pollinations URLs
+ * NOTE: This is duplicated in chat.api.ts for client-side use.
+ * Keep both in sync if making changes.
+ */
+function cleanImageResponse(text: string): string {
+  if (!text || !text.toLowerCase().includes('pollinations')) {
+    return text;
+  }
+
+  // Process line by line
+  const lines = text.split('\n');
+  const cleanedLines = lines.filter(line => {
+    const lineLower = line.toLowerCase();
+    // Skip lines with pollinations URLs
+    if (lineLower.includes('pollinations')) return false;
+    // Skip [Visualizza Immagine] lines
+    if (line.trim().startsWith('[Visualizza')) return false;
+    // Skip numbered version lines like "1. **Versione..." or "1. Versione..."
+    if (/^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)/i.test(line)) return false;
+    // Skip intro lines that mention "opzioni" or "varianti" for images
+    if (/ecco le opzioni|ho (elaborato|generato|creato) due|ti propongo|due varianti|ecco i risultati/i.test(lineLower)) return false;
+    // Skip "Spero che queste opzioni" outro lines
+    if (/spero che queste|se hai bisogno di|vadano bene per/i.test(lineLower)) return false;
+    // Skip lines starting with (http...
+    if (line.trim().startsWith('(http')) return false;
+    // Skip lines that are just URLs
+    if (/^https?:\/\//i.test(line.trim())) return false;
+    return true;
+  });
+
+  let result = cleanedLines.join('\n');
+  // Clean up multiple newlines
+  result = result.replace(/\n{3,}/g, '\n\n').trim();
+
+  // If almost everything was removed, provide default
+  if (result.length < 30) {
+    result = "Ecco l'immagine che hai richiesto! 🎨";
+  }
+
+  return result;
+}
 
 /**
  * Server Action: Get auth token from cookies
@@ -155,7 +199,9 @@ export async function sendMessageStream(
               switch (event.type) {
                 case 'token':
                   fullContent += event.data;
-                  controller.enqueue({ type: 'token', data: fullContent });
+                  // Clean image generation URLs from accumulated content
+                  const cleanedContent = cleanImageResponse(fullContent);
+                  controller.enqueue({ type: 'token', data: cleanedContent });
                   break;
 
                 case 'status':

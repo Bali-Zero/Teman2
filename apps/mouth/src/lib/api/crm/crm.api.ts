@@ -183,8 +183,9 @@ export class CrmApi {
     const queryParams = new URLSearchParams();
     queryParams.append('created_by', createdBy);
 
+    // Note: trailing slash required to avoid 307 redirect which converts POST to GET
     return this.client.request<Practice>(
-      `/api/crm/practices?${queryParams.toString()}`,
+      `/api/crm/practices/?${queryParams.toString()}`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -198,5 +199,35 @@ export class CrmApi {
    */
   async getAutoCRMStats(days: number = 7): Promise<AutoCRMStats> {
     return this.client.request<AutoCRMStats>(`/api/crm/auto/stats?days=${days}`);
+  }
+
+  /**
+   * Update a practice/case (status, priority, notes, etc.)
+   */
+  async updatePractice(
+    practiceId: number,
+    updates: Partial<{
+      status: string;
+      priority: string;
+      quoted_price: number;
+      actual_price: number;
+      payment_status: string;
+      assigned_to: string;
+      notes: string;
+    }>,
+    updatedBy: string
+  ): Promise<Practice> {
+    const queryParams = new URLSearchParams();
+    queryParams.append('updated_by', updatedBy);
+
+    // Note: trailing slash required to avoid 307 redirect which converts PATCH to GET
+    return this.client.request<Practice>(
+      `/api/crm/practices/${practiceId}/?${queryParams.toString()}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      },
+      60000 // 60 second timeout
+    );
   }
 }
