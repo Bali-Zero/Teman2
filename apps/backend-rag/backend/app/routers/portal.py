@@ -98,7 +98,14 @@ async def get_current_client(
         )
 
     # Get linked_client_id from user record
+    # Note: team_members.id is UUID (VARCHAR), not integer
     user_id = user.get("id") or user.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="User ID not found in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     async with db_pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -107,7 +114,7 @@ async def get_current_client(
             FROM team_members
             WHERE id = $1 AND role = 'client' AND active = true
             """,
-            int(user_id) if user_id else None,
+            str(user_id),  # UUID as string, not int
         )
 
         if not row:
