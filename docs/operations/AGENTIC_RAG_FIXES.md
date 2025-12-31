@@ -91,7 +91,7 @@ Query di calcolo pure (es. "22% tax on 500M IDR") venivano rifiutate nonostante 
 # Check if trusted tools (calculator, pricing, team) were used successfully
 # These tools provide their own evidence and don't need KB sources
 trusted_tools_used = False
-trusted_tool_names = {"calculator", "pricing_lookup", "team_lookup"}
+trusted_tool_names = {"calculator", "get_pricing", "search_team_member", "get_team_members_list", "team_knowledge"}
 
 for step in state.steps:
     if step.action and hasattr(step.action, "tool_name"):
@@ -119,8 +119,10 @@ if evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
 | Tool | Descrizione | Bypass Evidence |
 |------|-------------|-----------------|
 | `calculator` | Calcoli matematici | ✅ Sì |
-| `pricing_lookup` | Prezzi servizi Bali Zero | ✅ Sì |
-| `team_lookup` | Info team members | ✅ Sì |
+| `get_pricing` | Prezzi servizi Bali Zero | ✅ Sì |
+| `team_knowledge` | Team members (query_type: all/specific) | ✅ Sì |
+| `search_team_member` | Alias legacy per team_knowledge | ✅ Sì |
+| `get_team_members_list` | Alias legacy per team_knowledge | ✅ Sì |
 | `vector_search` | Ricerca KB | ❌ No (richiede evidence) |
 
 ### Verifica
@@ -244,16 +246,67 @@ Expected Log: "🛡️ [Uncertainty] Evidence Score: 0.XX" (> 0.3)
 
 ---
 
-## 8. Checklist Pre-Modifica
+## 8. FIX #3: LLM Gateway Images Parameter (2025-12-31)
+
+### Problema
+Query team_lookup fallivano con errore:
+```
+TypeError: LLMGateway._send_with_fallback() got an unexpected keyword argument 'images'
+```
+
+### Causa Root
+Il codice locale aveva aggiunto il supporto vision (images) a `send_message()` ma non era stato deployato. La chiamata passava `images=images` a `_send_with_fallback()` ma la funzione non accettava quel parametro.
+
+### Fix Applicato
+
+**File:** `llm_gateway.py`
+
+La funzione `_send_with_fallback()` ora accetta il parametro `images`:
+
+```python
+async def _send_with_fallback(
+    self,
+    chat: Any,
+    message: str,
+    system_prompt: str,
+    model_tier: int,
+    enable_function_calling: bool,
+    conversation_messages: list[dict],
+    query_cost_tracker: dict,
+    images: list[dict] | None = None,  # ← NUOVO
+) -> tuple[str, str, Any, TokenUsage]:
+```
+
+### Verifica
+```bash
+fly logs -a nuzantara-rag | grep "team_knowledge"
+# Deve mostrare: 🔧 [Native Function Call] Detected: team_knowledge
+```
+
+---
+
+## 9. Checklist Pre-Modifica
 
 Prima di modificare il sistema di evidence/abstain:
 
 - [ ] Leggi questo documento
 - [ ] Leggi `reasoning.py` (specialmente `calculate_evidence_score` e policy enforcement)
+- [ ] Leggi `llm_gateway.py` (specialmente `_send_with_fallback` signature)
 - [ ] Verifica i test esistenti: `pytest tests/unit/services/rag/agentic/`
-- [ ] Testa localmente con query calculator e KB
+- [ ] Testa localmente con query calculator, pricing, e team
 - [ ] Deploy e verifica logs per pattern critici
 
 ---
 
-**Deployed Version:** v1175 (2025-12-31)
+## 10. Cronologia Versioni
+
+| Versione | Data | Fix Applicati |
+|----------|------|---------------|
+| v1175 | 2025-12-30 | Evidence threshold 0.8→0.3 |
+| v1177 | 2025-12-31 | Trusted tools bypass (calculator, pricing, team) |
+| v1178 | 2025-12-31 | LLM Gateway images parameter fix |
+| v1179 | 2025-12-31 | Added team_knowledge to trusted_tool_names |
+
+---
+
+**Deployed Version:** v1179 (2025-12-31)

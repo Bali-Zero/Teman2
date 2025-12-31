@@ -504,7 +504,7 @@ class ReasoningEngine:
         # Check if trusted tools (calculator, pricing, team) were used successfully
         # These tools provide their own evidence and don't need KB sources
         trusted_tools_used = False
-        trusted_tool_names = {"calculator", "pricing_lookup", "team_lookup"}
+        trusted_tool_names = {"calculator", "get_pricing", "search_team_member", "get_team_members_list", "team_knowledge"}
         for step in state.steps:
             if step.action and hasattr(step.action, "tool_name"):
                 if step.action.tool_name in trusted_tool_names and step.observation:
@@ -703,6 +703,7 @@ Do not invent information. If the context is insufficient, admit it.
         user_id: str,
         model_tier: int,
         tool_execution_counter: dict,
+        images: list[dict] | None = None,  # Vision images: [{"base64": ..., "name": ...}]
     ):
         """
         Execute the ReAct reasoning loop with streaming output.
@@ -728,12 +729,15 @@ Do not invent information. If the context is insufficient, admit it.
                 # Yield thinking event
                 yield {"type": "thinking", "data": f"Step {state.current_step}: Processing..."}
 
+                # Images only on first step (initial query)
+                step_images = images if state.current_step == 1 else None
                 text_response, model_used_name, response_obj, _ = await llm_gateway.send_message(
                     chat,
                     message,
                     system_prompt,
                     tier=model_tier,
                     enable_function_calling=True,
+                    images=step_images,
                 )
 
             except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
@@ -868,7 +872,7 @@ Do not invent information. If the context is insufficient, admit it.
         # Check if trusted tools (calculator, pricing, team) were used successfully
         # These tools provide their own evidence and don't need KB sources
         trusted_tools_used = False
-        trusted_tool_names = {"calculator", "pricing_lookup", "team_lookup"}
+        trusted_tool_names = {"calculator", "get_pricing", "search_team_member", "get_team_members_list", "team_knowledge"}
         logger.info(f"🔍 [Trusted Tools Debug] Checking {len(state.steps)} steps for trusted tools")
         for step in state.steps:
             tool_name = step.action.tool_name if step.action and hasattr(step.action, "tool_name") else "no_action"

@@ -92,17 +92,23 @@ Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
 
 #### 6.2 Fix Applicati
 
-| Data | Fix | File | Problema |
+| Data | Fix | File | Versione |
 |------|-----|------|----------|
-| 2025-12-30 | Evidence threshold | `reasoning.py:88` | Soglia troppo alta (0.8→0.3) |
-| 2025-12-31 | Trusted tools bypass | `reasoning.py:867-883` | Calculator tool ignorato |
+| 2025-12-30 | Evidence threshold 0.8→0.3 | `reasoning.py:88` | v1175 |
+| 2025-12-31 | Trusted tools bypass | `reasoning.py:867-883` | v1177 |
+| 2025-12-31 | LLM Gateway images param | `llm_gateway.py` | v1178 |
 
 #### 6.3 Trusted Tools
 
 Questi tool bypassano l'evidence check perché forniscono evidence propria:
-- `calculator` - Calcoli matematici
-- `pricing_lookup` - Prezzi servizi
-- `team_lookup` - Info team
+
+| Tool Name | Descrizione | Note |
+|-----------|-------------|------|
+| `calculator` | Calcoli matematici | In `tools.py` |
+| `get_pricing` | Prezzi servizi Bali Zero | In `zantara_tools.py` |
+| `team_knowledge` | Team members (cerca/lista) | In `zantara_tools.py` |
+
+**NOTA:** Il tool `team_knowledge` gestisce sia la ricerca specifica che la lista completa tramite il parametro `query_type`.
 
 **NON modificare il trusted tools check senza capire il flusso completo.**
 

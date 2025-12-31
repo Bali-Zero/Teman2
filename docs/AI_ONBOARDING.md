@@ -45,10 +45,24 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 
 
 ### 2.2 Infrastructure
-- **Database:** PostgreSQL (asyncpg with connection pooling, 23 tables), Qdrant Cloud (Vector, **53,757 documents** across 4 active collections), Redis (Cache/Queue).
+- **Database:** PostgreSQL (asyncpg with connection pooling, 65 tables), Qdrant Cloud (Vector, **54,089 documents** across 8 active collections), Redis (Cache/Queue).
 - **Deployment:** Fly.io (Docker-based, multi-region Singapore).
 - **Testing & Deployment:** Local testing and manual deployment workflow. All testing and deployment is done locally - no automated CI/CD pipelines. Deploy via `flyctl deploy` from local machine.
 - **Observability:** Prometheus, Grafana, Jaeger, Alertmanager.
+
+### 2.3 Qdrant Collections (Knowledge Base)
+
+| Collezione | Docs | Scopo | Query Router Keywords |
+|------------|------|-------|----------------------|
+| `visa_oracle` | ~1,612 | Immigration, KITAS, KITAP | visa, kitas, kitap, immigration |
+| `legal_unified` | ~5,041 | Laws, regulations (PP, UU) | legal, law, regulation |
+| `kbli_unified` | ~8,886 | Business classification codes | kbli, business code |
+| `tax_genius` | 332 | PPh 21, PPN/VAT, taxes | tax, pajak, pph, ppn |
+| `bali_zero_pricing` | ~29 | Service pricing | price, cost, quanto costa |
+| `bali_zero_team` | ~22 | Team members | team, who, contact |
+
+**Routing:** `backend/services/routing/query_router.py` routes queries to collections based on keywords.
+**Ingestion:** Use `scripts/ingest_tax_genius.py` as template for new collections.
 
 ---
 
@@ -62,6 +76,12 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 -   **TypeScript:**
     -   Strict typing required (no `any`).
     -   Use Functional Components with Hooks for React.
+-   **Data vs. Logic (Knowledge Governance):**
+    -   **NO Hardcoded Volatile Data:** Business facts belong in the Knowledge Base, not the Python/TS logic.
+    -   **Prices:** Never write specific prices (e.g., `price = "10M"`) in code.
+    -   **Identity/Team:** Never hardcode employee names or specific roles in logic checks.
+    -   **Regulations:** Specific visa/tax numbers or thresholds must be retrieved via RAG.
+    -   **Contact/Location:** Use `settings` or KB for addresses and phone numbers.
 -   **General:**
     -   **No Hardcoding:** Use `os.getenv()` or `process.env`.
     -   **Error Handling:** Fail gracefully. Use try/catch and log errors.
@@ -271,12 +291,134 @@ apps/backend-rag/backend/services/memory/orchestrator.py # Memory system
 
 ---
 
-## 7. 🚀 IMMEDIATE ACTION PROTOCOL
+## 7. 🚨 CRITICAL FIXES (Dec 2025) - MUST READ
+
+> **ATTENZIONE:** Prima di modificare `reasoning.py` o il sistema di evidence scoring, leggi:
+> `docs/operations/AGENTIC_RAG_FIXES.md`
+
+### 7.1 Evidence Score System
+
+Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
+
+| Soglia | Valore | Comportamento |
+|--------|--------|---------------|
+| **ABSTAIN** | < 0.3 | Rifiuta di rispondere |
+| **WEAK** | 0.3-0.6 | Risponde con cautela |
+| **CONFIDENT** | > 0.6 | Risposta normale |
+
+### 7.2 Trusted Tools (Bypass Evidence Check)
+
+Questi tool bypassano l'evidence check perché forniscono evidence propria:
+
+| Tool | Descrizione | File |
+|------|-------------|------|
+| `calculator` | Calcoli matematici | `tools.py` |
+| `get_pricing` | Prezzi servizi | `zantara_tools.py` |
+| `team_knowledge` | Team members | `zantara_tools.py` |
+
+**NON modificare il trusted tools check senza capire il flusso completo.**
+
+### 7.3 Fix Recenti Applicati
+
+| Data | Fix | File | Versione |
+|------|-----|------|----------|
+| 2025-12-30 | Evidence threshold 0.8→0.3 | `reasoning.py` | v1175 |
+| 2025-12-31 | Trusted tools bypass | `reasoning.py` | v1177 |
+| 2025-12-31 | LLM Gateway images param | `llm_gateway.py` | v1178 |
+
+### 7.4 Debug Patterns nei Log
+
+```bash
+fly logs -a nuzantara-rag | grep -E "Evidence|Trusted|ABSTAIN"
+```
+
+| Pattern | Significato |
+|---------|-------------|
+| `🛡️ [Uncertainty] Evidence Score: X.XX` | Score calcolato |
+| `🧮 [Trusted Tool] X used successfully` | Bypass attivo |
+| `🛡️ [Uncertainty] Triggered ABSTAIN` | Sistema rifiuta |
+| `🔧 [Native Function Call] Detected: X` | Tool chiamato |
+
+---
+
+## 8. 🔧 TROUBLESHOOTING COMUNI
+
+### 8.1 "Mi dispiace, non ho trovato informazioni..."
+
+**Causa:** Evidence score < 0.3 e nessun trusted tool usato.
+
+**Diagnosi:**
+```bash
+fly logs -a nuzantara-rag | grep "Evidence Score"
+```
+
+**Soluzioni:**
+1. Verifica che le collezioni Qdrant abbiano documenti rilevanti
+2. Se è un calcolo/prezzo/team, verifica che il tool giusto sia stato chiamato
+3. Controlla `trusted_tool_names` in `reasoning.py`
+
+### 8.2 "Sorry, there was an error processing your request"
+
+**Causa:** Errore interno nel backend (LLM, tool, o parametri).
+
+**Diagnosi:**
+```bash
+fly logs -a nuzantara-rag | grep -E "Error|Exception|TypeError"
+```
+
+**Cause comuni:**
+- `TypeError: unexpected keyword argument` → Parametro mancante in funzione
+- `ResourceExhausted` → Quota LLM esaurita, fallback dovrebbe attivarsi
+- `Connection refused` → Qdrant/Postgres non raggiungibile
+
+### 8.3 Frontend mostra "Offline"
+
+**Causa:** SSE connection intermittente o backend non risponde.
+
+**Soluzioni:**
+1. Verifica health: `curl https://nuzantara-rag.fly.dev/health`
+2. Ricarica la pagina
+3. Controlla logs per errori di connessione
+
+### 8.4 Tool non viene chiamato
+
+**Causa:** LLM non riconosce l'intent o tool non registrato.
+
+**Diagnosi:**
+```bash
+fly logs -a nuzantara-rag | grep "Native Function Call"
+```
+
+**Soluzioni:**
+1. Verifica che il tool sia in `gemini_tools` nel `LLMGateway`
+2. Controlla la descrizione del tool (deve essere chiara per l'LLM)
+3. Verifica `tool_config` in `llm_gateway.py`
+
+---
+
+## 9. 🚀 IMMEDIATE ACTION PROTOCOL
 
 1.  **Read Essential Files:** Segui l'ordine in Section 6 sopra.
-2.  **Context Acquisition:** Read `task.md` (if present) to understand the current objective.
-3.  **Architecture Reference:** Check `docs/LIVING_ARCHITECTURE.md` for auto-generated API documentation.
-4.  **Environment Check:** Verify that critical environment variables (API keys, DB URLs) are loaded.
-5.  **Execution:** Proceed with your task, adhering strictly to the standards above.
+2.  **Read Critical Fixes:** Leggi Section 7 per i fix recenti.
+3.  **Context Acquisition:** Read `task.md` (if present) to understand the current objective.
+4.  **Architecture Reference:** Check `docs/LIVING_ARCHITECTURE.md` for auto-generated API documentation.
+5.  **Environment Check:** Verify that critical environment variables (API keys, DB URLs) are loaded.
+6.  **Execution:** Proceed with your task, adhering strictly to the standards above.
 
 **Maintain the standard. Build for the future.**
+
+---
+
+## 10. 📚 DOCUMENTATION INDEX
+
+| Doc | Path | Quando Leggerlo |
+|-----|------|-----------------|
+| AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
+| System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
+| **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
+| AI Handover Protocol | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Per golden rules |
+| Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
+
+---
+
+**Last Updated:** 2025-12-31 | **Deployed Version:** v1178
