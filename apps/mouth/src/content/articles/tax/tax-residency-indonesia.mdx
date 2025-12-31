@@ -1,0 +1,260 @@
+---
+title: "Tax Residency in Indonesia: When Do You Become a Tax Resident? 2025"
+slug: "tax-residency-indonesia"
+description: "Understanding Indonesian tax residency rules for foreigners. The 183-day rule, intention to stay, and what being a tax resident means for your obligations."
+excerpt: "Are you an Indonesian tax resident? Here's how to know and what it means for your taxes."
+category: "tax"
+tags:
+  - tax residency
+  - 183 days
+  - expat tax
+  - Indonesia tax
+  - foreign resident
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Tax Advisor"
+featured: false
+image:
+  src: "/images/blog/tax/tax-residency.jpg"
+  alt: "Indonesia tax residency concept"
+seo:
+  title: "Indonesia Tax Residency 2025 | 183-Day Rule Explained"
+  description: "When do you become an Indonesian tax resident? Complete guide to the 183-day rule, intention test, and what residency means for your tax obligations."
+  keywords:
+    - tax residency indonesia
+    - 183 day rule
+    - indonesia tax resident
+    - expat tax residency
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "tax_genius"
+    documentsUsed: 15
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "indonesia-tax-guide-for-foreigners"
+  - "npwp-foreigners-guide"
+  - "tax-treaties-explained"
+tableOfContents: true
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  InfoCard,
+  Calculator,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Tax Residency in Indonesia: When Do You Become a Tax Resident? 2025
+
+Tax residency determines how Indonesia taxes your income. Residents pay tax on worldwide income; non-residents only on Indonesian-source income. Knowing your status is crucial.
+
+## The Two Tests
+
+Indonesia uses two main tests for tax residency:
+
+<ComparisonTable
+  title="Tax Residency Tests"
+  description="How Indonesia determines if you're a tax resident"
+  items={[
+    {
+      name: "183-Day Rule",
+      subtitle: "Physical presence",
+      values: {
+        "Test": "Present 183+ days in any 12-month period",
+        "Period": "Rolling 12 months (not calendar year)",
+        "Automatic?": "Yes - triggers residency",
+        "Most Common": "Yes"
+      },
+      highlight: true
+    },
+    {
+      name: "Intention Test",
+      subtitle: "Plan to reside",
+      values: {
+        "Test": "Intend to stay in Indonesia",
+        "Period": "From date of intention",
+        "Automatic?": "Subjective - based on circumstances",
+        "Most Common": "No - supplementary"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Determine Your Status
+
+<DecisionTree
+  title="Are You a Tax Resident?"
+  description="Find out your Indonesian tax residency status"
+  nodes={[
+    {
+      id: "start",
+      question: "How many days have you been in Indonesia in the past 12 months?",
+      options: [
+        { label: "Under 90 days", nextNodeId: "result-non-resident" },
+        { label: "90-182 days", nextNodeId: "intention-check" },
+        { label: "183+ days", nextNodeId: "result-resident" }
+      ]
+    },
+    {
+      id: "intention-check",
+      question: "Do you intend to stay in Indonesia long-term?",
+      helpText: "Consider: KITAS, property, family, business ties",
+      options: [
+        { label: "Yes, planning to live here", nextNodeId: "ties-check" },
+        { label: "No, temporary stay", nextNodeId: "result-non-resident" },
+        { label: "Unsure", nextNodeId: "result-borderline" }
+      ]
+    },
+    {
+      id: "ties-check",
+      question: "Do you have strong ties to Indonesia?",
+      helpText: "Family living here, own property, primary business",
+      options: [
+        { label: "Yes, strong ties", nextNodeId: "result-likely-resident" },
+        { label: "Not really", nextNodeId: "result-non-resident" }
+      ]
+    },
+    {
+      id: "result-resident",
+      isResult: true,
+      title: "Tax Resident",
+      description: "You are an Indonesian tax resident",
+      recommendation: "With 183+ days in Indonesia, you are a tax resident. Indonesia can tax your worldwide income. You must register for NPWP and file annual SPT.",
+      nextSteps: ["Register for NPWP", "File annual SPT by March 31", "Report all income sources", "Claim foreign tax credits"]
+    },
+    {
+      id: "result-likely-resident",
+      isResult: true,
+      title: "Likely Tax Resident",
+      description: "You may be considered a tax resident",
+      recommendation: "Strong ties + intention to stay can make you a resident even under 183 days. Consult a tax professional to confirm your status.",
+      nextSteps: ["Consult tax advisor", "Consider voluntary registration", "Document your situation"]
+    },
+    {
+      id: "result-non-resident",
+      isResult: true,
+      title: "Non-Resident",
+      description: "You are not an Indonesian tax resident",
+      recommendation: "As a non-resident, only Indonesian-source income is taxable (at 20% withholding usually). You don't need NPWP unless earning Indonesian income.",
+      nextSteps: ["Track your days carefully", "Declare Indonesian income at home", "Check if approaching 183 days"]
+    },
+    {
+      id: "result-borderline",
+      isResult: true,
+      title: "Borderline Case",
+      description: "Your status needs professional review",
+      recommendation: "90-182 days with unclear intentions is a gray area. Get professional advice to clarify your status and plan accordingly.",
+      nextSteps: ["Consult tax professional", "Document your situation", "Consider planning around thresholds"]
+    }
+  ]}
+/>
+
+---
+
+## The 183-Day Rule in Detail
+
+<InfoCard variant="important" title="How Days Are Counted">
+- **Both entry and exit days count** as full days
+- **Rolling 12 months** - not calendar year
+- **Any 12-month period** that includes 183+ days triggers residency
+- **Days don't need to be consecutive**
+
+Example: If you arrive Oct 1, 2024 and spend 183+ days in Indonesia by Sep 30, 2025, you become a tax resident.
+</InfoCard>
+
+### Day Counting Example
+
+<Calculator
+  title="183-Day Calculator"
+  description="Calculate your days in Indonesia"
+  fields={[
+    {
+      id: "days-so-far",
+      label: "Days in Indonesia (past 12 months)",
+      type: "number",
+      defaultValue: 120,
+      min: 0,
+      max: 365
+    },
+    {
+      id: "planned-days",
+      label: "Planned additional days",
+      type: "number",
+      defaultValue: 60,
+      min: 0,
+      max: 365
+    }
+  ]}
+  calculateResult={(values) => {
+    const total = Number(values['days-so-far']) + Number(values['planned-days']);
+    const threshold = 183;
+    const margin = threshold - total;
+
+    const breakdown = [
+      { label: "Days so far", amount: Number(values['days-so-far']) },
+      { label: "Planned days", amount: Number(values['planned-days']) },
+      { label: "Total days", amount: total }
+    ];
+
+    let note = "";
+    if (total >= 183) {
+      note = `At ${total} days, you WILL be a tax resident. Consider implications.`;
+    } else {
+      note = `At ${total} days, you're under the threshold. ${margin} day buffer remaining.`;
+    }
+
+    return {
+      total,
+      breakdown,
+      currency: "days",
+      note
+    };
+  }}
+/>
+
+---
+
+## What Tax Residency Means
+
+### Tax Residents Must:
+- Pay tax on **worldwide income**
+- Register for **NPWP**
+- File **annual SPT** (tax return)
+- Can claim **foreign tax credits**
+
+### Non-Residents:
+- Pay tax only on **Indonesian-source income**
+- **20% withholding** (unless treaty reduces)
+- **No filing required**
+- **No NPWP needed** (unless earning Indonesian income)
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Tax residency Indonesia, 183 day rule, expat tax, resident vs non-resident"
+  placeholder="Ask about tax residency..."
+  suggestedQuestions={[
+    "What if I'm resident in two countries?",
+    "Does tourist visa affect residency?",
+    "When does my residency start?",
+    "Can I avoid becoming resident?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Indonesia Tax Guide for Foreigners](/blog/tax/indonesia-tax-guide-for-foreigners)
+- [NPWP for Foreigners](/blog/tax/npwp-foreigners-guide)
+- [Tax Treaties: Avoiding Double Taxation](/blog/tax/tax-treaties-explained)

@@ -1,0 +1,336 @@
+---
+title: "Shareholder KITAS Requirements in Indonesia 2025"
+slug: "shareholder-kitas-requirements"
+description: "KITAS requirements for foreign shareholders in Indonesian companies. Investment amounts, visa options, and what you need to know."
+excerpt: "Owning shares in an Indonesian company? Here's what KITAS options you have."
+category: "immigration"
+tags:
+  - shareholder KITAS
+  - investor visa
+  - PT PMA shareholder
+  - foreign ownership
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Immigration Advisor"
+featured: false
+image:
+  src: "/images/blog/immigration/shareholder.jpg"
+  alt: "Foreign shareholder in Indonesia"
+seo:
+  title: "Shareholder KITAS Requirements 2025 | Indonesia Foreign Ownership"
+  description: "KITAS options for foreign shareholders in Indonesian companies. Requirements, investment minimums, and how to get residency as a shareholder."
+  keywords:
+    - shareholder KITAS Indonesia
+    - foreign shareholder visa
+    - PT PMA ownership KITAS
+readingTime: 8
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "immigration_docs"
+    documentsUsed: 14
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "investor-kitas-guide"
+  - "director-vs-employee-kitas"
+  - "pt-pma-capital-requirements"
+tableOfContents: true
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  Calculator,
+  InfoCard,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Shareholder KITAS Requirements in Indonesia 2025
+
+Foreign shareholders in Indonesian companies have several KITAS options depending on their role and investment level.
+
+## Shareholder KITAS Options
+
+<DecisionTree
+  title="Which KITAS for Shareholders?"
+  description="Find the right permit for your situation"
+  nodes={[
+    {
+      id: "start",
+      question: "Do you want to actively work in the company?",
+      options: [
+        { label: "Yes, I'll work/manage the business", next: "work" },
+        { label: "No, passive investor only", next: "passive" }
+      ]
+    },
+    {
+      id: "work",
+      question: "What role will you have?",
+      options: [
+        { label: "Director (in company deed)", next: "director" },
+        { label: "Other working role (manager, etc.)", next: "worker" }
+      ]
+    },
+    {
+      id: "passive",
+      question: "Do you meet IDR 1B+ investment?",
+      options: [
+        { label: "Yes, I have IDR 1B+ invested", next: "investor-kitas" },
+        { label: "No, less than IDR 1B", next: "no-investor" }
+      ]
+    },
+    {
+      id: "director",
+      result: {
+        title: "Director KITAS with RPTKA",
+        description: "As a working director, you need full work authorization. RPTKA + KITAS required. Company sponsors you. DKP-TKA fees apply."
+      }
+    },
+    {
+      id: "worker",
+      result: {
+        title: "Employee KITAS with RPTKA",
+        description: "Working in a non-director role requires employee KITAS. RPTKA based on your position. Normal qualification requirements."
+      }
+    },
+    {
+      id: "investor-kitas",
+      result: {
+        title: "Investor KITAS (C313)",
+        description: "Passive investors with IDR 1B+ can get Investor KITAS without RPTKA. No DKP-TKA fees. Can attend board meetings and receive dividends."
+      }
+    },
+    {
+      id: "no-investor",
+      result: {
+        title: "No Direct KITAS Pathway",
+        description: "If under IDR 1B and not working, you can't get KITAS as a shareholder. Consider increasing investment to IDR 1B or taking a working role."
+      }
+    }
+  ]}
+/>
+
+---
+
+## Investment Requirements for Shareholders
+
+<Calculator
+  title="Shareholder Investment Calculator"
+  description="Check your KITAS eligibility"
+  fields={[
+    {
+      id: "totalCapital",
+      label: "Company Paid-Up Capital",
+      type: "number",
+      defaultValue: 5000000000,
+      min: 0,
+      step: 500000000,
+      suffix: "IDR"
+    },
+    {
+      id: "sharePercent",
+      label: "Your Ownership Percentage",
+      type: "number",
+      defaultValue: 30,
+      min: 1,
+      max: 100,
+      suffix: "%"
+    }
+  ]}
+  calculateResult={(values) => {
+    const capital = Number(values.totalCapital);
+    const percent = Number(values.sharePercent) / 100;
+    const yourShare = capital * percent;
+    const minInvestor = 1000000000;
+    const eligible = yourShare >= minInvestor;
+
+    return {
+      total: yourShare,
+      breakdown: [
+        { label: "Total Company Capital", amount: capital },
+        { label: `Your Share (${values.sharePercent}%)`, amount: yourShare },
+        { label: "Investor KITAS Minimum", amount: minInvestor }
+      ],
+      currency: "IDR",
+      note: eligible
+        ? "✅ Eligible for Investor KITAS (passive)"
+        : "❌ Below IDR 1B - need to work or increase investment"
+    };
+  }}
+/>
+
+### Minimum Thresholds
+
+| KITAS Type | Investment Requirement |
+|------------|----------------------|
+| Investor KITAS (passive) | IDR 1,000,000,000 minimum personal investment |
+| Director KITAS (working) | No minimum (company must meet IDR 10B) |
+| Employee KITAS (working) | Not investment-based |
+
+---
+
+## Three Paths for Shareholders
+
+<ComparisonTable
+  title="Shareholder KITAS Paths"
+  description="Options based on role and investment"
+  items={[
+    {
+      name: "Path 1: Pure Investor",
+      subtitle: "IDR 1B+ investment, no work",
+      values: {
+        "RPTKA": "Not required",
+        "DKP-TKA": "Not required",
+        "Activities": "Board meetings, dividends",
+        "Best For": "Passive income"
+      }
+    },
+    {
+      name: "Path 2: Investor-Director",
+      subtitle: "Shareholder + Director role",
+      values: {
+        "RPTKA": "Required",
+        "DKP-TKA": "Required",
+        "Activities": "Full business operations",
+        "Best For": "Running your business"
+      },
+      highlight: true
+    },
+    {
+      name: "Path 3: Working Shareholder",
+      subtitle: "Shareholder + employee role",
+      values: {
+        "RPTKA": "Required",
+        "DKP-TKA": "Required",
+        "Activities": "Specific job role",
+        "Best For": "Specialist work + equity"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Pure Investor (No Work)
+
+If you're a passive shareholder:
+
+### What You CAN Do
+- Attend annual general meetings
+- Participate in shareholder decisions
+- Receive dividends
+- Review company reports
+- Visit your investment
+
+### What You CANNOT Do
+- Manage daily operations
+- Direct employees
+- Sign contracts as company rep
+- Represent company to clients
+- Make operational decisions
+
+<InfoCard variant="warning" title="Line Between Active and Passive">
+Immigration can question if you're "really" just an investor if you're constantly at the office. Keep your activities clearly passive if using Investor KITAS.
+</InfoCard>
+
+---
+
+## Documents for Shareholder KITAS
+
+### All Shareholders Need
+- Passport (24+ months validity)
+- Passport photos (4x6, red background)
+- CV/Resume
+- Company deed showing shareholding
+
+### For Investor KITAS (Passive)
+- Proof of capital deposit (IDR 1B+ your share)
+- Bank statements
+- Share certificate (if available)
+- NIB and company documents
+
+### For Working Shareholder (Director/Employee)
+- All above documents
+- RPTKA application documents
+- Job description
+- Qualifications (degree, experience)
+
+---
+
+## Multiple Shareholders
+
+If your PT PMA has multiple foreign shareholders:
+
+| Shareholders | Investment per Person | Total Company Capital |
+|--------------|----------------------|----------------------|
+| 1 foreigner | IDR 1B+ | IDR 10B minimum |
+| 2 foreigners | IDR 1B+ each = IDR 2B+ | IDR 10B minimum |
+| 3 foreigners | IDR 1B+ each = IDR 3B+ | IDR 10B minimum |
+
+<InfoCard variant="note" title="Each Foreigner Needs IDR 1B">
+For Investor KITAS, each foreign shareholder must have at least IDR 1 billion invested in their name. You cannot split one IDR 1B between two people.
+</InfoCard>
+
+---
+
+## Shareholder Without KITAS?
+
+Not all shareholders need KITAS:
+
+### When KITAS Not Required
+- You live outside Indonesia
+- You visit on tourist/business visa only
+- You don't need to work in Indonesia
+- You only attend occasional meetings
+
+### When KITAS Recommended
+- You want to live in Indonesia
+- You need to be present regularly
+- You want to manage the business
+- You want stability/long-term stay
+
+---
+
+## Path to Permanent Residency
+
+Shareholders can work toward KITAP (permanent stay):
+
+1. **3 consecutive years on KITAS** (same category)
+2. **Good compliance record**
+3. **Maintained investment** (if investor)
+4. **Apply for KITAP** (5-year permit)
+
+<InfoCard variant="tip" title="KITAP Benefits for Investors">
+- 5-year validity
+- Multiple entry
+- Easier extensions
+- More stability
+- Path to naturalization (optional)
+</InfoCard>
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Shareholder KITAS, PT PMA ownership, investor visa, foreign shareholder Indonesia"
+  placeholder="Ask about shareholder KITAS..."
+  suggestedQuestions={[
+    "Can I sell shares and keep my KITAS?",
+    "What if my shareholding decreases?",
+    "Can I own shares in multiple companies?",
+    "Does my spouse get residence too?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Investor KITAS Guide](/blog/immigration/investor-kitas-guide)
+- [Director vs Employee KITAS](/blog/immigration/director-vs-employee-kitas)
+- [PT PMA Capital Requirements](/blog/business/pt-pma-capital-requirements)
+- [PT PMA Registration Guide](/blog/business/pt-pma-registration-guide)

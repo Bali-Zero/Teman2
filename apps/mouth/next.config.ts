@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'placehold.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'image.pollinations.ai',
+      },
     ],
   },
   // NOTE: API proxying is handled by src/app/api/[...path]/route.ts

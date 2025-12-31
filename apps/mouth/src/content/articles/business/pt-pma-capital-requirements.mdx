@@ -1,0 +1,288 @@
+---
+title: "PT PMA Capital Requirements: What You Need to Invest 2025"
+slug: "pt-pma-capital-requirements"
+description: "Understanding Indonesia's IDR 10 billion PT PMA investment requirement. What counts, how to structure it, and what actually needs to be deposited."
+excerpt: "The IDR 10 billion requirement confuses many. Here's what it really means and how to plan your investment."
+category: "business"
+tags:
+  - PT PMA
+  - capital requirements
+  - investment
+  - paid-up capital
+  - foreign investment
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: false
+image:
+  src: "/images/blog/business/pt-pma-capital.jpg"
+  alt: "Investment planning documents"
+seo:
+  title: "PT PMA Capital Requirements 2025 | IDR 10 Billion Explained"
+  description: "PT PMA minimum investment explained. What counts toward IDR 10 billion, paid-up capital rules, and how to structure your investment."
+  keywords:
+    - PT PMA capital
+    - indonesia investment requirement
+    - paid up capital
+    - minimum investment
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "legal_unified"
+    documentsUsed: 18
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "pt-pma-registration-guide"
+  - "starting-a-business-in-indonesia-complete-guide"
+tableOfContents: true
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  Checklist,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# PT PMA Capital Requirements: What You Need to Invest 2025
+
+The **IDR 10 billion** (~$625,000 USD) minimum investment for PT PMA is one of the most misunderstood requirements. Let's break down what it actually means.
+
+## The Two Key Numbers
+
+| Requirement | Amount | What It Means |
+|-------------|--------|---------------|
+| **Total Investment** | IDR 10 billion min | Total planned investment over company life |
+| **Paid-up Capital** | IDR 10 billion min | Cash deposited in company bank account |
+
+<InfoCard variant="important" title="Both Must Be Met">
+As of current regulations, **both** the total investment plan AND the paid-up capital must be at least IDR 10 billion. This changed from previous rules where paid-up capital could be lower.
+</InfoCard>
+
+---
+
+## What Counts as Investment?
+
+Your IDR 10 billion investment plan can include:
+
+<ComparisonTable
+  title="What Counts Toward Investment"
+  description="Categories that count toward your IDR 10B"
+  items={[
+    {
+      name: "Share Capital",
+      subtitle: "Cash deposited",
+      values: {
+        "Type": "Cash",
+        "Counts?": "Yes - Primary",
+        "Documentation": "Bank deposit confirmation"
+      },
+      highlight: true
+    },
+    {
+      name: "Equipment & Assets",
+      subtitle: "Physical assets",
+      values: {
+        "Type": "Assets",
+        "Counts?": "Yes",
+        "Documentation": "Import documents, purchase receipts"
+      }
+    },
+    {
+      name: "Working Capital",
+      subtitle: "Operating funds",
+      values: {
+        "Type": "Cash",
+        "Counts?": "Yes",
+        "Documentation": "Financial projections"
+      }
+    },
+    {
+      name: "Shareholder Loans",
+      subtitle: "Loans from owners",
+      values: {
+        "Type": "Debt",
+        "Counts?": "Yes",
+        "Documentation": "Loan agreements"
+      }
+    },
+    {
+      name: "Land & Buildings",
+      subtitle: "If company-owned",
+      values: {
+        "Type": "Assets",
+        "Counts?": "Yes",
+        "Documentation": "Purchase agreements, valuations"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Investment Calculator
+
+<Calculator
+  title="Investment Structure Planner"
+  description="Plan how to reach IDR 10B investment"
+  fields={[
+    {
+      id: "cash",
+      label: "Cash to Deposit (Share Capital)",
+      type: "number",
+      defaultValue: 10000000000,
+      min: 0,
+      step: 500000000,
+      suffix: "IDR"
+    },
+    {
+      id: "equipment",
+      label: "Equipment & Machinery",
+      type: "number",
+      defaultValue: 0,
+      min: 0,
+      step: 100000000,
+      suffix: "IDR"
+    },
+    {
+      id: "working",
+      label: "Working Capital (Year 1)",
+      type: "number",
+      defaultValue: 0,
+      min: 0,
+      step: 100000000,
+      suffix: "IDR"
+    },
+    {
+      id: "property",
+      label: "Property/Land",
+      type: "number",
+      defaultValue: 0,
+      min: 0,
+      step: 500000000,
+      suffix: "IDR"
+    }
+  ]}
+  calculateResult={(values) => {
+    const cash = Number(values.cash);
+    const equipment = Number(values.equipment);
+    const working = Number(values.working);
+    const property = Number(values.property);
+
+    const total = cash + equipment + working + property;
+    const required = 10000000000;
+    const shortage = Math.max(0, required - total);
+    const paidUpShortage = Math.max(0, required - cash);
+
+    const breakdown = [
+      { label: "Share Capital (Cash)", amount: cash },
+      { label: "Equipment & Machinery", amount: equipment },
+      { label: "Working Capital", amount: working },
+      { label: "Property/Land", amount: property },
+      { label: "Total Investment Plan", amount: total }
+    ];
+
+    let note = "";
+    if (total >= required && cash >= required) {
+      note = "Requirements met!";
+    } else if (cash < required) {
+      note = `Paid-up capital short by IDR ${(paidUpShortage/1000000000).toFixed(1)}B. Must deposit IDR 10B minimum.`;
+    } else if (total < required) {
+      note = `Total investment short by IDR ${(shortage/1000000000).toFixed(1)}B`;
+    }
+
+    return {
+      total,
+      breakdown,
+      currency: "IDR",
+      note
+    };
+  }}
+/>
+
+---
+
+## Common Questions About Capital
+
+<InfoCard variant="note" title="FAQ">
+**Q: Do I need IDR 10B in my bank account on day 1?**
+A: Yes, paid-up capital of IDR 10B must be deposited to open the company bank account and complete registration.
+
+**Q: Can I use it after depositing?**
+A: Yes, once deposited as share capital, you use these funds for business operations.
+
+**Q: What if I can't meet IDR 10B?**
+A: Options include:
+- Joint venture with local partner
+- Different business structure (representative office, etc.)
+- Wait until you have sufficient capital
+
+**Q: Is there any way around the minimum?**
+A: No legitimate way. Regulations are clear on IDR 10B minimum for PT PMA.
+</InfoCard>
+
+---
+
+## Structuring Your Investment
+
+<Checklist
+  title="Investment Planning Checklist"
+  description="Steps to structure your PT PMA investment"
+  persistKey="pma-capital-checklist"
+  items={[
+    {
+      id: "plan",
+      label: "Create 3-year investment plan",
+      description: "Breakdown of how capital will be used",
+      required: true,
+      category: "planning"
+    },
+    {
+      id: "source",
+      label: "Document source of funds",
+      description: "Bank statements, investment records",
+      required: true,
+      category: "documentation"
+    },
+    {
+      id: "timeline",
+      label: "Plan capital injection timeline",
+      description: "When funds will be transferred",
+      required: true,
+      category: "planning"
+    },
+    {
+      id: "currency",
+      label: "Plan currency exchange",
+      description: "USD to IDR conversion strategy",
+      required: false,
+      category: "practical"
+    },
+    {
+      id: "bank",
+      label: "Research bank requirements",
+      description: "Different banks have different processes",
+      required: true,
+      category: "practical"
+    }
+  ]}
+  categories={[
+    { id: "planning", label: "Planning", color: "blue" },
+    { id: "documentation", label: "Documentation", color: "green" },
+    { id: "practical", label: "Practical", color: "amber" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Related Articles
+
+- [How to Register PT PMA](/blog/business/pt-pma-registration-guide)
+- [Starting a Business in Indonesia](/blog/business/starting-a-business-in-indonesia-complete-guide)
+- [NIB Explained](/blog/business/nib-explained)

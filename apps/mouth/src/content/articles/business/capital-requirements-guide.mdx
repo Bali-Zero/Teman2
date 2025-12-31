@@ -1,0 +1,359 @@
+---
+title: "PT PMA Capital Requirements Indonesia 2025: Investment Guide"
+slug: "capital-requirements-guide"
+description: "Understanding PT PMA capital requirements in Indonesia. Minimum investment, paid-up capital, and what investors need to know."
+excerpt: "How much capital do you need for a PT PMA? Here's the complete breakdown."
+category: "business"
+tags:
+  - capital requirements
+  - PT PMA investment
+  - minimum investment
+  - paid-up capital
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: false
+image:
+  src: "/images/blog/business/capital-requirements.jpg"
+  alt: "PT PMA capital requirements"
+seo:
+  title: "PT PMA Capital Requirements Indonesia 2025 | Investment Guide"
+  description: "Complete guide to PT PMA capital requirements. Minimum investment and paid-up capital explained."
+  keywords:
+    - PT PMA capital requirements
+    - minimum investment indonesia
+    - paid up capital
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "business_docs"
+    documentsUsed: 14
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "pt-pma-registration-guide"
+  - "business-licenses-overview"
+  - "investor-kitas-guide"
+tableOfContents: true
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  InfoCard,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# PT PMA Capital Requirements Indonesia 2025: Investment Guide
+
+Understanding capital requirements is crucial for foreign investors in Indonesia. Here's what you need to know.
+
+## Capital Structure Overview
+
+<InfoCard variant="note" title="Two Types of Capital">
+**PT PMA has two capital figures:**
+
+1. **Authorized Capital** (Modal Dasar) - Maximum capital company can have
+2. **Paid-up Capital** (Modal Disetor) - Actually invested capital
+
+Both have minimum requirements for foreign investment.
+</InfoCard>
+
+---
+
+## Current Requirements
+
+### Standard PT PMA Minimums
+
+| Capital Type | Minimum Amount |
+|--------------|----------------|
+| **Total Investment** | IDR 10 billion (~USD 625,000) |
+| **Paid-up Capital** | IDR 10 billion (must match total investment now) |
+| **Per Shareholder** | IDR 10 million minimum |
+
+<InfoCard variant="warning" title="2021 Changes">
+**Important change:**
+
+Under current regulations, the paid-up capital must equal the total investment commitment. This means you need to actually have and invest IDR 10 billion minimum.
+
+This is a significant increase from earlier requirements.
+</InfoCard>
+
+---
+
+## Investment vs Paid-Up Capital
+
+### What's the Difference?
+
+| Concept | Meaning |
+|---------|---------|
+| Total Investment | All resources for the business (capital + loans + equipment) |
+| Paid-Up Capital | Actual cash/assets contributed by shareholders |
+| Authorized Capital | Maximum shares the company can issue |
+
+### Current Requirement
+
+<ComparisonTable
+  title="Capital Requirements"
+  description="What you need to invest"
+  items={[
+    {
+      name: "Total Investment",
+      subtitle: "Investment commitment",
+      values: {
+        "Minimum": "IDR 10 billion",
+        "USD Equivalent": "~$625,000",
+        "Includes": "All project value",
+        "When needed": "Committed at setup"
+      },
+      highlight: true
+    },
+    {
+      name: "Paid-Up Capital",
+      subtitle: "Actual investment",
+      values: {
+        "Minimum": "IDR 10 billion",
+        "USD Equivalent": "~$625,000",
+        "Includes": "Cash + assets",
+        "When needed": "Must deposit"
+      }
+    },
+    {
+      name: "Per Shareholder",
+      subtitle: "Individual minimum",
+      values: {
+        "Minimum": "IDR 10 million",
+        "USD Equivalent": "~$625",
+        "Includes": "Share value",
+        "When needed": "Per investor"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Sector-Specific Requirements
+
+### Some Sectors Have Higher Minimums
+
+| Sector | Additional Requirements |
+|--------|------------------------|
+| Banking | Much higher (billions USD) |
+| Insurance | Specific capital requirements |
+| Mining | Higher investment thresholds |
+| Telecommunications | Special requirements |
+| Education | Minimum IDR 10B applies |
+| Healthcare | May have additional requirements |
+
+<InfoCard variant="note" title="Check Your KBLI">
+**Sector requirements vary:**
+
+Some business classifications (KBLI codes) have specific capital requirements above the standard minimum. Always verify requirements for your specific activities.
+</InfoCard>
+
+---
+
+## Capital Calculation
+
+### What Counts Toward Investment?
+
+| Counts | Doesn't Count |
+|--------|---------------|
+| Cash deposits | Future earnings |
+| Equipment (appraised) | Goodwill |
+| Land/buildings | Projected revenue |
+| Intellectual property | Unvalued intangibles |
+| Initial inventory | Operating expenses |
+
+### Calculator
+
+<Calculator
+  title="Investment Structure"
+  description="Plan your capital allocation"
+  fields={[
+    {
+      id: "cash",
+      label: "Cash Investment (IDR)",
+      type: "number",
+      defaultValue: 8000000000,
+      min: 0
+    },
+    {
+      id: "equipment",
+      label: "Equipment Value (IDR)",
+      type: "number",
+      defaultValue: 1500000000,
+      min: 0
+    },
+    {
+      id: "property",
+      label: "Property/Land (IDR)",
+      type: "number",
+      defaultValue: 0,
+      min: 0
+    },
+    {
+      id: "other",
+      label: "Other Assets (IDR)",
+      type: "number",
+      defaultValue: 500000000,
+      min: 0
+    }
+  ]}
+  calculateResult={(values) => {
+    const total = values.cash + values.equipment + values.property + values.other;
+    const minimum = 10000000000;
+    const shortfall = Math.max(0, minimum - total);
+    const meetsRequirement = total >= minimum;
+
+    return {
+      total: total,
+      breakdown: [
+        { label: "Cash investment", amount: values.cash },
+        { label: "Equipment value", amount: values.equipment },
+        { label: "Property/Land", amount: values.property },
+        { label: "Other assets", amount: values.other },
+        { label: "TOTAL INVESTMENT", amount: total },
+        { label: "Minimum required", amount: minimum },
+        { label: meetsRequirement ? "Above minimum by" : "SHORTFALL", amount: meetsRequirement ? total - minimum : shortfall }
+      ],
+      currency: "IDR",
+      note: meetsRequirement
+        ? `Meets requirement (~USD ${Math.round(total / 16000).toLocaleString()})`
+        : `Need additional IDR ${shortfall.toLocaleString()} to meet minimum`
+    };
+  }}
+/>
+
+---
+
+## Asset Contribution
+
+### Non-Cash Capital
+
+<InfoCard variant="tip" title="Contributing Assets">
+**You can contribute assets instead of all cash:**
+
+- Equipment (machinery, vehicles)
+- Intellectual property (patents, trademarks)
+- Real property (land, buildings)
+
+**Requirements:**
+- Must be appraised by certified appraiser
+- Appraisal report submitted to notary
+- Assets must be transferred to company
+- Documented in company deed
+</InfoCard>
+
+### Appraisal Process
+
+| Step | Action |
+|------|--------|
+| 1 | Engage certified appraiser |
+| 2 | Provide asset documentation |
+| 3 | Appraiser inspects/values |
+| 4 | Receive appraisal report |
+| 5 | Submit to notary |
+| 6 | Record in company deed |
+
+---
+
+## Funding Sources
+
+### Where Capital Can Come From
+
+| Source | Notes |
+|--------|-------|
+| Personal funds | Most common |
+| Foreign parent company | For subsidiaries |
+| Foreign investors | Joint ventures |
+| Foreign bank loans | Must be documented |
+| Asset transfer | With appraisal |
+
+### Loan vs Equity
+
+| Factor | Equity | Loan |
+|--------|--------|------|
+| Ownership | Yes | No |
+| Repayment | No | Yes |
+| Interest | No | Yes (deductible) |
+| Risk | Higher | Lower |
+| Documentation | Simpler | More complex |
+
+---
+
+## Proof of Capital
+
+### What Immigration/OSS May Request
+
+| Document | Purpose |
+|----------|---------|
+| Bank statement | Prove cash availability |
+| Transfer receipt | Actual investment made |
+| Appraisal report | Non-cash assets |
+| Bank reference letter | Financial standing |
+| Company deed | Shows capital structure |
+
+---
+
+## Common Questions
+
+### FAQs
+
+<InfoCard variant="note" title="Can I Start Smaller?">
+**Common question:** Can I start with less capital?
+
+**Answer:**
+- Minimum IDR 10B is required for standard PT PMA
+- Some special zones may have different rules
+- Representative office doesn't require capital but can't trade
+- Consider PT PMDN (domestic company) if eligible
+</InfoCard>
+
+| Question | Answer |
+|----------|--------|
+| Can I add capital later? | Yes, through capital increase |
+| What if capital decreases? | May need to report/adjust |
+| Can capital be withdrawn? | Not easily - it's company capital |
+| Is capital locked up? | Used for business operations |
+
+---
+
+## Implications
+
+### What Capital Affects
+
+| Area | Impact |
+|------|--------|
+| Business scale | Limits your operations |
+| KITAS eligibility | Per-foreigner requirements |
+| Banking | Affects credit lines |
+| Partners/investors | Ownership percentages |
+| Exit | Value at sale |
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="PT PMA capital requirements, minimum investment, paid up capital, Indonesia investment"
+  placeholder="Ask about capital requirements..."
+  suggestedQuestions={[
+    "Can I reduce capital later?",
+    "What if I can't meet IDR 10B?",
+    "Can equipment count as capital?",
+    "How do I prove capital investment?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [PT PMA Setup Guide](/blog/business/pt-pma-setup-guide)
+- [Business Licenses Overview](/blog/business/business-licenses-overview)
+- [Investor KITAS Guide](/blog/immigration/investor-kitas-guide)

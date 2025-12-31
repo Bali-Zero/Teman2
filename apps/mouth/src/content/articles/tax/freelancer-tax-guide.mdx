@@ -1,0 +1,292 @@
+---
+title: "Freelancer Taxes in Indonesia 2025"
+slug: "freelancer-tax-guide"
+description: "Tax guide for freelancers in Indonesia. How to calculate, report, and pay taxes on freelance income. Domestic and international clients."
+excerpt: "Freelancing in Indonesia? Here's how your taxes work and what you need to know."
+category: "tax"
+tags:
+  - freelancer tax
+  - self-employed
+  - PPh
+  - independent contractor
+  - Indonesia tax
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Tax Advisor"
+featured: false
+image:
+  src: "/images/blog/tax/freelancer-tax.jpg"
+  alt: "Freelancer working on taxes"
+seo:
+  title: "Freelancer Taxes Indonesia 2025 | Self-Employed Tax Guide"
+  description: "How freelancers pay taxes in Indonesia. Guide to calculating, reporting, and paying tax on freelance income from domestic and international clients."
+  keywords:
+    - freelancer tax indonesia
+    - self employed tax
+    - independent contractor
+    - freelance tax
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "tax_genius"
+    documentsUsed: 14
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "indonesia-tax-guide-for-foreigners"
+  - "npwp-foreigners-guide"
+  - "annual-tax-return-guide"
+tableOfContents: true
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  Checklist,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Freelancer Taxes in Indonesia 2025
+
+Freelancing creates different tax obligations than employment. Here's how taxes work for self-employed individuals in Indonesia.
+
+## Two Scenarios
+
+<ComparisonTable
+  title="Freelancer Tax Scenarios"
+  description="Your situation determines your obligations"
+  items={[
+    {
+      name: "International Clients Only",
+      subtitle: "All income from outside Indonesia",
+      values: {
+        "Indonesian Tax?": "Yes, if tax resident",
+        "Withholding": "No (paid directly)",
+        "Reporting": "Annual SPT",
+        "Complexity": "Lower"
+      },
+      highlight: true
+    },
+    {
+      name: "Indonesian Clients",
+      subtitle: "Income from within Indonesia",
+      values: {
+        "Indonesian Tax?": "Yes, always",
+        "Withholding": "PPh 21/23 by client",
+        "Reporting": "Annual SPT + compliance",
+        "Complexity": "Higher"
+      }
+    }
+  ]}
+/>
+
+---
+
+## International Freelancers
+
+If you're a tax resident freelancing for **international clients only**:
+
+### Your Obligations
+1. Register for NPWP
+2. Report income on annual SPT (Form 1770)
+3. Pay tax on worldwide income
+4. Can claim foreign tax credits
+
+### Tax Calculation
+
+<Calculator
+  title="Freelancer Tax Calculator"
+  description="Estimate your annual tax on freelance income"
+  fields={[
+    {
+      id: "annual",
+      label: "Annual Freelance Income (IDR)",
+      type: "number",
+      defaultValue: 300000000,
+      min: 0,
+      step: 10000000,
+      suffix: "IDR"
+    },
+    {
+      id: "expenses",
+      label: "Business Expenses (IDR)",
+      type: "number",
+      defaultValue: 50000000,
+      min: 0,
+      step: 5000000,
+      suffix: "IDR"
+    },
+    {
+      id: "status",
+      label: "PTKP Status",
+      type: "select",
+      options: [
+        { value: "TK0", label: "Single (TK/0)" },
+        { value: "K0", label: "Married (K/0)" },
+        { value: "K1", label: "Married + 1 child" },
+        { value: "K2", label: "Married + 2 children" }
+      ],
+      defaultValue: "TK0"
+    }
+  ]}
+  calculateResult={(values) => {
+    const income = Number(values.annual);
+    const expenses = Number(values.expenses);
+    const net = income - expenses;
+
+    const ptkpMap = { 'TK0': 54000000, 'K0': 58500000, 'K1': 63000000, 'K2': 67500000 };
+    const ptkp = ptkpMap[values.status];
+
+    let taxable = Math.max(0, net - ptkp);
+    let tax = 0;
+    let remaining = taxable;
+
+    if (remaining > 0) { const b1 = Math.min(remaining, 60000000); tax += b1 * 0.05; remaining -= b1; }
+    if (remaining > 0) { const b2 = Math.min(remaining, 190000000); tax += b2 * 0.15; remaining -= b2; }
+    if (remaining > 0) { const b3 = Math.min(remaining, 250000000); tax += b3 * 0.25; remaining -= b3; }
+    if (remaining > 0) { const b4 = Math.min(remaining, 4500000000); tax += b4 * 0.30; remaining -= b4; }
+    if (remaining > 0) { tax += remaining * 0.35; }
+
+    const effectiveRate = net > 0 ? ((tax / net) * 100).toFixed(1) : 0;
+
+    return {
+      total: tax,
+      breakdown: [
+        { label: "Gross Income", amount: income },
+        { label: "Expenses", amount: -expenses },
+        { label: "Net Income", amount: net },
+        { label: "PTKP Deduction", amount: -ptkp },
+        { label: "Taxable Income", amount: taxable },
+        { label: "Annual Tax", amount: tax }
+      ],
+      currency: "IDR",
+      note: `Effective tax rate on net income: ${effectiveRate}%`
+    };
+  }}
+/>
+
+---
+
+## Indonesian Clients
+
+If you have **Indonesian clients**, they're required to withhold tax:
+
+### PPh 21 or PPh 23?
+
+| Situation | Tax Type | Rate |
+|-----------|----------|------|
+| Individual freelancer providing services | PPh 21 | Progressive (5-35%) |
+| Services to company | PPh 23 | 2% of gross |
+| Technical/management/consulting | PPh 23 | 2% of gross |
+
+<InfoCard variant="note" title="PPh 23 is Not Final">
+PPh 23 (2%) is a **prepayment**, not final tax. You must still file SPT and may owe additional tax or get a refund depending on total income.
+</InfoCard>
+
+---
+
+## Tracking and Records
+
+<Checklist
+  title="Freelancer Record Keeping"
+  description="What to track for tax purposes"
+  persistKey="freelancer-records"
+  items={[
+    {
+      id: "income",
+      label: "All income received",
+      description: "Track by client, date, amount",
+      required: true,
+      category: "income"
+    },
+    {
+      id: "invoices",
+      label: "Copies of invoices",
+      description: "Keep all invoices issued",
+      required: true,
+      category: "income"
+    },
+    {
+      id: "bukti-potong",
+      label: "Bukti Potong from clients",
+      description: "Tax withholding certificates",
+      required: true,
+      category: "tax"
+    },
+    {
+      id: "expenses",
+      label: "Business expense receipts",
+      description: "Deductible costs",
+      required: true,
+      category: "expenses"
+    },
+    {
+      id: "bank",
+      label: "Bank statements",
+      description: "Shows income and expenses",
+      required: true,
+      category: "financial"
+    },
+    {
+      id: "foreign-proof",
+      label: "Foreign income proof",
+      description: "PayPal, Wise, bank transfers",
+      required: false,
+      category: "income"
+    }
+  ]}
+  categories={[
+    { id: "income", label: "Income", color: "green" },
+    { id: "expenses", label: "Expenses", color: "amber" },
+    { id: "tax", label: "Tax Docs", color: "blue" },
+    { id: "financial", label: "Financial", color: "purple" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Deductible Expenses
+
+As a freelancer, you can deduct business-related expenses:
+
+### Deductible
+- Office/coworking costs
+- Equipment for work
+- Software subscriptions
+- Professional development
+- Travel for work
+- Communication costs
+
+### Not Deductible
+- Personal expenses
+- Entertainment (limited)
+- Fines or penalties
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Freelancer tax, self-employed Indonesia, PPh 23, independent contractor tax"
+  placeholder="Ask about freelancer taxes..."
+  suggestedQuestions={[
+    "Do I need to charge VAT?",
+    "How often do I pay taxes?",
+    "Can I deduct my laptop?",
+    "What if clients don't withhold tax?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Indonesia Tax Guide for Foreigners](/blog/tax/indonesia-tax-guide-for-foreigners)
+- [NPWP for Foreigners](/blog/tax/npwp-foreigners-guide)
+- [Annual Tax Return (SPT) Guide](/blog/tax/annual-tax-return-guide)
+- [Freelancing Legally in Indonesia](/blog/digital-nomad/freelancing-legally-indonesia)

@@ -1,0 +1,485 @@
+---
+title: "Labor Law in Indonesia 2025: Employer's Guide"
+slug: "labor-law-guide"
+description: "Indonesian labor law essentials for employers. Employment contracts, working hours, benefits, and compliance requirements."
+excerpt: "Hiring in Indonesia? Here's what every employer needs to know about labor law."
+category: "business"
+tags:
+  - labor law
+  - employment
+  - HR compliance
+  - worker rights
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Legal Advisor"
+featured: true
+image:
+  src: "/images/blog/business/labor-law.jpg"
+  alt: "Labor law Indonesia"
+seo:
+  title: "Labor Law Indonesia 2025 | Employer Guide"
+  description: "Complete guide to Indonesian labor law. Employment contracts, benefits, and compliance for employers."
+  keywords:
+    - labor law indonesia
+    - employment law
+    - hiring indonesia
+readingTime: 12
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "legal_docs"
+    documentsUsed: 22
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "hiring-indonesian-employees"
+  - "termination-severance"
+  - "kitas-work-permit-guide"
+tableOfContents: true
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  Checklist,
+  InfoCard,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Labor Law in Indonesia 2025: Employer's Guide
+
+Indonesian labor law has specific requirements for employment relationships. Understanding these is essential for compliance.
+
+## Employment Contract Types
+
+<ComparisonTable
+  title="Contract Types"
+  description="PKWT vs PKWTT"
+  items={[
+    {
+      name: "PKWTT",
+      subtitle: "Permanent/Indefinite",
+      values: {
+        "Duration": "No end date",
+        "Termination": "With cause + severance",
+        "Probation": "Max 3 months",
+        "Best For": "Core employees"
+      },
+      highlight: true
+    },
+    {
+      name: "PKWT",
+      subtitle: "Fixed-Term/Contract",
+      values: {
+        "Duration": "Max 5 years",
+        "Termination": "At contract end",
+        "Probation": "Not allowed",
+        "Best For": "Project/temporary"
+      }
+    },
+    {
+      name: "Freelance",
+      subtitle: "Non-employee",
+      values: {
+        "Duration": "Per project",
+        "Termination": "Per agreement",
+        "Probation": "N/A",
+        "Best For": "Specific tasks"
+      }
+    }
+  ]}
+/>
+
+---
+
+## PKWT (Fixed-Term Contract)
+
+<InfoCard variant="warning" title="PKWT Limitations">
+**PKWT can only be used for:**
+- Temporary work
+- Seasonal work
+- One-time projects
+- Work related to new products/processes (max 2 years)
+
+**Cannot be used for:**
+- Permanent positions
+- Core ongoing operations
+- Indefinite assignments
+
+Violation: Contract automatically becomes PKWTT (permanent).
+</InfoCard>
+
+### PKWT Duration Rules
+
+| Rule | Limit |
+|------|-------|
+| Initial term | Max 5 years (cumulative) |
+| Extensions | Within 5-year limit |
+| No probation | Probation void if written |
+| Compensation | Required upon completion |
+
+---
+
+## Working Hours
+
+### Standard Working Hours
+
+| Schedule | Hours/Day | Days/Week | Total/Week |
+|----------|-----------|-----------|------------|
+| Option 1 | 7 hours | 6 days | 42 hours |
+| Option 2 | 8 hours | 5 days | 40 hours |
+
+### Overtime Rules
+
+<Calculator
+  title="Overtime Calculator"
+  description="Calculate overtime pay"
+  fields={[
+    {
+      id: "monthly",
+      label: "Monthly Salary (IDR)",
+      type: "number",
+      defaultValue: 10000000,
+      min: 0,
+      step: 500000,
+      suffix: "IDR"
+    },
+    {
+      id: "hours",
+      label: "Overtime Hours",
+      type: "number",
+      defaultValue: 10,
+      min: 0,
+      max: 14,
+      suffix: "hours"
+    },
+    {
+      id: "day",
+      label: "Day Type",
+      type: "select",
+      options: [
+        { value: "weekday", label: "Regular weekday" },
+        { value: "weekend", label: "Weekend/holiday" }
+      ],
+      defaultValue: "weekday"
+    }
+  ]}
+  calculateResult={(values) => {
+    const monthly = Number(values.monthly);
+    const hours = Number(values.hours);
+
+    // Hourly rate = 1/173 of monthly salary
+    const hourlyRate = monthly / 173;
+
+    let overtime = 0;
+
+    if (values.day === "weekday") {
+      // First hour: 1.5x, subsequent hours: 2x
+      if (hours >= 1) {
+        overtime += hourlyRate * 1.5;
+        if (hours > 1) {
+          overtime += (hours - 1) * hourlyRate * 2;
+        }
+      }
+    } else {
+      // Weekend/holiday: different calculation
+      // First 8 hours: 2x, 9th hour: 3x, 10th+: 4x
+      const first8 = Math.min(hours, 8);
+      overtime += first8 * hourlyRate * 2;
+      if (hours > 8) {
+        overtime += hourlyRate * 3;
+        if (hours > 9) {
+          overtime += (hours - 9) * hourlyRate * 4;
+        }
+      }
+    }
+
+    return {
+      total: Math.round(overtime),
+      breakdown: [
+        { label: "Monthly Salary", amount: monthly },
+        { label: "Hourly Rate (1/173)", amount: Math.round(hourlyRate) },
+        { label: "Overtime Hours", amount: hours },
+        { label: "Overtime Pay", amount: Math.round(overtime) }
+      ],
+      currency: "IDR",
+      note: values.day === "weekday" ? "Weekday: 1.5x first hour, 2x after" : "Weekend: 2x first 8, 3x 9th, 4x 10th+"
+    };
+  }}
+/>
+
+---
+
+## Minimum Wage
+
+### Regional Minimum Wage (UMR/UMK)
+
+| Province/City | 2025 UMR (Approx) |
+|---------------|-------------------|
+| DKI Jakarta | ~IDR 5.1M |
+| Bali | ~IDR 2.9M |
+| Surabaya | ~IDR 4.7M |
+| Bandung | ~IDR 4.0M |
+| Semarang | ~IDR 3.1M |
+
+<InfoCard variant="note" title="Minimum Wage Notes">
+- UMR is minimum for permanent employees
+- Updated annually (usually January)
+- Sectoral minimums may apply
+- Components: basic salary can be 75%, allowances 25%
+- PKWT workers entitled to same minimums
+</InfoCard>
+
+---
+
+## Mandatory Benefits
+
+<Checklist
+  title="Required Employee Benefits"
+  description="Legal obligations for employers"
+  persistKey="benefits-checklist"
+  items={[
+    {
+      id: "bpjs-kesehatan",
+      label: "BPJS Kesehatan (Health)",
+      description: "5% contribution (4% employer, 1% employee)",
+      required: true,
+      category: "bpjs"
+    },
+    {
+      id: "bpjs-tk-jkk",
+      label: "BPJS JKK (Work Accident)",
+      description: "0.24-1.74% employer only",
+      required: true,
+      category: "bpjs"
+    },
+    {
+      id: "bpjs-tk-jkm",
+      label: "BPJS JKM (Death)",
+      description: "0.3% employer only",
+      required: true,
+      category: "bpjs"
+    },
+    {
+      id: "bpjs-tk-jht",
+      label: "BPJS JHT (Pension Fund)",
+      description: "5.7% (3.7% employer, 2% employee)",
+      required: true,
+      category: "bpjs"
+    },
+    {
+      id: "bpjs-tk-jp",
+      label: "BPJS JP (Pension)",
+      description: "3% (2% employer, 1% employee)",
+      required: true,
+      category: "bpjs"
+    },
+    {
+      id: "annual-leave",
+      label: "Annual Leave",
+      description: "12 days/year after 12 months",
+      required: true,
+      category: "leave"
+    },
+    {
+      id: "thr",
+      label: "THR (Religious Holiday)",
+      description: "1 month salary before major holiday",
+      required: true,
+      category: "bonus"
+    },
+    {
+      id: "maternity",
+      label: "Maternity Leave",
+      description: "3 months paid",
+      required: true,
+      category: "leave"
+    }
+  ]}
+  categories={[
+    { id: "bpjs", label: "BPJS", color: "blue" },
+    { id: "leave", label: "Leave", color: "green" },
+    { id: "bonus", label: "Bonus", color: "amber" }
+  ]}
+  showProgress={false}
+/>
+
+---
+
+## Leave Entitlements
+
+### Annual Leave
+
+| Type | Entitlement |
+|------|-------------|
+| Annual leave | 12 days/year (after 12 months) |
+| Long leave | 2 months after 6 years (some companies) |
+| Religious holiday | As per agreement |
+
+### Special Leave (Paid)
+
+| Event | Days |
+|-------|------|
+| Marriage | 3 days |
+| Child's marriage | 2 days |
+| Circumcision | 2 days |
+| Baptism | 2 days |
+| Spouse/child/parent death | 2 days |
+| Other family member death | 1 day |
+| Wife giving birth/miscarriage | 2 days |
+
+### Maternity/Paternity
+
+| Leave Type | Duration | Pay |
+|------------|----------|-----|
+| Maternity | 1.5 months before + 1.5 months after birth | Full pay |
+| Miscarriage | 1.5 months | Full pay |
+| Paternity | 2 days | Full pay |
+
+---
+
+## Employment Contracts
+
+### Required Contract Elements
+
+<Checklist
+  title="Contract Requirements"
+  description="What must be in employment contract"
+  persistKey="contract-elements-checklist"
+  items={[
+    {
+      id: "names",
+      label: "Company and employee names",
+      description: "Full legal names",
+      required: true,
+      category: "parties"
+    },
+    {
+      id: "address",
+      label: "Workplace address",
+      description: "Work location",
+      required: true,
+      category: "work"
+    },
+    {
+      id: "position",
+      label: "Position/job description",
+      description: "Role and duties",
+      required: true,
+      category: "work"
+    },
+    {
+      id: "salary",
+      label: "Salary and components",
+      description: "Base + allowances",
+      required: true,
+      category: "compensation"
+    },
+    {
+      id: "hours",
+      label: "Working hours",
+      description: "Schedule and overtime",
+      required: true,
+      category: "work"
+    },
+    {
+      id: "start",
+      label: "Start date",
+      description: "When employment begins",
+      required: true,
+      category: "dates"
+    },
+    {
+      id: "term",
+      label: "Contract duration (if PKWT)",
+      description: "End date for fixed-term",
+      required: false,
+      category: "dates"
+    },
+    {
+      id: "signatures",
+      label: "Signatures",
+      description: "Both parties sign",
+      required: true,
+      category: "legal"
+    }
+  ]}
+  categories={[
+    { id: "parties", label: "Parties", color: "blue" },
+    { id: "work", label: "Work", color: "green" },
+    { id: "compensation", label: "Compensation", color: "amber" },
+    { id: "dates", label: "Dates", color: "purple" },
+    { id: "legal", label: "Legal", color: "red" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Company Regulations
+
+### When Required
+
+<InfoCard variant="note" title="Peraturan Perusahaan">
+Companies with **10+ employees** must have:
+- **PP (Peraturan Perusahaan)** - Company regulations
+
+Or with union:
+- **PKB (Perjanjian Kerja Bersama)** - Collective bargaining agreement
+
+Must be registered with Manpower office and renewed every 2 years.
+</InfoCard>
+
+---
+
+## Foreign Workers
+
+### Foreign Employment Requirements
+
+| Requirement | Description |
+|-------------|-------------|
+| RPTKA | Foreign worker utilization plan |
+| IMTA | Work permit |
+| KITAS | Stay permit |
+| Position | Must be permitted role |
+| Companion | Indonesian understudies |
+
+See: [KITAS Work Permit Guide](/blog/immigration/kitas-work-permit-guide)
+
+---
+
+## Common Violations
+
+| Violation | Risk |
+|-----------|------|
+| No BPJS registration | Fines + back payment |
+| Below minimum wage | Legal action |
+| No written contract | Contract becomes PKWTT |
+| Excessive working hours | Penalties |
+| No THR payment | Legal action |
+| Improper termination | Severance + compensation |
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Labor law Indonesia, employment law, BPJS, working hours, leave entitlements"
+  placeholder="Ask about labor law..."
+  suggestedQuestions={[
+    "How much is BPJS contribution?",
+    "Can I use PKWT for permanent roles?",
+    "What's the maximum overtime hours?",
+    "When is THR payment due?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Hiring Indonesian Employees](/blog/business/hiring-indonesian-employees)
+- [Termination & Severance](/blog/business/termination-severance)
+- [KITAS Work Permit Guide](/blog/immigration/kitas-work-permit-guide)

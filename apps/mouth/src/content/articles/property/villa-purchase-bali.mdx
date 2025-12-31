@@ -1,0 +1,432 @@
+---
+title: "Buying a Villa in Bali 2025: Foreigner's Guide"
+slug: "villa-purchase-bali"
+description: "Complete guide to buying a villa in Bali as a foreigner. Legal structures, locations, costs, and practical tips."
+excerpt: "Dreaming of owning a Bali villa? Here's what foreigners need to know."
+category: "property"
+tags:
+  - villa bali
+  - property purchase
+  - bali real estate
+  - foreign ownership
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Property Advisor"
+featured: true
+image:
+  src: "/images/blog/property/villa-bali.jpg"
+  alt: "Villa purchase Bali"
+seo:
+  title: "Buying a Villa in Bali 2025 | Foreigner's Complete Guide"
+  description: "How foreigners can buy villas in Bali. Legal structures, best areas, costs, and step-by-step process."
+  keywords:
+    - buy villa bali
+    - foreigner property bali
+    - bali real estate
+readingTime: 12
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "property_docs"
+    documentsUsed: 18
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "property-investment-guide"
+  - "land-ownership-rules"
+  - "rental-property-investment"
+tableOfContents: true
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  Calculator,
+  Checklist,
+  InfoCard,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Buying a Villa in Bali 2025: Foreigner's Guide
+
+Owning a villa in Bali is a dream for many. Here's everything you need to know to make it a reality.
+
+## Can Foreigners Buy?
+
+<InfoCard variant="warning" title="The Short Answer">
+**Foreigners cannot own freehold land in Indonesia.**
+
+But there are legal ways to secure property:
+- **Leasehold** (long-term lease)
+- **Hak Pakai** (right to use - for personal residence)
+- **PT PMA** (company ownership)
+
+Each has pros and cons - choose based on your situation.
+</InfoCard>
+
+---
+
+## Ownership Options
+
+<DecisionTree
+  title="Which Structure?"
+  description="Find your best option"
+  nodes={[
+    {
+      id: "start",
+      question: "What's your main purpose?",
+      options: [
+        { label: "Personal residence", next: "personal" },
+        { label: "Investment/rental", next: "investment" },
+        { label: "Part-time use", next: "parttime" }
+      ]
+    },
+    {
+      id: "personal",
+      question: "Do you have KITAS/KITAP?",
+      options: [
+        { label: "Yes, long-term visa", next: "hakpakai" },
+        { label: "No, tourist visa", next: "leasehold-personal" }
+      ]
+    },
+    {
+      id: "investment",
+      result: {
+        title: "PT PMA Structure",
+        description: "Set up a foreign investment company to hold HGB title. Can rent out commercially. Most secure structure for investment properties."
+      }
+    },
+    {
+      id: "parttime",
+      result: {
+        title: "Leasehold",
+        description: "Long-term lease (25-30 years) is simplest for part-time use. No KITAS required. Can include renewal options."
+      }
+    },
+    {
+      id: "hakpakai",
+      result: {
+        title: "Hak Pakai (Right to Use)",
+        description: "You can hold Hak Pakai directly with valid KITAS/KITAP. Must be for personal residence. Minimum value applies (IDR 5B in Bali)."
+      }
+    },
+    {
+      id: "leasehold-personal",
+      result: {
+        title: "Leasehold",
+        description: "Long-term lease of land + villa. Simpler structure, no KITAS needed. Typical terms 25-30 years with extensions."
+      }
+    }
+  ]}
+/>
+
+---
+
+## Structure Comparison
+
+<ComparisonTable
+  title="Ownership Structures"
+  description="Compare your options"
+  items={[
+    {
+      name: "Leasehold",
+      subtitle: "Long-term lease",
+      values: {
+        "Security": "Good (with proper contract)",
+        "Duration": "25-30 years + extensions",
+        "Rental allowed": "Depends on agreement",
+        "Setup cost": "Lower",
+        "Best for": "Part-time, flexibility"
+      }
+    },
+    {
+      name: "Hak Pakai",
+      subtitle: "Right to use",
+      values: {
+        "Security": "Very good (title)",
+        "Duration": "30+20+20 years",
+        "Rental allowed": "Personal use only",
+        "Setup cost": "Medium",
+        "Best for": "Personal residence"
+      }
+    },
+    {
+      name: "PT PMA + HGB",
+      subtitle: "Company ownership",
+      values: {
+        "Security": "Excellent (title)",
+        "Duration": "30+20+20 years",
+        "Rental allowed": "Yes (commercial)",
+        "Setup cost": "Higher",
+        "Best for": "Investment, rental"
+      },
+      highlight: true
+    }
+  ]}
+/>
+
+---
+
+## Popular Areas
+
+### Best Villa Locations
+
+| Area | Vibe | Price Range |
+|------|------|-------------|
+| Canggu | Trendy, surf, nomads | IDR 3-20B |
+| Seminyak | Upscale, beach clubs | IDR 5-30B |
+| Ubud | Cultural, rice fields | IDR 2-15B |
+| Uluwatu | Cliffs, surf, luxury | IDR 5-30B |
+| Sanur | Relaxed, family | IDR 2-10B |
+| Nusa Dua | Resort, golf | IDR 5-25B |
+
+<InfoCard variant="tip" title="Location Matters">
+**Consider:**
+- Rental demand (for investment)
+- Access to amenities
+- Zoning (residential/tourism)
+- Flood risk
+- Development plans
+- Traffic (Canggu/Seminyak can be bad)
+
+Visit in low season to see realistic conditions.
+</InfoCard>
+
+---
+
+## Cost Calculator
+
+<Calculator
+  title="Villa Purchase Budget"
+  description="Estimate total costs"
+  fields={[
+    {
+      id: "price",
+      label: "Villa Price (IDR)",
+      type: "number",
+      defaultValue: 5000000000,
+      min: 0
+    },
+    {
+      id: "structure",
+      label: "Ownership Structure",
+      type: "select",
+      options: [
+        { value: "leasehold", label: "Leasehold" },
+        { value: "hakpakai", label: "Hak Pakai" },
+        { value: "ptpma", label: "PT PMA + HGB" }
+      ],
+      defaultValue: "leasehold"
+    }
+  ]}
+  calculateResult={(values) => {
+    const price = values.price;
+    let structureCost = 0;
+    let transferTax = 0;
+    let notary = price * 0.01;
+    let legal = 0;
+
+    if (values.structure === "leasehold") {
+      structureCost = 0;
+      transferTax = 0; // No BPHTB on lease
+      legal = 30000000;
+    } else if (values.structure === "hakpakai") {
+      transferTax = price * 0.05; // BPHTB
+      legal = 50000000;
+    } else {
+      structureCost = 150000000; // PT PMA setup
+      transferTax = price * 0.05; // BPHTB
+      legal = 75000000;
+    }
+
+    const agent = price * 0.05; // If using agent
+    const misc = 20000000;
+
+    const total = price + structureCost + transferTax + notary + legal + agent + misc;
+
+    return {
+      total: total,
+      breakdown: [
+        { label: "Villa price", amount: price },
+        { label: "Structure setup (if PT PMA)", amount: structureCost },
+        { label: "Transfer tax (BPHTB)", amount: transferTax },
+        { label: "Notary fees", amount: Math.round(notary) },
+        { label: "Legal fees", amount: legal },
+        { label: "Agent commission (5%)", amount: Math.round(agent) },
+        { label: "Miscellaneous", amount: misc }
+      ],
+      currency: "IDR",
+      note: `~USD ${Math.round(total / 16000).toLocaleString()} total`
+    };
+  }}
+/>
+
+---
+
+## Due Diligence
+
+<Checklist
+  title="Villa Due Diligence"
+  description="Essential checks before buying"
+  persistKey="villa-dd-checklist"
+  items={[
+    {
+      id: "certificate",
+      label: "Land certificate verification",
+      description: "Check at BPN (land office)",
+      required: true,
+      category: "title"
+    },
+    {
+      id: "owner",
+      label: "Verify seller is owner",
+      description: "Match certificate to seller",
+      required: true,
+      category: "title"
+    },
+    {
+      id: "encumbrance",
+      label: "Check for mortgages/liens",
+      description: "Clean title required",
+      required: true,
+      category: "title"
+    },
+    {
+      id: "zoning",
+      label: "Verify zoning",
+      description: "Permitted use",
+      required: true,
+      category: "permits"
+    },
+    {
+      id: "imb",
+      label: "Building permit (IMB/PBG)",
+      description: "Building legally constructed",
+      required: true,
+      category: "permits"
+    },
+    {
+      id: "pbb",
+      label: "Tax paid (PBB)",
+      description: "No arrears",
+      required: true,
+      category: "tax"
+    },
+    {
+      id: "survey",
+      label: "Physical survey",
+      description: "Boundaries match certificate",
+      required: true,
+      category: "physical"
+    },
+    {
+      id: "access",
+      label: "Legal access",
+      description: "Road access rights",
+      required: true,
+      category: "physical"
+    },
+    {
+      id: "condition",
+      label: "Building inspection",
+      description: "Structural condition",
+      required: true,
+      category: "physical"
+    }
+  ]}
+  categories={[
+    { id: "title", label: "Title", color: "blue" },
+    { id: "permits", label: "Permits", color: "green" },
+    { id: "tax", label: "Tax", color: "amber" },
+    { id: "physical", label: "Physical", color: "purple" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Purchase Process
+
+### Step by Step
+
+| Step | Action | Duration |
+|------|--------|----------|
+| 1 | Find property | Weeks-months |
+| 2 | Negotiate price/terms | 1-2 weeks |
+| 3 | Due diligence | 2-4 weeks |
+| 4 | Structure setup (if PT PMA) | 4-8 weeks |
+| 5 | Draft contracts | 1-2 weeks |
+| 6 | Sign and pay deposit | 1 day |
+| 7 | Complete transfer | 2-4 weeks |
+| 8 | Handover | 1 day |
+
+---
+
+## Common Mistakes
+
+<InfoCard variant="warning" title="Avoid These">
+**Common buyer mistakes:**
+
+1. **Not doing due diligence** - Title issues are common
+2. **Using nominee** - Risky, not recommended
+3. **Skipping legal review** - Always use lawyer
+4. **Paying too quickly** - Hold back until clear
+5. **Wrong structure** - Match to your needs
+6. **Ignoring zoning** - May not be able to rent
+7. **Verbal agreements** - Get everything in writing
+8. **Not budgeting extras** - 10-15% on top of price
+</InfoCard>
+
+---
+
+## Ongoing Costs
+
+### After Purchase
+
+| Cost | Annual Amount |
+|------|---------------|
+| PBB (property tax) | 0.1-0.3% of NJOP |
+| Maintenance | 1-3% of value |
+| Staff (gardener, etc.) | IDR 30-60M |
+| Utilities | IDR 3-10M/month |
+| Insurance | IDR 5-15M |
+| PT PMA costs (if applicable) | IDR 20-50M |
+
+---
+
+## Selling Later
+
+### Exit Considerations
+
+| Factor | Note |
+|--------|------|
+| Market conditions | Bali market fluctuates |
+| Structure | PT PMA - can sell shares |
+| Taxes | 2.5% seller tax |
+| Finding buyers | Often foreigners |
+| Currency | IDR fluctuation |
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Buy villa Bali, foreigner property, Bali real estate, villa investment"
+  placeholder="Ask about buying a Bali villa..."
+  suggestedQuestions={[
+    "Is leasehold safe for foreigners?",
+    "Can I rent out my villa?",
+    "What's the minimum price in Canggu?",
+    "Do I need a lawyer?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Property Investment Guide](/blog/property/property-investment-guide)
+- [Land Ownership Rules](/blog/property/land-ownership-rules)
+- [Rental Property Investment](/blog/property/rental-property-investment)

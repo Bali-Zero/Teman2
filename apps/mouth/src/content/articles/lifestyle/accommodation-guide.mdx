@@ -1,0 +1,478 @@
+---
+title: "Accommodation in Indonesia 2025: Expat Housing Guide"
+slug: "accommodation-guide"
+description: "Finding accommodation in Indonesia as an expat. Rental process, costs, and tips for Bali, Jakarta, and beyond."
+excerpt: "Looking for a place to live in Indonesia? Here's your complete guide to finding accommodation."
+category: "lifestyle"
+tags:
+  - accommodation
+  - rental
+  - housing
+  - expat living
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Lifestyle Advisor"
+featured: false
+image:
+  src: "/images/blog/lifestyle/accommodation.jpg"
+  alt: "Accommodation Indonesia"
+seo:
+  title: "Accommodation Indonesia 2025 | Expat Housing Guide"
+  description: "Complete guide to finding accommodation in Indonesia. Rental costs, process, and tips for expats."
+  keywords:
+    - accommodation indonesia
+    - rental bali
+    - expat housing
+readingTime: 10
+difficulty: "beginner"
+aiGenerated: true
+kbSources:
+  - collection: "lifestyle_docs"
+    documentsUsed: 16
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "cost-of-living-bali"
+  - "property-investment-guide"
+  - "banking-for-foreigners"
+tableOfContents: true
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  Calculator,
+  Checklist,
+  InfoCard,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Accommodation in Indonesia 2025: Expat Housing Guide
+
+Finding the right place to live is crucial for your Indonesia experience. Here's what you need to know.
+
+## Accommodation Types
+
+<DecisionTree
+  title="What Type Suits You?"
+  description="Find your ideal accommodation"
+  nodes={[
+    {
+      id: "start",
+      question: "How long are you staying?",
+      options: [
+        { label: "1-3 months", next: "short" },
+        { label: "3-12 months", next: "medium" },
+        { label: "1+ years", next: "long" }
+      ]
+    },
+    {
+      id: "short",
+      question: "What's your budget?",
+      options: [
+        { label: "Budget (< $500/month)", next: "short-budget" },
+        { label: "Mid-range ($500-1500)", next: "short-mid" },
+        { label: "Comfort ($1500+)", next: "short-comfort" }
+      ]
+    },
+    {
+      id: "medium",
+      question: "What's your priority?",
+      options: [
+        { label: "Value for money", next: "medium-value" },
+        { label: "Location & community", next: "medium-location" },
+        { label: "Space & privacy", next: "medium-space" }
+      ]
+    },
+    {
+      id: "long",
+      result: {
+        title: "Long-term Rental or Purchase",
+        description: "Consider yearly villa/apartment rental for best rates. May also explore property investment through Indonesian structure."
+      }
+    },
+    {
+      id: "short-budget",
+      result: {
+        title: "Guesthouse or Kos",
+        description: "Monthly guesthouses or 'kos-kosan' (boarding rooms) offer affordable short-term options. Basic but functional."
+      }
+    },
+    {
+      id: "short-mid",
+      result: {
+        title: "Serviced Apartment or Monthly Villa",
+        description: "Monthly rentals available on Airbnb, booking sites, or local agents. Good balance of comfort and flexibility."
+      }
+    },
+    {
+      id: "short-comfort",
+      result: {
+        title: "Villa or Premium Apartment",
+        description: "Short-term villa rentals or serviced apartments with premium amenities. Higher prices but maximum comfort."
+      }
+    },
+    {
+      id: "medium-value",
+      result: {
+        title: "6-Month Villa/Apartment Lease",
+        description: "Negotiate 6-month lease for better rates than monthly. Often 20-30% discount over short-term rates."
+      }
+    },
+    {
+      id: "medium-location",
+      result: {
+        title: "Co-living or Apartment Complex",
+        description: "Co-living spaces offer community. Apartment complexes provide security and amenities in central locations."
+      }
+    },
+    {
+      id: "medium-space",
+      result: {
+        title: "Private Villa or House",
+        description: "Rent entire villa or house for privacy and space. Best rates with 6-12 month commitment."
+      }
+    }
+  ]}
+/>
+
+---
+
+## Rental Costs by Area
+
+<ComparisonTable
+  title="Monthly Rental Costs"
+  description="Typical prices by location"
+  items={[
+    {
+      name: "Canggu, Bali",
+      subtitle: "Digital nomad hub",
+      values: {
+        "Studio/Room": "IDR 5-10M",
+        "1BR Villa": "IDR 10-20M",
+        "2BR Villa": "IDR 15-35M",
+        "Luxury Villa": "IDR 40M+"
+      },
+      highlight: true
+    },
+    {
+      name: "Ubud, Bali",
+      subtitle: "Cultural center",
+      values: {
+        "Studio/Room": "IDR 4-8M",
+        "1BR Villa": "IDR 8-15M",
+        "2BR Villa": "IDR 12-25M",
+        "Luxury Villa": "IDR 30M+"
+      }
+    },
+    {
+      name: "Seminyak, Bali",
+      subtitle: "Beach lifestyle",
+      values: {
+        "Studio/Room": "IDR 7-15M",
+        "1BR Villa": "IDR 15-25M",
+        "2BR Villa": "IDR 20-45M",
+        "Luxury Villa": "IDR 50M+"
+      }
+    },
+    {
+      name: "Jakarta (Central)",
+      subtitle: "Business center",
+      values: {
+        "Studio/Room": "IDR 5-10M",
+        "1BR Apartment": "IDR 10-20M",
+        "2BR Apartment": "IDR 15-35M",
+        "Luxury": "IDR 40M+"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Monthly Budget Calculator
+
+<Calculator
+  title="Housing Budget"
+  description="Estimate your accommodation costs"
+  fields={[
+    {
+      id: "type",
+      label: "Accommodation Type",
+      type: "select",
+      options: [
+        { value: "room", label: "Room/Studio" },
+        { value: "apartment", label: "1BR Apartment/Villa" },
+        { value: "villa2", label: "2BR Villa" },
+        { value: "luxury", label: "Luxury Villa" }
+      ],
+      defaultValue: "apartment"
+    },
+    {
+      id: "area",
+      label: "Area",
+      type: "select",
+      options: [
+        { value: "canggu", label: "Canggu" },
+        { value: "ubud", label: "Ubud" },
+        { value: "seminyak", label: "Seminyak" },
+        { value: "sanur", label: "Sanur" },
+        { value: "jakarta", label: "Jakarta" }
+      ],
+      defaultValue: "canggu"
+    },
+    {
+      id: "term",
+      label: "Rental Term",
+      type: "select",
+      options: [
+        { value: "monthly", label: "Monthly" },
+        { value: "6month", label: "6 months" },
+        { value: "yearly", label: "Yearly" }
+      ],
+      defaultValue: "monthly"
+    }
+  ]}
+  calculateResult={(values) => {
+    // Base prices by area and type (IDR)
+    const prices = {
+      canggu: { room: 7000000, apartment: 15000000, villa2: 25000000, luxury: 50000000 },
+      ubud: { room: 5000000, apartment: 12000000, villa2: 18000000, luxury: 35000000 },
+      seminyak: { room: 10000000, apartment: 20000000, villa2: 35000000, luxury: 60000000 },
+      sanur: { room: 5000000, apartment: 10000000, villa2: 15000000, luxury: 30000000 },
+      jakarta: { room: 7000000, apartment: 15000000, villa2: 25000000, luxury: 45000000 }
+    };
+
+    // Term discounts
+    const discounts = {
+      monthly: 1.0,
+      "6month": 0.85,
+      yearly: 0.7
+    };
+
+    const basePrice = prices[values.area][values.type];
+    const discount = discounts[values.term];
+    const monthlyRent = basePrice * discount;
+
+    // Additional costs
+    const utilities = 500000;
+    const internet = 500000;
+    const cleaning = values.type === "room" ? 0 : 400000;
+
+    const total = monthlyRent + utilities + internet + cleaning;
+
+    return {
+      total: Math.round(total),
+      breakdown: [
+        { label: "Rent (with term discount)", amount: Math.round(monthlyRent) },
+        { label: "Utilities estimate", amount: utilities },
+        { label: "Internet", amount: internet },
+        { label: "Cleaning (if applicable)", amount: cleaning }
+      ],
+      currency: "IDR",
+      note: `~USD ${Math.round(total / 16000)}/month`
+    };
+  }}
+/>
+
+---
+
+## Rental Process
+
+<Checklist
+  title="Rental Checklist"
+  description="Steps to rent accommodation"
+  persistKey="rental-checklist"
+  items={[
+    {
+      id: "search",
+      label: "Search and view properties",
+      description: "Online + in person",
+      required: true,
+      category: "search"
+    },
+    {
+      id: "negotiate",
+      label: "Negotiate terms and price",
+      description: "Especially for longer terms",
+      required: true,
+      category: "negotiate"
+    },
+    {
+      id: "inspect",
+      label: "Thorough inspection",
+      description: "Check everything works",
+      required: true,
+      category: "inspect"
+    },
+    {
+      id: "contract",
+      label: "Review rental agreement",
+      description: "Get in writing",
+      required: true,
+      category: "legal"
+    },
+    {
+      id: "deposit",
+      label: "Pay deposit",
+      description: "Usually 1-2 months",
+      required: true,
+      category: "payment"
+    },
+    {
+      id: "inventory",
+      label: "Document condition/inventory",
+      description: "Photos, list of items",
+      required: true,
+      category: "protect"
+    },
+    {
+      id: "utilities",
+      label: "Set up utilities",
+      description: "Electricity, water, internet",
+      required: true,
+      category: "setup"
+    }
+  ]}
+  categories={[
+    { id: "search", label: "Search", color: "blue" },
+    { id: "negotiate", label: "Negotiate", color: "green" },
+    { id: "inspect", label: "Inspect", color: "amber" },
+    { id: "legal", label: "Legal", color: "red" },
+    { id: "payment", label: "Payment", color: "purple" },
+    { id: "protect", label: "Protection", color: "cyan" },
+    { id: "setup", label: "Setup", color: "pink" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Where to Find Rentals
+
+### Online Platforms
+
+| Platform | Best For | Notes |
+|----------|----------|-------|
+| Facebook Groups | Local rentals | Very active in Bali |
+| Airbnb | Short-term, vetted | Monthly discounts |
+| Rumah.com | Indonesian listings | Local market |
+| OLX | Budget options | Negotiable |
+| Real estate agents | Premium/long-term | Professional service |
+
+### Facebook Groups (Bali)
+
+- Bali Accommodation
+- Ubud Community Housing
+- Canggu Community
+- Bali Expat Forum
+
+---
+
+## What to Check
+
+<InfoCard variant="warning" title="Before Signing">
+**Always verify:**
+- Water pressure and heating
+- Internet speed test
+- Air conditioning works
+- Kitchen appliances
+- Security (locks, safe area)
+- Noise levels
+- Parking (if needed)
+- Generator/backup power
+- Pest situation
+- Landlord responsiveness
+</InfoCard>
+
+---
+
+## Rental Agreement Tips
+
+### Key Terms to Include
+
+| Term | What to Check |
+|------|---------------|
+| Duration | Start/end dates clear |
+| Rent amount | Total and payment schedule |
+| Deposit | Amount and return conditions |
+| Utilities | Who pays what |
+| Maintenance | Responsibility for repairs |
+| Termination | Notice period, penalties |
+| Inventory | List of included items |
+
+<InfoCard variant="tip" title="Get It in Writing">
+Even informal rentals should have:
+- Written agreement (can be simple)
+- Payment receipts
+- Condition documentation
+- Contact details for landlord
+
+Indonesian contracts are enforceable - get one!
+</InfoCard>
+
+---
+
+## Furnished vs Unfurnished
+
+### Bali/Tourist Areas
+
+Most rentals are **fully furnished**:
+- Bed, mattress, linens
+- Living room furniture
+- Kitchen equipped
+- Air conditioning
+- Hot water
+- Often includes WiFi
+
+### Jakarta/Cities
+
+Mix of options:
+- Serviced apartments: fully furnished
+- Regular apartments: basic furnishing
+- Houses: may be unfurnished
+
+---
+
+## Long-Term Savings
+
+| Term | Typical Discount |
+|------|------------------|
+| Monthly | Full price |
+| 3 months | 5-10% off |
+| 6 months | 15-25% off |
+| 12 months | 25-40% off |
+
+<InfoCard variant="tip" title="Negotiate!">
+Tips for better rates:
+- Ask directly (don't accept first price)
+- Offer longer term
+- Pay upfront if possible
+- Low season = better deals
+- Direct with owner = no agent fee
+</InfoCard>
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Accommodation Indonesia, rental Bali, expat housing, villa rental"
+  placeholder="Ask about accommodation..."
+  suggestedQuestions={[
+    "What's the best area for digital nomads?",
+    "Can I rent without KITAS?",
+    "How much deposit is normal?",
+    "What if I have problems with landlord?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Cost of Living in Bali](/blog/lifestyle/cost-of-living-bali)
+- [Property Investment Guide](/blog/property/property-investment-guide)
+- [Banking for Foreigners](/blog/lifestyle/banking-for-foreigners)

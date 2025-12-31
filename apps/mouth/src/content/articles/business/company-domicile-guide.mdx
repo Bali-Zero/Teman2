@@ -1,0 +1,280 @@
+---
+title: "Company Domicile: Setting Up Your Business Address in Indonesia 2025"
+slug: "company-domicile-guide"
+description: "Everything about company domicile in Indonesia. Virtual offices, physical offices, requirements, and costs for PT PMA registered address."
+excerpt: "Every company needs a registered address. Here's how to set up your company domicile in Indonesia."
+category: "business"
+tags:
+  - company domicile
+  - virtual office
+  - business address
+  - PT PMA
+  - registered office
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: false
+image:
+  src: "/images/blog/business/company-domicile.jpg"
+  alt: "Office building Indonesia"
+seo:
+  title: "Company Domicile Indonesia 2025 | Virtual Office Guide"
+  description: "How to set up company domicile in Indonesia. Virtual office vs physical office, costs, and requirements for PT PMA."
+  keywords:
+    - company domicile indonesia
+    - virtual office
+    - business address
+    - PT PMA address
+readingTime: 8
+difficulty: "beginner"
+aiGenerated: true
+kbSources:
+  - collection: "legal_unified"
+    documentsUsed: 10
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "pt-pma-registration-guide"
+  - "starting-a-business-in-indonesia-complete-guide"
+tableOfContents: true
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  InfoCard,
+  Checklist,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Company Domicile: Setting Up Your Business Address in Indonesia 2025
+
+Every company in Indonesia needs a registered address (domicile). This determines your tax jurisdiction and where official correspondence is sent.
+
+## Options Overview
+
+<ComparisonTable
+  title="Domicile Options Compared"
+  description="Choose the right option for your company"
+  items={[
+    {
+      name: "Virtual Office",
+      subtitle: "Address + mail handling",
+      values: {
+        "Physical Space": "No",
+        "Domicile Letter": "Yes",
+        "Mail Handling": "Yes",
+        "Meeting Rooms": "Available (extra)",
+        "Cost/Year": "IDR 8-20M",
+        "Best For": "Most PT PMAs"
+      },
+      highlight: true
+    },
+    {
+      name: "Serviced Office",
+      subtitle: "Furnished private office",
+      values: {
+        "Physical Space": "Yes",
+        "Domicile Letter": "Yes",
+        "Mail Handling": "Yes",
+        "Meeting Rooms": "Included",
+        "Cost/Year": "IDR 60-150M",
+        "Best For": "Need workspace"
+      }
+    },
+    {
+      name: "Traditional Lease",
+      subtitle: "Full office rental",
+      values: {
+        "Physical Space": "Yes",
+        "Domicile Letter": "Self-arrange",
+        "Mail Handling": "Self-manage",
+        "Meeting Rooms": "Your own",
+        "Cost/Year": "IDR 100M+",
+        "Best For": "Established companies"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Virtual Office Explained
+
+Virtual office is the most common choice for PT PMA:
+
+### What You Get
+- **Registered business address** for official purposes
+- **Surat Keterangan Domisili** (domicile letter)
+- **Mail receiving** and forwarding
+- **Phone answering** (optional)
+- **Meeting room access** (hourly/daily rates)
+
+### What You Don't Get
+- Physical desk or permanent space
+- Daily workplace
+
+<InfoCard variant="tip" title="Virtual Office Is Legitimate">
+Virtual offices are 100% legal and accepted by:
+- Ministry of Law (Kemenkumham)
+- Tax office (DJP)
+- OSS system
+- Banks (for account opening)
+
+Many PT PMAs operate this way, especially service-based businesses.
+</InfoCard>
+
+---
+
+## Cost Comparison
+
+<Calculator
+  title="Domicile Cost Calculator"
+  description="Compare domicile options for your budget"
+  fields={[
+    {
+      id: "type",
+      label: "Office Type",
+      type: "select",
+      options: [
+        { value: "virtual", label: "Virtual Office" },
+        { value: "serviced", label: "Serviced Office" },
+        { value: "lease", label: "Traditional Lease" }
+      ],
+      defaultValue: "virtual"
+    },
+    {
+      id: "location",
+      label: "Location",
+      type: "select",
+      options: [
+        { value: "jakarta-prime", label: "Jakarta Prime (SCBD, Sudirman)" },
+        { value: "jakarta-other", label: "Jakarta Other Areas" },
+        { value: "bali", label: "Bali" },
+        { value: "other", label: "Other Cities" }
+      ],
+      defaultValue: "bali"
+    },
+    {
+      id: "years",
+      label: "Contract Period",
+      type: "select",
+      options: [
+        { value: "1", label: "1 year" },
+        { value: "2", label: "2 years" },
+        { value: "3", label: "3 years" }
+      ],
+      defaultValue: "1"
+    }
+  ]}
+  calculateResult={(values) => {
+    const years = Number(values.years);
+    let yearlyBase = 0;
+
+    const rates = {
+      virtual: { 'jakarta-prime': 18000000, 'jakarta-other': 12000000, bali: 12000000, other: 8000000 },
+      serviced: { 'jakarta-prime': 120000000, 'jakarta-other': 80000000, bali: 72000000, other: 60000000 },
+      lease: { 'jakarta-prime': 200000000, 'jakarta-other': 150000000, bali: 120000000, other: 100000000 }
+    };
+
+    yearlyBase = rates[values.type][values.location];
+    const total = yearlyBase * years;
+
+    const breakdown = [
+      { label: `${values.type} office - ${values.location}`, amount: yearlyBase },
+      { label: `Total for ${years} year(s)`, amount: total }
+    ];
+
+    return {
+      total,
+      breakdown,
+      currency: "IDR",
+      note: `Per year: IDR ${(yearlyBase/1000000).toFixed(0)}M (~$${Math.round(yearlyBase/16000)} USD)`
+    };
+  }}
+/>
+
+---
+
+## What to Look For
+
+<Checklist
+  title="Virtual Office Checklist"
+  description: "What to verify before signing up"
+  persistKey="vo-checklist"
+  items={[
+    {
+      id: "domicile",
+      label: "Provides Domicile Letter",
+      description: "SKD or Surat Keterangan Domisili",
+      required: true,
+      category: "essential"
+    },
+    {
+      id: "building",
+      label: "Commercial building",
+      description: "Not residential address",
+      required: true,
+      category: "essential"
+    },
+    {
+      id: "reputation",
+      label: "Good reputation",
+      description: "Check reviews, established provider",
+      required: true,
+      category: "essential"
+    },
+    {
+      id: "mail",
+      label: "Mail handling included",
+      description: "Receive and notify/forward",
+      required: true,
+      category: "services"
+    },
+    {
+      id: "meeting",
+      label: "Meeting room availability",
+      description: "Even if extra cost",
+      required: false,
+      category: "services"
+    },
+    {
+      id: "renewal",
+      label: "Clear renewal process",
+      description: "Know annual renewal procedure",
+      required: true,
+      category: "practical"
+    }
+  ]}
+  categories={[
+    { id: "essential", label: "Essential", color: "red" },
+    { id: "services", label: "Services", color: "blue" },
+    { id: "practical", label: "Practical", color: "green" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Company domicile, virtual office, business address Indonesia, PT PMA registered address"
+  placeholder="Ask about company domicile..."
+  suggestedQuestions={[
+    "Can I use home address for PT PMA?",
+    "What's included in virtual office?",
+    "Can I change domicile later?",
+    "Is virtual office accepted by banks?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [PT PMA Registration Guide](/blog/business/pt-pma-registration-guide)
+- [Starting a Business in Indonesia](/blog/business/starting-a-business-in-indonesia-complete-guide)
+- [PT PMA Timeline](/blog/business/pt-pma-timeline)

@@ -1,0 +1,314 @@
+---
+title: "Work Permit Costs in Indonesia 2025: Complete Fee Breakdown"
+slug: "work-permit-costs"
+description: "Complete breakdown of work permit costs in Indonesia. RPTKA, KITAS, agent fees, and total budget for foreign workers in 2025."
+excerpt: "How much does it really cost to work legally in Indonesia? Here's the full breakdown."
+category: "immigration"
+tags:
+  - work permit costs
+  - KITAS fees
+  - RPTKA costs
+  - DKP-TKA
+  - immigration fees
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Immigration Advisor"
+featured: false
+image:
+  src: "/images/blog/immigration/permit-costs.jpg"
+  alt: "Indonesia work permit fee calculation"
+seo:
+  title: "Work Permit Costs Indonesia 2025 | Complete Fee Guide"
+  description: "How much does a work permit cost in Indonesia? Full breakdown of RPTKA, KITAS, DKP-TKA, agent fees, and total costs for 2025."
+  keywords:
+    - work permit cost Indonesia
+    - KITAS fees
+    - RPTKA cost
+    - DKP-TKA fee
+readingTime: 8
+difficulty: "beginner"
+aiGenerated: true
+kbSources:
+  - collection: "immigration_docs"
+    documentsUsed: 15
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "kitas-work-permit-guide"
+  - "rptka-imta-explained"
+  - "work-permit-timeline"
+tableOfContents: true
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Work Permit Costs in Indonesia 2025: Complete Fee Breakdown
+
+Getting a work permit in Indonesia involves multiple fees. Here's exactly what you (or your employer) will pay.
+
+## Cost Calculator
+
+<Calculator
+  title="Work Permit Cost Estimator"
+  description="Calculate total work permit costs"
+  fields={[
+    {
+      id: "duration",
+      label: "Permit Duration",
+      type: "select",
+      options: [
+        { value: "6", label: "6 months" },
+        { value: "12", label: "12 months (1 year)" },
+        { value: "24", label: "24 months (2 years)" }
+      ],
+      defaultValue: "12"
+    },
+    {
+      id: "useAgent",
+      label: "Using Immigration Agent?",
+      type: "checkbox",
+      defaultValue: true
+    },
+    {
+      id: "newCompany",
+      label: "New company (first foreign worker)?",
+      type: "checkbox",
+      defaultValue: false
+    }
+  ]}
+  calculateResult={(values) => {
+    const months = Number(values.duration);
+
+    // Government fees
+    const dkpTka = months * 100; // USD 100/month
+    const kitasFee = 2000000; // IDR
+    const vitasFee = 1500000; // IDR
+    const stm = 200000; // IDR
+    const biometrics = 100000; // IDR
+
+    // Agent fees (typical range)
+    const agentBase = values.useAgent ? 15000000 : 0; // IDR
+    const agentPremium = values.newCompany ? 5000000 : 0; // IDR
+
+    // Convert to IDR (approx rate)
+    const dkpTkaIdr = dkpTka * 16000;
+
+    // Totals
+    const govtTotal = kitasFee + vitasFee + stm + biometrics + dkpTkaIdr;
+    const agentTotal = agentBase + agentPremium;
+    const grandTotal = govtTotal + agentTotal;
+
+    return {
+      total: grandTotal,
+      breakdown: [
+        { label: `DKP-TKA (${months} months)`, amount: dkpTkaIdr },
+        { label: "KITAS Fee", amount: kitasFee },
+        { label: "VITAS Fee", amount: vitasFee },
+        { label: "STM + Biometrics", amount: stm + biometrics },
+        { label: "Agent Service Fee", amount: agentBase },
+        { label: "New Company Premium", amount: agentPremium }
+      ],
+      currency: "IDR",
+      note: `USD equivalent: ~$${Math.round(grandTotal / 16000)}`
+    };
+  }}
+/>
+
+---
+
+## Fee Breakdown by Category
+
+### 1. Government Fees
+
+<ComparisonTable
+  title="Government/Official Fees"
+  description="Required payments to government"
+  items={[
+    {
+      name: "DKP-TKA",
+      subtitle: "Compensation fund",
+      values: {
+        "Amount": "USD 100/month",
+        "Paid By": "Employer",
+        "12-month Total": "USD 1,200"
+      },
+      highlight: true
+    },
+    {
+      name: "VITAS Fee",
+      subtitle: "Visa approval",
+      values: {
+        "Amount": "IDR 1,500,000",
+        "Paid By": "Employer/Worker",
+        "12-month Total": "~$95"
+      }
+    },
+    {
+      name: "KITAS Fee",
+      subtitle: "Stay permit",
+      values: {
+        "Amount": "IDR 2,000,000",
+        "Paid By": "Employer/Worker",
+        "12-month Total": "~$125"
+      }
+    },
+    {
+      name: "STM & Biometrics",
+      subtitle: "Processing fees",
+      values: {
+        "Amount": "IDR 300,000",
+        "Paid By": "Employer/Worker",
+        "12-month Total": "~$20"
+      }
+    }
+  ]}
+/>
+
+<InfoCard variant="note" title="DKP-TKA is the Big Cost">
+The **USD 100/month compensation fund** is the largest government fee. For a 2-year permit, that's **USD 2,400** upfront, non-refundable.
+</InfoCard>
+
+---
+
+### 2. Agent/Processing Fees
+
+Most companies use immigration agents. Typical fees:
+
+| Service | Cost Range (IDR) | Notes |
+|---------|------------------|-------|
+| Full KITAS processing | 15-25 million | All-inclusive |
+| RPTKA only | 5-8 million | If handling KITAS yourself |
+| Extension processing | 8-15 million | Simpler than new application |
+| Rush processing | +30-50% | Not always possible |
+
+<InfoCard variant="tip" title="Agent Selection">
+Choose agents who:
+- Have clear pricing (no hidden fees)
+- Provide written service agreement
+- Have verifiable track record
+- Are responsive to questions
+</InfoCard>
+
+---
+
+### 3. Hidden/Additional Costs
+
+Don't forget these expenses:
+
+| Item | Estimated Cost | Notes |
+|------|---------------|-------|
+| Document legalization | IDR 1-3 million | Degree, certificates |
+| Translation | IDR 500k-1.5 million | If documents not in Indonesian |
+| Photos | IDR 50-100k | Specific requirements |
+| Medical check | IDR 500k-1 million | Sometimes required |
+| Travel for biometrics | Varies | May need to visit specific office |
+
+---
+
+## Total Cost Scenarios
+
+<ComparisonTable
+  title="Total Cost Examples"
+  description="Realistic budget for different situations"
+  items={[
+    {
+      name: "Employee (1 year)",
+      subtitle: "Company handles everything",
+      values: {
+        "DKP-TKA": "USD 1,200",
+        "Govt Fees": "~IDR 4M",
+        "Agent": "~IDR 18M",
+        "Total": "~IDR 40M (~$2,500)"
+      }
+    },
+    {
+      name: "Director (2 years)",
+      subtitle: "Own PT PMA",
+      values: {
+        "DKP-TKA": "USD 2,400",
+        "Govt Fees": "~IDR 4M",
+        "Agent": "~IDR 25M",
+        "Total": "~IDR 68M (~$4,250)"
+      },
+      highlight: true
+    },
+    {
+      name: "Extension (1 year)",
+      subtitle: "Existing KITAS",
+      values: {
+        "DKP-TKA": "USD 1,200",
+        "Govt Fees": "~IDR 3M",
+        "Agent": "~IDR 12M",
+        "Total": "~IDR 34M (~$2,100)"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Who Pays?
+
+Legally, the **employer** is responsible for most work permit costs. In practice:
+
+### Employer Usually Pays
+- DKP-TKA (mandatory employer obligation)
+- RPTKA processing
+- Agent fees
+
+### Often Negotiated
+- KITAS fees
+- Extension costs
+- Document preparation
+
+<InfoCard variant="warning" title="Check Your Contract">
+Before accepting a job, clarify:
+- Who pays for initial work permit?
+- Who pays for extensions?
+- What happens if you leave early?
+- Are costs deducted from salary?
+
+Get it in writing in your employment contract.
+</InfoCard>
+
+---
+
+## Saving Money
+
+Tips to reduce costs:
+
+1. **Use company in-house** - Some large companies have immigration staff
+2. **Multi-year permits** - 2-year permits cost less per year than 1-year
+3. **Bundle with others** - Agents may discount for multiple workers
+4. **Compare agents** - Prices vary significantly
+5. **Prepare documents properly** - Avoid re-processing fees
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Work permit costs, KITAS fees, DKP-TKA, immigration agent fees Indonesia"
+  placeholder="Ask about work permit costs..."
+  suggestedQuestions={[
+    "Is DKP-TKA refundable if I leave early?",
+    "Can I claim work permit costs on tax?",
+    "Why do agent fees vary so much?",
+    "Are there any fee exemptions?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [KITAS Work Permit Guide](/blog/immigration/kitas-work-permit-guide)
+- [RPTKA & IMTA Explained](/blog/immigration/rptka-imta-explained)
+- [Work Permit Timeline](/blog/immigration/work-permit-timeline)

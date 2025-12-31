@@ -1,0 +1,402 @@
+---
+title: "Investor KITAS Guide: Living in Indonesia as an Investor 2025"
+slug: "investor-kitas-guide"
+description: "How to get an Investor KITAS in Indonesia. Requirements, investment amounts, process, and benefits of the investor visa."
+excerpt: "Investing in Indonesia? Here's how to get residency through the Investor KITAS."
+category: "immigration"
+tags:
+  - investor KITAS
+  - C313 visa
+  - investment visa
+  - PT PMA investor
+  - Indonesia residency
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Immigration Advisor"
+featured: false
+image:
+  src: "/images/blog/immigration/investor-kitas.jpg"
+  alt: "Indonesia investor visa"
+seo:
+  title: "Investor KITAS Indonesia 2025 | Investment Visa Guide"
+  description: "Complete guide to getting an Investor KITAS in Indonesia. Investment requirements, process, and how to live in Indonesia as an investor."
+  keywords:
+    - investor KITAS Indonesia
+    - investment visa
+    - C313 visa
+    - Indonesia investor residency
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "immigration_docs"
+    documentsUsed: 18
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "pt-pma-registration-guide"
+  - "pt-pma-capital-requirements"
+  - "shareholder-kitas-requirements"
+tableOfContents: true
+---
+
+import {
+  JourneyMap,
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  Checklist,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Investor KITAS Guide: Living in Indonesia as an Investor 2025
+
+If you're investing in an Indonesian company, you may qualify for an Investor KITAS (C313) - allowing you to live in Indonesia based on your investment, not employment.
+
+## What is Investor KITAS?
+
+<InfoCard variant="note" title="Investor KITAS (C313)">
+A Limited Stay Permit for foreign investors who:
+- Own shares in an Indonesian company (PT PMA)
+- Meet minimum investment requirements
+- May or may not work in the company
+
+**Key benefit**: You don't need RPTKA (work authorization) if you're purely an investor not working in the company.
+</InfoCard>
+
+---
+
+## Investor vs Worker KITAS
+
+<ComparisonTable
+  title="KITAS Comparison"
+  description="Investor (C313) vs Worker (C312)"
+  items={[
+    {
+      name: "Investor KITAS (C313)",
+      subtitle: "For shareholders/investors",
+      values: {
+        "RPTKA Required": "No (if not working)",
+        "DKP-TKA Fee": "No (if not working)",
+        "Work Allowed": "Only if also have RPTKA",
+        "Duration": "1-2 years",
+        "Sponsor": "Own company"
+      },
+      highlight: true
+    },
+    {
+      name: "Worker KITAS (C312)",
+      subtitle: "For employees/directors",
+      values: {
+        "RPTKA Required": "Yes",
+        "DKP-TKA Fee": "Yes (USD 100/month)",
+        "Work Allowed": "Yes (as per RPTKA)",
+        "Duration": "6-24 months",
+        "Sponsor": "Employer"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Investment Requirements
+
+### Minimum Investment
+
+<Calculator
+  title="Investment KITAS Eligibility"
+  description="Check if you meet investment requirements"
+  fields={[
+    {
+      id: "shares",
+      label: "Your Share Percentage",
+      type: "number",
+      defaultValue: 50,
+      min: 1,
+      max: 100,
+      suffix: "%"
+    },
+    {
+      id: "totalCapital",
+      label: "Company Paid-Up Capital (IDR)",
+      type: "number",
+      defaultValue: 2500000000,
+      min: 0,
+      step: 100000000,
+      suffix: "IDR"
+    }
+  ]}
+  calculateResult={(values) => {
+    const sharePercent = Number(values.shares) / 100;
+    const totalCapital = Number(values.totalCapital);
+    const yourInvestment = totalCapital * sharePercent;
+    const minRequired = 1000000000; // IDR 1B per foreigner minimum
+    const eligible = yourInvestment >= minRequired;
+
+    return {
+      total: yourInvestment,
+      breakdown: [
+        { label: "Company Total Capital", amount: totalCapital },
+        { label: `Your Share (${values.shares}%)`, amount: yourInvestment },
+        { label: "Minimum Required", amount: minRequired },
+        { label: "Status", amount: eligible ? 1 : 0 }
+      ],
+      currency: "IDR",
+      note: eligible
+        ? "✅ You meet the minimum IDR 1 billion investment for Investor KITAS"
+        : "❌ Your investment is below the IDR 1 billion minimum"
+    };
+  }}
+/>
+
+### Key Requirements
+
+| Requirement | Amount/Details |
+|-------------|----------------|
+| Minimum investment per foreigner | IDR 1,000,000,000 (~USD 62,500) |
+| Total company paid-up capital | IDR 2,500,000,000 minimum |
+| Shareholding | Any percentage (must equal IDR 1B+) |
+| Company type | PT PMA (foreign investment company) |
+
+<InfoCard variant="warning" title="Investment Must Be Real">
+Immigration and BKPM may verify:
+- Capital actually deposited
+- Shares properly registered
+- Company actively operating
+- Investment not just on paper
+</InfoCard>
+
+---
+
+## Application Process
+
+<JourneyMap
+  title="Investor KITAS Process"
+  description="From company formation to KITAS"
+  estimatedTotal="6-10 weeks"
+  steps={[
+    {
+      id: "company",
+      title: "Establish PT PMA",
+      description: "Form investment company",
+      duration: "2-4 weeks",
+      status: "required",
+      tips: [
+        "If you don't have a company yet",
+        "See PT PMA registration guide",
+        "Must meet capital requirements"
+      ]
+    },
+    {
+      id: "capital",
+      title: "Deposit Capital",
+      description: "Transfer investment funds",
+      duration: "1-2 weeks",
+      status: "required",
+      tips: [
+        "To company bank account",
+        "Keep transfer records",
+        "Match deed amounts"
+      ]
+    },
+    {
+      id: "sponsor",
+      title: "Company Sponsors You",
+      description: "PT PMA applies as sponsor",
+      duration: "1 week",
+      status: "required",
+      documents: [
+        "NIB (Business ID)",
+        "Company deed",
+        "Proof of investment",
+        "Sponsor letter"
+      ]
+    },
+    {
+      id: "vitas",
+      title: "VITAS Application",
+      description: "Investor visa application",
+      duration: "3-5 days",
+      status: "required",
+      tips: [
+        "Submit to immigration",
+        "Include investment proof",
+        "Passport requirements apply"
+      ]
+    },
+    {
+      id: "entry",
+      title: "Enter Indonesia",
+      description: "Arrive with VITAS",
+      duration: "Same day",
+      status: "required",
+      tips: [
+        "Designated immigration port",
+        "Bring original documents"
+      ]
+    },
+    {
+      id: "kitas",
+      title: "KITAS Issuance",
+      description: "Convert to Investor KITAS",
+      duration: "5-7 days",
+      status: "final",
+      tips: [
+        "Biometrics required",
+        "Physical card issued",
+        "Valid 1-2 years"
+      ]
+    }
+  ]}
+/>
+
+---
+
+## Document Requirements
+
+<Checklist
+  title="Investor KITAS Documents"
+  description="What you need to apply"
+  persistKey="investor-kitas-docs"
+  items={[
+    {
+      id: "passport",
+      label: "Passport (24+ months validity)",
+      description: "Original plus copies",
+      required: true,
+      category: "personal"
+    },
+    {
+      id: "photos",
+      label: "Passport photos (4x6cm, red background)",
+      description: "Recent, 4 copies",
+      required: true,
+      category: "personal"
+    },
+    {
+      id: "cv",
+      label: "CV/Resume",
+      description: "Professional background",
+      required: true,
+      category: "personal"
+    },
+    {
+      id: "deed",
+      label: "Company deed (Akta)",
+      description: "Showing your shareholding",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "nib",
+      label: "NIB (Business ID)",
+      description: "Company legality document",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "npwp",
+      label: "Company NPWP",
+      description: "Tax registration",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "capital-proof",
+      label: "Proof of capital deposit",
+      description: "Bank statements, transfer records",
+      required: true,
+      category: "investment"
+    },
+    {
+      id: "sponsor-letter",
+      label: "Sponsor letter from company",
+      description: "Confirming your role as investor",
+      required: true,
+      category: "company"
+    }
+  ]}
+  categories={[
+    { id: "personal", label: "Personal", color: "blue" },
+    { id: "company", label: "Company", color: "green" },
+    { id: "investment", label: "Investment", color: "amber" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Can You Work on Investor KITAS?
+
+<InfoCard variant="note" title="Working as an Investor">
+**Pure Investor (not working)**: No RPTKA needed, no DKP-TKA fee.
+
+**Investor + Director/Worker**: Need RPTKA and pay DKP-TKA. Get both investor status AND work authorization.
+
+Many foreign investors choose to be both shareholder AND director, which requires full work permit process.
+</InfoCard>
+
+### What "Not Working" Means
+
+As a pure investor, you can:
+- Attend board meetings
+- Review company performance
+- Receive dividends
+- Make investment decisions
+
+You cannot:
+- Manage daily operations
+- Sign contracts as director
+- Have employees report to you
+- Represent company to clients
+
+---
+
+## Benefits of Investor KITAS
+
+1. **No DKP-TKA** - Save USD 100/month (if not working)
+2. **Longer validity** - Often 2 years
+3. **Path to KITAP** - Permanent residency after 3 consecutive years
+4. **Simpler process** - No RPTKA if pure investor
+5. **Family sponsorship** - Can sponsor spouse and children
+
+---
+
+## Costs
+
+| Item | Cost |
+|------|------|
+| VITAS fee | IDR 1,500,000 |
+| KITAS fee | IDR 2,000,000 |
+| Processing fees | IDR 300,000 |
+| Agent fee (if used) | IDR 10-15 million |
+| **No DKP-TKA** | USD 0 (if not working) |
+
+**Total**: Approximately IDR 15-20 million (vs. IDR 35-40 million for worker KITAS with DKP-TKA)
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Investor KITAS, C313 visa, investment visa Indonesia, PT PMA investor"
+  placeholder="Ask about Investor KITAS..."
+  suggestedQuestions={[
+    "Can I invest in someone else's company?",
+    "What if my investment loses value?",
+    "Can I sell shares and keep KITAS?",
+    "How long until I can get KITAP?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [PT PMA Registration Guide](/blog/business/pt-pma-registration-guide)
+- [PT PMA Capital Requirements](/blog/business/pt-pma-capital-requirements)
+- [Director vs Employee KITAS](/blog/immigration/director-vs-employee-kitas)
+- [Shareholder KITAS Requirements](/blog/immigration/shareholder-kitas-requirements)

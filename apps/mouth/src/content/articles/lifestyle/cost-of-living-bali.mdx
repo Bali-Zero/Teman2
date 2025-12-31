@@ -1,0 +1,418 @@
+---
+title: "Cost of Living in Bali 2025: Complete Expat Budget Guide"
+slug: "cost-of-living-bali"
+description: "Realistic cost of living in Bali for expats and digital nomads. Monthly budgets, accommodation, food, and lifestyle costs."
+excerpt: "How much does it cost to live in Bali? Here's a realistic breakdown for different lifestyles."
+category: "lifestyle"
+tags:
+  - cost of living
+  - bali budget
+  - expat costs
+  - digital nomad budget
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Lifestyle Advisor"
+featured: true
+image:
+  src: "/images/blog/lifestyle/cost-of-living.jpg"
+  alt: "Cost of living Bali"
+seo:
+  title: "Cost of Living Bali 2025 | Expat Budget Guide"
+  description: "Complete guide to cost of living in Bali. Monthly budgets for expats and digital nomads at different lifestyle levels."
+  keywords:
+    - cost of living bali
+    - bali budget
+    - expat bali costs
+readingTime: 12
+difficulty: "beginner"
+aiGenerated: true
+kbSources:
+  - collection: "lifestyle_docs"
+    documentsUsed: 18
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "digital-nomad-visa-indonesia"
+  - "banking-for-foreigners"
+  - "health-insurance-foreigners"
+tableOfContents: true
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  AskZantara
+} from '@/components/blog/interactive';
+
+# Cost of Living in Bali 2025: Complete Expat Budget Guide
+
+Bali can be surprisingly affordable or surprisingly expensive - depending on your lifestyle choices. Here's a realistic breakdown.
+
+## Budget Calculator
+
+<Calculator
+  title="Monthly Bali Budget Calculator"
+  description="Estimate your monthly costs"
+  fields={[
+    {
+      id: "accommodation",
+      label: "Accommodation Style",
+      type: "select",
+      options: [
+        { value: "basic", label: "Basic room/kos" },
+        { value: "apartment", label: "Apartment/studio" },
+        { value: "villa-share", label: "Villa share" },
+        { value: "villa", label: "Private villa (2br)" },
+        { value: "luxury", label: "Luxury villa (3br+)" }
+      ],
+      defaultValue: "apartment"
+    },
+    {
+      id: "food",
+      label: "Food Style",
+      type: "select",
+      options: [
+        { value: "local", label: "Mostly local (warungs)" },
+        { value: "mixed", label: "Mixed local + cafes" },
+        { value: "western", label: "Mostly western cafes" },
+        { value: "premium", label: "Restaurants + dining out" }
+      ],
+      defaultValue: "mixed"
+    },
+    {
+      id: "transport",
+      label: "Transport",
+      type: "select",
+      options: [
+        { value: "scooter", label: "Rent scooter" },
+        { value: "own-scooter", label: "Own scooter" },
+        { value: "car", label: "Rent car" },
+        { value: "driver", label: "Car + driver" }
+      ],
+      defaultValue: "scooter"
+    },
+    {
+      id: "lifestyle",
+      label: "Activities & Social",
+      type: "select",
+      options: [
+        { value: "minimal", label: "Minimal" },
+        { value: "moderate", label: "Moderate" },
+        { value: "active", label: "Active social life" },
+        { value: "full", label: "Full lifestyle" }
+      ],
+      defaultValue: "moderate"
+    }
+  ]}
+  calculateResult={(values) => {
+    // Accommodation costs
+    const accommodationCosts = {
+      "basic": 3000000,
+      "apartment": 7000000,
+      "villa-share": 5000000,
+      "villa": 15000000,
+      "luxury": 35000000
+    };
+
+    // Food costs
+    const foodCosts = {
+      "local": 3000000,
+      "mixed": 6000000,
+      "western": 10000000,
+      "premium": 18000000
+    };
+
+    // Transport costs
+    const transportCosts = {
+      "scooter": 1000000,
+      "own-scooter": 500000,
+      "car": 6000000,
+      "driver": 12000000
+    };
+
+    // Lifestyle costs
+    const lifestyleCosts = {
+      "minimal": 1500000,
+      "moderate": 4000000,
+      "active": 8000000,
+      "full": 15000000
+    };
+
+    const accommodation = accommodationCosts[values.accommodation];
+    const food = foodCosts[values.food];
+    const transport = transportCosts[values.transport];
+    const lifestyle = lifestyleCosts[values.lifestyle];
+    const utilities = 500000;
+    const internet = 500000;
+    const phone = 200000;
+
+    const total = accommodation + food + transport + lifestyle + utilities + internet + phone;
+
+    return {
+      total: total,
+      breakdown: [
+        { label: "Accommodation", amount: accommodation },
+        { label: "Food & Dining", amount: food },
+        { label: "Transport", amount: transport },
+        { label: "Lifestyle & Activities", amount: lifestyle },
+        { label: "Utilities", amount: utilities },
+        { label: "Internet & Phone", amount: internet + phone }
+      ],
+      currency: "IDR",
+      note: `Approximately USD ${Math.round(total / 16000)}/month`
+    };
+  }}
+/>
+
+---
+
+## Lifestyle Levels
+
+<ComparisonTable
+  title="Monthly Budget by Lifestyle"
+  description="Realistic ranges for different living standards"
+  items={[
+    {
+      name: "Budget",
+      subtitle: "Backpacker/Nomad",
+      values: {
+        "Monthly Total": "IDR 8-12M",
+        "USD Equivalent": "$500-750",
+        "Accommodation": "Basic kos/room",
+        "Food": "Local warungs"
+      }
+    },
+    {
+      name: "Comfortable",
+      subtitle: "Digital Nomad",
+      values: {
+        "Monthly Total": "IDR 15-25M",
+        "USD Equivalent": "$1,000-1,500",
+        "Accommodation": "Apartment/villa share",
+        "Food": "Mixed local + cafes"
+      },
+      highlight: true
+    },
+    {
+      name: "Good Life",
+      subtitle: "Expat Standard",
+      values: {
+        "Monthly Total": "IDR 30-50M",
+        "USD Equivalent": "$2,000-3,000",
+        "Accommodation": "Private villa",
+        "Food": "Western + dining"
+      }
+    },
+    {
+      name: "Premium",
+      subtitle: "Luxury Lifestyle",
+      values: {
+        "Monthly Total": "IDR 70M+",
+        "USD Equivalent": "$4,500+",
+        "Accommodation": "Luxury villa",
+        "Food": "Fine dining"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Accommodation Costs
+
+### Monthly Rental Ranges
+
+| Type | Monthly Range (IDR) | USD | Notes |
+|------|---------------------|-----|-------|
+| Kos (room) | 1.5-4M | $100-250 | Basic, local area |
+| Studio apartment | 5-10M | $300-600 | With kitchen |
+| 1BR apartment | 8-15M | $500-900 | In good area |
+| 2BR villa | 12-25M | $750-1,500 | Pool, garden |
+| 3BR+ villa | 20-50M+ | $1,250-3,000+ | Family/premium |
+
+### Location Impact
+
+| Area | Price Level | Character |
+|------|-------------|-----------|
+| Seminyak | $$$$$ | Premium, central |
+| Canggu | $$$$ | Trendy, nomads |
+| Ubud | $$$ | Peaceful, culture |
+| Sanur | $$$ | Family, relaxed |
+| Pererenan | $$$ | Up-and-coming |
+| Uluwatu | $$$ | Surf, cliffs |
+| Tabanan | $$ | Local, quiet |
+
+<InfoCard variant="tip" title="Long-term Savings">
+- Monthly rate is cheaper than nightly/weekly
+- 6-12 month lease gets best rates
+- Negotiate during low season
+- Consider including utilities in rent
+</InfoCard>
+
+---
+
+## Food & Dining
+
+### Eating Options
+
+| Option | Cost per Meal | Monthly (3x/day) |
+|--------|---------------|------------------|
+| Warung (local) | IDR 20-40K | IDR 2-3.5M |
+| Cafe meal | IDR 60-100K | IDR 5-9M |
+| Restaurant | IDR 100-200K | IDR 9-18M |
+| Fine dining | IDR 300K+ | IDR 27M+ |
+| Cooking at home | IDR 15-30K | IDR 1.5-3M |
+
+### Groceries
+
+| Item | Approximate Cost |
+|------|-----------------|
+| Rice (5kg) | IDR 60-80K |
+| Eggs (30) | IDR 50-60K |
+| Chicken (1kg) | IDR 35-50K |
+| Imported cheese | IDR 80-150K |
+| Wine (bottle) | IDR 200-400K |
+| Beer (Bintang) | IDR 25-40K |
+
+---
+
+## Transport
+
+### Options and Costs
+
+| Mode | Monthly Cost | Notes |
+|------|--------------|-------|
+| Scooter rental | IDR 800K-1.5M | Most common |
+| Buy scooter | IDR 15-25M | One-time |
+| Scooter petrol | IDR 200-400K | Monthly |
+| Car rental | IDR 5-8M | Self-drive |
+| Car + driver | IDR 10-15M | Full-time |
+| Gojek/Grab | IDR 1-3M | On-demand |
+
+<InfoCard variant="note" title="Scooter is Essential">
+Most expats in Bali rent or buy a scooter. It's:
+- Most practical for traffic
+- Affordable
+- Easy to park
+- Flexible
+
+Get proper insurance and always wear a helmet!
+</InfoCard>
+
+---
+
+## Other Monthly Costs
+
+### Utilities & Services
+
+| Item | Monthly Cost |
+|------|--------------|
+| Electricity | IDR 300-800K |
+| Water | IDR 100-200K |
+| Internet (fiber) | IDR 400-800K |
+| Phone/data | IDR 100-300K |
+| Cleaner (weekly) | IDR 400-800K |
+| Pool maintenance | IDR 500K-1M |
+
+### Health & Fitness
+
+| Item | Cost |
+|------|------|
+| Gym membership | IDR 500K-1.5M/month |
+| Yoga class | IDR 150-200K/class |
+| Surf lesson | IDR 400-600K/session |
+| Massage | IDR 150-300K |
+| Doctor visit | IDR 300-600K |
+
+### Entertainment
+
+| Item | Cost |
+|------|------|
+| Beach club entry | IDR 250K-1M |
+| Movie ticket | IDR 50-80K |
+| Nightclub night | IDR 500K-2M |
+| Coworking day pass | IDR 100-200K |
+| Coworking monthly | IDR 1.5-3M |
+
+---
+
+## Bali vs Other Destinations
+
+<ComparisonTable
+  title="Monthly Cost Comparison"
+  description="Bali vs other nomad destinations"
+  items={[
+    {
+      name: "Bali, Indonesia",
+      values: {
+        "Comfortable": "$1,000-1,500",
+        "Good": "$2,000-3,000",
+        "Visa": "B211A"
+      },
+      highlight: true
+    },
+    {
+      name: "Chiang Mai, Thailand",
+      values: {
+        "Comfortable": "$1,000-1,500",
+        "Good": "$1,500-2,500",
+        "Visa": "60 days + extend"
+      }
+    },
+    {
+      name: "Lisbon, Portugal",
+      values: {
+        "Comfortable": "$2,500-3,500",
+        "Good": "$3,500-5,000",
+        "Visa": "D7/Nomad"
+      }
+    },
+    {
+      name: "Mexico City",
+      values: {
+        "Comfortable": "$1,500-2,000",
+        "Good": "$2,500-3,500",
+        "Visa": "180 days tourist"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Money-Saving Tips
+
+1. **Eat local** - Warungs are delicious and cheap
+2. **Long-term rental** - Negotiate for 6-12 months
+3. **Buy a scooter** - Cheaper than renting long-term
+4. **Cook sometimes** - Markets have great produce
+5. **Off-peak** - Avoid peak season for accommodation
+6. **Local SIM** - Much cheaper than roaming
+7. **Bintang over imports** - Local beer is affordable
+8. **Free beaches** - Skip expensive beach clubs
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Cost of living Bali, expat budget, digital nomad costs, living expenses Indonesia"
+  placeholder="Ask about cost of living..."
+  suggestedQuestions={[
+    "Is Bali getting more expensive?",
+    "What's the cheapest area to live?",
+    "How much for a family of 4?",
+    "Are there hidden costs?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Digital Nomad Visa Options](/blog/immigration/digital-nomad-visa-indonesia)
+- [Banking for Foreigners](/blog/lifestyle/banking-for-foreigners)
+- [Health Insurance for Foreigners](/blog/lifestyle/health-insurance-foreigners)
