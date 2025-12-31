@@ -101,7 +101,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
   );
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-60 flex flex-col bg-[#0E1116] bg-gradient-to-b from-[#10131A] to-[#0B0E13] border-r border-[rgba(255,255,255,0.04)]">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-60 flex flex-col bg-[#242424] border-r border-white/5">
       {/* Logo Section */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-[rgba(255,255,255,0.04)]">
         <div className="relative w-10 h-10">

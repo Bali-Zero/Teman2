@@ -191,40 +191,49 @@ export default function DashboardPage() {
       {/* Zero-Only Command Deck Widgets */}
       {isZero && !isLoading && (
         <>
-          {/* Analytics Dashboard Button */}
-          <Link
-            href="/dashboard/analytics"
-            className="group flex items-center justify-between p-4 rounded-xl border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--accent)]/10 to-transparent hover:border-[var(--accent)] hover:from-[var(--accent)]/20 transition-all duration-300"
-          >
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-[var(--accent)]/20 group-hover:bg-[var(--accent)]/30 transition-colors">
-                <BarChart3 className="w-6 h-6 text-[var(--accent)]" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-[var(--foreground)]">Analytics Dashboard</h3>
-                <p className="text-sm text-[var(--foreground-muted)]">
-                  Full system metrics, RAG pipeline, CRM analytics & more
-                </p>
-              </div>
-            </div>
-            <div className="text-[var(--accent)] group-hover:translate-x-1 transition-transform">
-              →
-            </div>
-          </Link>
-
+          {/* Analytics, Zantara v6.0, and Auto CRM - Layout Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-            <AiPulseWidget
-              systemAppStatus={systemStatus}
-              oracleStatus={systemStatus === 'healthy' ? 'active' : 'inactive'}
-            />
-            {stats.revenue && (
+            {/* Left Column: Analytics Dashboard + Zantara v6.0 stacked */}
+            <div className="flex flex-col gap-6">
+              {/* Analytics Dashboard - Square */}
+              <Link
+                href="/dashboard/analytics"
+                className="group aspect-square flex flex-col items-center justify-center p-6 rounded-xl border-2 border-sky-500/40 bg-sky-500/10 hover:border-sky-400 hover:bg-sky-500/15 transition-all duration-300"
+              >
+                <div className="p-4 rounded-lg bg-sky-500/20 group-hover:bg-sky-500/30 transition-colors mb-4">
+                  <BarChart3 className="w-10 h-10 text-sky-400" />
+                </div>
+                <h3 className="font-semibold text-[var(--foreground)] text-center">Analytics Dashboard</h3>
+                <p className="text-sm text-[var(--foreground-muted)] text-center mt-1">
+                  Full system metrics
+                </p>
+                <div className="text-sky-400 mt-4 group-hover:translate-x-1 transition-transform">
+                  →
+                </div>
+              </Link>
+
+              {/* Zantara v6.0 - Below Analytics */}
+              <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1">
+                <AiPulseWidget
+                  systemAppStatus={systemStatus}
+                  oracleStatus={systemStatus === 'healthy' ? 'active' : 'inactive'}
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Auto CRM */}
+            <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1 h-fit">
+              <AutoCRMWidget />
+            </div>
+          </div>
+
+          {/* Financial Reality Widget */}
+          {stats.revenue && (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-700 delay-100">
               <FinancialRealityWidget revenue={stats.revenue} growth={stats.growth || 0} />
-            )}
-          </div>
-          {/* AUTO CRM Widget - Always visible for all users */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700 delay-100">
-            <AutoCRMWidget />
-          </div>
+            </div>
+          )}
+
           {/* Nusantara System Health Map */}
           <NusantaraHealthWidget className="animate-in fade-in slide-in-from-top-4 duration-700 delay-150" />
         </>

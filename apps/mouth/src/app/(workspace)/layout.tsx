@@ -150,7 +150,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+      <div className="min-h-screen flex items-center justify-center bg-[#2a2a2a]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-[var(--foreground-muted)]">Loading...</p>
@@ -160,7 +160,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen bg-[#2a2a2a]">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <AppSidebar
