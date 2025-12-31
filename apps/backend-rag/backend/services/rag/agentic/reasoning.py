@@ -397,6 +397,22 @@ class ReasoningEngine:
                             except (KeyError, ValueError, TypeError) as e:
                                 logger.warning(f"Failed to parse vector_search result: {e}", exc_info=True)
 
+                        # Handle image generation results
+                        if tool_call.tool_name == "generate_image":
+                            try:
+                                parsed_result = json.loads(tool_result)
+                                if isinstance(parsed_result, dict) and parsed_result.get("success"):
+                                    # Extract image URL or base64 data
+                                    image_url = parsed_result.get("image_url") or parsed_result.get("image_data")
+                                    if image_url:
+                                        logger.info(f"🖼️ [Agent] Image generated: {parsed_result.get('service')}")
+                                        # Store in state for final response
+                                        if not hasattr(state, "generated_images"):
+                                            state.generated_images = []
+                                        state.generated_images.append(image_url)
+                            except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+                                logger.warning(f"Failed to parse generate_image result: {e}")
+
                         # Update the tool call with the result
                         tool_call.result = tool_result
 
@@ -810,6 +826,31 @@ Do not invent information. If the context is insufficient, admit it.
                                     state.sources.extend(new_sources)
                     except (json.JSONDecodeError, KeyError, ValueError, TypeError):
                         pass
+
+                # Handle image generation results
+                if tool_call.tool_name == "generate_image":
+                    try:
+                        parsed_result = json.loads(tool_result)
+                        if isinstance(parsed_result, dict) and parsed_result.get("success"):
+                            # Extract image URL or base64 data
+                            image_url = parsed_result.get("image_url") or parsed_result.get("image_data")
+                            if image_url:
+                                # Yield special image event for frontend rendering
+                                yield {
+                                    "type": "image",
+                                    "data": {
+                                        "url": image_url,
+                                        "service": parsed_result.get("service", "unknown"),
+                                        "prompt": parsed_result.get("message", ""),
+                                    }
+                                }
+                                logger.info(f"🖼️ [Agent Stream] Image generated: {parsed_result.get('service')}")
+                                # Store in state for final response
+                                if not hasattr(state, "generated_images"):
+                                    state.generated_images = []
+                                state.generated_images.append(image_url)
+                    except (json.JSONDecodeError, KeyError, ValueError, TypeError) as e:
+                        logger.warning(f"Failed to parse generate_image result: {e}")
 
                 tool_call.result = tool_result
 

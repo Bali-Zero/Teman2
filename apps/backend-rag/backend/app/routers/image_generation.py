@@ -36,9 +36,11 @@ async def generate_image(request: ImageGenerationRequest):
     Returns:
         ImageGenerationResponse with generated images or error
     """
-    # Use dedicated Imagen API key if available, otherwise fallback to google_api_key
-    imagen_api_key = getattr(settings, "google_imagen_api_key", None) or getattr(
-        settings, "google_api_key", None
+    # Use dedicated Imagen API key if available, otherwise fallback to other Google keys
+    imagen_api_key = (
+        getattr(settings, "google_imagen_api_key", None)
+        or getattr(settings, "google_ai_studio_key", None)
+        or getattr(settings, "google_api_key", None)
     )
 
     if not imagen_api_key:

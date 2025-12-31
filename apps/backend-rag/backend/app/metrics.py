@@ -110,12 +110,198 @@ rag_context_length = Histogram(
     buckets=[100, 500, 1000, 2000, 4000, 8000, 16000, 32000]
 )
 
+# Race Condition Metrics (Dec 2025 - Lock Contention Monitoring)
+memory_lock_timeout_total = Counter(
+    "zantara_memory_lock_timeout_total",
+    "Number of memory lock timeouts",
+    ["user_id"]
+)
+memory_lock_contention_seconds = Histogram(
+    "zantara_memory_lock_contention_seconds",
+    "Time spent waiting for memory locks",
+    ["operation"],
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+)
+collection_lock_timeout_total = Counter(
+    "zantara_collection_lock_timeout_total",
+    "Number of collection lock timeouts",
+    ["collection_name"]
+)
+cache_db_consistency_errors_total = Counter(
+    "zantara_cache_db_consistency_errors_total",
+    "Number of cache-DB consistency errors",
+    ["session_id"]
+)
+
+# Error Handling Metrics (Dec 2025 - Error Handling Fix)
+stream_event_none_total = Counter(
+    "zantara_stream_event_none_total",
+    "Number of None events in stream",
+)
+stream_event_invalid_type_total = Counter(
+    "zantara_stream_event_invalid_type_total",
+    "Number of stream events with invalid type",
+)
+stream_event_validation_failed_total = Counter(
+    "zantara_stream_event_validation_failed_total",
+    "Number of stream events that failed validation",
+)
+stream_event_processing_error_total = Counter(
+    "zantara_stream_event_processing_error_total",
+    "Number of stream event processing errors",
+)
+stream_fatal_error_total = Counter(
+    "zantara_stream_fatal_error_total",
+    "Number of fatal errors in stream",
+)
+
+search_hybrid_total = Counter(
+    "zantara_search_hybrid_total",
+    "Number of hybrid searches (dense + BM25)",
+)
+search_hybrid_failed_total = Counter(
+    "zantara_search_hybrid_failed_total",
+    "Number of hybrid search failures",
+)
+search_dense_only_total = Counter(
+    "zantara_search_dense_only_total",
+    "Number of dense-only searches (fallback)",
+)
+search_failed_total = Counter(
+    "zantara_search_failed_total",
+    "Number of complete search failures",
+)
+bm25_initialization_success_total = Counter(
+    "zantara_bm25_initialization_success_total",
+    "Number of successful BM25 initializations",
+)
+bm25_initialization_failed_total = Counter(
+    "zantara_bm25_initialization_failed_total",
+    "Number of BM25 initialization failures",
+    ["error_type"]
+)
+
+memory_orchestrator_healthy_total = Counter(
+    "zantara_memory_orchestrator_healthy_total",
+    "Number of times memory orchestrator initialized in healthy state",
+)
+memory_orchestrator_degraded_total = Counter(
+    "zantara_memory_orchestrator_degraded_total",
+    "Number of times memory orchestrator entered degraded mode",
+)
+memory_orchestrator_unavailable_total = Counter(
+    "zantara_memory_orchestrator_unavailable_total",
+    "Number of times memory orchestrator initialization failed",
+)
+memory_context_degraded_total = Counter(
+    "zantara_memory_context_degraded_total",
+    "Number of times context was returned in degraded mode",
+)
+memory_context_failed_total = Counter(
+    "zantara_memory_context_failed_total",
+    "Number of times context retrieval failed",
+)
+
+llm_circuit_breaker_open_total = Counter(
+    "zantara_llm_circuit_breaker_open_total",
+    "Number of times circuit breaker was open (skipped model)",
+    ["model"]
+)
+llm_circuit_breaker_opened_total = Counter(
+    "zantara_llm_circuit_breaker_opened_total",
+    "Number of times circuit breaker opened",
+    ["model", "error_type"]
+)
+llm_quota_exhausted_total = Counter(
+    "zantara_llm_quota_exhausted_total",
+    "Number of quota exhausted errors",
+    ["model"]
+)
+llm_service_unavailable_total = Counter(
+    "zantara_llm_service_unavailable_total",
+    "Number of service unavailable errors",
+    ["model"]
+)
+llm_model_error_total = Counter(
+    "zantara_llm_model_error_total",
+    "Number of model errors",
+    ["model", "error_type"]
+)
+llm_all_models_failed_total = Counter(
+    "zantara_llm_all_models_failed_total",
+    "Number of times all models failed",
+)
+llm_cost_limit_reached_total = Counter(
+    "zantara_llm_cost_limit_reached_total",
+    "Number of times cost limit was reached",
+)
+llm_max_depth_reached_total = Counter(
+    "zantara_llm_max_depth_reached_total",
+    "Number of times max fallback depth was reached",
+)
+llm_fallback_depth = Histogram(
+    "zantara_llm_fallback_depth",
+    "Fallback depth distribution",
+    buckets=[0, 1, 2, 3, 4, 5]
+)
+llm_query_cost_usd = Histogram(
+    "zantara_llm_query_cost_usd",
+    "Query cost in USD distribution",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
+)
+
+database_init_success_total = Counter(
+    "zantara_database_init_success_total",
+    "Number of successful database initializations",
+)
+database_init_failed_total = Counter(
+    "zantara_database_init_failed_total",
+    "Number of database initialization failures",
+    ["error_type", "is_transient"]
+)
+database_init_permanent_failure_total = Counter(
+    "zantara_database_init_permanent_failure_total",
+    "Number of permanent database initialization failures",
+)
+database_health_check_success_total = Counter(
+    "zantara_database_health_check_success_total",
+    "Number of successful database health checks",
+)
+database_health_check_failed_total = Counter(
+    "zantara_database_health_check_failed_total",
+    "Number of failed database health checks",
+)
+
+qdrant_timeout_total = Counter(
+    "zantara_qdrant_timeout_total",
+    "Number of Qdrant timeout errors",
+    ["error_type"]
+)
+qdrant_http_error_total = Counter(
+    "zantara_qdrant_http_error_total",
+    "Number of Qdrant HTTP errors",
+    ["status_code", "error_type"]
+)
+
+reasoning_low_context_quality_total = Counter(
+    "zantara_reasoning_low_context_quality_total",
+    "Number of times context quality was too low",
+)
+
 # Boot time tracking
 BOOT_TIME = time.time()
 
 
 class MetricsCollector:
     """Collects and manages system metrics"""
+
+    # Expose module-level metrics as class attributes for service access
+    bm25_initialization_success_total = bm25_initialization_success_total
+    bm25_initialization_failed_total = bm25_initialization_failed_total
+    search_hybrid_total = search_hybrid_total
+    search_hybrid_failed_total = search_hybrid_failed_total
+    search_dense_only_total = search_dense_only_total
+    search_failed_total = search_failed_total
 
     def __init__(self):
         self.session_count = 0
@@ -282,6 +468,39 @@ class MetricsCollector:
             to_model: Fallback model used (e.g., 'gemini-2.0-flash')
         """
         rag_fallback_count.labels(from_model=from_model, to_model=to_model).inc()
+
+    def record_memory_lock_timeout(self, user_id: str):
+        """Record a memory lock timeout event.
+
+        Args:
+            user_id: User identifier that experienced the timeout
+        """
+        memory_lock_timeout_total.labels(user_id=user_id).inc()
+
+    def record_memory_lock_contention(self, operation: str, wait_time_seconds: float):
+        """Record memory lock contention time.
+
+        Args:
+            operation: Operation type (e.g., 'save_memory', 'get_context')
+            wait_time_seconds: Time spent waiting for lock
+        """
+        memory_lock_contention_seconds.labels(operation=operation).observe(wait_time_seconds)
+
+    def record_collection_lock_timeout(self, collection_name: str):
+        """Record a collection lock timeout event.
+
+        Args:
+            collection_name: Collection that experienced the timeout
+        """
+        collection_lock_timeout_total.labels(collection_name=collection_name).inc()
+
+    def record_cache_db_consistency_error(self, session_id: str):
+        """Record a cache-DB consistency error.
+
+        Args:
+            session_id: Session ID where the error occurred
+        """
+        cache_db_consistency_errors_total.labels(session_id=session_id).inc()
 
 
 # Global metrics collector instance

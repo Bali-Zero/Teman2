@@ -37,12 +37,16 @@ UPDATED 2025-12-23:
 
 import json
 import logging
+import time
+from collections import defaultdict
 from typing import Any
 
 import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
+from app.core.circuit_breaker import CircuitBreaker
+from app.core.error_classification import ErrorClassifier, get_error_context
 from app.metrics import metrics_collector
 from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
 from llm.genai_client import GenAIClient, GENAI_AVAILABLE, types, get_genai_client
@@ -132,6 +136,13 @@ class LLMGateway:
 
         # Lazy-loaded OpenRouter client (fallback)
         self._openrouter_client: OpenRouterClient | None = None
+        
+        # Circuit breaker configuration using CircuitBreaker class
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
+        self._circuit_breaker_threshold = 5
+        self._circuit_breaker_timeout = 60.0  # seconds
+        self._max_fallback_depth = 3
+        self._max_fallback_cost_usd = 0.10  # Max $0.10 per query
 
     def set_gemini_tools(self, tools: list) -> None:
         """Set or update Gemini function declarations for tool calling.
@@ -176,6 +187,7 @@ class LLMGateway:
         tier: int = TIER_FLASH,
         enable_function_calling: bool = True,
         conversation_messages: list[dict] | None = None,
+        images: list[dict] | None = None,  # Vision: [{"base64": "data:image/...", "name": "file.jpg"}]
     ) -> tuple[str, str, Any, TokenUsage]:
         """Send message to LLM with tier-based routing and automatic fallback.
 
@@ -194,6 +206,7 @@ class LLMGateway:
             tier: Requested model tier (TIER_PRO=2, TIER_FLASH=0, TIER_LITE=1)
             enable_function_calling: Enable native function calling for Gemini models
             conversation_messages: Conversation history for OpenRouter fallback
+            images: List of images for vision (base64 encoded with data URI prefix)
 
         Returns:
             Tuple of (response_text, model_name_used, response_object, token_usage)
@@ -213,14 +226,91 @@ class LLMGateway:
             ... )
             >>> print(f"[{model}] {response} (cost: ${usage.cost_usd:.6f})")
         """
-        return await self._send_with_fallback(
-            chat=chat,
-            message=message,
-            system_prompt=system_prompt,
-            model_tier=tier,
-            enable_function_calling=enable_function_calling,
-            conversation_messages=conversation_messages or [],
+        query_cost_tracker = {"cost": 0.0, "depth": 0}
+        try:
+            return await self._send_with_fallback(
+                chat=chat,
+                message=message,
+                system_prompt=system_prompt,
+                model_tier=tier,
+                enable_function_calling=enable_function_calling,
+                conversation_messages=conversation_messages or [],
+                query_cost_tracker=query_cost_tracker,
+                images=images,
+            )
+        except Exception as e:
+            logger.exception(
+                f"All LLM models failed",
+                extra={
+                    "tier": tier,
+                    "fallback_depth": query_cost_tracker["depth"],
+                    "total_cost": query_cost_tracker["cost"],
+                }
+            )
+            try:
+                from app.metrics import llm_all_models_failed_total
+                llm_all_models_failed_total.inc()
+            except ImportError:
+                pass
+            raise RuntimeError(f"All LLM models failed: {e}")
+
+    def _get_circuit_breaker(self, model_name: str) -> CircuitBreaker:
+        """Get or create circuit breaker for model."""
+        if model_name not in self._circuit_breakers:
+            self._circuit_breakers[model_name] = CircuitBreaker(
+                failure_threshold=self._circuit_breaker_threshold,
+                success_threshold=2,
+                timeout=self._circuit_breaker_timeout,
+                name=f"llm_{model_name}",
+            )
+        return self._circuit_breakers[model_name]
+    
+    def _is_circuit_open(self, model_name: str) -> bool:
+        """Check if circuit breaker is open."""
+        circuit = self._get_circuit_breaker(model_name)
+        return circuit.is_open()
+    
+    def _record_success(self, model_name: str):
+        """Record successful call."""
+        circuit = self._get_circuit_breaker(model_name)
+        circuit.record_success()
+    
+    def _record_failure(self, model_name: str, error: Exception):
+        """Record failed call with error classification."""
+        circuit = self._get_circuit_breaker(model_name)
+        circuit.record_failure()
+        
+        # Classify error and log metrics
+        error_category, error_severity = ErrorClassifier.classify_error(error)
+        error_type = type(error).__name__
+        
+        # Log with structured context
+        error_context = get_error_context(error, model=model_name)
+        logger.warning(
+            f"LLM call failed for {model_name}",
+            extra=error_context
         )
+        
+        # Record metrics if circuit opened
+        if circuit.is_open():
+            try:
+                from app.metrics import llm_circuit_breaker_opened_total
+                llm_circuit_breaker_opened_total.labels(
+                    model=model_name,
+                    error_type=error_type
+                ).inc()
+            except ImportError:
+                pass
+    
+    def _get_fallback_chain(self, model_tier: int) -> list[str]:
+        """Get fallback chain for given tier."""
+        chain = []
+        if model_tier == TIER_PRO:
+            chain.append(self.model_name_pro)
+        if model_tier <= TIER_FLASH:
+            chain.append(self.model_name_flash)
+        chain.append(self.model_name_fallback)
+        return chain
 
     async def _send_with_fallback(
         self,
@@ -230,6 +320,8 @@ class LLMGateway:
         model_tier: int,
         enable_function_calling: bool,
         conversation_messages: list[dict],
+        query_cost_tracker: dict,
+        images: list[dict] | None = None,
     ) -> tuple[str, str, Any, TokenUsage]:
         """Send message with tier-based routing, native function calling, and cascade fallback.
 
@@ -247,6 +339,7 @@ class LLMGateway:
             model_tier: Requested tier (TIER_PRO=2, TIER_FLASH=0, TIER_LITE=1)
             enable_function_calling: Whether to enable native function calling (default: True)
             conversation_messages: Message history for OpenRouter
+            images: Optional list of images for vision capability
 
         Returns:
             Tuple of (response_text, model_name_used, response_object)
@@ -261,6 +354,7 @@ class LLMGateway:
             - Extracts user query from structured prompts for OpenRouter
             - Native function calling enabled for Gemini models
             - OpenRouter uses regex fallback (no function calling)
+            - Vision mode: pass images for multimodal Gemini support
 
         Example:
             >>> response, model, resp_obj = await self._send_with_fallback(
@@ -322,23 +416,76 @@ class LLMGateway:
 
             return types.GenerateContentConfig(**config_kwargs)
 
+        # Helper to build multimodal content with images
+        def _build_multimodal_content(text: str, imgs: list[dict] | None) -> Any:
+            """Build content with text and optional images for Gemini vision."""
+            if not imgs:
+                return text  # Plain text, no images
+
+            # Build multimodal content with images
+            parts = []
+
+            # Add text part first
+            if text:
+                parts.append({"text": text})
+
+            # Add image parts
+            for img in imgs:
+                try:
+                    base64_data = img.get("base64", "")
+                    # Parse data URI: data:image/jpeg;base64,/9j/4AAQ...
+                    if base64_data.startswith("data:"):
+                        # Extract mime type and base64 data
+                        header, b64_content = base64_data.split(",", 1)
+                        # header = "data:image/jpeg;base64"
+                        mime_type = header.split(":")[1].split(";")[0]
+                    else:
+                        # Assume JPEG if no prefix
+                        b64_content = base64_data
+                        mime_type = "image/jpeg"
+
+                    parts.append({
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": b64_content,
+                        }
+                    })
+                    logger.debug(f"🖼️ Added image to content: {img.get('name', 'unknown')} ({mime_type})")
+                except Exception as img_err:
+                    logger.warning(f"⚠️ Failed to process image: {img_err}")
+
+            if not parts:
+                return text  # Fallback to plain text if no parts built
+
+            # Return as content structure for Gemini
+            return [{"parts": parts}]
+
         # Helper to call model
         async def _call_model(model_name: str, with_tools: bool = False) -> tuple[str, Any, TokenUsage]:
             """Call a specific model and return (text, response, token_usage)."""
             if not self._genai_client or not self._genai_client.is_available:
                 raise RuntimeError("GenAI client not available")
 
+            # Build content (plain text or multimodal with images)
+            content = _build_multimodal_content(message, images)
+            has_images = images is not None and len(images) > 0
+
             # 🔍 TRACING: Span for LLM call
             with trace_span("llm.call", {
                 "model": model_name,
                 "with_tools": with_tools,
                 "message_length": len(message),
+                "has_images": has_images,
+                "image_count": len(images) if images else 0,
             }):
                 config = _build_config(with_tools)
 
+                if has_images:
+                    logger.info(f"🖼️ Vision mode: sending {len(images)} images to {model_name}")
+
                 response = await self._genai_client._client.aio.models.generate_content(
                     model=model_name,
-                    contents=message,
+                    contents=content,
                     config=config,
                 )
 
@@ -383,81 +530,114 @@ class LLMGateway:
                 set_span_status("ok")
                 return text_content, response, token_usage
 
-        # Track accumulated token usage across fallbacks
-        accumulated_usage = TokenUsage()
-
-        # 1. Try PRO Tier (if requested) - same as flash (gemini-3-flash-preview)
-        if model_tier == TIER_PRO and self._available:
-            try:
-                text_content, response, token_usage = await _call_model(
-                    self.model_name_pro,
-                    with_tools=enable_function_calling,
-                )
-                logger.debug("✅ LLMGateway: Gemini 3 Flash Preview (pro tier) response received")
-                return (text_content, "gemini-3-flash-preview", response, token_usage)
-
-            except (ResourceExhausted, ServiceUnavailable) as e:
+        # Get fallback chain
+        models_to_try = self._get_fallback_chain(model_tier)
+        
+        for model_name in models_to_try:
+            # Check circuit breaker
+            if self._is_circuit_open(model_name):
+                logger.debug(f"Circuit breaker OPEN for {model_name}, skipping")
+                try:
+                    from app.metrics import llm_circuit_breaker_open_total
+                    llm_circuit_breaker_open_total.labels(model=model_name).inc()
+                except ImportError:
+                    pass
+                continue
+            
+            # Check cost limit
+            if query_cost_tracker["cost"] >= self._max_fallback_cost_usd:
                 logger.warning(
-                    f"⚠️ LLMGateway: Gemini 3 Flash quota exceeded, falling back to 2.0: {e}"
+                    f"Cost limit reached ({query_cost_tracker['cost']:.4f} USD), "
+                    f"stopping fallback cascade"
                 )
-                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": "quota"})
-                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
-                model_tier = TIER_FALLBACK
-            except (ValueError, RuntimeError, AttributeError) as e:
-                logger.error(
-                    f"❌ LLMGateway: Gemini 3 Flash error: {e}. Trying 2.0 fallback.", exc_info=True
+                try:
+                    from app.metrics import llm_cost_limit_reached_total
+                    llm_cost_limit_reached_total.inc()
+                except ImportError:
+                    pass
+                break
+            
+            # Check fallback depth
+            if query_cost_tracker["depth"] >= self._max_fallback_depth:
+                logger.warning(
+                    f"Max fallback depth reached ({query_cost_tracker['depth']}), "
+                    f"stopping cascade"
                 )
-                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": str(e)[:100]})
-                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
-                model_tier = TIER_FALLBACK
-
-        # 2. Try Flash (Tier 0) - gemini-3-flash-preview (Standard)
-        if model_tier <= TIER_FLASH and self._available:
+                try:
+                    from app.metrics import llm_max_depth_reached_total
+                    llm_max_depth_reached_total.inc()
+                except ImportError:
+                    pass
+                break
+            
+            # Check if model is available
+            if not self._available:
+                continue
+            
             try:
+                # Try model
                 text_content, response, token_usage = await _call_model(
-                    self.model_name_flash,
+                    model_name,
                     with_tools=enable_function_calling,
                 )
-                logger.debug("✅ LLMGateway: Gemini 3 Flash Preview response received")
-                return (text_content, "gemini-3-flash-preview", response, token_usage)
-
-            except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.warning(f"⚠️ LLMGateway: Gemini 3 Flash Preview quota exceeded, trying 2.0 fallback: {e}")
-                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": "quota"})
-                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
-                model_tier = TIER_FALLBACK
-            except (ValueError, RuntimeError, AttributeError) as e:
-                logger.error(
-                    f"❌ LLMGateway: Gemini 3 Flash Preview error: {e}. Trying 2.0 fallback.",
-                    exc_info=True,
-                )
-                add_span_event("llm.fallback", {"from": "gemini-3-flash-preview", "to": "gemini-2.0-flash", "reason": str(e)[:100]})
-                metrics_collector.record_llm_fallback("gemini-3-flash-preview", "gemini-2.0-flash")
-                model_tier = TIER_FALLBACK
-
-        # 3. Try Gemini 2.0 Flash (Fallback Tier) - gemini-2.0-flash
-        if model_tier in (TIER_LITE, TIER_FALLBACK) and self._available:
-            try:
-                text_content, response, token_usage = await _call_model(
-                    self.model_name_fallback,
-                    with_tools=enable_function_calling,
-                )
-                logger.debug("✅ LLMGateway: Gemini 2.0 Flash (fallback) response received")
-                return (text_content, "gemini-2.0-flash", response, token_usage)
-
-            except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.error(
-                    f"❌ LLMGateway: All Gemini models quota exceeded: {e}"
-                )
-                raise RuntimeError(f"All Gemini models unavailable: {e}")
-            except (ValueError, RuntimeError, AttributeError) as e:
-                logger.error(
-                    f"❌ LLMGateway: Gemini 2.0 Flash error: {e}", exc_info=True
-                )
-                raise RuntimeError(f"Gemini fallback failed: {e}")
-
-        # 4. No models available - raise error
-        raise RuntimeError("No Gemini models available - check Service Account configuration")
+                
+                # Success - reset circuit breaker
+                self._record_success(model_name)
+                query_cost_tracker["cost"] += token_usage.cost_usd
+                query_cost_tracker["depth"] += 1
+                
+                try:
+                    from app.metrics import llm_fallback_depth, llm_query_cost_usd
+                    llm_fallback_depth.observe(query_cost_tracker["depth"])
+                    llm_query_cost_usd.observe(query_cost_tracker["cost"])
+                except ImportError:
+                    pass
+                
+                logger.debug(f"✅ LLMGateway: {model_name} response received")
+                return (text_content, model_name, response, token_usage)
+                
+            except ResourceExhausted as e:
+                # Quota exceeded - record failure with error classification
+                self._record_failure(model_name, e)
+                logger.warning(f"Quota exhausted for {model_name}: {e}")
+                try:
+                    from app.metrics import llm_quota_exhausted_total
+                    llm_quota_exhausted_total.labels(model=model_name).inc()
+                except ImportError:
+                    pass
+                metrics_collector.record_llm_fallback(model_name, "next_model")
+                continue
+                
+            except ServiceUnavailable as e:
+                # Service unavailable - record failure with error classification
+                self._record_failure(model_name, e)
+                logger.warning(f"Service unavailable for {model_name}: {e}")
+                try:
+                    from app.metrics import llm_service_unavailable_total
+                    llm_service_unavailable_total.labels(model=model_name).inc()
+                except ImportError:
+                    pass
+                metrics_collector.record_llm_fallback(model_name, "next_model")
+                continue
+                
+            except Exception as e:
+                # Other errors - record failure with error classification
+                self._record_failure(model_name, e)
+                error_type = type(e).__name__
+                logger.warning(f"Error with {model_name}: {e}")
+                try:
+                    from app.metrics import llm_model_error_total
+                    llm_model_error_total.labels(
+                        model=model_name,
+                        error_type=error_type
+                    ).inc()
+                except ImportError:
+                    pass
+                metrics_collector.record_llm_fallback(model_name, "next_model")
+                continue
+        
+        # All models failed
+        raise RuntimeError("All models in fallback chain failed")
 
     async def _call_openrouter(self, messages: list[dict], system_prompt: str) -> str:
         """Call OpenRouter as final fallback when Gemini models are unavailable.

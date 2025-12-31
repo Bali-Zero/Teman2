@@ -176,8 +176,8 @@ async def get_user_context(
                         msgs = conv["messages"]
                         if isinstance(msgs, str):
                             msgs = json.loads(msgs)
-                        # Take last 6 messages (3 turns)
-                        context["history"] = msgs[-6:] if len(msgs) > 0 else []
+                        # Take last 20 messages (10 turns) for better context retention
+                        context["history"] = msgs[-20:] if len(msgs) > 0 else []
 
                         # Also try to get entities from this conversation ID from cache
                         conversation_id = str(conv["id"])

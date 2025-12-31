@@ -418,3 +418,121 @@ class TeamKnowledgeTool(BaseTool):
         except Exception as e:
             logger.error(f"Team knowledge lookup failed: {e}")
             return json.dumps({"error": str(e)})
+
+
+class ImageGenerationTool(BaseTool):
+    """Tool for generating images from text prompts using Google Imagen."""
+
+    def __init__(self):
+        self._client = None
+
+    @property
+    def name(self) -> str:
+        return "generate_image"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Generate images from text descriptions. Use this when the user asks to "
+            "create, generate, draw, or make an image/picture. Returns a URL to the generated image. "
+            "Prompt should be descriptive (e.g., 'a blue lotus flower in digital art style')."
+        )
+
+    @property
+    def parameters_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Detailed text description of the image to generate"
+                },
+                "aspect_ratio": {
+                    "type": "string",
+                    "enum": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+                    "description": "Aspect ratio of the image (default: 1:1)"
+                },
+            },
+            "required": ["prompt"],
+        }
+
+    async def execute(self, prompt: str, aspect_ratio: str = "1:1", **kwargs) -> str:
+        """Generate an image using Google Imagen API."""
+        import httpx
+        from app.core.config import settings
+
+        with trace_span("tool.generate_image", {"prompt_length": len(prompt)}):
+            try:
+                # Get API key
+                api_key = (
+                    getattr(settings, "google_imagen_api_key", None)
+                    or getattr(settings, "google_ai_studio_key", None)
+                    or getattr(settings, "google_api_key", None)
+                )
+
+                if not api_key:
+                    return json.dumps({
+                        "success": False,
+                        "error": "Image generation not configured"
+                    })
+
+                url = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict"
+                headers = {
+                    "X-Goog-Api-Key": api_key,
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "prompt": prompt,
+                    "number_of_images": 1,
+                    "aspect_ratio": aspect_ratio,
+                    "safety_filter_level": "block_some",
+                    "person_generation": "allow_adult",
+                    "language": "auto",
+                }
+
+                logger.info(f"🎨 [ImageGen] Generating image: {prompt[:50]}...")
+
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    response = await client.post(url, json=payload, headers=headers)
+
+                    if response.status_code == 403:
+                        # Fallback to pollinations.ai
+                        logger.warning("⚠️ [ImageGen] Imagen API not available, using fallback")
+                        fallback_url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
+                        set_span_attribute("fallback", "pollinations")
+                        return json.dumps({
+                            "success": True,
+                            "image_url": fallback_url,
+                            "service": "pollinations_fallback",
+                            "message": f"Generated image for: {prompt}"
+                        })
+
+                    response.raise_for_status()
+                    result = response.json()
+
+                    # Extract image
+                    if "generatedImages" in result and result["generatedImages"]:
+                        img_data = result["generatedImages"][0].get("bytesBase64Encoded", "")
+                        if img_data:
+                            image_data_url = f"data:image/png;base64,{img_data}"
+                            set_span_attribute("success", True)
+                            return json.dumps({
+                                "success": True,
+                                "image_data": image_data_url,
+                                "service": "google_imagen",
+                                "message": f"Generated image for: {prompt}"
+                            })
+
+                    return json.dumps({"success": False, "error": "No image generated"})
+
+            except Exception as e:
+                logger.error(f"❌ [ImageGen] Failed: {e}")
+                set_span_status("error", str(e))
+                # Fallback to pollinations
+                fallback_url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
+                return json.dumps({
+                    "success": True,
+                    "image_url": fallback_url,
+                    "service": "pollinations_fallback",
+                    "message": f"Generated image for: {prompt}"
+                })

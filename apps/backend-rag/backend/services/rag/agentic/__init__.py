@@ -49,6 +49,7 @@ from .pipeline import (
 )
 from .tools import (
     CalculatorTool,
+    ImageGenerationTool,
     PricingTool,
     TeamKnowledgeTool,
     VectorSearchTool,
@@ -66,6 +67,7 @@ __all__ = [
     "VisionTool",
     "PricingTool",
     "TeamKnowledgeTool",
+    "ImageGenerationTool",
     "GraphTraversalTool",
     # Pipeline components
     "ResponsePipeline",
@@ -127,6 +129,7 @@ def create_agentic_rag(
         KnowledgeGraphTool(kg_builder), # FOURTH: Structured Knowledge Graph (NEW)
         CalculatorTool(),            # FIFTH: Math safety
         VisionTool(),                # SIXTH: Document analysis
+        ImageGenerationTool(),       # SEVENTH: Image generation (Imagen)
     ]
     logger.debug("create_agentic_rag: Tools list created")
     # web_search_client ignored (WebSearchTool removed)

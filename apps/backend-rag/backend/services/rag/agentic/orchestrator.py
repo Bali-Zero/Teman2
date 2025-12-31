@@ -1194,6 +1194,7 @@ Respond in the SAME language the user is using."""
                 user_id=user_id or "anonymous",
                 model_tier=model_tier,
                 tool_execution_counter=tool_execution_counter,
+                images=images,  # Pass vision images to reasoning loop
             ):
                 # Validate event structure
                 try:
