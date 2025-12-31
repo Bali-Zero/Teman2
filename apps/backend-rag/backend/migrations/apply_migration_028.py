@@ -15,7 +15,9 @@ from migrations.migration_028_knowledge_graph_schema import apply
 
 async def main():
     print("🔄 Connecting to database...")
-    db_url = settings.database_url or os.getenv("DATABASE_URL")
+    # Fallback to local dev URL if env var is missing
+    db_url = os.getenv("DATABASE_URL") or "postgresql://user:password@localhost:5433/nuzantara_dev"
+    
     if not db_url:
         print("❌ DATABASE_URL not found")
         sys.exit(1)
