@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # ========================================
     PROJECT_NAME: str = "Nuzantara Prime"
     COMPANY_NAME: str = "Bali Zero"
+    COMPANY_LOCATION: str = "Jalan Semer, Kerobokan, Bali"
     COMPANY_SERVICE_DOMAIN: str = "Visas, Business Setup, Tax, Legal matters in Indonesia"
     SUPPORT_EMAIL: str = "info@balizero.com"
     SUPPORT_WHATSAPP: str = "+62 813 3805 1876"
@@ -53,6 +54,9 @@ class Settings(BaseSettings):
         return None
     google_imagen_api_key: str | None = (
         None  # Set via GOOGLE_IMAGEN_API_KEY env var (for Imagen image generation)
+    )
+    google_ai_studio_key: str | None = (
+        None  # Set via GOOGLE_AI_STUDIO_KEY env var (Google AI Studio with Ultra tier)
     )
     imagineart_api_key: str | None = None  # Set via IMAGINEART_API_KEY env var (for ImagineArt)
     stability_api_key: str | None = None  # Set via STABILITY_API_KEY env var (for Stability AI)
@@ -557,6 +561,28 @@ class Settings(BaseSettings):
 
     instagram_access_token: str | None = None  # Set via INSTAGRAM_ACCESS_TOKEN env var
     instagram_account_id: str | None = None  # Set via INSTAGRAM_ACCOUNT_ID env var
+
+    # ========================================
+    # ZOHO EMAIL INTEGRATION
+    # ========================================
+    zoho_client_id: str | None = None  # Set via ZOHO_CLIENT_ID env var
+    zoho_client_secret: str | None = None  # Set via ZOHO_CLIENT_SECRET env var
+    zoho_redirect_uri: str = Field(
+        default="https://nuzantara-rag.fly.dev/api/integrations/zoho/callback",
+        description="Zoho OAuth redirect URI (set via ZOHO_REDIRECT_URI env var)",
+    )
+    frontend_url: str = Field(
+        default="https://zantara.balizero.com",
+        description="Frontend URL for OAuth redirects (set via FRONTEND_URL env var)",
+    )
+    zoho_api_domain: str = Field(
+        default="https://mail.zoho.com",
+        description="Zoho Mail API domain - regional (set via ZOHO_API_DOMAIN env var)",
+    )
+    zoho_accounts_url: str = Field(
+        default="https://accounts.zoho.com",
+        description="Zoho Accounts URL for OAuth (set via ZOHO_ACCOUNTS_URL env var)",
+    )
 
     # ========================================
     # ORACLE CONFIGURATION
