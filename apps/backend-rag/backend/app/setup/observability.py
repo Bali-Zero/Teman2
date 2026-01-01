@@ -129,9 +129,5 @@ def setup_observability(app: FastAPI) -> None:
 
     logger.info(
         "✅ Observability: Prometheus metrics enabled"
-        + (
-            " + OpenTelemetry tracing"
-            if (OTEL_AVAILABLE and settings.otel_enabled)
-            else ""
-        )
+        + (" + OpenTelemetry tracing" if (OTEL_AVAILABLE and settings.otel_enabled) else "")
     )

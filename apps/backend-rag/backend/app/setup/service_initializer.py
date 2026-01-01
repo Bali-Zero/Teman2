@@ -6,6 +6,8 @@ Handles initialization of all ZANTARA RAG services with fail-fast for critical s
 Critical services (SearchService, ZantaraAIClient) must initialize successfully.
 If any critical service fails, the application will raise RuntimeError to prevent starting in a broken state.
 
+# Cache bust: 2026-01-01 15:38 UTC - Fixed _init_rag_components function definition
+
 Non-critical services will log errors and continue with degraded functionality.
 """
 
@@ -21,25 +23,25 @@ from llm.zantara_ai_client import ZantaraAIClient
 from app.core.config import settings
 from app.core.service_health import ServiceStatus, service_registry
 from app.routers.websocket import redis_listener
-from services.monitoring.alert_service import AlertService
 from services.crm.auto_crm_service import get_auto_crm_service
+from services.crm.collaborator_service import CollaboratorService
+from services.memory import MemoryServicePostgres
+from services.memory.collective_memory_workflow import create_collective_memory_workflow
 from services.misc.autonomous_research_service import AutonomousResearchService
 from services.misc.autonomous_scheduler import create_and_start_scheduler
 from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
-from services.crm.collaborator_service import CollaboratorService
-from services.memory.collective_memory_workflow import create_collective_memory_workflow
 from services.misc.conversation_service import ConversationService
-from services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
 from services.misc.cultural_rag_service import CulturalRAGService
-from services.monitoring.health_monitor import HealthMonitor
-from services.routing.intelligent_router import IntelligentRouter
 from services.misc.mcp_client_service import initialize_mcp_client
-from services.memory import MemoryServicePostgres
 from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
-from services.routing.query_router import QueryRouter
-from services.search.search_service import SearchService
 from services.misc.tool_executor import ToolExecutor
 from services.misc.zantara_tools import ZantaraTools
+from services.monitoring.alert_service import AlertService
+from services.monitoring.health_monitor import HealthMonitor
+from services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
+from services.routing.intelligent_router import IntelligentRouter
+from services.routing.query_router import QueryRouter
+from services.search.search_service import SearchService
 
 logger = logging.getLogger("zantara.backend")
 
@@ -69,8 +71,8 @@ async def _init_critical_services(
     try:
         # Initialize SearchService with dependency injection
         from services.ingestion.collection_manager import CollectionManager
-        from services.routing.conflict_resolver import ConflictResolver
         from services.misc.cultural_insights_service import CulturalInsightsService
+        from services.routing.conflict_resolver import ConflictResolver
         from services.routing.query_router_integration import QueryRouterIntegration
 
         # Create shared services
@@ -106,7 +108,6 @@ async def _init_critical_services(
         error_msg = str(e)
         service_registry.register("search", ServiceStatus.UNAVAILABLE, error=error_msg)
         logger.error(f"❌ CRITICAL: Failed to initialize SearchService: {e}")
-    except Exception as e:
         # Catch-all for unexpected errors
         error_msg = str(e)
         service_registry.register("search", ServiceStatus.UNAVAILABLE, error=error_msg)
@@ -125,7 +126,6 @@ async def _init_critical_services(
         error_msg = str(exc)
         service_registry.register("ai", ServiceStatus.UNAVAILABLE, error=error_msg)
         logger.error(f"❌ CRITICAL: Failed to initialize ZantaraAIClient: {exc}")
-    except Exception as exc:
         # Catch-all for unexpected errors
         error_msg = str(exc)
         service_registry.register("ai", ServiceStatus.UNAVAILABLE, error=error_msg)
@@ -179,7 +179,7 @@ async def _init_tool_stack(app: FastAPI) -> ToolExecutor:
     return tool_executor
 
 
-async def _init_rag_components(app: FastAPI, search_service: SearchService | None) -> QueryRouter:
+async def _init_rag_components(app: FastAPI, search_service: SearchService) -> QueryRouter:
     """
     Initialize RAG components: CulturalRAGService and QueryRouter.
 
@@ -267,7 +267,7 @@ async def _init_specialized_agents(
     return autonomous_research_service, cross_oracle_synthesis_service, client_journey_orchestrator
 
 
-async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
+async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
     """
     Initialize database services: Database pool and Team Timesheet service.
 
@@ -289,15 +289,14 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
         return None
 
     logger.info(f"DEBUG: DATABASE_URL is set: {settings.database_url[:15]}...")
-    
+
     max_retries = 5
     base_delay = 2.0
-    import random
-    
+
     for attempt in range(max_retries):
         try:
             logger.info(f"Database initialization attempt {attempt + 1}/{max_retries}")
-            
+
             # Create asyncpg pool for team timesheet service
             async def init_db_connection(conn):
                 await conn.set_type_codec(
@@ -337,12 +336,12 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
 
             # Start background tasks
             await ts_service.start_auto_logout_monitor()
-            
+
             # Start health check task
             app.state.db_health_check_task = asyncio.create_task(
                 _database_health_check_loop(db_pool)
             )
-            
+
             service_registry.register("database", ServiceStatus.HEALTHY, critical=False)
             logger.info("✅ Database services initialized successfully")
             try:
@@ -350,13 +349,13 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 database_init_success_total.inc()
             except ImportError:
                 pass
-            
+
             return db_pool
-            
+
         except (asyncpg.PostgresError, ValueError, ConnectionError) as e:
             error_type = type(e).__name__
             is_transient = _is_transient_error(e)
-            
+
             logger.warning(
                 f"⚠️ Database initialization failed (attempt {attempt + 1}/{max_retries}): {e}",
                 extra={
@@ -365,7 +364,7 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
                     "is_transient": is_transient,
                 }
             )
-            
+
             try:
                 from app.metrics import database_init_failed_total
                 database_init_failed_total.labels(
@@ -374,7 +373,7 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 ).inc()
             except ImportError:
                 pass
-            
+
             if attempt < max_retries - 1 and is_transient:
                 # Exponential backoff with jitter
                 delay = base_delay * (2 ** attempt) + (random.random() * 0.5)
@@ -402,7 +401,7 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
             # Catch-all for unexpected errors
             error_type = type(e).__name__
             is_transient = _is_transient_error(e)
-            
+
             logger.warning(
                 f"⚠️ Unexpected database error (attempt {attempt + 1}/{max_retries}): {e}",
                 extra={
@@ -411,7 +410,7 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
                     "is_transient": is_transient,
                 }
             )
-            
+
             try:
                 from app.metrics import database_init_failed_total
                 database_init_failed_total.labels(
@@ -420,7 +419,7 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 ).inc()
             except ImportError:
                 pass
-            
+
             if attempt < max_retries - 1 and is_transient:
                 delay = base_delay * (2 ** attempt) + (random.random() * 0.5)
                 logger.info(f"Retrying in {delay:.2f}s...")
@@ -434,14 +433,14 @@ async def _init_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 app.state.db_pool = None
                 app.state.db_init_error = str(e)
                 return None
-    
+
     return None
 
 
 def _is_transient_error(error: Exception) -> bool:
     """Determine if error is transient and retryable."""
     error_msg = str(error).lower()
-    
+
     transient_patterns = [
         "connection",
         "timeout",
@@ -450,24 +449,24 @@ def _is_transient_error(error: Exception) -> bool:
         "server closed",
         "network",
     ]
-    
+
     return any(pattern in error_msg for pattern in transient_patterns)
 
 
 async def _database_health_check_loop(db_pool: asyncpg.Pool):
     """Periodic health check for database pool."""
     check_interval = 30  # seconds
-    from app.core.service_health import service_registry, ServiceStatus
-    
+    from app.core.service_health import ServiceStatus, service_registry
+
     while True:
         try:
             await asyncio.sleep(check_interval)
-            
+
             # Check pool health
             try:
                 async with db_pool.acquire() as conn:
                     await conn.execute("SELECT 1")
-                
+
                 # Pool is healthy
                 service_registry.register("database", ServiceStatus.HEALTHY)
                 try:
@@ -475,7 +474,7 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                     database_health_check_success_total.inc()
                 except ImportError:
                     pass
-                
+
             except Exception as e:
                 logger.warning(f"Database health check failed: {e}")
                 service_registry.register(
@@ -488,12 +487,12 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                     database_health_check_failed_total.inc()
                 except ImportError:
                     pass
-                
+
                 # Try to recover
                 if _is_transient_error(e):
                     logger.info("Attempting database recovery...")
                     # Recovery logic could be added here
-                    
+
         except asyncio.CancelledError:
             logger.info("Database health check loop cancelled")
             break
@@ -501,7 +500,7 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
             logger.exception(f"Error in database health check loop: {e}")
 
 
-async def _init_crm_memory(
+async def initialize_crm_and_memory_services(
     app: FastAPI, ai_client: ZantaraAIClient, db_pool: asyncpg.Pool | None
 ) -> None:
     """
@@ -551,7 +550,7 @@ async def _init_crm_memory(
         app.state.crm_init_error = str(e)
 
 
-async def _init_intelligent_router(
+async def initialize_intelligent_router(
     app: FastAPI,
     ai_client: ZantaraAIClient,
     search_service: SearchService,
@@ -753,10 +752,10 @@ async def initialize_services(app: FastAPI) -> None:
     ) = await _init_specialized_agents(app, search_service, ai_client, query_router)
 
     # 5. Database services
-    db_pool = await _init_database_services(app)
+    db_pool = await initialize_database_services(app)
 
     # 6. CRM & Memory
-    await _init_crm_memory(app, ai_client, db_pool)
+    await initialize_crm_and_memory_services(app, ai_client, db_pool)
 
     # 7. CollaboratorService (needed for IntelligentRouter)
     collaborator_service = None
@@ -769,7 +768,7 @@ async def initialize_services(app: FastAPI) -> None:
         app.state.collaborator_service = None
 
     # 8. Intelligent Router
-    await _init_intelligent_router(
+    await initialize_intelligent_router(
         app,
         ai_client,
         search_service,

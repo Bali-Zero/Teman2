@@ -1,6 +1,6 @@
 # ZANTARA RAG Backend - PRODUCTION DEPENDENCIES (Optimized for <8GB)
 # Removes heavy ML packages that aren't used in production (OpenAI API for embeddings)
-# Last updated: 2025-12-04
+# Last updated: 2026-01-01 15:10 - Added sentry-sdk for error monitoring
 
 # Core Framework
 # Core Framework
@@ -63,9 +63,11 @@ python-dotenv==1.0.0
 loguru==0.7.2
 pytz>=2024.2
 packaging>=23.2,<25
+psutil>=5.9.0  # Required for app/metrics.py performance monitoring
 
 # Observability
 prometheus-fastapi-instrumentator>=6.1.0
+sentry-sdk[fastapi]>=2.0.0  # Error monitoring
 
 # XML/HTML Processing
 lxml>=5.3.0

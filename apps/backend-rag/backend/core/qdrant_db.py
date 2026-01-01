@@ -1,6 +1,7 @@
 """
 ZANTARA RAG - Vector Database (Qdrant)
 Async Qdrant client wrapper for embeddings storage and retrieval
+# Cache bust: 2026-01-01 15:20 UTC
 
 Uses httpx for async HTTP requests with connection pooling.
 All operations are async to avoid blocking the event loop.
@@ -8,7 +9,6 @@ All operations are async to avoid blocking the event loop.
 
 import asyncio
 import logging
-import random
 import time
 from enum import Enum
 from typing import Any
@@ -21,7 +21,7 @@ except ImportError:
     settings = None
 
 try:
-    from app.utils.tracing import trace_span, set_span_attribute, set_span_status
+    from app.utils.tracing import set_span_attribute, set_span_status, trace_span
 except ImportError:
     # Fallback if tracing not available
     from contextlib import contextmanager
@@ -52,21 +52,21 @@ class QdrantErrorType(Enum):
 
 class QdrantErrorClassifier:
     """Classify Qdrant errors."""
-    
+
     RETRYABLE_STATUS_CODES = {500, 502, 503, 504}  # Server errors
     NON_RETRYABLE_STATUS_CODES = {400, 401, 403, 404, 422}  # Client errors
-    
+
     def classify(self, error: Exception) -> tuple[QdrantErrorType, bool]:
         """Classify error and return (error_type, retryable)."""
         if isinstance(error, httpx.TimeoutException):
             return QdrantErrorType.TIMEOUT, True
-        
+
         if isinstance(error, httpx.ConnectError):
             return QdrantErrorType.CONNECTION, True
-        
+
         if isinstance(error, httpx.HTTPStatusError):
             status_code = error.response.status_code
-            
+
             if status_code in self.RETRYABLE_STATUS_CODES:
                 return QdrantErrorType.SERVER_ERROR, True
             elif status_code in self.NON_RETRYABLE_STATUS_CODES:
@@ -74,7 +74,7 @@ class QdrantErrorClassifier:
             else:
                 # Unknown status code - be conservative
                 return QdrantErrorType.SERVER_ERROR, False
-        
+
         # Unknown error - don't retry by default
         return QdrantErrorType.NON_RETRYABLE, False
 
@@ -154,9 +154,7 @@ async def _retry_with_backoff(
                 )
                 await asyncio.sleep(delay)
             else:
-                logger.error(f"All {max_retries + 1} retry attempts failed")
-                raise last_exception
-    raise last_exception
+                raise last_exception from e
 
 
 class QdrantClient:
@@ -414,7 +412,7 @@ class QdrantClient:
             except httpx.TimeoutException as e:
                 error_type, retryable = self._error_classifier.classify(e)
                 logger.error(
-                    f"Qdrant search timeout",
+                    "Qdrant search timeout",
                     extra={
                         "error_type": error_type.value,
                         "retryable": retryable,
@@ -430,7 +428,7 @@ class QdrantClient:
             except httpx.HTTPStatusError as e:
                 error_type, retryable = self._error_classifier.classify(e)
                 error_text = e.response.text if hasattr(e.response, "text") else str(e.response)
-                
+
                 logger.error(
                     f"Qdrant HTTP error: {e.response.status_code}",
                     extra={
@@ -440,7 +438,7 @@ class QdrantClient:
                         "response_text": error_text[:200] if error_text else None,
                     }
                 )
-                
+
                 try:
                     from app.metrics import qdrant_http_error_total
                     qdrant_http_error_total.labels(
@@ -449,7 +447,7 @@ class QdrantClient:
                     ).inc()
                 except ImportError:
                     pass
-                
+
                 # Raise exception for retryable server errors to trigger retry
                 if error_type == QdrantErrorType.SERVER_ERROR and retryable:
                     raise Exception(f"Qdrant server error {e.response.status_code}: {error_text}")
@@ -485,10 +483,9 @@ class QdrantClient:
                     "distances": [],
                     "total_found": 0,
                 }
-            except httpx.RequestError as e:
+            except Exception as e:
                 logger.error(f"Qdrant request error: {e}")
-                raise ConnectionError(f"Qdrant connection error: {e}")
-
+                raise ConnectionError(f"Qdrant connection error: {e}") from e
         start_time = time.time()
         # 🔍 TRACING: Span for Qdrant search
         with trace_span("qdrant.search", {
@@ -515,7 +512,7 @@ class QdrantClient:
                 logger.error(f"Qdrant search error after retries: {e}", exc_info=True)
                 return {"ids": [], "documents": [], "metadatas": [], "distances": [], "total_found": 0}
 
-    async def get_collection_stats(self) -> dict[str, Any]:
+    async def get_stats(self) -> dict:
         """
         Get statistics about the collection.
 
@@ -552,7 +549,7 @@ class QdrantClient:
                     "collection_name": self.collection_name,
                     "error": f"HTTP {e.response.status_code}",
                 }
-            except httpx.RequestError as e:
+            except Exception as e:
                 logger.error(f"Qdrant request error getting stats: {e}")
                 return {"collection_name": self.collection_name, "error": str(e)}
 
@@ -607,7 +604,7 @@ class QdrantClient:
                     f"Failed to create collection: {e.response.status_code} - {e.response.text}"
                 )
                 return False
-            except httpx.RequestError as e:
+            except Exception as e:
                 logger.error(f"Qdrant request error creating collection: {e}")
                 return False
 
@@ -694,7 +691,7 @@ class QdrantClient:
                         error_msg += f": {e.response.text}"
                     errors.append(error_msg)
                     logger.error(f"Qdrant upsert batch failed: {error_msg}")
-                except httpx.RequestError as e:
+                except Exception as e:
                     error_msg = f"Request error: {e}"
                     errors.append(error_msg)
                     logger.error(f"Qdrant upsert batch request error: {error_msg}")
@@ -726,7 +723,6 @@ class QdrantClient:
             logger.error(f"Error upserting to Qdrant: {e}", exc_info=True)
             raise
 
-    @property
     def collection(self):
         """
         Property to provide Qdrant-compatible collection interface.
@@ -787,7 +783,7 @@ class QdrantClient:
             except httpx.HTTPStatusError as e:
                 logger.error(f"Qdrant get failed: {e.response.status_code} - {e.response.text}")
                 return {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
-            except httpx.RequestError as e:
+            except Exception as e:
                 logger.error(f"Qdrant get request error: {e}")
                 return {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
 
@@ -795,7 +791,10 @@ class QdrantClient:
             logger.error(f"Qdrant get error: {e}")
             return {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
 
-    async def delete(self, ids: list[str]) -> dict[str, Any]:
+    async def delete(
+        self,
+        ids: list[str],
+    ) -> dict[str, Any]:
         """
         Delete points by IDs (Qdrant-compatible interface).
 
@@ -824,15 +823,17 @@ class QdrantClient:
             except httpx.HTTPStatusError as e:
                 logger.error(f"Qdrant delete failed: {e.response.status_code} - {e.response.text}")
                 return {"success": False, "error": f"HTTP {e.response.status_code}"}
-            except httpx.RequestError as e:
+            except Exception as e:
                 logger.error(f"Qdrant delete request error: {e}")
-                raise ConnectionError(f"Qdrant connection error: {e}")
-
+                raise ConnectionError(f"Qdrant connection error: {e}") from e
         except Exception as e:
             logger.error(f"Error deleting from Qdrant: {e}")
             raise
 
-    async def peek(self, limit: int = 10) -> dict[str, Any]:
+    async def peek(
+        self,
+        limit: int = 10,
+    ) -> dict[str, Any]:
         """
         Peek at points in the collection (Qdrant-compatible interface).
 
@@ -865,7 +866,7 @@ class QdrantClient:
             except httpx.HTTPStatusError as e:
                 logger.error(f"Qdrant peek failed: {e.response.status_code}")
                 return {"ids": [], "documents": [], "metadatas": []}
-            except httpx.RequestError as e:
+            except Exception as e:
                 logger.error(f"Qdrant peek request error: {e}")
                 return {"ids": [], "documents": [], "metadatas": []}
 
@@ -988,10 +989,10 @@ class QdrantClient:
                     "search_type": "hybrid_rrf",
                     "error": error_text,
                 }
-            except httpx.RequestError as e:
+            except Exception as e:
                 logger.error(f"Qdrant hybrid search request error: {e}")
-                raise ConnectionError(f"Qdrant connection error: {e}")
-
+                raise ConnectionError(f"Qdrant connection error: {e}") from e
+        
         start_time = time.time()
         # 🔍 TRACING: Span for Qdrant hybrid search
         with trace_span("qdrant.hybrid_search", {
@@ -1101,7 +1102,7 @@ class QdrantClient:
                         error_msg += f": {e.response.text}"
                     errors.append(error_msg)
                     logger.error(f"Qdrant upsert batch failed: {error_msg}")
-                except httpx.RequestError as e:
+                except Exception as e:
                     error_msg = f"Request error: {e}"
                     errors.append(error_msg)
                     logger.error(f"Qdrant upsert batch request error: {error_msg}")
