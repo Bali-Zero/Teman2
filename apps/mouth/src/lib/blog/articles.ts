@@ -11,23 +11,44 @@ import type { Article, ArticleListItem, ArticleCategory } from './types';
 const ARTICLES_PATH = path.join(process.cwd(), 'src/content/articles');
 
 /**
- * Get all article slugs grouped by category
+ * Map folder/frontmatter categories to valid ArticleCategory
+ * This handles legacy naming and folder structure differences
  */
-export async function getAllArticleSlugs(): Promise<{ category: string; slug: string }[]> {
-  const slugs: { category: string; slug: string }[] = [];
+const CATEGORY_MAP: Record<string, ArticleCategory> = {
+  'immigration': 'immigration',
+  'business': 'business',
+  'tax': 'tax-legal',
+  'tax-legal': 'tax-legal',
+  'property': 'property',
+  'lifestyle': 'lifestyle',
+  'digital-nomad': 'lifestyle', // Map digital-nomad to lifestyle
+  'tech': 'tech',
+};
+
+function normalizeCategory(rawCategory: string): ArticleCategory {
+  return CATEGORY_MAP[rawCategory] || 'lifestyle';
+}
+
+/**
+ * Get all article slugs grouped by category
+ * Returns both the folder category (for file path) and normalized category (for filtering)
+ */
+export async function getAllArticleSlugs(): Promise<{ folderCategory: string; category: ArticleCategory; slug: string }[]> {
+  const slugs: { folderCategory: string; category: ArticleCategory; slug: string }[] = [];
 
   const categories = fs.readdirSync(ARTICLES_PATH).filter(item => {
     const itemPath = path.join(ARTICLES_PATH, item);
     return fs.statSync(itemPath).isDirectory() && !item.startsWith('.');
   });
 
-  for (const category of categories) {
-    const categoryPath = path.join(ARTICLES_PATH, category);
+  for (const folderCategory of categories) {
+    const categoryPath = path.join(ARTICLES_PATH, folderCategory);
     const files = fs.readdirSync(categoryPath).filter(file => file.endsWith('.mdx'));
 
     for (const file of files) {
       slugs.push({
-        category,
+        folderCategory,
+        category: normalizeCategory(folderCategory),
         slug: file.replace('.mdx', ''),
       });
     }
@@ -37,15 +58,53 @@ export async function getAllArticleSlugs(): Promise<{ category: string; slug: st
 }
 
 /**
+ * Reverse mapping: normalized category to possible folder names
+ * Some articles might be stored in legacy folder names
+ */
+const CATEGORY_FOLDERS: Record<ArticleCategory, string[]> = {
+  'immigration': ['immigration'],
+  'business': ['business'],
+  'tax-legal': ['tax-legal', 'tax'], // Try tax-legal first, then tax
+  'property': ['property'],
+  'lifestyle': ['lifestyle', 'digital-nomad'], // Try lifestyle first, then digital-nomad
+  'tech': ['tech'],
+};
+
+/**
  * Get a single article by category and slug
+ * Handles both normalized categories (from URLs) and folder categories (for file lookup)
  */
 export async function getArticleBySlug(
   category: string,
   slug: string
 ): Promise<Article | null> {
-  const filePath = path.join(ARTICLES_PATH, category, `${slug}.mdx`);
+  // Get possible folder paths for this category
+  const normalizedCategory = normalizeCategory(category);
+  const possibleFolders = CATEGORY_FOLDERS[normalizedCategory] || [category];
 
-  if (!fs.existsSync(filePath)) {
+  let filePath = '';
+  let actualFolderCategory = category;
+
+  // Try each possible folder
+  for (const folder of possibleFolders) {
+    const tryPath = path.join(ARTICLES_PATH, folder, `${slug}.mdx`);
+    if (fs.existsSync(tryPath)) {
+      filePath = tryPath;
+      actualFolderCategory = folder;
+      break;
+    }
+  }
+
+  // Also try the exact category path (for direct folder access)
+  if (!filePath) {
+    const directPath = path.join(ARTICLES_PATH, category, `${slug}.mdx`);
+    if (fs.existsSync(directPath)) {
+      filePath = directPath;
+      actualFolderCategory = category;
+    }
+  }
+
+  if (!filePath) {
     return null;
   }
 
@@ -68,9 +127,9 @@ export async function getArticleBySlug(
     subtitle: frontmatter.subtitle,
     excerpt: frontmatter.excerpt || '',
     content: content,
-    coverImage: frontmatter.coverImage || `/images/blog/${category}/${slug}.jpg`,
+    coverImage: frontmatter.coverImage || `/images/blog/${actualFolderCategory}/${slug}.jpg`,
     coverImageAlt: frontmatter.coverImageAlt || frontmatter.title,
-    category: (frontmatter.category || category) as ArticleCategory,
+    category: normalizeCategory(frontmatter.category || category),
     tags: frontmatter.tags || [],
     author,
     createdAt: new Date(frontmatter.publishedAt || Date.now()),
@@ -104,7 +163,7 @@ export async function getAllArticles(options?: {
 }): Promise<{ articles: ArticleListItem[]; total: number }> {
   const allSlugs = await getAllArticleSlugs();
 
-  // Filter by category if specified
+  // Filter by category if specified (uses normalized category)
   let filteredSlugs = options?.category
     ? allSlugs.filter(s => s.category === options.category)
     : allSlugs;
@@ -121,8 +180,9 @@ export async function getAllArticles(options?: {
 
   const articles: ArticleListItem[] = [];
 
-  for (const { category, slug } of filteredSlugs) {
-    const article = await getArticleBySlug(category, slug);
+  for (const { folderCategory, slug } of filteredSlugs) {
+    // Use folderCategory for file path lookup
+    const article = await getArticleBySlug(folderCategory, slug);
     if (article) {
       // Filter by featured if specified
       if (options?.featured !== undefined && article.featured !== options.featured) {
@@ -135,7 +195,7 @@ export async function getAllArticles(options?: {
         title: article.title,
         excerpt: article.excerpt,
         coverImage: article.coverImage,
-        category: article.category,
+        category: article.category, // Already normalized in getArticleBySlug
         author: article.author,
         publishedAt: article.publishedAt || article.createdAt,
         readingTime: article.readingTime,
@@ -177,17 +237,18 @@ export async function getArticlesByCategory(
 }
 
 /**
- * Get category counts
+ * Get category counts (uses normalized categories)
  */
-export async function getCategoryCounts(): Promise<Record<string, number>> {
+export async function getCategoryCounts(): Promise<Record<ArticleCategory, number>> {
   const allSlugs = await getAllArticleSlugs();
   const counts: Record<string, number> = {};
 
   for (const { category } of allSlugs) {
+    // category is already normalized in getAllArticleSlugs
     counts[category] = (counts[category] || 0) + 1;
   }
 
-  return counts;
+  return counts as Record<ArticleCategory, number>;
 }
 
 /**

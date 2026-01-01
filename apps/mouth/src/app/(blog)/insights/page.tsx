@@ -84,7 +84,7 @@ export default function InsightsPage() {
                 </p>
 
                 <Link
-                  href="/contact"
+                  href="/chat"
                   className="inline-flex items-center gap-3 text-white group"
                 >
                   <span className="text-lg font-medium">Start your journey</span>
@@ -180,7 +180,7 @@ export default function InsightsPage() {
           <div className="flex items-center justify-between mb-10">
             <h2 className="text-2xl font-serif text-white">Latest Insights</h2>
             <Link
-              href="/insights/all"
+              href="/insights/immigration"
               className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
             >
               View all
@@ -251,7 +251,7 @@ export default function InsightsPage() {
                 Everything you need: visas, banking, housing, healthcare, community, and insider tips.
               </p>
               <Link
-                href="/insights/guides/bali-complete-guide"
+                href="/insights/lifestyle"
                 className="inline-flex items-center gap-3 text-white group w-fit"
               >
                 <span className="text-lg font-medium">Explore the guide</span>
@@ -309,7 +309,7 @@ export default function InsightsPage() {
           <div className="flex items-center justify-between mb-10">
             <h2 className="text-2xl font-serif text-white">Watch & Listen</h2>
             <Link
-              href="/insights/media"
+              href="/insights/lifestyle"
               className="flex items-center gap-2 text-[#2251ff] hover:text-[#4d73ff] text-sm font-medium transition-colors"
             >
               All media

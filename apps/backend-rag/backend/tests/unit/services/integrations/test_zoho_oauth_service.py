@@ -71,9 +71,10 @@ class TestZohoOAuthService:
     async def test_exchange_code(self, zoho_oauth_service, mock_db_pool):
         """Test exchanging authorization code"""
         with patch('httpx.AsyncClient') as mock_client_class:
-            mock_response = MagicMock()
-            mock_response.status_code = 200
-            mock_response.json.return_value = {
+            # Mock token exchange response
+            token_response = MagicMock()
+            token_response.status_code = 200
+            token_response.json.return_value = {
                 "access_token": "test_token",
                 "refresh_token": "test_refresh",
                 "expires_in": 3600
@@ -81,9 +82,11 @@ class TestZohoOAuthService:
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)
-            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.post = AsyncMock(return_value=token_response)
             mock_client_class.return_value = mock_client
-            with patch.object(zoho_oauth_service, '_store_tokens', new_callable=AsyncMock):
-                result = await zoho_oauth_service.exchange_code("test_code", "user1")
-                assert "access_token" in result
+            with patch.object(zoho_oauth_service, '_get_account_info', new_callable=AsyncMock) as mock_get_account:
+                mock_get_account.return_value = {"account_id": "test_account_id", "email": "test@example.com"}
+                with patch.object(zoho_oauth_service, '_store_tokens', new_callable=AsyncMock):
+                    result = await zoho_oauth_service.exchange_code("test_code", "user1")
+                    assert "access_token" in result
 

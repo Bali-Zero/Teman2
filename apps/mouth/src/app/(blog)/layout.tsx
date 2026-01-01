@@ -78,13 +78,13 @@ export default function BlogLayout({
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center">
+            <Link href="/insights" className="flex items-center">
               <Image
                 src="/images/balizero-logo.png"
                 alt="Bali Zero"
                 width={52}
                 height={52}
-                className="rounded-full"
+                className="rounded-full ring-2 ring-black/80"
               />
             </Link>
 
@@ -150,8 +150,14 @@ export default function BlogLayout({
 
               <Link
                 href="/chat"
-                className="px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
               >
+                <Image
+                  src="/images/zantara-lotus.png"
+                  alt="Zantara"
+                  width={20}
+                  height={20}
+                />
                 Ask Zantara AI
               </Link>
             </nav>
@@ -268,9 +274,15 @@ export default function BlogLayout({
               <div className="py-2 border-t border-white/10">
                 <Link
                   href="/chat"
-                  className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
+                  <Image
+                    src="/images/zantara-lotus.png"
+                    alt="Zantara"
+                    width={18}
+                    height={18}
+                  />
                   Ask Zantara AI
                 </Link>
               </div>
@@ -327,13 +339,13 @@ export default function BlogLayout({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
             {/* Brand */}
             <div className="lg:col-span-2">
-              <Link href="/" className="flex items-center mb-6">
+              <Link href="/insights" className="flex items-center mb-6">
                 <Image
                   src="/images/balizero-logo.png"
                   alt="Bali Zero"
                   width={52}
                   height={52}
-                  className="rounded-full"
+                  className="rounded-full ring-2 ring-black/80"
                 />
               </Link>
               <p className="text-white/50 max-w-sm mb-6 leading-relaxed">
@@ -448,8 +460,14 @@ export default function BlogLayout({
               <div className="mt-6">
                 <Link
                   href="/chat"
-                  className="inline-flex px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
                 >
+                  <Image
+                    src="/images/zantara-lotus.png"
+                    alt="Zantara"
+                    width={18}
+                    height={18}
+                  />
                   Ask Zantara AI
                 </Link>
               </div>

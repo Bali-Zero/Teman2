@@ -93,7 +93,7 @@ export default function KnowledgePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { name: 'KITAS & Visa', icon: FileText, key: 'kitas', href: '/knowledge/kitas', hasPage: true },
-          { name: 'PT PMA', icon: FolderOpen, key: 'pma', href: null, hasPage: false },
+          { name: 'Company & Classifications', icon: FolderOpen, key: 'pma', href: '/knowledge/blueprints', hasPage: true },
           { name: 'Tax & NPWP', icon: FileText, key: 'tax', href: null, hasPage: false },
           { name: 'Procedure', icon: Tag, key: 'procedure', href: null, hasPage: false },
         ].map((category) => {
@@ -126,7 +126,9 @@ export default function KnowledgePage() {
               <category.icon className={`w-8 h-8 mb-3 ${category.hasPage ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
               <h3 className="font-medium text-[var(--foreground)]">{category.name}</h3>
               <p className="text-xs text-[var(--foreground-muted)]">
-                {category.hasPage ? 'View visa guides' : `${count} documents`}
+                {category.hasPage
+                  ? (category.key === 'kitas' ? 'View visa guides' : 'View KBLI blueprints')
+                  : `${count} documents`}
               </p>
             </div>
           );
