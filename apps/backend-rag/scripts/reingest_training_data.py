@@ -2,9 +2,8 @@
 """
 Re-ingest corrected training data files into training_conversations_hybrid collection.
 
-Run on Fly.io:
-    fly ssh console -a nuzantara-rag
-    cd /app && python scripts/reingest_training_data.py
+Run LOCALLY (connects to Qdrant Cloud):
+    cd apps/backend-rag && python scripts/reingest_training_data.py
 """
 
 import asyncio
@@ -14,8 +13,16 @@ import os
 import sys
 from pathlib import Path
 
+# Load .env from backend-rag root
+script_dir = Path(__file__).parent
+backend_rag_root = script_dir.parent
+dotenv_path = backend_rag_root / ".env"
+
 # Add backend to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+sys.path.insert(0, str(backend_rag_root / "backend"))
+
+from dotenv import load_dotenv
+load_dotenv(dotenv_path)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -33,9 +40,6 @@ COLLECTION_NAME = "training_conversations_hybrid"
 
 async def reingest_files():
     """Re-ingest corrected training data files."""
-    from dotenv import load_dotenv
-    load_dotenv()
-
     from core.bm25_vectorizer import BM25Vectorizer
     from core.chunker import TextChunker
     from core.embeddings import create_embeddings_generator
@@ -50,13 +54,14 @@ async def reingest_files():
         logger.error("QDRANT_URL not set")
         return
 
-    client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+    logger.info(f"Connecting to Qdrant: {qdrant_url[:50]}...")
+    client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60)
     embedder = create_embeddings_generator()
     bm25 = BM25Vectorizer()
     chunker = TextChunker(chunk_size=1500, chunk_overlap=200)
 
-    # Get base path
-    base_path = Path(__file__).parent.parent
+    # Get base path (apps/backend-rag)
+    base_path = backend_rag_root
 
     total_chunks = 0
     total_upserted = 0
@@ -94,7 +99,9 @@ async def reingest_files():
             dense_embedding = embedder.generate_query_embedding(chunk_text)
 
             # Generate BM25 sparse vector
-            sparse_indices, sparse_values = bm25.encode(chunk_text)
+            sparse_result = bm25.generate_sparse_vector(chunk_text)
+            sparse_indices = sparse_result["indices"]
+            sparse_values = sparse_result["values"]
 
             # Create unique ID based on file + chunk index
             point_id = hashlib.md5(f"{file_path}_{idx}".encode()).hexdigest()
@@ -123,18 +130,31 @@ async def reingest_files():
 
         total_chunks += len(chunks)
 
-        # Upsert to Qdrant
+        # Upsert to Qdrant in batches with retry
+        BATCH_SIZE = 10  # Smaller batches for reliability
         if points:
-            try:
-                client.upsert(
-                    collection_name=COLLECTION_NAME,
-                    points=points,
-                    wait=True,
-                )
-                total_upserted += len(points)
-                logger.info(f"  ✅ Upserted {len(points)} chunks to {COLLECTION_NAME}")
-            except Exception as e:
-                logger.error(f"  ❌ Upsert failed: {e}")
+            for batch_start in range(0, len(points), BATCH_SIZE):
+                batch = points[batch_start:batch_start + BATCH_SIZE]
+                batch_num = batch_start // BATCH_SIZE + 1
+                total_batches = (len(points) + BATCH_SIZE - 1) // BATCH_SIZE
+
+                for attempt in range(3):
+                    try:
+                        client.upsert(
+                            collection_name=COLLECTION_NAME,
+                            points=batch,
+                            wait=True,
+                        )
+                        total_upserted += len(batch)
+                        logger.info(f"  ✅ Batch {batch_num}/{total_batches}: {len(batch)} chunks")
+                        break
+                    except Exception as e:
+                        if attempt < 2:
+                            import time
+                            logger.warning(f"  ⚠️ Retry {attempt+1}/3 for batch {batch_num}: {e}")
+                            time.sleep(5 * (attempt + 1))  # 5s, 10s backoff
+                        else:
+                            logger.error(f"  ❌ Batch {batch_num} failed after 3 attempts: {e}")
 
     logger.info(f"\n{'='*60}")
     logger.info(f"COMPLETED: {total_upserted}/{total_chunks} chunks upserted")

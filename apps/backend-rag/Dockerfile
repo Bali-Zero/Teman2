@@ -54,6 +54,7 @@ COPY --from=builder /root/.local /home/nuzantara/.local
 # Copy application code
 COPY backend ./backend
 COPY scripts ./scripts
+COPY training-data ./training-data
 COPY *.py ./
 
 # Set Python path to include /app, /app/backend, and user site-packages
