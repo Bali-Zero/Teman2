@@ -151,19 +151,17 @@ Biaya totalnya berapa dari awal sampai dapat KITAS?
 **Consultant:**
 **Total Cost Breakdown:**
 
-**E28A Package (Offshore):**
-- E28A KITAS processing: Rp 10.000.000
-- IMTA processing: Rp 7.000.000
-- RPTKA document: Rp 2.000.000
-- **Subtotal:** **Rp 19.000.000**
+**E28A Package (Bali Zero 2025):**
+- **Investor KITAS 2 Years (Offshore):** **Rp 17.000.000** (all-inclusive: KITAS + IMTA + RPTKA)
+- **Investor KITAS 2 Years (Onshore):** **Rp 19.000.000** (all-inclusive)
 
 **Supporting Costs:**
 - Medical checkup: Rp 500.000
 - Police clearance (apostille): Rp 2.000.000 - 3.000.000
 - Document legalization: Rp 1.500.000
-- **Subtotal:** **Rp 4.000.000**
+- **Subtotal:** ~**Rp 4.000.000**
 
-**Grand Total:** **Rp 23.000.000 - 24.000.000** (~USD 1,500)
+**Grand Total (Offshore):** **Rp 21.000.000 - 22.000.000** (~USD 1,350)
 
 **Plus annual:**
 - BPJS for local staff: ~Rp 450K/employee/month
@@ -407,7 +405,7 @@ Bisakah saya convert E28A ke permanent residence (KITAP)?
 - Can work **anywhere** (not limited to sponsoring company)
 - Path to **citizenship** (after 10 years KITAP)
 
-**Cost:** ~Rp 35.000.000 - 50.000.000 (one-time)
+**Cost:** **Rp 55.000.000** (KITAP + MERP, Bali Zero 2025)
 
 **19 — Client:**
 Oke, saya siap apply E28A. Langkah pertama apa?
@@ -617,19 +615,17 @@ What's the total cost from start to receiving KITAS?
 **Consultant:**
 **Total Cost Breakdown:**
 
-**E28A Package (Offshore):**
-- E28A KITAS processing: IDR 10,000,000
-- IMTA processing: IDR 7,000,000
-- RPTKA document: IDR 2,000,000
-- **Subtotal:** **IDR 19,000,000**
+**E28A Package (Bali Zero 2025):**
+- **Investor KITAS 2 Years (Offshore):** **IDR 17,000,000** (all-inclusive: KITAS + IMTA + RPTKA)
+- **Investor KITAS 2 Years (Onshore):** **IDR 19,000,000** (all-inclusive)
 
 **Supporting Costs:**
 - Medical checkup: IDR 500,000
 - Police clearance (apostille): IDR 2,000,000 - 3,000,000
 - Document legalization: IDR 1,500,000
-- **Subtotal:** **IDR 4,000,000**
+- **Subtotal:** ~**IDR 4,000,000**
 
-**Grand Total:** **IDR 23,000,000 - 24,000,000** (~USD 1,500)
+**Grand Total (Offshore):** **IDR 21,000,000 - 22,000,000** (~USD 1,350)
 
 **Plus annual:**
 - BPJS for local staff: ~IDR 450K/employee/month
@@ -873,7 +869,7 @@ Can I convert E28A to permanent residence (KITAP)?
 - Can work **anywhere** (not limited to sponsoring company)
 - Path to **citizenship** (after 10 years KITAP)
 
-**Cost:** ~IDR 35,000,000 - 50,000,000 (one-time)
+**Cost:** **IDR 55,000,000** (KITAP + MERP, Bali Zero 2025)
 
 **19 — Client:**
 Okay, I'm ready to apply for E28A. What's the first step?
@@ -1083,19 +1079,17 @@ Biaya totale piro soko awal sampek entuk KITAS?
 **Consultant:**
 **Total Cost Breakdown:**
 
-**E28A Package (Offshore):**
-- E28A KITAS processing: Rp 10.000.000
-- IMTA processing: Rp 7.000.000
-- RPTKA document: Rp 2.000.000
-- **Subtotal:** **Rp 19.000.000**
+**E28A Package (Bali Zero 2025):**
+- **Investor KITAS 2 Years (Offshore):** **Rp 17.000.000** (all-inclusive: KITAS + IMTA + RPTKA)
+- **Investor KITAS 2 Years (Onshore):** **Rp 19.000.000** (all-inclusive)
 
 **Supporting Costs:**
 - Medical checkup: Rp 500.000
 - Police clearance (apostille): Rp 2.000.000 - 3.000.000
 - Document legalization: Rp 1.500.000
-- **Subtotal:** **Rp 4.000.000**
+- **Subtotal:** ~**Rp 4.000.000**
 
-**Grand Total:** **Rp 23.000.000 - 24.000.000** (~USD 1,500)
+**Grand Total (Offshore):** **Rp 21.000.000 - 22.000.000** (~USD 1,350)
 
 **Plus annual:**
 - BPJS kanggo local staff: ~Rp 450K/employee/sasi
@@ -1339,7 +1333,7 @@ Isoko aku convert E28A neng permanent residence (KITAP)?
 - Iso kerjo **endi wae** (ora limited neng sponsoring company)
 - Path neng **citizenship** (sakwise 10 taun KITAP)
 
-**Cost:** ~Rp 35.000.000 - 50.000.000 (one-time)
+**Cost:** **Rp 55.000.000** (KITAP + MERP, Bali Zero 2025)
 
 **19 — Client:**
 Oke, aku siap apply E28A. Langkah pertama opo?

@@ -102,23 +102,21 @@ Kalau saya bikin PT Lokal dulu (100% saya), lalu nanti convert ke PT PMA setelah
 
 **Timeline:** **3-4 minggu**
 
-**Cost Breakdown:**
+**Cost Breakdown (Bali Zero 2025):**
 
 | Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup |
 |------|---------------|---------------------|---------------------|
-| **Notaris + Kemenkumham** | IDR 5 juta | IDR 10-15 juta (amendment) | IDR 12-15 juta |
-| **OSS/NIB** | IDR 3-5 juta | IDR 5-7 juta (re-registration) | IDR 5-7 juta |
+| **PT Setup (all-inclusive)** | IDR 10-15 juta | IDR 15-20 juta (amendment) | **IDR 20 juta** |
 | **Virtual Office** | IDR 5 juta/year | Same | IDR 5 juta/year |
-| **Consultant** | IDR 3-5 juta | IDR 15-25 juta (conversion) | IDR 10-15 juta |
-| **Total** | **IDR 22-34 juta** | **+IDR 30-47 juta** | **IDR 35-49 juta** |
+| **Total** | **~IDR 15-20 juta** | **+IDR 20-25 juta** | **IDR 25 juta** |
 
 **Total if convert:**
-- PT Lokal: IDR 22-34M
-- Conversion: +IDR 30-47M
-- **Grand Total: IDR 52-81M** ❌
+- PT Lokal: ~IDR 15-20M
+- Conversion: +IDR 20-25M
+- **Grand Total: ~IDR 40-45M** ❌
 
-**vs Direct PT PMA:**
-- **IDR 35-49M** ✅ (cheaper & faster)
+**vs Direct PT PMA (Bali Zero 2025):**
+- **IDR 25M** ✅ (cheaper & faster)
 
 **Downside Conversion:**
 - **More expensive** (double process)
@@ -399,13 +397,10 @@ Setup cost total berapa untuk PT PMA (including all licenses)?
 **Consultant:**
 **PT PMA E-Commerce Setup (Total Cost):**
 
-**A. PT PMA Incorporation:**
-- Notaris + Kemenkumham: **IDR 12-15 juta**
+**A. PT PMA Incorporation (Bali Zero 2025):**
+- **PT PMA (all-inclusive):** **IDR 20 juta** (notaris, Kemenkumham, NIB, NPWP, bank)
 - Virtual Office (1 year): **IDR 5 juta**
-- OSS/NIB: **IDR 5-7 juta**
-- NPWP PT: **IDR 1 juta**
-- Bank account opening: **IDR 1-2 juta**
-- **Subtotal A: IDR 27-37 juta**
+- **Subtotal A: IDR 25 juta**
 
 **B. E-Commerce Licensing:**
 - PMSE registration (Kemendag): **IDR 5-8 juta**
@@ -821,21 +816,19 @@ If I set up PT Lokal first (100% me), then convert to PT PMA later when partner 
 
 **Cost Breakdown:**
 
-| Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup |
+| Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup (Bali Zero 2025) |
 |------|---------------|---------------------|---------------------|
-| **Notary + Ministry** | IDR 5M | IDR 10-15M (amendment) | IDR 12-15M |
-| **OSS/NIB** | IDR 3-5M | IDR 5-7M (re-registration) | IDR 5-7M |
+| **PT Setup (all-inclusive)** | IDR 10-15M | IDR 15-20M (amendment) | **IDR 20M** |
 | **Virtual Office** | IDR 5M/year | Same | IDR 5M/year |
-| **Consultant** | IDR 3-5M | IDR 15-25M (conversion) | IDR 10-15M |
-| **Total** | **IDR 22-34M** | **+IDR 30-47M** | **IDR 35-49M** |
+| **Total** | **~IDR 15-20M** | **+IDR 20-25M** | **IDR 25M** |
 
 **Total if convert:**
-- PT Lokal: IDR 22-34M
-- Conversion: +IDR 30-47M
-- **Grand Total: IDR 52-81M** ❌
+- PT Lokal: ~IDR 15-20M
+- Conversion: +IDR 20-25M
+- **Grand Total: ~IDR 40-45M** ❌
 
-**vs Direct PT PMA:**
-- **IDR 35-49M** ✅ (cheaper & faster)
+**vs Direct PT PMA (Bali Zero 2025):**
+- **IDR 25M** ✅ (cheaper & faster)
 
 **Conversion Downsides:**
 - **More expensive** (double process)
@@ -1116,13 +1109,10 @@ What's the total setup cost for PT PMA (including all licenses)?
 **Consultant:**
 **PT PMA E-Commerce Setup (Total Cost):**
 
-**A. PT PMA Incorporation:**
-- Notary + Ministry: **IDR 12-15 million**
+**A. PT PMA Incorporation (Bali Zero 2025):**
+- **PT PMA (all-inclusive):** **IDR 20 million** (notary, Ministry, NIB, NPWP, bank)
 - Virtual Office (1 year): **IDR 5 million**
-- OSS/NIB: **IDR 5-7 million**
-- PT Tax ID: **IDR 1 million**
-- Bank account opening: **IDR 1-2 million**
-- **Subtotal A: IDR 27-37 million**
+- **Subtotal A: IDR 25 million**
 
 **B. E-Commerce Licensing:**
 - PMSE registration (Ministry of Trade): **IDR 5-8 million**
@@ -1538,21 +1528,19 @@ Nek aku gawe PT Lokal dhisik (100% aku), terus mengko convert neng PT PMA sakwis
 
 **Cost Breakdown:**
 
-| Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup |
+| Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup (Bali Zero 2025) |
 |------|---------------|---------------------|---------------------|
-| **Notaris + Kemenkumham** | IDR 5 juta | IDR 10-15 juta (amendment) | IDR 12-15 juta |
-| **OSS/NIB** | IDR 3-5 juta | IDR 5-7 juta (re-registration) | IDR 5-7 juta |
+| **PT Setup (all-inclusive)** | IDR 10-15 juta | IDR 15-20 juta (amendment) | **IDR 20 juta** |
 | **Virtual Office** | IDR 5 juta/taun | Same | IDR 5 juta/taun |
-| **Consultant** | IDR 3-5 juta | IDR 15-25 juta (conversion) | IDR 10-15 juta |
-| **Total** | **IDR 22-34 juta** | **+IDR 30-47 juta** | **IDR 35-49 juta** |
+| **Total** | **~IDR 15-20 juta** | **+IDR 20-25 juta** | **IDR 25 juta** |
 
 **Total nek convert:**
-- PT Lokal: IDR 22-34M
-- Conversion: +IDR 30-47M
-- **Grand Total: IDR 52-81M** ❌
+- PT Lokal: ~IDR 15-20M
+- Conversion: +IDR 20-25M
+- **Grand Total: ~IDR 40-45M** ❌
 
-**vs Direct PT PMA:**
-- **IDR 35-49M** ✅ (cheaper & faster)
+**vs Direct PT PMA (Bali Zero 2025):**
+- **IDR 25M** ✅ (cheaper & faster)
 
 **Downside Conversion:**
 - **Luwih larang** (double process)
@@ -1833,13 +1821,10 @@ Setup cost total piro kanggo PT PMA (including all licenses)?
 **Consultant:**
 **PT PMA E-Commerce Setup (Total Cost):**
 
-**A. PT PMA Incorporation:**
-- Notaris + Kemenkumham: **IDR 12-15 juta**
+**A. PT PMA Incorporation (Bali Zero 2025):**
+- **PT PMA (all-inclusive):** **IDR 20 juta** (notaris, Kemenkumham, NIB, NPWP, bank)
 - Virtual Office (1 taun): **IDR 5 juta**
-- OSS/NIB: **IDR 5-7 juta**
-- NPWP PT: **IDR 1 juta**
-- Bank account opening: **IDR 1-2 juta**
-- **Subtotal A: IDR 27-37 juta**
+- **Subtotal A: IDR 25 juta**
 
 **B. E-Commerce Licensing:**
 - PMSE registration (Kemendag): **IDR 5-8 juta**
@@ -2166,8 +2151,8 @@ Timeline: **Mulai minggu ngarep, launch neng 3 wulan!** 🚀
 | **PT Lokal Capital** | IDR 50 million (authorized) |
 | **PT PMA Capital** | IDR 10 billion (authorized) + IDR 2.5 billion (paid-up cash) |
 | **E-Commerce Foreign Limit** | Max 49% for marketplace, 67% for B2C |
-| **PT Lokal Setup Cost** | IDR 22-34 million |
-| **PT PMA Setup Cost** | IDR 35-49 million (excl. capital) |
+| **PT Lokal Setup Cost** | ~IDR 15-20 million |
+| **PT PMA Setup Cost** | IDR 25 million (Bali Zero 2025: 20M PT + 5M VO) |
 | **Conversion Cost (Lokal→PMA)** | IDR 15-25 million (plus original setup = more expensive) |
 | **Timeline PT Lokal** | 1-2 weeks |
 | **Timeline PT PMA** | 2-3 weeks |

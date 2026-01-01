@@ -29,12 +29,11 @@ Halo! Benar sekali, **expat wajib pakai PT PMA** untuk buka bisnis restoran di I
 6. Bank account opening: **3-7 hari**
 7. **Total: 2-3 minggu** (jika lancar)
 
-**Biaya setup PT PMA:**
-- Notaris + Kemenkumham: **IDR 12-15 juta**
+**Biaya setup PT PMA (Bali Zero 2025):**
+- **PT PMA Setup (all-inclusive):** **IDR 20 juta**
+  - Includes: Notaris, Kemenkumham, NPWP, bank account setup
 - Virtual Office (1 tahun): **IDR 5 juta**
-- OSS/NIB + licensing: **IDR 5-7 juta**
-- NPWP, bank account, etc: **IDR 2-3 juta**
-- **Total biaya setup: IDR 27-37 juta**
+- **Total biaya setup: IDR 25 juta** (PT + VO)
 
 Setelah PT berdiri, baru apply **health permits** (BPOM, Dinkes) dan **location permits** (IMB, HO).
 
@@ -339,12 +338,10 @@ Target 60 seats. Timeline dari start setup PT sampai grand opening kira-kira ber
 
 **BUDGET BREAKDOWN (Comprehensive):**
 
-**A. PT PMA Setup Costs:**
-- PT PMA incorporation (notaris, Kemenkumham): **IDR 12-15 juta**
+**A. PT PMA Setup Costs (Bali Zero 2025):**
+- **PT PMA (all-inclusive):** **IDR 20 juta** (notaris, Kemenkumham, NIB, NPWP, bank)
 - Virtual office (1 tahun): **IDR 5 juta**
-- OSS/NIB licensing: **IDR 5-7 juta**
-- NPWP, bank account: **IDR 2-3 juta**
-- **Subtotal A: IDR 27-37 juta**
+- **Subtotal A: IDR 25 juta**
 
 **B. Immigration Costs (IMTA + E28A KITAS):**
 - RPTKA preparation: **IDR 5-7 juta**
@@ -1928,12 +1925,10 @@ Hello! Yes, that's correct — **expats must use a PT PMA** to operate a restaur
 6. Bank account opening: **3-7 days**
 7. **Total: 2-3 weeks** (if smooth)
 
-**PT PMA setup costs:**
-- Notary + Kemenkumham fees: **IDR 12-15 million**
+**PT PMA setup costs (Bali Zero 2025):**
+- **PT PMA (all-inclusive):** **IDR 20 million** (notary, Kemenkumham, NIB, NPWP, bank)
 - Virtual office (1 year): **IDR 5 million**
-- OSS/NIB + licensing: **IDR 5-7 million**
-- NPWP, bank account, etc: **IDR 2-3 million**
-- **Total setup cost: IDR 27-37 million**
+- **Total setup cost: IDR 25 million** (PT + VO)
 
 After the PT is established, you'll need to apply for **health permits** (BPOM, Dinkes) and **location permits** (IMB, HO).
 
@@ -2167,12 +2162,10 @@ Halo! Bener banget, **wong asing kudu nganggo PT PMA** nek arep mbukak bisnis re
 6. Bank account opening: **3-7 dino**
 7. **Total: 2-3 minggu** (nek lancar)
 
-**Biaya setup PT PMA:**
-- Notaris + Kemenkumham: **IDR 12-15 juta**
+**Biaya setup PT PMA (Bali Zero 2025):**
+- **PT PMA (all-inclusive):** **IDR 20 juta** (notaris, Kemenkumham, NIB, NPWP, bank)
 - Virtual Office (1 taun): **IDR 5 juta**
-- OSS/NIB + licensing: **IDR 5-7 juta**
-- NPWP, bank account, dll: **IDR 2-3 juta**
-- **Total biaya setup: IDR 27-37 juta**
+- **Total biaya setup: IDR 25 juta** (PT + VO)
 
 Sawise PT wis dadi, baru apply **health permits** (BPOM, Dinkes) karo **location permits** (IMB, HO).
 
@@ -2192,7 +2185,7 @@ Lokasi restoran nang endi nang Bali?
 | **Minimum Capital** | IDR 10 billion authorized, IDR 2.5 billion paid-up (cash in bank) |
 | **Setup Timeline** | 2-3 weeks (PT PMA + NIB + bank account) |
 | **Total Timeline to Opening** | 5-6 months (setup → renovation → permits → grand opening) |
-| **Setup Costs** | IDR 27-37 million (notary, OSS, virtual office, NPWP, bank) |
+| **Setup Costs** | IDR 25 million (PT PMA 20M + VO 5M, Bali Zero 2025) |
 | **Immigration Costs** | IDR 22-26 million (E28A KITAS + IMTA for active director) |
 | **Health Permits** | SLHS (IDR 2-3M), PIRT (IDR 500k-1M), Halal (IDR 5-8M) — 3-6 weeks |
 | **Alcohol License** | NPPBKC (free govt fee, IDR 5M consultant) — 2-4 weeks |

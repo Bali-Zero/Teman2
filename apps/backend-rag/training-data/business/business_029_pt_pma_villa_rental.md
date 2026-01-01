@@ -295,7 +295,7 @@ Kalau zoning sudah clear, berapa total biaya setup PT PMA Villa sampai dapat TDU
 **Total Cost Breakdown PT PMA Villa Rental:**
 
 **Phase 1: PT PMA Setup**
-- Notaris + OSS + Kemenkumham: **IDR 27-37M**
+- Notaris + OSS + Kemenkumham: **IDR 20M** (Bali Zero 2025)
 - KBLI 55130 spesifik
 - Timeline: 2-3 minggu
 
@@ -767,8 +767,9 @@ If zoning is clear, what's the total cost for PT PMA Villa setup including TDUP?
 **Consultant:**
 **Total Cost Breakdown PT PMA Villa Rental:**
 
-**Phase 1: PT PMA Setup**
-- Notary + OSS + Kemenkumham: **IDR 27-37M**
+**Phase 1: PT PMA Setup (Bali Zero 2025)**
+- **PT PMA (all-inclusive):** **IDR 20M** (notary, OSS, Kemenkumham, NPWP, bank)
+- Virtual Office: **IDR 5M**
 - KBLI 55130 specific
 - Timeline: 2-3 weeks
 
@@ -1241,7 +1242,7 @@ Nek zoning wis clear, piro total biaya setup PT PMA Villa sampek entuk TDUP?
 **Total Cost Breakdown PT PMA Villa Rental:**
 
 **Phase 1: PT PMA Setup**
-- Notaris + OSS + Kemenkumham: **IDR 27-37M**
+- Notaris + OSS + Kemenkumham: **IDR 20M** (Bali Zero 2025)
 - KBLI 55130 spesifik
 - Timeline: 2-3 minggu
 
@@ -1433,7 +1434,7 @@ Matur nuwun! Tim Bali Zero siap bantu villa rental business sampeyan. 🏡
 | **KBLI Code** | 55130 (Pondok Wisata/Villa) |
 | **Minimum Capital** | IDR 10 Billion (can use property as capital in kind) |
 | **Foreign Ownership** | 100% allowed |
-| **PT PMA Setup Cost** | IDR 27-37M |
+| **PT PMA Setup Cost** | IDR 20M (Bali Zero 2025) |
 | **TDUP (Tourism License)** | IDR 5-8M, 4-6 weeks |
 | **Annual Renewal** | IDR 3-5M |
 | **Total Timeline** | 6-9 weeks (PT + TDUP) |
