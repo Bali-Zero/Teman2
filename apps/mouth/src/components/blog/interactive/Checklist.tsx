@@ -59,6 +59,16 @@ export function Checklist({
   allowPrint = true,
   className,
 }: ChecklistProps) {
+  // Defensive check for required props
+  if (!items || !Array.isArray(items)) {
+    return (
+      <div className="p-6 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400">
+        <p className="font-medium">Checklist</p>
+        <p className="text-sm text-blue-400/70 mt-1">Configuration required: items array</p>
+      </div>
+    );
+  }
+
   const storageKey = `checklist-${id}`;
 
   // Initialize checked items
