@@ -523,7 +523,7 @@ export class ChatApi {
                   '';
                 fullResponse += text;
                 if (!signalToUse.aborted && !requestAborted) {
-                  onChunk(text);
+                  onChunk(cleanImageResponse(fullResponse));
                 }
               } else if (isRecord(data) && data.type === 'sources') {
                 sources = Array.isArray(data.data)

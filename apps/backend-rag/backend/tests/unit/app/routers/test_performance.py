@@ -68,7 +68,7 @@ class TestPerformanceRouter:
         assert data["status"] == "caches_cleared"
 
     @patch("app.routers.performance.embedding_cache")
-    async def test_clear_embedding_cache(self, mock_cache, client):
+    def test_clear_embedding_cache(self, mock_cache, client):
         """Test clearing embedding cache"""
         mock_cache.clear = AsyncMock()
         
@@ -79,7 +79,7 @@ class TestPerformanceRouter:
         assert data["status"] == "embedding_cache_cleared"
 
     @patch("app.routers.performance.search_cache")
-    async def test_clear_search_cache(self, mock_cache, client):
+    def test_clear_search_cache(self, mock_cache, client):
         """Test clearing search cache"""
         mock_cache.clear = AsyncMock()
         

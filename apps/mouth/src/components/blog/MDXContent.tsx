@@ -129,7 +129,7 @@ const mdxComponents = {
     <em className="italic text-white/90" {...props} />
   ),
   img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return (
       <span className="block my-6">
         <img

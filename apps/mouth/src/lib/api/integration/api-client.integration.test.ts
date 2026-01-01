@@ -274,7 +274,7 @@ describe('ApiClient Integration Tests', () => {
       );
 
       expect(onChunk).toHaveBeenCalledWith('Hello');
-      expect(onChunk).toHaveBeenCalledWith(' World');
+      expect(onChunk).toHaveBeenCalledWith('Hello World');
       expect(onDone).toHaveBeenCalledWith('Hello World', [{ title: 'Source' }], undefined);
     });
   });

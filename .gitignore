@@ -5,6 +5,11 @@
 # Python
 __pycache__/
 *.py[cod]
+uv.lock
+apps/backend-rag/data/
+check_ingest.py
+run_ingest.py
+scripts/*.pylass
 *$py.class
 *.so
 .Python
@@ -162,3 +167,6 @@ docs/generated/
 coverage.json
 # Auto-generated Playwright extensions
 .playwright-mcp/*.crx
+apps/mouth/coverage/
+lint_*.txt
+*.py[cod]

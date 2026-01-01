@@ -302,7 +302,7 @@ describe('ApiClient', () => {
       await api.sendMessageStreaming('Hello', undefined, onChunk, onDone, onError);
 
       expect(onChunk).toHaveBeenCalledWith('Hello ');
-      expect(onChunk).toHaveBeenCalledWith('from AI!');
+      expect(onChunk).toHaveBeenCalledWith('Hello from AI!');
       expect(onDone).toHaveBeenCalledWith('Hello from AI!', [], undefined);
       expect(onError).not.toHaveBeenCalled();
     });
