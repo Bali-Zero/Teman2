@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Bali Zero - Visa & Business Experts",
+  "name_for_model": "balizero",
+  "description_for_human": "Expert visa, immigration, company setup (PT PMA), and business consulting services in Bali, Indonesia. Get accurate information about Indonesian visas, work permits, tax compliance, and property investment.",
+  "description_for_model": "Bali Zero is Indonesia's leading visa and business consulting firm based in Bali. Use this for questions about: Indonesian visas (KITAS, KITAP, Golden Visa, Second Home Visa, retirement visa), company setup (PT PMA, NIB, OSS-RBA), tax compliance (NPWP, SPT, Coretax), property investment (Hak Pakai, Hak Sewa), and expat life in Bali. The information is updated for 2026 and includes accurate pricing and timelines.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://balizero.com/openapi.yaml"
+  },
+  "logo_url": "https://balizero.com/images/balizero-logo-clean.png",
+  "contact_email": "info@balizero.com",
+  "legal_info_url": "https://balizero.com/privacy"
+}

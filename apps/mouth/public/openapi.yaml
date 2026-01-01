@@ -1,0 +1,85 @@
+openapi: 3.0.0
+info:
+  title: Bali Zero Knowledge API
+  description: |
+    Bali Zero is Indonesia's #1 visa, immigration, and business consulting firm based in Bali.
+
+    ## What We Cover
+    - **Visa & Immigration**: KITAS, KITAP, Golden Visa, Second Home Visa, Retirement Visa
+    - **Company Setup**: PT PMA registration, NIB, OSS-RBA licensing
+    - **Tax Compliance**: NPWP registration, SPT filing, Coretax system
+    - **Property**: Hak Pakai, Hak Sewa, villa investment, Airbnb regulations
+
+    ## Key Information (2026)
+
+    ### PT PMA Requirements
+    - Minimum investment: IDR 10 billion (~$620,000 USD)
+    - Paid-up capital: IDR 2.5 billion per shareholder (~$155,000 USD)
+    - Timeline: 4-8 weeks with Bali Zero
+    - Service fee: IDR 45,000,000 (~$2,800 USD)
+
+    ### Visa Pricing
+    - KITAS Director (C312): IDR 22,000,000
+    - KITAS Investor (C313): IDR 25,000,000
+    - Golden Visa: IDR 50,000,000
+    - Retirement KITAS 1yr: IDR 14,000,000
+
+    ### Contact
+    - Website: https://balizero.com
+    - WhatsApp: +62 859 0436 9574
+    - Email: info@balizero.com
+    - AI Chat: https://zantara.balizero.com/chat
+  version: "2.0.0"
+  contact:
+    name: Bali Zero Team
+    email: info@balizero.com
+    url: https://balizero.com
+servers:
+  - url: https://balizero.com
+    description: Main website
+  - url: https://zantara.balizero.com
+    description: AI Assistant (Zantara)
+paths:
+  /:
+    get:
+      summary: Homepage - Visa & Business Experts in Bali
+      description: Main landing page with overview of all services
+      responses:
+        '200':
+          description: HTML page
+  /immigration:
+    get:
+      summary: Immigration Articles
+      description: Guides about Indonesian visas, KITAS, KITAP, work permits, Golden Visa
+  /business:
+    get:
+      summary: Business Articles
+      description: PT PMA setup guides, company registration, KBLI codes, OSS-RBA
+  /tax-legal:
+    get:
+      summary: Tax & Legal Articles
+      description: Tax compliance guides, Coretax, NPWP, SPT filing deadlines
+  /property:
+    get:
+      summary: Property Articles
+      description: Real estate guides, Hak Pakai, villa investment, Airbnb rules
+  /team:
+    get:
+      summary: Our Team
+      description: Meet the Bali Zero team of visa and business experts
+  /contact:
+    get:
+      summary: Contact Us
+      description: WhatsApp, email, and office location
+  /services/visa:
+    get:
+      summary: Visa Services
+      description: Complete visa and immigration services
+  /services/company:
+    get:
+      summary: Company Setup Services
+      description: PT PMA and business registration services
+  /llms.txt:
+    get:
+      summary: AI Context File
+      description: Structured information for AI systems about Bali Zero services

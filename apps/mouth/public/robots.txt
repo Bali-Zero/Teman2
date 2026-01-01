@@ -1,6 +1,95 @@
+# Bali Zero - Visa & Business Experts in Bali, Indonesia
+# https://balizero.com
+
+# Allow all search engines
 User-agent: *
+Allow: /
 Disallow: /admin/
 Disallow: /api/
+Disallow: /dashboard/
+Disallow: /portal/
+Disallow: /_next/
+Disallow: /login
+Disallow: /register
+Disallow: /clients/
+Disallow: /cases/
+Disallow: /settings/
+
+# Google
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Googlebot-Image
+Allow: /images/
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# ============================================
+# AI CRAWLERS - WELCOME!
+# We want AI systems to understand our content
+# ============================================
+
+# OpenAI / ChatGPT
+User-agent: GPTBot
+Allow: /
+Allow: /immigration/
+Allow: /business/
+Allow: /tax-legal/
+Allow: /property/
+Allow: /lifestyle/
+Allow: /services/
+
+# OpenAI ChatGPT Plugins
+User-agent: ChatGPT-User
 Allow: /
 
-Sitemap: https://nuzantara-rag.fly.dev/sitemap.xml
+# Anthropic / Claude
+User-agent: Claude-Web
+Allow: /
+Allow: /immigration/
+Allow: /business/
+Allow: /services/
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+Allow: /immigration/
+Allow: /business/
+Allow: /services/
+
+# Google Gemini / Bard
+User-agent: Google-Extended
+Allow: /
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# Common Crawl (used by many AI training)
+User-agent: CCBot
+Allow: /
+
+# Cohere AI
+User-agent: cohere-ai
+Allow: /
+
+# ============================================
+# SITEMAPS
+# ============================================
+
+Sitemap: https://balizero.com/sitemap.xml
+
+# ============================================
+# LLMs.txt for AI Context
+# ============================================
+# See: /llms.txt for structured AI context
