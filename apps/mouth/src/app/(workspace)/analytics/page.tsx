@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import CountUp from 'react-countup';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { AllAnalytics } from '@/lib/api/analytics/analytics.types';
 import {
@@ -70,7 +72,18 @@ const formatUSD = (amount: number): string => {
   }).format(amount);
 };
 
-// Stat Card Component
+// Accent color styles for stat cards
+const accentColorStyles: Record<string, { border: string; icon: string }> = {
+  blue: { border: 'border-l-[3px] border-l-[#60A5FA]', icon: 'text-[#60A5FA]' },
+  teal: { border: 'border-l-[3px] border-l-[#2DD4BF]', icon: 'text-[#2DD4BF]' },
+  amber: { border: 'border-l-[3px] border-l-[#FBBF24]', icon: 'text-[#FBBF24]' },
+  purple: { border: 'border-l-[3px] border-l-[#A78BFA]', icon: 'text-[#A78BFA]' },
+  pink: { border: 'border-l-[3px] border-l-[#F472B6]', icon: 'text-[#F472B6]' },
+  emerald: { border: 'border-l-[3px] border-l-[#34D399]', icon: 'text-[#34D399]' },
+  cyan: { border: 'border-l-[3px] border-l-[#22D3EE]', icon: 'text-[#22D3EE]' },
+};
+
+// Stat Card Component with animated numbers
 function StatCard({
   title,
   value,
@@ -78,6 +91,11 @@ function StatCard({
   icon: Icon,
   variant = 'default',
   onClick,
+  animate = true,
+  suffix = '',
+  prefix = '',
+  decimals = 0,
+  accentColor,
 }: {
   title: string;
   value: string | number;
@@ -85,6 +103,11 @@ function StatCard({
   icon: React.ElementType;
   variant?: 'default' | 'success' | 'warning' | 'danger';
   onClick?: () => void;
+  animate?: boolean;
+  suffix?: string;
+  prefix?: string;
+  decimals?: number;
+  accentColor?: 'blue' | 'teal' | 'amber' | 'purple' | 'pink' | 'emerald' | 'cyan';
 }) {
   const variants = {
     default: 'text-[var(--foreground)]',
@@ -93,21 +116,43 @@ function StatCard({
     danger: 'text-[var(--error)]',
   };
 
+  const accent = accentColor ? accentColorStyles[accentColor] : null;
+
+  // Check if value is a number for CountUp
+  const isNumeric = typeof value === 'number' || (typeof value === 'string' && !isNaN(parseFloat(value.replace(/[^0-9.-]/g, ''))));
+  const numericValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, '')) || 0;
+
   return (
     <div
       onClick={onClick}
       className={cn(
         'p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]',
-        onClick && 'cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--background-elevated)] transition-all'
+        onClick && 'cursor-pointer hover:border-[var(--accent)] hover:bg-[var(--background-elevated)] transition-all',
+        accent?.border
       )}
     >
       <div className="flex items-center gap-3 mb-2">
         <div className="p-2 rounded-lg bg-[var(--background-elevated)]/50">
-          <Icon className="w-4 h-4 text-[var(--foreground-muted)]" />
+          <Icon className={cn('w-4 h-4', accent ? accent.icon : 'text-[var(--foreground-muted)]')} />
         </div>
         <span className="text-sm text-[var(--foreground-muted)]">{title}</span>
       </div>
-      <p className={cn('text-2xl font-bold', variants[variant])}>{value}</p>
+      <p className={cn('text-2xl font-bold', variants[variant])}>
+        {animate && isNumeric && numericValue > 0 ? (
+          <CountUp
+            end={numericValue}
+            duration={1.5}
+            separator=","
+            decimals={decimals}
+            prefix={prefix}
+            suffix={suffix}
+            enableScrollSpy
+            scrollSpyOnce
+          />
+        ) : (
+          value
+        )}
+      </p>
       {subtitle && (
         <p className="text-xs text-[var(--foreground-muted)] mt-1">{subtitle}</p>
       )}
@@ -271,7 +316,7 @@ export default function AnalyticsDashboard() {
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (showToast = false) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -287,16 +332,28 @@ export default function AnalyticsDashboard() {
       setData(analytics);
       setLlmUsage(llmStats);
       setLastRefresh(new Date());
+
+      if (showToast) {
+        toast.success('Analytics refreshed', {
+          description: `Last update: ${new Date().toLocaleTimeString()}`,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
+      toast.error('Failed to refresh analytics');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleRefresh = () => loadData(true);
+
   // Export data as JSON
   const handleExport = () => {
-    if (!data) return;
+    if (!data) {
+      toast.error('No data to export');
+      return;
+    }
 
     const exportData = {
       ...data,
@@ -313,6 +370,10 @@ export default function AnalyticsDashboard() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    toast.success('Analytics exported successfully', {
+      description: `File: analytics-${new Date().toISOString().split('T')[0]}.json`,
+    });
   };
 
   useEffect(() => {
@@ -343,7 +404,7 @@ export default function AnalyticsDashboard() {
           <AlertTriangle className="w-8 h-8 text-[var(--error)]" />
           <p className="text-[var(--foreground)]">{error}</p>
           <button
-            onClick={loadData}
+            onClick={handleRefresh}
             className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white"
           >
             Retry
@@ -382,12 +443,13 @@ export default function AnalyticsDashboard() {
             Export
           </button>
           <button
-            onClick={loadData}
+            onClick={handleRefresh}
             disabled={isLoading}
             className={cn(
               'p-2 rounded-lg border border-[var(--border)] hover:bg-[var(--background-elevated)]',
               isLoading && 'opacity-50'
             )}
+            title="Refresh data"
           >
             <RefreshCw className={cn('w-4 h-4', isLoading && 'animate-spin')} />
           </button>
@@ -402,18 +464,21 @@ export default function AnalyticsDashboard() {
           subtitle={`${data.overview.conversations_week} this week`}
           icon={MessageSquare}
           onClick={() => toggleSection('rag')}
+          accentColor="blue"
         />
         <StatCard
           title="Active Users"
           value={data.overview.users_active}
           icon={Users}
           onClick={() => toggleSection('team')}
+          accentColor="teal"
         />
         <StatCard
           title="System Uptime"
           value={formatDuration(data.overview.uptime_seconds)}
           icon={Clock}
           onClick={() => toggleSection('system')}
+          accentColor="purple"
         />
         <StatCard
           title="Services Health"
@@ -425,6 +490,7 @@ export default function AnalyticsDashboard() {
           }
           icon={Activity}
           onClick={() => toggleSection('system')}
+          accentColor="emerald"
         />
       </div>
 
@@ -437,6 +503,7 @@ export default function AnalyticsDashboard() {
             subtitle={`${formatNumber(llmUsage.total_prompt_tokens)} prompt / ${formatNumber(llmUsage.total_completion_tokens)} completion`}
             icon={Coins}
             onClick={() => toggleSection('llm')}
+            accentColor="amber"
           />
           <StatCard
             title="LLM Cost"
@@ -445,18 +512,21 @@ export default function AnalyticsDashboard() {
             icon={DollarSign}
             variant={llmUsage.total_cost_usd > 10 ? 'warning' : 'default'}
             onClick={() => toggleSection('llm')}
+            accentColor="emerald"
           />
           <StatCard
             title="Models Used"
             value={llmUsage.usage_by_model.length}
             icon={Brain}
             onClick={() => toggleSection('llm')}
+            accentColor="pink"
           />
           <StatCard
             title="Endpoints Active"
             value={llmUsage.usage_by_endpoint.length}
             icon={Server}
             onClick={() => toggleSection('llm')}
+            accentColor="cyan"
           />
         </div>
       )}

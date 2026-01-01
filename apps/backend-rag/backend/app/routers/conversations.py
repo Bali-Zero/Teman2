@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.dependencies import get_current_user, get_database_pool
+from app.metrics import metrics_collector
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_error, log_success, log_warning
 from services.memory import MemoryOrchestrator, get_memory_cache

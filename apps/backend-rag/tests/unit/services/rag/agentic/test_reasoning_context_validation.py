@@ -75,3 +75,4 @@ def test_reasoning_engine_has_min_context_items(reasoning_engine):
     assert hasattr(reasoning_engine, '_min_context_items')
     assert reasoning_engine._min_context_items == 1
 
+

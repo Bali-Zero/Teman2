@@ -197,12 +197,13 @@ export async function sendMessageStream(
               const event = JSON.parse(data);
 
               switch (event.type) {
-                case 'token':
+                case 'token': {
                   fullContent += event.data;
                   // Clean image generation URLs from accumulated content
                   const cleanedContent = cleanImageResponse(fullContent);
                   controller.enqueue({ type: 'token', data: cleanedContent });
                   break;
+                }
 
                 case 'status':
                 case 'phase':

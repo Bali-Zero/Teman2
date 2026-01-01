@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Users, Search, Filter, Plus, UserPlus } from 'lucide-react';
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import type { Client } from '@/lib/api/crm/crm.types';
@@ -12,6 +13,7 @@ export default function ClientiPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [listParent] = useAutoAnimate();
 
   useEffect(() => {
     const loadClients = async () => {
@@ -83,7 +85,7 @@ export default function ClientiPage() {
               Clients ({clients.length})
             </h2>
           </div>
-          <div className="divide-y divide-[var(--border)]">
+          <div ref={listParent} className="divide-y divide-[var(--border)]">
             {clients.map((client) => (
               <div
                 key={client.id}

@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     )
     imagineart_api_key: str | None = None  # Set via IMAGINEART_API_KEY env var (for ImagineArt)
     stability_api_key: str | None = None  # Set via STABILITY_API_KEY env var (for Stability AI)
+    brave_api_key: str | None = None  # Set via BRAVE_API_KEY env var (for Brave Web Search)
+    tavily_api_key: str | None = None  # Set via TAVILY_API_KEY env var (for Tavily AI Search - preferred)
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536  # Matches migrated collections
 
@@ -615,8 +617,16 @@ class Settings(BaseSettings):
     # ========================================
     # GOOGLE SERVICES CONFIGURATION
     # ========================================
-    google_api_key: str | None = None  # Set via GOOGLE_API_KEY env var
+    # google_api_key: str | None = None  # Already defined in EMBEDDINGS CONFIGURATION
     google_credentials_json: str | None = None  # Set via GOOGLE_CREDENTIALS_JSON env var
+
+    # ========================================
+    # GOOGLE DRIVE OAUTH CONFIGURATION
+    # ========================================
+    google_drive_client_id: str | None = None  # Set via GOOGLE_DRIVE_CLIENT_ID env var
+    google_drive_client_secret: str | None = None  # Set via GOOGLE_DRIVE_CLIENT_SECRET env var
+    google_drive_redirect_uri: str = "https://nuzantara-rag.fly.dev/integrations/google-drive/callback"
+    google_drive_root_folder_id: str | None = None  # Set via GOOGLE_DRIVE_ROOT_FOLDER_ID env var (team root folder)
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 
     # ========================================

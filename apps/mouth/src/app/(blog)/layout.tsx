@@ -78,17 +78,13 @@ export default function BlogLayout({
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-4">
-              <span className="font-serif text-2xl font-bold tracking-tight text-white">
-                BALI ZERO
-              </span>
-              <span className="text-white/30 text-2xl font-light">×</span>
+            <Link href="/" className="flex items-center">
               <Image
-                src="/images/zan_logo.png"
-                alt="Zantara"
-                width={180}
-                height={60}
-                className="h-12 w-auto brightness-0 invert"
+                src="/images/balizero-logo.png"
+                alt="Bali Zero"
+                width={52}
+                height={52}
+                className="rounded-full"
               />
             </Link>
 
@@ -345,17 +341,13 @@ export default function BlogLayout({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
             {/* Brand */}
             <div className="lg:col-span-2">
-              <Link href="/" className="flex items-center gap-3 mb-6">
-                <span className="font-serif text-xl font-bold tracking-tight text-white">
-                  BALI ZERO
-                </span>
-                <span className="text-white/30 text-xl font-light">×</span>
+              <Link href="/" className="flex items-center mb-6">
                 <Image
-                  src="/images/zan_logo.png"
-                  alt="Zantara"
-                  width={140}
-                  height={45}
-                  className="h-10 w-auto brightness-0 invert"
+                  src="/images/balizero-logo.png"
+                  alt="Bali Zero"
+                  width={52}
+                  height={52}
+                  className="rounded-full"
                 />
               </Link>
               <p className="text-white/50 max-w-sm mb-6 leading-relaxed">

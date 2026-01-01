@@ -83,13 +83,13 @@ export function Header({
             )}
           </button>
 
-          {/* Greeting */}
+          {/* Compact Greeting - Page Title + Date */}
           <div className="hidden sm:block">
             <h1 className="text-lg font-semibold text-[var(--foreground)]">
-              {getGreeting()}, {userName.split(' ')[0]}
+              {getPageTitle()}
             </h1>
-            <p className="text-sm text-[var(--foreground-muted)] capitalize">
-              {formatDate()}
+            <p className="text-xs text-[var(--foreground-muted)]">
+              {formatDate()} • {userName.split(' ')[0]}
             </p>
           </div>
 

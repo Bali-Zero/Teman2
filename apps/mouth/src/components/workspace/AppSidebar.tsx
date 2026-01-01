@@ -11,6 +11,7 @@ import {
   Mail,
   Users,
   FolderKanban,
+  FolderOpen,
   BookOpen,
   UserCircle,
   BarChart3,
@@ -30,11 +31,28 @@ const iconMap: Record<string, React.ElementType> = {
   Mail,
   Users,
   FolderKanban,
+  FolderOpen,
   BookOpen,
   UserCircle,
   BarChart3,
   Settings,
   Activity,
+};
+
+// Color configuration for nav items
+// cssClass: for inactive state with hover, activeColor: for active state
+const navColors: Record<string, { cssClass: string; activeColor: string }> = {
+  '/dashboard': { cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
+  '/chat': { cssClass: 'nav-icon-purple', activeColor: '#A78BFA' },
+  '/whatsapp': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
+  '/email': { cssClass: 'nav-icon-sky', activeColor: '#38BDF8' },
+  '/clients': { cssClass: 'nav-icon-teal', activeColor: '#2DD4BF' },
+  '/cases': { cssClass: 'nav-icon-amber', activeColor: '#FBBF24' },
+  '/documents': { cssClass: 'nav-icon-yellow', activeColor: '#FACC15' },
+  '/knowledge': { cssClass: 'nav-icon-violet', activeColor: '#C084FC' },
+  '/team': { cssClass: 'nav-icon-cyan', activeColor: '#22D3EE' },
+  '/analytics': { cssClass: 'nav-icon-pink', activeColor: '#F472B6' },
+  '/settings': { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' },
 };
 
 interface AppSidebarProps {
@@ -65,6 +83,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
     const Icon = iconMap[item.icon] || Home;
     const active = isActive(item.href);
     const badge = item.href === '/whatsapp' ? unreadWhatsApp : item.badge;
+    const colors = navColors[item.href] || { cssClass: 'nav-icon-gray', activeColor: '#9CA3AF' };
 
     return (
       <Link
@@ -74,14 +93,35 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
           'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
           'text-sm font-medium group',
           active
-            ? 'bg-[#63E6E2]/10 text-[#63E6E2] border border-[#63E6E2]/20 shadow-[0_0_10px_rgba(99,230,226,0.1)]'
-            : 'text-[#9AA0AE] hover:text-[#4FD1C5] hover:bg-[#4FD1C5]/5'
+            ? 'bg-white/5 border border-white/10'
+            : 'text-[#9AA0AE] hover:bg-white/5'
         )}
+        style={{
+          color: active ? colors.activeColor : undefined,
+          borderColor: active ? `${colors.activeColor}20` : undefined,
+        }}
       >
-        <Icon className={cn('w-5 h-5 transition-colors', active ? 'text-[#63E6E2]' : 'text-[#9AA0AE] group-hover:text-[#4FD1C5]')} />
-        <span className="flex-1">{item.title}</span>
+        <Icon
+          className={cn(
+            'w-5 h-5',
+            !active && colors.cssClass
+          )}
+          style={active ? { color: colors.activeColor } : undefined}
+        />
+        <span
+          className={cn(
+            'flex-1 transition-colors',
+            !active && 'group-hover:text-[#E6E7EB]'
+          )}
+          style={{ color: active ? colors.activeColor : undefined }}
+        >
+          {item.title}
+        </span>
         {badge && badge > 0 && (
-          <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold rounded-full bg-[#63E6E2] text-[#0B0E13]">
+          <span
+            className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold rounded-full text-[#0B0E13]"
+            style={{ backgroundColor: colors.activeColor }}
+          >
             {badge > 99 ? '99+' : badge}
           </span>
         )}

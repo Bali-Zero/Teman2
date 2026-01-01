@@ -24,6 +24,7 @@ from app.routers import (
     debug,
     episodic_memory,
     feedback,
+    google_drive,
     handlers,
     health,
     ingest,
@@ -111,6 +112,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Integrations routers
     api.include_router(zoho_email.router)
+    api.include_router(google_drive.router)
 
     # Blog routers
     api.include_router(newsletter.router)

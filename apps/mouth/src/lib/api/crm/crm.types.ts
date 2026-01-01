@@ -3,6 +3,9 @@ export interface Practice {
   uuid?: string;
   client_id: number;
   client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  client_lead?: string; // Lead team member assigned to client
   practice_type_id: number;
   practice_type_name?: string;
   practice_type_code?: string;
@@ -75,7 +78,35 @@ export interface Client {
   nationality?: string;
   passport_number?: string;
   notes?: string;
+  status?: string;
+  client_type?: string;
+  assigned_to?: string;
+  tags?: string[];
+  address?: string;
+  first_contact_date?: string;
+  last_interaction_date?: string;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface ClientSummary {
+  client: Client;
+  practices: {
+    total: number;
+    active: number;
+    completed: number;
+    items: Practice[];
+  };
+  interactions: {
+    total: number;
+    recent: Interaction[];
+  };
+  revenue: {
+    total: number;
+    paid: number;
+    outstanding: number;
+  };
+  renewals: RenewalAlert[];
 }
 
 export interface CreateClientParams {

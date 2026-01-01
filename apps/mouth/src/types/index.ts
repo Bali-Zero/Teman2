@@ -23,8 +23,11 @@ export interface UserProfile {
 
 export type AgentStep =
   | { type: 'status'; data: string; timestamp: Date }
+  | { type: 'thinking'; data: string; timestamp: Date }
+  | { type: 'tool_call'; data: { tool: string; args: Record<string, unknown> }; timestamp: Date }
   | { type: 'tool_start'; data: { name: string; args: Record<string, unknown> }; timestamp: Date }
   | { type: 'tool_end'; data: { result: string }; timestamp: Date }
+  | { type: 'observation'; data: string; timestamp: Date }
   | { type: 'phase'; data: { name: string; status: string }; timestamp: Date }
   | {
       type: 'reasoning_step';

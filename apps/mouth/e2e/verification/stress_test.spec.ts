@@ -151,7 +151,9 @@ test.describe('Zantara Full Stress Test (30 Qs)', () => {
     await page.waitForURL('/chat');
     try {
       await page.waitForLoadState('networkidle', { timeout: 10000 });
-    } catch (e) {}
+    } catch (e) {
+      // ignore timeout
+    }
     console.log('Login complete. Starting questions.');
   });
 

@@ -451,7 +451,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         profile = (context or {}).get("profile") or {}
         user_name = profile.get("name") or profile.get("full_name")
         facts = (context or {}).get("facts") or []
-        is_returning = bool(facts) or bool(context.get("history", []))
+        is_returning = bool(facts) or bool((context or {}).get("history", []))
 
         # Detect user's language from nationality/ethnicity in facts
         user_lang = None

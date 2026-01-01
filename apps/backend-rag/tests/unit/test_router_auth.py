@@ -627,7 +627,7 @@ def test_get_profile_no_token(client):
     """Test getting profile without token"""
     response = client.get("/api/auth/profile")
 
-    assert response.status_code == 403  # Forbidden - no credentials
+    assert response.status_code == 401  # Unauthorized - no credentials
 
 
 def test_get_profile_invalid_token(client_with_db):
@@ -651,7 +651,7 @@ def test_get_profile_malformed_header(client):
         headers={"Authorization": "InvalidFormat token"},
     )
 
-    assert response.status_code == 403
+    assert response.status_code == 401  # Unauthorized - malformed credentials
 
 
 # ============================================================================
@@ -699,7 +699,7 @@ def test_logout_no_token(client):
     """Test logout without token"""
     response = client.post("/api/auth/logout")
 
-    assert response.status_code == 403
+    assert response.status_code == 401  # Unauthorized - no credentials
 
 
 def test_logout_invalid_token(client_with_db):
@@ -762,7 +762,7 @@ def test_check_auth_no_token(client):
     """Test checking auth without token"""
     response = client.get("/api/auth/check")
 
-    assert response.status_code == 403
+    assert response.status_code == 401  # Unauthorized - no credentials
 
 
 def test_check_auth_invalid_token(client_with_db):

@@ -40,7 +40,8 @@ class TestSmartOracle:
 
     def test_get_drive_service_no_credentials(self):
         """Test Drive service initialization without credentials"""
-        with patch("services.oracle.smart_oracle.settings") as mock_settings:
+        # Patch settings at the source where it's imported in the function
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.google_credentials_json = None
 
             from services.oracle.smart_oracle import get_drive_service

@@ -78,15 +78,10 @@ async def test_list_all_handlers_success():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)  # Ignore Pydantic warnings
         with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
-            # Mock Configuration to avoid environment validation
-            with patch("app.routers.oracle_universal.Configuration") as mock_config_cls:
-                mock_config_instance = MagicMock()
-                mock_config_cls.return_value = mock_config_instance
+            result = await list_all_handlers()
 
-                result = await list_all_handlers()
-
-                assert "total_handlers" in result
-                assert "categories" in result
+            assert "total_handlers" in result
+            assert "categories" in result
             assert "handlers" in result
             assert isinstance(result["total_handlers"], int)
 
@@ -504,14 +499,10 @@ async def test_list_all_handlers_empty_modules():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
-            with patch("app.routers.oracle_universal.Configuration") as mock_config_cls:
-                mock_config_instance = MagicMock()
-                mock_config_cls.return_value = mock_config_instance
+            result = await list_all_handlers()
 
-                result = await list_all_handlers()
-
-                assert result["total_handlers"] == 0
-                assert isinstance(result["categories"], dict)
+            assert result["total_handlers"] == 0
+            assert isinstance(result["categories"], dict)
 
 
 @pytest.mark.asyncio
@@ -523,15 +514,11 @@ async def test_list_all_handlers_duplicate_modules():
         warnings.simplefilter("ignore", UserWarning)
         # The router already has oracle_universal twice in modules list
         with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
-            with patch("app.routers.oracle_universal.Configuration") as mock_config_cls:
-                mock_config_instance = MagicMock()
-                mock_config_cls.return_value = mock_config_instance
+            result = await list_all_handlers()
 
-                result = await list_all_handlers()
-
-                # Should handle duplicates without error
-                assert isinstance(result, dict)
-                assert "total_handlers" in result
+            # Should handle duplicates without error
+            assert isinstance(result, dict)
+            assert "total_handlers" in result
 
 
 @pytest.mark.asyncio
@@ -542,16 +529,12 @@ async def test_list_all_handlers_response_structure():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
-            with patch("app.routers.oracle_universal.Configuration") as mock_config_cls:
-                mock_config_instance = MagicMock()
-                mock_config_cls.return_value = mock_config_instance
+            result = await list_all_handlers()
 
-                result = await list_all_handlers()
-
-                assert "total_handlers" in result
-                assert "categories" in result
-                assert "handlers" in result
-                assert "last_updated" in result
-                assert isinstance(result["total_handlers"], int)
-                assert isinstance(result["categories"], dict)
-                assert isinstance(result["handlers"], list)
+            assert "total_handlers" in result
+            assert "categories" in result
+            assert "handlers" in result
+            assert "last_updated" in result
+            assert isinstance(result["total_handlers"], int)
+            assert isinstance(result["categories"], dict)
+            assert isinstance(result["handlers"], list)

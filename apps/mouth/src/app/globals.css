@@ -15,9 +15,9 @@
 
   /* === COLORS: Foregrounds === */
   --foreground: #f5f5f5;
-  --foreground-secondary: #b8b8b8;
-  --foreground-muted: #737373;
-  --foreground-disabled: #525252;
+  --foreground-secondary: #d4d4d4;
+  --foreground-muted: #9ca3af;
+  --foreground-disabled: #6b7280;
 
   /* === COLORS: Accent & Brand === */
   --accent: #6366f1;
@@ -177,6 +177,40 @@ body {
   animation: skeleton-shimmer 2s infinite;
 }
 
+/* === SHIMMER ANIMATION (Magic UI) === */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* === PULSE GLOW ANIMATION === */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--accent), 0 0 10px var(--accent);
+  }
+  50% {
+    box-shadow: 0 0 20px var(--accent), 0 0 30px var(--accent);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* === FLOAT ANIMATION === */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
 /* === UTILITY CLASSES === */
 .glass {
   background: rgba(20, 20, 20, 0.8);
@@ -280,6 +314,226 @@ kbd {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* === EMAIL MODULE - DARK INTERMEDIATE THEME === */
+/* Slightly lighter dark theme for email consistency */
+.email-module {
+  --background: #1e1e1e;
+  --background-secondary: #252525;
+  --background-elevated: #2d2d2d;
+  --background-hover: #363636;
+  --background-active: #404040;
+  --foreground: #f5f5f5;
+  --foreground-secondary: #d4d4d4;
+  --foreground-muted: #a3a3a3;
+  --border: #3d3d3d;
+  --border-hover: #4a4a4a;
+}
+
+/* Email sidebar - slightly darker than main */
+.email-module .email-sidebar {
+  --background: #1a1a1a;
+  --background-secondary: #212121;
+  --background-elevated: #292929;
+  --background-hover: #333333;
+}
+
+/* === SEMANTIC VALUE COLORS === */
+/* Use these classes for numbers/values that need semantic meaning */
+.value-positive {
+  color: var(--success) !important;
+}
+
+.value-negative {
+  color: var(--error) !important;
+}
+
+.value-warning {
+  color: var(--warning) !important;
+}
+
+.value-neutral {
+  color: var(--foreground-secondary) !important;
+}
+
+.value-zero {
+  color: var(--foreground-muted) !important;
+}
+
+/* === CARD VARIANTS === */
+/* Metric cards - subtle accent border on hover */
+.card-metric {
+  border: 1px solid var(--border);
+  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.card-metric:hover {
+  border-color: var(--accent-muted);
+  box-shadow: 0 0 0 1px var(--accent-subtle);
+}
+
+/* Colored metric cards with left accent bar */
+.card-metric-blue {
+  border-left: 3px solid #60A5FA;
+}
+
+.card-metric-green {
+  border-left: 3px solid #34D399;
+}
+
+.card-metric-amber {
+  border-left: 3px solid #FBBF24;
+}
+
+.card-metric-purple {
+  border-left: 3px solid #A78BFA;
+}
+
+.card-metric-pink {
+  border-left: 3px solid #F472B6;
+}
+
+.card-metric-cyan {
+  border-left: 3px solid #22D3EE;
+}
+
+.card-metric-teal {
+  border-left: 3px solid #2DD4BF;
+}
+
+/* Action cards - slightly elevated background */
+.card-action {
+  background: var(--background-elevated);
+  border: 1px solid var(--border);
+  transition: background var(--transition-normal), transform var(--transition-fast);
+}
+
+.card-action:hover {
+  background: var(--background-hover);
+  transform: translateY(-1px);
+}
+
+/* List cards - enhanced hover state */
+.card-list {
+  border: 1px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.card-list:hover {
+  background: var(--background-elevated);
+  border-color: var(--border);
+}
+
+/* === STATUS BADGES === */
+/* Refined, elegant status badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  transition: all var(--transition-fast);
+}
+
+.badge-success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #34D399;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.badge-warning {
+  background: rgba(251, 191, 36, 0.15);
+  color: #FBBF24;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.badge-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.badge-info {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60A5FA;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+.badge-purple {
+  background: rgba(167, 139, 250, 0.15);
+  color: #A78BFA;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+.badge-cyan {
+  background: rgba(34, 211, 238, 0.15);
+  color: #22D3EE;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.badge-neutral {
+  background: var(--background-elevated);
+  color: var(--foreground-secondary);
+  border: 1px solid var(--border);
+}
+
+/* === ICON COLORS (for inline use) === */
+.icon-blue { color: #60A5FA; }
+.icon-green { color: #34D399; }
+.icon-amber { color: #FBBF24; }
+.icon-purple { color: #A78BFA; }
+.icon-pink { color: #F472B6; }
+.icon-cyan { color: #22D3EE; }
+.icon-teal { color: #2DD4BF; }
+.icon-red { color: #F87171; }
+
+/* === SIDEBAR NAV ICON COLORS (with hover) === */
+.nav-icon-blue { color: #60A5FA80; transition: color 0.2s; }
+.nav-icon-blue:hover, .group:hover .nav-icon-blue { color: #60A5FA; }
+
+.nav-icon-purple { color: #A78BFA80; transition: color 0.2s; }
+.nav-icon-purple:hover, .group:hover .nav-icon-purple { color: #A78BFA; }
+
+.nav-icon-emerald { color: #34D39980; transition: color 0.2s; }
+.nav-icon-emerald:hover, .group:hover .nav-icon-emerald { color: #34D399; }
+
+.nav-icon-sky { color: #38BDF880; transition: color 0.2s; }
+.nav-icon-sky:hover, .group:hover .nav-icon-sky { color: #38BDF8; }
+
+.nav-icon-teal { color: #2DD4BF80; transition: color 0.2s; }
+.nav-icon-teal:hover, .group:hover .nav-icon-teal { color: #2DD4BF; }
+
+.nav-icon-amber { color: #FBBF2480; transition: color 0.2s; }
+.nav-icon-amber:hover, .group:hover .nav-icon-amber { color: #FBBF24; }
+
+.nav-icon-violet { color: #C084FC80; transition: color 0.2s; }
+.nav-icon-violet:hover, .group:hover .nav-icon-violet { color: #C084FC; }
+
+.nav-icon-cyan { color: #22D3EE80; transition: color 0.2s; }
+.nav-icon-cyan:hover, .group:hover .nav-icon-cyan { color: #22D3EE; }
+
+.nav-icon-pink { color: #F472B680; transition: color 0.2s; }
+.nav-icon-pink:hover, .group:hover .nav-icon-pink { color: #F472B6; }
+
+.nav-icon-gray { color: #9CA3AF80; transition: color 0.2s; }
+.nav-icon-gray:hover, .group:hover .nav-icon-gray { color: #9CA3AF; }
+
+/* === COMPACT HEADER === */
+.header-compact {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.header-compact .greeting {
+  font-size: 0.875rem;
+  color: var(--foreground-muted);
+}
+
+.header-compact .page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 /* === REDUCED MOTION === */

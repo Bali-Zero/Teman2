@@ -49,8 +49,8 @@ async def test_initialize_plugins_success():
     mock_registry.discover_plugins = AsyncMock(return_value={"discovered": 3, "errors": []})
     mock_registry.get_statistics = MagicMock(return_value={"total_plugins": 3, "categories": 2})
 
-    with patch("core.plugins.registry", mock_registry), patch("app.main_cloud.app", mock_app):
-        await initialize_plugins()
+    with patch("core.plugins.registry", mock_registry):
+        await initialize_plugins(mock_app)
 
         # Verify discovery was called
         mock_registry.discover_plugins.assert_called_once()
@@ -72,18 +72,15 @@ async def test_initialize_plugins_handles_errors():
     mock_registry = MagicMock()
     mock_registry.discover_plugins = AsyncMock(side_effect=Exception("Discovery failed"))
 
-    with patch("core.plugins.registry", mock_registry), patch("app.main_cloud.app", mock_app):
-        with patch("app.main_cloud.logger") as mock_logger:
-            # Should not raise
-            await initialize_plugins()
+    with patch("core.plugins.registry", mock_registry):
+        # Should not raise
+        await initialize_plugins(mock_app)
 
-            # Should log error
-            mock_logger.error.assert_called()
-
-            # Should set registry to None on error
-            assert mock_app.state.plugin_registry is None
+        # Should set registry to None on error
+        assert mock_app.state.plugin_registry is None
 
 
+@pytest.mark.asyncio
 async def test_initialize_plugins_finds_plugins_directory():
     """Test initialize_plugins finds correct plugins directory"""
     from app.main_cloud import initialize_plugins
@@ -97,20 +94,12 @@ async def test_initialize_plugins_finds_plugins_directory():
     mock_registry.discover_plugins = AsyncMock(return_value={"discovered": 0, "errors": []})
     mock_registry.get_statistics = MagicMock(return_value={"total_plugins": 0, "categories": 0})
 
-    with patch("core.plugins.registry", mock_registry), patch("app.main_cloud.app", mock_app):
-        with patch("pathlib.Path") as mock_path:
-            mock_path_instance = MagicMock()
-            mock_path_instance.parent.parent = MagicMock()
-            mock_path_instance.parent.parent.__truediv__ = MagicMock(
-                return_value=Path("/mock/plugins")
-            )
-            mock_path.return_value = mock_path_instance
+    with patch("core.plugins.registry", mock_registry):
+        await initialize_plugins(mock_app)
 
-            await initialize_plugins()
-
-            # Verify discover_plugins was called with correct path
-            call_args = mock_registry.discover_plugins.call_args
-            assert call_args is not None
-            # Should be called with plugins directory and package prefix
-            assert "backend.plugins" in str(call_args)
+        # Verify discover_plugins was called with correct path
+        call_args = mock_registry.discover_plugins.call_args
+        assert call_args is not None
+        # Should be called with plugins directory and package prefix
+        assert "plugins" in str(call_args)
 

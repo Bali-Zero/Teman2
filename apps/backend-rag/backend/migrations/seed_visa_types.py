@@ -1,253 +1,426 @@
 """
-Seed Visa Types Data
-Professional visa cards for Bali Zero Knowledge Base
+Seed Visa Types Data - CORRECTED
+Based on official imigrasi.go.id classification and training data
 
 Run with:
-    fly ssh console -a nuzantara-rag -C "python -m backend.migrations.seed_visa_types"
+    fly ssh console -a nuzantara-rag -C "python3 /app/backend/migrations/seed_visa_types.py"
 """
 
 import asyncio
 import os
 import json
-from datetime import datetime
 
 import asyncpg
 
 
 # =============================================================================
-# Visa Types Data - Bali Zero Professional Cards
+# Visa Types Data - Official Indonesian Immigration Codes
+# Source: imigrasi.go.id + training-data/visa/*
 # =============================================================================
 
 VISA_TYPES = [
     # =========================================================================
-    # KITAS - Work Permits
+    # D Series - Visa Kunjungan (Visit Visa - Short Term)
     # =========================================================================
     {
-        "code": "KITAS-312",
-        "name": "KITAS 312 - Investor Visa",
-        "category": "KITAS",
-        "duration": "1 year",
-        "extensions": "Up to 4 extensions",
-        "total_stay": "5 years maximum",
+        "code": "D1",
+        "name": "D1 Tourism Multiple Entry Visa",
+        "category": "Visit",
+        "duration": "5 years validity",
+        "extensions": "Not extendable per entry",
+        "total_stay": "60 days per entry (unlimited entries)",
         "renewable": True,
-        "processing_time_normal": "30-45 working days",
-        "processing_time_express": "15-20 working days",
-        "cost_visa": "IDR 25,000,000",
-        "cost_extension": "IDR 12,000,000",
+        "processing_time_normal": "5-7 working days",
+        "processing_time_express": "3-5 working days",
+        "cost_visa": "IDR 5,500,000",
+        "cost_extension": "N/A (exit and re-enter)",
         "cost_details": {
-            "government_fees": "IDR 8,500,000",
-            "service_fee": "IDR 16,500,000",
-            "express_surcharge": "IDR 5,000,000"
+            "government_fees": "IDR 2,000,000",
+            "service_fee": "IDR 3,500,000"
+        },
+        "requirements": [
+            "Valid passport (min 6 months validity)",
+            "Bank statement (min USD 5,000)",
+            "Return/onward ticket",
+            "Accommodation proof",
+            "Passport photos 4x6"
+        ],
+        "restrictions": [
+            "Cannot work or earn income in Indonesia",
+            "Max 60 days per entry - must exit and re-enter",
+            "Cannot convert to KITAS directly"
+        ],
+        "allowed_activities": [
+            "Tourism",
+            "Family visits",
+            "Social activities"
+        ],
+        "benefits": [
+            "5-year validity - no yearly renewals",
+            "Unlimited entries",
+            "Perfect for frequent travelers"
+        ],
+        "process_steps": [
+            "1. Apply online via evisa.imigrasi.go.id",
+            "2. Upload documents",
+            "3. Pay visa fee",
+            "4. Receive e-Visa",
+            "5. Enter Indonesia (60 days max per entry)"
+        ],
+        "tips": [
+            "Best for those visiting Indonesia 3-4x per year",
+            "Do visa run to Singapore/Malaysia to reset 60-day counter",
+            "Compare with E33G if need longer continuous stay"
+        ],
+        "foreign_eligible": True,
+        "metadata": {
+            "popularity": "high",
+            "difficulty": "low",
+            "source": "training-data/visa/visa_004_d1_tourism_multiple_entry.md"
+        }
+    },
+    {
+        "code": "D12",
+        "name": "D12 Business Investigation Visa (Pre-Investment)",
+        "category": "Visit",
+        "duration": "1-2 years validity",
+        "extensions": "1x extension per entry (60 days)",
+        "total_stay": "180 days per entry + 60 days extension",
+        "renewable": False,
+        "processing_time_normal": "7-10 working days",
+        "processing_time_express": "5-7 working days",
+        "cost_visa": "IDR 7,500,000 (1yr) / IDR 10,000,000 (2yr)",
+        "cost_extension": "IDR 1,500,000",
+        "cost_details": {
+            "1_year": "IDR 7,500,000",
+            "2_years": "IDR 10,000,000",
+            "extension": "IDR 1,500,000"
         },
         "requirements": [
             "Valid passport (min 18 months validity)",
-            "Sponsor letter from PT PMA",
-            "Company investment proof (min USD 1 billion IDR)",
-            "RPTKA approval",
-            "Police clearance certificate (SKCK)",
-            "Health certificate",
-            "Passport photos 4x6 (red background)",
-            "CV/Resume in English",
-            "Copy of company documents (NIB, NPWP, Akta)"
+            "Business plan or investment proposal",
+            "Sponsor letter from Indonesian company",
+            "Bank statement showing sufficient funds",
+            "CV/Resume"
         ],
         "restrictions": [
-            "Must maintain active investment",
-            "Cannot work outside sponsoring company",
-            "Must report to immigration every 90 days",
-            "Cannot be converted to KITAP before 4 years"
+            "Cannot work or earn income",
+            "Investigation/survey purposes only",
+            "Must have Indonesian sponsor"
         ],
         "allowed_activities": [
-            "Managing your PT PMA company",
-            "Signing contracts on behalf of company",
-            "Opening bank accounts",
-            "Applying for driving license",
-            "Property ownership (HGB through company)"
+            "Market research",
+            "Feasibility studies",
+            "Site visits",
+            "Meeting potential partners",
+            "Business investigation"
         ],
         "benefits": [
-            "Multiple entry visa",
-            "Can sponsor family members",
-            "Path to KITAP after 4 years",
-            "Full working rights in your company",
-            "Indonesian tax resident status"
+            "180 days per entry (NOT 60 days!)",
+            "Multiple entry",
+            "Perfect for pre-PT PMA setup phase"
         ],
         "process_steps": [
-            "1. Company applies for RPTKA approval",
-            "2. Immigration issues Telex visa approval",
-            "3. Apply for visa at Indonesian Embassy",
-            "4. Enter Indonesia and convert to KITAS",
-            "5. Biometric registration at local immigration",
-            "6. Receive KITAS card within 14 days"
+            "1. Find Indonesian sponsor company",
+            "2. Prepare business proposal",
+            "3. Apply via sponsor's evisa account",
+            "4. Receive approval",
+            "5. Enter Indonesia"
         ],
         "tips": [
-            "Start process 3 months before planned arrival",
-            "Ensure company documents are up to date",
-            "Budget for yearly extensions",
-            "Keep digital copies of all documents",
-            "Set reminder for 90-day reporting"
+            "Use this BEFORE setting up PT PMA",
+            "180 days is longest visit visa stay",
+            "Can extend once for additional 60 days"
+        ],
+        "foreign_eligible": True,
+        "metadata": {
+            "popularity": "medium",
+            "difficulty": "medium",
+            "source": "training-data/visa/visa_005_d12_business_investigation.md"
+        }
+    },
+    # =========================================================================
+    # E28 Series - KITAS Investor
+    # =========================================================================
+    {
+        "code": "E28A",
+        "name": "E28A Investor KITAS (PT PMA Director)",
+        "category": "KITAS",
+        "duration": "2 years",
+        "extensions": "Extendable",
+        "total_stay": "Up to 5 years, then convert to KITAP",
+        "renewable": True,
+        "processing_time_normal": "3-4 weeks after PT PMA setup",
+        "processing_time_express": "2-3 weeks",
+        "cost_visa": "IDR 25,000,000",
+        "cost_extension": "IDR 15,000,000",
+        "cost_details": {
+            "government_fees": "IDR 10,000,000",
+            "service_fee": "IDR 15,000,000"
+        },
+        "requirements": [
+            "Active PT PMA company",
+            "Akta pendirian PT (deed of incorporation)",
+            "NIB (Nomor Induk Berusaha) aktif",
+            "NPWP perusahaan",
+            "SK Kemenkumham",
+            "Proof of capital deposit (min Rp 2.5 miliar)",
+            "Valid passport (min 18 months)",
+            "Photo 4x6 red background",
+            "CV/Resume",
+            "Medical checkup",
+            "Police clearance (apostille)"
+        ],
+        "restrictions": [
+            "Tied to PT PMA sponsorship",
+            "Must maintain active investment",
+            "Cannot work outside sponsoring company"
+        ],
+        "allowed_activities": [
+            "Managing PT PMA company",
+            "Signing contracts",
+            "Opening bank accounts",
+            "Applying for driving license",
+            "Property ownership via PT PMA"
+        ],
+        "benefits": [
+            "2-year validity",
+            "Multiple entry",
+            "Full working rights in your company",
+            "Path to KITAP after 4+ years",
+            "Can sponsor family members"
+        ],
+        "process_steps": [
+            "1. Complete PT PMA setup",
+            "2. Prepare all company documents",
+            "3. Apply for RPTKA approval",
+            "4. Submit E28A application",
+            "5. Biometric registration",
+            "6. Receive KITAS card"
+        ],
+        "tips": [
+            "PT PMA must be fully active before applying",
+            "Capital must be deposited in company account",
+            "IMTA not required for directors/commissioners"
         ],
         "foreign_eligible": True,
         "metadata": {
             "popularity": "high",
             "difficulty": "medium",
-            "bali_zero_recommended": True
+            "source": "training-data/visa/visa_003_e28a_investor_kitas.md"
         }
     },
     {
-        "code": "KITAS-313",
-        "name": "KITAS 313 - Work Visa (Employee)",
+        "code": "E28C",
+        "name": "E28C Investor KITAS (Portfolio - No PT)",
         "category": "KITAS",
-        "duration": "1 year",
-        "extensions": "Up to 4 extensions",
-        "total_stay": "5 years maximum",
+        "duration": "5 years",
+        "extensions": "Extendable",
+        "total_stay": "5 years, renewable",
         "renewable": True,
-        "processing_time_normal": "30-45 working days",
-        "processing_time_express": "15-20 working days",
-        "cost_visa": "IDR 22,000,000",
-        "cost_extension": "IDR 10,000,000",
+        "processing_time_normal": "4-6 weeks",
+        "processing_time_express": "3-4 weeks",
+        "cost_visa": "IDR 35,000,000",
+        "cost_extension": "IDR 25,000,000",
         "cost_details": {
-            "government_fees": "IDR 7,500,000",
-            "service_fee": "IDR 14,500,000",
-            "dpkk_fee": "USD 1,200/year"
+            "government_fees": "IDR 15,000,000",
+            "service_fee": "IDR 20,000,000",
+            "investment_minimum": "USD 350,000"
         },
         "requirements": [
-            "Valid passport (min 18 months validity)",
-            "Sponsor letter from employer (PT PMA)",
-            "RPTKA approval for your position",
-            "Employment contract",
-            "Educational certificates (legalized)",
-            "Work experience proof (min 5 years)",
-            "Police clearance certificate",
-            "Health certificate",
-            "Passport photos 4x6 (red background)"
+            "Valid passport (min 2 years validity)",
+            "Commitment to invest min USD 350,000",
+            "Investment in Indonesian stocks (Tbk) or government bonds",
+            "Proof of funds",
+            "Health insurance"
         ],
         "restrictions": [
-            "Can only work for sponsoring company",
-            "Position must match RPTKA approval",
-            "Must train Indonesian replacement (TKA)",
-            "Cannot freelance or side-work"
+            "Cannot work for Indonesian company",
+            "Must complete investment within 90 days of entry",
+            "Investment management only"
         ],
         "allowed_activities": [
-            "Full-time employment at sponsor company",
-            "Opening bank accounts",
-            "Applying for driving license",
-            "Renting property"
+            "Managing personal investments",
+            "Buying/selling stocks and bonds",
+            "Living in Indonesia"
         ],
         "benefits": [
-            "Multiple entry visa",
-            "Can sponsor spouse and children",
-            "Indonesian tax resident status",
-            "Access to BPJS health insurance"
+            "No need to set up PT PMA",
+            "5-year validity",
+            "Multiple entry",
+            "Portfolio investment option"
         ],
         "process_steps": [
-            "1. Employer applies for RPTKA quota",
-            "2. Submit employee documents for approval",
-            "3. Immigration issues Telex visa",
-            "4. Apply for visa at Embassy",
-            "5. Enter Indonesia and convert to KITAS",
-            "6. Register for IMTA work permit"
+            "1. Prepare proof of funds (USD 350k)",
+            "2. Apply for E28C visa",
+            "3. Enter Indonesia",
+            "4. Complete investment within 90 days",
+            "5. Maintain investment throughout visa validity"
         ],
         "tips": [
-            "Verify employer has valid RPTKA quota",
-            "Educational certificates need Apostille",
-            "DPKK fee is paid by employer annually",
-            "Understand your tax obligations"
+            "Good option if you don't want to run a company",
+            "Investment must be maintained",
+            "90-day deadline to invest after entry is strict"
         ],
         "foreign_eligible": True,
         "metadata": {
-            "popularity": "high",
-            "difficulty": "medium"
+            "popularity": "low",
+            "difficulty": "high",
+            "financial_requirement": 350000,
+            "source": "notebooklm_session1"
+        }
+    },
+    # =========================================================================
+    # E33 Series - Special Purpose KITAS
+    # =========================================================================
+    {
+        "code": "E33G",
+        "name": "E33G Digital Nomad KITAS",
+        "category": "KITAS",
+        "duration": "5 years",
+        "extensions": "Extendable",
+        "total_stay": "5 years continuous",
+        "renewable": True,
+        "processing_time_normal": "2-3 weeks",
+        "processing_time_express": "1-2 weeks",
+        "cost_visa": "IDR 18,000,000",
+        "cost_extension": "IDR 12,000,000",
+        "cost_details": {
+            "government_fees": "IDR 8,000,000",
+            "service_fee": "IDR 10,000,000"
+        },
+        "requirements": [
+            "Valid passport (min 18 months validity)",
+            "Photo 4x6 red background",
+            "Proof of remote work (employment letter or contract)",
+            "Proof of income min USD 2,000/month (3 months bank statements)",
+            "Travel/health insurance valid in Indonesia",
+            "CV/Resume"
+        ],
+        "restrictions": [
+            "Cannot work for Indonesian company",
+            "Income must come from abroad",
+            "No local employment relationship"
+        ],
+        "allowed_activities": [
+            "Remote work for foreign companies",
+            "Freelancing for overseas clients",
+            "Living in Indonesia long-term",
+            "Opening bank accounts",
+            "Renting property"
+        ],
+        "benefits": [
+            "5-year validity",
+            "Legal remote work status",
+            "No Indonesian sponsor needed",
+            "No IMTA/RPTKA required",
+            "Multiple entry"
+        ],
+        "process_steps": [
+            "1. Gather proof of remote income",
+            "2. Apply online via evisa.imigrasi.go.id",
+            "3. Upload documents",
+            "4. Pay fee",
+            "5. Receive e-Visa",
+            "6. Enter Indonesia and convert to KITAS"
+        ],
+        "tips": [
+            "Income can be gross, not net",
+            "Bank statements should show regular deposits",
+            "Perfect for freelancers and remote workers",
+            "No need for Indonesian company sponsorship"
+        ],
+        "foreign_eligible": True,
+        "metadata": {
+            "popularity": "very_high",
+            "difficulty": "low",
+            "income_requirement": 2000,
+            "source": "training-data/visa/visa_001_e33g_digital_nomad_basic.md"
         }
     },
     {
-        "code": "KITAS-317",
-        "name": "KITAS 317 - Retirement Visa",
+        "code": "E33E",
+        "name": "E33E Retirement Visa (Lanjut Usia)",
         "category": "KITAS",
-        "duration": "1 year",
+        "duration": "1-2 years",
         "extensions": "Unlimited extensions",
         "total_stay": "Unlimited (yearly renewal)",
         "renewable": True,
-        "processing_time_normal": "30-45 working days",
-        "processing_time_express": "15-20 working days",
-        "cost_visa": "IDR 18,000,000",
+        "processing_time_normal": "3-4 weeks",
+        "processing_time_express": "2-3 weeks",
+        "cost_visa": "IDR 15,000,000",
         "cost_extension": "IDR 8,000,000",
         "cost_details": {
             "government_fees": "IDR 5,000,000",
-            "service_fee": "IDR 13,000,000"
+            "service_fee": "IDR 10,000,000"
         },
         "requirements": [
             "Age 55 years or older",
             "Valid passport (min 18 months validity)",
-            "Pension proof or bank statement (USD 1,500/month income)",
+            "Pension proof or bank statement (min USD 1,500/month)",
             "Health insurance valid in Indonesia",
-            "Police clearance certificate",
-            "Health certificate",
             "Rental agreement (min 1 year)",
-            "CV stating retirement purpose",
-            "Photo 4x6 (red background)"
+            "CV stating retirement purpose"
         ],
         "restrictions": [
             "Cannot work or conduct business",
-            "Cannot own property directly",
             "Must maintain health insurance",
-            "Must employ Indonesian helper (1 person)"
+            "Rental accommodation required"
         ],
         "allowed_activities": [
-            "Tourism and leisure activities",
+            "Tourism and leisure",
             "Volunteer work (unpaid)",
-            "Opening bank accounts",
-            "Long-term property rental"
+            "Living in Indonesia"
         ],
         "benefits": [
-            "Multiple entry visa",
+            "Lower cost than Second Home Visa",
+            "No large investment required",
             "Can sponsor spouse (any age)",
-            "No investment required",
-            "Peaceful retirement in Bali",
-            "Lower cost of living"
+            "Peaceful retirement in Bali"
         ],
         "process_steps": [
-            "1. Prepare financial proof documents",
+            "1. Prepare pension/income proof",
             "2. Secure rental accommodation",
-            "3. Apply for Telex approval",
-            "4. Get visa at Embassy",
-            "5. Enter and convert to KITAS",
-            "6. Annual renewal process"
+            "3. Get health insurance",
+            "4. Apply for E33E visa",
+            "5. Enter Indonesia",
+            "6. Annual renewal"
         ],
         "tips": [
-            "Health insurance is mandatory - budget accordingly",
-            "Rental contract must be notarized",
-            "Consider areas with good healthcare access",
-            "Join expat retirement communities",
-            "Bali Zero can help with accommodation search"
+            "Budget for yearly renewals",
+            "Health insurance is mandatory",
+            "Choose areas with good healthcare",
+            "Rental must be notarized"
         ],
         "foreign_eligible": True,
         "metadata": {
             "popularity": "medium",
             "difficulty": "low",
             "age_requirement": 55,
-            "bali_zero_recommended": True
+            "source": "notebooklm_session1"
         }
     },
     {
-        "code": "KITAS-318",
-        "name": "KITAS 318 - Second Home Visa",
+        "code": "E35",
+        "name": "E35 Second Home Visa",
         "category": "KITAS",
-        "duration": "5 years",
+        "duration": "5-10 years",
         "extensions": "One 5-year extension",
         "total_stay": "10 years maximum",
         "renewable": True,
-        "processing_time_normal": "30-45 working days",
-        "processing_time_express": "20-25 working days",
+        "processing_time_normal": "4-6 weeks",
+        "processing_time_express": "3-4 weeks",
         "cost_visa": "IDR 35,000,000",
         "cost_extension": "IDR 30,000,000",
         "cost_details": {
             "government_fees": "IDR 15,000,000",
-            "service_fee": "IDR 20,000,000"
+            "service_fee": "IDR 20,000,000",
+            "financial_requirement": "USD 130,000"
         },
         "requirements": [
             "Valid passport (min 6 years validity recommended)",
             "Bank statement showing USD 130,000 or equivalent",
             "Health insurance valid in Indonesia",
-            "Police clearance certificate",
             "Property ownership/rental proof",
             "No criminal record declaration"
         ],
@@ -265,43 +438,161 @@ VISA_TYPES = [
             "Tourism and leisure"
         ],
         "benefits": [
-            "5-year validity - no yearly renewals",
-            "Multiple entry visa",
-            "Can sponsor family members",
+            "5-10 year validity",
+            "No yearly renewals",
+            "Multiple entry",
             "Premium visa status",
             "No age restriction"
         ],
         "process_steps": [
             "1. Prepare proof of funds (USD 130,000)",
             "2. Secure health insurance",
-            "3. Apply for Telex approval",
-            "4. Receive visa at Embassy",
-            "5. Enter and activate KITAS",
-            "6. Renew after 5 years"
+            "3. Apply for Second Home Visa",
+            "4. Receive approval",
+            "5. Enter and activate KITAS"
         ],
         "tips": [
-            "Best option for digital nomads with savings",
+            "Best for wealthy digital nomads",
             "Can work remotely for overseas clients",
-            "Consider tax implications in both countries",
-            "5-year passport validity is essential",
-            "Premium service available for faster processing"
+            "Consider tax implications",
+            "5+ year passport validity essential"
         ],
         "foreign_eligible": True,
         "metadata": {
             "popularity": "high",
             "difficulty": "low",
             "financial_requirement": 130000,
-            "bali_zero_recommended": True,
-            "new_visa": True
+            "source": "notebooklm_session1"
         }
     },
     # =========================================================================
-    # Tourist & Business Visas
+    # E29 - Research Visa
+    # =========================================================================
+    {
+        "code": "E29",
+        "name": "E29 Research Visa (Penelitian)",
+        "category": "KITAS",
+        "duration": "1 year",
+        "extensions": "Extendable",
+        "total_stay": "Based on research project",
+        "renewable": True,
+        "processing_time_normal": "4-8 weeks",
+        "processing_time_express": "3-4 weeks",
+        "cost_visa": "IDR 12,000,000",
+        "cost_extension": "IDR 8,000,000",
+        "cost_details": {
+            "government_fees": "IDR 5,000,000",
+            "service_fee": "IDR 7,000,000"
+        },
+        "requirements": [
+            "Valid passport (min 18 months)",
+            "Research permit from BRIN (Badan Riset dan Inovasi Nasional)",
+            "Sponsorship from Indonesian research institution",
+            "Research proposal",
+            "CV/Academic credentials"
+        ],
+        "restrictions": [
+            "Research activities only",
+            "Must have BRIN permit",
+            "Cannot work commercially"
+        ],
+        "allowed_activities": [
+            "Scientific research",
+            "Field studies",
+            "Academic collaboration",
+            "Can bring family (E31 series)"
+        ],
+        "benefits": [
+            "Legal research status",
+            "Access to research sites",
+            "Can sponsor family"
+        ],
+        "process_steps": [
+            "1. Get BRIN research permit (mandatory)",
+            "2. Find Indonesian research partner",
+            "3. Apply for E29 visa",
+            "4. Submit research proposal",
+            "5. Receive approval"
+        ],
+        "tips": [
+            "BRIN permit is MANDATORY - apply early",
+            "Partner with local university",
+            "Process can take months"
+        ],
+        "foreign_eligible": True,
+        "metadata": {
+            "popularity": "low",
+            "difficulty": "high",
+            "source": "notebooklm_session1"
+        }
+    },
+    # =========================================================================
+    # E31 Series - Family Visa
+    # =========================================================================
+    {
+        "code": "E31B",
+        "name": "E31B Family Visa (Spouse of ITAS/ITAP holder)",
+        "category": "KITAS",
+        "duration": "Matches sponsor's visa",
+        "extensions": "Follows sponsor",
+        "total_stay": "Based on sponsor's status",
+        "renewable": True,
+        "processing_time_normal": "2-3 weeks",
+        "processing_time_express": "1-2 weeks",
+        "cost_visa": "IDR 10,000,000",
+        "cost_extension": "IDR 6,000,000",
+        "cost_details": {
+            "government_fees": "IDR 4,000,000",
+            "service_fee": "IDR 6,000,000"
+        },
+        "requirements": [
+            "Valid passport (min 18 months)",
+            "Marriage certificate (legalized/apostille)",
+            "Translation to Indonesian (sworn translator)",
+            "Sponsor's KITAS/KITAP copy",
+            "Sponsor letter"
+        ],
+        "restrictions": [
+            "Cannot work without separate work permit",
+            "Tied to sponsor's visa status",
+            "Must live with sponsor"
+        ],
+        "allowed_activities": [
+            "Accompanying spouse",
+            "Living in Indonesia",
+            "Opening bank accounts"
+        ],
+        "benefits": [
+            "Stay with spouse legally",
+            "Duration matches sponsor",
+            "Can apply for work permit separately"
+        ],
+        "process_steps": [
+            "1. Legalize marriage certificate",
+            "2. Translate to Indonesian",
+            "3. Sponsor applies on your behalf",
+            "4. Submit documents",
+            "5. Receive dependent KITAS"
+        ],
+        "tips": [
+            "Marriage cert needs apostille + translation",
+            "Sponsor's visa must be valid",
+            "Can upgrade to work visa later"
+        ],
+        "foreign_eligible": True,
+        "metadata": {
+            "popularity": "high",
+            "difficulty": "low",
+            "source": "notebooklm_session1"
+        }
+    },
+    # =========================================================================
+    # VOA - Visa on Arrival
     # =========================================================================
     {
         "code": "B211A",
-        "name": "B211A - Social/Cultural Visa",
-        "category": "Tourist",
+        "name": "B211A Social/Cultural Visa",
+        "category": "Visit",
         "duration": "60 days",
         "extensions": "Up to 4 extensions (30 days each)",
         "total_stay": "180 days maximum",
@@ -313,61 +604,54 @@ VISA_TYPES = [
         "cost_details": {
             "government_fees": "IDR 2,000,000",
             "service_fee": "IDR 3,500,000",
-            "extension_govt": "IDR 500,000",
-            "extension_service": "IDR 1,000,000"
+            "extension_per_30_days": "IDR 1,500,000"
         },
         "requirements": [
-            "Valid passport (min 6 months validity)",
+            "Valid passport (min 6 months)",
             "Sponsor letter from Indonesian citizen/company",
             "Return flight booking",
             "Accommodation proof",
-            "Bank statement (min USD 2,000)",
-            "Passport photo 4x6 (white background)"
+            "Bank statement (min USD 2,000)"
         ],
         "restrictions": [
-            "Cannot work or earn income in Indonesia",
-            "Cannot convert to KITAS directly",
+            "Cannot work or earn income",
             "Must exit after 180 days",
             "Single entry only"
         ],
         "allowed_activities": [
-            "Tourism and leisure",
-            "Visiting family/friends",
+            "Tourism",
+            "Visiting family",
             "Attending courses (non-degree)",
             "Cultural activities",
             "Volunteer work"
         ],
         "benefits": [
-            "Longer stay than visa on arrival",
-            "Multiple extensions available",
-            "Relatively easy to obtain",
-            "Good for exploring Indonesia"
+            "Up to 180 days total",
+            "Multiple extensions",
+            "Relatively easy to obtain"
         ],
         "process_steps": [
-            "1. Find a local sponsor",
-            "2. Submit application online",
+            "1. Find local sponsor",
+            "2. Submit online application",
             "3. Receive Telex approval",
-            "4. Apply at Embassy (if outside Indonesia)",
-            "5. Enter Indonesia",
-            "6. Extend at local immigration office"
+            "4. Enter Indonesia",
+            "5. Extend at immigration office"
         ],
         "tips": [
-            "Start extension process 14 days before expiry",
-            "Keep sponsor contact information handy",
-            "Budget for all 4 extensions if planning long stay",
-            "Bali Zero can provide sponsorship service"
+            "Start extension 14 days before expiry",
+            "Budget for all 4 extensions",
+            "Bali Zero can provide sponsorship"
         ],
         "foreign_eligible": True,
         "metadata": {
             "popularity": "very_high",
-            "difficulty": "low",
-            "bali_zero_recommended": True
+            "difficulty": "low"
         }
     },
     {
         "code": "VOA",
         "name": "Visa on Arrival (VOA)",
-        "category": "Tourist",
+        "category": "Visit",
         "duration": "30 days",
         "extensions": "1 extension (30 days)",
         "total_stay": "60 days maximum",
@@ -382,73 +666,13 @@ VISA_TYPES = [
             "extension_service": "IDR 1,000,000"
         },
         "requirements": [
-            "Valid passport (min 6 months validity)",
+            "Valid passport (min 6 months)",
             "Return/onward ticket",
-            "Proof of accommodation (hotel booking)",
-            "Payment (IDR 500,000 or USD equivalent)"
+            "Payment (IDR 500,000)"
         ],
         "restrictions": [
             "Cannot work",
-            "Only 1 extension allowed",
-            "Must exit after 60 days",
-            "Available at designated ports only"
-        ],
-        "allowed_activities": [
-            "Tourism",
-            "Family visit",
-            "Social activities",
-            "Transit"
-        ],
-        "benefits": [
-            "No pre-arrangement needed",
-            "Quick processing",
-            "Available for 90+ countries",
-            "Extendable once"
-        ],
-        "process_steps": [
-            "1. Arrive at designated airport/seaport",
-            "2. Pay VOA fee at counter",
-            "3. Receive stamp in passport",
-            "4. For extension: apply at immigration 7-14 days before expiry"
-        ],
-        "tips": [
-            "Bring exact amount in IDR if possible",
-            "Extension takes 4-5 working days",
-            "Apply for extension early - offices get busy",
-            "Consider B211A if planning longer stay"
-        ],
-        "foreign_eligible": True,
-        "metadata": {
-            "popularity": "very_high",
-            "difficulty": "very_low"
-        }
-    },
-    {
-        "code": "EVOA",
-        "name": "e-Visa on Arrival (e-VOA)",
-        "category": "Tourist",
-        "duration": "30 days",
-        "extensions": "1 extension (30 days)",
-        "total_stay": "60 days maximum",
-        "renewable": False,
-        "processing_time_normal": "Online (instant - 24 hours)",
-        "processing_time_express": "N/A",
-        "cost_visa": "IDR 500,000",
-        "cost_extension": "IDR 1,500,000",
-        "cost_details": {
-            "visa_fee": "IDR 500,000",
-            "extension_govt": "IDR 500,000",
-            "extension_service": "IDR 1,000,000"
-        },
-        "requirements": [
-            "Valid passport (min 6 months validity)",
-            "Return/onward ticket",
-            "Accommodation proof",
-            "Credit card for payment"
-        ],
-        "restrictions": [
-            "Cannot work",
-            "Only 1 extension allowed",
+            "Only 1 extension",
             "Must exit after 60 days"
         ],
         "allowed_activities": [
@@ -457,164 +681,25 @@ VISA_TYPES = [
             "Social activities"
         ],
         "benefits": [
-            "Apply before arrival - skip queues",
-            "Online extension available",
-            "Digital record",
-            "Same cost as regular VOA"
+            "No pre-arrangement needed",
+            "Quick processing",
+            "Available for 90+ countries"
         ],
         "process_steps": [
-            "1. Apply at molina.imigrasi.go.id",
-            "2. Pay online with credit card",
-            "3. Receive e-Visa via email",
-            "4. Show QR code at immigration",
-            "5. Extend online if needed"
+            "1. Arrive at airport",
+            "2. Pay VOA fee at counter",
+            "3. Receive stamp",
+            "4. Extend at immigration if needed"
         ],
         "tips": [
-            "Apply 48 hours before travel",
-            "Save e-Visa PDF offline",
-            "Online extension is more convenient",
-            "Check passport number carefully when applying"
+            "Bring IDR cash if possible",
+            "Extension takes 4-5 working days",
+            "Consider B211A for longer stay"
         ],
         "foreign_eligible": True,
         "metadata": {
             "popularity": "very_high",
             "difficulty": "very_low"
-        }
-    },
-    # =========================================================================
-    # KITAP - Permanent Stay
-    # =========================================================================
-    {
-        "code": "KITAP",
-        "name": "KITAP - Permanent Stay Permit",
-        "category": "KITAP",
-        "duration": "5 years",
-        "extensions": "Unlimited renewals",
-        "total_stay": "Unlimited",
-        "renewable": True,
-        "processing_time_normal": "60-90 working days",
-        "processing_time_express": "45-60 working days",
-        "cost_visa": "IDR 30,000,000",
-        "cost_extension": "IDR 25,000,000",
-        "cost_details": {
-            "government_fees": "IDR 12,000,000",
-            "service_fee": "IDR 18,000,000"
-        },
-        "requirements": [
-            "Held KITAS for minimum 4 consecutive years",
-            "Valid passport (min 2 years validity)",
-            "Proof of continued residence",
-            "Indonesian language proficiency (basic)",
-            "Knowledge of Pancasila and UUD 1945",
-            "Sponsor letter",
-            "Tax compliance proof",
-            "Police clearance certificate"
-        ],
-        "restrictions": [
-            "Must renew every 5 years",
-            "Cannot be absent from Indonesia > 1 year",
-            "Must maintain valid passport",
-            "Subject to revocation if laws violated"
-        ],
-        "allowed_activities": [
-            "All activities permitted under original KITAS",
-            "More flexible work arrangements",
-            "Property ownership (through company)",
-            "Long-term business planning"
-        ],
-        "benefits": [
-            "5-year validity",
-            "No yearly renewals",
-            "More stable immigration status",
-            "Easier bank account opening",
-            "Path to Indonesian citizenship (if eligible)"
-        ],
-        "process_steps": [
-            "1. Complete 4 years on KITAS",
-            "2. Pass Indonesian language test",
-            "3. Complete Pancasila knowledge test",
-            "4. Submit KITAP application",
-            "5. Interview at immigration",
-            "6. Receive KITAP card"
-        ],
-        "tips": [
-            "Start Indonesian language lessons early",
-            "Maintain continuous residence record",
-            "Keep all tax documents organized",
-            "Interview is usually straightforward",
-            "Consider citizenship if married to Indonesian"
-        ],
-        "foreign_eligible": True,
-        "metadata": {
-            "popularity": "medium",
-            "difficulty": "high",
-            "prerequisite": "4 years KITAS"
-        }
-    },
-    {
-        "code": "KITAP-SPOUSE",
-        "name": "KITAP Spouse - Indonesian Spouse",
-        "category": "KITAP",
-        "duration": "5 years",
-        "extensions": "Unlimited renewals",
-        "total_stay": "Unlimited",
-        "renewable": True,
-        "processing_time_normal": "45-60 working days",
-        "processing_time_express": "30-45 working days",
-        "cost_visa": "IDR 20,000,000",
-        "cost_extension": "IDR 15,000,000",
-        "cost_details": {
-            "government_fees": "IDR 8,000,000",
-            "service_fee": "IDR 12,000,000"
-        },
-        "requirements": [
-            "Marriage certificate (legalized)",
-            "Spouse's Indonesian ID (KTP)",
-            "Valid passport (min 2 years validity)",
-            "Proof of residence together",
-            "Family card (Kartu Keluarga)",
-            "Police clearance certificate",
-            "Sponsor letter from spouse"
-        ],
-        "restrictions": [
-            "Marriage must remain valid",
-            "Must live with spouse",
-            "Working requires separate IMTA",
-            "Subject to divorce provisions"
-        ],
-        "allowed_activities": [
-            "Living in Indonesia permanently",
-            "Opening bank accounts",
-            "Owning property (Hak Pakai)",
-            "Working (with IMTA)",
-            "Running business (with permits)"
-        ],
-        "benefits": [
-            "Direct KITAP - no 4-year KITAS wait",
-            "Property ownership rights",
-            "Stable family status",
-            "Path to citizenship after 5 years",
-            "Children can have dual citizenship until 18"
-        ],
-        "process_steps": [
-            "1. Legalize marriage certificate",
-            "2. Register in Family Card (KK)",
-            "3. Apply for KITAP at immigration",
-            "4. Biometric registration",
-            "5. Receive KITAP card"
-        ],
-        "tips": [
-            "Marriage certificate needs Apostille + translation",
-            "Update KK before applying",
-            "Consider prenuptial agreement for property",
-            "Work permit is separate application",
-            "Children born in Indonesia have citizenship options"
-        ],
-        "foreign_eligible": True,
-        "metadata": {
-            "popularity": "high",
-            "difficulty": "medium",
-            "requirement": "Indonesian spouse"
         }
     }
 ]
@@ -630,13 +715,9 @@ async def seed_visa_types():
     conn = await asyncpg.connect(database_url)
 
     try:
-        # Check current count
-        count = await conn.fetchval("SELECT COUNT(*) FROM visa_types")
-        print(f"Current visa types in database: {count}")
-
-        if count > 0:
-            print("Visa types already exist. Clearing and re-seeding...")
-            await conn.execute("DELETE FROM visa_types")
+        # Clear existing data
+        await conn.execute("DELETE FROM visa_types")
+        print("Cleared existing visa types")
 
         # Insert each visa type
         for visa in VISA_TYPES:
@@ -679,7 +760,7 @@ async def seed_visa_types():
 
         # Final count
         final_count = await conn.fetchval("SELECT COUNT(*) FROM visa_types")
-        print(f"\n✅ Seeded {final_count} visa types successfully!")
+        print(f"\n✅ Seeded {final_count} visa types with CORRECT codes!")
 
     finally:
         await conn.close()

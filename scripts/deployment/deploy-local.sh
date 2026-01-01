@@ -65,7 +65,7 @@ case $choice in
         echo "Service URLs:"
         echo "  Backend RAG:  http://localhost:8080"
         echo "  Qdrant:       http://localhost:6333/dashboard"
-        echo "  PostgreSQL:   localhost:5432"
+        echo "  PostgreSQL:   localhost:5433 (mapped)"
         echo "  Redis:        localhost:6379"
         echo "  Prometheus:   http://localhost:9090"
         echo "  Grafana:      http://localhost:3001"

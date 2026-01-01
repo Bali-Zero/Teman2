@@ -167,8 +167,9 @@ class TestCheckPriorityOverrides:
 
         router = QueryRouter()
 
-        assert router._check_priority_overrides("what api endpoint can I use?") == "visa_oracle"
-        assert router._check_priority_overrides("show me backend services") == "visa_oracle"
+        # Backend services queries now route to zantara_books
+        assert router._check_priority_overrides("what api endpoint can I use?") == "zantara_books"
+        assert router._check_priority_overrides("show me backend services") == "zantara_books"
 
     def test_no_override(self):
         """Test normal query returns None"""
@@ -188,7 +189,7 @@ class TestDetermineCollection:
     """Test suite for _determine_collection method"""
 
     def test_default_no_matches(self):
-        """Test default to legal_architect when no matches"""
+        """Test default to legal_unified when no matches"""
         from services.routing.query_router import QueryRouter
 
         router = QueryRouter()
@@ -196,7 +197,7 @@ class TestDetermineCollection:
 
         result = router._determine_collection(scores, "hello world")
 
-        assert result == "legal_architect"
+        assert result == "legal_unified"
 
     def test_tax_domain_with_genius_keywords(self):
         """Test tax routing to tax_genius"""
@@ -210,7 +211,7 @@ class TestDetermineCollection:
         assert result == "tax_genius"
 
     def test_tax_domain_with_updates(self):
-        """Test tax routing to tax_updates"""
+        """Test tax routing to tax_genius (unified)"""
         from services.routing.query_router import QueryRouter
 
         router = QueryRouter()
@@ -218,10 +219,10 @@ class TestDetermineCollection:
 
         result = router._determine_collection(scores, "tax updates latest news")
 
-        assert result == "tax_updates"
+        assert result == "tax_genius"
 
     def test_tax_domain_general(self):
-        """Test tax routing to tax_knowledge"""
+        """Test tax routing to tax_genius (unified)"""
         from services.routing.query_router import QueryRouter
 
         router = QueryRouter()
@@ -229,10 +230,10 @@ class TestDetermineCollection:
 
         result = router._determine_collection(scores, "tax rules in Indonesia")
 
-        assert result == "tax_knowledge"
+        assert result == "tax_genius"
 
     def test_legal_domain_with_updates(self):
-        """Test legal routing to legal_updates"""
+        """Test legal routing to legal_unified"""
         from services.routing.query_router import QueryRouter
 
         router = QueryRouter()
@@ -240,10 +241,10 @@ class TestDetermineCollection:
 
         result = router._determine_collection(scores, "latest legal updates law changes")
 
-        assert result == "legal_updates"
+        assert result == "legal_unified"
 
     def test_legal_domain_general(self):
-        """Test legal routing to legal_architect"""
+        """Test legal routing to legal_unified"""
         from services.routing.query_router import QueryRouter
 
         router = QueryRouter()
@@ -251,10 +252,10 @@ class TestDetermineCollection:
 
         result = router._determine_collection(scores, "company formation legal requirements")
 
-        assert result == "legal_architect"
+        assert result == "legal_unified"
 
     def test_property_listings(self):
-        """Test property routing to property_listings"""
+        """Test property routing to property_unified"""
         from services.routing.query_router import QueryRouter
 
         router = QueryRouter()
@@ -262,7 +263,7 @@ class TestDetermineCollection:
 
         result = router._determine_collection(scores, "property for sale villa listing")
 
-        assert result == "property_listings"
+        assert result == "property_unified"
 
     def test_property_knowledge(self):
         """Test property routing to property_unified"""
@@ -651,7 +652,8 @@ class TestGetFallbackStats:
         from services.routing.query_router import QueryRouter
 
         router = QueryRouter()
-        router.fallback_stats = {
+        # Must set stats on routing_stats service, not router directly
+        router.routing_stats.fallback_stats = {
             "total_routes": 10,
             "high_confidence": 5,
             "medium_confidence": 3,

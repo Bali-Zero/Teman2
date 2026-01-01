@@ -318,7 +318,7 @@ class TestGetAuditService:
 
     def test_get_audit_service_creates_instance(self):
         """Test get_audit_service creates instance"""
-        from services import audit_service
+        from services.monitoring import audit_service
 
         # Reset singleton
         audit_service._audit_service = None
@@ -333,7 +333,7 @@ class TestGetAuditService:
 
     def test_get_audit_service_returns_singleton(self):
         """Test get_audit_service returns singleton"""
-        from services import audit_service
+        from services.monitoring import audit_service
 
         # Reset singleton
         audit_service._audit_service = None

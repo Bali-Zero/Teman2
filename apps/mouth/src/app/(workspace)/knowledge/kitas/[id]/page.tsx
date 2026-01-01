@@ -358,6 +358,23 @@ export default function VisaDetailPage() {
               <Printer className="w-4 h-4" />
               Print
             </Button>
+            {visa.metadata?.pdf_url && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const link = document.createElement('a');
+                  link.href = visa.metadata?.pdf_url || '';
+                  link.download = `${visa.code}_${visa.name.replace(/\s+/g, '_')}.pdf`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="gap-2 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -19,11 +19,18 @@ interface AIGenerateRequest {
  */
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Add authentication check
-    // const token = request.headers.get('Authorization');
-    // if (!isAdmin(token)) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // Auth Guard: Strictly require NUZANTARA_API_KEY for this admin endpoint
+    const authHeader = request.headers.get('Authorization');
+    const apiKey = process.env.NUZANTARA_API_KEY;
+
+    if (!apiKey) {
+      console.error('CRITICAL: NUZANTARA_API_KEY is not set in environment variables');
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
+
+    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.split(' ')[1] !== apiKey) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const body: AIGenerateRequest = await request.json();
 

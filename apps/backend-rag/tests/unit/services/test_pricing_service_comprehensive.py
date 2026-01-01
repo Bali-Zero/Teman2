@@ -34,11 +34,14 @@ class TestPricingService:
                 "kitas_permits": {
                     "Investor KITAS": {"offshore": "47.5M IDR", "onshore": "45M IDR"},
                 },
-                "business_legal_services": {
+                "company_services": {
                     "PT PMA Setup": {"price": "25M IDR"},
                 },
-                "taxation_services": {
+                "urgent_services": {
                     "Tax Consultation": {"price": "2M IDR"},
+                },
+                "other_process": {
+                    "Notary": {"price": "1M IDR"},
                 },
             },
             "contact_info": {"email": "info@balizero.com", "whatsapp": "+62 813 3805 1876"},
@@ -100,7 +103,7 @@ class TestPricingService:
         service.prices = sample_prices_data
         service.loaded = True
         result = service.get_pricing("business_setup")
-        assert "business_legal_services" in result or "error" in result
+        assert "company_services" in result or "error" in result
 
     def test_get_pricing_not_loaded(self):
         """Test get_pricing when not loaded"""
@@ -169,7 +172,7 @@ class TestPricingService:
         service.prices = sample_prices_data
         service.loaded = True
         result = service.get_business_prices()
-        assert "business_legal_services" in result or "error" in result
+        assert "company_services" in result or "error" in result
 
     def test_get_tax_prices(self, sample_prices_data):
         """Test get_tax_prices"""
@@ -177,7 +180,7 @@ class TestPricingService:
         service.prices = sample_prices_data
         service.loaded = True
         result = service.get_tax_prices()
-        assert "taxation_services" in result or "error" in result
+        assert "urgent_services" in result or "error" in result
 
     def test_get_quick_quotes(self, sample_prices_data):
         """Test get_quick_quotes"""

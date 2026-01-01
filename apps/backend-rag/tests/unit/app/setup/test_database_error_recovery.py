@@ -58,23 +58,28 @@ async def test_database_init_retries_on_transient_error(mock_app):
         mock_settings.database_url = "postgresql://test"
 
         call_count = 0
-        async def mock_create_pool(*args, **kwargs):
+        def mock_create_pool(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count < 3:
                 raise ConnectionError("Connection timeout")
 
-            # Return mock pool on success
+            # Return mock pool on success - properly set up async context manager
             mock_pool = MagicMock(spec=asyncpg.Pool)
             mock_conn = MagicMock()
             mock_conn.fetchval = AsyncMock(return_value=1)
-            mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
-            mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            # Create proper async context manager for acquire()
+            async_cm = MagicMock()
+            async_cm.__aenter__ = AsyncMock(return_value=mock_conn)
+            async_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_pool.acquire.return_value = async_cm
+
             return mock_pool
 
         with patch('asyncpg.create_pool', side_effect=mock_create_pool):
             with patch('backend.app.setup.service_initializer.asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
-                with patch('services.analytics.team_timesheet_service.init_timesheet_service', create=True) as mock_init:
+                with patch('backend.app.setup.service_initializer.init_timesheet_service', create=True) as mock_init:
                     mock_service = MagicMock()
                     mock_service.start_auto_logout_monitor = AsyncMock()
                     mock_init.return_value = mock_service
@@ -107,30 +112,34 @@ async def test_database_health_check_loop():
     conn = MagicMock()
     conn.execute = AsyncMock()
 
-    # Setup context manager properly
-    cm = MagicMock()
-    cm.__aenter__ = AsyncMock(return_value=conn)
-    cm.__aexit__ = AsyncMock(return_value=None)
-    pool.acquire.return_value = cm
+    # Setup async context manager properly
+    async_cm = MagicMock()
+    async_cm.__aenter__ = AsyncMock(return_value=conn)
+    async_cm.__aexit__ = AsyncMock(return_value=None)
+    pool.acquire.return_value = async_cm
 
     from backend.app.setup.service_initializer import _database_health_check_loop
 
     # Track sleep calls to control loop iterations
+    # Health check loop: sleep -> acquire -> check -> loop
+    # We need at least 1 sleep to pass, then acquire happens, then cancel on 2nd sleep
     sleep_count = 0
     async def mock_sleep(seconds):
         nonlocal sleep_count
         sleep_count += 1
         if sleep_count >= 2:
-            raise asyncio.CancelledError()  # Stop after first iteration
+            raise asyncio.CancelledError()  # Stop after first full iteration
+        # First sleep passes through to allow acquire to be called
 
     with patch('backend.app.setup.service_initializer.asyncio.sleep', side_effect=mock_sleep):
-        task = asyncio.create_task(_database_health_check_loop(pool))
+        with patch('backend.app.setup.service_initializer.service_registry'):
+            task = asyncio.create_task(_database_health_check_loop(pool))
 
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
-    # Verify pool was checked at least once
+    # Verify pool was checked at least once (after first sleep)
     assert pool.acquire.called
 

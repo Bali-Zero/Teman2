@@ -19,11 +19,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements
-COPY requirements.txt .
+COPY requirements-prod.txt .
 
 # Install Python dependencies (skip Playwright browsers to save ~500MB)
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-RUN pip install --no-cache-dir --user -r requirements.txt \
+# Install directly from committed requirements-prod.txt
+RUN pip install --no-cache-dir --user -r requirements-prod.txt \
     && find /root/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /root/.local -type f -name "*.pyc" -delete \
     && find /root/.local -type f -name "*.pyo" -delete

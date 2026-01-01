@@ -160,3 +160,5 @@ docs/generated/
 *.HEIC
 *.PNG
 coverage.json
+# Auto-generated Playwright extensions
+.playwright-mcp/*.crx

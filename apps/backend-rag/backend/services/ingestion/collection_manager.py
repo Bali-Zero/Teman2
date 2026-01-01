@@ -59,6 +59,9 @@ class CollectionManager:
             "tax_genius": {"priority": "high", "doc_count": 895},
             "legal_architect": {"priority": "high", "doc_count": 5041, "alias": "legal_unified"},
             "legal_unified": {"priority": "high", "doc_count": 5041},
+            "legal_unified_hybrid": {"priority": "high", "doc_count": 47959},  # Dec 2025: Hybrid with BM25
+            "tax_genius_hybrid": {"priority": "high", "doc_count": 332},  # Dec 2025: Migrated to hybrid
+            "training_conversations_hybrid": {"priority": "high", "doc_count": 2898},  # Dec 2025: Migrated to hybrid
             "kb_indonesian": {"priority": "medium", "doc_count": 0, "alias": "knowledge_base"},
             "kbli_comprehensive": {
                 "priority": "medium",

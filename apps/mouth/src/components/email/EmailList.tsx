@@ -270,16 +270,23 @@ export function EmailList({
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+  // Handle timestamp (milliseconds) from Zoho API or ISO string
+  const timestamp = Number(dateStr);
+  const date = !isNaN(timestamp) && timestamp > 1000000000000
+    ? new Date(timestamp)  // Timestamp in milliseconds
+    : new Date(dateStr);   // ISO string
+
+  if (isNaN(date.getTime())) return '';
+
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
   const isThisYear = date.getFullYear() === now.getFullYear();
 
   if (isToday) {
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   } else if (isThisYear) {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
   } else {
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 }

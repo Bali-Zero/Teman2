@@ -31,7 +31,7 @@ Halo! Benar sekali, **expat wajib pakai PT PMA** untuk buka bisnis restoran di I
 
 **Biaya setup PT PMA:**
 - Notaris + Kemenkumham: **IDR 12-15 juta**
-- Virtual Office (1 tahun): **IDR 8-12 juta**
+- Virtual Office (1 tahun): **IDR 5 juta**
 - OSS/NIB + licensing: **IDR 5-7 juta**
 - NPWP, bank account, etc: **IDR 2-3 juta**
 - **Total biaya setup: IDR 27-37 juta**
@@ -161,8 +161,8 @@ Yes, saya mau serve alcohol. Izinnya ribet ya? Perlu NPPBKC atau apa? Dan apa be
 
 **Biaya alcohol licensing:**
 - NPPBKC application: **Gratis** (government fee)
-- Consultant fee (NPPBKC setup): **IDR 8-12 juta**
-- **Total: IDR 8-12 juta**
+- Consultant fee (NPPBKC setup): **IDR 5 juta**
+- **Total: IDR 5 juta**
 
 Resto Anda lebih ke arah fine dining atau casual dining?
 
@@ -229,7 +229,7 @@ Benar, **KBLI 56101 sudah cukup** untuk casual dining + bar.
 - SLHS: IDR 2-3 juta
 - PIRT: IDR 500rb - 1 juta
 - Halal: IDR 5-8 juta
-- **Total: IDR 8-12 juta** (jika ambil semua)
+- **Total: IDR 5 juta** (jika ambil semua)
 
 **Consultant fee:**
 - Health permits setup (SLHS + PIRT + Halal): **IDR 10-15 juta**
@@ -341,7 +341,7 @@ Target 60 seats. Timeline dari start setup PT sampai grand opening kira-kira ber
 
 **A. PT PMA Setup Costs:**
 - PT PMA incorporation (notaris, Kemenkumham): **IDR 12-15 juta**
-- Virtual office (1 tahun): **IDR 8-12 juta**
+- Virtual office (1 tahun): **IDR 5 juta**
 - OSS/NIB licensing: **IDR 5-7 juta**
 - NPWP, bank account: **IDR 2-3 juta**
 - **Subtotal A: IDR 27-37 juta**
@@ -353,8 +353,8 @@ Target 60 seats. Timeline dari start setup PT sampai grand opening kira-kira ber
 - **Subtotal B: IDR 22-26 juta** (first year)
 
 **C. Licensing Costs (Alcohol + Health):**
-- NPPBKC setup (consultant): **IDR 8-12 juta**
-- Health permits (SLHS, PIRT, Halal): **IDR 8-12 juta**
+- NPPBKC setup (consultant): **IDR 5 juta**
+- Health permits (SLHS, PIRT, Halal): **IDR 5 juta**
 - **Subtotal C: IDR 16-24 juta**
 
 **D. Capital Requirement:**
@@ -1930,7 +1930,7 @@ Hello! Yes, that's correct — **expats must use a PT PMA** to operate a restaur
 
 **PT PMA setup costs:**
 - Notary + Kemenkumham fees: **IDR 12-15 million**
-- Virtual office (1 year): **IDR 8-12 million**
+- Virtual office (1 year): **IDR 5 million**
 - OSS/NIB + licensing: **IDR 5-7 million**
 - NPWP, bank account, etc: **IDR 2-3 million**
 - **Total setup cost: IDR 27-37 million**
@@ -2060,8 +2060,8 @@ Yes, I want to serve alcohol. Is the licensing complicated? Do I need NPPBKC or 
 
 **Alcohol licensing costs:**
 - NPPBKC application: **Free** (government fee)
-- Consultant fee (NPPBKC setup): **IDR 8-12 million**
-- **Total: IDR 8-12 million**
+- Consultant fee (NPPBKC setup): **IDR 5 million**
+- **Total: IDR 5 million**
 
 Is your restaurant more fine dining or casual dining?
 
@@ -2128,7 +2128,7 @@ Correct, **KBLI 56101 is sufficient** for casual dining + bar.
 - SLHS: IDR 2-3 million
 - PIRT: IDR 500k - 1 million
 - Halal: IDR 5-8 million
-- **Total: IDR 8-12 million** (if taking all)
+- **Total: IDR 5 million** (if taking all)
 
 **Consultant fee:**
 - Health permits setup (SLHS + PIRT + Halal): **IDR 10-15 million**
@@ -2169,7 +2169,7 @@ Halo! Bener banget, **wong asing kudu nganggo PT PMA** nek arep mbukak bisnis re
 
 **Biaya setup PT PMA:**
 - Notaris + Kemenkumham: **IDR 12-15 juta**
-- Virtual Office (1 taun): **IDR 8-12 juta**
+- Virtual Office (1 taun): **IDR 5 juta**
 - OSS/NIB + licensing: **IDR 5-7 juta**
 - NPWP, bank account, dll: **IDR 2-3 juta**
 - **Total biaya setup: IDR 27-37 juta**
@@ -2195,7 +2195,7 @@ Lokasi restoran nang endi nang Bali?
 | **Setup Costs** | IDR 27-37 million (notary, OSS, virtual office, NPWP, bank) |
 | **Immigration Costs** | IDR 22-26 million (E28A KITAS + IMTA for active director) |
 | **Health Permits** | SLHS (IDR 2-3M), PIRT (IDR 500k-1M), Halal (IDR 5-8M) — 3-6 weeks |
-| **Alcohol License** | NPPBKC (free govt fee, IDR 8-12M consultant) — 2-4 weeks |
+| **Alcohol License** | NPPBKC (free govt fee, IDR 5M consultant) — 2-4 weeks |
 | **LKPM Reporting** | Quarterly to BKPM, deadline 10th of following month — NIB suspended if 60+ days late |
 | **Employee Ratio** | 1 expat : 10 local employees (mandatory for IMTA compliance) |
 | **IMTA Fee** | USD 100/month/expat (~IDR 1.5M/month) + 4.24% TKA Compensation Fund |

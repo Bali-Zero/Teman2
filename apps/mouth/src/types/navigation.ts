@@ -46,6 +46,7 @@ export const navigation: NavSection[] = [
     items: [
       { title: 'Clients', href: '/clients', icon: 'Users' },
       { title: 'Cases', href: '/cases', icon: 'FolderKanban' },
+      { title: 'Documents', href: '/documents', icon: 'FolderOpen' },
       { title: 'Knowledge', href: '/knowledge', icon: 'BookOpen' },
     ],
   },
@@ -75,6 +76,7 @@ export const routeTitles: Record<string, string> = {
   '/cases': 'Cases',
   '/cases/new': 'New Case',
   '/cases/deadlines': 'Deadlines',
+  '/documents': 'Documents',
   '/knowledge': 'Knowledge Base',
   '/team': 'Team',
   '/team/timesheet': 'Timesheet',

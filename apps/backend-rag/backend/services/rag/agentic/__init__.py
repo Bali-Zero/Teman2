@@ -54,6 +54,7 @@ from .tools import (
     TeamKnowledgeTool,
     VectorSearchTool,
     VisionTool,
+    WebSearchTool,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ __all__ = [
     "PricingTool",
     "TeamKnowledgeTool",
     "ImageGenerationTool",
+    "WebSearchTool",
     "GraphTraversalTool",
     # Pipeline components
     "ResponsePipeline",
@@ -107,8 +109,11 @@ def create_agentic_rag(
         1. VectorSearchTool (primary knowledge base search)
         2. PricingTool (official Bali Zero pricing)
         3. TeamKnowledgeTool (team member queries)
-        4. CalculatorTool (numerical computations)
-        5. VisionTool (visual document analysis)
+        4. KnowledgeGraphTool (structured knowledge graph)
+        5. CalculatorTool (numerical computations)
+        6. VisionTool (visual document analysis)
+        7. ImageGenerationTool (AI image generation)
+        8. WebSearchTool (web search for out-of-KB queries via Brave)
     """
     logger.debug("create_agentic_rag: Initializing tools...")
 
@@ -130,9 +135,9 @@ def create_agentic_rag(
         CalculatorTool(),            # FIFTH: Math safety
         VisionTool(),                # SIXTH: Document analysis
         ImageGenerationTool(),       # SEVENTH: Image generation (Imagen)
+        WebSearchTool(),             # EIGHTH: Web search for out-of-KB queries (Brave)
     ]
     logger.debug("create_agentic_rag: Tools list created")
-    # web_search_client ignored (WebSearchTool removed)
 
     logger.debug("create_agentic_rag: Instantiating AgenticRAGOrchestrator...")
     orchestrator = AgenticRAGOrchestrator(

@@ -36,8 +36,10 @@ class TestPricingService95Coverage:
                 "single_entry_visas": {"C1 Tourism": {"price_usd": 50, "legacy_names": ["B211A"]}},
                 "multiple_entry_visas": {"D1 Business": {"price_usd": 100}},
                 "kitas_permits": {"E23 Freelance": {"price_usd": 500}},
-                "business_legal_services": {"PT PMA Setup": {"price_usd": 1000}},
-                "taxation_services": {"NPWP Registration": {"price_usd": 50}},
+                # Actual service uses company_services and urgent_services
+                "company_services": {"PT PMA Setup": {"price_usd": 1000}},
+                "urgent_services": {"Express Processing": {"price_usd": 50}},
+                "other_process": {"Notary": {"price_usd": 100}},
                 "quick_quotes": {"Startup Package": {"price_usd": 2000}},
             },
             "contact_info": {"email": "info@balizero.com", "whatsapp": "+62 813 3805 1876"},
@@ -125,7 +127,7 @@ class TestPricingService95Coverage:
         ):
             service = PricingService()
             result = service.get_pricing("business_setup")
-            assert "business_legal_services" in result
+            assert "company_services" in result
 
     def test_get_pricing_tax_consulting(self, mock_prices_data):
         """Test getting tax consulting pricing"""
@@ -135,7 +137,7 @@ class TestPricingService95Coverage:
         ):
             service = PricingService()
             result = service.get_pricing("tax_consulting")
-            assert "taxation_services" in result
+            assert "urgent_services" in result
 
     def test_get_pricing_legal(self, mock_prices_data):
         """Test getting legal pricing"""
@@ -145,7 +147,7 @@ class TestPricingService95Coverage:
         ):
             service = PricingService()
             result = service.get_pricing("legal")
-            assert "business_legal_services" in result
+            assert "company_services" in result
 
     def test_get_pricing_search_service(self, mock_prices_data):
         """Test searching for service"""
@@ -264,7 +266,7 @@ class TestPricingService95Coverage:
         ):
             service = PricingService()
             result = service.get_business_prices()
-            assert "business_legal_services" in result
+            assert "company_services" in result
 
     def test_get_business_prices_not_loaded(self):
         """Test getting business prices when not loaded"""
@@ -281,7 +283,7 @@ class TestPricingService95Coverage:
         ):
             service = PricingService()
             result = service.get_tax_prices()
-            assert "taxation_services" in result
+            assert "urgent_services" in result
 
     def test_get_tax_prices_not_loaded(self):
         """Test getting tax prices when not loaded"""

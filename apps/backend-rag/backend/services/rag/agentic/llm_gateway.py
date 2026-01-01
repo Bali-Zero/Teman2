@@ -401,6 +401,9 @@ class LLMGateway:
                     )
                     function_declarations.append(func_decl)
 
+                # NOTE: Gemini doesn't allow mixing function declarations with Google Search tool
+                # Error: "Multiple tools are supported only when they are all search tools"
+                # So we use function declarations only, and web search via WebSearchTool (Brave)
                 config_kwargs["tools"] = [types.Tool(function_declarations=function_declarations)]
 
                 # CRITICAL: Add tool_config to encourage function calling

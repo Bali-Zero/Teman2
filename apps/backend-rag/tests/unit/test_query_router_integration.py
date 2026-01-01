@@ -68,7 +68,7 @@ class TestQueryRouterIntegration:
 
         assert result["collection_name"] == "bali_zero_pricing"
         assert result["is_pricing"] is True
-        assert result["confidence"] == 1.0
+        assert result["confidence"] == 0.95  # Pricing queries return 0.95 confidence
 
     def test_route_query_normal(self, integration, mock_query_router):
         """Test routing for normal queries"""

@@ -67,7 +67,9 @@ export function Checklist({
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) return new Set(JSON.parse(saved));
-    } catch {}
+    } catch {
+      // ignore storage errors
+    }
     return new Set();
   });
 

@@ -1,6 +1,10 @@
 {
-  "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - Aggiornati 24 Dic 2025",
-  "last_updated": "2025-12-24",
+  "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - Aggiornati 31 Dic 2025",
+  "last_updated": "2025-12-31",
+  "processing_times": {
+    "visas_standard": "7-10 days (C, D, E series except Working/Freelance)",
+    "working_freelance_kitas": "4-6 weeks (RPTKA + IMTA required)"
+  },
   "currency": "IDR (Indonesian Rupiah)",
   "disclaimer": {
     "it": "⚠️ Questi sono i prezzi UFFICIALI di Bali Zero 2025. Per preventivi personalizzati contattare direttamente.",
@@ -139,12 +143,12 @@
     },
     "kitap_permits": {
       "Investor KITAP + MERP": {
-        "price": "50.000.000 IDR",
-        "notes": "Plus ACC 5 mill"
+        "price": "55.000.000 IDR",
+        "notes": "Expedited processing available"
       },
       "Dependent KITAP MERP": {
-        "price": "30.000.000 IDR",
-        "notes": "Plus ACC 3 mill"
+        "price": "33.000.000 IDR",
+        "notes": "Expedited processing available"
       },
       "Retirement KITAP + MERP": {
         "price": "45.000.000 IDR"

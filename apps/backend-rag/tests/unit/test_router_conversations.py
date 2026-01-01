@@ -70,11 +70,32 @@ def expired_jwt_token(mock_settings):
 
 @pytest.fixture
 def mock_asyncpg_pool():
-    """Mock asyncpg connection pool"""
+    """Mock asyncpg connection pool with proper async context manager"""
     pool = MagicMock()
-    conn = AsyncMock()
-    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
-    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    # Create an async context manager class
+    class AsyncContextManager:
+        def __init__(self, return_value=None):
+            self.return_value = return_value
+
+        async def __aenter__(self):
+            return self.return_value if self.return_value is not None else self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+    # Create a connection mock with both sync and async methods properly configured
+    conn = MagicMock()
+    # Make transaction() return a sync value (the async context manager)
+    conn.transaction.return_value = AsyncContextManager()
+    # Set up async methods
+    conn.fetchrow = AsyncMock(return_value={"id": 1})
+    conn.execute = AsyncMock()
+    conn.fetch = AsyncMock(return_value=[])
+
+    # Mock pool.acquire() to return async context manager
+    pool.acquire.return_value = AsyncContextManager(return_value=conn)
+
     return pool, conn
 
 
@@ -104,51 +125,58 @@ def mock_auto_crm():
 class TestGetCurrentUser:
     """Tests for JWT authentication helper"""
 
+    @pytest.fixture
+    def mock_request_no_user(self):
+        """Create mock request without user in state"""
+        request = MagicMock()
+        request.state = MagicMock(spec=[])  # No 'user' attribute
+        return request
+
     @pytest.mark.asyncio
-    async def test_no_credentials_raises_401(self):
+    async def test_no_credentials_raises_401(self, mock_request_no_user):
         """Test that missing credentials raise 401"""
         with patch("app.core.config.settings") as mock_settings:
             mock_settings.jwt_secret_key = "test-secret"
             mock_settings.jwt_algorithm = "HS256"
 
-            from app.routers.conversations import get_current_user
+            from app.dependencies import get_current_user
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(credentials=None)
+                get_current_user(request=mock_request_no_user, credentials=None)
 
             assert exc_info.value.status_code == 401
             assert "Authentication required" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    async def test_valid_token_returns_user(self, mock_settings, valid_jwt_token):
+    async def test_valid_token_returns_user(self, mock_settings, valid_jwt_token, mock_request_no_user):
         """Test that valid token returns user dict"""
         with patch("app.core.config.settings", mock_settings):
             from fastapi.security import HTTPAuthorizationCredentials
 
-            from app.routers.conversations import get_current_user
+            from app.dependencies import get_current_user
 
             credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=valid_jwt_token)
 
-            user = await get_current_user(credentials=credentials)
+            user = get_current_user(request=mock_request_no_user, credentials=credentials)
 
             assert user["email"] == "test@example.com"
             assert user["user_id"] == "test-user-id"
             assert user["role"] == "member"
 
     @pytest.mark.asyncio
-    async def test_invalid_token_raises_401(self, mock_settings):
+    async def test_invalid_token_raises_401(self, mock_settings, mock_request_no_user):
         """Test that invalid token raises 401"""
         with patch("app.core.config.settings", mock_settings):
             from fastapi.security import HTTPAuthorizationCredentials
 
-            from app.routers.conversations import get_current_user
+            from app.dependencies import get_current_user
 
             credentials = HTTPAuthorizationCredentials(
                 scheme="Bearer", credentials="invalid-token-not-jwt"
             )
 
             with pytest.raises(HTTPException) as exc_info:
-                await get_current_user(credentials=credentials)
+                get_current_user(request=mock_request_no_user, credentials=credentials)
 
             assert exc_info.value.status_code == 401
 
@@ -214,8 +242,8 @@ class TestSaveConversation:
             assert result["user_email"] == "jwt-user@example.com"
 
     @pytest.mark.asyncio
-    async def test_save_db_error_raises_500(self, mock_settings, mock_asyncpg_pool):
-        """Test that database errors raise 500"""
+    async def test_save_db_error_graceful_degradation(self, mock_settings, mock_asyncpg_pool):
+        """Test that database errors result in graceful degradation (cache-only save)"""
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
@@ -227,10 +255,13 @@ class TestSaveConversation:
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
-        with pytest.raises(HTTPException) as exc_info:
-            await save_conversation(request=request, current_user=current_user, db_pool=pool)
+        # The function now gracefully degrades to cache-only instead of raising
+        result = await save_conversation(request=request, current_user=current_user, db_pool=pool)
 
-        assert exc_info.value.status_code == 500
+        # Should return a result (even if DB failed, cache may have succeeded)
+        assert result["success"] is True or "error" in result
+        # conversation_id should be 0 when DB save fails
+        assert result["conversation_id"] == 0
 
 
 # ============================================================================
@@ -509,7 +540,8 @@ class TestGetConversationHistoryEdgeCases:
 
         assert result.success is True
         assert len(result.messages) == 20  # Should be limited
-        assert result.total_messages == 20
+        # total_messages reflects total in DB, not the limited result
+        assert result.total_messages == 100
 
     @pytest.mark.asyncio
     async def test_get_history_with_session_id(self, mock_settings, mock_asyncpg_pool):

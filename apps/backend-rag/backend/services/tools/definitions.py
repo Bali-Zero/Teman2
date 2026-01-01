@@ -103,6 +103,7 @@ class AgentState:
     max_steps: int = 3  # Optimized: reduced from 5 to 3 for faster responses
     current_step: int = 0
     skip_rag: bool = False  # Skip RAG evidence requirements for general tasks (translation, etc.)
+    intent_type: str = "simple"  # Intent category from classifier (business_complex, etc.)
 
 
 class BaseTool(ABC):

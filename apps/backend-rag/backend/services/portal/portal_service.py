@@ -35,13 +35,13 @@ class PortalService:
         """
         Get client dashboard overview.
 
-        Returns:
-            - Visa status summary
-            - Company status summary
-            - Upcoming tax deadlines
-            - Action items (required actions)
-            - Recent messages
-            - Active cases with progress
+        Returns format expected by frontend PortalDashboard type:
+            - visa: status, type, expiryDate, daysRemaining
+            - company: status, primaryCompanyName, totalCompanies
+            - taxes: status, nextDeadline, daysToDeadline
+            - documents: total, pending
+            - messages: unread
+            - actions: list of PortalAction
         """
         async with self.pool.acquire() as conn:
             # Get client info
@@ -78,21 +78,25 @@ class PortalService:
                 client_id,
             )
 
+            # Get primary company name
+            primary_company = next(
+                (c for c in companies if c["is_primary"]),
+                companies[0] if companies else None
+            )
+
             # Get upcoming tax deadlines (next 30 days)
-            # For now, use a standard list based on current date
             today = datetime.now(timezone.utc)
             tax_deadlines = self._get_standard_tax_deadlines(today)
+            next_deadline = tax_deadlines[0] if tax_deadlines else None
 
             # Get action items (practices with required documents)
             action_items = await conn.fetch(
                 """
-                SELECT p.id, pt.name as practice_name, p.missing_documents
+                SELECT p.id, pt.name as practice_name, p.missing_documents, p.status
                 FROM practices p
                 JOIN practice_types pt ON pt.id = p.practice_type_id
                 WHERE p.client_id = $1
                 AND p.status IN ('inquiry', 'in_progress', 'waiting_documents')
-                AND p.missing_documents IS NOT NULL
-                AND jsonb_array_length(p.missing_documents) > 0
                 ORDER BY p.created_at DESC
                 LIMIT 5
                 """,
@@ -108,104 +112,165 @@ class PortalService:
                 AND read_at IS NULL
                 """,
                 client_id,
-            )
+            ) or 0
 
-            # Get recent messages
-            recent_messages = await conn.fetch(
+            # Get document counts
+            doc_counts = await conn.fetchrow(
                 """
-                SELECT id, subject, content, direction, sent_by, read_at, created_at
-                FROM portal_messages
+                SELECT
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE status = 'pending') as pending
+                FROM documents
                 WHERE client_id = $1
-                ORDER BY created_at DESC
-                LIMIT 3
+                AND client_visible = true
                 """,
                 client_id,
             )
 
-            # Get active cases with progress
-            active_cases = await conn.fetch(
-                """
-                SELECT p.id, pt.name, p.status, p.start_date, p.completion_date,
-                       p.quoted_price, p.payment_status
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND p.status NOT IN ('completed', 'cancelled', 'rejected')
-                ORDER BY p.created_at DESC
-                LIMIT 5
-                """,
-                client_id,
-            )
+            # Build visa response
+            visa_data = self._build_visa_dashboard_data(visa_practice)
+
+            # Build company response
+            company_data = {
+                "status": "active" if companies else "none",
+                "primaryCompanyName": primary_company["company_name"] if primary_company else None,
+                "totalCompanies": len(companies),
+            }
+
+            # Build tax response
+            tax_data = {
+                "status": self._get_tax_status(next_deadline),
+                "nextDeadline": next_deadline["due_date"][:10] if next_deadline else None,
+                "daysToDeadline": next_deadline["days_until"] if next_deadline else None,
+            }
+
+            # Build actions response
+            actions = self._build_action_items(action_items, visa_data)
 
             return {
-                "client": {
-                    "id": client["id"],
-                    "name": client["full_name"],
-                    "email": client["email"],
+                "visa": visa_data,
+                "company": company_data,
+                "taxes": tax_data,
+                "documents": {
+                    "total": doc_counts["total"] if doc_counts else 0,
+                    "pending": doc_counts["pending"] if doc_counts else 0,
                 },
-                "visa": self._format_visa_summary(visa_practice) if visa_practice else None,
-                "companies": [
-                    {
-                        "id": c["id"],
-                        "name": c["company_name"],
-                        "type": c["entity_type"],
-                        "role": c["role"],
-                        "is_primary": c["is_primary"],
-                    }
-                    for c in companies
-                ],
-                "tax_deadlines": tax_deadlines[:3],  # Top 3 upcoming
-                "action_items": [
-                    {
-                        "practice_id": a["id"],
-                        "practice_name": a["practice_name"],
-                        "missing_documents": a["missing_documents"] or [],
-                    }
-                    for a in action_items
-                ],
                 "messages": {
-                    "unread_count": unread_count,
-                    "recent": [
-                        {
-                            "id": m["id"],
-                            "subject": m["subject"],
-                            "preview": m["content"][:100] if m["content"] else "",
-                            "from_team": m["direction"] == "team_to_client",
-                            "sent_by": m["sent_by"],
-                            "is_read": m["read_at"] is not None,
-                            "created_at": m["created_at"].isoformat(),
-                        }
-                        for m in recent_messages
-                    ],
+                    "unread": unread_count,
                 },
-                "active_cases": [
-                    self._format_case_progress(c) for c in active_cases
-                ],
+                "actions": actions,
             }
+
+    def _build_visa_dashboard_data(self, visa_practice) -> dict[str, Any]:
+        """Build visa data in frontend expected format."""
+        if not visa_practice:
+            return {
+                "status": "none",
+                "type": None,
+                "expiryDate": None,
+                "daysRemaining": None,
+            }
+
+        today = datetime.now(timezone.utc).date()
+        expiry = visa_practice["expiry_date"].date() if visa_practice["expiry_date"] else None
+        days_left = (expiry - today).days if expiry else None
+
+        # Determine status based on practice status and expiry
+        if visa_practice["status"] == "completed":
+            if days_left is not None:
+                if days_left <= 0:
+                    status = "expired"
+                elif days_left <= 90:
+                    status = "warning"
+                else:
+                    status = "active"
+            else:
+                status = "active"
+        elif visa_practice["status"] in ("inquiry", "in_progress", "waiting_documents"):
+            status = "pending"
+        else:
+            status = "pending"
+
+        return {
+            "status": status,
+            "type": f"{visa_practice['code']} - {visa_practice['name']}" if visa_practice["code"] else visa_practice["name"],
+            "expiryDate": visa_practice["expiry_date"].isoformat()[:10] if visa_practice["expiry_date"] else None,
+            "daysRemaining": days_left,
+        }
+
+    def _get_tax_status(self, next_deadline) -> str:
+        """Determine tax compliance status."""
+        if not next_deadline:
+            return "compliant"
+        days = next_deadline["days_until"]
+        if days < 0:
+            return "overdue"
+        elif days <= 14:
+            return "attention"
+        return "compliant"
+
+    def _build_action_items(self, action_items, visa_data) -> list[dict[str, Any]]:
+        """Build action items for dashboard."""
+        actions = []
+        action_id = 1
+
+        # Add visa warning if expiring soon
+        if visa_data["status"] == "warning" and visa_data["daysRemaining"]:
+            actions.append({
+                "id": f"visa-{action_id}",
+                "title": "Visa Expiring Soon",
+                "description": f"Your visa expires in {visa_data['daysRemaining']} days. Start renewal process.",
+                "priority": "high" if visa_data["daysRemaining"] <= 30 else "medium",
+                "type": "visa_renewal",
+                "href": "/portal/visa",
+            })
+            action_id += 1
+
+        # Add missing documents actions
+        for item in action_items:
+            missing_docs = item["missing_documents"] or []
+            if missing_docs:
+                actions.append({
+                    "id": f"docs-{item['id']}",
+                    "title": f"Documents Required: {item['practice_name']}",
+                    "description": f"Please upload: {', '.join(missing_docs[:3])}{'...' if len(missing_docs) > 3 else ''}",
+                    "priority": "high" if item["status"] == "waiting_documents" else "medium",
+                    "type": "missing_documents",
+                    "href": "/portal/documents",
+                })
+                action_id += 1
+                if action_id > 5:  # Max 5 actions
+                    break
+
+        return actions
 
     # ================================================
     # VISA & IMMIGRATION
     # ================================================
 
     async def get_visa_status(self, client_id: int) -> dict[str, Any]:
-        """Get detailed visa and immigration status."""
+        """
+        Get detailed visa and immigration status.
+
+        Returns format expected by frontend VisaInfo type:
+            - current: { type, status, issueDate, expiryDate, daysRemaining, permitNumber, sponsor }
+            - history: [{ id, type, period, status }]
+            - documents: [{ id, name, type, category, status, uploadDate, expiryDate, size, downloadUrl }]
+        """
         async with self.pool.acquire() as conn:
-            # Get client personal info
+            # Verify client exists
             client = await conn.fetchrow(
-                """
-                SELECT full_name, nationality, passport_number
-                FROM clients
-                WHERE id = $1
-                """,
+                "SELECT id FROM clients WHERE id = $1",
                 client_id,
             )
             if not client:
                 raise ValueError(f"Client {client_id} not found")
 
-            # Get current visa practice
+            # Get current visa practice (completed, not expired)
             current_visa = await conn.fetchrow(
                 """
-                SELECT p.*, pt.code, pt.name as type_name, pt.category
+                SELECT p.id, p.status, p.start_date, p.completion_date, p.expiry_date,
+                       p.notes, pt.code, pt.name as type_name
                 FROM practices p
                 JOIN practice_types pt ON pt.id = p.practice_type_id
                 WHERE p.client_id = $1
@@ -218,7 +283,7 @@ class PortalService:
                 client_id,
             )
 
-            # Get visa history
+            # Get visa history (all visa practices)
             visa_history = await conn.fetch(
                 """
                 SELECT p.id, pt.code, pt.name, p.start_date, p.completion_date,
@@ -236,64 +301,108 @@ class PortalService:
             documents = await conn.fetch(
                 """
                 SELECT d.id, d.document_type, d.file_name, d.status,
-                       d.expiry_date, d.file_url, d.created_at
+                       d.expiry_date, d.file_url, d.file_size_kb, d.created_at
                 FROM documents d
                 WHERE d.client_id = $1
                 AND d.client_visible = true
                 AND d.document_type IN (
                     'passport', 'photo', 'cv', 'sponsor_letter',
-                    'sktt', 'stm', 'kitas_card', 'merp'
+                    'sktt', 'stm', 'kitas_card', 'merp', 'visa'
                 )
                 ORDER BY d.created_at DESC
                 """,
                 client_id,
             )
 
-            # Get active visa case (if any)
-            active_case = await conn.fetchrow(
-                """
-                SELECT p.id, pt.name, p.status, p.start_date, p.notes
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.client_id = $1
-                AND pt.category = 'visa'
-                AND p.status NOT IN ('completed', 'cancelled', 'rejected')
-                ORDER BY p.created_at DESC
-                LIMIT 1
-                """,
-                client_id,
-            )
+            # Build current visa response (matching frontend VisaInfo.current)
+            current = None
+            if current_visa:
+                today = datetime.now(timezone.utc).date()
+                expiry = current_visa["expiry_date"].date() if current_visa["expiry_date"] else None
+                days_left = (expiry - today).days if expiry else 0
+
+                # Determine status
+                if days_left <= 0:
+                    status = "expired"
+                elif current_visa["status"] == "completed":
+                    status = "active"
+                else:
+                    status = "pending"
+
+                visa_type = f"{current_visa['code']} - {current_visa['type_name']}" if current_visa["code"] else current_visa["type_name"]
+
+                current = {
+                    "type": visa_type,
+                    "status": status,
+                    "issueDate": current_visa["completion_date"].strftime("%d %b %Y") if current_visa["completion_date"] else "-",
+                    "expiryDate": current_visa["expiry_date"].strftime("%d %b %Y") if current_visa["expiry_date"] else "-",
+                    "daysRemaining": max(0, days_left),
+                    "permitNumber": f"KITAS-{current_visa['id']:06d}",  # Generated permit number
+                    "sponsor": "Bali Zero Indonesia",  # Default sponsor
+                }
+
+            # Build history response (matching frontend VisaHistoryItem)
+            history = []
+            for v in visa_history:
+                # Determine period string
+                start = v["start_date"].strftime("%b %Y") if v["start_date"] else ""
+                end = v["expiry_date"].strftime("%b %Y") if v["expiry_date"] else v["completion_date"].strftime("%b %Y") if v["completion_date"] else ""
+                period = f"{start} - {end}" if start and end else start or end or "-"
+
+                # Map status to frontend expected values
+                if v["status"] == "completed":
+                    hist_status = "completed"
+                else:
+                    hist_status = "expired"
+
+                history.append({
+                    "id": str(v["id"]),
+                    "type": f"{v['code']} - {v['name']}" if v["code"] else v["name"],
+                    "period": period,
+                    "status": hist_status,
+                })
+
+            # Build documents response (matching frontend PortalDocument)
+            doc_list = []
+            for d in documents:
+                # Map document type to category
+                category_map = {
+                    "passport": "Identity",
+                    "photo": "Identity",
+                    "cv": "Supporting",
+                    "sponsor_letter": "Sponsorship",
+                    "sktt": "Immigration",
+                    "stm": "Immigration",
+                    "kitas_card": "Immigration",
+                    "merp": "Immigration",
+                    "visa": "Immigration",
+                }
+
+                # Map status
+                status_map = {
+                    "verified": "verified",
+                    "issued": "verified",
+                    "pending": "pending",
+                    "rejected": "expired",
+                    "expired": "expired",
+                }
+
+                doc_list.append({
+                    "id": str(d["id"]),
+                    "name": d["file_name"],
+                    "type": d["document_type"],
+                    "category": category_map.get(d["document_type"], "Other"),
+                    "status": status_map.get(d["status"], "pending"),
+                    "uploadDate": d["created_at"].strftime("%d %b %Y") if d["created_at"] else "-",
+                    "expiryDate": d["expiry_date"].strftime("%d %b %Y") if d["expiry_date"] else None,
+                    "size": f"{d['file_size_kb']} KB" if d["file_size_kb"] else "-",
+                    "downloadUrl": d["file_url"] if d["status"] in ("verified", "issued") else None,
+                })
 
             return {
-                "personal_info": {
-                    "full_name": client["full_name"],
-                    "nationality": client["nationality"],
-                    "passport_number": client["passport_number"],
-                },
-                "current_visa": self._format_visa_detail(current_visa) if current_visa else None,
-                "history": [
-                    {
-                        "id": v["id"],
-                        "type": v["code"],
-                        "name": v["name"],
-                        "start_date": v["start_date"].isoformat() if v["start_date"] else None,
-                        "end_date": v["expiry_date"].isoformat() if v["expiry_date"] else v["completion_date"].isoformat() if v["completion_date"] else None,
-                        "status": v["status"],
-                    }
-                    for v in visa_history
-                ],
-                "documents": [
-                    {
-                        "id": d["id"],
-                        "type": d["document_type"],
-                        "name": d["file_name"],
-                        "status": d["status"],
-                        "expiry_date": d["expiry_date"].isoformat() if d["expiry_date"] else None,
-                        "downloadable": d["status"] in ("verified", "issued") and d["file_url"] is not None,
-                    }
-                    for d in documents
-                ],
-                "active_case": self._format_visa_case(active_case) if active_case else None,
+                "current": current,
+                "history": history,
+                "documents": doc_list,
             }
 
     # ================================================

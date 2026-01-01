@@ -461,16 +461,23 @@ class ReasoningEngine:
                                     # Last step - use what we have but warn
                                     logger.warning("Using low-quality context due to max steps reached")
 
-                        # OPTIMIZATION: Early exit
+                        # OPTIMIZATION: Early exit (only for simple queries)
+                        # Complex queries (business_complex, business_strategic) may need KG tool
+                        complex_intents = {"business_complex", "business_strategic", "devai_code"}
+                        is_complex_query = getattr(state, "intent_type", "simple") in complex_intents
+
                         if (
                             tool_call.tool_name == "vector_search"
                             and len(tool_result) > 500
                             and "No relevant documents" not in tool_result
+                            and not is_complex_query  # Allow complex queries to continue
                         ):
                             logger.info("🚀 [Early Exit] Sufficient context from retrieval.")
                             set_span_attribute("early_exit", "true")
                             set_span_status("ok")
                             break
+                        elif is_complex_query and tool_call.tool_name == "vector_search":
+                            logger.info("🔗 [Complex Query] Allowing multi-tool reasoning (KG may be needed)")
 
                         set_span_status("ok")
 
@@ -869,14 +876,21 @@ Do not invent information. If the context is insufficient, admit it.
                 # Yield observation event
                 yield {"type": "observation", "data": tool_result[:500] if len(tool_result) > 500 else tool_result}
 
-                # Early exit optimization
+                # Early exit optimization (only for simple queries)
+                # Complex queries (business_complex, business_strategic) may need KG tool
+                complex_intents = {"business_complex", "business_strategic", "devai_code"}
+                is_complex_query = getattr(state, "intent_type", "simple") in complex_intents
+
                 if (
                     tool_call.tool_name == "vector_search"
                     and len(tool_result) > 500
                     and "No relevant documents" not in tool_result
+                    and not is_complex_query  # Allow complex queries to continue
                 ):
                     logger.info("🚀 [Stream Early Exit] Sufficient context from retrieval.")
                     break
+                elif is_complex_query and tool_call.tool_name == "vector_search":
+                    logger.info("🔗 [Stream Complex Query] Allowing multi-tool reasoning (KG may be needed)")
 
             else:
                 # No tool call - check for final answer

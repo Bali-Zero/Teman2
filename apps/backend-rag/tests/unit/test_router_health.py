@@ -352,10 +352,11 @@ async def test_liveness_check():
 
 
 # ============================================================================
-# Tests for debug_config
+# Tests for debug_config (function removed from health router)
 # ============================================================================
 
 
+@pytest.mark.skip(reason="debug_config function removed from health router")
 @pytest.mark.asyncio
 async def test_debug_config():
     """Test debug config endpoint"""
@@ -377,6 +378,7 @@ async def test_debug_config():
             assert result["env_vars_present"]["JWT_SECRET"] is True
 
 
+@pytest.mark.skip(reason="debug_config function removed from health router")
 @pytest.mark.asyncio
 async def test_debug_config_no_api_keys():
     """Test debug config when API keys are not set"""

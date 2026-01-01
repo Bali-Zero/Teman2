@@ -314,7 +314,7 @@ class TestModuleConstants:
 
     def test_simplify_triggers_defined(self):
         """Test SIMPLIFY_TRIGGERS constant is defined"""
-        from services.communication import SIMPLIFY_TRIGGERS
+        from services.communication.explanation_detector import SIMPLIFY_TRIGGERS
 
         assert len(SIMPLIFY_TRIGGERS) > 0
         assert "bambino" in SIMPLIFY_TRIGGERS
@@ -322,7 +322,7 @@ class TestModuleConstants:
 
     def test_expert_triggers_defined(self):
         """Test EXPERT_TRIGGERS constant is defined"""
-        from services.communication import EXPERT_TRIGGERS
+        from services.communication.explanation_detector import EXPERT_TRIGGERS
 
         assert len(EXPERT_TRIGGERS) > 0
         assert "esperto" in EXPERT_TRIGGERS
@@ -330,7 +330,7 @@ class TestModuleConstants:
 
     def test_alternatives_triggers_defined(self):
         """Test ALTERNATIVES_TRIGGERS constant is defined"""
-        from services.communication import ALTERNATIVES_TRIGGERS
+        from services.communication.explanation_detector import ALTERNATIVES_TRIGGERS
 
         assert len(ALTERNATIVES_TRIGGERS) > 0
         assert "alternative" in ALTERNATIVES_TRIGGERS

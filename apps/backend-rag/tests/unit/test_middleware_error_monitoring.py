@@ -49,14 +49,15 @@ def error_middleware(mock_app, mock_alert_service):
 def test_init_with_alert_service(mock_app, mock_alert_service):
     """Test middleware initialization with alert service"""
     middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
-    assert middleware.enabled is True
+    # Note: middleware doesn't have 'enabled' attribute - uses _resolve_alert_service per request
     assert middleware.alert_service == mock_alert_service
 
 
 def test_init_without_alert_service(mock_app):
     """Test middleware initialization without alert service"""
     middleware = ErrorMonitoringMiddleware(mock_app, None)
-    assert middleware.enabled is False
+    # Note: middleware doesn't have 'enabled' attribute - uses _resolve_alert_service per request
+    assert middleware.alert_service is None
 
 
 # ============================================================================
@@ -246,4 +247,5 @@ def test_create_error_monitoring_middleware(mock_alert_service):
     middleware = factory(MagicMock())
 
     assert isinstance(middleware, ErrorMonitoringMiddleware)
-    assert middleware.enabled is True
+    # Note: middleware doesn't have 'enabled' attribute - uses _resolve_alert_service per request
+    assert middleware.alert_service == mock_alert_service

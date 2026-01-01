@@ -33,7 +33,7 @@ It is not merely a chatbot; it is a comprehensive platform integrating RAG (Retr
 
 ## 🏗️ SYSTEM ARCHITECTURE
 
-The project is a **Monorepo** managed with `npm workspaces` and Docker.
+The project is a **Monorepo** managed with `pnpm workspaces` (unified package manager) and Docker.
 For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer to [docs/SYSTEM_MAP_4D.md](docs/SYSTEM_MAP_4D.md).
 
 ### 2.1 Core Services
@@ -107,9 +107,10 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
     -   `./scripts/fly-backend.sh <command>`
     -   `./scripts/fly-frontend.sh <command>`
 
-### 3.5 🚨 NO CI/CD DEPLOYMENT
+### 3.5 🚨 SEMI-AUTOMATED CI/CD
 -   **DIVIETO ASSOLUTO:** Non usare MAI CI/CD automatizzati per il deploy in produzione.
--   **WORKFLOW:** Il deploy è **SOLO MANUALE** e **DA LOCALE** tramite `flyctl deploy`.
+-   **PIPELINE:** La CI (GitHub Actions) esegue **verifiche obbligatorie** (Lint, Test, Security).
+-   **DEPLOY:** Il deploy è **SOLO MANUALE** e **DA LOCALE** tramite `flyctl deploy`.
 -   **MOTIVO:** Manteniamo il controllo totale sulla build e sui tempi di rilascio.
 
 ---

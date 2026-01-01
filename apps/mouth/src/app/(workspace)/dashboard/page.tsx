@@ -253,6 +253,7 @@ export default function DashboardPage() {
           value={isLoading ? '-' : stats.activeCases}
           icon={FolderKanban}
           href="/cases"
+          accentColor="amber"
         />
         <StatsCard
           title="Critical Deadlines"
@@ -260,6 +261,7 @@ export default function DashboardPage() {
           icon={AlertTriangle}
           href="/cases"
           variant={stats.criticalDeadlines > 0 ? 'warning' : 'default'}
+          accentColor="purple"
         />
         <StatsCard
           title="Unread Signals"
@@ -267,12 +269,14 @@ export default function DashboardPage() {
           icon={MessageCircle}
           href="/whatsapp"
           variant={stats.whatsappUnread > 0 ? 'danger' : 'default'}
+          accentColor="emerald"
         />
         <StatsCard
           title="Session Time"
           value={isLoading ? '-' : stats.hoursWorked}
           icon={Clock}
           href="/team"
+          accentColor="cyan"
         />
       </div>
 

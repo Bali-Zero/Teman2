@@ -485,7 +485,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     author: {
       id: 'zantara-ai',
       name: 'Zantara AI',
-      avatar: '/images/zan_logo.png',
+      avatar: '/images/zantara-lotus.png',
       role: 'AI Research',
       isAI: true,
     },
@@ -527,7 +527,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     author: {
       id: 'zantara-ai',
       name: 'Zantara AI',
-      avatar: '/images/zan_logo.png',
+      avatar: '/images/zantara-lotus.png',
       role: 'AI Research',
       isAI: true,
     },
@@ -569,7 +569,7 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     author: {
       id: 'zantara-ai',
       name: 'Zantara AI',
-      avatar: '/images/zan_logo.png',
+      avatar: '/images/zantara-lotus.png',
       role: 'AI Research',
       isAI: true,
     },

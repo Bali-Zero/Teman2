@@ -493,7 +493,7 @@ test.describe('ZANTARA AI Capabilities', () => {
       );
 
       // Should have numbered steps or clear structure
-      expect(response.match(/[1-9][\.\)]/g)?.length || 0).toBeGreaterThanOrEqual(2);
+      expect(response.match(/[1-9][.)]/g)?.length || 0).toBeGreaterThanOrEqual(2);
     });
   });
 

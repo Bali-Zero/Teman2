@@ -961,11 +961,17 @@ class QdrantClient:
 
             except httpx.HTTPStatusError as e:
                 error_text = e.response.text if hasattr(e.response, "text") else str(e.response)
-                # If hybrid search fails (e.g., collection doesn't have sparse vectors),
+                error_lower = error_text.lower()
+                # If hybrid search fails (e.g., collection doesn't have sparse/named vectors),
                 # fall back to dense-only search
-                if e.response.status_code == 400 and "sparse" in error_text.lower():
+                # Covers: "sparse" errors, "dense" errors, "Vector params" errors
+                if e.response.status_code == 400 and (
+                    "sparse" in error_lower
+                    or "dense" in error_lower
+                    or "vector params" in error_lower
+                ):
                     logger.warning(
-                        "Hybrid search not available (no sparse vectors), "
+                        f"Hybrid search not available for {self.collection_name}, "
                         "falling back to dense search"
                     )
                     return await self.search(query_embedding, filter=filter, limit=limit)

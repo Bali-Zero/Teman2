@@ -14,7 +14,7 @@ from core.cache import cached
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, field_validator
 
-from app.dependencies import get_database_pool
+from app.dependencies import get_current_user, get_database_pool
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_database_operation, log_success
 
@@ -24,11 +24,22 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 
 # Constants
 MAX_LIMIT = 200
+
+# Admin emails that can see all practices (full CRM access)
+ADMIN_EMAILS = {"zero@balizero.com", "admin@balizero.com"}
+
+
 DEFAULT_LIMIT = 50
+
+
 CACHE_TTL_STATS_SECONDS = 300  # 5 minutes
 DEFAULT_EXPIRY_LOOKAHEAD_DAYS = 90
 MAX_EXPIRY_LOOKAHEAD_DAYS = 365
+
+
 PRIORITY_VALUES = {"low", "normal", "high", "urgent"}
+
+
 STATUS_VALUES = {
     "inquiry",
     "quotation_sent",
@@ -40,6 +51,13 @@ STATUS_VALUES = {
     "completed",
     "cancelled",
 }
+
+
+def is_admin_user(user: dict) -> bool:
+    """Check if user has admin access to see all CRM data"""
+    email = user.get("email", "").lower()
+    role = user.get("role", "").lower()
+    return email in ADMIN_EMAILS or role == "admin"
 
 
 # ================================================
@@ -265,13 +283,21 @@ async def list_practices(
     offset: int = Query(0, ge=0),
     request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    List practices with optional filtering
+    List practices with optional filtering.
+
+    Access Control:
+    - Admin users (zero@balizero.com, role=admin): See ALL practices
+    - Team members: See only practices where they are the Lead (client.assigned_to = user email)
 
     Returns practices with client and practice type information joined
     """
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_admin_user(current_user)
+
         async with db_pool.acquire() as conn:
             # Build query dynamically
             query_parts = [
@@ -281,6 +307,7 @@ async def list_practices(
                     c.full_name as client_name,
                     c.email as client_email,
                     c.phone as client_phone,
+                    c.assigned_to as client_lead,
                     pt.name as practice_type_name,
                     pt.code as practice_type_code,
                     pt.category as practice_category
@@ -292,6 +319,13 @@ async def list_practices(
             ]
             params: list[Any] = []
             param_index = 1
+
+            # RBAC: Non-admin users only see their assigned clients
+            if not user_is_admin:
+                query_parts.append(f" AND c.assigned_to = ${param_index}")
+                params.append(user_email)
+                param_index += 1
+                logger.info(f"RBAC: User {user_email} filtered to their assigned clients")
 
             if client_id:
                 query_parts.append(f" AND p.client_id = ${param_index}")
@@ -395,9 +429,19 @@ async def get_practice(
     practice_id: int = Path(..., gt=0, description="Practice ID"),
     request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Get practice details by ID with full client and type info"""
+    """
+    Get practice details by ID with full client and type info.
+
+    Access Control:
+    - Admin users: Can view any practice
+    - Team members: Can only view practices where they are the Lead
+    """
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_admin_user(current_user)
+
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -406,6 +450,7 @@ async def get_practice(
                     c.full_name as client_name,
                     c.email as client_email,
                     c.phone as client_phone,
+                    c.assigned_to as client_lead,
                     pt.name as practice_type_name,
                     pt.code as practice_type_code,
                     pt.category as practice_category,
@@ -420,6 +465,13 @@ async def get_practice(
 
             if not row:
                 raise HTTPException(status_code=404, detail="Practice not found")
+
+            # RBAC: Check if non-admin user has access to this practice
+            if not user_is_admin:
+                client_lead = (row.get("client_lead") or "").lower()
+                if client_lead != user_email:
+                    logger.warning(f"RBAC: User {user_email} denied access to practice {practice_id}")
+                    raise HTTPException(status_code=403, detail="You don't have access to this practice")
 
             return dict(row)
 
@@ -436,9 +488,14 @@ async def update_practice(
     updated_by: str = Query(..., description="Team member making the update"),
     request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    Update practice information
+    Update practice information.
+
+    Access Control:
+    - Admin users: Can update any practice
+    - Team members: Can only update practices where they are the Lead
 
     Common status values:
     - inquiry
@@ -452,7 +509,28 @@ async def update_practice(
     - cancelled
     """
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_admin_user(current_user)
+
         async with db_pool.acquire() as conn:
+            # RBAC: First check if user has access to this practice
+            if not user_is_admin:
+                check_row = await conn.fetchrow(
+                    """
+                    SELECT c.assigned_to as client_lead
+                    FROM practices p
+                    JOIN clients c ON p.client_id = c.id
+                    WHERE p.id = $1
+                    """,
+                    practice_id,
+                )
+                if not check_row:
+                    raise HTTPException(status_code=404, detail="Practice not found")
+
+                client_lead = (check_row.get("client_lead") or "").lower()
+                if client_lead != user_email:
+                    logger.warning(f"RBAC: User {user_email} denied update to practice {practice_id}")
+                    raise HTTPException(status_code=403, detail="You don't have access to update this practice")
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []

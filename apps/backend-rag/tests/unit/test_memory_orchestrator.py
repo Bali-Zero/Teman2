@@ -22,7 +22,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Ensure backend is in path
-backend_path = Path(__file__).parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
@@ -34,6 +34,7 @@ from services.memory.models import (
     MemoryProcessResult,
     MemoryStats,
 )
+from services.memory.orchestrator import MemoryServiceStatus
 
 
 class TestMemoryModels:
@@ -102,41 +103,95 @@ class TestMemoryOrchestratorInit:
     async def test_initialize_with_pool(self):
         """Test initialization with existing connection pool"""
         from services.memory.orchestrator import MemoryOrchestrator
+        from services.memory.memory_service_postgres import UserMemory
 
-        mock_pool = AsyncMock()
-        orchestrator = MemoryOrchestrator(db_pool=mock_pool)
-        await orchestrator.initialize()
+        mock_pool = MagicMock()
+        mock_pool.close = AsyncMock()
 
-        assert orchestrator.is_initialized
-        assert orchestrator.db_pool is mock_pool
+        # Mock the MemoryServicePostgres class
+        with patch("services.memory.orchestrator.MemoryServicePostgres") as MockMemoryService:
+            mock_service = MagicMock()
+            mock_service.pool = mock_pool
+            mock_service.use_postgres = True
+            mock_service.get_memory = AsyncMock(return_value=UserMemory(
+                user_id="__test__",
+                profile_facts=[],
+                summary="",
+                counters={"conversations": 0, "searches": 0, "tasks": 0},
+                updated_at=datetime.now(),
+            ))
+            mock_service.close = AsyncMock()
+            MockMemoryService.return_value = mock_service
+
+            orchestrator = MemoryOrchestrator(db_pool=mock_pool)
+            await orchestrator.initialize()
+
+            assert orchestrator.is_initialized
+            assert orchestrator.db_pool is mock_pool
 
     @pytest.mark.asyncio
     async def test_initialize_creates_pool_if_needed(self):
         """Test that initialize creates pool if not provided"""
         from services.memory.orchestrator import MemoryOrchestrator
+        from services.memory.memory_service_postgres import UserMemory
 
-        with patch("services.memory.orchestrator.asyncpg.create_pool") as mock_create:
-            mock_pool = AsyncMock()
-            mock_create.return_value = mock_pool
+        mock_pool = MagicMock()
+        mock_pool.close = AsyncMock()
+
+        # Mock the MemoryServicePostgres class
+        with patch("services.memory.orchestrator.MemoryServicePostgres") as MockMemoryService:
+            mock_service = MagicMock()
+            mock_service.pool = mock_pool
+            mock_service.use_postgres = True
+            mock_service.connect = AsyncMock()
+            mock_service.get_memory = AsyncMock(return_value=UserMemory(
+                user_id="__test__",
+                profile_facts=[],
+                summary="",
+                counters={"conversations": 0, "searches": 0, "tasks": 0},
+                updated_at=datetime.now(),
+            ))
+            mock_service.close = AsyncMock()
+            MockMemoryService.return_value = mock_service
 
             orchestrator = MemoryOrchestrator()
             await orchestrator.initialize()
 
-            # Should have created a pool
+            # Should have initialized
             assert orchestrator.is_initialized
+            # connect() should have been called since no pool was provided
+            mock_service.connect.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_close_cleans_up_resources(self):
         """Test that close properly cleans up"""
         from services.memory.orchestrator import MemoryOrchestrator
+        from services.memory.memory_service_postgres import UserMemory
 
-        mock_pool = AsyncMock()
-        orchestrator = MemoryOrchestrator(db_pool=mock_pool)
-        await orchestrator.initialize()
-        await orchestrator.close()
+        mock_pool = MagicMock()
+        mock_pool.close = AsyncMock()
 
-        # Pool.close may be called multiple times (memory service + orchestrator)
-        assert mock_pool.close.called
+        # Mock the MemoryServicePostgres class
+        with patch("services.memory.orchestrator.MemoryServicePostgres") as MockMemoryService:
+            mock_service = MagicMock()
+            mock_service.pool = mock_pool
+            mock_service.use_postgres = True
+            mock_service.get_memory = AsyncMock(return_value=UserMemory(
+                user_id="__test__",
+                profile_facts=[],
+                summary="",
+                counters={"conversations": 0, "searches": 0, "tasks": 0},
+                updated_at=datetime.now(),
+            ))
+            mock_service.close = AsyncMock()
+            MockMemoryService.return_value = mock_service
+
+            orchestrator = MemoryOrchestrator(db_pool=mock_pool)
+            await orchestrator.initialize()
+            await orchestrator.close()
+
+            # Memory service close should be called
+            mock_service.close.assert_called_once()
 
 
 class TestMemoryOrchestratorGetContext:
@@ -158,6 +213,7 @@ class TestMemoryOrchestratorGetContext:
         orchestrator = MemoryOrchestrator()
         orchestrator._memory_service = mock_memory_service
         orchestrator._is_initialized = True
+        orchestrator._status = MemoryServiceStatus.HEALTHY
         return orchestrator
 
     @pytest.mark.asyncio
@@ -258,6 +314,7 @@ class TestMemoryOrchestratorProcessConversation:
         orchestrator._memory_service = memory_service
         orchestrator._fact_extractor = fact_extractor
         orchestrator._is_initialized = True
+        orchestrator._status = MemoryServiceStatus.HEALTHY
         return orchestrator
 
     @pytest.mark.asyncio
@@ -370,7 +427,7 @@ class TestMemoryOrchestratorStats:
         """Test getting memory system stats"""
         from services.memory.orchestrator import MemoryOrchestrator
 
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
 
         # Mock memory service stats
@@ -385,6 +442,7 @@ class TestMemoryOrchestratorStats:
             }
         )
         orchestrator._is_initialized = True
+        orchestrator._status = MemoryServiceStatus.HEALTHY
 
         stats = await orchestrator.get_stats()
 
@@ -404,7 +462,8 @@ class TestMemoryOrchestratorIntegration:
         from services.memory.memory_service_postgres import UserMemory
 
         # Create orchestrator with mocked pool
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
+        mock_pool.close = AsyncMock()
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
 
         # Mock memory service
@@ -421,6 +480,7 @@ class TestMemoryOrchestratorIntegration:
                 updated_at=datetime.now(),
             )
         )
+        mock_memory_service.close = AsyncMock()
 
         # Mock fact extractor
         mock_extractor = MagicMock()
@@ -432,9 +492,10 @@ class TestMemoryOrchestratorIntegration:
 
         orchestrator._memory_service = mock_memory_service
         orchestrator._fact_extractor = mock_extractor
+        orchestrator._is_initialized = True
+        orchestrator._status = MemoryServiceStatus.HEALTHY
 
-        # 1. Initialize
-        await orchestrator.initialize()
+        # 1. Verify initialized
         assert orchestrator.is_initialized
 
         # 2. Process conversation (save facts)
@@ -462,7 +523,7 @@ class TestMemoryOrchestratorEdgeCases:
         """Test handling of unicode characters in facts"""
         from services.memory.orchestrator import MemoryOrchestrator
 
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
         orchestrator._memory_service = AsyncMock()
         orchestrator._memory_service.add_fact = AsyncMock(return_value=True)
@@ -474,6 +535,7 @@ class TestMemoryOrchestratorEdgeCases:
             ]
         )
         orchestrator._is_initialized = True
+        orchestrator._status = MemoryServiceStatus.HEALTHY
 
         result = await orchestrator.process_conversation(
             user_email="test@test.com",
@@ -488,7 +550,7 @@ class TestMemoryOrchestratorEdgeCases:
         """Test handling of very long messages"""
         from services.memory.orchestrator import MemoryOrchestrator
 
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
         orchestrator._memory_service = AsyncMock()
         orchestrator._memory_service.add_fact = AsyncMock(return_value=True)
@@ -496,6 +558,7 @@ class TestMemoryOrchestratorEdgeCases:
         orchestrator._fact_extractor = MagicMock()
         orchestrator._fact_extractor.extract_facts_from_conversation = MagicMock(return_value=[])
         orchestrator._is_initialized = True
+        orchestrator._status = MemoryServiceStatus.HEALTHY
 
         # Very long message
         long_message = "Test " * 10000
@@ -517,7 +580,7 @@ class TestMemoryOrchestratorEdgeCases:
         from services.memory.orchestrator import MemoryOrchestrator
         from services.memory.memory_service_postgres import UserMemory
 
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
         orchestrator._memory_service = AsyncMock()
         orchestrator._memory_service.pool = True
@@ -531,6 +594,7 @@ class TestMemoryOrchestratorEdgeCases:
             )
         )
         orchestrator._is_initialized = True
+        orchestrator._status = MemoryServiceStatus.HEALTHY
 
         # Run multiple concurrent requests
         tasks = [orchestrator.get_user_context(f"user{i}@test.com") for i in range(10)]

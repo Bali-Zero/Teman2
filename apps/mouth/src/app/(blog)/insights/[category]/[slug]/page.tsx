@@ -507,7 +507,7 @@ For personalized guidance on your Golden Visa application, contact our team at B
   author: {
     id: 'zantara-ai',
     name: 'Zantara AI',
-    avatar: '/images/zantara-avatar.png',
+    avatar: '/images/zantara-lotus.png',
     role: 'AI Research Assistant',
     bio: 'Zantara AI provides accurate, up-to-date information about business and immigration in Indonesia.',
     isAI: true,

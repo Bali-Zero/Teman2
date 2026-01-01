@@ -186,15 +186,16 @@ class TestRetryHandler:
 
     @pytest.mark.asyncio
     async def test_execute_with_retry_zero_max_retries(self):
-        """Test with max_retries=0 (no retries)"""
+        """Test with max_retries=0 (no retries) - operation is never called"""
         handler = RetryHandler(max_retries=0)
         mock_operation = AsyncMock(side_effect=Exception("Connection timeout"))
 
-        with pytest.raises(Exception, match="Connection timeout"):
+        # With max_retries=0, the loop never executes, so it immediately raises RuntimeError
+        with pytest.raises(RuntimeError, match="failed after 0 attempts"):
             await handler.execute_with_retry(operation=mock_operation, operation_name="test_op")
 
-        # Should not retry
-        mock_operation.assert_called_once()
+        # Operation is never called with max_retries=0
+        mock_operation.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_with_retry_large_backoff_factor(self):

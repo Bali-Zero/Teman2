@@ -134,12 +134,12 @@ async def test_clock_in_already_clocked_in(timesheet_service, mock_db_pool):
 
     result = await timesheet_service.clock_in("user123", "user@example.com")
 
-@pytest.mark.skip(reason="notification_hub API deprecated")
     assert result["success"] is False
     assert result["error"] == "already_clocked_in"
     assert "clocked_in_at" in result
 
 
+@pytest.mark.skip(reason="notification_hub API deprecated")
 @pytest.mark.asyncio
 async def test_clock_in_notifies_admin(timesheet_service, mock_db_pool):
     """Test clock-in notifies admin"""
@@ -413,11 +413,11 @@ async def test_export_timesheet_csv_success(timesheet_service, mock_db_pool):
 
 
 # ============================================================================
-@pytest.mark.skip(reason="services.team_timesheet_service import path deprecated")
 # Tests: Singleton functions
 # ============================================================================
 
 
+@pytest.mark.skip(reason="services.team_timesheet_service import path deprecated")
 def test_get_timesheet_service_none():
     """Test get_timesheet_service when not initialized"""
     import services.team_timesheet_service
@@ -586,8 +586,8 @@ async def test_clock_in_with_metadata(timesheet_service, mock_db_pool):
     assert json.dumps(metadata) in str(call_args)
 
 
-@pytest.mark.asyncio
 @pytest.mark.skip(reason="notification_hub API deprecated")
+@pytest.mark.asyncio
 async def test_clock_in_notification_failure(timesheet_service, mock_db_pool):
     """Test clock-in when notification fails"""
     mock_conn = MagicMock()
@@ -659,6 +659,7 @@ async def test_clock_out_with_metadata(timesheet_service, mock_db_pool):
     assert result["success"] is True
 
 
+@pytest.mark.skip(reason="notification_hub API deprecated")
 @pytest.mark.asyncio
 async def test_clock_out_notification_failure(timesheet_service, mock_db_pool):
     """Test clock-out when notification fails"""
@@ -670,7 +671,6 @@ async def test_clock_out_notification_failure(timesheet_service, mock_db_pool):
         "last_action_bali": clock_in_time,
         "user_id": "user123",
         "email": "user@example.com",
-@pytest.mark.skip(reason="notification_hub API deprecated")
         "action_type": "clock_in",
     }[key]
 

@@ -9,6 +9,7 @@ import { UploadApi } from './media/upload.api';
 import { AudioApi } from './media/audio.api';
 import { ImageApi } from './media/image.api';
 import { CrmApi } from './crm/crm.api';
+import { DriveApi } from './drive/drive.api';
 import { EmailApi } from './email/email.api';
 import { PortalApi } from './portal/portal.api';
 import { WebSocketUtils } from './websocket/websocket.utils';
@@ -40,6 +41,7 @@ export class ApiClient extends ApiClientBase {
   private audioApi: AudioApi;
   private imageApi: ImageApi;
   private crmApi: CrmApi;
+  private driveApi: DriveApi;
   private emailApi: EmailApi;
   private portalApi: PortalApi;
   private wsUtils: WebSocketUtils;
@@ -57,6 +59,7 @@ export class ApiClient extends ApiClientBase {
     this.audioApi = new AudioApi(this);
     this.imageApi = new ImageApi(this);
     this.crmApi = new CrmApi(this);
+    this.driveApi = new DriveApi(this);
     this.emailApi = new EmailApi(this);
     this.portalApi = new PortalApi(this);
     this.wsUtils = new WebSocketUtils(this);
@@ -90,6 +93,14 @@ export class ApiClient extends ApiClientBase {
 
   public get crm(): CrmApi {
     return this.crmApi;
+  }
+
+  // ============================================================================
+  // Google Drive (Document storage integration)
+  // ============================================================================
+
+  public get drive(): DriveApi {
+    return this.driveApi;
   }
 
   // ============================================================================

@@ -368,6 +368,32 @@ export default function EmailPage() {
     }
   };
 
+  // Handle add to CRM
+  const handleAddToCRM = async (email: string, name: string) => {
+    const displayName = name || email.split('@')[0];
+    if (!confirm(`Aggiungere "${displayName}" (${email}) come nuovo cliente in CRM?`)) return;
+
+    try {
+      const client = await api.crm.createClient(
+        {
+          full_name: name || email.split('@')[0],
+          email: email,
+        },
+        connectionStatus?.email || 'email_import'
+      );
+
+      alert(`Cliente "${client.full_name}" creato con successo! ID: ${client.id}`);
+
+      // Reload email detail to refresh the CRM badge
+      if (selectedEmailId && selectedFolderId) {
+        loadEmailDetail(selectedEmailId, selectedFolderId);
+      }
+    } catch (error) {
+      console.error('Failed to create client:', error);
+      alert('Errore nella creazione del cliente. Riprova.');
+    }
+  };
+
   // Handle refresh
   const handleRefresh = async () => {
     await loadFolders();
@@ -407,7 +433,7 @@ export default function EmailPage() {
 
   // Main email interface
   return (
-    <div className="h-[calc(100vh-8rem)] -m-4 md:-m-6 lg:-m-8 flex">
+    <div className="email-module h-[calc(100vh-8rem)] -m-4 md:-m-6 lg:-m-8 flex">
       {/* Folder Sidebar */}
       <FolderSidebar
         folders={folders}
@@ -455,6 +481,7 @@ export default function EmailPage() {
         onDelete={() => selectedEmailId && handleDelete([selectedEmailId])}
         onDownloadAttachment={handleDownloadAttachment}
         isLoading={isEmailDetailLoading}
+        onAddToCRM={handleAddToCRM}
       />
 
       {/* Compose Modal */}

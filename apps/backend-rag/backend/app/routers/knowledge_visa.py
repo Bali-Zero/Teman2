@@ -243,6 +243,100 @@ async def get_visa_by_code(
         )
 
 
+class VisaTypeUpdate(BaseModel):
+    """Update model - all fields optional"""
+    name: str | None = None
+    category: str | None = None
+    duration: str | None = None
+    extensions: str | None = None
+    total_stay: str | None = None
+    renewable: bool | None = None
+    processing_time_normal: str | None = None
+    processing_time_express: str | None = None
+    processing_timeline: dict | None = None
+    cost_visa: str | None = None
+    cost_extension: str | None = None
+    cost_details: dict | None = None
+    requirements: list[str] | None = None
+    restrictions: list[str] | None = None
+    allowed_activities: list[str] | None = None
+    benefits: list[str] | None = None
+    process_steps: list[str] | None = None
+    tips: list[str] | None = None
+    foreign_eligible: bool | None = None
+    metadata: dict | None = None
+
+
+@router.put("/{visa_id}", response_model=VisaTypeResponse)
+async def update_visa_type(
+    visa_id: int,
+    visa: VisaTypeUpdate,
+    pool=Depends(get_db_pool)
+):
+    """Update a visa type by ID"""
+    async with pool.acquire() as conn:
+        # Check if exists
+        existing = await conn.fetchrow(
+            "SELECT * FROM visa_types WHERE id = $1",
+            visa_id
+        )
+        if not existing:
+            raise HTTPException(status_code=404, detail="Visa type not found")
+
+        # Build dynamic update
+        updates = []
+        values = []
+        param_idx = 1
+
+        for field, value in visa.model_dump(exclude_unset=True).items():
+            if value is not None:
+                updates.append(f"{field} = ${param_idx}")
+                values.append(value)
+                param_idx += 1
+
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        updates.append(f"last_updated = NOW()")
+        values.append(visa_id)
+
+        query = f"""
+            UPDATE visa_types
+            SET {', '.join(updates)}
+            WHERE id = ${param_idx}
+            RETURNING *
+        """
+
+        row = await conn.fetchrow(query, *values)
+
+        return VisaTypeResponse(
+            id=row["id"],
+            code=row["code"],
+            name=row["name"],
+            category=row["category"] or "Other",
+            duration=row["duration"],
+            extensions=row["extensions"],
+            total_stay=row["total_stay"],
+            renewable=row["renewable"] or False,
+            processing_time_normal=row["processing_time_normal"],
+            processing_time_express=row["processing_time_express"],
+            processing_timeline=row["processing_timeline"],
+            cost_visa=row["cost_visa"],
+            cost_extension=row["cost_extension"],
+            cost_details=row["cost_details"],
+            requirements=row["requirements"] or [],
+            restrictions=row["restrictions"] or [],
+            allowed_activities=row["allowed_activities"] or [],
+            benefits=row["benefits"] or [],
+            process_steps=row["process_steps"] or [],
+            tips=row["tips"] or [],
+            foreign_eligible=row["foreign_eligible"] if row["foreign_eligible"] is not None else True,
+            metadata=row["metadata"],
+            last_updated=row["last_updated"],
+            created_at=row["created_at"],
+        )
+
+
 @router.post("/", response_model=VisaTypeResponse)
 async def create_visa_type(
     visa: VisaTypeCreate,

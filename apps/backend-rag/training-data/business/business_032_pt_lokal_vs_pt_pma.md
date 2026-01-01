@@ -106,9 +106,9 @@ Kalau saya bikin PT Lokal dulu (100% saya), lalu nanti convert ke PT PMA setelah
 
 | Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup |
 |------|---------------|---------------------|---------------------|
-| **Notaris + Kemenkumham** | IDR 8-12 juta | IDR 10-15 juta (amendment) | IDR 12-15 juta |
+| **Notaris + Kemenkumham** | IDR 5 juta | IDR 10-15 juta (amendment) | IDR 12-15 juta |
 | **OSS/NIB** | IDR 3-5 juta | IDR 5-7 juta (re-registration) | IDR 5-7 juta |
-| **Virtual Office** | IDR 8-12 juta/year | Same | IDR 8-12 juta/year |
+| **Virtual Office** | IDR 5 juta/year | Same | IDR 5 juta/year |
 | **Consultant** | IDR 3-5 juta | IDR 15-25 juta (conversion) | IDR 10-15 juta |
 | **Total** | **IDR 22-34 juta** | **+IDR 30-47 juta** | **IDR 35-49 juta** |
 
@@ -401,7 +401,7 @@ Setup cost total berapa untuk PT PMA (including all licenses)?
 
 **A. PT PMA Incorporation:**
 - Notaris + Kemenkumham: **IDR 12-15 juta**
-- Virtual Office (1 year): **IDR 8-12 juta**
+- Virtual Office (1 year): **IDR 5 juta**
 - OSS/NIB: **IDR 5-7 juta**
 - NPWP PT: **IDR 1 juta**
 - Bank account opening: **IDR 1-2 juta**
@@ -409,7 +409,7 @@ Setup cost total berapa untuk PT PMA (including all licenses)?
 
 **B. E-Commerce Licensing:**
 - PMSE registration (Kemendag): **IDR 5-8 juta**
-- PSE registration (Kominfo): **IDR 8-12 juta**
+- PSE registration (Kominfo): **IDR 5 juta**
 - **Subtotal B: IDR 13-20 juta**
 
 **C. Capital Requirement:**
@@ -823,9 +823,9 @@ If I set up PT Lokal first (100% me), then convert to PT PMA later when partner 
 
 | Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup |
 |------|---------------|---------------------|---------------------|
-| **Notary + Ministry** | IDR 8-12M | IDR 10-15M (amendment) | IDR 12-15M |
+| **Notary + Ministry** | IDR 5M | IDR 10-15M (amendment) | IDR 12-15M |
 | **OSS/NIB** | IDR 3-5M | IDR 5-7M (re-registration) | IDR 5-7M |
-| **Virtual Office** | IDR 8-12M/year | Same | IDR 8-12M/year |
+| **Virtual Office** | IDR 5M/year | Same | IDR 5M/year |
 | **Consultant** | IDR 3-5M | IDR 15-25M (conversion) | IDR 10-15M |
 | **Total** | **IDR 22-34M** | **+IDR 30-47M** | **IDR 35-49M** |
 
@@ -1118,7 +1118,7 @@ What's the total setup cost for PT PMA (including all licenses)?
 
 **A. PT PMA Incorporation:**
 - Notary + Ministry: **IDR 12-15 million**
-- Virtual Office (1 year): **IDR 8-12 million**
+- Virtual Office (1 year): **IDR 5 million**
 - OSS/NIB: **IDR 5-7 million**
 - PT Tax ID: **IDR 1 million**
 - Bank account opening: **IDR 1-2 million**
@@ -1126,7 +1126,7 @@ What's the total setup cost for PT PMA (including all licenses)?
 
 **B. E-Commerce Licensing:**
 - PMSE registration (Ministry of Trade): **IDR 5-8 million**
-- PSE registration (Ministry of Communication): **IDR 8-12 million**
+- PSE registration (Ministry of Communication): **IDR 5 million**
 - **Subtotal B: IDR 13-20 million**
 
 **C. Capital Requirement:**
@@ -1540,9 +1540,9 @@ Nek aku gawe PT Lokal dhisik (100% aku), terus mengko convert neng PT PMA sakwis
 
 | Item | PT Lokal Setup | Conversion to PT PMA | Direct PT PMA Setup |
 |------|---------------|---------------------|---------------------|
-| **Notaris + Kemenkumham** | IDR 8-12 juta | IDR 10-15 juta (amendment) | IDR 12-15 juta |
+| **Notaris + Kemenkumham** | IDR 5 juta | IDR 10-15 juta (amendment) | IDR 12-15 juta |
 | **OSS/NIB** | IDR 3-5 juta | IDR 5-7 juta (re-registration) | IDR 5-7 juta |
-| **Virtual Office** | IDR 8-12 juta/taun | Same | IDR 8-12 juta/taun |
+| **Virtual Office** | IDR 5 juta/taun | Same | IDR 5 juta/taun |
 | **Consultant** | IDR 3-5 juta | IDR 15-25 juta (conversion) | IDR 10-15 juta |
 | **Total** | **IDR 22-34 juta** | **+IDR 30-47 juta** | **IDR 35-49 juta** |
 
@@ -1835,7 +1835,7 @@ Setup cost total piro kanggo PT PMA (including all licenses)?
 
 **A. PT PMA Incorporation:**
 - Notaris + Kemenkumham: **IDR 12-15 juta**
-- Virtual Office (1 taun): **IDR 8-12 juta**
+- Virtual Office (1 taun): **IDR 5 juta**
 - OSS/NIB: **IDR 5-7 juta**
 - NPWP PT: **IDR 1 juta**
 - Bank account opening: **IDR 1-2 juta**
@@ -1843,7 +1843,7 @@ Setup cost total piro kanggo PT PMA (including all licenses)?
 
 **B. E-Commerce Licensing:**
 - PMSE registration (Kemendag): **IDR 5-8 juta**
-- PSE registration (Kominfo): **IDR 8-12 juta**
+- PSE registration (Kominfo): **IDR 5 juta**
 - **Subtotal B: IDR 13-20 juta**
 
 **C. Capital Requirement:**

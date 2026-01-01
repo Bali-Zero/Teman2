@@ -137,8 +137,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Jest tests
-        run: npm run test:ci
+      - name: Run Vitest tests (Frontend)
+        run: npm run test:ci -w apps/mouth
         env:
           NODE_ENV: test
 
@@ -226,10 +226,7 @@ jobs:
           node-version: '20'
 
       - name: Check coverage thresholds
-        run: |
-          echo "✅ Coverage gate passed (configured in package.json)"
-          # Coverage gate script can be added here if needed
-          # npm run coverage:gate
+        run: npm run coverage:gate
 
   # ============================================
   # Summary Job

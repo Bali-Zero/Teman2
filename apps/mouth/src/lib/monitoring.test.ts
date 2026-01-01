@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { conversationMonitor, type ConversationMetrics } from './monitoring';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { conversationMonitor } from './monitoring';
 
 describe('conversationMonitor', () => {
   beforeEach(() => {

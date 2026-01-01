@@ -166,7 +166,7 @@ export function useOptimisticChat({
             setCurrentStatus(event.data as string);
             break;
 
-          case 'sources':
+          case 'sources': {
             const newSources = event.data as Source[];
             setSources(newSources);
             setMessages((prev) =>
@@ -175,6 +175,7 @@ export function useOptimisticChat({
               )
             );
             break;
+          }
 
           case 'error':
             throw new Error(event.data as string);

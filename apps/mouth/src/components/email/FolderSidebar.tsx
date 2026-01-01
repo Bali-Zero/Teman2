@@ -59,7 +59,7 @@ export function FolderSidebar({
   }, [folders]);
 
   return (
-    <div className="w-56 h-full flex flex-col border-r border-[var(--border)] bg-[var(--background-secondary)]">
+    <div className="email-sidebar w-56 h-full flex flex-col border-r border-[var(--border)] bg-[var(--background-secondary)]">
       {/* Compose Button */}
       <div className="p-4">
         <button

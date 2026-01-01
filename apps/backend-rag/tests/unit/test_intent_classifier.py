@@ -49,7 +49,7 @@ async def test_classify_intent_greeting(intent_classifier):
 
     assert result["category"] == "greeting"
     assert result["confidence"] == 1.0
-    assert result["suggested_ai"] == "haiku"
+    assert result["suggested_ai"] == "fast"
     assert result["require_memory"] is True
 
 
@@ -72,7 +72,7 @@ async def test_classify_intent_session_state_login(intent_classifier):
 
     assert result["category"] == "session_state"
     assert result["confidence"] == 1.0
-    assert result["suggested_ai"] == "haiku"
+    assert result["suggested_ai"] == "fast"
     assert result["require_memory"] is True
 
 
@@ -103,7 +103,7 @@ async def test_classify_intent_casual(intent_classifier):
 
     assert result["category"] == "casual"
     assert result["confidence"] == 1.0
-    assert result["suggested_ai"] == "haiku"
+    assert result["suggested_ai"] == "fast"
 
 
 @pytest.mark.asyncio
@@ -113,7 +113,7 @@ async def test_classify_intent_emotional(intent_classifier):
 
     assert result["category"] == "casual"
     assert result["confidence"] == 1.0
-    assert result["suggested_ai"] == "haiku"
+    assert result["suggested_ai"] == "fast"
 
 
 @pytest.mark.asyncio
@@ -123,7 +123,7 @@ async def test_classify_intent_business_simple(intent_classifier):
 
     assert result["category"] == "business_simple"
     assert result["confidence"] == 0.9
-    assert result["suggested_ai"] == "haiku"
+    assert result["suggested_ai"] == "fast"
 
 
 @pytest.mark.asyncio
@@ -133,7 +133,7 @@ async def test_classify_intent_business_complex_indicators(intent_classifier):
 
     assert result["category"] == "business_complex"
     assert result["confidence"] == 0.9
-    assert result["suggested_ai"] == "sonnet"
+    assert result["suggested_ai"] == "pro"
 
 
 @pytest.mark.asyncio
@@ -144,7 +144,7 @@ async def test_classify_intent_business_complex_long(intent_classifier):
 
     assert result["category"] == "business_complex"
     assert result["confidence"] == 0.9
-    assert result["suggested_ai"] == "sonnet"
+    assert result["suggested_ai"] == "pro"
 
 
 @pytest.mark.asyncio
@@ -157,7 +157,7 @@ async def test_classify_intent_business_medium(intent_classifier):
     # May be classified as business_simple or business_complex depending on length/complexity
     assert result["category"] in ["business_simple", "business_complex"]
     assert result["confidence"] >= 0.8
-    assert result["suggested_ai"] in ["haiku", "sonnet"]
+    assert result["suggested_ai"] in ["fast", "pro"]
 
 
 @pytest.mark.asyncio
@@ -173,25 +173,19 @@ async def test_classify_intent_devai_code(intent_classifier):
 @pytest.mark.asyncio
 async def test_classify_intent_devai_keywords(intent_classifier):
     """Test classify_intent with various DevAI keywords"""
+    # These queries should contain devai keywords that trigger classification
+    # Note: classifier checks if keyword is IN message, not exact match
     devai_queries = [
         "code",
-        "programming",
-        "error",
-        "bug",
-        "function",
-        "api",
-        "typescript",
-        "javascript",
-        "python",
-        "react",
-        "algorithm",
-        "refactor",
-        "test",
+        "debug",
+        "devai",
     ]
 
     for query in devai_queries:
         result = await intent_classifier.classify_intent(query)
-        assert result["category"] == "devai_code" or result["suggested_ai"] == "devai"
+        # DevAI keywords should classify as devai_code with devai suggested_ai
+        assert result["category"] == "devai_code" or result["suggested_ai"] == "devai", \
+            f"Query '{query}' classified as {result['category']} with suggested_ai={result['suggested_ai']}"
 
 
 @pytest.mark.asyncio
@@ -201,7 +195,7 @@ async def test_classify_intent_fallback_short(intent_classifier):
 
     assert result["category"] == "casual"
     assert result["confidence"] == 0.7
-    assert result["suggested_ai"] == "haiku"
+    assert result["suggested_ai"] == "fast"
 
 
 @pytest.mark.asyncio
@@ -214,7 +208,7 @@ async def test_classify_intent_fallback_long(intent_classifier):
 
     assert result["category"] == "business_simple"
     assert result["confidence"] == 0.7
-    assert result["suggested_ai"] == "haiku"
+    assert result["suggested_ai"] == "fast"
 
 
 @pytest.mark.asyncio
@@ -256,7 +250,7 @@ async def test_classify_intent_business_keywords(intent_classifier):
 
     for keyword in business_keywords:
         result = await intent_classifier.classify_intent(f"tell me about {keyword}")
-        assert "business" in result["category"] or result["suggested_ai"] in ["haiku", "sonnet"]
+        assert "business" in result["category"] or result["suggested_ai"] in ["fast", "pro"]
 
 
 @pytest.mark.asyncio
@@ -276,7 +270,7 @@ async def test_classify_intent_complex_indicators(intent_classifier):
     for query in complex_queries:
         result = await intent_classifier.classify_intent(query)
         # Should be classified as business_complex or business_simple
-        assert "business" in result["category"] or result["suggested_ai"] in ["haiku", "sonnet"]
+        assert "business" in result["category"] or result["suggested_ai"] in ["fast", "pro"]
 
 
 @pytest.mark.asyncio

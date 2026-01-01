@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Timer,
   Wallet,
+  Download,
+  Share2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -60,32 +62,73 @@ function getDifficultyLabel(difficulty: string | undefined): string {
 }
 
 function getCategoryColor(category: string): string {
+  // KITAS/KITAP = Intense Orange, Visa types = Intense Blue
   switch (category) {
     case 'KITAS':
-      return 'from-indigo-500/20 to-purple-500/20 border-indigo-500/30';
+      return 'from-orange-400/50 to-amber-400/50 border-orange-500/60';
     case 'KITAP':
-      return 'from-amber-500/20 to-orange-500/20 border-amber-500/30';
-    case 'Tourist':
-      return 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30';
-    case 'Business':
-      return 'from-blue-500/20 to-cyan-500/20 border-blue-500/30';
+      return 'from-orange-500/50 to-amber-500/50 border-orange-600/60';
+    case 'Visa Free':
+      return 'from-sky-400/50 to-blue-400/50 border-sky-500/60';
+    case 'VOA':
+      return 'from-sky-400/50 to-cyan-400/50 border-sky-500/60';
+    case 'Visit':
+      return 'from-blue-400/50 to-sky-400/50 border-blue-500/60';
     default:
-      return 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
+      return 'from-sky-400/50 to-blue-400/50 border-sky-500/60';
   }
 }
 
 function getCategoryBadgeColor(category: string): string {
+  // KITAS/KITAP = Intense Orange badges, Visa types = Intense Blue badges
   switch (category) {
     case 'KITAS':
-      return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+      return 'bg-orange-500/30 text-orange-600 dark:text-orange-300 border-orange-500/50';
     case 'KITAP':
-      return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
-    case 'Tourist':
-      return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    case 'Business':
-      return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
+      return 'bg-amber-500/30 text-amber-600 dark:text-amber-300 border-amber-500/50';
+    case 'Visa Free':
+      return 'bg-sky-500/30 text-sky-600 dark:text-sky-300 border-sky-500/50';
+    case 'VOA':
+      return 'bg-cyan-500/30 text-cyan-600 dark:text-cyan-300 border-cyan-500/50';
+    case 'Visit':
+      return 'bg-blue-500/30 text-blue-600 dark:text-blue-300 border-blue-500/50';
     default:
-      return 'bg-gray-500/20 text-gray-300 border-gray-500/30';
+      return 'bg-sky-500/30 text-sky-600 dark:text-sky-300 border-sky-500/50';
+  }
+}
+
+// Get series letter from visa code (e.g., "E33G" -> "E", "A1" -> "A")
+function getSeriesFromCode(code: string): string {
+  const match = code.match(/^([A-Z]+)/);
+  return match ? match[1] : 'Z';
+}
+
+// Sort order for series
+const SERIES_ORDER: Record<string, number> = {
+  'A': 1,
+  'B': 2,
+  'C': 3,
+  'D': 4,
+  'E': 5,
+  'KITAP': 6,
+};
+
+function getSeriesOrder(code: string): number {
+  if (code === 'KITAP') return 6;
+  const series = getSeriesFromCode(code);
+  return SERIES_ORDER[series] || 99;
+}
+
+// Get series display name
+function getSeriesDisplayName(series: string): string {
+  switch (series) {
+    case 'A': return 'Series A - Visa Free';
+    case 'B': return 'Series B - Visa on Arrival';
+    case 'C': return 'Series C - Single Entry Visit';
+    case 'D': return 'Series D - Multiple Entry Visit';
+    case 'E': return 'Series E - KITAS (Temporary Stay)';
+    case 'KITAP': return 'KITAP - Permanent Stay';
+    default: return `Series ${series}`;
   }
 }
 
@@ -96,13 +139,23 @@ function getCategoryBadgeColor(category: string): string {
 interface VisaCardProps {
   visa: VisaType;
   onClick: () => void;
+  onDownloadPdf?: () => void;
 }
 
-function VisaCard({ visa, onClick }: VisaCardProps) {
+function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
   const isRecommended = visa.metadata?.bali_zero_recommended;
   const isNew = visa.metadata?.new_visa;
   const difficulty = visa.metadata?.difficulty;
-  const popularity = visa.metadata?.popularity;
+  const pdfUrl = visa.metadata?.pdf_url;
+
+  const handlePdfDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank');
+    } else if (onDownloadPdf) {
+      onDownloadPdf();
+    }
+  };
 
   return (
     <div
@@ -136,26 +189,26 @@ function VisaCard({ visa, onClick }: VisaCardProps) {
 
       {/* Card Content */}
       <div className="p-6">
-        {/* Category Badge */}
-        <div className="flex items-center gap-2 mb-4">
+        {/* BIG VISA CODE - Prominent Display */}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-3xl font-black text-[var(--foreground)] tracking-tight">
+            {visa.code}
+          </span>
           <span className={`px-2.5 py-1 text-xs font-medium rounded-full border ${getCategoryBadgeColor(visa.category)}`}>
             {visa.category}
           </span>
+        </div>
+
+        {/* Title */}
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-1 group-hover:text-[var(--accent)] transition-colors leading-tight">
+            {visa.name}
+          </h3>
           {difficulty && (
-            <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${getDifficultyColor(difficulty)}`}>
+            <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${getDifficultyColor(difficulty)}`}>
               {getDifficultyLabel(difficulty)}
             </span>
           )}
-        </div>
-
-        {/* Title & Code */}
-        <div className="mb-4">
-          <h3 className="text-xl font-bold text-[var(--foreground)] mb-1 group-hover:text-[var(--accent)] transition-colors">
-            {visa.name}
-          </h3>
-          <p className="text-sm text-[var(--foreground-muted)] font-mono">
-            Code: {visa.code}
-          </p>
         </div>
 
         {/* Key Info Grid */}
@@ -215,14 +268,25 @@ function VisaCard({ visa, onClick }: VisaCardProps) {
           ))}
         </div>
 
-        {/* CTA */}
+        {/* CTA with PDF Download */}
         <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
-          <div className="flex items-center gap-1.5 text-sm text-[var(--foreground-muted)]">
-            <FileCheck className="w-4 h-4" />
-            <span>{visa.requirements.length} requirements</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 text-sm text-[var(--foreground-muted)]">
+              <FileCheck className="w-4 h-4" />
+              <span>{visa.requirements.length} req</span>
+            </div>
+            {/* PDF Download Button */}
+            <button
+              onClick={handlePdfDownload}
+              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--background)]/60 hover:bg-[var(--accent)]/20 text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors text-xs"
+              title="Download PDF Info Sheet"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF</span>
+            </button>
           </div>
           <div className="flex items-center gap-1 text-[var(--accent)] font-medium text-sm group-hover:gap-2 transition-all">
-            <span>View Details</span>
+            <span>Details</span>
             <ChevronRight className="w-4 h-4" />
           </div>
         </div>
@@ -246,7 +310,8 @@ interface CategoryFilterProps {
 }
 
 function CategoryFilter({ categories, selected, onSelect, counts }: CategoryFilterProps) {
-  const orderedCategories = ['KITAS', 'KITAP', 'Tourist', 'Business'];
+  // Order: Visa types first (blue), then KITAS/KITAP (orange)
+  const orderedCategories = ['Visa Free', 'VOA', 'Visit', 'KITAS', 'KITAP'];
   const sortedCategories = orderedCategories.filter(c => categories.includes(c));
 
   return (
@@ -313,9 +378,32 @@ export default function KitasVisaPage() {
     }
   };
 
+  // Filter by category if selected
   const filteredVisas = selectedCategory
     ? visas.filter((v) => v.category === selectedCategory)
     : visas;
+
+  // Sort visas by series (A → B → C → D → E → KITAP)
+  const sortedVisas = [...filteredVisas].sort((a, b) => {
+    const orderA = getSeriesOrder(a.code);
+    const orderB = getSeriesOrder(b.code);
+    if (orderA !== orderB) return orderA - orderB;
+    // Within same series, sort by code
+    return a.code.localeCompare(b.code);
+  });
+
+  // Group visas by series for section headers
+  const visasBySeries = sortedVisas.reduce((acc, visa) => {
+    const series = visa.code === 'KITAP' ? 'KITAP' : getSeriesFromCode(visa.code);
+    if (!acc[series]) acc[series] = [];
+    acc[series].push(visa);
+    return acc;
+  }, {} as Record<string, VisaType[]>);
+
+  // Get ordered series keys
+  const orderedSeries = Object.keys(visasBySeries).sort((a, b) => {
+    return (SERIES_ORDER[a] || 99) - (SERIES_ORDER[b] || 99);
+  });
 
   const categoryCounts = visas.reduce((acc, visa) => {
     acc[visa.category] = (acc[visa.category] || 0) + 1;
@@ -324,6 +412,11 @@ export default function KitasVisaPage() {
 
   const handleVisaClick = (visa: VisaType) => {
     router.push(`/knowledge/kitas/${visa.id}`);
+  };
+
+  const handleDownloadPdf = (visa: VisaType) => {
+    // Generate PDF or show info - for now, navigate to detail page
+    router.push(`/knowledge/kitas/${visa.id}?download=pdf`);
   };
 
   return (
@@ -435,11 +528,43 @@ export default function KitasVisaPage() {
         </div>
       )}
 
-      {/* Visa Cards Grid */}
-      {!isLoading && !error && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVisas.map((visa) => (
-            <VisaCard key={visa.id} visa={visa} onClick={() => handleVisaClick(visa)} />
+      {/* Visa Cards Grouped by Series */}
+      {!isLoading && !error && orderedSeries.length > 0 && (
+        <div className="space-y-10">
+          {orderedSeries.map((series) => (
+            <div key={series} className="space-y-4">
+              {/* Series Header */}
+              <div className="flex items-center gap-3">
+                <div className={`
+                  w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl
+                  ${series === 'E' || series === 'KITAP'
+                    ? 'bg-orange-500/40 text-orange-500 dark:text-orange-400 border border-orange-500/50'
+                    : 'bg-sky-500/40 text-sky-500 dark:text-sky-400 border border-sky-500/50'}
+                `}>
+                  {series}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-[var(--foreground)]">
+                    {getSeriesDisplayName(series)}
+                  </h2>
+                  <p className="text-sm text-[var(--foreground-muted)]">
+                    {visasBySeries[series].length} visa type{visasBySeries[series].length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Series Grid */}
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {visasBySeries[series].map((visa) => (
+                  <VisaCard
+                    key={visa.id}
+                    visa={visa}
+                    onClick={() => handleVisaClick(visa)}
+                    onDownloadPdf={() => handleDownloadPdf(visa)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

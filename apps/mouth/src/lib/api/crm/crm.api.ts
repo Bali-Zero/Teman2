@@ -1,5 +1,5 @@
 import type { IApiClient } from '../types/api-client.types';
-import type { Practice, Interaction, PracticeStats, InteractionStats, Client, CreateClientParams, CreatePracticeParams, RenewalAlert, AutoCRMStats } from './crm.types';
+import type { Practice, Interaction, PracticeStats, InteractionStats, Client, CreateClientParams, CreatePracticeParams, RenewalAlert, AutoCRMStats, ClientSummary } from './crm.types';
 
 /**
  * Revenue growth statistics response
@@ -229,5 +229,52 @@ export class CrmApi {
       },
       60000 // 60 second timeout
     );
+  }
+
+  /**
+   * Get a single client by ID
+   */
+  async getClient(clientId: number): Promise<Client> {
+    return this.client.request<Client>(`/api/crm/clients/${clientId}`);
+  }
+
+  /**
+   * Get client by email address (returns null if not found)
+   */
+  async getClientByEmail(email: string): Promise<Client | null> {
+    try {
+      return await this.client.request<Client>(`/api/crm/clients/by-email/${encodeURIComponent(email)}`);
+    } catch (error) {
+      // 404 means client not found - return null instead of throwing
+      if (error instanceof Error && error.message.includes('404')) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get full client summary with cases, interactions, renewals
+   */
+  async getClientSummary(clientId: number): Promise<ClientSummary> {
+    return this.client.request<ClientSummary>(`/api/crm/clients/${clientId}/summary`);
+  }
+
+  /**
+   * Get client interaction timeline
+   */
+  async getClientTimeline(clientId: number, limit: number = 50): Promise<Interaction[]> {
+    // Backend returns {client_id, total_interactions, timeline: Interaction[]}
+    const response = await this.client.request<{ timeline: Interaction[] }>(
+      `/api/crm/interactions/client/${clientId}/timeline?limit=${limit}`
+    );
+    return response.timeline || [];
+  }
+
+  /**
+   * Get practices for a specific client
+   */
+  async getClientPractices(clientId: number): Promise<Practice[]> {
+    return this.client.request<Practice[]>(`/api/crm/practices/?client_id=${clientId}`);
   }
 }

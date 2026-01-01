@@ -82,6 +82,7 @@ export default function ChatPage() {
   const [currentStatus, setCurrentStatus] = useState<string>('');
   const [input, setInput] = useState('');
   const [thinkingElapsedTime, setThinkingElapsedTime] = useState(0);
+  const [streamingSteps, setStreamingSteps] = useState<Array<{ type: string; data: unknown; timestamp: Date }>>([]);
 
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -360,6 +361,7 @@ export default function ChatPage() {
 
     setInput('');
     setAttachedImages([]); // Clear images after capturing
+    setStreamingSteps([]); // Clear steps for new message
 
     const userMessage: OptimisticMessage = {
       id: generateId(),
@@ -414,7 +416,14 @@ export default function ChatPage() {
         // onDone - called when complete
         (fullResponse, sources, metadata) => {
           // Handle generated image from metadata (cast to access generated_image)
-          const imageUrl = (metadata as { generated_image?: string } | undefined)?.generated_image;
+          const typedMeta = metadata as {
+            generated_image?: string;
+            followup_questions?: string[];
+            execution_time?: number;
+            route_used?: string;
+          } | undefined;
+          const imageUrl = typedMeta?.generated_image;
+          const followupQuestions = typedMeta?.followup_questions;
 
           setMessages(prev =>
             prev.map(m =>
@@ -426,7 +435,11 @@ export default function ChatPage() {
                     isStreaming: false,
                     isPending: false,
                     // Add imageUrl if image was generated
-                    ...(imageUrl ? { imageUrl } : {})
+                    ...(imageUrl ? { imageUrl } : {}),
+                    // Add follow-up questions for proactivity
+                    ...(followupQuestions && followupQuestions.length > 0
+                      ? { metadata: { followup_questions: followupQuestions } }
+                      : {})
                   }
                 : m
             )
@@ -461,8 +474,11 @@ export default function ChatPage() {
           setCurrentStatus('');
           showToast('Failed to send message', 'error');
         },
-        // onStep - called for status updates
+        // onStep - called for all step events (thinking, tool_call, observation, status)
         (step) => {
+          // Track all steps for progress visualization
+          setStreamingSteps(prev => [...prev, step]);
+          // Update status text for display
           if (step.type === 'status' && typeof step.data === 'string') {
             setCurrentStatus(step.data);
           }
@@ -990,6 +1006,8 @@ export default function ChatPage() {
                       isVisible={true}
                       currentStatus={currentStatus}
                       elapsedTime={thinkingElapsedTime}
+                      steps={streamingSteps as Array<{ type: string; data: unknown; timestamp: Date }>}
+                      maxSteps={3}
                     />
                   );
                 }
@@ -1105,6 +1123,30 @@ export default function ChatPage() {
                         <button className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300">
                           <RefreshCw className="w-3.5 h-3.5" />
                         </button>
+                      </div>
+                    )}
+
+                    {/* Follow-up Questions - Proactive Suggestions */}
+                    {message.role === 'assistant' && !message.isStreaming && message.metadata?.followup_questions && message.metadata.followup_questions.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="w-3 h-3 text-purple-400" />
+                          <span className="text-xs text-gray-500 uppercase tracking-wide">Domande suggerite</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {message.metadata.followup_questions.map((question, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                setInput(question);
+                                setTimeout(() => handleSend(), 10);
+                              }}
+                              className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-purple-500/50 hover:bg-purple-500/10 transition-all"
+                            >
+                              {question}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 

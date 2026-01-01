@@ -377,6 +377,47 @@ export class ChatApi {
                   onStep({ type: 'status', data: `⏳ Still ${phase}... (${elapsed}s)`, timestamp: new Date() });
                 }
               }
+            } else if (data.type === 'thinking') {
+              // Emit thinking event with step info
+              resetIdleTimeout();
+              if (
+                onStep &&
+                typeof data.data === 'string' &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({ type: 'thinking', data: data.data, timestamp: new Date() });
+              }
+            } else if (data.type === 'tool_call') {
+              // Emit tool_call event with tool name and args
+              resetIdleTimeout();
+              if (
+                onStep &&
+                isRecord(data.data) &&
+                typeof data.data.tool === 'string' &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({
+                  type: 'tool_call',
+                  data: {
+                    tool: data.data.tool,
+                    args: isRecord(data.data.args) ? data.data.args : {}
+                  },
+                  timestamp: new Date(),
+                });
+              }
+            } else if (data.type === 'observation') {
+              // Emit observation event (tool result)
+              resetIdleTimeout();
+              if (
+                onStep &&
+                typeof data.data === 'string' &&
+                !signalToUse.aborted &&
+                !requestAborted
+              ) {
+                onStep({ type: 'observation', data: data.data, timestamp: new Date() });
+              }
             } else if (data.type === 'token') {
               const text =
                 (typeof data.content === 'string' && data.content) ||

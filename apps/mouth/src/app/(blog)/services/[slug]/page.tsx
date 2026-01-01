@@ -26,6 +26,28 @@ import {
  * Individual Service Page - Blog Style
  * Detailed pricing and service information
  */
+// Get visa package color based on type (KITAS/KITAP = orange, Visit = blue)
+function getVisaPackageColor(name: string): { bg: string; border: string; badge: string } {
+  const lowerName = name.toLowerCase();
+  // KITAS, KITAP, Working, Freelance, Investor KITAS, Spouse, Dependent, Retirement KITAS = Orange
+  if (lowerName.includes('kitas') || lowerName.includes('kitap') ||
+      lowerName.includes('working') || lowerName.includes('freelance') ||
+      lowerName.includes('spouse') || lowerName.includes('dependent') ||
+      lowerName.includes('retirement') || lowerName.includes('investor kitas')) {
+    return {
+      bg: 'bg-orange-500/20',
+      border: 'border-orange-500/40 hover:border-orange-400',
+      badge: 'bg-orange-500'
+    };
+  }
+  // Visit visas (C, D series) = Blue
+  return {
+    bg: 'bg-sky-500/20',
+    border: 'border-sky-500/40 hover:border-sky-400',
+    badge: 'bg-sky-500'
+  };
+}
+
 export default function ServiceDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -155,18 +177,26 @@ export default function ServiceDetailPage() {
           <h2 className="font-serif text-2xl text-white mb-8">Pricing</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {service.packages.map((pkg, index) => (
+            {service.packages.map((pkg, index) => {
+              // Use visa colors for visa service
+              const visaColors = slug === 'visa' ? getVisaPackageColor(pkg.name) : null;
+
+              return (
               <div
                 key={pkg.name}
                 className={`rounded-xl border p-6 cursor-pointer transition-all hover:scale-[1.02] ${
-                  pkg.popular
-                    ? 'border-[#2251ff] bg-[#2251ff]/10 hover:border-[#2251ff]'
-                    : 'border-white/10 bg-[#0a2540] hover:border-white/30'
+                  slug === 'visa' && visaColors
+                    ? `${visaColors.bg} ${visaColors.border}`
+                    : pkg.popular
+                      ? 'border-[#2251ff] bg-[#2251ff]/10 hover:border-[#2251ff]'
+                      : 'border-white/10 bg-[#0a2540] hover:border-white/30'
                 }`}
                 onClick={() => setSelectedPackage(pkg)}
               >
                 {pkg.popular && (
-                  <span className="inline-block px-3 py-1 rounded-full bg-[#2251ff] text-white text-xs font-medium mb-4">
+                  <span className={`inline-block px-3 py-1 rounded-full text-white text-xs font-medium mb-4 ${
+                    slug === 'visa' && visaColors ? visaColors.badge : 'bg-[#2251ff]'
+                  }`}>
                     Most Popular
                   </span>
                 )}
@@ -195,16 +225,19 @@ export default function ServiceDetailPage() {
 
                 <button
                   className={`flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-medium transition-colors ${
-                    pkg.popular
-                      ? 'bg-[#2251ff] text-white hover:bg-[#1a41cc]'
-                      : 'border border-white/20 text-white hover:bg-white/10'
+                    slug === 'visa' && visaColors
+                      ? `${visaColors.badge} text-white hover:opacity-90`
+                      : pkg.popular
+                        ? 'bg-[#2251ff] text-white hover:bg-[#1a41cc]'
+                        : 'border border-white/20 text-white hover:bg-white/10'
                   }`}
                 >
                   <Info className="w-4 h-4" />
                   More Details
                 </button>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           <p className="text-white/40 text-sm text-center mt-8">
@@ -408,7 +441,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     icon: Plane,
     bgColor: 'bg-rose-500/10',
     iconColor: 'text-rose-400',
-    timeline: '3 days - 8 weeks',
+    timeline: '7-10 days / 4-6 weeks (Working/Freelance)',
     documentsRequired: '5-10 docs',
     validity: '30 days - Permanent',
     packages: [
@@ -419,7 +452,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '2.300.000',
         features: [
           '60 days initial (max 180 days)',
-          '3-5 working days processing',
+          '7-10 days processing',
           'Extension: 1.700.000 IDR each',
         ],
         popular: false,
@@ -430,7 +463,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '3.600.000',
         features: [
           '60 days (extendable to 180)',
-          'Single entry visa',
+          '7-10 days processing',
           'Extension: 1.700.000 IDR each',
         ],
         popular: false,
@@ -508,7 +541,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '7.500.000',
         features: [
           '1 year (or 10M for 2 years)',
-          'Site visits & feasibility studies',
+          '7-10 days processing',
           'Path to investor visa',
         ],
         popular: false,
@@ -520,8 +553,8 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '34.500.000',
         features: [
           '1 year validity (renewable)',
+          '4-6 weeks processing (RPTKA + IMTA)',
           'Company sponsorship required',
-          'IMTA & RPTKA included',
         ],
         popular: false,
       },
@@ -531,8 +564,8 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '26.000.000',
         features: [
           'Up to 6 months validity',
+          '4-6 weeks processing (RPTKA + IMTA)',
           'Work without specific employer',
-          'IMTA work permit included',
         ],
         popular: true,
       },
@@ -542,7 +575,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '17.000.000',
         features: [
           '2 years validity',
-          'Multiple entry/exit',
+          '7-10 days processing',
           'Extension: 18.000.000 IDR',
         ],
         popular: false,
@@ -553,8 +586,8 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '11.000.000',
         features: [
           '1 year (or 15M for 2 years)',
+          '7-10 days processing',
           'Marriage certificate required',
-          'Multiple entry permit',
         ],
         popular: false,
       },
@@ -564,7 +597,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '11.000.000',
         features: [
           '1 year (or 15M for 2 years)',
-          'For spouse & children',
+          '7-10 days processing',
           'Linked to main permit holder',
         ],
         popular: false,
@@ -575,7 +608,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         price: '14.000.000',
         features: [
           '1 year validity',
-          'Age 60 and above',
+          '7-10 days processing',
           'Extension: 10.000.000 IDR',
         ],
         popular: false,
@@ -657,7 +690,7 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     faqs: [
       {
         question: 'How long does KITAS processing take?',
-        answer: 'Processing varies by type: Investor KITAS ~2 weeks, Freelance KITAS 30-45 days, Working KITAS 45-60 days. Offshore applications may be faster.',
+        answer: 'Most visas and KITAS (C, D, E series) take 7-10 days from application to e-visa issuance. Only Working and Freelance KITAS take 4-6 weeks due to RPTKA and IMTA approval process.',
       },
       {
         question: 'Can I work while my KITAS is being processed?',

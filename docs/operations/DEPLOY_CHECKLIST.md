@@ -70,10 +70,10 @@ flyctl logs -a nuzantara-rag | grep -i "database\|db_pool\|error\|503"
 sleep 60
 
 # Verifica health endpoint
-curl https://nuzantara-rag.fly.dev/api/health | jq .
+curl https://nuzantara-rag.fly.dev/health | jq .
 
 # Verifica database status
-curl https://nuzantara-rag.fly.dev/api/health/detailed | jq '.services.database'
+curl https://nuzantara-rag.fly.dev/health/detailed | jq '.services.database'
 ```
 
 ---
@@ -164,7 +164,7 @@ flyctl logs -a nuzantara-rag | grep -i "error\|503\|exception"
 flyctl metrics -a nuzantara-rag
 
 # Health endpoint
-watch -n 5 'curl -s https://nuzantara-rag.fly.dev/api/health/detailed | jq ".services.database"'
+watch -n 5 'curl -s https://nuzantara-rag.fly.dev/health/detailed | jq ".services.database"'
 ```
 
 ### Primo Giorno

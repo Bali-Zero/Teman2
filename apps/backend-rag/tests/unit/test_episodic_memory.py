@@ -94,7 +94,8 @@ class TestEventTypeDetection:
 
     def test_detect_resolution(self):
         """Test detection of resolution events"""
-        result = self.service._detect_event_type("Il problema e stato risolto")
+        # Use phrase without "problema" to avoid matching PROBLEM first
+        result = self.service._detect_event_type("Tutto e stato risolto e funziona")
         assert result == EventType.RESOLUTION
 
     def test_detect_decision(self):

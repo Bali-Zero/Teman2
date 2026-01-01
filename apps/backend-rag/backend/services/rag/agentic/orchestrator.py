@@ -168,9 +168,11 @@ Pertanyaan User:
 🔴 DO NOT USE SLANG OR INFORMAL LANGUAGE unless specifically requested.
 
 🛠️ TOOL USAGE INSTRUCTION:
-For factual questions about services, prices, regulations, or company details:
-→ ALWAYS use the appropriate tool (e.g., vector_search, get_pricing) FIRST to retrieve verified information.
-→ Do NOT answer from memory alone - search the knowledge base.
+→ ALWAYS use vector_search FIRST to retrieve verified documents from the knowledge base.
+→ For relationship/prerequisite questions, use knowledge_graph_search AFTER vector_search (not instead of it).
+→ Do NOT answer from memory alone - your evidence score depends on vector_search results.
+→ WRONG: knowledge_graph_search only → Evidence=0 → ABSTAIN
+→ RIGHT: vector_search → (optional) knowledge_graph_search → Answer with citations
 
 User Query:
 """
@@ -642,7 +644,8 @@ class AgenticRAGOrchestrator:
         deep_think_mode = False
 
         # Initialize state components for ReAct
-        state = AgentState(query=query)
+        # Non-streaming defaults to business_complex to allow multi-tool reasoning
+        state = AgentState(query=query, intent_type="business_complex")
 
         # Build system prompt with KG context
         system_context_for_prompt = ""
@@ -1137,7 +1140,8 @@ Respond in the SAME language the user is using."""
 
         # Pass skip_rag flag for general tasks (translation, summarization, etc.)
         skip_rag = intent.get("skip_rag", False)
-        state = AgentState(query=query, skip_rag=skip_rag)
+        intent_category = intent.get("category", "simple")
+        state = AgentState(query=query, skip_rag=skip_rag, intent_type=intent_category)
         logger.debug(f"User context retrieved (early). History len: {len(history_to_use)}")
 
         # --- QUALITY ROUTING: REACT LOOP STREAMING (Full Agentic Architecture) ---
@@ -1304,6 +1308,26 @@ Respond in the SAME language the user is using."""
                 "answer_length": len(full_answer),
                 "tools_executed": tool_execution_counter["count"],
             })
+
+            # 🎯 PROACTIVITY: Generate follow-up questions
+            followup_questions = []
+            if full_answer and len(full_answer) > 50:  # Only for substantial answers
+                try:
+                    followup_questions = await self.followup_service.get_followups(
+                        query=query,
+                        response=full_answer[:500],  # Use first 500 chars for efficiency
+                        use_ai=True,  # AI generates in user's language (any language)
+                        conversation_context=None
+                    )
+                    if followup_questions:
+                        logger.info(f"📝 [Proactive] Generated {len(followup_questions)} follow-up questions")
+                        # Emit metadata event with follow-up questions
+                        yield {
+                            "type": "metadata",
+                            "data": {"followup_questions": followup_questions}
+                        }
+                except Exception as followup_err:
+                    logger.warning(f"⚠️ [Proactive] Failed to generate follow-ups: {followup_err}")
 
             # 🧠 MEMORY PERSISTENCE (background)
             if full_answer and user_id and user_id != "anonymous":

@@ -10,6 +10,8 @@ Essential Tools (Dec 2025):
 - TeamKnowledgeTool: Team member information.
 - CalculatorTool: Safe mathematical calculations (Safe Math).
 - VisionTool: Visual document analysis.
+- ImageGenerationTool: AI image generation (Google Imagen / Pollinations fallback).
+- WebSearchTool: Web search for topics outside KB (tourism, lifestyle, general info).
 
 DESIGN PRINCIPLE: No hardcoded keywords, patterns, or domain knowledge.
 The LLM decides which collection to search based on the tool description.
@@ -28,13 +30,14 @@ logger = logging.getLogger(__name__)
 
 # Available collections - NO domain mapping, NO keywords
 # The LLM reads the description and decides which to use
+# Note: Collections ending in _hybrid have BM25 sparse vectors for better search
 AVAILABLE_COLLECTIONS = [
     "visa_oracle",
     "legal_unified_hybrid",
     "kbli_unified",
-    "tax_genius",
-    "bali_zero_pricing",
-    "training_conversations",
+    "tax_genius_hybrid",  # Migrated to hybrid format Dec 2025
+    "bali_zero_pricing",  # Uses integer IDs, kept as-is
+    "training_conversations_hybrid",  # Migrated to hybrid format Dec 2025
 ]
 
 
@@ -57,15 +60,18 @@ class VectorSearchTool(BaseTool):
     @property
     def description(self) -> str:
         return (
-            "Search the knowledge base for verified information.\n"
-            "You MUST specify a collection based on the query topic:\n"
+            "Search the knowledge base for verified information.\n\n"
+            "**DEFAULT: FEDERATED SEARCH** - Omit 'collection' to search ALL collections at once.\n"
+            "This is recommended for complex questions that may span multiple topics.\n\n"
+            "**OPTIONALLY specify a collection** ONLY for focused single-topic queries:\n"
             "- visa_oracle: Visas, KITAS, KITAP, immigration, stay permits\n"
-            "- legal_unified_hybrid: Laws, company types (PT, CV, Firma), regulations, Perseroan Terbatas\n"
+            "- legal_unified_hybrid: Laws, company types (PT, CV, Firma), regulations\n"
             "- kbli_unified: Business classification codes (KBLI), OSS, NIB\n"
-            "- tax_genius: Taxes, PPh, PPN, NPWP, fiscal matters, tax treaties\n"
-            "- bali_zero_pricing: Official Service Pricing & Costs (Database)\n"
-            "- training_conversations: Procedures, practical examples, how-to guides\n\n"
-            "If unsure, omit collection to search all."
+            "- tax_genius_hybrid: Taxes, PPh, PPN, NPWP, fiscal matters\n"
+            "- bali_zero_pricing: Official Service Pricing & Costs\n"
+            "- training_conversations_hybrid: Procedures, practical examples\n\n"
+            "Example: 'PT PMA requirements' → federated (legal + visa + tax)\n"
+            "Example: 'PPh 21 rates' → collection='tax_genius_hybrid'"
         )
 
     @property
@@ -535,4 +541,247 @@ class ImageGenerationTool(BaseTool):
                     "image_url": fallback_url,
                     "service": "pollinations_fallback",
                     "message": f"Generated image for: {prompt}"
+                })
+
+
+class WebSearchTool(BaseTool):
+    """
+    Tool for searching the web when information is not available in the knowledge base.
+
+    Supports two providers:
+    - Tavily (preferred): AI-optimized search with 1,000 free queries/month
+    - Brave (fallback): Independent search index with 2,000 free queries/month
+
+    Use this tool ONLY when:
+    1. The user asks about topics outside Bali Zero's core services (tourism, lifestyle, general info)
+    2. The vector_search tool returns no relevant results
+    3. The user explicitly asks for current/latest information from the web
+
+    IMPORTANT: Results from this tool are NOT verified by Bali Zero's knowledge base.
+    Always include the disclaimer when presenting web search results to users.
+    """
+
+    # Standard disclaimer for web results - append to all responses
+    WEB_DISCLAIMER = (
+        "\n\n---\n"
+        "*Note: This information was sourced from the web and has not been verified "
+        "by Bali Zero's official knowledge base. For visa, legal, tax, or business setup "
+        "questions, please refer to our verified documentation or contact our team directly.*"
+    )
+
+    def __init__(self):
+        self._tavily_key = None
+        self._brave_key = None
+
+    def _get_keys(self):
+        """Lazy load API keys from settings."""
+        if self._tavily_key is None and self._brave_key is None:
+            from app.core.config import settings
+            self._tavily_key = settings.tavily_api_key
+            self._brave_key = settings.brave_api_key
+        return self._tavily_key, self._brave_key
+
+    @property
+    def name(self) -> str:
+        return "web_search"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Search the web for information NOT available in the knowledge base.\n\n"
+            "**USE CASES:**\n"
+            "1. Tourism, restaurants, lifestyle, current events, general knowledge\n"
+            "2. **LOCAL CONTEXT ENRICHMENT**: When user asks about opening a business in a specific "
+            "location (e.g., 'restaurant in Canggu', 'hotel in Dago'), use this to find "
+            "local competitors, market atmosphere, and scene description. This helps clients "
+            "'breathe the atmosphere' of the area.\n\n"
+            "**DO NOT use for:** visas, KITAS, PT PMA, taxes, legal - use vector_search instead.\n"
+            "Web results are NOT verified and will include a disclaimer."
+        )
+
+    @property
+    def parameters_schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query in natural language"
+                },
+                "num_results": {
+                    "type": "integer",
+                    "description": "Number of results to return (default: 5, max: 10)"
+                },
+            },
+            "required": ["query"],
+        }
+
+    async def _search_tavily(self, query: str, num_results: int, api_key: str) -> dict:
+        """Search using Tavily API (AI-optimized)."""
+        import httpx
+
+        url = "https://api.tavily.com/search"
+        headers = {
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "api_key": api_key,
+            "query": query,
+            "max_results": num_results,
+            "search_depth": "basic",
+            "include_answer": True,
+        }
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+
+    async def _search_brave(self, query: str, num_results: int, api_key: str) -> dict:
+        """Search using Brave Search API (fallback)."""
+        import httpx
+
+        url = "https://api.search.brave.com/res/v1/web/search"
+        headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "X-Subscription-Token": api_key,
+        }
+        params = {
+            "q": query,
+            "count": num_results,
+            "text_decorations": False,
+            "search_lang": "en",
+        }
+
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            return response.json()
+
+    async def execute(self, query: str, num_results: int = 5, **kwargs) -> str:
+        """
+        Execute web search using Tavily (primary) or Brave (fallback).
+
+        Returns formatted results with source URLs and the standard disclaimer.
+        """
+        import httpx
+
+        with trace_span("tool.web_search", {
+            "query_length": len(query),
+            "num_results": num_results,
+        }):
+            tavily_key, brave_key = self._get_keys()
+
+            if not tavily_key and not brave_key:
+                logger.warning("⚠️ [WebSearch] No API keys configured (TAVILY_API_KEY or BRAVE_API_KEY)")
+                return json.dumps({
+                    "success": False,
+                    "error": "Web search not configured. Please contact support.",
+                    "disclaimer": self.WEB_DISCLAIMER
+                })
+
+            # Clamp num_results
+            num_results = min(max(1, int(num_results) if num_results else 5), 10)
+
+            try:
+                provider = None
+                results = []
+                ai_answer = None
+
+                # Try Tavily first (AI-optimized)
+                if tavily_key:
+                    try:
+                        logger.info(f"🌐 [WebSearch] Searching Tavily: {query[:50]}...")
+                        data = await self._search_tavily(query, num_results, tavily_key)
+                        provider = "tavily"
+                        results = data.get("results", [])
+                        ai_answer = data.get("answer")  # Tavily provides AI-generated answer
+                    except Exception as e:
+                        logger.warning(f"⚠️ [WebSearch] Tavily failed: {e}, trying Brave...")
+
+                # Fallback to Brave
+                if not results and brave_key:
+                    try:
+                        logger.info(f"🌐 [WebSearch] Searching Brave: {query[:50]}...")
+                        data = await self._search_brave(query, num_results, brave_key)
+                        provider = "brave"
+                        results = data.get("web", {}).get("results", [])
+                    except Exception as e:
+                        logger.error(f"❌ [WebSearch] Brave also failed: {e}")
+                        raise
+
+                if not results:
+                    set_span_status("ok")
+                    return json.dumps({
+                        "success": True,
+                        "content": "No relevant web results found for this query.",
+                        "sources": [],
+                        "disclaimer": self.WEB_DISCLAIMER
+                    })
+
+                # Format results based on provider
+                formatted_results = []
+                sources = []
+
+                # Add AI answer if available (Tavily)
+                if ai_answer:
+                    formatted_results.append(f"**Summary:** {ai_answer}\n")
+
+                for i, result in enumerate(results[:num_results]):
+                    if provider == "tavily":
+                        title = result.get("title", "Untitled")
+                        content = result.get("content", "No content available")
+                        url = result.get("url", "")
+                    else:  # brave
+                        title = result.get("title", "Untitled")
+                        content = result.get("description", "No description available")
+                        content = content.replace("<strong>", "").replace("</strong>", "")
+                        url = result.get("url", "")
+
+                    formatted_results.append(
+                        f"[{i + 1}] **{title}**\n"
+                        f"   {content[:300]}...\n"
+                        f"   Source: {url}"
+                    )
+
+                    sources.append({
+                        "id": i + 1,
+                        "title": title,
+                        "url": url,
+                        "content": content[:200],
+                        "verified": False,
+                    })
+
+                content = "\n\n".join(formatted_results)
+                content_with_disclaimer = content + self.WEB_DISCLAIMER
+
+                logger.info(f"✅ [WebSearch] Found {len(sources)} results via {provider}")
+                set_span_status("ok")
+
+                return json.dumps({
+                    "success": True,
+                    "content": content_with_disclaimer,
+                    "sources": sources,
+                    "source_type": "web_search",
+                    "provider": provider,
+                    "disclaimer": self.WEB_DISCLAIMER,
+                    "query": query,
+                })
+
+            except httpx.HTTPStatusError as e:
+                logger.error(f"❌ [WebSearch] HTTP error: {e.response.status_code}")
+                set_span_status("error", str(e))
+                return json.dumps({
+                    "success": False,
+                    "error": f"Web search failed: HTTP {e.response.status_code}",
+                    "disclaimer": self.WEB_DISCLAIMER
+                })
+            except Exception as e:
+                logger.error(f"❌ [WebSearch] Error: {e}")
+                set_span_status("error", str(e))
+                return json.dumps({
+                    "success": False,
+                    "error": f"Web search error: {str(e)}",
+                    "disclaimer": self.WEB_DISCLAIMER
                 })

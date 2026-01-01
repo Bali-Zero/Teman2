@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import DOMPurify from 'dompurify';
 import {
   X,
@@ -14,9 +14,15 @@ import {
   Clock,
   ChevronDown,
   MoreHorizontal,
+  User,
+  UserPlus,
+  ExternalLink,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 import type { EmailDetail, EmailAttachment } from '@/lib/api/email/email.types';
+import type { Client } from '@/lib/api/crm/crm.types';
 
 interface EmailViewerProps {
   email: EmailDetail | null;
@@ -28,6 +34,7 @@ interface EmailViewerProps {
   onDelete: () => void;
   onDownloadAttachment: (attachmentId: string, filename: string) => void;
   isLoading?: boolean;
+  onAddToCRM?: (email: string, name: string) => void;
 }
 
 export function EmailViewer({
@@ -40,8 +47,38 @@ export function EmailViewer({
   onDelete,
   onDownloadAttachment,
   isLoading,
+  onAddToCRM,
 }: EmailViewerProps) {
-  const [showFullHeaders, setShowFullHeaders] = React.useState(false);
+  const [showFullHeaders, setShowFullHeaders] = useState(false);
+  const [senderClient, setSenderClient] = useState<Client | null>(null);
+  const [isLoadingClient, setIsLoadingClient] = useState(false);
+  const [clientLookupDone, setClientLookupDone] = useState(false);
+
+  // Lookup client when email changes
+  useEffect(() => {
+    const lookupClient = async () => {
+      if (!email?.from?.address) {
+        setSenderClient(null);
+        setClientLookupDone(false);
+        return;
+      }
+
+      setIsLoadingClient(true);
+      setClientLookupDone(false);
+      try {
+        const client = await api.crm.getClientByEmail(email.from.address);
+        setSenderClient(client);
+      } catch (error) {
+        console.error('Failed to lookup client:', error);
+        setSenderClient(null);
+      } finally {
+        setIsLoadingClient(false);
+        setClientLookupDone(true);
+      }
+    };
+
+    lookupClient();
+  }, [email?.from?.address]);
 
   if (isLoading) {
     return (
@@ -202,6 +239,39 @@ export function EmailViewer({
           </div>
         </div>
 
+        {/* CRM Client Badge */}
+        {clientLookupDone && (
+          <div className="px-4 py-2 border-b border-[var(--border)] bg-[var(--background-elevated)]/50">
+            {isLoadingClient ? (
+              <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
+                <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                <span>Checking CRM...</span>
+              </div>
+            ) : senderClient ? (
+              <a
+                href={`/clienti/${senderClient.id}`}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 transition-colors text-sm font-medium"
+              >
+                {senderClient.client_type === 'company' ? (
+                  <Building2 className="w-4 h-4" />
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+                <span>Cliente: {senderClient.full_name}</span>
+                <ExternalLink className="w-3 h-3 opacity-60" />
+              </a>
+            ) : (
+              <button
+                onClick={() => onAddToCRM?.(email.from.address, email.from.name || '')}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors text-sm font-medium"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Nuovo contatto - Aggiungi a CRM</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Attachments */}
         {email.attachments && email.attachments.length > 0 && (
           <div className="p-4 border-b border-[var(--border)]">
@@ -292,13 +362,20 @@ function FileIcon({ mimeType }: { mimeType: string }) {
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleString('en-US', {
+  // Handle timestamp (milliseconds) from Zoho API or ISO string
+  const timestamp = Number(dateStr);
+  const date = !isNaN(timestamp) && timestamp > 1000000000000
+    ? new Date(timestamp)  // Timestamp in milliseconds
+    : new Date(dateStr);   // ISO string
+
+  if (isNaN(date.getTime())) return '';
+
+  return date.toLocaleString('it-IT', {
     weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
   });
 }

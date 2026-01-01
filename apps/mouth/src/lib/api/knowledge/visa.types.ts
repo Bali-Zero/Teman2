@@ -42,6 +42,8 @@ export interface VisaType {
     new_visa?: boolean;
     prerequisite?: string;
     requirement?: string;
+    pdf_url?: string;
+    dependent_note?: string;
   } | null;
   last_updated: string | null;
   created_at: string | null;

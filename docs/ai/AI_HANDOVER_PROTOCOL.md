@@ -102,6 +102,14 @@ Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
 | 2025-12-31 | Trusted tools bypass | `reasoning.py:867-883` | v1177 |
 | 2025-12-31 | LLM Gateway images param | `llm_gateway.py` | v1178 |
 | 2025-12-31 | Image gen URL cleaning | `chat.api.ts` | v1179 |
+| 2025-12-31 | CRM RBAC (admin/team filter) | `crm_practices.py` | v1224 |
+| 2025-12-31 | One-Click Actions (WA/Email/Call) | `cases/page.tsx` | - |
+| 2025-12-31 | Client 360° Page | `clients/[id]/page.tsx` | - |
+| 2025-12-31 | Timeline API response fix | `crm.api.ts` | - |
+| 2026-01-01 | DB table names fix (crm_* → real) | `client_scoring.py`, `client_value_predictor.py` | v1218 |
+| 2026-01-01 | visa_types correct codes (E28A, E33G, D1...) | `seed_visa_types.py` | v1218 |
+| 2026-01-01 | Visa PDF generation (25 types, Bali Zero style) | `/tmp/create_visa_pdf_v2.py` | - |
+| 2026-01-01 | KBLI PDF generator prototype | `/tmp/create_kbli_pdf.py` | - |
 
 #### 6.3 Trusted Tools
 
@@ -144,6 +152,86 @@ fly logs -a nuzantara-rag | grep -E "Evidence|Trusted|ABSTAIN"
 | `🛡️ [Uncertainty] Evidence Score: X.XX` | Score calcolato |
 | `🧮 [Trusted Tool] X used successfully` | Bypass attivo |
 | `🛡️ [Uncertainty] Triggered ABSTAIN` | Sistema rifiuta |
+
+#### 6.6 CRM RBAC (Role-Based Access Control)
+
+**File:** `backend/app/routers/crm_practices.py`
+
+Il CRM implementa controllo accessi basato su ruoli:
+
+| Ruolo | Accesso |
+|-------|---------|
+| Admin (`zero@balizero.com`, `admin@balizero.com`) | Vede TUTTI i clienti e pratiche |
+| Team Member | Vede solo clienti con `assigned_to` = propria email |
+
+**Implementazione:**
+```python
+ADMIN_EMAILS = {"zero@balizero.com", "admin@balizero.com"}
+
+def is_admin_user(user: dict) -> bool:
+    email = user.get("email", "").lower()
+    return email in ADMIN_EMAILS or user.get("role") == "admin"
+```
+
+**Endpoints protetti:**
+- `GET /api/crm/practices` - Lista filtrata per team member
+- `GET /api/crm/practices/{id}` - Accesso solo se autorizzato
+- `PATCH /api/crm/practices/{id}` - Modifica solo se autorizzato
+
+#### 6.7 Client 360° Page (Frontend)
+
+**Path:** `/clients/[id]`
+**File:** `apps/mouth/src/app/(workspace)/clients/[id]/page.tsx`
+
+Mostra vista completa del cliente:
+- Info cliente (email, telefono, nazionalità)
+- Quick Actions (WhatsApp, Email, Call)
+- Stats (Total Cases, Active, Completed, Revenue)
+- Lista Cases con status badges
+- Activity Timeline
+
+**API utilizzate:**
+- `api.crm.getClient(id)` → Client info
+- `api.crm.getClientPractices(id)` → Lista cases
+- `api.crm.getClientTimeline(id)` → Timeline (nota: risposta è `{timeline: []}`)
+
+---
+
+#### 6.8 Visa PDF System (Bali Zero Style)
+
+**Status:** 25 visa types generati e deployati
+
+**Files:**
+- Generator: `/tmp/create_visa_pdf_v2.py`
+- Batch generator: `/tmp/generate_all_pdfs.py`
+- Logo: `/Users/antonellosiano/Desktop/Investor KITAS - Bali Zero_files/balizero-logo-transparent.png`
+
+**Deployed to:** `apps/mouth/public/files/visa/`
+**URL pattern:** `https://nuzantara-mouth.fly.dev/files/visa/{CODE}_{Name}_BaliZero.pdf`
+
+**Database:** `visa_types.metadata->>'pdf_url'` contiene il path relativo
+
+#### 6.9 KBLI PDF System (In Progress)
+
+**Scopo:** Generare PDF informativi per i 200 KBLI più importanti
+
+**Data source:**
+- JSON backup: `/Users/antonellosiano/Desktop/balizero/kbli_unified_export_BACKUP_20251224_004908.json`
+- Records: 2,818 KBLI codes
+- Fonti: OSS_RBA_API (2,595), PP_28_2025 (1,945)
+
+**Prototype:** `/tmp/create_kbli_pdf.py` - Genera PDF stile Bali Zero per singolo KBLI
+
+**Workflow a 2 livelli (definito dall'utente):**
+| Tier | Contenuto | Metodo |
+|------|-----------|--------|
+| **BASIC** | Dati KBLI puri (requirements, PMA, risk) | Automatizzabile con script |
+| **DEEP** | Ricerca accademica, casi regionali | NotebookLM (manuale) |
+
+**Prossimi step:**
+1. Definire lista 200 KBLI prioritari
+2. Generare tutti i PDF Basic in batch
+3. Ingestire PDF NotebookLM in Qdrant come `kbli_premium_guides`
 
 ---
 

@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Plane,
   Building2,
@@ -29,6 +30,16 @@ export default function ServicesPage() {
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16 lg:py-24">
           <div className="max-w-3xl">
+            {/* BALI ZERO Logo */}
+            <div className="mb-8">
+              <Image
+                src="/images/balizero-logo.png"
+                alt="Bali Zero"
+                width={80}
+                height={80}
+                className="rounded-full"
+              />
+            </div>
             <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
               Our Services
             </span>
@@ -55,7 +66,7 @@ export default function ServicesPage() {
                 href="/chat"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
               >
-                <MessageCircle className="w-4 h-4" />
+                <Image src="/images/zantara-lotus.png" alt="" width={24} height={24} />
                 Ask Zantara AI
               </Link>
             </div>
@@ -115,8 +126,14 @@ export default function ServicesPage() {
                   <div className="mb-6">
                     <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Starting from</p>
                     <p className="text-2xl font-bold text-white">
-                      {service.startingPrice}
-                      <span className="text-white/40 text-sm font-normal ml-2">IDR</span>
+                      {service.startingPrice === 'Contact' ? (
+                        <span className="text-[#2251ff]">Contact for quote</span>
+                      ) : (
+                        <>
+                          {service.startingPrice}
+                          <span className="text-white/40 text-sm font-normal ml-2">IDR</span>
+                        </>
+                      )}
                     </p>
                   </div>
 
@@ -169,6 +186,16 @@ export default function ServicesPage() {
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
+              {/* BALI ZERO Logo */}
+              <div className="mb-6">
+                <Image
+                  src="/images/balizero-logo.png"
+                  alt="Bali Zero"
+                  width={64}
+                  height={64}
+                  className="rounded-full border-2 border-white/30"
+                />
+              </div>
               <h2 className="font-serif text-3xl lg:text-4xl text-white mb-4">
                 Ready to Start?
               </h2>
@@ -223,61 +250,61 @@ const SERVICES = [
   {
     name: 'Visa & Immigration',
     slug: 'visa',
-    tagline: 'Stay and work legally in Indonesia',
+    tagline: 'Complete visa solutions for living and working in Indonesia',
     icon: Plane,
     bgColor: 'bg-rose-500/10',
     iconColor: 'text-rose-400',
-    startingPrice: '3.500.000',
+    startingPrice: '2.300.000',
     highlights: [
-      'KITAS (Work & Investor Permits)',
-      'KITAP (Permanent Stay)',
-      'Golden Visa Program',
-      'Visa Extensions & Renewals',
+      'Visit Visas (C1, C2 Business)',
+      'KITAS (Working, Freelance, Investor)',
+      'KITAP (Permanent Residence)',
+      'Multiple Entry Visas (D Series)',
     ],
   },
   {
-    name: 'Company Setup',
+    name: 'Company Setup & Licenses',
     slug: 'company',
-    tagline: 'Launch your business in Indonesia',
+    tagline: 'From licenses to structure — launch your business fast',
     icon: Building2,
     bgColor: 'bg-orange-500/10',
     iconColor: 'text-orange-400',
-    startingPrice: '15.000.000',
+    startingPrice: '7.000.000',
     highlights: [
-      'PT PMA (Foreign Company)',
-      'PT Local & CV',
-      'Business Licenses (NIB, OSS)',
-      'Virtual Office Solutions',
+      'PT PMA/PMDN (Foreign Company)',
+      'Company Revision & Changes',
+      'Alcohol License',
+      'OSS & Business Permits',
     ],
   },
   {
-    name: 'Tax & Compliance',
+    name: 'Tax Consulting',
     slug: 'tax',
-    tagline: 'Stay compliant, optimize taxes',
+    tagline: 'Navigate Indonesia\'s tax system with confidence',
     icon: Calculator,
     bgColor: 'bg-amber-500/10',
     iconColor: 'text-amber-400',
-    startingPrice: '2.500.000',
+    startingPrice: 'Contact',
     highlights: [
-      'Personal Tax (SPT)',
-      'Corporate Tax Filing',
-      'Tax Planning & Optimization',
-      'Annual Compliance Reports',
+      'Tax Registration (NPWP)',
+      'Tax Filing & Reporting (SPT)',
+      'Corporate Tax Planning',
+      'Personal Income Tax',
     ],
   },
   {
-    name: 'Property Services',
+    name: 'Real Estate Services',
     slug: 'property',
-    tagline: 'Secure your Indonesian property',
+    tagline: 'Secure property with legal clarity and guidance',
     icon: Home,
     bgColor: 'bg-emerald-500/10',
     iconColor: 'text-emerald-400',
-    startingPrice: '5.000.000',
+    startingPrice: 'Contact',
     highlights: [
-      'Property Due Diligence',
-      'Lease Agreements',
-      'Land Certificate Checks',
-      'Ownership Structures (PT/Nominee)',
+      'Legal Due Diligence',
+      'Leasehold Agreements (Hak Sewa)',
+      'IMB & Building Permits',
+      'Ownership Structures (PT PMA)',
     ],
   },
 ];

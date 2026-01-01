@@ -22,13 +22,14 @@ class KnowledgeGraphTool(BaseTool):
     @property
     def description(self) -> str:
         return (
-            "Explore the business knowledge graph to find structured relationships, "
-            "prerequisites, and dependencies between entities.\n"
-            "Useful for questions like:\n"
-            "- 'What is required for PT PMA?'\n"
-            "- 'What links KITAS and work permit?'\n"
-            "- 'What are the tax obligations for restaurants?'\n\n"
-            "DO NOT use for general text search; use vector_search for that."
+            "Query the knowledge graph to find structured relationships and dependencies.\n\n"
+            "**USE THIS TOOL** for questions about:\n"
+            "- Prerequisites: 'What is required for PT PMA?'\n"
+            "- Connections: 'What links KITAS and work permit?'\n"
+            "- Obligations: 'What taxes apply to restaurants?'\n"
+            "- Steps/Procedures: 'What are the steps to open a company?'\n\n"
+            "**TIP**: Use AFTER vector_search for deeper insights on relationships.\n"
+            "vector_search finds documents → knowledge_graph finds entity connections."
         )
 
     @property

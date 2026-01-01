@@ -35,7 +35,7 @@ D1 adalah visa visit, bukan residence. Setelah 60 hari:
 
 Contoh: Tinggal 60 hari → flight ke Singapore 1 malam → balik Indonesia → 60 hari lagi.
 
-Kalau butuh stay lebih lama + kerja remote, pertimbangkan **E33G Digital Nomad KITAS** (5 tahun, bisa kerja remote).
+Kalau butuh stay lebih lama + kerja remote, pertimbangkan **E33G Digital Nomad KITAS** (1 tahun, extendable, bisa kerja remote).
 
 **3 — Client:**
 Oh I see. Jadi D1 untuk frequent short trips, E33G untuk long stay + remote work ya?
@@ -46,7 +46,7 @@ Oh I see. Jadi D1 untuk frequent short trips, E33G untuk long stay + remote work
 | Visa | Validity | Max Stay | Extension | Best For |
 |------|----------|----------|-----------|----------|
 | **D1 Tourism** | 5 tahun | 60 hari/entry | Tidak bisa | Frequent traveler |
-| **E33G Digital Nomad** | 5 tahun | 5 tahun | Bisa extend | Long-term + remote work |
+| **E33G Digital Nomad** | 1 tahun | Extendable | Bisa extend | Long-term + remote work |
 | **VOA** | 30 hari | 30 hari | 1x extend | Short holiday |
 
 D1 = convenience untuk frequent trips, E33G = long-term stay.
@@ -258,7 +258,7 @@ D1 is a visit visa, not residence. After 60 days:
 
 Example: Stay 60 days → fly to Singapore overnight → return to Indonesia → another 60 days.
 
-If you need longer stays + remote work, consider **E33G Digital Nomad KITAS** (5 years, remote work allowed).
+If you need longer stays + remote work, consider **E33G Digital Nomad KITAS** (1 year, extendable, remote work allowed).
 
 **3 — Client:**
 Got it. So D1 is for frequent short trips, E33G for long stays + remote work?
@@ -269,7 +269,7 @@ Got it. So D1 is for frequent short trips, E33G for long stays + remote work?
 | Visa | Validity | Max Stay | Extension | Best For |
 |------|----------|----------|-----------|----------|
 | **D1 Tourism** | 5 years | 60 days/entry | No | Frequent travelers |
-| **E33G Digital Nomad** | 5 years | 5 years | Yes | Long-term + remote work |
+| **E33G Digital Nomad** | 1 year | Extendable | Yes | Long-term + remote work |
 | **VOA** | 30 days | 30 days | 1x | Short holidays |
 
 D1 = convenience for frequent trips, E33G = long-term stay.

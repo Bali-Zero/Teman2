@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FolderKanban, Search, Filter, Plus, LayoutGrid, List, ChevronRight, Loader2 } from 'lucide-react';
+import { FolderKanban, Search, Filter, Plus, LayoutGrid, List, ChevronRight, Loader2, User, MessageCircle, Mail, Phone, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import type { Practice } from '@/lib/api/crm/crm.types';
@@ -211,9 +211,66 @@ export default function PratichePage() {
                       <p className="text-xs text-[var(--foreground-muted)] truncate">
                         {practice.client_name || 'Unknown Client'}
                       </p>
-                      <p className="text-[10px] text-[var(--foreground-muted)] mt-1 opacity-60">
-                        Right-click to change status
-                      </p>
+                      {practice.client_lead && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <User className="w-3 h-3 text-[var(--accent)]" />
+                          <p className="text-[10px] text-[var(--accent)] truncate">
+                            {practice.client_lead.split('@')[0]}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Quick Actions */}
+                      <div className="flex items-center gap-1 mt-2 pt-2 border-t border-[var(--border)]">
+                        {practice.client_phone && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const phone = practice.client_phone?.replace(/\D/g, '');
+                              window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your ${practice.practice_type_code?.replace(/_/g, ' ')}...`, '_blank');
+                            }}
+                            className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                            title="WhatsApp"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {practice.client_email && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const subject = encodeURIComponent(`Re: ${practice.practice_type_code?.replace(/_/g, ' ').toUpperCase()}`);
+                              window.open(`mailto:${practice.client_email}?subject=${subject}`, '_blank');
+                            }}
+                            className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+                            title="Email"
+                          >
+                            <Mail className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {practice.client_phone && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(`tel:${practice.client_phone}`, '_blank');
+                            }}
+                            className="p-1.5 rounded hover:bg-purple-500/20 text-purple-500 transition-colors"
+                            title="Call"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/clients/${practice.client_id}`);
+                          }}
+                          className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors"
+                          title="View Client"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
