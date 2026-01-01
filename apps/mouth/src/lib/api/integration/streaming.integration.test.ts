@@ -90,8 +90,8 @@ describe('Streaming Integration Tests', () => {
       await api.sendMessageStreaming('test', undefined, onChunk, onDone, vi.fn());
 
       expect(onChunk).toHaveBeenCalledWith('Hello');
-      expect(onChunk).toHaveBeenCalledWith(' ');
-      expect(onChunk).toHaveBeenCalledWith('World');
+      expect(onChunk).toHaveBeenCalledWith('Hello ');
+      expect(onChunk).toHaveBeenCalledWith('Hello World');
       expect(onDone).toHaveBeenCalledWith('Hello World', [], undefined);
     });
 
