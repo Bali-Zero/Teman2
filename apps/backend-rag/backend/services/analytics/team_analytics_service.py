@@ -25,15 +25,13 @@ import logging
 
 import asyncpg
 
-from . import (
-    BurnoutDetectorService,
-    OptimalHoursService,
-    PatternAnalyzerService,
-    PerformanceTrendService,
-    ProductivityScorerService,
-    TeamInsightsService,
-    WorkloadBalanceService,
-)
+from .burnout_detector import BurnoutDetectorService
+from .optimal_hours import OptimalHoursService
+from .pattern_analyzer import PatternAnalyzerService
+from .performance_trend import PerformanceTrendService
+from .productivity_scorer import ProductivityScorerService
+from .team_insights import TeamInsightsService
+from .workload_balance import WorkloadBalanceService
 
 logger = logging.getLogger(__name__)
 

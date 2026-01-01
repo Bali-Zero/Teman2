@@ -5,7 +5,6 @@ Aggregates data from PostgreSQL, Qdrant, Prometheus metrics for the analytics da
 
 import logging
 import time
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import psutil
@@ -120,7 +119,7 @@ class AnalyticsAggregator:
                     if row:
                         stats.queries_today = row["total"] or 0
                         stats.avg_latency_ms = float(row["avg_latency"] or 0)
-                        
+
                         # Populate granular latencies if available (convert seconds to ms if stored as seconds in orchestrator)
                         # Orchestrator stores timings in SECONDS (time.time difference).
                         # Dashboard expects MS. We multiply by 1000.
@@ -342,9 +341,10 @@ class AnalyticsAggregator:
 
     async def get_qdrant_stats(self) -> dict:
         """Get Qdrant vector database statistics using direct HTTP calls"""
-        from app.routers.analytics import QdrantStats
-        from app.core.config import settings
         import httpx
+
+        from app.core.config import settings
+        from app.routers.analytics import QdrantStats
 
         stats = QdrantStats()
 
