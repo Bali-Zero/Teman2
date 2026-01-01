@@ -91,7 +91,11 @@ class TestImageGenerationRouter:
         mock_response = MagicMock()
         mock_response.status_code = 403
         mock_response.text = "Forbidden"
-        mock_client.post = AsyncMock(return_value=mock_response)
+        
+        # httpx.HTTPStatusError is raised when status_code is not 2xx
+        import httpx
+        error = httpx.HTTPStatusError("Forbidden", request=MagicMock(), response=mock_response)
+        mock_client.post = AsyncMock(side_effect=error)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_class.return_value = mock_client
@@ -100,6 +104,7 @@ class TestImageGenerationRouter:
             "/api/v1/image/generate",
             json={"prompt": "test"}
         )
+        # The router checks for 403 specifically and raises HTTPException with 403
         assert response.status_code == 403
 
     @patch("app.routers.image_generation.httpx.AsyncClient")

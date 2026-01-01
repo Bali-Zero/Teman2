@@ -9,7 +9,10 @@ uv.lock
 apps/backend-rag/data/
 check_ingest.py
 run_ingest.py
-scripts/*.pylass
+scripts/*.py
+scripts/smoke_test_quick.py
+scripts/verify_json.py
+test_playwright.pylass
 *$py.class
 *.so
 .Python
@@ -166,7 +169,7 @@ docs/generated/
 *.PNG
 coverage.json
 # Auto-generated Playwright extensions
-.playwright-mcp/*.crx
+.playwright-mcp/
 apps/mouth/coverage/
 lint_*.txt
 *.py[cod]
