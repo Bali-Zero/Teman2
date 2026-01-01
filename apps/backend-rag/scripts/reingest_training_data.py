@@ -46,16 +46,23 @@ async def reingest_files():
     from qdrant_client import QdrantClient
     from qdrant_client.models import PointStruct, SparseVector
 
-    # Initialize services
+    # Initialize services - use internal Fly.io network if available
     qdrant_url = os.getenv("QDRANT_URL")
     qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
-    if not qdrant_url:
-        logger.error("QDRANT_URL not set")
-        return
+    # Use internal Fly.io URL if running on Fly.io (bypasses proxy, more stable)
+    qdrant_internal_url = "http://nuzantara-qdrant.internal:6333"
 
-    logger.info(f"Connecting to Qdrant: {qdrant_url[:50]}...")
-    client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60)
+    # Check if we're on Fly.io by checking for FLY_ALLOC_ID
+    if os.getenv("FLY_ALLOC_ID"):
+        logger.info(f"Running on Fly.io - using internal network: {qdrant_internal_url}")
+        client = QdrantClient(url=qdrant_internal_url, timeout=120)
+    elif qdrant_url:
+        logger.info(f"Connecting to Qdrant: {qdrant_url[:50]}...")
+        client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key, timeout=60)
+    else:
+        logger.error("QDRANT_URL not set and not running on Fly.io")
+        return
     embedder = create_embeddings_generator()
     bm25 = BM25Vectorizer()
     chunker = TextChunker(chunk_size=1500, chunk_overlap=200)
@@ -131,7 +138,7 @@ async def reingest_files():
         total_chunks += len(chunks)
 
         # Upsert to Qdrant in batches with retry
-        BATCH_SIZE = 10  # Smaller batches for reliability
+        BATCH_SIZE = 5  # Very small batches for stability
         if points:
             for batch_start in range(0, len(points), BATCH_SIZE):
                 batch = points[batch_start:batch_start + BATCH_SIZE]
