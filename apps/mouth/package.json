@@ -6,8 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
@@ -23,28 +21,45 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.3",
+    "@formkit/auto-animate": "^0.9.0",
+    "@nivo/bar": "^0.99.0",
+    "@nivo/core": "^0.99.0",
+    "@nivo/line": "^0.99.0",
+    "@nivo/pie": "^0.99.0",
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
     "@sentry/nextjs": "^10.29.0",
+    "@tanstack/react-virtual": "^3.13.13",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.9.1",
+    "@types/dompurify": "^3.0.5",
+    "ai": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dompurify": "^3.3.1",
     "framer-motion": "^12.23.26",
+    "gray-matter": "^4.0.3",
     "lucide-react": "^0.556.0",
     "next": "^16.0.10",
+    "next-mdx-remote": "^5.0.0",
     "puppeteer": "^24.33.0",
     "react": "19.2.1",
+    "react-confetti": "^6.4.0",
+    "react-countup": "^6.5.3",
     "react-dom": "19.2.1",
     "react-markdown": "^10.1.0",
+    "react-type-animation": "^3.2.0",
     "remark-gfm": "^4.0.1",
+    "sal.js": "^0.8.5",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,css}": [
+    "*.{ts,tsx,json,md,css}": [
       "prettier --write"
     ]
   },
@@ -60,8 +75,6 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^4.0.15",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.8",
     "husky": "^9.1.7",
     "jsdom": "^27.3.0",
     "lint-staged": "^16.2.7",

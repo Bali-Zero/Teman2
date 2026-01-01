@@ -17,9 +17,8 @@
 │                    ┌────────▼────────┐                                                 │
 │                    │  LLM PROVIDERS  │                                                 │
 │                    ├─────────────────┤                                                 │
-│                    │ Gemini 2.5 Flash│ ◀── Primary                                    │
-│                    │ Gemini 2.0 Flash│ ◀── Fallback 1                                 │
-│                    │ Gemini 2.5 Pro  │ ◀── Fallback 2                                 │
+│                    │ Gemini 3 Flash  │ ◀── Primary                                    │
+│                    │ Gemini 2.0 Flash│ ◀── Fallback                                   │
 │                    │ OpenRouter      │ ◀── Final Fallback                             │
 │                    └─────────────────┘                                                 │
 │                                                                                         │
@@ -572,7 +571,7 @@
 │     "execution_time": 2.34,                                                            │
 │                                                                                         │
 │     "route_used": "visa_oracle",                                                       │
-│     "model_used": "gemini-2.5-flash",                                                  │
+│     "model_used": "gemini-3-flash-preview",                                                  │
 │                                                                                         │
 │     "tools_called": 2,                                                                 │
 │     "total_steps": 3,                                                                  │
@@ -605,7 +604,7 @@
 │   PERFORMANCE                       └── Tax Docs: 895                                  │
 │   ├── Avg Response: 2-3s                                                               │
 │   ├── Cache Hit Rate: ~40%          MODELS                                             │
-│   ├── Verification Rate: 95%        ├── Primary: Gemini 2.5 Flash                     │
+│   ├── Verification Rate: 95%        ├── Primary: Gemini 3 Flash Preview               │
 │   └── Max ReAct Steps: 5            ├── Embeddings: text-embedding-3-small (1536D)    │
 │                                     └── Reranker: Ze-Rank 2                            │
 │   INFRASTRUCTURE                                                                        │

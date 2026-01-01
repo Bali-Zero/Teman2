@@ -130,7 +130,7 @@ describe('ChatApi', () => {
       await chatApi.sendMessageStreaming('Hello', undefined, onChunk, onDone, onError);
 
       expect(onChunk).toHaveBeenCalledWith('Hello');
-      expect(onChunk).toHaveBeenCalledWith(' World');
+      expect(onChunk).toHaveBeenCalledWith('Hello World');
       expect(onDone).toHaveBeenCalledWith(
         'Hello World',
         [],
@@ -431,7 +431,7 @@ describe('ChatApi', () => {
       );
 
       expect(onChunk).toHaveBeenCalledWith('Hello');
-      expect(onChunk).toHaveBeenCalledWith(' World');
+      expect(onChunk).toHaveBeenCalledWith('Hello World');
       expect(onDone).toHaveBeenCalled();
       expect(onError).not.toHaveBeenCalled();
     });

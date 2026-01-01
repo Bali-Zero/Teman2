@@ -104,6 +104,33 @@ CASUAL_PATTERNS = [
     "recognize me",
     "remember me",
     "mi riconosci",
+    # Memory queries - should bypass RAG
+    "cosa ti ricordi",
+    "ti ricordi di me",
+    "ricordi di me",
+    "what do you remember",
+    "do you remember",
+    "apa yang kamu ingat",
+    "ingat saya",
+    # Client/data introduction - conversational memory (bypass RAG)
+    "ho un nuovo cliente",
+    "nuovo cliente",
+    "new client",
+    "new customer",
+    "registra cliente",
+    "register client",
+    "prendi nota",
+    "take note",
+    "ricorda che",
+    "remember that",
+    "segna che",
+    "note that",
+    "dobbiamo aiutarlo",
+    "dobbiamo aiutarla",
+    "we need to help",
+    "catat bahwa",
+    "klien baru",
+    "pelanggan baru",
 ]
 
 EMOTIONAL_PATTERNS = [
@@ -185,6 +212,14 @@ BUSINESS_KEYWORDS = [
     "211a",
     "e33g",
     "e28a",
+    # Indonesian tax terms (critical for tax_genius routing)
+    "pph",      # Pajak Penghasilan - Income Tax (PPh 21, PPh 23, PPh 26, etc.)
+    "ppn",      # Pajak Pertambahan Nilai - VAT
+    "pbb",      # Pajak Bumi dan Bangunan - Land/Building Tax
+    "npwp",     # Nomor Pokok Wajib Pajak - Tax ID Number
+    "spt",      # Surat Pemberitahuan - Tax Return
+    "withholding",
+    "ritenuta",  # Italian: withholding tax
     # Italian business keywords (added for RAG activation)
     "legale",
     "leggi",
@@ -342,6 +377,74 @@ DEVAI_KEYWORDS = [
     "unit test",
 ]
 
+# General tasks that don't require RAG (translation, summarization, formatting)
+GENERAL_TASK_KEYWORDS = [
+    # Translation
+    "traduci",
+    "tradurre",
+    "traduzione",
+    "translate",
+    "translation",
+    "terjemahkan",
+    "terjemahan",
+    "in inglese",
+    "in italiano",
+    "in english",
+    "in italian",
+    "in indonesian",
+    # Summarization
+    "riassumi",
+    "riassunto",
+    "summarize",
+    "summary",
+    "ringkas",
+    "ringkasan",
+    # Formatting
+    "formatta",
+    "format",
+    "riformula",
+    "rephrase",
+    "rewrite",
+    "riscrivi",
+    # Math/Calculations
+    "calcola",
+    "calculate",
+    "quanto fa",
+    "how much is",
+    "quanto devo",
+    "quanto pago",
+    "quanto costa",
+    "se devo pagare",
+    "if i pay",
+    "berapa",
+    "hitung",
+    "kalkulasi",
+    "% tax",
+    "% vat",
+    "% di",
+    "percentuale",
+    "percentage",
+    # Previous response reference
+    "ultima risposta",
+    "last response",
+    "previous answer",
+    "risposta precedente",
+    "what you said",
+    "quello che hai detto",
+    # Context recall - conversation summary requests
+    "riepilogo completo",
+    "fammi un riepilogo",
+    "riassumi la conversazione",
+    "cosa abbiamo detto",
+    "di cosa abbiamo parlato",
+    "quello di cui abbiamo parlato",
+    "what we discussed",
+    "what did we talk about",
+    "summarize our conversation",
+    "recap",
+    "apa yang kita bicarakan",
+]
+
 
 class IntentClassifier:
     """
@@ -392,6 +495,7 @@ class IntentClassifier:
                     "confidence": 1.0,
                     "suggested_ai": "fast",
                     "require_memory": True,
+                    "skip_rag": True,  # Greetings don't need RAG evidence
                 }
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
@@ -432,10 +536,28 @@ class IntentClassifier:
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
 
+            # PRIORITY: General tasks (translation, summarization, etc.) - bypass RAG
+            # Must be checked BEFORE casual patterns to avoid false matches
+            if any(keyword in message_lower for keyword in GENERAL_TASK_KEYWORDS):
+                logger.info("🏷️ [IntentClassifier] Classified: general_task (skip RAG)")
+                result = {
+                    "category": "general_task",
+                    "confidence": 0.95,
+                    "suggested_ai": "fast",
+                    "skip_rag": True,  # Flag to bypass evidence requirements
+                }
+                result["mode"] = self._derive_mode(result["category"], message_lower)
+                return result
+
             # Check casual questions
             if any(pattern in message_lower for pattern in CASUAL_PATTERNS):
                 logger.info("🏷️ [IntentClassifier] Classified: casual")
-                result = {"category": "casual", "confidence": 1.0, "suggested_ai": "fast"}
+                result = {
+                    "category": "casual",
+                    "confidence": 1.0,
+                    "suggested_ai": "fast",
+                    "skip_rag": True,  # Casual chat doesn't need RAG evidence
+                }
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
 
@@ -446,6 +568,7 @@ class IntentClassifier:
                     "category": "casual",
                     "confidence": 1.0,
                     "suggested_ai": "fast",
+                    "skip_rag": True,  # Emotional support doesn't need RAG evidence
                 }
                 result["mode"] = self._derive_mode(result["category"], message_lower)
                 return result
@@ -530,6 +653,10 @@ class IntentClassifier:
                 "suggested_ai": suggested_ai,
             }
 
+            # Fallback casual should also skip RAG (conversational, not business)
+            if category == "casual":
+                result["skip_rag"] = True
+
             # Derive communication mode
             result["mode"] = self._derive_mode(result["category"], message_lower)
             return result
@@ -558,6 +685,8 @@ class IntentClassifier:
             return "identity_response"
         if category == "devai_code":
             return "technical"
+        if category == "general_task":
+            return "small_talk"  # General tasks use conversational mode
 
         # 2. Refine business categories
         if category.startswith("business"):

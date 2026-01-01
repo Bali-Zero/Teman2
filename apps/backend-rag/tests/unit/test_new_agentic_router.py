@@ -62,8 +62,10 @@ async def test_router_delegation(mock_create_agentic, mock_search_service, mock_
 
     response = await router.route_chat("Test Query", "user123")
 
-    # Verify delegation
-    mock_orchestrator.process_query.assert_called_once_with(query="Test Query", user_id="user123")
+    # Verify delegation (now includes conversation_history)
+    mock_orchestrator.process_query.assert_called_once_with(
+        query="Test Query", user_id="user123", conversation_history=None
+    )
 
     # Verify response format
     assert response["response"] == "Agentic Answer"
@@ -77,8 +79,8 @@ async def test_router_streaming(mock_create_agentic, mock_search_service, mock_o
     """Test that stream_chat delegates to orchestrator"""
     mock_create_agentic.return_value = mock_orchestrator
 
-    # Mock stream_query to yield items
-    async def mock_stream_gen(query, user_id):
+    # Mock stream_query to yield items (include all parameters)
+    async def mock_stream_gen(query, user_id, conversation_history=None, session_id=None):
         yield {"type": "generation", "content": "Chunk 1"}
         yield {"type": "generation", "content": "Chunk 2"}
 

@@ -32,6 +32,144 @@ FORBIDDEN_KEYWORDS = [
     "DO",
 ]
 
+_DOLLAR_QUOTE_RE = re.compile(r"\$[A-Za-z0-9_]*\$")
+
+
+def _mask_sql_comments_and_literals(sql: str) -> str:
+    """
+    Return a string where SQL comments and string/identifier literals are replaced with spaces.
+
+    This makes it safe to run naive keyword/semicolon checks without false positives from
+    content inside quotes/comments.
+    """
+    if not sql:
+        return ""
+
+    out: list[str] = []
+    i = 0
+    n = len(sql)
+
+    block_comment_depth = 0
+    in_line_comment = False
+    in_single_quote = False
+    in_double_quote = False
+    dollar_tag: str | None = None
+
+    while i < n:
+        ch = sql[i]
+        nxt = sql[i + 1] if i + 1 < n else ""
+
+        # Line comment: -- ... \n
+        if in_line_comment:
+            if ch == "\n":
+                in_line_comment = False
+                out.append("\n")
+            else:
+                out.append(" ")
+            i += 1
+            continue
+
+        # Block comment: /* ... */ (PostgreSQL supports nesting)
+        if block_comment_depth > 0:
+            if ch == "/" and nxt == "*":
+                block_comment_depth += 1
+                out.extend([" ", " "])
+                i += 2
+                continue
+            if ch == "*" and nxt == "/":
+                block_comment_depth -= 1
+                out.extend([" ", " "])
+                i += 2
+                continue
+            out.append("\n" if ch == "\n" else " ")
+            i += 1
+            continue
+
+        # Dollar-quoted string: $tag$ ... $tag$
+        if dollar_tag is not None:
+            if sql.startswith(dollar_tag, i):
+                out.extend(" " * len(dollar_tag))
+                i += len(dollar_tag)
+                dollar_tag = None
+                continue
+            out.append("\n" if ch == "\n" else " ")
+            i += 1
+            continue
+
+        # Single-quoted string: '...'
+        if in_single_quote:
+            if ch == "'" and nxt == "'":
+                out.extend([" ", " "])  # escaped quote
+                i += 2
+                continue
+            if ch == "'":
+                in_single_quote = False
+                out.append(" ")
+                i += 1
+                continue
+            out.append("\n" if ch == "\n" else " ")
+            i += 1
+            continue
+
+        # Double-quoted identifier: "..."
+        if in_double_quote:
+            if ch == '"' and nxt == '"':
+                out.extend([" ", " "])  # escaped quote
+                i += 2
+                continue
+            if ch == '"':
+                in_double_quote = False
+                out.append(" ")
+                i += 1
+                continue
+            out.append("\n" if ch == "\n" else " ")
+            i += 1
+            continue
+
+        # Enter comment / literal states (NORMAL)
+        if ch == "-" and nxt == "-":
+            in_line_comment = True
+            out.extend([" ", " "])
+            i += 2
+            continue
+        if ch == "/" and nxt == "*":
+            block_comment_depth = 1
+            out.extend([" ", " "])
+            i += 2
+            continue
+        if ch == "'":
+            in_single_quote = True
+            out.append(" ")
+            i += 1
+            continue
+        if ch == '"':
+            in_double_quote = True
+            out.append(" ")
+            i += 1
+            continue
+        if ch == "$":
+            m = _DOLLAR_QUOTE_RE.match(sql, i)
+            if m:
+                dollar_tag = m.group(0)
+                out.extend(" " * len(dollar_tag))
+                i += len(dollar_tag)
+                continue
+
+        out.append(ch)
+        i += 1
+
+    return "".join(out)
+
+
+def _strip_trailing_statement_terminator(sql: str) -> str:
+    """Strip a single trailing semicolon (and anything after it) outside literals/comments."""
+    masked = _mask_sql_comments_and_literals(sql)
+    semicolon_positions = [idx for idx, ch in enumerate(masked) if ch == ";"]
+    if not semicolon_positions:
+        return sql.strip()
+    # validate_query ensures we have at most one semicolon
+    return sql[:semicolon_positions[0]].rstrip()
+
 
 @dataclass
 class ConnectionInfo:
@@ -159,29 +297,33 @@ class PostgreSQLDebugger:
         if not query or not query.strip():
             return False, "Query is empty"
 
-        # Normalize query
-        normalized = query.strip().upper()
+        masked = _mask_sql_comments_and_literals(query)
+        masked_stripped = masked.lstrip()
+
+        # Whitelist: must start with SELECT (after whitespace/comments)
+        m = re.match(r"[A-Za-z_]+", masked_stripped)
+        first_token = (m.group(0).upper() if m else "")
 
         # Check whitelist: must start with SELECT
-        if not normalized.startswith("SELECT"):
+        if first_token != "SELECT":
             return False, "Only SELECT queries are allowed"
+
+        # Single-statement enforcement: allow at most one semicolon, and only as trailing terminator.
+        semicolon_positions = [idx for idx, ch in enumerate(masked) if ch == ";"]
+        if len(semicolon_positions) > 1:
+            return False, "Multiple statements not allowed"
+        if len(semicolon_positions) == 1:
+            pos = semicolon_positions[0]
+            # If anything (non-whitespace) follows the semicolon, it's multiple statements.
+            if any(not ch.isspace() for ch in masked[pos + 1 :]):
+                return False, "Multiple statements not allowed"
 
         # Check blacklist: no forbidden keywords
         for keyword in FORBIDDEN_KEYWORDS:
             # Use word boundaries to avoid false positives
             pattern = rf"\b{keyword}\b"
-            if re.search(pattern, normalized, re.IGNORECASE):
+            if re.search(pattern, masked, re.IGNORECASE):
                 return False, f"Forbidden keyword detected: {keyword}"
-
-        # Check for semicolon-separated queries (potential SQL injection)
-        # Count SELECT statements - if more than 1, it's multiple statements
-        select_count = normalized.count("SELECT")
-        if select_count > 1:
-            return False, "Multiple statements not allowed"
-
-        # Also check for multiple semicolons (even without multiple SELECT)
-        if normalized.count(";") > 1:
-            return False, "Multiple statements not allowed"
 
         return True, None
 
@@ -211,21 +353,22 @@ class PostgreSQLDebugger:
         # Enforce row limit
         limit = min(limit, MAX_ROWS_LIMIT)
 
-        # Add LIMIT if not present
-        normalized_query = query.strip()
-        if "LIMIT" not in normalized_query.upper():
-            normalized_query = f"{normalized_query} LIMIT {limit}"
+        statement = _strip_trailing_statement_terminator(query)
+        # Always enforce limit at the outermost level so inline SQL LIMIT cannot bypass MAX_ROWS_LIMIT.
+        normalized_query = f"SELECT * FROM ({statement}) AS _nuz_debug_q LIMIT {limit}"
 
         try:
             if pool:
                 async with pool.acquire() as conn:
-                    rows = await conn.fetch(normalized_query, timeout=QUERY_TIMEOUT_SECONDS)
-                    columns = [desc.name for desc in rows[0]._row_desc] if rows else []
+                    async with conn.transaction(readonly=True):
+                        rows = await conn.fetch(normalized_query, timeout=QUERY_TIMEOUT_SECONDS)
+                        columns = [desc.name for desc in rows[0]._row_desc] if rows else []
             else:
                 conn = await self._get_connection()
                 try:
-                    rows = await conn.fetch(normalized_query, timeout=QUERY_TIMEOUT_SECONDS)
-                    columns = [desc.name for desc in rows[0]._row_desc] if rows else []
+                    async with conn.transaction(readonly=True):
+                        rows = await conn.fetch(normalized_query, timeout=QUERY_TIMEOUT_SECONDS)
+                        columns = [desc.name for desc in rows[0]._row_desc] if rows else []
                 finally:
                     await conn.close()
 

@@ -671,6 +671,8 @@ async def test_login_with_minimum_pin_length(
     mock_identity_service, mock_user, reset_identity_service
 ):
     """Test login with minimum PIN length (4 digits)"""
+    from fastapi import Response
+
     mock_identity_service.authenticate_user = AsyncMock(return_value=mock_user)
     mock_identity_service.create_access_token = Mock(return_value="token")
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
@@ -681,9 +683,10 @@ async def test_login_with_minimum_pin_length(
         from app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="1234")
-        response = await team_login(request)
+        mock_response = MagicMock(spec=Response)
+        result = await team_login(request, mock_response)
 
-        assert response.success is True
+        assert result.success is True
 
 
 @pytest.mark.asyncio
@@ -691,6 +694,8 @@ async def test_login_with_maximum_pin_length(
     mock_identity_service, mock_user, reset_identity_service
 ):
     """Test login with maximum PIN length (8 digits)"""
+    from fastapi import Response
+
     mock_identity_service.authenticate_user = AsyncMock(return_value=mock_user)
     mock_identity_service.create_access_token = Mock(return_value="token")
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
@@ -701,9 +706,10 @@ async def test_login_with_maximum_pin_length(
         from app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="12345678")
-        response = await team_login(request)
+        mock_response = MagicMock(spec=Response)
+        result = await team_login(request, mock_response)
 
-        assert response.success is True
+        assert result.success is True
 
 
 @pytest.mark.asyncio
@@ -711,6 +717,8 @@ async def test_login_user_without_personalized_response(
     mock_identity_service, mock_user, reset_identity_service
 ):
     """Test login with user that has personalized_response=False"""
+    from fastapi import Response
+
     mock_user.personalized_response = False
     mock_identity_service.authenticate_user = AsyncMock(return_value=mock_user)
     mock_identity_service.create_access_token = Mock(return_value="token")
@@ -722,9 +730,10 @@ async def test_login_user_without_personalized_response(
         from app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="1234")
-        response = await team_login(request)
+        mock_response = MagicMock(spec=Response)
+        result = await team_login(request, mock_response)
 
-        assert response.personalizedResponse is False
+        assert result.personalizedResponse is False
 
 
 @pytest.mark.asyncio
@@ -732,6 +741,8 @@ async def test_login_user_with_none_language(
     mock_identity_service, mock_user, reset_identity_service
 ):
     """Test login with user that has language=None"""
+    from fastapi import Response
+
     mock_user.language = None
     mock_identity_service.authenticate_user = AsyncMock(return_value=mock_user)
     mock_identity_service.create_access_token = Mock(return_value="token")
@@ -743,6 +754,7 @@ async def test_login_user_with_none_language(
         from app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="1234")
-        response = await team_login(request)
+        mock_response = MagicMock(spec=Response)
+        result = await team_login(request, mock_response)
 
-        assert response.user["language"] == "en"  # Default fallback
+        assert result.user["language"] == "en"  # Default fallback

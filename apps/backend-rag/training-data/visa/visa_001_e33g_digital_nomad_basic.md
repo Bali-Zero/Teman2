@@ -20,7 +20,7 @@ Visa ini perfect untuk kamu yang:
 - Tidak ada employer di Indonesia
 - Mau tinggal di Indonesia sambil kerja
 
-Validity: **2 tahun**, multiple entry (bebas keluar masuk).
+Validity: **1 tahun**, multiple entry (bebas keluar masuk). Bisa diperpanjang setiap tahun.
 
 **2 — Client:**
 Wah bagus! Syaratnya apa saja?
@@ -32,12 +32,12 @@ Syarat E33G cukup simple:
 - Paspor valid min 18 bulan
 - Foto background merah 4x6
 - Proof of remote work (employment letter atau contract)
-- Proof of income min USD $2,000/bulan (bank statement 3 bulan)
+- Proof of income min USD $5,000/bulan atau USD 60,000/tahun (bank statement 3 bulan)
 - Travel/health insurance
 - CV singkat
 
 **Financial:**
-- Income minimum **USD 2,000/bulan**
+- Income minimum **USD 5,000/bulan** (USD 60,000/tahun)
 - Atau tunjukkan bank balance yang cukup
 
 **Tidak perlu:**
@@ -46,7 +46,7 @@ Syarat E33G cukup simple:
 - Kantor di Indonesia
 
 **3 — Client:**
-Income $2,000/bulan itu gross atau net?
+Income $5,000/bulan (USD 60,000/tahun) itu gross atau net?
 
 **Consultant:**
 **Net** (setelah pajak).
@@ -63,12 +63,12 @@ Saya freelance, ada beberapa client. Gimana cara buktiin income?
 
 **Consultant:**
 Untuk freelancer, bisa pakai:
-- **Invoices + payment confirmations** dari semua client (total USD 2,000+/bulan)
+- **Invoices + payment confirmations** dari semua client (total USD 5,000+/bulan)
 - **Bank statement** menunjukkan incoming transfers
 - **Upwork/Fiverr earnings** (screenshot + bank transfer proof)
 - **Client contracts** (jika ada)
 
-Yang penting: **total income** dari semua sumber minimal USD 2,000/bulan secara konsisten.
+Yang penting: **total income** dari semua sumber minimal USD 5,000/bulan (USD 60,000/tahun) secara konsisten.
 
 **5 — Client:**
 Berapa biaya E33G?
@@ -77,7 +77,7 @@ Berapa biaya E33G?
 **Harga E33G:**
 - **Offshore** (apply dari luar Indonesia): **Rp 7.500.000 - Rp 8.500.000**
 - **Onshore** (apply dari dalam Indonesia): **Rp 9.000.000 - Rp 10.000.000**
-- **Extension** (setelah 2 tahun): **Rp 8.000.000**
+- **Extension** (setelah 1 tahun): **Rp 10.000.000**
 
 Biaya termasuk:
 - VOA/Evisa processing
@@ -163,7 +163,7 @@ Saya baca ada "30-day stay limit" — itu artinya apa?
 Ini **misconception** umum.
 
 **Correct info:**
-- E33G validity: **2 tahun**
+- E33G validity: **1 tahun** (extendable)
 - Multiple entry: **bebas keluar masuk**
 - **Tidak ada** batas 30 hari per stay
 
@@ -226,7 +226,7 @@ Kalau saya lupa SKTT reporting, ada sanksi?
 - Report on time untuk avoid hassle
 
 **14 — Client:**
-E33G bisa diperpanjang kan setelah 2 tahun?
+E33G bisa diperpanjang kan setelah 1 tahun?
 
 **Consultant:**
 **Bisa!**
@@ -236,7 +236,7 @@ E33G bisa diperpanjang kan setelah 2 tahun?
 - Submit dokumen baru:
   - Medical checkup (baru)
   - Police clearance Indonesia (baru)
-  - Proof of income masih USD 2,000+/bulan
+  - Proof of income masih USD 5,000+/bulan (USD 60,000/tahun)
   - Updated insurance
 - **Biaya:** Rp 8.000.000
 - **Timeline:** 3-4 minggu
@@ -398,7 +398,7 @@ This visa is perfect for those who:
 - Have no employer in Indonesia
 - Want to live in Indonesia while working
 
-Validity: **2 years**, multiple entry (free to exit/enter).
+Validity: **1 year**, multiple entry (free to exit/enter). Can be extended annually.
 
 **2 — Client:**
 Great! What are the requirements?
@@ -410,12 +410,12 @@ E33G requirements are quite simple:
 - Valid passport (min 18 months)
 - Photo 4x6 red background
 - Proof of remote work (employment letter or contract)
-- Proof of income min USD $2,000/month (3-month bank statements)
+- Proof of income min USD $5,000/month or USD 60,000/year (3-month bank statements)
 - Travel/health insurance
 - Brief CV
 
 **Financial:**
-- Minimum income **USD 2,000/month**
+- Minimum income **USD 5,000/month** (USD 60,000/year)
 - Or demonstrate sufficient bank balance
 
 **Not Required:**
@@ -424,7 +424,7 @@ E33G requirements are quite simple:
 - Office in Indonesia
 
 **3 — Client:**
-Is the $2,000/month income gross or net?
+Is the $5,000/month (USD 60,000/year) income gross or net?
 
 **Consultant:**
 **Net** (after tax).
@@ -441,12 +441,12 @@ I'm a freelancer with multiple clients. How do I prove income?
 
 **Consultant:**
 For freelancers, you can use:
-- **Invoices + payment confirmations** from all clients (total USD 2,000+/month)
+- **Invoices + payment confirmations** from all clients (total USD 5,000+/month (USD 60,000/year))
 - **Bank statements** showing incoming transfers
 - **Upwork/Fiverr earnings** (screenshots + bank transfer proof)
 - **Client contracts** (if available)
 
-What's important: **total income** from all sources at least USD 2,000/month consistently.
+What's important: **total income** from all sources at least USD 5,000/month (USD 60,000/year) consistently.
 
 **5 — Client:**
 How much does E33G cost?
@@ -455,7 +455,7 @@ How much does E33G cost?
 **E33G Pricing:**
 - **Offshore** (apply from outside Indonesia): **IDR 7,500,000 - 8,500,000**
 - **Onshore** (apply from within Indonesia): **IDR 9,000,000 - 10,000,000**
-- **Extension** (after 2 years): **IDR 8,000,000**
+- **Extension** (after 1 year): **IDR 10,000,000**
 
 Cost includes:
 - VOA/Evisa processing
@@ -541,7 +541,7 @@ I read about a "30-day stay limit" — what does that mean?
 This is a **common misconception**.
 
 **Correct info:**
-- E33G validity: **2 years**
+- E33G validity: **1 year** (extendable)
 - Multiple entry: **free to exit/enter**
 - **No** 30-day limit per stay
 
@@ -604,7 +604,7 @@ If I forget SKTT reporting, are there penalties?
 - Report on time to avoid hassle
 
 **14 — Client:**
-E33G can be extended after 2 years, right?
+E33G can be extended after 1 year, right?
 
 **Consultant:**
 **Yes!**
@@ -614,7 +614,7 @@ E33G can be extended after 2 years, right?
 - Submit new documents:
   - Medical checkup (new)
   - Indonesian police clearance (new)
-  - Proof of income still USD 2,000+/month
+  - Proof of income still USD 5,000+/month (USD 60,000/year)
   - Updated insurance
 - **Cost:** IDR 8,000,000
 - **Timeline:** 3-4 weeks
@@ -793,7 +793,7 @@ Syarat E33G cukup simple:
 - CV singkat
 
 **Financial:**
-- Income minimum **USD 2,000/sasi**
+- Income minimum **USD 5,000/sasi (USD 60,000/taun)**
 - Utowo tunjukke bank balance sing cukup
 
 **Ora butuh:**
@@ -819,12 +819,12 @@ Aku freelance, ono sawetara client. Piye carane buktiin income?
 
 **Consultant:**
 Kanggo freelancer, iso nganggo:
-- **Invoices + payment confirmations** soko kabeh client (total USD 2,000+/sasi)
+- **Invoices + payment confirmations** soko kabeh client (total USD 5,000+/sasi (USD 60,000/taun))
 - **Bank statement** nunjukke incoming transfers
 - **Upwork/Fiverr earnings** (screenshot + bank transfer proof)
 - **Client contracts** (nek ono)
 
-Sing penting: **total income** soko kabeh sumber minimal USD 2,000/sasi secara konsisten.
+Sing penting: **total income** soko kabeh sumber minimal USD 5,000/sasi (USD 60,000/taun) secara konsisten.
 
 **5 — Client:**
 Piro biaya E33G?
@@ -992,7 +992,7 @@ E33G iso diperpanjang kan sakwise 2 taun?
 - Submit dokumen anyar:
   - Medical checkup (anyar)
   - Police clearance Indonesia (anyar)
-  - Proof of income isih USD 2,000+/sasi
+  - Proof of income isih USD 5,000+/sasi (USD 60,000/taun)
   - Updated insurance
 - **Biaya:** Rp 8.000.000
 - **Timeline:** 3-4 minggu
@@ -1145,11 +1145,11 @@ Welcome to Indonesia — ketemu neng Bali sesuk! 🌴
 | Topic | Details |
 |-------|---------|
 | **Visa Type** | E33G Digital Nomad KITAS |
-| **Validity** | 2 years, multiple entry |
-| **Income Requirement** | USD 2,000/month minimum (net) |
+| **Validity** | 1 year, multiple entry (extendable) |
+| **Income Requirement** | USD 60,000/year (USD 5,000/month) minimum |
 | **Offshore Cost** | IDR 7,500,000 - 8,500,000 |
 | **Onshore Cost** | IDR 9,000,000 - 10,000,000 |
-| **Extension Cost** | IDR 8,000,000 (after 2 years) |
+| **Extension Cost** | IDR 10,000,000 (after 1 year) |
 | **Timeline Offshore** | 7-14 working days |
 | **Timeline Onshore** | 3-4 weeks |
 | **SKTT Reporting** | Every 3 months, free (or IDR 500K service) |

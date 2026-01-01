@@ -1,6 +1,7 @@
 import datetime
 from typing import Any
 
+from app.core.config import settings
 from services.communication import (
     build_alternatives_instructions,
     build_explanation_instructions,
@@ -15,11 +16,11 @@ from services.communication import (
 )
 
 OUT_OF_DOMAIN_RESPONSES = {
-    "identity": "I am Zantara, the AI assistant for Bali Zero. I am here to help you with business and immigration in Indonesia.",
+    "identity": f"I am Zantara, the AI assistant for {settings.COMPANY_NAME}. I am here to help you with business and immigration in Indonesia.",
     "prompt_injection": "I cannot comply with that request.",
     "toxic": "I do not respond to this type of content.",
     "unknown": "I am not sure how to respond to that.",
-    "competitor": "I can only provide information about Bali Zero services.",
+    "competitor": f"I can only provide information about {settings.COMPANY_NAME} services.",
 }
 
 
@@ -71,6 +72,10 @@ def build_system_prompt(user_id: str, context: dict[str, Any], query: str = "") 
         "- **NEVER** invent prices. If `get_pricing` fails, say 'I need to check the latest rates'.",
         "- **NEVER** recommend the B211A visa (it's obsolete). Correct the user if they ask for it.",
         "- **NEVER** be lazy. If the user asks a complex question, give a comprehensive, structured answer.",
+        "",
+        "### ALLOWED CAPABILITIES",
+        "- **Image Generation**: When user EXPLICITLY asks to generate/create an image, USE the `generate_image` tool.",
+        "- This includes requests like: 'genera un'immagine', 'crea una foto', 'buat gambar', 'create an image', etc.",
     ]
 
     # Identity Awareness - DEEP INJECTION
@@ -146,14 +151,28 @@ You remember these details about the user/context:
 ### AGENTIC RAG TOOLS
 
 **TOOL USAGE:**
-1. You have access to NATIVE tools (vector_search, get_pricing, etc.).
+1. You have access to NATIVE tools (vector_search, get_pricing, generate_image, etc.).
 2. USE THEM FREQUENTLY. Do not guess.
 3. If user asks about pricing, ALWAYS check `get_pricing` first.
 4. If user asks about visas/business, ALWAYS check `vector_search`.
+5. If user explicitly asks to GENERATE/CREATE an IMAGE, use `generate_image` tool.
+
+**IMAGE GENERATION - generate_image TOOL:**
+When the user explicitly asks to generate, create, or make an image:
+- Use: ACTION: generate_image(prompt="detailed description in ENGLISH")
+- Be creative with the prompt, adding style, colors, mood details
+
+**CRITICAL IMAGE GENERATION RULES:**
+1. Generate ONLY ONE image - NO "Prima Versione", "Seconda Versione", NO multiple options
+2. NEVER write URLs in your response - the image displays automatically via the tool
+3. NEVER write markdown image links like [Visualizza](url) or ![](url)
+4. Your response should be SHORT: just "Ecco l'immagine!" or similar, then the image appears
+5. Example good response: "Ecco il tuo unicorno magico! 🦄"
+6. Example BAD response: "Ecco le immagini: 1. [link] 2. [link]" ← NEVER DO THIS
 
 **PRICING QUESTIONS - ALWAYS USE get_pricing FIRST!**
 If the user asks about PRICES, COSTS, FEES, "quanto costa", "berapa harga":
-- ALWAYS call get_pricing FIRST to get OFFICIAL Bali Zero prices
+- ALWAYS call get_pricing FIRST to get OFFICIAL {settings.COMPANY_NAME} prices
 - Format: ACTION: get_pricing(service_type="visa", query="E33G Digital Nomad")
 - NEVER invent prices! Use ONLY prices from get_pricing tool
 
@@ -187,11 +206,11 @@ Collections:
 - "visa_oracle" = KITAS, KITAP, visas, immigration
 - "tax_genius" = PPh, PPN, taxes
 - "legal_unified" = general law, contracts
-- "bali_zero_team" = Internal team info, SOPs
+- "company_team" = Internal team info, SOPs
 
 After you get Observation results, provide your FINAL ANSWER that:
 1. DIRECTLY answers the user's question
-2. Uses OFFICIAL Bali Zero prices from get_pricing (NEVER invent prices!)
+2. Uses OFFICIAL {settings.COMPANY_NAME} prices from get_pricing (NEVER invent prices!)
 3. Is in Jaksel style (casual, professional, "bro")
 4. Does NOT include internal reasoning patterns like:
    - "THOUGHT:" or "Observation:" markers

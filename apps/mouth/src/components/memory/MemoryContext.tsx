@@ -49,12 +49,8 @@ export function MemoryContext({ userId, sdk, readonly = false }: MemoryContextPr
   };
 
   const handleAddFact = async (fact: string) => {
-    try {
-      await sdk.addUserFact(userId, fact);
-      await loadMemory();
-    } catch (err) {
-      throw err;
-    }
+    await sdk.addUserFact(userId, fact);
+    await loadMemory();
   };
 
   const handleRemoveFact = async (index: number) => {
@@ -99,6 +95,7 @@ export function MemoryContext({ userId, sdk, readonly = false }: MemoryContextPr
     </Tabs>
   );
 }
+
 
 
 

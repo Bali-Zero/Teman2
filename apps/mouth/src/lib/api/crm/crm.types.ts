@@ -3,6 +3,9 @@ export interface Practice {
   uuid?: string;
   client_id: number;
   client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  client_lead?: string; // Lead team member assigned to client
   practice_type_id: number;
   practice_type_name?: string;
   practice_type_code?: string;
@@ -75,7 +78,35 @@ export interface Client {
   nationality?: string;
   passport_number?: string;
   notes?: string;
+  status?: string;
+  client_type?: string;
+  assigned_to?: string;
+  tags?: string[];
+  address?: string;
+  first_contact_date?: string;
+  last_interaction_date?: string;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface ClientSummary {
+  client: Client;
+  practices: {
+    total: number;
+    active: number;
+    completed: number;
+    items: Practice[];
+  };
+  interactions: {
+    total: number;
+    recent: Interaction[];
+  };
+  revenue: {
+    total: number;
+    paid: number;
+    outstanding: number;
+  };
+  renewals: RenewalAlert[];
 }
 
 export interface CreateClientParams {
@@ -136,10 +167,12 @@ export interface AutoCRMStats {
 }
 
 export interface CreatePracticeParams {
-  client_id?: number; // Optional if creating simultaneous, but usually required
-  title: string;
+  client_id: number; // Required by backend
   practice_type_code: string;
-  description?: string;
-  priority?: string;
+  status?: string; // inquiry, quotation_sent, in_progress, completed, etc.
+  priority?: string; // normal, high, urgent
+  notes?: string; // Maps from frontend "title"
+  internal_notes?: string;
+  quoted_price?: number;
   start_date?: string;
 }

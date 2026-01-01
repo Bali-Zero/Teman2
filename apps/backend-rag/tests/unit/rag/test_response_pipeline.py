@@ -31,6 +31,10 @@ if str(backend_path) not in sys.path:
 
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState
+from services.llm_clients.pricing import TokenUsage
+
+def mock_token_usage():
+    return TokenUsage(prompt_tokens=10, completion_tokens=20)
 
 
 @pytest.mark.unit
@@ -61,13 +65,13 @@ class TestResponsePipeline:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -102,13 +106,13 @@ class TestResponsePipeline:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -146,13 +150,13 @@ class TestResponsePipeline:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
-            result_state, _, _ = await engine.execute_react_loop(
+            result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
                 chat=chat,
@@ -192,7 +196,7 @@ class TestResponsePipeline:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Answer", "gemini-2.0-flash", None)
+            return_value=("Answer", "gemini-2.0-flash", None, mock_token_usage())
         )
         chat = MagicMock()
 
@@ -217,4 +221,5 @@ class TestResponsePipeline:
         # Verify token events were yielded
         token_events = [e for e in events if e.get("type") == "token"]
         assert len(token_events) > 0
+
 

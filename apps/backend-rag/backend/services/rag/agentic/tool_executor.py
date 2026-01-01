@@ -13,12 +13,15 @@ Key Features:
 - Rate limiting (max 10 executions per query)
 - User ID injection for admin tools
 - Error handling and logging
+- Prometheus metrics for tool call tracking
 """
 
 import logging
 import re
+import time
 from typing import Any
 
+from app.metrics import metrics_collector
 from services.tools.definitions import BaseTool, ToolCall
 
 logger = logging.getLogger(__name__)
@@ -155,7 +158,7 @@ async def execute_tool(
     arguments: dict,
     user_id: str | None = None,
     tool_execution_counter: dict[str, int] | None = None,
-) -> str:
+) -> tuple[str, float]:
     """
     Execute tool with rate limiting to prevent abuse.
 
@@ -167,11 +170,13 @@ async def execute_tool(
         tool_execution_counter: Mutable dict with 'count' key for rate limiting
 
     Returns:
-        Tool execution result as string
+        Tuple of (tool execution result as string, execution duration in seconds)
 
     Raises:
         RuntimeError: If rate limit exceeded (10 per query)
     """
+    start_time = time.time()
+
     # Security: Rate limiting - max 10 tool executions per query
     if tool_execution_counter is not None:
         tool_execution_counter["count"] += 1
@@ -179,10 +184,12 @@ async def execute_tool(
             logger.warning(
                 f"⚠️ Tool execution limit exceeded ({tool_execution_counter['count']} > 10)"
             )
+            metrics_collector.record_tool_call(tool_name, "rate_limited")
             raise RuntimeError("Maximum tool executions exceeded (10 per query)")
 
     if tool_name not in tool_map:
-        return f"Error: Unknown tool '{tool_name}'"
+        metrics_collector.record_tool_call(tool_name, "unknown")
+        return f"Error: Unknown tool '{tool_name}'", time.time() - start_time
 
     tool = tool_map[tool_name]
 
@@ -191,7 +198,15 @@ async def execute_tool(
         if user_id:
             arguments["_user_id"] = user_id
         result = await tool.execute(**arguments)
-        return result
+        duration = time.time() - start_time
+
+        # Record successful tool call
+        metrics_collector.record_tool_call(tool_name, "success")
+        logger.debug(f"🔧 [Tool] {tool_name} completed in {duration:.3f}s")
+
+        return result, duration
     except (ValueError, RuntimeError, KeyError, TypeError, AttributeError) as e:
+        duration = time.time() - start_time
+        metrics_collector.record_tool_call(tool_name, "error")
         logger.error(f"Tool execution failed: {e}", exc_info=True)
-        return f"Error executing {tool_name}: {str(e)}"
+        return f"Error executing {tool_name}: {str(e)}", duration

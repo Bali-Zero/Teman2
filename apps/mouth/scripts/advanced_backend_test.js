@@ -1,4 +1,5 @@
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fetch = require('node-fetch'); // Native in Node 18+, but ensuring compat
 
 const BASE_URL = 'http://localhost:8080'; 

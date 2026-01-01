@@ -277,18 +277,13 @@ class FollowupService:
     def _build_followup_generation_prompt(
         self, query: str, response: str, conversation_context: str | None, language: str
     ) -> str:
-        """Build prompt for AI to generate follow-up questions"""
+        """Build prompt for AI to generate follow-up questions in the user's language"""
 
-        # Language-specific instructions
-        language_instructions = {
-            "en": "Generate 3-4 relevant follow-up questions in English.",
-            "it": "Genera 3-4 domande di follow-up rilevanti in italiano.",
-            "id": "Buat 3-4 pertanyaan lanjutan yang relevan dalam bahasa Indonesia.",
-        }
+        # CRITICAL: Generate follow-ups in the SAME language as the user's query
+        prompt = f"""Analyze this conversation and generate 3-4 follow-up questions.
 
-        instruction = language_instructions.get(language, language_instructions["en"])
-
-        prompt = f"""{instruction}
+IMPORTANT: Generate the questions in the SAME LANGUAGE as the user's original question.
+User's question language: Detect from the query below and match it exactly.
 
 User asked: "{query}"
 
@@ -297,10 +292,11 @@ AI responded: "{response[:300]}..."
 {f"Previous context: {conversation_context[:200]}..." if conversation_context else ""}
 
 Generate 3-4 short, specific follow-up questions that:
-1. Help the user dig deeper into the topic
-2. Explore related areas they might be interested in
-3. Are natural continuations of the conversation
-4. Are phrased as questions the user would actually ask
+1. Are written in the SAME LANGUAGE as the user's query above
+2. Help the user dig deeper into the topic
+3. Explore related areas they might be interested in
+4. Are natural continuations of the conversation
+5. Are phrased as questions the user would actually ask
 
 Format as a numbered list:
 1. First question?
@@ -308,7 +304,8 @@ Format as a numbered list:
 3. Third question?
 4. Fourth question? (optional)
 
-Keep questions concise (max 10 words each)."""
+Keep questions concise (max 10 words each).
+REMEMBER: Questions MUST be in the same language as the user's original query."""
 
         return prompt
 

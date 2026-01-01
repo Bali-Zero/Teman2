@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Performance metrics (Phase 1 fixes)
 try:
     from app.metrics import (
+        metrics_collector,
         rag_early_exit_total,
         rag_embedding_duration,
         rag_parallel_searches,
@@ -38,6 +39,7 @@ try:
 except ImportError:
     METRICS_AVAILABLE = False
     logger.warning("Performance metrics not available")
+    metrics_collector = None
 
 from core.cache import cached
 
@@ -127,20 +129,38 @@ class SearchService:
             f"✅ EmbeddingsGenerator ready: {self.embedder.provider} ({self.embedder.dimensions} dims)"
         )
 
-        # Initialize BM25 vectorizer for hybrid search
+        # Initialize BM25 vectorizer for hybrid search with retry and fallback
         self._bm25_vectorizer = None
+        self._bm25_enabled = False
+        self._bm25_initialization_attempts = 0
+        self._max_bm25_init_attempts = 3
+        
+        # BM25 initialization will be done synchronously in __init__
+        # For async retry, use initialize_bm25() method after instantiation
         if settings.enable_bm25:
             try:
                 from core.bm25_vectorizer import BM25Vectorizer
-
                 self._bm25_vectorizer = BM25Vectorizer(
                     vocab_size=settings.bm25_vocab_size,
                     k1=settings.bm25_k1,
                     b=settings.bm25_b,
                 )
-                logger.info("✅ BM25Vectorizer ready for hybrid search")
+                self._bm25_enabled = True
+                logger.info("✅ BM25Vectorizer initialized successfully")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_success_total.inc()
+            except ImportError as e:
+                logger.error(f"❌ BM25Vectorizer import failed: {e}")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type="import_error"
+                    ).inc()
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize BM25Vectorizer: {e}")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type=type(e).__name__
+                    ).inc()
 
         # Get Qdrant URL from centralized config
         qdrant_url = settings.qdrant_url
@@ -182,6 +202,93 @@ class SearchService:
 
         logger.info(f"✅ SearchService initialized with Qdrant URL: {qdrant_url}")
         logger.info("✅ Using dependency injection for modular services")
+
+    async def _init_bm25_with_retry(self) -> bool:
+        """Initialize BM25 with retry and fallback."""
+        if not settings.enable_bm25:
+            logger.info("BM25 disabled via settings")
+            return False
+        
+        for attempt in range(self._max_bm25_init_attempts):
+            try:
+                from core.bm25_vectorizer import BM25Vectorizer
+                
+                self._bm25_vectorizer = BM25Vectorizer(
+                    vocab_size=settings.bm25_vocab_size,
+                    k1=settings.bm25_k1,
+                    b=settings.bm25_b,
+                )
+                
+                self._bm25_enabled = True
+                logger.info("✅ BM25Vectorizer initialized successfully")
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_success_total.inc()
+                return True
+                
+            except ImportError as e:
+                logger.error(
+                    f"❌ BM25Vectorizer import failed: {e}",
+                    extra={
+                        "attempt": attempt + 1,
+                        "max_attempts": self._max_bm25_init_attempts,
+                        "error_type": "import_error",
+                    }
+                )
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type="import_error"
+                    ).inc()
+                # Import errors are permanent - don't retry
+                return False
+                
+            except Exception as e:
+                self._bm25_initialization_attempts = attempt + 1
+                logger.warning(
+                    f"⚠️ BM25Vectorizer initialization failed (attempt {attempt + 1}/{self._max_bm25_init_attempts}): {e}",
+                    extra={
+                        "attempt": attempt + 1,
+                        "max_attempts": self._max_bm25_init_attempts,
+                        "error_type": type(e).__name__,
+                    }
+                )
+                if metrics_collector:
+                    metrics_collector.bm25_initialization_failed_total.labels(
+                        error_type=type(e).__name__
+                    ).inc()
+                
+                if attempt < self._max_bm25_init_attempts - 1:
+                    # Exponential backoff
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    logger.error(
+                        f"❌ BM25Vectorizer initialization failed after {self._max_bm25_init_attempts} attempts. "
+                        f"Falling back to dense-only search.",
+                        extra={
+                            "final_error": str(e),
+                            "error_type": type(e).__name__,
+                        }
+                    )
+                    # Alert on persistent failure
+                    await self._alert_bm25_failure(e)
+                    return False
+        
+        return False
+    
+    async def _alert_bm25_failure(self, error: Exception):
+        """Alert on BM25 persistent failure."""
+        # Send alert to monitoring system
+        try:
+            # Note: AlertService may not exist, so we just log for now
+            logger.error(
+                f"BM25 Initialization Failed: BM25Vectorizer failed to initialize after {self._max_bm25_init_attempts} attempts. "
+                f"System falling back to dense-only search.",
+                extra={
+                    "error": str(error),
+                    "error_type": type(error).__name__,
+                }
+            )
+        except Exception as alert_error:
+            logger.error(f"Failed to send BM25 failure alert: {alert_error}")
 
     @property
     def cultural_insights(self):
@@ -320,10 +427,51 @@ class SearchService:
             if chroma_filter:
                 logger.debug(f"Filter applied: {chroma_filter}")
 
-            # Search (async)
-            raw_results = await vector_db.search(
-                query_embedding=query_embedding, filter=chroma_filter, limit=limit
-            )
+            # Try hybrid search if BM25 available
+            if self._bm25_enabled and self._bm25_vectorizer:
+                try:
+                    # Generate sparse vector using BM25
+                    query_sparse = self._bm25_vectorizer.generate_query_sparse_vector(query)
+                    
+                    # Try hybrid search if vector_db supports it
+                    if query_sparse and hasattr(vector_db, "hybrid_search"):
+                        raw_results = await vector_db.hybrid_search(
+                            query_embedding=query_embedding,
+                            query_sparse=query_sparse,
+                            filter=chroma_filter,
+                            limit=limit,
+                            prefetch_limit=limit * 3,
+                        )
+                        if metrics_collector:
+                            metrics_collector.search_hybrid_total.inc()
+                    else:
+                        # Fallback to dense-only if hybrid_search not available
+                        raise AttributeError("vector_db does not support hybrid_search")
+                    
+                except Exception as e:
+                    logger.warning(
+                        f"⚠️ Hybrid search failed, falling back to dense-only: {e}",
+                        extra={
+                            "query": query[:100],
+                            "collection": collection_name,
+                            "error": str(e),
+                        }
+                    )
+                    if metrics_collector:
+                        metrics_collector.search_hybrid_failed_total.inc()
+                    # Fall through to dense-only search
+                    raw_results = await vector_db.search(
+                        query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                    )
+                    if metrics_collector:
+                        metrics_collector.search_dense_only_total.inc()
+            else:
+                # Fallback: Dense-only search
+                raw_results = await vector_db.search(
+                    query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                )
+                if metrics_collector:
+                    metrics_collector.search_dense_only_total.inc()
 
             # Format results using helper method
             formatted_results = format_search_results(
@@ -352,7 +500,26 @@ class SearchService:
             }
 
         except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError) as e:
-            logger.error(f"Search error: {e}", exc_info=True)
+            logger.exception(
+                f"❌ Search failed completely",
+                extra={
+                    "query": query[:100],
+                    "user_level": user_level,
+                    "collection_override": collection_override,
+                }
+            )
+            if metrics_collector:
+                metrics_collector.search_failed_total.inc()
+            
+            # Return empty results instead of raising
+            return {
+                "query": query,
+                "results": [],
+                "user_level": user_level,
+                "allowed_tiers": [],
+                "collection_used": collection_override or "unknown",
+                "error": "Search service temporarily unavailable",
+            }
             raise
 
     def _init_reranker(self):

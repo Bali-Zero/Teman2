@@ -5,6 +5,7 @@ Agentic RAG API Router
 import hashlib
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -17,6 +18,55 @@ from app.utils.tracing import trace_span, set_span_attribute, set_span_status, a
 from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
 
 logger = logging.getLogger(__name__)
+
+
+def clean_image_generation_response(text: str) -> str:
+    """
+    Post-process AI response to remove ugly URLs from image generation.
+    Uses line-by-line filtering for robustness.
+    """
+    if not text or "pollinations" not in text.lower():
+        return text
+
+    # Process line by line for better control
+    lines = text.split('\n')
+    cleaned_lines = []
+
+    skip_patterns = [
+        r'pollinations\.ai',  # Any line with pollinations URL
+        r'^\s*\[Visualizza',  # Lines starting with [Visualizza
+        r'^\s*\d+\.\s*\*{0,2}Versione',  # "1. Versione..." or "1. **Versione..."
+        r'^\s*\d+\.\s*\*{0,2}(Prima|Seconda|Opzione)',  # Numbered options
+        r'^Ecco le opzioni',  # "Ecco le opzioni..."
+        r'^Ecco (due|le)',  # "Ecco due/le immagini..."
+        r'^Ho (creato|generato) (due|le)',  # "Ho creato due..."
+        r'^Ti propongo',  # "Ti propongo due..."
+        r'^\s*\(https?://',  # Lines starting with (http...
+        r'^Spero che queste opzioni',  # "Spero che queste opzioni..."
+    ]
+
+    for line in lines:
+        should_skip = False
+        for pattern in skip_patterns:
+            if re.search(pattern, line, re.IGNORECASE):
+                should_skip = True
+                break
+        if not should_skip:
+            cleaned_lines.append(line)
+
+    text = '\n'.join(cleaned_lines)
+
+    # Clean up multiple newlines and spaces
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'  +', ' ', text)
+    text = text.strip()
+
+    # If almost everything was removed, provide a default response
+    if len(text) < 20:
+        text = "Ecco l'immagine che hai richiesto! 🎨"
+
+    return text
+
 
 router = APIRouter(
     prefix="/api/agentic-rag",
@@ -54,10 +104,18 @@ class ConversationMessageInput(BaseModel):
     content: str
 
 
+class ImageInput(BaseModel):
+    """Image attachment from frontend"""
+
+    base64: str  # Base64 encoded image data (with data:image/... prefix)
+    name: str  # Original filename
+
+
 class AgenticQueryRequest(BaseModel):
     query: str
     user_id: str | None = "anonymous"
     enable_vision: bool | None = False
+    images: list[ImageInput] | None = None  # Attached images for vision
     session_id: str | None = None
     conversation_id: int | None = None
     conversation_history: list[
@@ -332,7 +390,21 @@ async def stream_agentic_rag(
         tokens_sent = 0
         events_by_type: dict[str, int] = {}
         final_answer_received = False
+        error_count = 0
+        max_errors = 5
+        
         try:
+            # Yield initial status
+            initial_status = {
+                'type': 'status',
+                'data': {
+                    'status': 'processing',
+                    'correlation_id': correlation_id,
+                }
+            }
+            yield f"data: {json.dumps(initial_status)}\n\n"
+            events_yielded += 1
+            
             # Priority 1: Use conversation_history from frontend if provided
             conversation_history: list[dict] = []
 
@@ -354,16 +426,31 @@ async def stream_agentic_rag(
                     f"session_id={request_body.session_id}, user_id={authenticated_user_id} "
                     f"(correlation_id={correlation_id})"
                 )
-                conversation_history = await get_conversation_history_for_agentic(
-                    conversation_id=request_body.conversation_id,
-                    session_id=request_body.session_id,
-                    user_id=authenticated_user_id,
-                    db_pool=db_pool,
-                )
-                logger.info(
-                    f"💬 Retrieved {len(conversation_history)} messages from database "
-                    f"(correlation_id={correlation_id})"
-                )
+                try:
+                    conversation_history = await get_conversation_history_for_agentic(
+                        conversation_id=request_body.conversation_id,
+                        session_id=request_body.session_id,
+                        user_id=authenticated_user_id,
+                        db_pool=db_pool,
+                    )
+                    logger.info(
+                        f"💬 Retrieved {len(conversation_history)} messages from database "
+                        f"(correlation_id={correlation_id})"
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to load history: {e}")
+                    # Yield error but continue
+                    error_event = {
+                        'type': 'error',
+                        'data': {
+                            'error_type': 'history_load_failed',
+                            'message': 'Could not load conversation history',
+                            'non_fatal': True,
+                            'correlation_id': correlation_id,
+                        }
+                    }
+                    yield f"data: {json.dumps(error_event)}\n\n"
+                    events_yielded += 1
 
             # Check for client disconnect before starting stream
             if await http_request.is_disconnected():
@@ -372,79 +459,154 @@ async def stream_agentic_rag(
                 )
                 return
 
-            # Emit initial status event (heartbeat)
-            initial_status = {"type": "status", "data": "Processing your request..."}
-            yield f"data: {json.dumps(initial_status)}\n\n"
-            events_yielded += 1
-
             # Stream query with disconnect detection
             # SECURITY: Use authenticated_user_id from JWT, not from request body
+            # Prepare images for vision if provided
+            images_for_vision = None
+            if request_body.images and request_body.enable_vision:
+                images_for_vision = [
+                    {"base64": img.base64, "name": img.name}
+                    for img in request_body.images
+                ]
+                logger.info(f"🖼️ Vision enabled with {len(images_for_vision)} images (correlation_id={correlation_id})")
+
             async for event in orchestrator.stream_query(
                 query=request_body.query,
                 user_id=authenticated_user_id,
                 conversation_history=conversation_history if conversation_history else None,
                 session_id=request_body.session_id,
+                images=images_for_vision,
             ):
-                # Fix: Handle None or non-dict events
-                if event is None:
-                    continue  # Skip None events
+                try:
+                    # Validate event
+                    if event is None:
+                        error_count += 1
+                        if error_count >= max_errors:
+                            error_event = {
+                                'type': 'error',
+                                'data': {
+                                    'error_type': 'too_many_errors',
+                                    'message': 'Stream aborted due to too many errors',
+                                    'fatal': True,
+                                    'correlation_id': correlation_id,
+                                }
+                            }
+                            yield f"data: {json.dumps(error_event)}\n\n"
+                            break
+                        continue
 
-                if not isinstance(event, dict):
-                    continue  # Skip non-dict events
+                    if not isinstance(event, dict):
+                        error_count += 1
+                        if error_count >= max_errors:
+                            error_event = {
+                                'type': 'error',
+                                'data': {
+                                    'error_type': 'too_many_errors',
+                                    'message': 'Stream aborted due to too many errors',
+                                    'fatal': True,
+                                    'correlation_id': correlation_id,
+                                }
+                            }
+                            yield f"data: {json.dumps(error_event)}\n\n"
+                            break
+                        continue
+                    
+                    # Post-process token events to clean image generation URLs
+                    if event.get("type") == "token" and isinstance(event.get("data"), str):
+                        event["data"] = clean_image_generation_response(event["data"])
 
-                # Check for client disconnect periodically
-                if events_yielded % 10 == 0:  # Check every 10 events
+                    # Serialize and yield
+                    event_json = json.dumps(event)
+                    yield f"data: {event_json}\n\n"
+                    events_yielded += 1
+
+                    # Reset error count on success
+                    error_count = 0
+                    
+                    # Check for client disconnect
                     if await http_request.is_disconnected():
-                        logger.warning(
-                            f"⚠️ Client disconnected during stream (correlation_id={correlation_id}, "
-                            f"events_yielded={events_yielded}, tokens_sent={tokens_sent})"
-                        )
-                        return
+                        logger.info(f"Client disconnected: {correlation_id}")
+                        break
+                    
+                    # Track event type and tokens
+                    event_type = event.get("type", "unknown")
+                    events_by_type[event_type] = events_by_type.get(event_type, 0) + 1
 
-                # Track event type and tokens
-                event_type = event.get("type", "unknown")
-                events_by_type[event_type] = events_by_type.get(event_type, 0) + 1
+                    # Count tokens from token events
+                    if event_type == "token":
+                        token_content = event.get("data", "")
+                        # Fix: Handle None explicitly (event.get("data") can return None)
+                        if token_content is None:
+                            token_content = ""
+                        if isinstance(token_content, str):
+                            # Approximate token count (rough estimate: 1 token ≈ 4 chars)
+                            tokens_sent += max(1, len(token_content) // 4)
+                        else:
+                            tokens_sent += 1
 
-                # Count tokens from token events
-                if event_type == "token":
-                    token_content = event.get("data", "")
-                    # Fix: Handle None explicitly (event.get("data") can return None)
-                    if token_content is None:
-                        token_content = ""
-                    if isinstance(token_content, str):
-                        # Approximate token count (rough estimate: 1 token ≈ 4 chars)
-                        tokens_sent += max(1, len(token_content) // 4)
-                    else:
-                        tokens_sent += 1
-
-                # Check if final answer was received
-                if event_type == "done" or (
-                    event_type == "status" and event.get("data") == "[DONE]"
-                ):
-                    final_answer_received = True
-
-                # Format as SSE
-                yield f"data: {json.dumps(event)}\n\n"
-                events_yielded += 1
+                    # Check if final answer was received
+                    if event_type == "done" or (
+                        event_type == "status" and event.get("data") == "[DONE]"
+                    ):
+                        final_answer_received = True
+                        
+                except json.JSONEncodeError as e:
+                    error_count += 1
+                    logger.error(f"JSON serialization failed: {e}")
+                    error_event = {
+                        'type': 'error',
+                        'data': {
+                            'error_type': 'serialization_error',
+                            'message': 'Failed to serialize event',
+                            'non_fatal': True,
+                            'correlation_id': correlation_id,
+                        }
+                    }
+                    yield f"data: {json.dumps(error_event)}\n\n"
+                    events_yielded += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    logger.exception(f"Error processing stream event: {e}")
+                    error_event = {
+                        'type': 'error',
+                        'data': {
+                            'error_type': 'processing_error',
+                            'message': str(e),
+                            'non_fatal': error_count < max_errors,
+                            'correlation_id': correlation_id,
+                        }
+                    }
+                    yield f"data: {json.dumps(error_event)}\n\n"
+                    events_yielded += 1
+                    
+                    if error_count >= max_errors:
+                        break
+            
+            # Yield final status
+            final_status = {
+                'type': 'status',
+                'data': {
+                    'status': 'completed',
+                    'correlation_id': correlation_id,
+                }
+            }
+            yield f"data: {json.dumps(final_status)}\n\n"
+            events_yielded += 1
 
         except Exception as e:
-            duration_ms = (time.time() - start_time) * 1000
-            error_data = {"type": "error", "message": str(e)}
-            if "429" in str(e) or "ResourceExhausted" in str(e):
-                error_data["code"] = "QUOTA_EXCEEDED"
-                error_data["message"] = "Usage limit reached. Please try again later."
-            elif "503" in str(e) or "ServiceUnavailable" in str(e):
-                error_data["code"] = "SERVICE_UNAVAILABLE"
-                error_data["message"] = "Service temporarily unavailable. Please try again."
-
-            logger.error(
-                f"❌ SSE stream error: correlation_id={correlation_id}, "
-                f"error={type(e).__name__}: {str(e)[:100]}, "
-                f"duration_ms={duration_ms:.1f}, events_yielded={events_yielded}, "
-                f"tokens_sent={tokens_sent}, final_answer_received={final_answer_received}, "
-                f"events_by_type={events_by_type}"
-            )
-            yield f"data: {json.dumps({'type': 'error', 'data': error_data})}\n\n"
+            logger.exception(f"Fatal error in stream: {e}")
+            fatal_error_event = {
+                'type': 'error',
+                'data': {
+                    'error_type': 'fatal_error',
+                    'message': f'Stream failed: {str(e)}',
+                    'fatal': True,
+                    'correlation_id': correlation_id,
+                }
+            }
+            yield f"data: {json.dumps(fatal_error_event)}\n\n"
+            events_yielded += 1
         finally:
             # Log final statistics regardless of success or error
             end_time = time.time()
@@ -473,5 +635,6 @@ async def stream_agentic_rag(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
+            "X-Correlation-ID": correlation_id,
         },
     )

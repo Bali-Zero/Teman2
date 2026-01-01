@@ -2,78 +2,104 @@
 
 ## Current Deployment
 
-**Last Updated**: December 28, 2025
+**Last Updated**: December 29, 2025 (02:15 UTC)
 
 ### Production Environment
 
-- **App Name**: `nuzantara-rag`
-- **Platform**: Fly.io
-- **Region**: sin (Singapore)
-- **URL**: https://nuzantara-rag.fly.dev/
-- **Status**: ✅ **ACTIVE**
+| Service | Platform | URL | Status |
+|---------|----------|-----|--------|
+| **Backend RAG** | Fly.io | https://nuzantara-rag.fly.dev | ✅ ACTIVE |
+| **Frontend Mouth** | Fly.io | https://nuzantara-mouth.fly.dev | ✅ ACTIVE |
 
 ### Latest Deployment
 
-- **Version**: 1073
-- **Image**: `deployment-01KDH7M3D235J4QKEM25ZJYD6B`
-- **Deployment Date**: December 28, 2025
+- **Backend Version**: v1090 (deployment-01KDK1RA88G58ZK7AN5TVA1MQ1)
+- **Frontend Version**: deployment-01KDJMW9JZNASJQGDEZK210KBD
+- **Deployment Date**: December 29, 2025
 - **Deployment Status**: ✅ **SUCCESS**
 
-### Deployed Features
+### Deployed Features (This Session)
 
-#### Test Coverage Improvements
-- **Coverage**: 95.01% (Target: 90% - EXCEEDED!)
-- **reasoning.py**: 96.30% coverage
-- **feedback.py**: 89.61% coverage
-- **72+ new tests** added
-- **All critical paths** covered
+#### 1. 🛡️ Red Team Security Hardening - 100% Survival Rate
 
-#### Key Improvements
-- Comprehensive edge case coverage
-- Integration tests for complex scenarios
-- Exact line coverage tests
-- Citation handling tests
-- Streaming mode tests
-- Error handling tests
+**Results**: 50/50 adversarial tests passed (was 47/50)
+
+| Fix | Issue | Solution |
+|-----|-------|----------|
+| PI-001 | Prompt Injection | Added `detect_prompt_injection()` security gate in orchestrator |
+| RC-004 | Router Confusion | Added Indonesian tax terms (pph, ppn, npwp) to BUSINESS_KEYWORDS |
+| EM-002 | Evaluator Bug | Fixed false positive with negation pattern detection |
+
+**Security Enhancements**:
+- New `<security_boundary>` section in system prompt
+- Prompt injection detection with 20+ attack patterns
+- Off-topic request blocking (jokes, stories, roleplay)
+- Security gate in both sync and async RAG paths
+
+#### 2. Observability Stack Documentation
+- Added section 4.8 to AI_ONBOARDING.md
+- Added monitoring diagram to SYSTEM_MAP_4D.md
+- New ALERTS_RUNBOOK.md with 12 alert runbooks
+
+#### 3. Token Tracking & LLM Cost Observability
+- New `pricing.py` module for comprehensive LLM cost tracking
+- Support for OpenAI, Anthropic, Google, and local models
+- 28 tests with 93.62% coverage
+
+#### 4. Frontend Type Safety Improvements
+- Created `IApiClient` interface for type-safe dependency injection
+- Removed 48+ `as any` casts from production code
+- All domain API modules now use typed interface
 
 ### Health Status
 
-- **App Status**: ✅ Running
-- **Health Endpoint**: `/api/health` - ✅ Responding
+- **Backend Health**: ✅ Healthy
+  - Database: Qdrant (6 collections, 53,822 documents)
+  - Embeddings: OpenAI text-embedding-3-small (1536 dimensions)
+- **Frontend**: ✅ HTTP 200
 - **API Endpoints**: ✅ Accessible
-- **Database**: ✅ Connected
-- **Qdrant**: ⚠️ Minor warnings (non-critical)
+
+### Test Coverage
+
+| Module | Coverage | Status |
+|--------|----------|--------|
+| Backend Python | 95.01% | ✅ Exceeds 90% target |
+| reasoning.py | 96.44% | ✅ Exceeds 95% target |
+| llm_gateway.py | 99.01% | ✅ Exceeds 95% target |
+| prompt_builder.py | 40.33% | ✅ Security tests added |
+| Frontend TypeScript | 567 tests passing | ✅ All green |
+| LLM Pricing | 93.62% | ✅ New module |
+| **Red Team Security** | 100% (50/50) | ✅ All attacks blocked |
 
 ### Monitoring
 
-- **Logs**: `flyctl logs -a nuzantara-rag`
-- **Status**: `flyctl status -a nuzantara-rag`
-- **Metrics**: Available via Fly.io dashboard
+```bash
+# Backend logs
+fly logs -a nuzantara-rag
 
-### Deployment Process
+# Frontend logs
+fly logs -a nuzantara-mouth
 
-1. **Pre-Deployment**:
-   ```bash
-   cd apps/backend-rag
-   pytest --cov=services.rag.agentic.reasoning --cov=app.routers.feedback
-   ```
+# Status check
+fly status -a nuzantara-rag
+fly status -a nuzantara-mouth
+```
 
-2. **Deployment**:
-   ```bash
-   cd apps/backend-rag
-   flyctl deploy -a nuzantara-rag
-   ```
+### Deployment Commands
 
-3. **Verification**:
-   ```bash
-   curl https://nuzantara-rag.fly.dev/api/health
-   flyctl logs -a nuzantara-rag --no-tail
-   ```
+```bash
+# Backend
+cd apps/backend-rag && fly deploy --remote-only
+
+# Frontend
+cd apps/mouth && fly deploy --remote-only
+
+# Health check
+curl https://nuzantara-rag.fly.dev/health | jq
+```
 
 ### Notes
 
-- All deployments are manual (no CI/CD)
-- Deployments are done from local machine
-- Test coverage must be maintained above 90%
-- Critical paths must be covered by tests
-
+- CI/CD workflows now properly configured in `.github/workflows/`
+- TypeScript compiles with 0 errors
+- All `as any` casts removed from frontend API client

@@ -301,15 +301,23 @@ class TestOpenRouterClient:
             yield 'data: {"choices": [{"delta": {"content": " World"}}]}'
             yield "data: [DONE]"
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_instance = AsyncMock()
-            mock_client.return_value.__aenter__.return_value = mock_instance
+        with patch("services.llm_clients.openrouter_client.httpx.AsyncClient") as mock_client:
+            mock_instance = MagicMock()
+            # Properly set up async context manager for httpx.AsyncClient()
+            mock_cm = MagicMock()
+            mock_cm.__aenter__ = AsyncMock(return_value=mock_instance)
+            mock_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_client.return_value = mock_cm
 
-            mock_response = AsyncMock()
+            mock_response = MagicMock()
             mock_response.raise_for_status = MagicMock()
             mock_response.aiter_lines = mock_aiter_lines
 
-            mock_instance.stream.return_value.__aenter__.return_value = mock_response
+            # Properly set up async context manager for stream()
+            stream_cm = MagicMock()
+            stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
+            stream_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_instance.stream.return_value = stream_cm
 
             chunks = []
             async for chunk in client.complete_stream([{"role": "user", "content": "Hi"}]):
@@ -328,15 +336,23 @@ class TestOpenRouterClient:
             yield 'data: {"choices": [{"delta": {"content": "OK"}}]}'
             yield "data: [DONE]"
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_instance = AsyncMock()
-            mock_client.return_value.__aenter__.return_value = mock_instance
+        with patch("services.llm_clients.openrouter_client.httpx.AsyncClient") as mock_client:
+            mock_instance = MagicMock()
+            # Properly set up async context manager for httpx.AsyncClient()
+            mock_cm = MagicMock()
+            mock_cm.__aenter__ = AsyncMock(return_value=mock_instance)
+            mock_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_client.return_value = mock_cm
 
-            mock_response = AsyncMock()
+            mock_response = MagicMock()
             mock_response.raise_for_status = MagicMock()
             mock_response.aiter_lines = mock_aiter_lines
 
-            mock_instance.stream.return_value.__aenter__.return_value = mock_response
+            # Properly set up async context manager for stream()
+            stream_cm = MagicMock()
+            stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
+            stream_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_instance.stream.return_value = stream_cm
 
             async for _ in client.complete_stream(
                 [{"role": "user", "content": "Hi"}], model_id="specific-model"
@@ -355,15 +371,23 @@ class TestOpenRouterClient:
             yield 'data: {"choices": [{"delta": {"content": "OK"}}]}'
             yield "data: [DONE]"
 
-        with patch("httpx.AsyncClient") as mock_client:
-            mock_instance = AsyncMock()
-            mock_client.return_value.__aenter__.return_value = mock_instance
+        with patch("services.llm_clients.openrouter_client.httpx.AsyncClient") as mock_client:
+            mock_instance = MagicMock()
+            # Properly set up async context manager for httpx.AsyncClient()
+            mock_cm = MagicMock()
+            mock_cm.__aenter__ = AsyncMock(return_value=mock_instance)
+            mock_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_client.return_value = mock_cm
 
-            mock_response = AsyncMock()
+            mock_response = MagicMock()
             mock_response.raise_for_status = MagicMock()
             mock_response.aiter_lines = mock_aiter_lines
 
-            mock_instance.stream.return_value.__aenter__.return_value = mock_response
+            # Properly set up async context manager for stream()
+            stream_cm = MagicMock()
+            stream_cm.__aenter__ = AsyncMock(return_value=mock_response)
+            stream_cm.__aexit__ = AsyncMock(return_value=None)
+            mock_instance.stream.return_value = stream_cm
 
             chunks = []
             async for chunk in client.complete_stream([{"role": "user", "content": "Hi"}]):
@@ -437,7 +461,8 @@ class TestConvenienceFunctions:
         """Mock the singleton client"""
         with patch("services.llm_clients.openrouter_client.openrouter_client") as mock:
             mock.complete = AsyncMock()
-            mock.complete_stream = AsyncMock()
+            # complete_stream must be a regular MagicMock since it returns an async generator
+            mock.complete_stream = MagicMock()
             yield mock
 
     @pytest.mark.asyncio
@@ -482,10 +507,11 @@ class TestConvenienceFunctions:
         """Test smart_complete_stream with simple prompt"""
         from services.llm_clients.openrouter_client import smart_complete_stream
 
-        async def mock_stream(*args, **kwargs):
+        async def mock_stream():
             yield "Hello"
             yield " World"
 
+        # Return an async generator directly
         mock_client.complete_stream.return_value = mock_stream()
 
         chunks = []
@@ -499,9 +525,10 @@ class TestConvenienceFunctions:
         """Test smart_complete_stream with system prompt"""
         from services.llm_clients.openrouter_client import smart_complete_stream
 
-        async def mock_stream(*args, **kwargs):
+        async def mock_stream():
             yield "OK"
 
+        # Return an async generator directly
         mock_client.complete_stream.return_value = mock_stream()
 
         async for _ in smart_complete_stream("Hello", system="Be concise"):

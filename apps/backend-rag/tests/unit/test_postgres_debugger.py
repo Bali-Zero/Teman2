@@ -136,7 +136,12 @@ class TestPostgreSQLDebugger:
             query = f"SELECT * FROM users; {keyword} TABLE users"
             is_valid, error = debugger.validate_query(query)
             assert is_valid is False, f"Keyword {keyword} should be rejected"
-            assert keyword in error.upper() or "forbidden" in error.lower()
+            assert error is not None
+            assert (
+                "multiple statements" in error.lower()
+                or keyword in error.upper()
+                or "forbidden" in error.lower()
+            )
 
     def test_validate_query_multiple_statements_rejected(self):
         """Test that queries with multiple statements are rejected."""
@@ -177,6 +182,10 @@ class TestPostgreSQLDebugger:
         mock_row2.keys = MagicMock(return_value=["id", "name"])
 
         mock_conn = AsyncMock()
+        mock_tx = MagicMock()
+        mock_tx.__aenter__ = AsyncMock(return_value=None)
+        mock_tx.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
         mock_conn.fetch = AsyncMock(return_value=[mock_row1, mock_row2])
         mock_conn.close = AsyncMock()
 
@@ -195,6 +204,10 @@ class TestPostgreSQLDebugger:
         debugger = PostgreSQLDebugger(database_url="postgresql://test:test@localhost/test")
 
         mock_conn = AsyncMock()
+        mock_tx = MagicMock()
+        mock_tx.__aenter__ = AsyncMock(return_value=None)
+        mock_tx.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
         mock_conn.fetch = AsyncMock(return_value=[])
         mock_conn.close = AsyncMock()
 
@@ -206,11 +219,34 @@ class TestPostgreSQLDebugger:
         assert "LIMIT 50" in call_args[0][0].upper()
 
     @pytest.mark.asyncio
+    async def test_execute_query_with_trailing_semicolon(self):
+        """Test query execution strips trailing semicolon before enforcing LIMIT."""
+        debugger = PostgreSQLDebugger(database_url="postgresql://test:test@localhost/test")
+
+        mock_conn = AsyncMock()
+        mock_tx = MagicMock()
+        mock_tx.__aenter__ = AsyncMock(return_value=None)
+        mock_tx.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
+        mock_conn.fetch = AsyncMock(return_value=[])
+        mock_conn.close = AsyncMock()
+
+        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+            await debugger.execute_query("SELECT * FROM users;", limit=10)
+
+        call_args = mock_conn.fetch.call_args
+        assert "FROM (SELECT * FROM users)" in call_args[0][0]
+
+    @pytest.mark.asyncio
     async def test_execute_query_limit_enforced(self):
         """Test that limit is enforced to MAX_ROWS_LIMIT."""
         debugger = PostgreSQLDebugger(database_url="postgresql://test:test@localhost/test")
 
         mock_conn = AsyncMock()
+        mock_tx = MagicMock()
+        mock_tx.__aenter__ = AsyncMock(return_value=None)
+        mock_tx.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
         mock_conn.fetch = AsyncMock(return_value=[])
         mock_conn.close = AsyncMock()
 
@@ -236,6 +272,10 @@ class TestPostgreSQLDebugger:
 
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
+        mock_tx = MagicMock()
+        mock_tx.__aenter__ = AsyncMock(return_value=None)
+        mock_tx.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.transaction = MagicMock(return_value=mock_tx)
         mock_conn.fetch = AsyncMock(return_value=[])
 
         mock_cm = MagicMock()

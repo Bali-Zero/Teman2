@@ -1,0 +1,479 @@
+---
+title: "Starting a Restaurant in Indonesia 2025: Complete Guide for Foreigners"
+slug: "restaurant-business-guide"
+description: "How to open a restaurant in Indonesia as a foreigner. Licensing, permits, capital requirements, and F&B business setup guide."
+excerpt: "Want to open a restaurant in Bali or Jakarta? Here's what foreign investors need to know."
+category: "business"
+tags:
+  - restaurant business
+  - F&B license
+  - PT PMA restaurant
+  - food business Indonesia
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: false
+image:
+  src: "/images/insights/business/restaurant.jpg"
+  alt: "Restaurant business in Indonesia"
+seo:
+  title: "Open Restaurant Indonesia 2025 | Foreign F&B Business Guide"
+  description: "How foreigners can open a restaurant in Indonesia. PT PMA requirements, F&B licenses, permits, and costs for food business."
+  keywords:
+    - restaurant business indonesia
+    - open restaurant bali
+    - F&B license indonesia
+    - PT PMA restaurant
+readingTime: 12
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "business_docs"
+    documentsUsed: 20
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "pt-pma-registration-guide"
+  - "nib-explained"
+  - "company-domicile-guide"
+tableOfContents: true
+---
+
+import {
+  JourneyMap,
+  Calculator,
+  Checklist,
+  ComparisonTable,
+  InfoCard,
+  AskZantara
+} from '@/components/insights/interactive';
+
+# Starting a Restaurant in Indonesia 2025: Complete Guide for Foreigners
+
+Opening a restaurant in Indonesia as a foreigner is absolutely possible, but requires proper structure and licensing. Here's your complete guide.
+
+## Can Foreigners Open Restaurants?
+
+<InfoCard variant="note" title="Yes, But With Requirements">
+Foreigners can own restaurants in Indonesia through a **PT PMA** (foreign investment company). Key requirements:
+- Minimum investment: IDR 10 billion (~USD 625,000)
+- Cannot be small warung/street food
+- Must be formal restaurant establishment
+- Need multiple permits and licenses
+</InfoCard>
+
+---
+
+## Business Structure Options
+
+<ComparisonTable
+  title="Restaurant Ownership Options"
+  description="Ways foreigners can operate restaurants"
+  items={[
+    {
+      name: "PT PMA (Direct)",
+      subtitle: "Foreign-owned company",
+      values: {
+        "Foreign Ownership": "100%",
+        "Investment": "IDR 10B minimum",
+        "Control": "Full control",
+        "Best For": "Large restaurants, chains"
+      },
+      highlight: true
+    },
+    {
+      name: "PT Local + Nominee",
+      subtitle: "Local company (risky)",
+      values: {
+        "Foreign Ownership": "0% official",
+        "Investment": "Lower",
+        "Control": "Risky arrangement",
+        "Best For": "Not recommended"
+      }
+    },
+    {
+      name: "Franchise",
+      subtitle: "License Indonesian brand",
+      values: {
+        "Foreign Ownership": "Varies",
+        "Investment": "Varies",
+        "Control": "Shared",
+        "Best For": "Known concepts"
+      }
+    }
+  ]}
+/>
+
+<InfoCard variant="warning" title="Avoid Nominee Arrangements">
+Using an Indonesian nominee to hold shares is illegal and risky. If discovered, you can lose everything. Use proper PT PMA structure.
+</InfoCard>
+
+---
+
+## Investment Calculator
+
+<Calculator
+  title="Restaurant Investment Estimate"
+  description="Calculate total investment needed"
+  fields={[
+    {
+      id: "location",
+      label: "Location Type",
+      type: "select",
+      options: [
+        { value: "bali-premium", label: "Bali - Premium (Seminyak, Canggu)" },
+        { value: "bali-standard", label: "Bali - Standard" },
+        { value: "jakarta-premium", label: "Jakarta - Premium" },
+        { value: "jakarta-standard", label: "Jakarta - Standard" }
+      ],
+      defaultValue: "bali-standard"
+    },
+    {
+      id: "size",
+      label: "Restaurant Size",
+      type: "select",
+      options: [
+        { value: "small", label: "Small (20-40 seats)" },
+        { value: "medium", label: "Medium (40-80 seats)" },
+        { value: "large", label: "Large (80+ seats)" }
+      ],
+      defaultValue: "medium"
+    },
+    {
+      id: "concept",
+      label: "Concept Type",
+      type: "select",
+      options: [
+        { value: "casual", label: "Casual dining" },
+        { value: "fine", label: "Fine dining" },
+        { value: "cafe", label: "Café/coffee shop" },
+        { value: "bar", label: "Bar/restaurant" }
+      ],
+      defaultValue: "casual"
+    }
+  ]}
+  calculateResult={(values) => {
+    // Base setup costs by location
+    const locationCosts = {
+      "bali-premium": 4000000000,
+      "bali-standard": 2500000000,
+      "jakarta-premium": 4500000000,
+      "jakarta-standard": 3000000000
+    };
+
+    // Size multipliers
+    const sizeMultipliers = {
+      "small": 0.6,
+      "medium": 1.0,
+      "large": 1.8
+    };
+
+    // Concept additions
+    const conceptAdditions = {
+      "casual": 0,
+      "fine": 1500000000,
+      "cafe": -500000000,
+      "bar": 500000000
+    };
+
+    const base = locationCosts[values.location];
+    const multiplier = sizeMultipliers[values.size];
+    const addition = conceptAdditions[values.concept];
+    const companySetup = 100000000; // PT PMA setup
+    const workingCapital = 1000000000; // 6 months operations
+
+    const setupCost = (base * multiplier) + addition;
+    const total = setupCost + companySetup + workingCapital;
+
+    // Ensure minimum IDR 10B for PMA
+    const finalTotal = Math.max(total, 10000000000);
+
+    return {
+      total: finalTotal,
+      breakdown: [
+        { label: "Restaurant Setup", amount: setupCost },
+        { label: "PT PMA Formation", amount: companySetup },
+        { label: "Working Capital (6 months)", amount: workingCapital },
+        { label: "Total Investment", amount: finalTotal }
+      ],
+      currency: "IDR",
+      note: `Meets IDR 10B PMA minimum: ${finalTotal >= 10000000000 ? "Yes ✅" : "Need additional investment"}`
+    };
+  }}
+/>
+
+---
+
+## Required Licenses
+
+<Checklist
+  title="Restaurant License Checklist"
+  description="All permits needed to operate legally"
+  persistKey="restaurant-license-checklist"
+  items={[
+    {
+      id: "nib",
+      label: "NIB (Business ID)",
+      description: "Through OSS system",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "izin-usaha",
+      label: "Izin Usaha (Business License)",
+      description: "Restaurant activity license",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "tdup",
+      label: "TDUP (Tourism Business License)",
+      description: "If in tourist area (Bali)",
+      required: false,
+      category: "industry"
+    },
+    {
+      id: "halal",
+      label: "Halal Certificate",
+      description: "If serving halal food",
+      required: false,
+      category: "industry"
+    },
+    {
+      id: "bpom",
+      label: "BPOM Registration",
+      description: "For packaged/processed foods",
+      required: false,
+      category: "industry"
+    },
+    {
+      id: "liquor",
+      label: "SIUP-MB (Liquor License)",
+      description: "If serving alcohol",
+      required: false,
+      category: "special"
+    },
+    {
+      id: "imb",
+      label: "IMB/PBG (Building Permit)",
+      description: "For the physical location",
+      required: true,
+      category: "location"
+    },
+    {
+      id: "slo",
+      label: "SLO (Operations Worthiness)",
+      description: "Safety compliance",
+      required: true,
+      category: "location"
+    },
+    {
+      id: "amdal",
+      label: "Environmental Document",
+      description: "SPPL, UKL-UPL, or AMDAL",
+      required: true,
+      category: "location"
+    },
+    {
+      id: "health",
+      label: "Health Department Permit",
+      description: "Food safety inspection",
+      required: true,
+      category: "health"
+    }
+  ]}
+  categories={[
+    { id: "company", label: "Company", color: "blue" },
+    { id: "industry", label: "Industry", color: "green" },
+    { id: "special", label: "Special", color: "purple" },
+    { id: "location", label: "Location", color: "amber" },
+    { id: "health", label: "Health", color: "red" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Setup Process
+
+<JourneyMap
+  title="Restaurant Setup Journey"
+  description: "From idea to opening"
+  estimatedTotal="4-6 months"
+  steps={[
+    {
+      id: "plan",
+      title: "Business Planning",
+      description: "Concept, location, budget",
+      duration: "2-4 weeks",
+      status: "required",
+      tips: [
+        "Define restaurant concept",
+        "Research location options",
+        "Create detailed budget",
+        "Identify target market"
+      ]
+    },
+    {
+      id: "company",
+      title: "Establish PT PMA",
+      description: "Company formation",
+      duration: "4-6 weeks",
+      status: "required",
+      tips: [
+        "Choose KBLI codes for F&B",
+        "Minimum IDR 10B investment",
+        "Register through OSS"
+      ]
+    },
+    {
+      id: "location",
+      title: "Secure Location",
+      description: "Lease and permits",
+      duration: "2-4 weeks",
+      status: "required",
+      tips: [
+        "Negotiate lease terms",
+        "Verify zoning allows restaurant",
+        "Check building permits",
+        "Review previous tenant issues"
+      ]
+    },
+    {
+      id: "licenses",
+      title: "Obtain Licenses",
+      description: "All required permits",
+      duration: "4-8 weeks",
+      status: "required",
+      tips: [
+        "NIB through OSS",
+        "Industry-specific permits",
+        "Health department inspection",
+        "Liquor license if needed"
+      ]
+    },
+    {
+      id: "build",
+      title: "Build Out",
+      description: "Renovate and equip",
+      duration: "6-12 weeks",
+      status: "required",
+      tips: [
+        "Kitchen design and equipment",
+        "Interior design",
+        "Safety systems",
+        "Signage permits"
+      ]
+    },
+    {
+      id: "staff",
+      title: "Hire & Train Staff",
+      description: "Build your team",
+      duration: "4-6 weeks",
+      status: "required",
+      tips: [
+        "Hire before opening",
+        "Train on concept and service",
+        "Register with BPJS",
+        "Create SOPs"
+      ]
+    },
+    {
+      id: "open",
+      title: "Soft Opening",
+      description: "Test operations",
+      duration: "2-4 weeks",
+      status: "final",
+      tips: [
+        "Start with limited hours/menu",
+        "Gather feedback",
+        "Fix operational issues",
+        "Grand opening when ready"
+      ]
+    }
+  ]}
+/>
+
+---
+
+## Liquor License (SIUP-MB)
+
+If you want to serve alcohol:
+
+<InfoCard variant="warning" title="Alcohol License Is Complex">
+Liquor licenses in Indonesia are:
+- Heavily regulated
+- Location-dependent (some areas prohibit)
+- Expensive to obtain
+- Subject to periodic review
+
+In Bali, licenses are more accessible. In other areas, may be impossible.
+</InfoCard>
+
+### License Types
+
+| Type | Description | Where |
+|------|-------------|-------|
+| SIUP-MB A | Alcoholic beverages (beer, wine, spirits) | Hotels, restaurants |
+| SIUP-MB B | Beer only | Bars, restaurants |
+| SIUP-MB C | Retail sale | Shops with license |
+
+---
+
+## Staffing Requirements
+
+### Indonesian Staff
+- Must hire Indonesian workers
+- Register with BPJS (health and employment insurance)
+- Follow minimum wage (UMR) by region
+- Provide employment contracts
+
+### Foreign Staff
+- Limited to certain positions (chef, manager)
+- Requires RPTKA and KITAS
+- Must train Indonesian counterpart
+- Additional costs (DKP-TKA)
+
+<InfoCard variant="tip" title="Hiring Foreign Chefs">
+Foreign chefs are common in Indonesia but require:
+- Work permit (RPTKA + KITAS)
+- Justification why Indonesian chef not suitable
+- Indonesian sous chef to learn from them
+</InfoCard>
+
+---
+
+## Common Challenges
+
+1. **High investment minimum** - IDR 10B is substantial
+2. **Location competition** - Premium spots expensive
+3. **License complexity** - Multiple agencies involved
+4. **Staff management** - Training and retention
+5. **Seasonal business** - Especially in tourist areas
+6. **Alcohol restrictions** - Limiting in some areas
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Restaurant business Indonesia, F&B license, PT PMA restaurant, open restaurant Bali"
+  placeholder="Ask about restaurant business..."
+  suggestedQuestions={[
+    "Can I open a small café with less investment?",
+    "How hard is it to get a liquor license in Bali?",
+    "What's the typical ROI for restaurants?",
+    "Can I use my own recipes without issue?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [PT PMA Registration Guide](/insights/business/pt-pma-registration-guide)
+- [NIB Explained](/insights/business/nib-explained)
+- [Company Domicile Guide](/insights/business/company-domicile-guide)
+- [Work Permit for Employees](/insights/immigration/kitas-work-permit-guide)

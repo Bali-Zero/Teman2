@@ -1,0 +1,439 @@
+---
+title: "SIM Cards & Internet in Indonesia 2025: Expat Guide"
+slug: "sim-card-internet-indonesia"
+description: "Best SIM cards and internet options in Indonesia for foreigners. Mobile data, home internet, and staying connected in Bali."
+excerpt: "Need mobile data and internet in Indonesia? Here's your complete connectivity guide."
+category: "lifestyle"
+tags:
+  - sim card
+  - internet
+  - mobile data
+  - connectivity
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Lifestyle Advisor"
+featured: false
+image:
+  src: "/images/insights/lifestyle/sim-internet.jpg"
+  alt: "Internet and SIM cards Indonesia"
+seo:
+  title: "SIM Card Internet Indonesia 2025 | Connectivity Guide"
+  description: "Best SIM cards and internet providers in Indonesia. Mobile data options for expats and tourists."
+  keywords:
+    - sim card indonesia
+    - internet bali
+    - mobile data indonesia
+readingTime: 8
+difficulty: "beginner"
+aiGenerated: true
+kbSources:
+  - collection: "lifestyle_docs"
+    documentsUsed: 10
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "cost-of-living-bali"
+  - "digital-nomad-visa-indonesia"
+  - "coworking-spaces-bali"
+tableOfContents: true
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  Checklist,
+  InfoCard,
+  AskZantara
+} from '@/components/insights/interactive';
+
+# SIM Cards & Internet in Indonesia 2025: Expat Guide
+
+Staying connected in Indonesia is easy and affordable. Here's everything you need to know about mobile data and internet.
+
+## Mobile Providers Compared
+
+<ComparisonTable
+  title="Indonesian Mobile Providers"
+  description="Best options for foreigners"
+  items={[
+    {
+      name: "Telkomsel",
+      subtitle: "Best coverage",
+      values: {
+        "Coverage": "★★★★★",
+        "Speed": "★★★★☆",
+        "Price": "★★★☆☆",
+        "Best For": "Reliable everywhere"
+      },
+      highlight: true
+    },
+    {
+      name: "XL Axiata",
+      subtitle: "Good value",
+      values: {
+        "Coverage": "★★★★☆",
+        "Speed": "★★★★☆",
+        "Price": "★★★★☆",
+        "Best For": "Balance of price/quality"
+      }
+    },
+    {
+      name: "Indosat (IM3)",
+      subtitle: "Budget option",
+      values: {
+        "Coverage": "★★★☆☆",
+        "Speed": "★★★★☆",
+        "Price": "★★★★★",
+        "Best For": "Cities, budget"
+      }
+    },
+    {
+      name: "3 (Tri)",
+      subtitle: "Cheapest data",
+      values: {
+        "Coverage": "★★★☆☆",
+        "Speed": "★★★☆☆",
+        "Price": "★★★★★",
+        "Best For": "Heavy data users"
+      }
+    },
+    {
+      name: "Smartfren",
+      subtitle: "4G specialist",
+      values: {
+        "Coverage": "★★☆☆☆",
+        "Speed": "★★★★☆",
+        "Price": "★★★★☆",
+        "Best For": "Urban areas only"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Data Package Costs
+
+<Calculator
+  title="Monthly Data Cost"
+  description="Estimate your mobile costs"
+  fields={[
+    {
+      id: "usage",
+      label: "Monthly Data Usage",
+      type: "select",
+      options: [
+        { value: "light", label: "Light (5-10GB)" },
+        { value: "moderate", label: "Moderate (15-30GB)" },
+        { value: "heavy", label: "Heavy (50GB+)" },
+        { value: "unlimited", label: "Unlimited" }
+      ],
+      defaultValue: "moderate"
+    },
+    {
+      id: "provider",
+      label: "Provider",
+      type: "select",
+      options: [
+        { value: "telkomsel", label: "Telkomsel" },
+        { value: "xl", label: "XL Axiata" },
+        { value: "indosat", label: "Indosat" },
+        { value: "tri", label: "3 (Tri)" }
+      ],
+      defaultValue: "telkomsel"
+    }
+  ]}
+  calculateResult={(values) => {
+    // Approximate monthly costs
+    const costs = {
+      telkomsel: { light: 75000, moderate: 150000, heavy: 250000, unlimited: 400000 },
+      xl: { light: 60000, moderate: 125000, heavy: 200000, unlimited: 350000 },
+      indosat: { light: 50000, moderate: 100000, heavy: 175000, unlimited: 300000 },
+      tri: { light: 40000, moderate: 80000, heavy: 150000, unlimited: 250000 }
+    };
+
+    const monthly = costs[values.provider][values.usage];
+
+    return {
+      total: monthly,
+      breakdown: [
+        { label: "Monthly Package", amount: monthly },
+        { label: "Annual Total", amount: monthly * 12 }
+      ],
+      currency: "IDR",
+      note: `Approximately USD ${Math.round(monthly / 16000)}/month`
+    };
+  }}
+/>
+
+---
+
+## Getting a SIM Card
+
+### Tourist SIM (Airport/Shop)
+
+<InfoCard variant="tip" title="Easiest Option">
+Available at airports, malls, and phone shops:
+- **Pre-registered** (no passport copy needed)
+- **Ready to use** immediately
+- **Tourist packages** with data
+- Cost: IDR 50-150K with data
+</InfoCard>
+
+### Regular SIM Registration
+
+Since 2019, Indonesia requires **SIM card registration** with ID.
+
+<Checklist
+  title="SIM Registration Requirements"
+  description="For non-tourist SIM"
+  persistKey="sim-registration-checklist"
+  items={[
+    {
+      id: "passport",
+      label: "Passport",
+      description: "Original or good copy",
+      required: true,
+      category: "identity"
+    },
+    {
+      id: "kitas",
+      label: "KITAS/KITAP (if applicable)",
+      description: "For long-term residents",
+      required: false,
+      category: "identity"
+    },
+    {
+      id: "phone",
+      label: "Unlocked phone",
+      description: "Must accept Indonesian SIM",
+      required: true,
+      category: "device"
+    },
+    {
+      id: "imei",
+      label: "Phone IMEI registered",
+      description: "May be auto-registered at airport",
+      required: true,
+      category: "device"
+    }
+  ]}
+  categories={[
+    { id: "identity", label: "Identity", color: "blue" },
+    { id: "device", label: "Device", color: "green" }
+  ]}
+  showProgress={true}
+/>
+
+### IMEI Registration
+
+<InfoCard variant="warning" title="Important for Foreign Phones">
+Foreign phones must register their **IMEI** to work with Indonesian SIMs beyond 90 days.
+
+**Options:**
+1. Register at airport arrival (free for first phone)
+2. Register online via Bea Cukai (customs)
+3. Pay tax for additional devices (~IDR 2.5M)
+
+Without registration, your SIM will stop working after 90 days.
+</InfoCard>
+
+---
+
+## Recommended Data Packages
+
+### Telkomsel (Best Coverage)
+
+| Package | Data | Validity | Price |
+|---------|------|----------|-------|
+| Combo Sakti | 15GB | 30 days | IDR 100K |
+| Combo Sakti | 30GB | 30 days | IDR 150K |
+| Unlimited | Unlimited | 30 days | IDR 400K |
+
+### XL Axiata (Good Value)
+
+| Package | Data | Validity | Price |
+|---------|------|----------|-------|
+| XTRA Combo | 20GB | 30 days | IDR 100K |
+| XTRA Combo | 40GB | 30 days | IDR 175K |
+| Unlimited | Unlimited | 30 days | IDR 350K |
+
+### Tri (Budget)
+
+| Package | Data | Validity | Price |
+|---------|------|----------|-------|
+| AON | 30GB | 30 days | IDR 80K |
+| AON | 60GB | 30 days | IDR 150K |
+| Unlimited | Unlimited | 30 days | IDR 250K |
+
+---
+
+## Home Internet (WiFi)
+
+### Fiber Providers
+
+<ComparisonTable
+  title="Home Internet Providers"
+  description="Fixed broadband options"
+  items={[
+    {
+      name: "IndiHome (Telkom)",
+      subtitle: "Most widespread",
+      values: {
+        "Speed": "10-300 Mbps",
+        "Price": "IDR 275K-700K",
+        "Coverage": "Best",
+        "Reliability": "Good"
+      },
+      highlight: true
+    },
+    {
+      name: "Biznet",
+      subtitle: "Urban areas",
+      values: {
+        "Speed": "50-500 Mbps",
+        "Price": "IDR 300K-900K",
+        "Coverage": "Cities only",
+        "Reliability": "Very good"
+      }
+    },
+    {
+      name: "First Media",
+      subtitle: "Jakarta/Java",
+      values: {
+        "Speed": "50-500 Mbps",
+        "Price": "IDR 300K-800K",
+        "Coverage": "Limited areas",
+        "Reliability": "Good"
+      }
+    },
+    {
+      name: "MyRepublic",
+      subtitle: "Growing",
+      values: {
+        "Speed": "50-300 Mbps",
+        "Price": "IDR 300K-700K",
+        "Coverage": "Expanding",
+        "Reliability": "Good"
+      }
+    }
+  ]}
+/>
+
+### Bali Specific Options
+
+| Provider | Availability | Notes |
+|----------|--------------|-------|
+| IndiHome | Most areas | Reliable but slow setup |
+| Biznet | Urban areas | Fast, good for nomads |
+| CBN | Limited | Corporate focus |
+| Local WISP | Rural | Varies greatly |
+
+---
+
+## Digital Nomad Setup
+
+<InfoCard variant="tip" title="Recommended Setup">
+**For reliable remote work:**
+
+1. **Primary**: Fixed fiber (IndiHome/Biznet)
+2. **Backup**: Telkomsel SIM with data
+3. **Emergency**: Pocket WiFi or phone hotspot
+
+Never rely on single connection for important calls!
+</InfoCard>
+
+### Coworking Spaces
+
+Most coworking spaces offer:
+- Fast fiber internet
+- Backup connections
+- Comfortable workspace
+- Networking
+
+Popular in Bali:
+- Outpost (Canggu, Ubud)
+- Dojo Bali (Canggu)
+- Tropical Nomad (Canggu)
+- Hubud (Ubud)
+
+---
+
+## Troubleshooting
+
+### Slow Connection?
+
+| Issue | Solution |
+|-------|----------|
+| Congestion | Switch to less busy provider |
+| Location | Move closer to window/router |
+| Throttling | Check data usage, buy package |
+| VPN needed | Use quality VPN service |
+
+### VPN in Indonesia
+
+<InfoCard variant="note" title="VPN Usage">
+VPNs are **not illegal** in Indonesia but:
+- Some sites are blocked (Reddit, etc.)
+- Streaming may require VPN
+- Quality VPNs recommended
+- Free VPNs often slow
+
+Popular options: ExpressVPN, NordVPN, Surfshark
+</InfoCard>
+
+---
+
+## Quick Tips
+
+1. **Buy SIM at airport** - Easiest for tourists
+2. **Telkomsel for travel** - Best coverage outside cities
+3. **XL/Tri for cities** - Better value if staying put
+4. **Top up via apps** - GoPay, OVO, Dana work
+5. **Check MyTelkomsel app** - Easy package management
+6. **Register IMEI early** - Don't wait until blocked
+7. **Have backup** - Always have mobile data as backup
+
+---
+
+## Where to Buy
+
+### Tourist SIMs
+
+- **Airports**: Kiosks after customs
+- **Convenience stores**: Indomaret, Alfamart
+- **Phone shops**: Malls, shopping centers
+- **Online**: Some delivery options
+
+### Top Up (Pulsa)
+
+- Convenience stores
+- Bank apps
+- GoPay, OVO, Dana
+- MyTelkomsel app
+- Tokopedia, Shopee
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="SIM card Indonesia, mobile internet, data packages, connectivity expats"
+  placeholder="Ask about internet & connectivity..."
+  suggestedQuestions={[
+    "Which provider has best coverage in Ubud?",
+    "How do I register my phone IMEI?",
+    "Can I get fiber internet in villa rental?",
+    "What's the cheapest unlimited data?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Cost of Living in Bali](/insights/lifestyle/cost-of-living-bali)
+- [Digital Nomad Visa Options](/insights/immigration/digital-nomad-visa-indonesia)
+- [Coworking Spaces Bali](/insights/lifestyle/coworking-spaces-bali)

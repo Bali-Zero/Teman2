@@ -56,6 +56,12 @@ def mock_request():
 
 
 @pytest.fixture
+def mock_current_user():
+    """Mock authenticated admin user (required for RBAC)"""
+    return {"email": "admin@example.com", "user_id": "admin-user-123", "role": "admin"}
+
+
+@pytest.fixture
 def sample_practice_data():
     """Sample practice data"""
     return {
@@ -181,12 +187,12 @@ async def test_create_practice_database_error(mock_asyncpg_pool, mock_request):
 
 
 @pytest.mark.asyncio
-async def test_get_practices_success(mock_asyncpg_pool, mock_request, sample_practice_data):
+async def test_get_practices_success(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
     """Test successful practices retrieval"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[sample_practice_data])
 
-    result = await list_practices(limit=10, offset=0, request=mock_request, db_pool=pool)
+    result = await list_practices(limit=10, offset=0, request=mock_request, db_pool=pool, current_user=mock_current_user)
 
     assert isinstance(result, list)
     assert len(result) == 1
@@ -195,7 +201,7 @@ async def test_get_practices_success(mock_asyncpg_pool, mock_request, sample_pra
 
 
 @pytest.mark.asyncio
-async def test_get_practices_with_filters(mock_asyncpg_pool, mock_request, sample_practice_data):
+async def test_get_practices_with_filters(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
     """Test practices retrieval with filters"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[sample_practice_data])
@@ -208,6 +214,7 @@ async def test_get_practices_with_filters(mock_asyncpg_pool, mock_request, sampl
         assigned_to="team@example.com",
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     assert isinstance(result, list)
@@ -215,33 +222,33 @@ async def test_get_practices_with_filters(mock_asyncpg_pool, mock_request, sampl
 
 
 @pytest.mark.asyncio
-async def test_list_practices_with_practice_type_filter(mock_asyncpg_pool, mock_request):
+async def test_list_practices_with_practice_type_filter(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test listing practices filtered by practice type"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[])
 
-    result = await list_practices(practice_type="kitas", request=mock_request, db_pool=pool)
+    result = await list_practices(practice_type="kitas", request=mock_request, db_pool=pool, current_user=mock_current_user)
     assert isinstance(result, list)
 
 
 @pytest.mark.asyncio
-async def test_list_practices_with_priority_filter(mock_asyncpg_pool, mock_request):
+async def test_list_practices_with_priority_filter(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test listing practices filtered by priority"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[])
 
-    result = await list_practices(priority="high", request=mock_request, db_pool=pool)
+    result = await list_practices(priority="high", request=mock_request, db_pool=pool, current_user=mock_current_user)
     assert isinstance(result, list)
 
 
 @pytest.mark.asyncio
-async def test_list_practices_database_error(mock_asyncpg_pool, mock_request):
+async def test_list_practices_database_error(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test list practices handles database errors"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(side_effect=Exception("Database error"))
 
     with pytest.raises(HTTPException) as exc_info:
-        await list_practices(request=mock_request, db_pool=pool)
+        await list_practices(request=mock_request, db_pool=pool, current_user=mock_current_user)
 
     assert exc_info.value.status_code == 500
 
@@ -340,12 +347,12 @@ async def test_get_upcoming_renewals_database_error(mock_asyncpg_pool, mock_requ
 
 
 @pytest.mark.asyncio
-async def test_get_practice_success(mock_asyncpg_pool, mock_request, sample_practice_data):
+async def test_get_practice_success(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
     """Test successful practice retrieval by ID"""
     pool, conn = mock_asyncpg_pool
     conn.fetchrow = AsyncMock(return_value=sample_practice_data)
 
-    result = await get_practice(practice_id=1, request=mock_request, db_pool=pool)
+    result = await get_practice(practice_id=1, request=mock_request, db_pool=pool, current_user=mock_current_user)
 
     # get_practice returns dict
     assert isinstance(result, dict)
@@ -354,25 +361,25 @@ async def test_get_practice_success(mock_asyncpg_pool, mock_request, sample_prac
 
 
 @pytest.mark.asyncio
-async def test_get_practice_not_found(mock_asyncpg_pool, mock_request):
+async def test_get_practice_not_found(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test practice retrieval with non-existent ID"""
     pool, conn = mock_asyncpg_pool
     conn.fetchrow = AsyncMock(return_value=None)
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_practice(practice_id=999, request=mock_request, db_pool=pool)
+        await get_practice(practice_id=999, request=mock_request, db_pool=pool, current_user=mock_current_user)
 
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_practice_database_error(mock_asyncpg_pool, mock_request):
+async def test_get_practice_database_error(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test get practice handles database errors"""
     pool, conn = mock_asyncpg_pool
     conn.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_practice(practice_id=1, request=mock_request, db_pool=pool)
+        await get_practice(practice_id=1, request=mock_request, db_pool=pool, current_user=mock_current_user)
 
     assert exc_info.value.status_code == 500
 
@@ -383,7 +390,7 @@ async def test_get_practice_database_error(mock_asyncpg_pool, mock_request):
 
 
 @pytest.mark.asyncio
-async def test_update_practice_success(mock_asyncpg_pool, mock_request, sample_practice_data):
+async def test_update_practice_success(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
     """Test successful practice update"""
     pool, conn = mock_asyncpg_pool
     updated_data = {**sample_practice_data, "status": "completed"}
@@ -398,6 +405,7 @@ async def test_update_practice_success(mock_asyncpg_pool, mock_request, sample_p
         updated_by="admin@example.com",
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     # update_practice returns dict
@@ -407,7 +415,7 @@ async def test_update_practice_success(mock_asyncpg_pool, mock_request, sample_p
 
 @pytest.mark.asyncio
 async def test_update_practice_with_documents(
-    mock_asyncpg_pool, mock_request, sample_practice_data
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
 ):
     """Test updating practice with documents field"""
     pool, conn = mock_asyncpg_pool
@@ -423,6 +431,7 @@ async def test_update_practice_with_documents(
         updated_by="admin@example.com",
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     assert result is not None
@@ -430,7 +439,7 @@ async def test_update_practice_with_documents(
 
 @pytest.mark.asyncio
 async def test_update_practice_with_renewal_alert(
-    mock_asyncpg_pool, mock_request, sample_practice_data
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
 ):
     """Test updating practice to completed creates renewal alert"""
     pool, conn = mock_asyncpg_pool
@@ -446,13 +455,14 @@ async def test_update_practice_with_renewal_alert(
         updated_by="admin@example.com",
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     assert result is not None
 
 
 @pytest.mark.asyncio
-async def test_update_practice_no_fields(mock_asyncpg_pool, mock_request):
+async def test_update_practice_no_fields(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test update practice with no fields raises error"""
     pool, conn = mock_asyncpg_pool
 
@@ -465,13 +475,14 @@ async def test_update_practice_no_fields(mock_asyncpg_pool, mock_request):
             updated_by="admin@example.com",
             request=mock_request,
             db_pool=pool,
+            current_user=mock_current_user,
         )
 
     assert exc_info.value.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_update_practice_not_found(mock_asyncpg_pool, mock_request):
+async def test_update_practice_not_found(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test practice update with non-existent ID"""
     pool, conn = mock_asyncpg_pool
     conn.fetchrow = AsyncMock(return_value=None)
@@ -486,13 +497,14 @@ async def test_update_practice_not_found(mock_asyncpg_pool, mock_request):
             updated_by="admin@example.com",
             request=mock_request,
             db_pool=pool,
+            current_user=mock_current_user,
         )
 
     assert exc_info.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_update_practice_database_error(mock_asyncpg_pool, mock_request):
+async def test_update_practice_database_error(mock_asyncpg_pool, mock_request, mock_current_user):
     """Test update practice handles database errors"""
     pool, conn = mock_asyncpg_pool
     conn.execute = AsyncMock(side_effect=Exception("Database error"))
@@ -506,6 +518,7 @@ async def test_update_practice_database_error(mock_asyncpg_pool, mock_request):
             updated_by="admin@example.com",
             request=mock_request,
             db_pool=pool,
+            current_user=mock_current_user,
         )
 
     assert exc_info.value.status_code == 500
@@ -654,7 +667,7 @@ async def test_get_practices_stats_database_error(mock_asyncpg_pool, mock_reques
 
 @pytest.mark.asyncio
 async def test_list_practices_with_all_filters(
-    mock_asyncpg_pool, mock_request, sample_practice_data
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
 ):
     """Test list practices with all optional filters provided"""
     pool, conn = mock_asyncpg_pool
@@ -670,6 +683,7 @@ async def test_list_practices_with_all_filters(
         offset=0,
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     assert len(result) == 1
@@ -678,7 +692,7 @@ async def test_list_practices_with_all_filters(
 
 @pytest.mark.asyncio
 async def test_list_practices_no_optional_filters(
-    mock_asyncpg_pool, mock_request, sample_practice_data
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
 ):
     """Test list practices with no optional filters (only required params)"""
     pool, conn = mock_asyncpg_pool
@@ -694,6 +708,7 @@ async def test_list_practices_no_optional_filters(
         offset=0,
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     assert len(result) == 1
@@ -714,7 +729,7 @@ async def test_get_active_practices_without_assigned_to(
 
 @pytest.mark.asyncio
 async def test_update_practice_with_none_values(
-    mock_asyncpg_pool, mock_request, sample_practice_data
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
 ):
     """Test update practice skips None values in update dict"""
     pool, conn = mock_asyncpg_pool
@@ -735,6 +750,7 @@ async def test_update_practice_with_none_values(
         updated_by="admin@example.com",
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     assert result is not None
@@ -742,7 +758,7 @@ async def test_update_practice_with_none_values(
 
 @pytest.mark.asyncio
 async def test_list_practices_partial_filters(
-    mock_asyncpg_pool, mock_request, sample_practice_data
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
 ):
     """Test list practices with some filters provided, others None"""
     pool, conn = mock_asyncpg_pool
@@ -759,6 +775,7 @@ async def test_list_practices_partial_filters(
         offset=0,
         request=mock_request,
         db_pool=pool,
+        current_user=mock_current_user,
     )
 
     assert len(result) == 1

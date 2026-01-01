@@ -21,7 +21,7 @@ class TestPersonalityService:
     @patch("backend.services.misc.personality_service.TEAM_MEMBERS", [])
     def test_personality_service_init(self):
         """Test PersonalityService initialization"""
-        from backend.services.personality_service import PersonalityService
+        from backend.services.misc.personality_service import PersonalityService
 
         service = PersonalityService()
         assert service is not None
@@ -30,7 +30,7 @@ class TestPersonalityService:
     @patch("backend.services.misc.personality_service.TEAM_MEMBERS", [])
     def test_personality_profiles(self):
         """Test personality profiles exist"""
-        from backend.services.personality_service import PersonalityService
+        from backend.services.misc.personality_service import PersonalityService
 
         service = PersonalityService()
         assert isinstance(service.personality_profiles, dict)
@@ -39,7 +39,7 @@ class TestPersonalityService:
     @patch("backend.services.misc.personality_service.TEAM_MEMBERS", [])
     def test_jaksel_personality(self):
         """Test Jaksel personality profile"""
-        from backend.services.personality_service import PersonalityService
+        from backend.services.misc.personality_service import PersonalityService
 
         service = PersonalityService()
         assert "jaksel" in service.personality_profiles

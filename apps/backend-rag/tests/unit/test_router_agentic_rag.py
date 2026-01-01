@@ -29,19 +29,30 @@ from app.routers.agentic_rag import (
 
 @pytest.fixture
 def client(mock_orchestrator):
-    """Create FastAPI test client with mocked orchestrator"""
+    """Create FastAPI test client with mocked orchestrator and authentication"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator
+    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
+    from app.dependencies import get_current_user
 
     app = FastAPI()
     app.include_router(router)
 
-    # Override dependency
+    # Override orchestrator dependency
     async def override_get_orchestrator():
         return mock_orchestrator
 
+    # Override auth dependency with a test user
+    def override_get_current_user():
+        return {"email": "test@example.com", "user_id": "test-user-123", "role": "user"}
+
+    # Override database pool dependency
+    def override_get_database_pool():
+        return None
+
     app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_optional_database_pool] = override_get_database_pool
 
     yield TestClient(app)
 
@@ -54,24 +65,22 @@ def mock_orchestrator():
     """Mock AgenticRAGOrchestrator with complete interface"""
     orchestrator = MagicMock()
     orchestrator.initialize = AsyncMock(return_value=None)
-    orchestrator.process_query = AsyncMock(
-        return_value={
-            "answer": "Test answer from agentic RAG",
-            "sources": [
-                {"id": "source1", "text": "Source content 1", "score": 0.95},
-                {"id": "source2", "text": "Source content 2", "score": 0.87},
-            ],
-            "context_used": 1500,
-            "execution_time": 1.234,
-            "route_used": "agentic",
-            "steps": [
-                {"step": 1, "thought": "Analyzing query", "tool_used": None},
-                {"step": 2, "thought": "Searching sources", "tool_used": "vector_search"},
-            ],
-            "tools_called": 1,
-            "total_steps": 2,
-        }
-    )
+
+    # Create a mock result object with attributes (router uses result.answer, not result["answer"])
+    mock_result = MagicMock()
+    mock_result.answer = "Test answer from agentic RAG"
+    mock_result.sources = [
+        {"id": "source1", "text": "Source content 1", "score": 0.95},
+        {"id": "source2", "text": "Source content 2", "score": 0.87},
+    ]
+    mock_result.document_count = 1500
+    mock_result.timings = {"total": 1.234}
+    mock_result.route_used = "agentic"
+    mock_result.tools_called = ["vector_search"]
+    mock_result.model_used = "test-model"
+    mock_result.cache_hit = False
+
+    orchestrator.process_query = AsyncMock(return_value=mock_result)
     return orchestrator
 
 
@@ -80,15 +89,19 @@ def mock_orchestrator_minimal():
     """Mock AgenticRAGOrchestrator with minimal required fields"""
     orchestrator = MagicMock()
     orchestrator.initialize = AsyncMock(return_value=None)
-    orchestrator.process_query = AsyncMock(
-        return_value={
-            "answer": "Minimal answer",
-            "sources": [],
-            "context_used": 0,
-            "execution_time": 0.5,
-            "route_used": None,
-        }
-    )
+
+    # Create a mock result object with minimal attributes
+    mock_result = MagicMock()
+    mock_result.answer = "Minimal answer"
+    mock_result.sources = []
+    mock_result.document_count = 0
+    mock_result.timings = {"total": 0.5}
+    mock_result.route_used = None
+    mock_result.tools_called = []
+    mock_result.model_used = "minimal-model"
+    mock_result.cache_hit = False
+
+    orchestrator.process_query = AsyncMock(return_value=mock_result)
     return orchestrator
 
 
@@ -103,15 +116,19 @@ def mock_orchestrator_error():
 
 @pytest.fixture
 def mock_orchestrator_keyerror():
-    """Mock AgenticRAGOrchestrator that returns incomplete dict"""
+    """Mock AgenticRAGOrchestrator that returns incomplete result (missing attributes)"""
     orchestrator = MagicMock()
     orchestrator.initialize = AsyncMock(return_value=None)
-    orchestrator.process_query = AsyncMock(
-        return_value={
-            "answer": "Answer without required fields",
-            # Missing: sources, context_used, execution_time, route_used
-        }
-    )
+
+    # Create a mock result that will raise AttributeError for missing attributes
+    mock_result = MagicMock()
+    mock_result.answer = "Answer without required fields"
+    # Remove expected attributes to simulate incomplete result
+    del mock_result.sources
+    del mock_result.document_count
+    del mock_result.timings
+
+    orchestrator.process_query = AsyncMock(return_value=mock_result)
     return orchestrator
 
 
@@ -194,22 +211,24 @@ def test_query_agentic_rag_success(client, mock_orchestrator):
     assert data["execution_time"] == 1.234
     assert data["route_used"] == "agentic"
 
-    # Verify orchestrator was called correctly (enable_vision is not passed to process_query)
+    # Verify orchestrator was called correctly (uses authenticated user email, not request body user_id)
     mock_orchestrator.process_query.assert_called_once_with(
-        query="What is the capital of Indonesia?", user_id="user123"
+        query="What is the capital of Indonesia?", user_id="test@example.com", session_id=None
     )
 
 
 def test_query_agentic_rag_with_anonymous_user(client, mock_orchestrator):
-    """Test agentic RAG query with anonymous user (default)"""
+    """Test agentic RAG query uses authenticated user (not request body user_id)"""
     response = client.post(
         "/api/agentic-rag/query",
         json={"query": "Test query"},
     )
 
     assert response.status_code == 200
-    # Verify default user_id is used (enable_vision is not passed to process_query)
-    mock_orchestrator.process_query.assert_called_once_with(query="Test query", user_id="anonymous")
+    # Verify authenticated user email is used (not request body user_id or default "anonymous")
+    mock_orchestrator.process_query.assert_called_once_with(
+        query="Test query", user_id="test@example.com", session_id=None
+    )
 
 
 def test_query_agentic_rag_with_vision_enabled(client, mock_orchestrator):
@@ -221,8 +240,9 @@ def test_query_agentic_rag_with_vision_enabled(client, mock_orchestrator):
 
     assert response.status_code == 200
     # Note: enable_vision is in the request model but NOT passed to process_query
+    # Uses authenticated user email instead of request body user_id
     mock_orchestrator.process_query.assert_called_once_with(
-        query="Analyze this image", user_id="user123"
+        query="Analyze this image", user_id="test@example.com", session_id=None
     )
 
 
@@ -231,7 +251,8 @@ def client_minimal(mock_orchestrator_minimal):
     """Create FastAPI test client with minimal mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator
+    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
+    from app.dependencies import get_current_user
 
     app = FastAPI()
     app.include_router(router)
@@ -239,7 +260,15 @@ def client_minimal(mock_orchestrator_minimal):
     async def override_get_orchestrator():
         return mock_orchestrator_minimal
 
+    def override_get_current_user():
+        return {"email": "test@example.com", "user_id": "test-user-123", "role": "user"}
+
+    def override_get_database_pool():
+        return None
+
     app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_optional_database_pool] = override_get_database_pool
 
     yield TestClient(app)
 
@@ -264,15 +293,18 @@ def test_query_agentic_rag_minimal_response(client_minimal, mock_orchestrator_mi
 
 def test_query_agentic_rag_empty_sources(client, mock_orchestrator):
     """Test agentic RAG query with empty sources"""
-    mock_orchestrator.process_query = AsyncMock(
-        return_value={
-            "answer": "Answer without sources",
-            "sources": [],
-            "context_used": 0,
-            "execution_time": 0.5,
-            "route_used": "agentic",
-        }
-    )
+    # Create a mock result object with empty sources
+    mock_result = MagicMock()
+    mock_result.answer = "Answer without sources"
+    mock_result.sources = []
+    mock_result.document_count = 0
+    mock_result.timings = {"total": 0.5}
+    mock_result.route_used = "agentic"
+    mock_result.tools_called = []
+    mock_result.model_used = "test-model"
+    mock_result.cache_hit = False
+
+    mock_orchestrator.process_query = AsyncMock(return_value=mock_result)
 
     response = client.post(
         "/api/agentic-rag/query",
@@ -295,7 +327,8 @@ def client_error(mock_orchestrator_error):
     """Create FastAPI test client with error mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator
+    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
+    from app.dependencies import get_current_user
 
     app = FastAPI()
     app.include_router(router)
@@ -303,7 +336,15 @@ def client_error(mock_orchestrator_error):
     async def override_get_orchestrator():
         return mock_orchestrator_error
 
+    def override_get_current_user():
+        return {"email": "test@example.com", "user_id": "test-user-123", "role": "user"}
+
+    def override_get_database_pool():
+        return None
+
     app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_optional_database_pool] = override_get_database_pool
 
     yield TestClient(app)
 
@@ -318,7 +359,8 @@ def test_query_agentic_rag_orchestrator_exception(client_error, mock_orchestrato
     )
 
     assert response.status_code == 500
-    assert "Orchestrator error" in response.json()["detail"]
+    # Router returns generic error message for security (doesn't expose internal error)
+    assert "detail" in response.json()
 
 
 @pytest.fixture
@@ -326,7 +368,8 @@ def client_keyerror(mock_orchestrator_keyerror):
     """Create FastAPI test client with keyerror mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator
+    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
+    from app.dependencies import get_current_user
 
     app = FastAPI()
     app.include_router(router)
@@ -334,7 +377,15 @@ def client_keyerror(mock_orchestrator_keyerror):
     async def override_get_orchestrator():
         return mock_orchestrator_keyerror
 
+    def override_get_current_user():
+        return {"email": "test@example.com", "user_id": "test-user-123", "role": "user"}
+
+    def override_get_database_pool():
+        return None
+
     app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    app.dependency_overrides[get_optional_database_pool] = override_get_database_pool
 
     yield TestClient(app)
 
@@ -483,7 +534,9 @@ def test_query_agentic_rag_very_long_query(client, mock_orchestrator):
     )
 
     assert response.status_code == 200
-    mock_orchestrator.process_query.assert_called_once_with(query=long_query, user_id="anonymous")
+    mock_orchestrator.process_query.assert_called_once_with(
+        query=long_query, user_id="test@example.com", session_id=None
+    )
 
 
 def test_query_agentic_rag_special_characters(client, mock_orchestrator):
@@ -497,7 +550,7 @@ def test_query_agentic_rag_special_characters(client, mock_orchestrator):
 
     assert response.status_code == 200
     mock_orchestrator.process_query.assert_called_once_with(
-        query=special_query, user_id="anonymous"
+        query=special_query, user_id="test@example.com", session_id=None
     )
 
 
@@ -512,21 +565,24 @@ def test_query_agentic_rag_unicode_characters(client, mock_orchestrator):
 
     assert response.status_code == 200
     mock_orchestrator.process_query.assert_called_once_with(
-        query=unicode_query, user_id="anonymous"
+        query=unicode_query, user_id="test@example.com", session_id=None
     )
 
 
 def test_query_agentic_rag_none_route_used(client, mock_orchestrator):
     """Test agentic RAG query when route_used is None"""
-    mock_orchestrator.process_query = AsyncMock(
-        return_value={
-            "answer": "Answer",
-            "sources": [],
-            "context_used": 500,
-            "execution_time": 1.0,
-            "route_used": None,
-        }
-    )
+    # Create a mock result object with None route_used
+    mock_result = MagicMock()
+    mock_result.answer = "Answer"
+    mock_result.sources = []
+    mock_result.document_count = 500
+    mock_result.timings = {"total": 1.0}
+    mock_result.route_used = None
+    mock_result.tools_called = []
+    mock_result.model_used = "test-model"
+    mock_result.cache_hit = False
+
+    mock_orchestrator.process_query = AsyncMock(return_value=mock_result)
 
     response = client.post(
         "/api/agentic-rag/query",

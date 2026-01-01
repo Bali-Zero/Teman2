@@ -19,7 +19,7 @@ services:
     image: postgres:15-alpine
     container_name: nuzantara-postgres
     ports:
-      - '5432:5432'
+      - '5433:5432'
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
@@ -62,10 +62,24 @@ services:
     container_name: nuzantara-prometheus
     volumes:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus/alerts.yml:/etc/prometheus/alerts.yml
     ports:
       - '9090:9090'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    depends_on:
+      - alertmanager
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: nuzantara-alertmanager
+    volumes:
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./config/alertmanager/templates:/etc/alertmanager/templates
+    ports:
+      - '9093:9093'
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
@@ -74,10 +88,13 @@ services:
       - '3001:3000'
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme123}
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     depends_on:
       - prometheus
     volumes:
       - nuzantara_grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
 
   jaeger:
     image: jaegertracing/all-in-one:latest

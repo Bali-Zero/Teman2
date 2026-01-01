@@ -3,9 +3,9 @@ Graph Service - Persistent Knowledge Graph using PostgreSQL
 ===========================================================
 
 Provides CRUD operations and traversal logic for the Knowledge Graph
-stored in 'kg_entities' and 'kg_relationships' tables.
+stored in 'kg_nodes' and 'kg_edges' tables.
 
-Replaces the in-memory storage of KnowledgeGraphBuilder.
+Updated Dec 2025 to use unified KG schema (kg_nodes/kg_edges).
 """
 
 import json
@@ -39,16 +39,20 @@ class GraphService:
         self.pool = db_pool
 
     async def add_entity(self, entity: GraphEntity) -> str:
-        """Upsert an entity into the graph."""
+        """Upsert an entity into the graph (kg_nodes table)."""
+        # Merge description into properties if provided
+        props = entity.properties.copy()
+        if entity.description:
+            props["description"] = entity.description
+
         query = """
-            INSERT INTO kg_entities (id, type, name, description, properties, updated_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
-            ON CONFLICT (id) DO UPDATE SET
+            INSERT INTO kg_nodes (entity_id, entity_type, name, properties, confidence, source_chunk_ids, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, 1.0, ARRAY[]::TEXT[], NOW(), NOW())
+            ON CONFLICT (entity_id) DO UPDATE SET
                 name = EXCLUDED.name,
-                description = COALESCE(EXCLUDED.description, kg_entities.description),
-                properties = kg_entities.properties || EXCLUDED.properties,
+                properties = kg_nodes.properties || EXCLUDED.properties,
                 updated_at = NOW()
-            RETURNING id
+            RETURNING entity_id
         """
         async with self.pool.acquire() as conn:
             return await conn.fetchval(
@@ -56,44 +60,49 @@ class GraphService:
                 entity.id,
                 entity.type,
                 entity.name,
-                entity.description,
-                json.dumps(entity.properties),
+                json.dumps(props),
             )
 
-    async def add_relation(self, relation: GraphRelation) -> int:
-        """Upsert a relationship edge."""
+    async def add_relation(self, relation: GraphRelation) -> str:
+        """Upsert a relationship edge (kg_edges table)."""
+        # Store strength in properties for compatibility
+        props = relation.properties.copy()
+        props["strength"] = relation.strength
+
+        # Generate relationship_id (TEXT PK) from source, type, target
+        relationship_id = f"{relation.source_id}__{relation.type.lower().replace(' ', '_')}__{relation.target_id}"
+
         query = """
-            INSERT INTO kg_relationships (source_entity_id, target_entity_id, relationship_type, strength, properties, created_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
+            INSERT INTO kg_edges (relationship_id, source_entity_id, target_entity_id, relationship_type, properties, source_chunk_ids, created_at)
+            VALUES ($1, $2, $3, $4, $5, ARRAY[]::TEXT[], NOW())
             ON CONFLICT (source_entity_id, target_entity_id, relationship_type) DO UPDATE SET
-                strength = EXCLUDED.strength,
-                properties = kg_relationships.properties || EXCLUDED.properties
-            RETURNING id
+                properties = kg_edges.properties || EXCLUDED.properties
+            RETURNING relationship_id
         """
         async with self.pool.acquire() as conn:
             return await conn.fetchval(
                 query,
+                relationship_id,
                 relation.source_id,
                 relation.target_id,
                 relation.type,
-                relation.strength,
-                json.dumps(relation.properties),
+                json.dumps(props),
             )
 
     async def get_neighbors(
         self, entity_id: str, relation_type: Optional[str] = None
     ) -> list[dict]:
-        """Get outgoing edges and target entities for a node."""
+        """Get outgoing edges and target entities for a node (kg_edges + kg_nodes)."""
         query = """
             SELECT
                 r.relationship_type,
-                r.strength,
-                e.id as target_id,
+                COALESCE((r.properties->>'strength')::float, 1.0) as strength,
+                e.entity_id as target_id,
                 e.name as target_name,
-                e.type as target_type,
-                e.description
-            FROM kg_relationships r
-            JOIN kg_entities e ON r.target_entity_id = e.id
+                e.entity_type as target_type,
+                e.properties->>'description' as description
+            FROM kg_edges r
+            JOIN kg_nodes e ON r.target_entity_id = e.entity_id
             WHERE r.source_entity_id = $1
         """
         params = [entity_id]
@@ -106,10 +115,10 @@ class GraphService:
             return [dict(row) for row in rows]
 
     async def find_entity_by_name(self, name_query: str, limit: int = 5) -> list[GraphEntity]:
-        """Fuzzy search for entities by name."""
+        """Fuzzy search for entities by name (kg_nodes table)."""
         query = """
-            SELECT id, type, name, description, properties
-            FROM kg_entities
+            SELECT entity_id, entity_type, name, properties
+            FROM kg_nodes
             WHERE name ILIKE $1
             LIMIT $2
         """
@@ -117,20 +126,18 @@ class GraphService:
             rows = await conn.fetch(query, f"%{name_query}%", limit)
             return [
                 GraphEntity(
-                    id=row["id"],
-                    type=row["type"],
+                    id=row["entity_id"],
+                    type=row["entity_type"],
                     name=row["name"],
-                    description=row["description"],
-                    properties=json.loads(row["properties"])
-                    if isinstance(row["properties"], str)
-                    else row["properties"],
+                    description=row["properties"].get("description") if row["properties"] else None,
+                    properties=row["properties"] if row["properties"] else {},
                 )
                 for row in rows
             ]
 
     async def traverse(self, start_id: str, max_depth: int = 2) -> dict[str, Any]:
         """
-        BFS Traversal from a starting node.
+        BFS Traversal from a starting node (kg_nodes + kg_edges).
         Returns a subgraph (nodes and edges).
         """
         nodes = {}
@@ -139,10 +146,18 @@ class GraphService:
         visited = set()
 
         async with self.pool.acquire() as conn:
-            # Get start node
-            start_node = await conn.fetchrow("SELECT * FROM kg_entities WHERE id = $1", start_id)
+            # Get start node from kg_nodes
+            start_node = await conn.fetchrow(
+                """SELECT entity_id as id, entity_type as type, name, properties
+                   FROM kg_nodes WHERE entity_id = $1""",
+                start_id,
+            )
             if start_node:
-                nodes[start_id] = dict(start_node)
+                node_dict = dict(start_node)
+                # Extract description from properties for compatibility
+                if node_dict.get("properties"):
+                    node_dict["description"] = node_dict["properties"].get("description")
+                nodes[start_id] = node_dict
                 visited.add(start_id)
 
             while queue:
@@ -150,12 +165,13 @@ class GraphService:
                 if depth >= max_depth:
                     continue
 
-                # Fetch outgoing edges
+                # Fetch outgoing edges from kg_edges joined with kg_nodes
                 rows = await conn.fetch(
                     """
-                    SELECT r.*, e.type as target_type, e.name as target_name, e.description as target_desc
-                    FROM kg_relationships r
-                    JOIN kg_entities e ON r.target_entity_id = e.id
+                    SELECT r.*, e.entity_type as target_type, e.name as target_name,
+                           e.properties->>'description' as target_desc
+                    FROM kg_edges r
+                    JOIN kg_nodes e ON r.target_entity_id = e.entity_id
                     WHERE r.source_entity_id = $1
                 """,
                     current_id,
@@ -168,7 +184,7 @@ class GraphService:
                         "source": current_id,
                         "target": target_id,
                         "type": row["relationship_type"],
-                        "strength": row["strength"],
+                        "strength": row["properties"].get("strength", 1.0) if row["properties"] else 1.0,
                     }
                     edges.append(edge)
 

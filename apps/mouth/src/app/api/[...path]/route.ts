@@ -63,6 +63,9 @@ async function proxy(req: NextRequest): Promise<Response> {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     const contentType = req.headers.get('content-type') || '';
     if (contentType.includes('multipart/form-data')) {
+      // CRITICAL: When passing FormData to fetch, fetch generates its own boundary.
+      // We must delete the original Content-Type header so fetch can set the correct one.
+      headers.delete('content-type');
       body = (await req.formData()) as unknown as BodyInit;
     } else {
       const buf = await req.arrayBuffer();
@@ -93,9 +96,15 @@ async function proxy(req: NextRequest): Promise<Response> {
         ? location.replace(/^http:/, 'https:') // Force HTTPS
         : `${backendBase}${location.startsWith('/') ? '' : '/'}${location}`;
 
+      // HTTP 307 and 308 preserve the original method (including POST body)
+      // HTTP 301, 302, 303 convert POST to GET (standard browser behavior)
+      const preserveMethod = upstream.status === 307 || upstream.status === 308;
+      const redirectMethod = preserveMethod ? req.method : (req.method === 'POST' ? 'GET' : req.method);
+
       upstream = await fetch(redirectUrl, {
-        method: req.method === 'POST' ? 'GET' : req.method, // POST->GET on redirect
+        method: redirectMethod,
         headers,
+        body: preserveMethod && body ? body : undefined, // Preserve body for 307/308
         redirect: 'manual',
         credentials: 'include',
       });

@@ -166,8 +166,8 @@ class TestTokenEstimator:
 
         result = estimator.estimate_messages_tokens(messages)
 
-        # ": Hello" = 1 word → 1 token + 4 overhead = 5
-        assert result == 5
+        # ": Hello" splits into 2 words ([":", "Hello"]) → 2 tokens + 4 overhead = 6
+        assert result == 6
 
     @patch("backend.llm.token_estimator.tiktoken")
     def test_init_tiktoken_import_error(self, mock_tiktoken):

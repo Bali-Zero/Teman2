@@ -180,22 +180,28 @@ class TestHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_attribute_error(self):
-        """Test health check with partial embedder"""
+        """Test health check with partial embedder - getattr uses default values
+
+        Note: The actual health_check function uses getattr with defaults,
+        so AttributeError is not raised for missing attributes.
+        This test verifies the healthy path with unknown model info.
+        """
         from app.routers.health import health_check
 
         mock_request = MagicMock()
         mock_search_service = MagicMock()
         mock_search_service.embedder = MagicMock(spec=[])  # No attributes
-        type(mock_search_service.embedder).model = property(
-            lambda self: (_ for _ in ()).throw(AttributeError("no model"))
-        )
 
         mock_request.app.state.search_service = mock_search_service
 
-        result = await health_check(mock_request)
+        # Mock get_qdrant_stats to avoid real network call
+        with patch("app.routers.health.get_qdrant_stats") as mock_stats:
+            mock_stats.return_value = {"collections": 0, "total_documents": 0}
+            result = await health_check(mock_request)
 
-        assert result.status == "initializing"
-        assert result.embeddings["status"] == "loading"
+        # getattr with default returns "unknown" instead of raising AttributeError
+        assert result.status == "healthy"
+        assert result.embeddings["model"] == "unknown"
 
     @pytest.mark.asyncio
     async def test_health_check_exception(self):
@@ -230,11 +236,25 @@ class TestDetailedHealth:
         mock_search.embedder.model = "test-model"
 
         mock_ai = MagicMock()
-        mock_db_pool = AsyncMock()
+
+        # Properly mock the database pool with async context manager
+        mock_db_pool = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute = AsyncMock(return_value=None)
+        mock_db_pool.get_min_size.return_value = 1
+        mock_db_pool.get_max_size.return_value = 10
+        mock_db_pool.get_size.return_value = 5
+
+        # Setup async context manager for acquire()
+        async_cm = MagicMock()
+        async_cm.__aenter__ = AsyncMock(return_value=mock_conn)
+        async_cm.__aexit__ = AsyncMock(return_value=None)
+        mock_db_pool.acquire.return_value = async_cm
+
         mock_memory = MagicMock()
         mock_router = MagicMock()
         mock_health_monitor = MagicMock()
-        mock_health_monitor._running = True
+        mock_health_monitor.get_status.return_value = {"running": True}
         mock_registry = MagicMock()
         mock_registry.get_status.return_value = {"status": "ok"}
 
@@ -245,10 +265,6 @@ class TestDetailedHealth:
         mock_request.app.state.intelligent_router = mock_router
         mock_request.app.state.health_monitor = mock_health_monitor
         mock_request.app.state.service_registry = mock_registry
-
-        # Mock db acquire context manager
-        mock_conn = AsyncMock()
-        mock_db_pool.acquire.return_value.__aenter__.return_value = mock_conn
 
         result = await detailed_health(mock_request)
 
@@ -424,7 +440,7 @@ class TestQdrantMetrics:
 
         mock_metrics = {"searches": 100, "avg_latency": 0.05}
 
-        with patch("app.routers.health.get_qdrant_metrics") as mock_get:
+        with patch("core.qdrant_db.get_qdrant_metrics") as mock_get:
             mock_get.return_value = mock_metrics
 
             result = await qdrant_metrics()
@@ -437,7 +453,7 @@ class TestQdrantMetrics:
         """Test metrics with error"""
         from app.routers.health import qdrant_metrics
 
-        with patch("app.routers.health.get_qdrant_metrics") as mock_get:
+        with patch("core.qdrant_db.get_qdrant_metrics") as mock_get:
             mock_get.side_effect = Exception("Metrics unavailable")
 
             result = await qdrant_metrics()
@@ -447,8 +463,9 @@ class TestQdrantMetrics:
 
 
 class TestDebugConfig:
-    """Tests for debug_config endpoint"""
+    """Tests for debug_config endpoint (DEPRECATED - function removed)"""
 
+    @pytest.mark.skip(reason="debug_config function was removed from health router")
     @pytest.mark.asyncio
     async def test_debug_config(self):
         """Test debug config returns expected values"""
@@ -469,6 +486,7 @@ class TestDebugConfig:
                 assert result["jwt_secret_set"] == True
                 assert result["environment"] == "development"
 
+    @pytest.mark.skip(reason="debug_config function was removed from health router")
     @pytest.mark.asyncio
     async def test_debug_config_no_keys(self):
         """Test debug config with no API keys"""

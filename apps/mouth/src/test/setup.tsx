@@ -32,9 +32,9 @@ vi.mock('next/image', () => ({
     [key: string]: unknown;
   }) => {
     // Filter out Next.js-specific props that shouldn't be passed to img
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { width: _width, height: _height, ...imgProps } = props as any;
-    // eslint-disable-next-line @next/next/no-img-element
+     
     return <img src={src} alt={alt} {...imgProps} />;
   },
 }));

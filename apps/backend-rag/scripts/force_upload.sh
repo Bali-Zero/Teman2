@@ -38,3 +38,4 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 Il file è troppo lungo. Creando una versione più concisa:
 <｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
 run_terminal_cmd
+

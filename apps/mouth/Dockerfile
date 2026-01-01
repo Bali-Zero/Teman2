@@ -50,7 +50,16 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Set correct permissions
+# Copy MDX content files for blog articles
+COPY --from=builder /app/src/content ./src/content
+
+# Create cache directory with correct permissions for image optimization
+RUN mkdir -p .next/cache
+
+# Set correct permissions for content files and cache
+RUN chown -R nextjs:nodejs ./src/content ./.next
+
+# Switch to non-root user
 USER nextjs
 
 # Expose port

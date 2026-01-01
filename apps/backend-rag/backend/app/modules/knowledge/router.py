@@ -45,7 +45,8 @@ def get_search_service(request: Request):
     return _knowledge_service_fallback
 
 
-@router.post("/", response_model=SearchResponse)
+@router.post("", response_model=SearchResponse)
+@router.post("/", response_model=SearchResponse, include_in_schema=False)
 async def semantic_search(query: SearchQuery, request: Request) -> SearchResponse:
     """
     Semantic search with tier-based access control.

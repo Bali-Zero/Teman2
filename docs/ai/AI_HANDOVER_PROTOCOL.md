@@ -17,7 +17,7 @@ Copy the text below and paste it as the **System Prompt** or the **First Message
 
 You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 **Role:** Senior Python Engineer & SRE.
-**Current State:** The codebase is a Monorepo. We use `apps/backend-rag` (FastAPI) and `apps/webapp` (Frontend).
+**Current State:** The codebase is a Monorepo. We use `apps/backend-rag` (FastAPI) and `apps/mouth` (Frontend).
 
 ### 1. THE GOLDEN RULES (Strict Compliance Required)
 1.  **NO ROOT EXECUTION:** Never run apps as root. Always use `python -m module`.
@@ -27,6 +27,7 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 3.  **ASYNC FIRST:** This is a FastAPI project. Use `async def`, `await`, and `asyncpg`. Do NOT introduce blocking `requests` calls in endpoints; use `httpx`.
 4.  **TYPE HINTS:** Every new function MUST have type hints (`def func(x: int) -> str:`).
 5.  **NO HARDCODING:** Secrets and URLs come from `os.getenv()`. Never commit keys.
+6.  **SEPARATION OF DATA AND LOGIC:** Never hardcode "Volatile Data" (Prices, Employee names, specific Law details, Addresses) in the logic. These belong in the Knowledge Base (Qdrant/Postgres) or `settings`.
 
 ### 2. TECH STACK
 - **Backend:** Python 3.11, FastAPI, Uvicorn.
@@ -65,17 +66,189 @@ Use these tools to diagnose and fix issues autonomously:
     *   **Command:** `./sentinel` (Root)
     *   **Purpose:** Runs Linting (Ruff), Tests (Pytest), and Infrastructure Checks (Qdrant).
     *   **Rule:** ALWAYS run this before asking the user for review.
+    *   **Logs:** `sentinel-results/sentinel-run-TIMESTAMP.log`
 
 2.  **Scribe (Documentation):**
     *   **Command:** `python apps/core/scribe.py`
     *   **Purpose:** Generates `docs/LIVING_ARCHITECTURE.md`. Use it to understand the codebase structure.
 
-3.  **Observability (Diagnostics):**
-    *   **Prometheus:** `http://localhost:9090` (Metrics)
-    *   **Grafana:** `http://localhost:3001` (Dashboards, User/Pass: `admin`)
-    *   **Jaeger:** `http://localhost:16686` (Tracing/Waterfall)
-    *   **Qdrant UI:** `http://localhost:6333/dashboard` (Vector Inspection)
+3.  **Observability Stack** (Auto-start con `docker compose up`):
+    *   **Grafana:** `http://localhost:3001` (Dashboard auto-provisioned, `admin/changeme123`)
+    *   **Prometheus:** `http://localhost:9090` (Metrics query)
+    *   **Alertmanager:** `http://localhost:9093` (Alert routing)
+    *   **Jaeger:** `http://localhost:16686` (Distributed tracing)
+    *   **SonarQube:** `http://localhost:9000` (Code quality, `admin/admin`)
+    *   **Qdrant UI:** `http://localhost:6333/dashboard` (Vector inspection)
+    *   **Guida completa:** `docs/operations/OBSERVABILITY_GUIDE.md`
+
+### 6. CRITICAL FIXES (Dec 2025) - MUST READ
+
+> **ATTENZIONE:** Prima di modificare `reasoning.py` o il sistema di evidence scoring, leggi:
+> `docs/operations/AGENTIC_RAG_FIXES.md`
+
+#### 6.1 Evidence Score System
+Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
+- **< 0.3** → ABSTAIN (rifiuta di rispondere)
+- **0.3-0.6** → Risponde con cautela
+- **> 0.6** → Risposta normale
+
+**File critico:** `backend/services/rag/agentic/reasoning.py`
+
+#### 6.2 Fix Applicati
+
+| Data | Fix | File | Versione |
+|------|-----|------|----------|
+| 2025-12-30 | Evidence threshold 0.8→0.3 | `reasoning.py:88` | v1175 |
+| 2025-12-31 | Trusted tools bypass | `reasoning.py:867-883` | v1177 |
+| 2025-12-31 | LLM Gateway images param | `llm_gateway.py` | v1178 |
+| 2025-12-31 | Image gen URL cleaning | `chat.api.ts` | v1179 |
+| 2025-12-31 | CRM RBAC (admin/team filter) | `crm_practices.py` | v1224 |
+| 2025-12-31 | One-Click Actions (WA/Email/Call) | `cases/page.tsx` | - |
+| 2025-12-31 | Client 360° Page | `clients/[id]/page.tsx` | - |
+| 2025-12-31 | Timeline API response fix | `crm.api.ts` | - |
+| 2026-01-01 | DB table names fix (crm_* → real) | `client_scoring.py`, `client_value_predictor.py` | v1218 |
+| 2026-01-01 | visa_types correct codes (E28A, E33G, D1...) | `seed_visa_types.py` | v1218 |
+| 2026-01-01 | Visa PDF generation (25 types, Bali Zero style) | `/tmp/create_visa_pdf_v2.py` | - |
+| 2026-01-01 | KBLI PDF generator prototype | `/tmp/create_kbli_pdf.py` | - |
+
+#### 6.3 Trusted Tools
+
+Questi tool bypassano l'evidence check perché forniscono evidence propria:
+
+| Tool Name | Descrizione | Note |
+|-----------|-------------|------|
+| `calculator` | Calcoli matematici | In `tools.py` |
+| `get_pricing` | Prezzi servizi Bali Zero | In `zantara_tools.py` |
+| `team_knowledge` | Team members (cerca/lista) | In `zantara_tools.py` |
+
+**NOTA:** Il tool `team_knowledge` gestisce sia la ricerca specifica che la lista completa tramite il parametro `query_type`.
+
+**NON modificare il trusted tools check senza capire il flusso completo.**
+
+#### 6.4 Image Generation (Frontend)
+
+Il frontend ha un sistema di pulizia per le risposte di generazione immagini:
+
+**File:** `apps/mouth/src/lib/api/chat/chat.api.ts`
+
+**Funzione:** `cleanImageResponse()` - Rimuove:
+- URL pollinations.ai dal testo
+- Pattern "Versione 1", "Versione 2" (multiple options)
+- Intro lines ("Ecco le opzioni", "Ecco i risultati")
+- Outro lines ("Spero che queste vadano bene")
+
+**UI:**
+- Sparkles icon (✨) nella chat bar apre modal "Genera Immagine"
+- Paperclip gestisce sia file attachment che image upload (vision)
+
+#### 6.5 Debug Pattern nei Log
+
+```bash
+fly logs -a nuzantara-rag | grep -E "Evidence|Trusted|ABSTAIN"
+```
+
+| Pattern | Significato |
+|---------|-------------|
+| `🛡️ [Uncertainty] Evidence Score: X.XX` | Score calcolato |
+| `🧮 [Trusted Tool] X used successfully` | Bypass attivo |
+| `🛡️ [Uncertainty] Triggered ABSTAIN` | Sistema rifiuta |
+
+#### 6.6 CRM RBAC (Role-Based Access Control)
+
+**File:** `backend/app/routers/crm_practices.py`
+
+Il CRM implementa controllo accessi basato su ruoli:
+
+| Ruolo | Accesso |
+|-------|---------|
+| Admin (`zero@balizero.com`, `admin@balizero.com`) | Vede TUTTI i clienti e pratiche |
+| Team Member | Vede solo clienti con `assigned_to` = propria email |
+
+**Implementazione:**
+```python
+ADMIN_EMAILS = {"zero@balizero.com", "admin@balizero.com"}
+
+def is_admin_user(user: dict) -> bool:
+    email = user.get("email", "").lower()
+    return email in ADMIN_EMAILS or user.get("role") == "admin"
+```
+
+**Endpoints protetti:**
+- `GET /api/crm/practices` - Lista filtrata per team member
+- `GET /api/crm/practices/{id}` - Accesso solo se autorizzato
+- `PATCH /api/crm/practices/{id}` - Modifica solo se autorizzato
+
+#### 6.7 Client 360° Page (Frontend)
+
+**Path:** `/clients/[id]`
+**File:** `apps/mouth/src/app/(workspace)/clients/[id]/page.tsx`
+
+Mostra vista completa del cliente:
+- Info cliente (email, telefono, nazionalità)
+- Quick Actions (WhatsApp, Email, Call)
+- Stats (Total Cases, Active, Completed, Revenue)
+- Lista Cases con status badges
+- Activity Timeline
+
+**API utilizzate:**
+- `api.crm.getClient(id)` → Client info
+- `api.crm.getClientPractices(id)` → Lista cases
+- `api.crm.getClientTimeline(id)` → Timeline (nota: risposta è `{timeline: []}`)
+
+---
+
+#### 6.8 Visa PDF System (Bali Zero Style)
+
+**Status:** 25 visa types generati e deployati
+
+**Files:**
+- Generator: `/tmp/create_visa_pdf_v2.py`
+- Batch generator: `/tmp/generate_all_pdfs.py`
+- Logo: `/Users/antonellosiano/Desktop/Investor KITAS - Bali Zero_files/balizero-logo-transparent.png`
+
+**Deployed to:** `apps/mouth/public/files/visa/`
+**URL pattern:** `https://nuzantara-mouth.fly.dev/files/visa/{CODE}_{Name}_BaliZero.pdf`
+
+**Database:** `visa_types.metadata->>'pdf_url'` contiene il path relativo
+
+#### 6.9 KBLI PDF System (In Progress)
+
+**Scopo:** Generare PDF informativi per i 200 KBLI più importanti
+
+**Data source:**
+- JSON backup: `/Users/antonellosiano/Desktop/balizero/kbli_unified_export_BACKUP_20251224_004908.json`
+- Records: 2,818 KBLI codes
+- Fonti: OSS_RBA_API (2,595), PP_28_2025 (1,945)
+
+**Prototype:** `/tmp/create_kbli_pdf.py` - Genera PDF stile Bali Zero per singolo KBLI
+
+**Workflow a 2 livelli (definito dall'utente):**
+| Tier | Contenuto | Metodo |
+|------|-----------|--------|
+| **BASIC** | Dati KBLI puri (requirements, PMA, risk) | Automatizzabile con script |
+| **DEEP** | Ricerca accademica, casi regionali | NotebookLM (manuale) |
+
+**Prossimi step:**
+1. Definire lista 200 KBLI prioritari
+2. Generare tutti i PDF Basic in batch
+3. Ingestire PDF NotebookLM in Qdrant come `kbli_premium_guides`
+
+---
 
 **YOUR MISSION:**
 Maintain code quality. If you see legacy code violating these rules, **refactor it** before adding new features. Use the Toolkit to verify your work.
+
+---
+
+### 7. DOCUMENTATION INDEX
+
+| Doc | Path | Quando Leggerlo |
+|-----|------|-----------------|
+| AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
+| System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
+| **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
+| **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Per debugging e monitoring |
+| Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
+| Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
+
 ---

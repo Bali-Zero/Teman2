@@ -51,7 +51,7 @@ if history_to_use:
 
 ### 3. Frontend Passa `session_id` Correttamente
 
-**File**: `apps/mouth/src/lib/api.ts`
+**File**: `apps/mouth/src/lib/api/index.ts`
 
 - ✅ `sendMessageStreaming` accetta `conversationId` (che è il `session_id`)
 - ✅ Passa `session_id` nel body della richiesta
@@ -149,4 +149,3 @@ if user_id.isdigit() or (not "@" in user_id):
 - Il codice backend **GIÀ** supporta conversation memory!
 - Il problema potrebbe essere nel frontend o nella conversione `user_id` → `user_email`
 - Entity extraction è già integrata in `AgenticRAGOrchestrator.stream_query()`
-

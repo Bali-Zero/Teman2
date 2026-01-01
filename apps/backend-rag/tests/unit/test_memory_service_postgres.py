@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import asyncpg
 import pytest
 
 # Ensure backend is in path
@@ -142,7 +143,7 @@ async def test_connect_exception():
         service = MemoryServicePostgres()
         with patch(
             "services.memory.memory_service_postgres.asyncpg.create_pool",
-            side_effect=Exception("Connection error"),
+            side_effect=asyncpg.PostgresError("Connection error"),
         ):
             await service.connect()
 
@@ -274,7 +275,7 @@ async def test_get_memory_postgres_exception(memory_service):
     """Test get_memory with PostgreSQL exception"""
     service, conn = memory_service
     user_id = "user-123"
-    conn.fetch.side_effect = Exception("Database error")
+    conn.fetch.side_effect = asyncpg.PostgresError("Database error")
 
     result = await service.get_memory(user_id)
 
@@ -330,7 +331,7 @@ async def test_save_memory_postgres_exception(memory_service):
         counters={},
         updated_at=datetime.now(),
     )
-    conn.execute.side_effect = Exception("Database error")
+    conn.execute.side_effect = asyncpg.PostgresError("Database error")
 
     result = await service.save_memory(memory)
 
@@ -626,8 +627,8 @@ async def test_retrieve_exception_graceful_degradation(memory_service):
     service, conn = memory_service
     user_id = "user-123"
 
-    # Mock exception during get_memory
-    with patch.object(service, "get_memory", side_effect=Exception("Database error")):
+    # Mock exception during get_memory - use a caught exception type
+    with patch.object(service, "get_memory", side_effect=asyncpg.PostgresError("Database error")):
         result = await service.retrieve(user_id)
 
         assert result["user_id"] == user_id
@@ -814,7 +815,7 @@ async def test_get_stats_postgres_error(memory_service):
     """Test get_stats handles PostgreSQL errors"""
     service, conn = memory_service
 
-    conn.fetchrow.side_effect = Exception("Database error")
+    conn.fetchrow.side_effect = asyncpg.PostgresError("Database error")
 
     stats = await service.get_stats()
 

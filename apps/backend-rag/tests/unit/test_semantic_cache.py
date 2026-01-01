@@ -352,7 +352,7 @@ class TestGetSemanticCache:
 
     def test_get_semantic_cache_creates_singleton(self):
         """Test singleton creation"""
-        import services.semantic_cache as module
+        import services.search.semantic_cache as module
 
         # Reset singleton
         module._semantic_cache = None
@@ -365,7 +365,7 @@ class TestGetSemanticCache:
 
     def test_get_semantic_cache_returns_existing(self):
         """Test returning existing instance"""
-        import services.semantic_cache as module
+        import services.search.semantic_cache as module
 
         mock_redis = AsyncMock()
         existing = module.SemanticCache(mock_redis)

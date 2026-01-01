@@ -310,7 +310,7 @@ class TestGetAuditService:
 
     def test_get_audit_service_creates_instance(self, mock_settings):
         """Test get_audit_service creates new instance"""
-        import services.audit_service as module
+        import services.monitoring.audit_service as module
 
         # Reset singleton
         module._audit_service = None
@@ -322,7 +322,7 @@ class TestGetAuditService:
 
     def test_get_audit_service_returns_singleton(self, mock_settings):
         """Test get_audit_service returns same instance"""
-        import services.audit_service as module
+        import services.monitoring.audit_service as module
 
         # Reset singleton
         module._audit_service = None

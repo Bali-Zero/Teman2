@@ -1,0 +1,443 @@
+---
+title: "Business Licenses in Indonesia 2025: Complete Overview"
+slug: "business-licenses-overview"
+description: "Overview of business licenses in Indonesia. NIB, sectoral permits, and what your business needs to operate legally."
+excerpt: "What licenses does your business need? Here's a complete overview of Indonesian business licensing."
+category: "business"
+tags:
+  - business license
+  - NIB
+  - permits
+  - OSS
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: true
+image:
+  src: "/images/insights/business/licenses.jpg"
+  alt: "Business licenses Indonesia"
+seo:
+  title: "Business Licenses Indonesia 2025 | Complete Guide"
+  description: "Complete overview of business licenses in Indonesia. NIB, OSS, and sectoral permits explained."
+  keywords:
+    - business license indonesia
+    - NIB
+    - OSS license
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "business_docs"
+    documentsUsed: 20
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "nib-oss-guide"
+  - "pt-pma-registration-guide"
+  - "environmental-permits"
+tableOfContents: true
+---
+
+import {
+  DecisionTree,
+  ComparisonTable,
+  Checklist,
+  InfoCard,
+  AskZantara
+} from '@/components/insights/interactive';
+
+# Business Licenses in Indonesia 2025: Complete Overview
+
+Indonesia has streamlined business licensing through the OSS (Online Single Submission) system, but understanding what you need can still be complex.
+
+## Licensing Framework
+
+<InfoCard variant="note" title="OSS System">
+Since the **Job Creation Law (Omnibus Law)**, Indonesia uses the **OSS RBA** (Risk-Based Approach) system:
+
+- All businesses register through OSS
+- Receive **NIB** (Nomor Induk Berusaha)
+- Risk level determines further requirements
+- Sectoral licenses integrated into OSS
+</InfoCard>
+
+## License Categories
+
+<DecisionTree
+  title="What Licenses Do You Need?"
+  description="Find your licensing requirements"
+  nodes={[
+    {
+      id: "start",
+      question: "What is your business activity?",
+      options: [
+        { label: "Trading/retail", next: "trade" },
+        { label: "Manufacturing", next: "manufacture" },
+        { label: "Food & beverage", next: "food" },
+        { label: "Professional services", next: "services" },
+        { label: "Construction", next: "construction" }
+      ]
+    },
+    {
+      id: "trade",
+      result: {
+        title: "Trading Business Licenses",
+        description: "NIB + SIUP (Trading License). May need import licenses (API-U/API-P) if importing goods. Low to medium risk classification."
+      }
+    },
+    {
+      id: "manufacture",
+      result: {
+        title: "Manufacturing Licenses",
+        description: "NIB + IUI (Industrial Business License) + Environmental permits (AMDAL/UKL-UPL) + Location permit. Medium to high risk classification."
+      }
+    },
+    {
+      id: "food",
+      result: {
+        title: "F&B Business Licenses",
+        description: "NIB + TDUP (Tourism Business License) or SIUP + BPOM/Food Safety Registration + Halal certification (for certain products). Medium risk."
+      }
+    },
+    {
+      id: "services",
+      result: {
+        title: "Service Business Licenses",
+        description: "NIB is often sufficient. Some professional services need specific certifications. Low to medium risk classification."
+      }
+    },
+    {
+      id: "construction",
+      result: {
+        title: "Construction Licenses",
+        description: "NIB + SBU (Construction Business Certificate) + SBUJK (specific to construction category). Medium to high risk."
+      }
+    }
+  ]}
+/>
+
+---
+
+## Core Business Licenses
+
+<ComparisonTable
+  title="Essential Business Licenses"
+  description="Licenses most businesses need"
+  items={[
+    {
+      name: "NIB",
+      subtitle: "Business Identification Number",
+      values: {
+        "Required": "All businesses",
+        "Issued By": "OSS system",
+        "Cost": "Free",
+        "Validity": "Permanent"
+      },
+      highlight: true
+    },
+    {
+      name: "SIUP",
+      subtitle: "Trading Business License",
+      values: {
+        "Required": "Trading companies",
+        "Issued By": "OSS (via NIB)",
+        "Cost": "Free",
+        "Validity": "Per NIB"
+      }
+    },
+    {
+      name: "TDP",
+      subtitle: "Company Registration",
+      values: {
+        "Required": "All PT/CV",
+        "Issued By": "OSS (via NIB)",
+        "Cost": "Free",
+        "Validity": "Per NIB"
+      }
+    },
+    {
+      name: "NPWP",
+      subtitle: "Tax Identification",
+      values: {
+        "Required": "All businesses",
+        "Issued By": "Tax Office",
+        "Cost": "Free",
+        "Validity": "Permanent"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Risk-Based Licensing
+
+### Risk Classification
+
+| Risk Level | Requirements | Examples |
+|------------|--------------|----------|
+| Low | NIB only | Small retail, basic services |
+| Medium-Low | NIB + Standard Certificate | Some trading, consultancy |
+| Medium-High | NIB + Standard Certificate | Food service, manufacturing |
+| High | NIB + Permit + Inspection | Large industry, hazardous |
+
+### How Risk is Determined
+
+Factors include:
+- Business sector (KBLI code)
+- Scale of operations
+- Environmental impact
+- Public health/safety risk
+- Investment value
+
+---
+
+## Sectoral Licenses
+
+### Common Sectoral Permits
+
+<Checklist
+  title="Sectoral License Examples"
+  description="Industry-specific requirements"
+  persistKey="sectoral-licenses-checklist"
+  items={[
+    {
+      id: "api",
+      label: "API (Importer ID)",
+      description: "For importing goods",
+      required: false,
+      category: "trade"
+    },
+    {
+      id: "nib-siup",
+      label: "Trading License (via NIB)",
+      description: "For trading businesses",
+      required: false,
+      category: "trade"
+    },
+    {
+      id: "tdup",
+      label: "TDUP (Tourism Business)",
+      description: "Hotels, tours, restaurants",
+      required: false,
+      category: "tourism"
+    },
+    {
+      id: "bpom",
+      label: "BPOM Registration",
+      description: "Food, drugs, cosmetics",
+      required: false,
+      category: "health"
+    },
+    {
+      id: "halal",
+      label: "Halal Certification",
+      description: "Certain food products",
+      required: false,
+      category: "health"
+    },
+    {
+      id: "iui",
+      label: "IUI (Industrial License)",
+      description: "Manufacturing",
+      required: false,
+      category: "manufacturing"
+    },
+    {
+      id: "sbu",
+      label: "SBU (Construction Cert)",
+      description: "Construction companies",
+      required: false,
+      category: "construction"
+    },
+    {
+      id: "ojk",
+      label: "OJK License",
+      description: "Financial services",
+      required: false,
+      category: "financial"
+    }
+  ]}
+  categories={[
+    { id: "trade", label: "Trade", color: "blue" },
+    { id: "tourism", label: "Tourism", color: "green" },
+    { id: "health", label: "Health/Food", color: "red" },
+    { id: "manufacturing", label: "Manufacturing", color: "amber" },
+    { id: "construction", label: "Construction", color: "purple" },
+    { id: "financial", label: "Financial", color: "cyan" }
+  ]}
+  showProgress={false}
+/>
+
+---
+
+## License by Business Type
+
+### Trading/Import Business
+
+| License | Purpose |
+|---------|---------|
+| NIB | Base registration |
+| API-U | General importer |
+| API-P | Producer importer |
+| IT (Import Approval) | Specific product approval |
+| LS (Verification) | Certain commodities |
+
+### Restaurant/Cafe
+
+| License | Purpose |
+|---------|---------|
+| NIB | Base registration |
+| TDUP | Tourism business license |
+| Health certificate | Food safety |
+| BPOM (if processing) | Packaged food |
+| Halal (recommended) | Muslim customers |
+
+### Manufacturing
+
+| License | Purpose |
+|---------|---------|
+| NIB | Base registration |
+| IUI | Industrial license |
+| Environmental permit | AMDAL/UKL-UPL |
+| Location permit | Land use approval |
+| Building permit | IMB/PBG |
+| Operational permit | Final approval |
+
+---
+
+## Environmental Licenses
+
+<InfoCard variant="warning" title="Environmental Compliance">
+Most businesses need environmental approval:
+
+**Low Impact (SPPL)**
+- Small retail/office
+- Simple declaration
+
+**Medium Impact (UKL-UPL)**
+- Medium businesses
+- Environmental management plan
+
+**High Impact (AMDAL)**
+- Large projects
+- Full environmental impact study
+- Public consultation required
+</InfoCard>
+
+---
+
+## Location & Building
+
+### Property-Related Permits
+
+| Permit | Purpose | When Needed |
+|--------|---------|-------------|
+| Location Permit | Land use approval | Acquiring land |
+| IMB/PBG | Building permit | Construction |
+| SLF | Building occupancy | Operating building |
+| HO (if applicable) | Nuisance permit | Some localities |
+
+---
+
+## License Costs
+
+### Typical Costs
+
+| License | Government Fee | Agent Fee |
+|---------|----------------|-----------|
+| NIB | Free | IDR 2-5M |
+| NPWP | Free | IDR 1-2M |
+| Environmental (SPPL) | Free-minimal | IDR 3-5M |
+| Environmental (UKL-UPL) | IDR 5-20M | IDR 20-50M |
+| Sectoral (varies) | Varies | IDR 5-20M |
+
+---
+
+## Compliance After Licensing
+
+<Checklist
+  title="Ongoing Compliance"
+  description="Requirements after obtaining licenses"
+  persistKey="ongoing-compliance-checklist"
+  items={[
+    {
+      id: "annual-report",
+      label: "Annual LKPM report",
+      description: "Investment activity report",
+      required: true,
+      category: "reporting"
+    },
+    {
+      id: "tax-filing",
+      label: "Monthly/annual tax filing",
+      description: "All tax obligations",
+      required: true,
+      category: "tax"
+    },
+    {
+      id: "oss-update",
+      label: "OSS data updates",
+      description: "When business changes",
+      required: true,
+      category: "administrative"
+    },
+    {
+      id: "renewal",
+      label: "License renewals",
+      description: "Before expiry",
+      required: true,
+      category: "administrative"
+    },
+    {
+      id: "env-report",
+      label: "Environmental reporting",
+      description: "If required by permit",
+      required: false,
+      category: "environmental"
+    }
+  ]}
+  categories={[
+    { id: "reporting", label: "Reporting", color: "blue" },
+    { id: "tax", label: "Tax", color: "green" },
+    { id: "administrative", label: "Administrative", color: "amber" },
+    { id: "environmental", label: "Environmental", color: "red" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Common Mistakes
+
+1. **Operating without NIB** - Required even for small businesses
+2. **Wrong KBLI codes** - Must match actual activities
+3. **Missing sectoral permits** - Check industry requirements
+4. **Ignoring environmental** - Can't operate without approval
+5. **Not reporting LKPM** - Investment reporting is mandatory
+6. **Expired permits** - Monitor expiry dates
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Business license Indonesia, NIB, OSS, sectoral permits, compliance"
+  placeholder="Ask about business licenses..."
+  suggestedQuestions={[
+    "What licenses does my business need?",
+    "How long does licensing take?",
+    "Can I operate while waiting for licenses?",
+    "What's the penalty for no license?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [NIB & OSS Guide](/insights/business/nib-oss-guide)
+- [PT PMA Setup Guide](/insights/business/pt-pma-setup-guide)
+- [Environmental Permits](/insights/business/environmental-permits)

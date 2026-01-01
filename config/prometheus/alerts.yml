@@ -175,6 +175,108 @@ groups:
           description: 'Metrics endpoint response time is {{ $value }}s (threshold: 1s)'
           runbook_url: 'https://docs.nuzantara.com/runbooks/qdrant-endpoint-slow'
 
+  - name: race_conditions
+    interval: 30s
+    rules:
+      # High Memory Lock Contention
+      - alert: HighMemoryLockContention
+        expr: |
+          rate(zantara_memory_lock_contention_seconds_sum[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: memory
+          subsystem: locking
+        annotations:
+          summary: 'High memory lock contention detected'
+          description: 'Memory operations are waiting too long for locks. Average wait time: {{ $value }}s over the last 5 minutes'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/memory-lock-contention'
+
+      # Memory Lock Timeouts
+      - alert: MemoryLockTimeouts
+        expr: |
+          rate(zantara_memory_lock_timeout_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          component: memory
+          subsystem: locking
+        annotations:
+          summary: 'Memory lock timeouts detected'
+          description: 'Memory save operations are timing out on lock acquisition. Rate: {{ $value }} timeouts/second'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/memory-lock-timeouts'
+
+      # Critical Memory Lock Timeouts
+      - alert: CriticalMemoryLockTimeouts
+        expr: |
+          rate(zantara_memory_lock_timeout_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+          component: memory
+          subsystem: locking
+        annotations:
+          summary: 'CRITICAL: High rate of memory lock timeouts'
+          description: 'Memory operations are failing due to lock timeouts. Rate: {{ $value }} timeouts/second - immediate action required'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/critical-memory-lock-timeouts'
+
+      # Collection Lock Timeouts
+      - alert: CollectionLockTimeouts
+        expr: |
+          rate(zantara_collection_lock_timeout_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          component: qdrant
+          subsystem: locking
+        annotations:
+          summary: 'Collection lock timeouts detected'
+          description: 'Ingestion operations are timing out on lock acquisition. Rate: {{ $value }} timeouts/second'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/collection-lock-timeouts'
+
+      # Critical Collection Lock Timeouts
+      - alert: CriticalCollectionLockTimeouts
+        expr: |
+          rate(zantara_collection_lock_timeout_total[5m]) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+          component: qdrant
+          subsystem: locking
+        annotations:
+          summary: 'CRITICAL: High rate of collection lock timeouts'
+          description: 'Ingestion operations are failing due to lock timeouts. Rate: {{ $value }} timeouts/second - immediate action required'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/critical-collection-lock-timeouts'
+
+      # Cache-DB Consistency Errors
+      - alert: CacheDBConsistencyErrors
+        expr: |
+          rate(zantara_cache_db_consistency_errors_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: conversations
+          subsystem: consistency
+        annotations:
+          summary: 'Cache-DB consistency errors detected'
+          description: 'Conversation save operations are experiencing cache-DB consistency issues. Rate: {{ $value }} errors/second'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/cache-db-consistency-errors'
+
+      # Critical Cache-DB Consistency Errors
+      - alert: CriticalCacheDBConsistencyErrors
+        expr: |
+          rate(zantara_cache_db_consistency_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          component: conversations
+          subsystem: consistency
+        annotations:
+          summary: 'CRITICAL: High rate of cache-DB consistency errors'
+          description: 'Conversation persistence is failing due to cache-DB inconsistencies. Rate: {{ $value }} errors/second - immediate action required'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/critical-cache-db-consistency-errors'
+
+
 
 
 

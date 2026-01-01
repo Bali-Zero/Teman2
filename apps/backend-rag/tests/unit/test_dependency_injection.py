@@ -242,8 +242,8 @@ def test_get_auto_crm_lazy_initialization():
     conversations_module._auto_crm_service = None
 
     mock_service = MagicMock()
-    # AutoCRMService is imported from services, not defined in conversations module
-    with patch("services.crm.auto_crm_service.AutoCRMService", return_value=mock_service):
+    # The implementation uses get_auto_crm_service() factory, not AutoCRMService directly
+    with patch("services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_service):
         result = get_auto_crm()
 
         assert result == mock_service
@@ -272,26 +272,34 @@ def test_get_auto_crm_instance_reuse():
 
 def test_dependency_override_get_orchestrator():
     """Test dependency override for get_orchestrator in FastAPI app"""
+    from app.dependencies import get_current_user
     from app.routers import agentic_rag
 
     app = FastAPI()
     app.include_router(agentic_rag.router)
 
+    # Create mock result object with required attributes
+    mock_result = MagicMock()
+    mock_result.answer = "test answer"
+    mock_result.sources = []
+    mock_result.document_count = 0
+    mock_result.timings = {"total": 0.1}
+    mock_result.route_used = "test"
+    mock_result.tools_called = []
+    mock_result.model_used = "test-model"
+    mock_result.cache_hit = False
+
     mock_orchestrator = MagicMock()
-    mock_orchestrator.process_query = AsyncMock(
-        return_value={
-            "answer": "test",
-            "sources": [],
-            "context_used": 0,
-            "execution_time": 0.1,
-            "route_used": "test",
-        }
-    )
+    mock_orchestrator.process_query = AsyncMock(return_value=mock_result)
 
     async def override_get_orchestrator():
         return mock_orchestrator
 
+    def override_get_current_user():
+        return {"email": "test@example.com", "id": "user123"}
+
     app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     client = TestClient(app)
     response = client.post("/api/agentic-rag/query", json={"query": "test"})
@@ -343,6 +351,7 @@ def test_dependency_override_get_database_pool():
 
 def test_dependency_override_get_search_service():
     """Test dependency override for get_search_service in FastAPI app"""
+    from app.dependencies import get_current_user
     from app.routers import oracle_universal
 
     app = FastAPI()
@@ -356,7 +365,11 @@ def test_dependency_override_get_search_service():
     def override_get_search_service():
         return mock_service
 
+    def override_get_current_user():
+        return {"email": "test@example.com", "id": "user123"}
+
     app.dependency_overrides[get_search_service] = override_get_search_service
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     client = TestClient(app)
     # Test that dependency override works
@@ -365,6 +378,7 @@ def test_dependency_override_get_search_service():
     response = client.post("/api/oracle/query", json={"query": "test query"})
 
     # Verify that dependency override was applied (service was injected)
+    # 401 is no longer expected since we override auth
     # The response might be 503 due to other dependencies, but that's OK
     # The important thing is testing the override mechanism
     assert response.status_code in [200, 400, 404, 500, 503]  # Any status is OK for this test

@@ -48,7 +48,7 @@ export default function KnowledgePage() {
     }, 500);
 
     return () => clearTimeout(debounceTimer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [searchQuery]);
 
   const handleNewDocument = () => {
@@ -92,10 +92,10 @@ export default function KnowledgePage() {
       {/* Categories */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { name: 'KITAS & Visa', icon: FileText, key: 'kitas' },
-          { name: 'PT PMA', icon: FolderOpen, key: 'pma' },
-          { name: 'Tax & NPWP', icon: FileText, key: 'tax' },
-          { name: 'Procedure', icon: Tag, key: 'procedure' },
+          { name: 'KITAS & Visa', icon: FileText, key: 'kitas', href: '/knowledge/kitas', hasPage: true },
+          { name: 'Company & Classifications', icon: FolderOpen, key: 'pma', href: '/knowledge/blueprints', hasPage: true },
+          { name: 'Tax & NPWP', icon: FileText, key: 'tax', href: null, hasPage: false },
+          { name: 'Procedure', icon: Tag, key: 'procedure', href: null, hasPage: false },
         ].map((category) => {
           const count = searchResults.filter((r) => {
             const collection = r.metadata?.collection?.toLowerCase() || '';
@@ -110,14 +110,26 @@ export default function KnowledgePage() {
             <div
               key={category.name}
               onClick={() => {
-                setSearchQuery(category.key === 'kitas' ? 'KITAS visa' : category.key === 'pma' ? 'PT PMA company' : category.key === 'tax' ? 'tax NPWP' : 'procedure process');
-                handleSearch();
+                if (category.hasPage && category.href) {
+                  router.push(category.href);
+                } else {
+                  setSearchQuery(category.key === 'kitas' ? 'KITAS visa' : category.key === 'pma' ? 'PT PMA company' : category.key === 'tax' ? 'tax NPWP' : 'procedure process');
+                  handleSearch();
+                }
               }}
-              className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50 cursor-pointer transition-colors"
+              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                category.hasPage
+                  ? 'border-[var(--accent)]/30 bg-gradient-to-br from-[var(--accent)]/5 to-purple-500/5 hover:border-[var(--accent)]/50 hover:shadow-lg hover:shadow-[var(--accent)]/10'
+                  : 'border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50'
+              }`}
             >
-              <category.icon className="w-8 h-8 text-[var(--accent)] mb-3" />
+              <category.icon className={`w-8 h-8 mb-3 ${category.hasPage ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
               <h3 className="font-medium text-[var(--foreground)]">{category.name}</h3>
-              <p className="text-xs text-[var(--foreground-muted)]">{count} documents</p>
+              <p className="text-xs text-[var(--foreground-muted)]">
+                {category.hasPage
+                  ? (category.key === 'kitas' ? 'View visa guides' : 'View KBLI blueprints')
+                  : `${count} documents`}
+              </p>
             </div>
           );
         })}

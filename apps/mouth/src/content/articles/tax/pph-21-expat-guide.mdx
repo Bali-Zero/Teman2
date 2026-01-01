@@ -1,0 +1,273 @@
+---
+title: "Income Tax (PPh 21) for Expatriates in Indonesia 2025"
+slug: "pph-21-expat-guide"
+description: "Understanding PPh 21 income tax for expats working in Indonesia. Tax rates, calculations, allowances, and what your employer withholds."
+excerpt: "Working in Indonesia? Here's how PPh 21 income tax works and what to expect on your payslip."
+category: "tax"
+tags:
+  - PPh 21
+  - income tax
+  - salary tax
+  - expatriate tax
+  - withholding tax
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Tax Advisor"
+featured: false
+image:
+  src: "/images/insights/tax-legal/pph-21.jpg"
+  alt: "Indonesia income tax calculation"
+seo:
+  title: "PPh 21 Expat Guide 2025 | Indonesia Income Tax"
+  description: "How PPh 21 income tax works for expatriates in Indonesia. Tax rates, PTKP allowances, calculations, and payslip guide."
+  keywords:
+    - PPh 21
+    - indonesia income tax
+    - expat tax
+    - salary tax indonesia
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "tax_genius"
+    documentsUsed: 18
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "indonesia-tax-guide-for-foreigners"
+  - "tax-residency-indonesia"
+  - "annual-tax-return-guide"
+tableOfContents: true
+---
+
+import {
+  Calculator,
+  ComparisonTable,
+  InfoCard,
+  AskZantara
+} from '@/components/insights/interactive';
+
+# Income Tax (PPh 21) for Expatriates in Indonesia 2025
+
+PPh 21 is the income tax withheld from your salary by your employer. If you work in Indonesia, this is your primary tax obligation.
+
+## 2025 Tax Rates
+
+Indonesia uses **progressive tax rates**:
+
+<ComparisonTable
+  title="PPh 21 Tax Brackets"
+  description="Progressive rates for annual taxable income"
+  items={[
+    {
+      name: "Bracket 1",
+      values: { "Income Range": "IDR 0 - 60M", "Tax Rate": "5%", "Max Tax": "IDR 3M" }
+    },
+    {
+      name: "Bracket 2",
+      values: { "Income Range": "IDR 60M - 250M", "Tax Rate": "15%", "Max Tax": "IDR 28.5M" }
+    },
+    {
+      name: "Bracket 3",
+      values: { "Income Range": "IDR 250M - 500M", "Tax Rate": "25%", "Max Tax": "IDR 62.5M" }
+    },
+    {
+      name: "Bracket 4",
+      values: { "Income Range": "IDR 500M - 5B", "Tax Rate": "30%", "Max Tax": "IDR 1.35B" }
+    },
+    {
+      name: "Bracket 5",
+      values: { "Income Range": "Over IDR 5B", "Tax Rate": "35%", "Max Tax": "Unlimited" },
+      highlight: true
+    }
+  ]}
+/>
+
+---
+
+## Tax Calculator
+
+<Calculator
+  title="PPh 21 Calculator"
+  description="Estimate your annual income tax"
+  fields={[
+    {
+      id: "monthly",
+      label: "Monthly Gross Salary",
+      type: "number",
+      defaultValue: 50000000,
+      min: 0,
+      step: 1000000,
+      suffix: "IDR"
+    },
+    {
+      id: "allowances",
+      label: "Monthly Allowances",
+      type: "number",
+      defaultValue: 10000000,
+      min: 0,
+      step: 1000000,
+      suffix: "IDR"
+    },
+    {
+      id: "bonus",
+      label: "Annual Bonus (months)",
+      type: "select",
+      options: [
+        { value: "0", label: "No bonus" },
+        { value: "1", label: "1 month" },
+        { value: "2", label: "2 months" },
+        { value: "3", label: "3 months" }
+      ],
+      defaultValue: "1"
+    },
+    {
+      id: "status",
+      label: "Marital Status (PTKP)",
+      type: "select",
+      options: [
+        { value: "TK0", label: "Single (TK/0)" },
+        { value: "K0", label: "Married, no kids (K/0)" },
+        { value: "K1", label: "Married, 1 child (K/1)" },
+        { value: "K2", label: "Married, 2 children (K/2)" },
+        { value: "K3", label: "Married, 3 children (K/3)" }
+      ],
+      defaultValue: "TK0"
+    },
+    {
+      id: "npwp",
+      label: "Have NPWP?",
+      type: "checkbox",
+      defaultValue: true
+    }
+  ]}
+  calculateResult={(values) => {
+    const monthly = Number(values.monthly) + Number(values.allowances);
+    const bonus = Number(values.bonus) * Number(values.monthly);
+    const annual = (monthly * 12) + bonus;
+
+    const ptkpMap = { 'TK0': 54000000, 'K0': 58500000, 'K1': 63000000, 'K2': 67500000, 'K3': 72000000 };
+    const ptkp = ptkpMap[values.status];
+
+    let taxable = Math.max(0, annual - ptkp);
+    let tax = 0;
+    let remaining = taxable;
+
+    if (remaining > 0) {
+      const b1 = Math.min(remaining, 60000000);
+      tax += b1 * 0.05;
+      remaining -= b1;
+    }
+    if (remaining > 0) {
+      const b2 = Math.min(remaining, 190000000);
+      tax += b2 * 0.15;
+      remaining -= b2;
+    }
+    if (remaining > 0) {
+      const b3 = Math.min(remaining, 250000000);
+      tax += b3 * 0.25;
+      remaining -= b3;
+    }
+    if (remaining > 0) {
+      const b4 = Math.min(remaining, 4500000000);
+      tax += b4 * 0.30;
+      remaining -= b4;
+    }
+    if (remaining > 0) {
+      tax += remaining * 0.35;
+    }
+
+    if (!values.npwp) tax *= 1.2;
+
+    const monthlyTax = tax / 12;
+    const effectiveRate = annual > 0 ? ((tax / annual) * 100).toFixed(1) : 0;
+
+    return {
+      total: tax,
+      breakdown: [
+        { label: "Annual Gross Income", amount: annual },
+        { label: `PTKP (${values.status})`, amount: -ptkp },
+        { label: "Taxable Income", amount: taxable },
+        { label: "Annual Tax", amount: tax },
+        { label: "Monthly Withholding", amount: monthlyTax }
+      ],
+      currency: "IDR",
+      note: `Effective rate: ${effectiveRate}%${!values.npwp ? ' (includes 20% non-NPWP penalty)' : ''}`
+    };
+  }}
+/>
+
+---
+
+## PTKP (Tax-Free Allowance)
+
+PTKP is the amount of income exempt from tax:
+
+| Status | Code | Annual PTKP |
+|--------|------|-------------|
+| Single | TK/0 | IDR 54,000,000 |
+| Married, no kids | K/0 | IDR 58,500,000 |
+| Married + 1 child | K/1 | IDR 63,000,000 |
+| Married + 2 children | K/2 | IDR 67,500,000 |
+| Married + 3 children | K/3 | IDR 72,000,000 |
+
+<InfoCard variant="tip" title="Maximize Your PTKP">
+- Register dependents properly with HR
+- Maximum 3 dependents (children)
+- Dependents must live with you
+- Spouse only counts if not working
+</InfoCard>
+
+---
+
+## What's Taxable?
+
+### Included in PPh 21:
+- Base salary
+- Allowances (housing, transport, meals)
+- Bonuses and THR
+- Benefits in kind (some)
+- Stock options (when exercised)
+
+### Exempt:
+- BPJS employer contributions
+- Certain work tools/equipment
+- Some business travel reimbursements
+
+---
+
+## No NPWP = Higher Tax
+
+<InfoCard variant="warning" title="20% Penalty Without NPWP">
+If you don't have NPWP, your employer withholds **20% more** tax. This adds up quickly:
+
+- With NPWP: IDR 50M tax
+- Without NPWP: IDR 60M tax
+
+Get your NPWP to avoid this penalty.
+</InfoCard>
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="PPh 21, income tax, salary tax, expat tax Indonesia"
+  placeholder="Ask about PPh 21..."
+  suggestedQuestions={[
+    "Is PPh 21 final or can I get refund?",
+    "What if employer doesn't withhold correctly?",
+    "How do I check my tax is correct?",
+    "Are allowances always taxable?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Indonesia Tax Guide for Foreigners](/insights/tax-legal/indonesia-tax-guide-for-foreigners)
+- [NPWP for Foreigners](/insights/tax-legal/npwp-foreigners-guide)
+- [Annual Tax Return (SPT) Guide](/insights/tax-legal/annual-tax-return-guide)

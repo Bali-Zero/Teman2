@@ -1,0 +1,416 @@
+---
+title: "Corporate Income Tax Indonesia 2025: Complete Guide"
+slug: "corporate-income-tax"
+description: "Corporate income tax (CIT) in Indonesia. Tax rates, deductions, and compliance requirements for PT PMA and local companies."
+excerpt: "Understanding corporate tax is essential for business in Indonesia. Here's the complete guide."
+category: "tax"
+tags:
+  - corporate tax
+  - business tax
+  - CIT
+  - PPh Badan
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Tax Advisor"
+featured: true
+image:
+  src: "/images/insights/tax-legal/corporate-tax.jpg"
+  alt: "Corporate income tax Indonesia"
+seo:
+  title: "Corporate Income Tax Indonesia 2025 | Business Tax Guide"
+  description: "Corporate income tax rates, deductions, and compliance in Indonesia. Essential guide for PT PMA and business owners."
+  keywords:
+    - corporate income tax indonesia
+    - PPh Badan
+    - business tax indonesia
+readingTime: 12
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "tax_docs"
+    documentsUsed: 20
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "pt-pma-registration-guide"
+  - "vat-ppn-guide"
+  - "withholding-tax-guide"
+tableOfContents: true
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  InfoCard,
+  Checklist,
+  AskZantara
+} from '@/components/insights/interactive';
+
+# Corporate Income Tax Indonesia 2025: Complete Guide
+
+Corporate income tax (PPh Badan) is a significant consideration for any business operating in Indonesia. Here's what you need to know.
+
+## Tax Rates Overview
+
+<ComparisonTable
+  title="Corporate Income Tax Rates"
+  description="Current rates for different entities"
+  items={[
+    {
+      name: "Standard Rate",
+      subtitle: "Most companies",
+      values: {
+        "Rate": "22%",
+        "Applies To": "Net taxable income",
+        "Entity Type": "PT, CV, etc."
+      },
+      highlight: true
+    },
+    {
+      name: "Public Company",
+      subtitle: "Listed companies",
+      values: {
+        "Rate": "19%",
+        "Applies To": "IPO with 40%+ free float",
+        "Entity Type": "Listed PT"
+      }
+    },
+    {
+      name: "SME Rate",
+      subtitle: "Small businesses",
+      values: {
+        "Rate": "0.5% of turnover",
+        "Applies To": "Turnover < IDR 4.8B",
+        "Entity Type": "CV, PT with low revenue"
+      }
+    },
+    {
+      name: "Final Tax",
+      subtitle: "Certain sectors",
+      values: {
+        "Rate": "Varies (0.5-10%)",
+        "Applies To": "Specific industries",
+        "Entity Type": "Construction, etc."
+      }
+    }
+  ]}
+/>
+
+---
+
+## Tax Calculation
+
+<Calculator
+  title="Corporate Tax Estimator"
+  description="Estimate your annual corporate tax"
+  fields={[
+    {
+      id: "revenue",
+      label: "Annual Revenue (IDR)",
+      type: "number",
+      defaultValue: 5000000000,
+      min: 0,
+      step: 100000000,
+      suffix: "IDR"
+    },
+    {
+      id: "expenses",
+      label: "Deductible Expenses (IDR)",
+      type: "number",
+      defaultValue: 3500000000,
+      min: 0,
+      step: 100000000,
+      suffix: "IDR"
+    },
+    {
+      id: "type",
+      label: "Company Type",
+      type: "select",
+      options: [
+        { value: "standard", label: "Standard PT/PT PMA" },
+        { value: "public", label: "Public Listed Company" },
+        { value: "sme", label: "SME (< IDR 4.8B revenue)" }
+      ],
+      defaultValue: "standard"
+    }
+  ]}
+  calculateResult={(values) => {
+    const revenue = Number(values.revenue);
+    const expenses = Number(values.expenses);
+    const profit = revenue - expenses;
+
+    let tax;
+    let rate;
+
+    if (values.type === "sme" && revenue <= 4800000000) {
+      tax = revenue * 0.005;
+      rate = "0.5% of turnover";
+    } else if (values.type === "public") {
+      tax = profit > 0 ? profit * 0.19 : 0;
+      rate = "19%";
+    } else {
+      tax = profit > 0 ? profit * 0.22 : 0;
+      rate = "22%";
+    }
+
+    return {
+      total: tax,
+      breakdown: [
+        { label: "Revenue", amount: revenue },
+        { label: "Expenses", amount: expenses },
+        { label: "Taxable Profit", amount: profit > 0 ? profit : 0 },
+        { label: "Tax Due", amount: tax }
+      ],
+      currency: "IDR",
+      note: `Rate applied: ${rate}`
+    };
+  }}
+/>
+
+---
+
+## SME Final Tax (PP 55/2022)
+
+<InfoCard variant="tip" title="Simplified for Small Business">
+Businesses with gross turnover under **IDR 4.8 billion/year** can use simplified final tax:
+
+- **Rate**: 0.5% of gross turnover
+- **No complex calculations**
+- **Monthly payment**
+- **Applies to**: PT, CV, individuals with business
+- **Duration**: Maximum 7 years for PT, 4 years for CV/individuals
+
+After the maximum period, regular rates apply.
+</InfoCard>
+
+### SME Tax Example
+
+| Monthly Revenue | Tax Due |
+|-----------------|---------|
+| IDR 100M | IDR 500K |
+| IDR 200M | IDR 1M |
+| IDR 400M | IDR 2M |
+
+---
+
+## Deductible Expenses
+
+### What's Deductible?
+
+<Checklist
+  title="Common Deductible Expenses"
+  description="Expenses that reduce taxable income"
+  persistKey="deductible-expenses-checklist"
+  items={[
+    {
+      id: "salaries",
+      label: "Employee salaries and benefits",
+      description: "Wages, BPJS contributions",
+      required: false,
+      category: "operational"
+    },
+    {
+      id: "rent",
+      label: "Office rent",
+      description: "Lease payments",
+      required: false,
+      category: "operational"
+    },
+    {
+      id: "utilities",
+      label: "Utilities",
+      description: "Electricity, water, internet",
+      required: false,
+      category: "operational"
+    },
+    {
+      id: "depreciation",
+      label: "Depreciation",
+      description: "Assets over time",
+      required: false,
+      category: "capital"
+    },
+    {
+      id: "interest",
+      label: "Interest expenses",
+      description: "Loan interest (within limits)",
+      required: false,
+      category: "financial"
+    },
+    {
+      id: "training",
+      label: "Employee training",
+      description: "Professional development",
+      required: false,
+      category: "operational"
+    },
+    {
+      id: "marketing",
+      label: "Marketing & advertising",
+      description: "Business promotion",
+      required: false,
+      category: "operational"
+    },
+    {
+      id: "professional",
+      label: "Professional fees",
+      description: "Legal, accounting, consulting",
+      required: false,
+      category: "services"
+    }
+  ]}
+  categories={[
+    { id: "operational", label: "Operational", color: "blue" },
+    { id: "capital", label: "Capital", color: "green" },
+    { id: "financial", label: "Financial", color: "amber" },
+    { id: "services", label: "Services", color: "purple" }
+  ]}
+  showProgress={false}
+/>
+
+### Non-Deductible Expenses
+
+| Expense | Notes |
+|---------|-------|
+| Dividends | Not an expense |
+| Personal expenses | Must be business-related |
+| Donations (most) | Some exceptions |
+| Fines and penalties | Government fines |
+| Entertainment (undocumented) | Need proper documentation |
+| Related party premium | Above market rate |
+
+---
+
+## Depreciation
+
+### Depreciation Groups
+
+| Group | Assets | Rate (Straight-line) | Rate (Declining) |
+|-------|--------|---------------------|-----------------|
+| 1 | 4-year life | 25% | 50% |
+| 2 | 8-year life | 12.5% | 25% |
+| 3 | 16-year life | 6.25% | 12.5% |
+| 4 | 20-year life | 5% | 10% |
+| Building (permanent) | 20-year | 5% | - |
+| Building (non-permanent) | 10-year | 10% | - |
+
+---
+
+## Tax Filing Requirements
+
+### Annual Corporate Tax Return
+
+<InfoCard variant="note" title="Filing Deadlines">
+**SPT Tahunan Badan** (Annual Corporate Tax Return):
+- **Deadline**: 4 months after fiscal year-end
+- **For calendar year**: April 30
+- **Extension**: Up to 2 months possible
+- **Method**: e-Filing mandatory
+</InfoCard>
+
+### Monthly Obligations
+
+| Obligation | Deadline | Description |
+|------------|----------|-------------|
+| PPh 21 | 10th of following month | Employee withholding |
+| PPh 23 | 10th of following month | Service withholding |
+| PPh 25 | 15th of following month | Prepaid CIT installment |
+| PPh 4(2) | 10th of following month | Final tax items |
+| VAT (PPN) | End of following month | If VAT registered |
+
+---
+
+## Transfer Pricing
+
+<InfoCard variant="warning" title="Related Party Transactions">
+Indonesia has strict **transfer pricing** rules for transactions between related parties:
+
+- Must be at **arm's length** prices
+- **Documentation required** (Master File, Local File)
+- **Country-by-Country Reporting** for large groups
+- **Penalties** for non-compliance
+
+Work with qualified tax advisors for related party transactions.
+</InfoCard>
+
+### Documentation Requirements
+
+| Report | Required For | Threshold |
+|--------|--------------|-----------|
+| Master File | Large taxpayers | Revenue IDR 50B+ |
+| Local File | Related party deals | Any material transaction |
+| CbC Report | Multinationals | Group revenue €750M+ |
+
+---
+
+## Tax Incentives
+
+### Available Incentives
+
+| Incentive | Benefit | For Whom |
+|-----------|---------|----------|
+| Pioneer Industry | Tax holiday up to 20 years | Large investments |
+| Investment Allowance | 30% super deduction | Qualifying investments |
+| R&D Incentive | 300% deduction | Research activities |
+| Vocational Training | 200% deduction | Training programs |
+| Special Economic Zone | Various | SEZ located businesses |
+
+---
+
+## Common Issues for Foreign Companies
+
+### PT PMA Considerations
+
+1. **Thin Capitalization** - Debt/equity ratio limits (4:1)
+2. **Transfer Pricing** - Related party transactions scrutiny
+3. **Withholding Taxes** - Payments to foreign affiliates
+4. **Permanent Establishment** - Careful structuring needed
+5. **Tax Treaties** - Check applicability
+
+---
+
+## Compliance Calendar
+
+| Month | Activity |
+|-------|----------|
+| January | Previous year reconciliation |
+| March | Prepare annual return |
+| April | File annual return (due April 30) |
+| Monthly | PPh installments and withholding |
+| Quarterly | Review and adjust estimates |
+
+---
+
+## Penalties
+
+| Violation | Penalty |
+|-----------|---------|
+| Late filing | IDR 1M/month (max 24 months) |
+| Late payment | 2% per month |
+| Underpayment | 2% per month + potential 200% |
+| Tax fraud | Criminal penalties possible |
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Corporate income tax Indonesia, PPh Badan, business tax, PT PMA tax"
+  placeholder="Ask about corporate tax..."
+  suggestedQuestions={[
+    "What's the SME tax rate threshold?",
+    "How do I calculate depreciation?",
+    "What expenses are deductible?",
+    "When is corporate tax return due?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [PT PMA Setup Guide](/insights/business/pt-pma-setup-guide)
+- [VAT (PPN) Guide](/insights/tax-legal/vat-ppn-guide)
+- [Withholding Tax Guide](/insights/tax-legal/withholding-tax-guide)

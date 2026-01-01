@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Path to the SINGLE consolidated system prompt file
@@ -109,7 +111,7 @@ class PromptManager:
         Returns:
             Embedded system prompt string.
         """
-        return """# ZANTARA - Intelligent AI Assistant for Bali Zero
+        return f"""# ZANTARA - Intelligent AI Assistant for Bali Zero
 
 ## Core Identity
 
@@ -154,7 +156,7 @@ You draw from comprehensive knowledge bases covering:
 
 **Context-aware assistance.**
 - When users need help with services: "Need help with this?
-Reach out on WhatsApp +62 859 0436 9574"
+Reach out on WhatsApp +62 813 3805 1876"
 - For team members or casual conversations, skip the sales
 pitch
 

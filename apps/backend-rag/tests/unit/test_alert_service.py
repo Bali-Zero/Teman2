@@ -440,9 +440,9 @@ def test_get_alert_service_singleton():
         mock_settings.discord_webhook_url = None
 
         # Clear singleton
-        import services.alert_service
+        import services.monitoring.alert_service as alert_module
 
-        services.alert_service._alert_service = None
+        alert_module._alert_service = None
 
         service1 = get_alert_service()
         service2 = get_alert_service()

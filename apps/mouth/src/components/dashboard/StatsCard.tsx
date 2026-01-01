@@ -16,6 +16,7 @@ interface StatsCardProps {
     isPositive: boolean;
   };
   variant?: 'default' | 'warning' | 'danger' | 'success';
+  accentColor?: 'blue' | 'teal' | 'amber' | 'purple' | 'pink' | 'emerald' | 'cyan';
 }
 
 const variantStyles = {
@@ -37,6 +38,16 @@ const variantStyles = {
   },
 };
 
+const accentStyles: Record<string, { border: string; icon: string }> = {
+  blue: { border: 'border-l-[3px] border-l-[#60A5FA]', icon: 'text-[#60A5FA]' },
+  teal: { border: 'border-l-[3px] border-l-[#2DD4BF]', icon: 'text-[#2DD4BF]' },
+  amber: { border: 'border-l-[3px] border-l-[#FBBF24]', icon: 'text-[#FBBF24]' },
+  purple: { border: 'border-l-[3px] border-l-[#A78BFA]', icon: 'text-[#A78BFA]' },
+  pink: { border: 'border-l-[3px] border-l-[#F472B6]', icon: 'text-[#F472B6]' },
+  emerald: { border: 'border-l-[3px] border-l-[#34D399]', icon: 'text-[#34D399]' },
+  cyan: { border: 'border-l-[3px] border-l-[#22D3EE]', icon: 'text-[#22D3EE]' },
+};
+
 export function StatsCard({
   title,
   value,
@@ -45,15 +56,18 @@ export function StatsCard({
   href,
   trend,
   variant = 'default',
+  accentColor,
 }: StatsCardProps) {
   const styles = variantStyles[variant];
+  const accent = accentColor ? accentStyles[accentColor] : null;
 
   const content = (
     <div
       className={cn(
         'p-5 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]',
         'transition-all duration-200',
-        href && 'hover:border-[var(--border-hover)] hover:bg-[var(--background-elevated)]/30 cursor-pointer'
+        href && 'hover:border-[var(--border-hover)] hover:bg-[var(--background-elevated)]/30 cursor-pointer',
+        accent?.border
       )}
     >
       {/* Icon */}
@@ -64,7 +78,7 @@ export function StatsCard({
             'bg-[var(--background-elevated)]/50'
           )}
         >
-          <Icon className={cn('w-5 h-5', styles.icon)} />
+          <Icon className={cn('w-5 h-5', accent ? accent.icon : styles.icon)} />
         </div>
         {trend && (
           <span

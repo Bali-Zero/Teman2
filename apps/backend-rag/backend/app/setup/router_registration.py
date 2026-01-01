@@ -18,25 +18,32 @@ from app.routers import (
     crm_auto,
     crm_clients,
     crm_interactions,
+    crm_portal_integration,
     crm_practices,
     crm_shared_memory,
     debug,
     episodic_memory,
     feedback,
+    google_drive,
     handlers,
     health,
     ingest,
     intel,
+    knowledge_visa,
     legal_ingest,
     media,
+    newsletter,
     nusantara_health,
     oracle_ingest,
     oracle_universal,
     performance,
+    portal,
+    portal_invite,
     session,
     team_activity,
     team_analytics,
     websocket,
+    zoho_email,
 )
 
 # NOTE: Removed routers (will be MCP):
@@ -85,6 +92,11 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
     api.include_router(crm_auto.router)
+    api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
+
+    # Portal routers (Client-facing)
+    api.include_router(portal.router)
+    api.include_router(portal_invite.router)
 
     # Ingestion routers
     api.include_router(ingest.router)
@@ -98,12 +110,22 @@ def include_routers(api: FastAPI) -> None:
     # Communication routers (notifications/whatsapp/instagram removed - will be MCP)
     api.include_router(websocket.router)
 
+    # Integrations routers
+    api.include_router(zoho_email.router)
+    api.include_router(google_drive.router)
+
+    # Blog routers
+    api.include_router(newsletter.router)
+
     # Performance router (productivity removed - will be MCP)
     api.include_router(performance.router)
 
     # Module routers (Prime Standard)
     api.include_router(identity_router, prefix="/api/auth")
     api.include_router(knowledge_router)
+
+    # Knowledge Base - Visa Types
+    api.include_router(knowledge_visa.router)
 
     # Additional routers (included directly on app instance)
     api.include_router(team_activity.router)

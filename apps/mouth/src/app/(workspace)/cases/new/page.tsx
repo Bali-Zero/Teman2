@@ -8,22 +8,42 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CreatePracticeParams } from '@/lib/api/crm/crm.types';
 
+interface FormState {
+  title: string;
+  practice_type_code: string;
+  client_id: number | undefined;
+}
+
 export default function NewPracticePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<CreatePracticeParams>({
+  const [formData, setFormData] = useState<FormState>({
     title: '',
-    practice_type_code: 'investor_kitas', // Default
-    description: '',
+    practice_type_code: 'kitas_application', // Default - must match practice_types table
     client_id: undefined,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate client_id is provided
+    if (!formData.client_id) {
+      alert('Please enter a Client ID');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const user = await api.getProfile();
-      await api.crm.createPractice(formData, user.email);
+      // Map frontend fields to backend schema
+      const backendData: CreatePracticeParams = {
+        client_id: formData.client_id,
+        practice_type_code: formData.practice_type_code,
+        status: 'inquiry',
+        priority: 'normal',
+        notes: formData.title, // Map title to notes field
+      };
+      await api.crm.createPractice(backendData, user.email);
       router.push('/cases');
     } catch (error) {
       console.error('Failed to create case', error);
@@ -88,11 +108,11 @@ export default function NewPracticePage() {
               onChange={handleChange}
               className="w-full px-4 py-2 rounded-lg border border-border bg-background-elevated text-foreground focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
-              <option value="investor_kitas">Investor KITAS</option>
-              <option value="work_kitas">Work KITAS</option>
-              <option value="business_visa">Business Visa</option>
-              <option value="pt_pma">PT PMA Setup</option>
-              <option value="tax_reporting">Tax Reporting</option>
+              <option value="kitas_application">KITAS Application</option>
+              <option value="kitap_application">KITAP Application</option>
+              <option value="pt_pma_setup">PT PMA Setup</option>
+              <option value="property_purchase">Property Purchase</option>
+              <option value="tax_consulting">Tax Consulting</option>
             </select>
           </div>
 

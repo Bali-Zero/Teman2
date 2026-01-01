@@ -66,7 +66,7 @@ export function Header({
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[var(--background)]/80 backdrop-blur-md border-b border-[var(--border)]">
+    <header className="sticky top-0 z-30 w-full bg-[#242424] border-b border-white/5">
       <div className="flex items-center justify-between h-16 px-4 md:px-6">
         {/* Left Section - Mobile Menu + Greeting */}
         <div className="flex items-center gap-4">
@@ -83,13 +83,13 @@ export function Header({
             )}
           </button>
 
-          {/* Greeting */}
+          {/* Compact Greeting - Page Title + Date */}
           <div className="hidden sm:block">
             <h1 className="text-lg font-semibold text-[var(--foreground)]">
-              {getGreeting()}, {userName.split(' ')[0]}
+              {getPageTitle()}
             </h1>
-            <p className="text-sm text-[var(--foreground-muted)] capitalize">
-              {formatDate()}
+            <p className="text-xs text-[var(--foreground-muted)]">
+              {formatDate()} • {userName.split(' ')[0]}
             </p>
           </div>
 

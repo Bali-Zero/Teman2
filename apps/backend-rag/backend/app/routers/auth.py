@@ -157,8 +157,11 @@ async def login(
     try:
         async with db_pool.acquire() as conn:
             # Real database authentication using team_members
+            # Include linked_client_id and portal_access for client users
             query = """
-                SELECT id, email, full_name as name, pin_hash as password_hash, role, 'active' as status, NULL::jsonb as metadata, language as language_preference, active
+                SELECT id, email, full_name as name, pin_hash as password_hash, role,
+                       'active' as status, NULL::jsonb as metadata, language as language_preference,
+                       active, linked_client_id, portal_access
                 FROM team_members
                 WHERE email = $1
             """
@@ -204,12 +207,26 @@ async def login(
                 user["id"],
             )
 
-            # Create JWT token
+            # Create JWT token with role-specific data
+            jwt_data = {
+                "sub": str(user["id"]),
+                "email": user["email"],
+                "role": user["role"],
+            }
+
+            # For client users, include linked_client_id in JWT
+            if user["role"] == "client" and user.get("linked_client_id"):
+                jwt_data["client_id"] = user["linked_client_id"]
+
             access_token_expires = timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
             access_token = create_access_token(
-                data={"sub": str(user["id"]), "email": user["email"], "role": user["role"]},
+                data=jwt_data,
                 expires_delta=access_token_expires,
             )
+
+            # Determine redirect based on role
+            # Clients go to portal, team members go to dashboard
+            redirect_to = "/portal" if user["role"] == "client" else "/dashboard"
 
             # Prepare user profile
             user_profile = {
@@ -221,6 +238,11 @@ async def login(
                 "metadata": user.get("metadata"),
                 "language_preference": user.get("language_preference", "en"),
             }
+
+            # Add client-specific fields
+            if user["role"] == "client":
+                user_profile["client_id"] = user.get("linked_client_id")
+                user_profile["portal_access"] = user.get("portal_access", False)
 
             # Log success
             await audit_service.log_auth_event(
@@ -248,6 +270,7 @@ async def login(
                     "expiresIn": JWT_ACCESS_TOKEN_EXPIRE_HOURS * 3600,
                     "user": user_profile,
                     "csrfToken": csrf_token,  # For frontend CSRF protection
+                    "redirectTo": redirect_to,  # Role-based redirect for frontend
                 },
             )
     except HTTPException:
@@ -342,7 +365,9 @@ async def refresh_token(
         # Verify user is still active
         async with db_pool.acquire() as conn:
             query = """
-                SELECT id, email, full_name as name, role, 'active' as status, NULL::jsonb as metadata, language as language_preference
+                SELECT id, email, full_name as name, role, 'active' as status,
+                       NULL::jsonb as metadata, language as language_preference,
+                       linked_client_id, portal_access
                 FROM team_members
                 WHERE id::text = $1 AND email = $2 AND active = true
             """
@@ -351,12 +376,25 @@ async def refresh_token(
             if not user:
                 raise HTTPException(status_code=401, detail="User not found or inactive")
 
-            # Create new JWT token
+            # Create JWT token with role-specific data
+            jwt_data = {
+                "sub": str(user["id"]),
+                "email": user["email"],
+                "role": user["role"],
+            }
+
+            # For client users, include linked_client_id in JWT
+            if user["role"] == "client" and user.get("linked_client_id"):
+                jwt_data["client_id"] = user["linked_client_id"]
+
             access_token_expires = timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
             access_token = create_access_token(
-                data={"sub": str(user["id"]), "email": user["email"], "role": user["role"]},
+                data=jwt_data,
                 expires_delta=access_token_expires,
             )
+
+            # Determine redirect based on role
+            redirect_to = "/portal" if user["role"] == "client" else "/dashboard"
 
             # Prepare user profile
             user_profile = {
@@ -368,6 +406,11 @@ async def refresh_token(
                 "metadata": user.get("metadata"),
                 "language_preference": user.get("language_preference", "en"),
             }
+
+            # Add client-specific fields
+            if user["role"] == "client":
+                user_profile["client_id"] = user.get("linked_client_id")
+                user_profile["portal_access"] = user.get("portal_access", False)
 
             # Update httpOnly JWT cookie and CSRF cookie
             csrf_token = set_auth_cookies(
@@ -385,6 +428,7 @@ async def refresh_token(
                     "expiresIn": JWT_ACCESS_TOKEN_EXPIRE_HOURS * 3600,
                     "user": user_profile,
                     "csrfToken": csrf_token,  # For frontend CSRF protection
+                    "redirectTo": redirect_to,  # Role-based redirect
                 },
             )
     except HTTPException:

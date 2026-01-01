@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.dependencies import get_current_user, get_database_pool
+from app.metrics import metrics_collector
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_error, log_success, log_warning
 from services.memory import MemoryOrchestrator, get_memory_cache
@@ -188,60 +189,84 @@ async def save_conversation(
     # Generate session_id if not provided
     session_id = request.session_id or f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-    # ALWAYS save to memory cache first (fast & reliable)
+    # RACE CONDITION PROTECTION: Two-phase commit pattern
+    # Phase 1: Save to cache (fast, always succeeds)
+    mem_cache = get_memory_cache()
     try:
-        mem_cache = get_memory_cache()
-        # We need a conversation_id for the cache. If it's a new conversation, we might not have one yet.
-        # For now, we'll use session_id as a proxy key if we don't have a conversation_id
-        # But wait, the cache expects conversation_id.
-        # Let's use session_id as the key for the memory cache for now, or a temporary ID.
-        # Actually, let's just use the session_id as the key.
         for msg in request.messages:
-            mem_cache.add_message(session_id, msg.get("role", "unknown"), msg.get("content", ""))
+            mem_cache.add_message(
+                session_id, msg.get("role", "unknown"), msg.get("content", "")
+            )
         logger.info(
             f"✅ Saved {len(request.messages)} messages to memory cache for session {session_id}"
         )
     except Exception as e:
         logger.warning(f"⚠️ Failed to save to memory cache: {e}")
+        # Continue - DB save is more important
 
+    # Phase 2: Save to DB with retry mechanism
     conversation_id = 0
     db_success = False
+    max_retries = 3
 
-    try:
-        if db_pool:
-            async with db_pool.acquire() as conn:
-                # Insert conversation
-                row = await conn.fetchrow(
-                    """
-                    INSERT INTO conversations (user_id, session_id, messages, metadata, created_at)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING id
-                    """,
-                    user_email,
-                    session_id,
-                    request.messages,
-                    request.metadata or {},
-                    datetime.now(),
+    for attempt in range(max_retries):
+        try:
+            if db_pool:
+                async with db_pool.acquire() as conn:
+                    async with conn.transaction():
+                        # Insert conversation atomically
+                        row = await conn.fetchrow(
+                            """
+                            INSERT INTO conversations (user_id, session_id, messages, metadata, created_at)
+                            VALUES ($1, $2, $3, $4, $5)
+                            RETURNING id
+                            """,
+                            user_email,
+                            session_id,
+                            request.messages,
+                            request.metadata or {},
+                            datetime.now(),
+                        )
+
+                        if row:
+                            conversation_id = row["id"]
+                            db_success = True
+
+                            # Mark cache as synced (if cache supports it)
+                            try:
+                                if hasattr(mem_cache, "mark_synced"):
+                                    mem_cache.mark_synced(session_id, conversation_id)
+                            except Exception as e:
+                                logger.debug(f"Cache sync marker not available: {e}")
+
+                            log_success(
+                                logger,
+                                "Saved conversation to DB",
+                                conversation_id=conversation_id,
+                                user_email=user_email,
+                                messages_count=len(request.messages),
+                                attempt=attempt + 1,
+                            )
+                            break  # Success - exit retry loop
+            else:
+                logger.warning("⚠️ DB Pool unavailable, skipping DB save")
+                break
+
+        except Exception as e:
+            if attempt == max_retries - 1:
+                # Final attempt failed - log error and queue for async retry
+                logger.error(f"❌ DB Save failed after {max_retries} attempts: {e}")
+                # Note: In production, you might want to queue this for async retry
+                # For now, we continue with cache-only persistence
+                metrics_collector.record_cache_db_consistency_error(session_id=session_id)
+            else:
+                # Exponential backoff before retry
+                import asyncio
+                wait_time = 2 ** attempt
+                logger.warning(
+                    f"⚠️ DB Save attempt {attempt + 1} failed, retrying in {wait_time}s: {e}"
                 )
-
-                if row:
-                    conversation_id = row["id"]
-                    db_success = True
-                    log_success(
-                        logger,
-                        "Saved conversation to DB",
-                        conversation_id=conversation_id,
-                        user_email=user_email,
-                        messages_count=len(request.messages),
-                    )
-        else:
-            logger.warning("⚠️ DB Pool unavailable, skipping DB save")
-
-    except Exception as e:
-        logger.error(f"❌ DB Save failed: {e}")
-        # Don't raise exception if we saved to memory cache, so the chat continues
-        if not db_success:
-            logger.info("⚠️ Continuing with memory-only persistence")
+                await asyncio.sleep(wait_time)
 
     # If both failed, then we have a problem
     # But we already tried memory cache.

@@ -72,7 +72,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     const checkAuth = () => {
       // Force re-read from localStorage to ensure we have the latest token
       const token = api.getToken();
-      
+
       if (!token) {
         router.push('/login');
         return;
@@ -83,6 +83,15 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         try {
           // Load profile first (critical), clock status can fail gracefully
           await loadUserProfile();
+
+          // Check if user is a client - redirect to portal
+          const profile = api.getUserProfile();
+          if (profile?.role === 'client') {
+            // Clients should use the portal, not the team workspace
+            router.push('/portal');
+            return;
+          }
+
           // Load clock status with timeout - don't block if it fails
           await Promise.race([
             loadClockStatus(),
@@ -141,7 +150,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+      <div className="min-h-screen flex items-center justify-center bg-[#2a2a2a]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-[var(--foreground-muted)]">Loading...</p>
@@ -151,7 +160,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen bg-[#2a2a2a]">
       {/* Desktop Sidebar */}
       <div className="hidden md:block">
         <AppSidebar

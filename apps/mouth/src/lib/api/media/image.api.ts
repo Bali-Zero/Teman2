@@ -1,25 +1,29 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
+
+/**
+ * Image generation API response
+ */
+interface ImageGenerationResponse {
+  images: string[];
+  success: boolean;
+  error?: string;
+}
 
 /**
  * Image generation API methods
  */
 export class ImageApi {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   async generateImage(prompt: string): Promise<{ image_url: string }> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (this.client as any).request(
+    const response = await this.client.request<ImageGenerationResponse>(
       '/api/v1/image/generate',
       {
         method: 'POST',
         body: JSON.stringify({ prompt }),
       },
-      60000
-    ) as {
-      images: string[];
-      success: boolean;
-      error?: string;
-    }; // 60s timeout for AI generation
+      60000 // 60s timeout for AI generation
+    );
 
     if (!response.success || !response.images || response.images.length === 0) {
       throw new Error(response.error || 'Failed to generate image');

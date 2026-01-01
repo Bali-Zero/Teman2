@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
-import { AgentCard } from '../AgentCard';
+import { AgentCard } from './AgentCard';
 
 describe('AgentCard', () => {
   const mockOnRun = vi.fn();

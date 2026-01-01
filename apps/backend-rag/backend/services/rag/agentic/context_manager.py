@@ -94,8 +94,9 @@ async def get_user_context(
             if session_id:
                 query_combined = """
                     SELECT
-                        up.id, up.full_name as name, ta.role, NULL as department,
-                        up.language_pref as preferred_language, NULL as notes,
+                        up.id, up.full_name as name, ta.role, tm.department,
+                        up.language_pref as preferred_language, tm.notes,
+                        up.email,
                         COALESCE(
                             (
                                 SELECT json_build_object(
@@ -112,6 +113,7 @@ async def get_user_context(
                         ) as latest_conversation
                     FROM user_profiles up
                     LEFT JOIN team_access ta ON ta.user_id = up.id
+                    LEFT JOIN team_members tm ON tm.email = up.email
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
@@ -121,8 +123,9 @@ async def get_user_context(
             else:
                 query_combined = """
                     SELECT
-                        up.id, up.full_name as name, ta.role, NULL as department,
-                        up.language_pref as preferred_language, NULL as notes,
+                        up.id, up.full_name as name, ta.role, tm.department,
+                        up.language_pref as preferred_language, tm.notes,
+                        up.email,
                         COALESCE(
                             (
                                 SELECT json_build_object(
@@ -138,6 +141,7 @@ async def get_user_context(
                         ) as latest_conversation
                     FROM user_profiles up
                     LEFT JOIN team_access ta ON ta.user_id = up.id
+                    LEFT JOIN team_members tm ON tm.email = up.email
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
@@ -147,7 +151,7 @@ async def get_user_context(
 
             if row:
                 logger.info(f"✅ [ContextManager] Found profile: {row['name']} ({row['role']})")
-                # Extract profile
+                # Extract profile (including email and notes from team_members table)
                 context["profile"] = {
                     "id": row["id"],
                     "name": row["name"],
@@ -155,6 +159,7 @@ async def get_user_context(
                     "department": row["department"],
                     "preferred_language": row["preferred_language"],
                     "notes": row["notes"],
+                    "email": row.get("email"),
                 }
 
                 # Use actual ID for further queries (stored by UUID)
@@ -171,8 +176,8 @@ async def get_user_context(
                         msgs = conv["messages"]
                         if isinstance(msgs, str):
                             msgs = json.loads(msgs)
-                        # Take last 6 messages (3 turns)
-                        context["history"] = msgs[-6:] if len(msgs) > 0 else []
+                        # Take last 20 messages (10 turns) for better context retention
+                        context["history"] = msgs[-20:] if len(msgs) > 0 else []
 
                         # Also try to get entities from this conversation ID from cache
                         conversation_id = str(conv["id"])

@@ -1,60 +1,116 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  useState,
+  useEffect,
+  useOptimistic,
+  useTransition,
+  useRef,
+  useCallback,
+  startTransition,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { X } from 'lucide-react';
+import {
+  Send,
+  ImageIcon,
+  Sparkles,
+  Menu,
+  Bell,
+  ChevronDown,
+  Mic,
+  Camera,
+  Clock,
+  Paperclip,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  RefreshCw,
+  X,
+  Volume2,
+  VolumeX,
+  Square,
+  MessageSquare,
+  Settings,
+  HelpCircle,
+  Home,
+  User,
+  History,
+  Star,
+  Plus,
+  Trash2,
+  Loader2,
+  Search,
+} from 'lucide-react';
+
+// API & Hooks
 import { api } from '@/lib/api';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { useChat } from '@/hooks/useChat';
 import { useConversations } from '@/hooks/useConversations';
 import { useTeamStatus } from '@/hooks/useTeamStatus';
-import { useClickOutside } from '@/hooks/useClickOutside';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { TIMEOUTS, FILE_LIMITS } from '@/constants';
-
-import { Sidebar } from '@/components/layout/Sidebar';
+import { ThinkingIndicator } from '@/components/chat/ThinkingIndicator';
 import { SearchDocsModal } from '@/components/search/SearchDocsModal';
-import { MonitoringWidget } from '@/components/dashboard/MonitoringWidget';
-import { FeedbackWidget } from '@/components/chat/FeedbackWidget';
-import { ChatHeader } from '@/components/chat/ChatHeader';
-import { ChatInputBar } from '@/components/chat/ChatInputBar';
-import { ChatMessageList } from '@/components/chat/ChatMessageList';
 
+// Server Actions & Types
+import {
+  saveConversation,
+  type ChatMessage,
+  type ChatImage,
+  type Source,
+} from './actions';
+
+// Types
+interface OptimisticMessage extends ChatMessage {
+  isPending?: boolean;
+  isStreaming?: boolean;
+}
+
+// Utilities
+const generateId = () => `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+
+/**
+ * Chat Page - Hybrid UI with full backend integration
+ */
 export default function ChatPage() {
   const router = useRouter();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState<string>('');
-  const [userAvatar, setUserAvatar] = useState<string | null>(null);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [isSearchDocsOpen, setIsSearchDocsOpen] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const attachMenuRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [thinkingElapsedTime, setThinkingElapsedTime] = useState(0);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef(true);
 
-  // Custom Hooks
-  const {
-    messages,
-    input,
-    setInput,
-    isLoading: isChatLoading,
-    currentSessionId,
-    showImagePrompt,
-    setShowImagePrompt,
-    handleSend,
-    handleImageGenerate,
-    clearMessages,
-    loadConversation: loadChatConversation,
-    handleFileUpload,
-  } = useChat();
+  // Core state
+  const [messages, setMessages] = useState<OptimisticMessage[]>([]);
+  const [sessionId, setSessionId] = useState(() => generateSessionId());
+  const [currentStatus, setCurrentStatus] = useState<string>('');
+  const [input, setInput] = useState('');
+  const [thinkingElapsedTime, setThinkingElapsedTime] = useState(0);
+  const [streamingSteps, setStreamingSteps] = useState<Array<{ type: string; data: unknown; timestamp: Date }>>([]);
 
+  // UI state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userName, setUserName] = useState<string>('');
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isSearchDocsOpen, setIsSearchDocsOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [isImageGenOpen, setIsImageGenOpen] = useState(false);
+  const [imageGenPrompt, setImageGenPrompt] = useState('');
+
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Image attachment state
+  const [attachedImages, setAttachedImages] = useState<Array<{ id: string; base64: string; name: string; size: number }>>([]);
+
+  // TTS (Text-to-Speech) state
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const [ttsLoading, setTtsLoading] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Transitions
+  const [isPending, startMessageTransition] = useTransition();
+
+  // Custom Hooks
   const {
     conversations,
     isLoading: isConversationsLoading,
@@ -68,43 +124,40 @@ export default function ChatPage() {
   const {
     isClockIn,
     isLoading: isClockLoading,
-    error: clockError,
-    loadClockStatus,
     toggleClock,
+    loadClockStatus,
   } = useTeamStatus();
-
-  const { isConnected: isWsConnected } = useWebSocket({
-    onMessage: () => {},
-    onConnect: () => {},
-    onDisconnect: () => {},
-  });
 
   const { isRecording, startRecording, stopRecording, audioBlob, recordingTime, audioMimeType } =
     useAudioRecorder();
 
-  // Load User Profile
+  // useOptimistic for instant message display
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic<
+    OptimisticMessage[],
+    OptimisticMessage
+  >(messages, (state, newMessage) => [...state, newMessage]);
+
+  // ============================================
+  // Auth & Initial Data Load
+  // ============================================
   const loadUserProfile = useCallback(async () => {
-    const isMounted = isMountedRef.current;
     try {
       const storedProfile = api.getUserProfile();
-      if (storedProfile) {
-        if (isMounted && isMountedRef.current) {
-          setUserName(storedProfile.name || storedProfile.email.split('@')[0]);
-        }
+      if (storedProfile && isMountedRef.current) {
+        setUserName(storedProfile.name || storedProfile.email.split('@')[0]);
         return;
       }
       const profile = await api.getProfile();
-      if (isMounted && isMountedRef.current) {
+      if (isMountedRef.current) {
         setUserName(profile.name || profile.email.split('@')[0]);
       }
     } catch (error) {
-      if (isMounted && isMountedRef.current) {
+      if (isMountedRef.current) {
         console.error('Failed to load profile:', error);
       }
     }
   }, []);
 
-  // Component mount/unmount tracking
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -112,7 +165,6 @@ export default function ChatPage() {
     };
   }, []);
 
-  // Initial Data Load
   useEffect(() => {
     if (!api.isAuthenticated()) {
       router.push('/login');
@@ -128,7 +180,7 @@ export default function ChatPage() {
     loadInitialData();
   }, [router, loadConversationList, loadClockStatus, loadUserProfile]);
 
-  // Avatar Load
+  // Avatar Load from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedAvatar = localStorage.getItem('user_avatar');
@@ -141,12 +193,12 @@ export default function ChatPage() {
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, optimisticMessages]);
 
   // Thinking elapsed time tracker
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if (isChatLoading) {
+    if (isPending) {
       setThinkingElapsedTime(0);
       interval = setInterval(() => {
         setThinkingElapsedTime((prev) => prev + 1);
@@ -157,142 +209,343 @@ export default function ChatPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isChatLoading]);
-
-  // Click outside handlers
-  useClickOutside(attachMenuRef, () => setShowAttachMenu(false), showAttachMenu);
-  useClickOutside(userMenuRef, () => setShowUserMenu(false), showUserMenu);
+  }, [isPending]);
 
   // Toast auto-dismiss
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => {
         if (isMountedRef.current) setToast(null);
-      }, TIMEOUTS.TOAST_AUTO_DISMISS);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [toast]);
 
+  // ============================================
+  // Helpers
+  // ============================================
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
   }, []);
 
-  // Audio recording handlers
-  const handleStartRecording = useCallback(async () => {
-    try {
-      await startRecording();
-    } catch {
-      showToast('Access to microphone denied', 'error');
-    }
-  }, [startRecording, showToast]);
-
-  const handleStopRecording = useCallback(() => {
-    stopRecording();
-  }, [stopRecording]);
-
-  // Audio transcription
-  useEffect(() => {
-    const processAudio = async () => {
-      if (audioBlob) {
-        try {
-          const currentInput = input;
-          if (!isMountedRef.current) return;
-          setInput('Transcribing audio...');
-          const text = await api.transcribeAudio(audioBlob, audioMimeType);
-          if (!isMountedRef.current) return;
-          if (text) {
-            setInput((prev) => (prev === 'Transcribing audio...' ? text : prev + text));
-          } else {
-            setInput(currentInput);
-            if (isMountedRef.current) showToast('Could not transcribe audio', 'error');
-          }
-        } catch (err) {
-          if (!isMountedRef.current) return;
-          console.error('Transcription error:', err);
-          showToast('Transcription failed', 'error');
-          setInput((prev) => prev.replace('Transcribing audio...', ''));
-        }
-      }
-    };
-    processAudio();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioBlob, audioMimeType, showToast]);
-
-  const openSearchDocs = useCallback(() => setIsSearchDocsOpen(true), []);
-
-  const handleAvatarUpload = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
+  // Handle avatar upload
+  const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
       if (!file.type.startsWith('image/')) {
         showToast('Please select an image file', 'error');
-        event.target.value = '';
         return;
       }
-      if (file.size > FILE_LIMITS.MAX_FILE_SIZE) {
-        showToast(`Image must be less than ${FILE_LIMITS.MAX_FILE_SIZE_MB}MB`, 'error');
-        event.target.value = '';
-        return;
-      }
-      const arrayBuffer = await file.arrayBuffer();
-      if (!isMountedRef.current) return;
-      const uint8Array = new Uint8Array(arrayBuffer);
-      const isValidImage =
-        (uint8Array[0] === 0xff && uint8Array[1] === 0xd8 && uint8Array[2] === 0xff) ||
-        (uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4e && uint8Array[3] === 0x47) ||
-        (uint8Array[0] === 0x47 && uint8Array[1] === 0x49 && uint8Array[2] === 0x46 && uint8Array[3] === 0x38) ||
-        (uint8Array[0] === 0x52 && uint8Array[1] === 0x49 && uint8Array[2] === 0x46 && uint8Array[3] === 0x46 &&
-          uint8Array.length > 11 && String.fromCharCode(uint8Array[8], uint8Array[9], uint8Array[10], uint8Array[11]) === 'WEBP');
-      if (!isValidImage) {
-        showToast('Invalid image file. Please upload a valid JPEG, PNG, GIF, or WebP image.', 'error');
-        event.target.value = '';
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Image must be less than 5MB', 'error');
         return;
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        if (!isMountedRef.current) return;
-        const img = document.createElement('img');
-        img.onload = () => {
-          if (!isMountedRef.current) return;
-          if (img.width > FILE_LIMITS.MAX_IMAGE_DIMENSION || img.height > FILE_LIMITS.MAX_IMAGE_DIMENSION) {
-            showToast(`Image dimensions must be less than ${FILE_LIMITS.MAX_IMAGE_DIMENSION}x${FILE_LIMITS.MAX_IMAGE_DIMENSION}px`, 'error');
-            event.target.value = '';
-            return;
-          }
-          const base64String = reader.result as string;
-          setUserAvatar(base64String);
-          localStorage.setItem('user_avatar', base64String);
-          showToast('Avatar updated successfully', 'success');
-        };
-        img.onerror = () => {
-          if (!isMountedRef.current) return;
-          showToast('Failed to load image. Please try another file.', 'error');
-          event.target.value = '';
-        };
-        img.src = reader.result as string;
+        const base64String = reader.result as string;
+        setUserAvatar(base64String);
+        localStorage.setItem('user_avatar', base64String);
+        showToast('Avatar updated', 'success');
       };
       reader.readAsDataURL(file);
-      event.target.value = '';
-    },
-    [showToast]
-  );
+    }
+  }, [showToast]);
 
+  // Handle image attachment for chat
+  const handleImageAttach = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      if (!file.type.startsWith('image/')) {
+        showToast('Please select an image file', 'error');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('Image must be less than 10MB', 'error');
+        return;
+      }
+      if (attachedImages.length >= 5) {
+        showToast('Maximum 5 images allowed', 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setAttachedImages(prev => [
+          ...prev,
+          {
+            id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            base64: base64String,
+            name: file.name,
+            size: file.size,
+          },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input to allow selecting same file again
+    e.target.value = '';
+  }, [attachedImages.length, showToast]);
+
+  // Remove attached image
+  const removeAttachedImage = useCallback((imageId: string) => {
+    setAttachedImages(prev => prev.filter(img => img.id !== imageId));
+  }, []);
+
+  // Handle image button clicks
+  const handleImageButtonClick = useCallback(() => {
+    imageInputRef.current?.click();
+  }, []);
+
+  // Handle screenshot/camera button (opens file picker for now)
+  const handleScreenshotClick = useCallback(() => {
+    imageInputRef.current?.click();
+  }, []);
+
+  // Handle image generation submit
+  const handleImageGenSubmit = useCallback(() => {
+    if (!imageGenPrompt.trim()) return;
+    // Set the input to the generation request and close modal
+    setInput(`Genera un'immagine: ${imageGenPrompt.trim()}`);
+    setImageGenPrompt('');
+    setIsImageGenOpen(false);
+    // Focus textarea to allow user to send
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea');
+      textarea?.focus();
+    }, 100);
+  }, [imageGenPrompt]);
+
+  // User avatar component
+  const UserAvatarDisplay = ({ size = 'sm' }: { size?: 'sm' | 'md' }) => {
+    const sizeClasses = size === 'sm' ? 'w-8 h-8' : 'w-9 h-9';
+
+    if (userAvatar) {
+      return (
+        <Image
+          src={userAvatar}
+          alt="User"
+          width={size === 'sm' ? 32 : 36}
+          height={size === 'sm' ? 32 : 36}
+          className={`${sizeClasses} rounded-full object-cover`}
+        />
+      );
+    }
+    return (
+      <div className={`${sizeClasses} rounded-full bg-[#2a2a2a] flex items-center justify-center`}>
+        <span className="text-gray-300 font-medium text-sm">
+          {userName ? userName.substring(0, 2).toUpperCase() : 'U'}
+        </span>
+      </div>
+    );
+  };
+
+  // ============================================
+  // Send Message with Streaming (Client-side API)
+  // ============================================
+  const handleSend = useCallback(async () => {
+    const trimmedInput = input.trim();
+    const hasImages = attachedImages.length > 0;
+
+    // Allow sending if there's text OR images
+    if ((!trimmedInput && !hasImages) || isPending) return;
+
+    const userProfile = api.getUserProfile();
+    const userId = userProfile?.email || 'anonymous';
+
+    // Capture images before clearing
+    const imagesToSend = [...attachedImages];
+
+    setInput('');
+    setAttachedImages([]); // Clear images after capturing
+    setStreamingSteps([]); // Clear steps for new message
+
+    const userMessage: OptimisticMessage = {
+      id: generateId(),
+      role: 'user',
+      content: trimmedInput || (hasImages ? '[Image attached]' : ''),
+      images: imagesToSend.length > 0 ? imagesToSend : undefined,
+      timestamp: new Date(),
+      isPending: false,
+    };
+
+    const assistantMessage: OptimisticMessage = {
+      id: generateId(),
+      role: 'assistant',
+      content: '',
+      timestamp: new Date(),
+      isPending: true,
+      isStreaming: true,
+    };
+
+    startTransition(() => {
+      addOptimisticMessage(userMessage);
+      addOptimisticMessage(assistantMessage);
+    });
+
+    const newMessages = [...messages, userMessage, assistantMessage];
+    setMessages(newMessages);
+
+    // Build conversation history for context
+    const conversationHistory = newMessages
+      .filter(m => !m.isStreaming)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    // Track accumulated content for streaming
+    let accumulatedContent = '';
+
+    try {
+      // Use client-side API with callbacks (fixes Server Action stream issue)
+      await api.sendMessageStreaming(
+        trimmedInput || '[Image attached]',
+        sessionId,
+        // onChunk - called for each token
+        (chunk: string) => {
+          accumulatedContent = chunk; // API already accumulates
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMessage.id
+                ? { ...m, content: chunk, isPending: false }
+                : m
+            )
+          );
+        },
+        // onDone - called when complete
+        (fullResponse, sources, metadata) => {
+          // Handle generated image from metadata (cast to access generated_image)
+          const typedMeta = metadata as {
+            generated_image?: string;
+            followup_questions?: string[];
+            execution_time?: number;
+            route_used?: string;
+          } | undefined;
+          const imageUrl = typedMeta?.generated_image;
+          const followupQuestions = typedMeta?.followup_questions;
+
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMessage.id
+                ? {
+                    ...m,
+                    content: fullResponse,
+                    sources: sources as Source[],
+                    isStreaming: false,
+                    isPending: false,
+                    // Add imageUrl if image was generated
+                    ...(imageUrl ? { imageUrl } : {}),
+                    // Add follow-up questions for proactivity
+                    ...(followupQuestions && followupQuestions.length > 0
+                      ? { metadata: { followup_questions: followupQuestions } }
+                      : {})
+                  }
+                : m
+            )
+          );
+          setCurrentStatus('');
+
+          // Save conversation
+          startTransition(async () => {
+            await saveConversation(
+              newMessages.filter(m => !m.isStreaming).map(m => ({
+                ...m,
+                content: m.id === assistantMessage.id ? fullResponse : m.content
+              })),
+              sessionId
+            );
+          });
+        },
+        // onError - called on error
+        (error: Error) => {
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantMessage.id
+                ? {
+                    ...m,
+                    content: 'Sorry, there was an error processing your request. Please try again.',
+                    isPending: false,
+                    isStreaming: false,
+                  }
+                : m
+            )
+          );
+          setCurrentStatus('');
+          showToast('Failed to send message', 'error');
+        },
+        // onStep - called for all step events (thinking, tool_call, observation, status)
+        (step) => {
+          // Track all steps for progress visualization
+          setStreamingSteps(prev => [...prev, step]);
+          // Update status text for display
+          if (step.type === 'status' && typeof step.data === 'string') {
+            setCurrentStatus(step.data);
+          }
+        },
+        120000, // timeoutMs
+        conversationHistory // conversation history for context
+      );
+
+    } catch (error) {
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMessage.id
+            ? {
+                ...m,
+                content: 'Sorry, there was an error processing your request. Please try again.',
+                isPending: false,
+                isStreaming: false,
+              }
+            : m
+        )
+      );
+      setCurrentStatus('');
+      showToast('Failed to send message', 'error');
+    }
+  }, [input, isPending, messages, sessionId, addOptimisticMessage, showToast, attachedImages]);
+
+  // ============================================
+  // Conversation Management
+  // ============================================
   const handleNewChat = useCallback(() => {
-    clearMessages();
+    setMessages([]);
+    setCurrentStatus('');
+    setSessionId(generateSessionId());
     setCurrentConversationId(null);
-  }, [clearMessages, setCurrentConversationId]);
+    setSidebarOpen(false);
+  }, [setCurrentConversationId]);
 
   const handleConversationClick = useCallback(
     async (id: number) => {
       setCurrentConversationId(id);
-      await loadChatConversation(id);
-      if (window.innerWidth < 768) setIsSidebarOpen(false);
+      // Load conversation messages
+      try {
+        const conv = await api.getConversation(id);
+        if (conv && conv.messages) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setMessages(conv.messages.map((m: any) => ({
+            id: m.id || generateId(),
+            role: m.role as 'user' | 'assistant',
+            content: m.content || '',
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+            sources: m.sources,
+          })));
+          if (conv.session_id) {
+            setSessionId(conv.session_id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load conversation:', error);
+      }
+      if (window.innerWidth < 768) setSidebarOpen(false);
     },
-    [setCurrentConversationId, loadChatConversation]
+    [setCurrentConversationId]
   );
 
-  const handleDeleteConversationWrapper = useCallback(
-    async (id: number) => {
+  const handleDeleteConversation = useCallback(
+    async (id: number, e: React.MouseEvent) => {
+      e.stopPropagation();
       if (!window.confirm('Delete this conversation?')) return;
       await deleteConversation(id);
       if (currentConversationId === id) handleNewChat();
@@ -300,75 +553,267 @@ export default function ChatPage() {
     [deleteConversation, currentConversationId, handleNewChat]
   );
 
-  const handleClearHistoryWrapper = async () => {
-    if (!window.confirm('Clear all conversation history? This cannot be undone.')) return;
-    await clearHistory();
-    handleNewChat();
-  };
+  // ============================================
+  // Audio Recording
+  // ============================================
+  const handleMicClick = useCallback(async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      try {
+        await startRecording();
+      } catch {
+        showToast('Microphone access denied', 'error');
+      }
+    }
+  }, [isRecording, startRecording, stopRecording, showToast]);
 
-  const handleFollowUpClick = useCallback(
-    (question: string) => {
-      setInput(question);
-      setTimeout(() => handleSend(), 10);
-    },
-    [handleSend, setInput]
-  );
-
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        const result = await handleFileUpload(file);
-        if (!isMountedRef.current) return;
-        if (result && result.success) {
-          const attachmentText = `\n[FILEUPLOAD] ${result.filename} (${result.url})`;
-          setInput((prev) => prev + attachmentText);
-          showToast(`Uploaded ${result.filename}`, 'success');
-        } else {
-          showToast('Upload failed', 'error');
+  // Audio transcription
+  useEffect(() => {
+    const processAudio = async () => {
+      if (audioBlob) {
+        try {
+          setInput('Transcribing...');
+          const text = await api.transcribeAudio(audioBlob, audioMimeType);
+          if (text) {
+            setInput(text);
+          } else {
+            setInput('');
+            showToast('Could not transcribe audio', 'error');
+          }
+        } catch {
+          setInput('');
+          showToast('Transcription failed', 'error');
         }
       }
-      e.target.value = '';
-    },
-    [handleFileUpload, setInput, showToast]
-  );
+    };
+    processAudio();
+  }, [audioBlob, audioMimeType, showToast]);
+
+  // ============================================
+  // Text-to-Speech (TTS)
+  // ============================================
+  const handleTTS = useCallback(async (messageId: string, text: string) => {
+    // If already playing this message, stop it
+    if (playingMessageId === messageId) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setPlayingMessageId(null);
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    try {
+      setTtsLoading(messageId);
+      const audioBlob = await api.generateSpeech(text, 'nova');
+
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setPlayingMessageId(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        showToast('Audio playback failed', 'error');
+        setPlayingMessageId(null);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+
+      setTtsLoading(null);
+      setPlayingMessageId(messageId);
+      await audio.play();
+    } catch {
+      setTtsLoading(null);
+      setPlayingMessageId(null);
+      showToast('TTS generation failed', 'error');
+    }
+  }, [playingMessageId, showToast]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // ============================================
+  // Keyboard shortcuts
+  // ============================================
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  // Loading state
+  if (isInitialLoading) {
+    return (
+      <div className="flex h-screen bg-[#202020] text-white items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-[var(--background)] relative isolate">
-      {/* Background Image */}
-      <div className="fixed inset-0 z-[-1] opacity-[0.08] pointer-events-none">
-        <Image src="/images/monas-bg.jpg" alt="Background" fill className="object-cover object-center" priority />
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--background)]/80 via-transparent to-[var(--background)]" />
-      </div>
+    <div className="flex h-screen bg-[#202020] text-white overflow-hidden">
+      {/* Hidden file input for avatar upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleAvatarChange}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Hidden file input for chat image attachments */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        onChange={handleImageAttach}
+        accept="image/*"
+        multiple
+        className="hidden"
+      />
 
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2 duration-300 ${
-            toast.type === 'success' ? 'bg-[var(--success)] text-white' : 'bg-[var(--error)] text-white'
+          className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2 ${
+            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
           }`}
         >
-          <span className="text-sm">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-2 hover:opacity-70" aria-label="Dismiss">
+          <span className="text-sm text-white">{toast.message}</span>
+          <button onClick={() => setToast(null)} className="hover:opacity-70">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        onNewChat={handleNewChat}
-        isLoading={isInitialLoading}
-        isConversationsLoading={isConversationsLoading}
-        conversations={conversations}
-        currentConversationId={currentConversationId}
-        onConversationClick={handleConversationClick}
-        onDeleteConversation={handleDeleteConversationWrapper}
-        clockError={clockError}
-        onClearHistory={handleClearHistoryWrapper}
-      />
+      {/* Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
+      {/* Sidebar */}
+      <aside className={`fixed left-0 top-0 h-full w-72 bg-[#1a1a1a] border-r border-white/5 z-50 transform transition-transform duration-300 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex flex-col h-full">
+          {/* Sidebar Header */}
+          <div className="h-14 border-b border-white/5 flex items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/images/logo_zan.png"
+                alt="Zantara"
+                width={32}
+                height={32}
+                className="drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]"
+              />
+              <span className="font-medium text-white/90">Zantara</span>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
+
+          {/* New Chat Button */}
+          <div className="p-4">
+            <button
+              onClick={handleNewChat}
+              className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors text-gray-300"
+            >
+              <Plus className="w-5 h-5" />
+              <span>New Chat</span>
+            </button>
+          </div>
+
+          {/* Chat History */}
+          <div className="flex-1 overflow-y-auto px-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Recent Chats</p>
+            {isConversationsLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+              </div>
+            ) : conversations.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">No conversations yet</p>
+            ) : (
+              <div className="space-y-1">
+                {conversations.slice(0, 10).map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => handleConversationClick(conv.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-left group ${
+                      currentConversationId === conv.id ? 'bg-white/10' : ''
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-400 truncate flex-1">{conv.title || 'Untitled'}</span>
+                    <button
+                      onClick={(e) => handleDeleteConversation(conv.id, e)}
+                      className="p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
+                    </button>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="border-t border-white/5 p-4 space-y-1">
+            <button
+              onClick={() => setIsSearchDocsOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <Search className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-400">Search Docs</span>
+            </button>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors">
+              <Settings className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-400">Settings</span>
+            </button>
+            <button className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors">
+              <HelpCircle className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-400">Help</span>
+            </button>
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-blue-400"
+            >
+              <Home className="w-4 h-4" />
+              <span className="text-sm">Dashboard</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Search Docs Modal */}
       <SearchDocsModal
         open={isSearchDocsOpen}
         onClose={() => setIsSearchDocsOpen(false)}
@@ -376,62 +821,472 @@ export default function ChatPage() {
         initialQuery={input}
       />
 
-      {/* Main Content */}
+      {/* Image Generation Modal */}
+      {isImageGenOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#2a2a2a] rounded-2xl border border-white/10 shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Genera Immagine</h3>
+                  <p className="text-xs text-gray-400">Descrivi cosa vuoi creare</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsImageGenOpen(false)}
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-5">
+              <textarea
+                value={imageGenPrompt}
+                onChange={(e) => setImageGenPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleImageGenSubmit();
+                  }
+                }}
+                placeholder="Es: Un unicorno magico in una foresta incantata..."
+                className="w-full h-28 px-4 py-3 bg-[#1a1a1a] border border-white/10 rounded-xl text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none"
+                autoFocus
+              />
+              <div className="mt-4 flex justify-end gap-3">
+                <button
+                  onClick={() => setIsImageGenOpen(false)}
+                  className="px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleImageGenSubmit}
+                  disabled={!imageGenPrompt.trim()}
+                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Genera
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <ChatHeader
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          isClockIn={isClockIn}
-          isClockLoading={isClockLoading}
-          onToggleClock={toggleClock}
-          messagesCount={messages.length}
-          isWsConnected={isWsConnected}
-          userName={userName}
-          userAvatar={userAvatar}
-          showUserMenu={showUserMenu}
-          onToggleUserMenu={() => setShowUserMenu(!showUserMenu)}
-          userMenuRef={userMenuRef}
-          avatarInputRef={avatarInputRef}
-          onAvatarUpload={handleAvatarUpload}
-          onShowToast={showToast}
-        />
+        {/* Header */}
+        <header className="h-14 border-b border-white/5 bg-[#202020] flex-shrink-0">
+          <div className="h-full max-w-4xl mx-auto px-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <Menu className="w-5 h-5 text-gray-400" />
+              </button>
+              <button
+                onClick={toggleClock}
+                disabled={isClockLoading}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  isClockIn
+                    ? 'bg-green-500/10 border border-green-500/20 text-green-400'
+                    : 'bg-gray-500/10 border border-gray-500/20 text-gray-400'
+                }`}
+              >
+                {isClockLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <span className={`w-2 h-2 rounded-full ${isClockIn ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+                    <span>{isClockIn ? 'Online' : 'Offline'}</span>
+                  </>
+                )}
+              </button>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 rounded-full">
+                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                <span className="text-gray-400 text-sm">{messages.length} msgs</span>
+              </div>
+            </div>
+
+            <div className="absolute left-1/2 -translate-x-1/2">
+              <Image
+                src="/images/logo_zan.png"
+                alt="Zantara"
+                width={44}
+                height={44}
+                className="drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] brightness-110"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="p-2 hover:bg-white/5 rounded-lg transition-colors relative">
+                <Bell className="w-5 h-5 text-gray-400" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full" />
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors group"
+                title="Click to change avatar"
+              >
+                <div className="relative">
+                  <UserAvatarDisplay size="sm" />
+                  <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                </div>
+                <span className="text-sm text-gray-400 hidden sm:block">{userName}</span>
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+          </div>
+        </header>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto pb-48">
-          <ChatMessageList
-            messages={messages}
-            isLoading={isChatLoading}
-            thinkingElapsedTime={thinkingElapsedTime}
-            userAvatar={userAvatar}
-            messagesEndRef={messagesEndRef}
-            onFollowUpClick={handleFollowUpClick}
-            onSetInput={setInput}
-            onOpenSearchDocs={openSearchDocs}
-          />
+        <div className="flex-1 overflow-y-auto pb-44">
+          {optimisticMessages.length === 0 ? (
+            /* Welcome Screen */
+            <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[60vh]">
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-white/10 blur-[60px] rounded-full animate-pulse" />
+                <Image
+                  src="/images/logo_zan.png"
+                  alt="Zantara"
+                  width={120}
+                  height={120}
+                  className="relative z-10 drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]"
+                />
+              </div>
+
+              <div className="space-y-4 text-center mb-12">
+                <h1 className="text-3xl font-light tracking-[0.3em] text-white/90 uppercase">
+                  Zantara
+                </h1>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="h-[1px] w-16 bg-gradient-to-r from-transparent to-white/30" />
+                  <p className="text-xs text-white/60 tracking-[0.4em] uppercase font-medium">
+                    Garda Depan Leluhur
+                  </p>
+                  <div className="h-[1px] w-16 bg-gradient-to-l from-transparent to-white/30" />
+                </div>
+                <p className="text-sm text-gray-500 mt-4">The Ancestral Vanguard</p>
+              </div>
+
+              <div className="flex flex-wrap justify-center gap-3">
+                {['What can you do?', 'My Tasks', 'Search docs'].map((q, i) => (
+                  <button
+                    key={q}
+                    onClick={() => {
+                      if (i === 2) {
+                        setIsSearchDocsOpen(true);
+                      } else {
+                        setInput(q);
+                        setTimeout(() => handleSend(), 10);
+                      }
+                    }}
+                    className="px-4 py-2.5 rounded-xl border border-white/10 hover:border-white/30 hover:bg-white/5 transition-all text-sm text-gray-300 flex items-center gap-2"
+                  >
+                    <span>{['💡', '📋', '🔍'][i]}</span> {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* Chat Messages */
+            <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+              {optimisticMessages.map((message) => {
+                // Show ThinkingIndicator for streaming assistant messages without content
+                if (message.role === 'assistant' && message.isStreaming && !message.content) {
+                  return (
+                    <ThinkingIndicator
+                      key={message.id}
+                      isVisible={true}
+                      currentStatus={currentStatus}
+                      elapsedTime={thinkingElapsedTime}
+                      steps={streamingSteps as Array<{ type: string; data: unknown; timestamp: Date }>}
+                      maxSteps={3}
+                    />
+                  );
+                }
+
+                return (
+                <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {message.role === 'assistant' && (
+                    <div className="relative flex-shrink-0">
+                      <Image
+                        src="/images/logo_zan.png"
+                        alt="Zantara"
+                        width={52}
+                        height={52}
+                        className="relative z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]"
+                      />
+                    </div>
+                  )}
+
+                  <div className={`max-w-[75%] ${message.role === 'user' ? 'order-1' : ''}`}>
+                    {message.role === 'assistant' && !message.isStreaming && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="px-2 py-0.5 bg-blue-500/15 text-blue-400 text-xs font-medium rounded flex items-center gap-1">
+                          ✨ ULTRA
+                        </span>
+                        <span className="px-2 py-0.5 bg-white/5 text-gray-500 text-xs rounded">
+                          {thinkingElapsedTime}s
+                        </span>
+                        {message.sources && message.sources.length > 0 && (
+                          <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-xs rounded">
+                            ✓ {message.sources.length} sources
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className={`rounded-2xl px-4 py-3 ${
+                      message.role === 'user'
+                        ? 'bg-[#2a2a2a] rounded-br-md'
+                        : 'bg-[#2a2a2a] rounded-bl-md border border-white/[0.06]'
+                    } ${message.isPending ? 'opacity-70' : ''}`}>
+                      {/* Display attached images for user messages */}
+                      {message.role === 'user' && message.images && message.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {message.images.map((img) => (
+                            <Image
+                              key={img.id}
+                              src={img.base64}
+                              alt={img.name}
+                              width={120}
+                              height={120}
+                              className="w-32 h-32 object-cover rounded-lg border border-white/10"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <div className="text-sm whitespace-pre-wrap leading-relaxed text-gray-100">
+                        {message.content.split('**').map((part, i) =>
+                          i % 2 === 1 ? <strong key={i} className="text-white">{part}</strong> : part
+                        )}
+                      </div>
+
+                      {/* Generated image from image generation tool */}
+                      {message.imageUrl && (
+                        <div className="mt-3 relative rounded-lg overflow-hidden border border-white/10">
+                          <Image
+                            src={message.imageUrl}
+                            alt="Generated content"
+                            width={512}
+                            height={512}
+                            className="w-full h-auto max-w-md"
+                            unoptimized
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {message.role === 'assistant' && !message.isStreaming && (
+                      <div className="flex items-center gap-1 mt-2 opacity-0 hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(message.content);
+                            showToast('Copied to clipboard', 'success');
+                          }}
+                          className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300"
+                          title="Copy to clipboard"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleTTS(message.id, message.content)}
+                          className={`p-1.5 hover:bg-white/5 rounded transition-colors ${
+                            playingMessageId === message.id
+                              ? 'text-emerald-400 bg-emerald-400/10'
+                              : 'text-gray-500 hover:text-gray-300'
+                          }`}
+                          title={playingMessageId === message.id ? 'Stop speaking' : 'Read aloud'}
+                          disabled={ttsLoading === message.id}
+                        >
+                          {ttsLoading === message.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : playingMessageId === message.id ? (
+                            <Square className="w-3.5 h-3.5" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300">
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300">
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Follow-up Questions - Proactive Suggestions */}
+                    {message.role === 'assistant' && !message.isStreaming && message.metadata?.followup_questions && message.metadata.followup_questions.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/5">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="w-3 h-3 text-purple-400" />
+                          <span className="text-xs text-gray-500 uppercase tracking-wide">Domande suggerite</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {message.metadata.followup_questions.map((question, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => {
+                                setInput(question);
+                                setTimeout(() => handleSend(), 10);
+                              }}
+                              className="px-3 py-1.5 text-xs rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-purple-500/50 hover:bg-purple-500/10 transition-all"
+                            >
+                              {question}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-xs text-gray-600 mt-1.5 px-1">
+                      {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+
+                  {message.role === 'user' && (
+                    <div className="flex-shrink-0">
+                      <UserAvatarDisplay size="md" />
+                    </div>
+                  )}
+                </div>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
         </div>
 
-        <ChatInputBar
-          input={input}
-          setInput={setInput}
-          isLoading={isChatLoading}
-          showImagePrompt={showImagePrompt}
-          setShowImagePrompt={setShowImagePrompt}
-          onSend={handleSend}
-          onImageGenerate={handleImageGenerate}
-          showAttachMenu={showAttachMenu}
-          setShowAttachMenu={setShowAttachMenu}
-          attachMenuRef={attachMenuRef}
-          fileInputRef={fileInputRef}
-          onFileChange={handleFileChange}
-          isRecording={isRecording}
-          recordingTime={recordingTime}
-          onStartRecording={handleStartRecording}
-          onStopRecording={handleStopRecording}
-        />
+        {/* Input Bar */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 pointer-events-none z-10">
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#202020] via-[#202020]/80 to-transparent pointer-events-none" />
+
+          <div className="max-w-3xl mx-auto pointer-events-auto relative">
+            <div className="bg-[#333333] rounded-2xl border border-white/[0.1] shadow-xl shadow-black/30 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleImageButtonClick}
+                    title="Attach file or image"
+                    className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsImageGenOpen(true)}
+                    title="Generate image with AI"
+                    className="p-2 rounded-lg text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleMicClick}
+                    title="Voice input"
+                    className={`p-2 rounded-lg transition-all ${
+                      isRecording ? 'text-red-400 bg-red-500/10 animate-pulse' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                    }`}
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleScreenshotClick}
+                    title="Add screenshot"
+                    className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isRecording && (
+                    <span className="text-xs text-red-400">{recordingTime}s</span>
+                  )}
+                  <span className="text-xs text-gray-500">ULTRA mode</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                </div>
+              </div>
+
+              {/* Image Preview Area */}
+              {attachedImages.length > 0 && (
+                <div className="px-3 py-2 border-b border-white/[0.06]">
+                  <div className="flex flex-wrap gap-2">
+                    {attachedImages.map((img) => (
+                      <div key={img.id} className="relative group">
+                        <Image
+                          src={img.base64}
+                          alt={img.name}
+                          width={80}
+                          height={80}
+                          className="w-20 h-20 object-cover rounded-lg border border-white/10"
+                        />
+                        <button
+                          onClick={() => removeAttachedImage(img.id)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-gray-300 px-1 py-0.5 rounded-b-lg truncate">
+                          {img.name.length > 12 ? img.name.slice(0, 12) + '...' : img.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-end gap-3 p-3">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={attachedImages.length > 0 ? "Add a message about this image..." : "Ask Zantara anything..."}
+                  rows={1}
+                  disabled={isPending}
+                  className="flex-1 bg-transparent border-none outline-none shadow-none focus:outline-none focus:ring-0 focus:border-none focus:shadow-none resize-none min-h-[44px] max-h-[120px] py-2.5 text-sm text-white placeholder:text-gray-500 disabled:opacity-50"
+                  style={{ boxShadow: 'none', border: 'none', outline: 'none' }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={(!input.trim() && attachedImages.length === 0) || isPending}
+                  className={`p-2.5 rounded-xl transition-all ${
+                    (input.trim() || attachedImages.length > 0) && !isPending
+                      ? 'bg-white text-black shadow-lg shadow-white/20'
+                      : 'bg-white/10 text-gray-500'
+                  }`}
+                >
+                  {isPending ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-4 mt-3">
+              <span className="text-xs text-gray-600">
+                <kbd className="px-1.5 py-0.5 bg-white/5 rounded text-gray-500 font-mono text-[10px]">Enter</kbd>
+                <span className="ml-1">send</span>
+              </span>
+              <span className="text-xs text-gray-600">
+                <kbd className="px-1.5 py-0.5 bg-white/5 rounded text-gray-500 font-mono text-[10px]">Shift+Enter</kbd>
+                <span className="ml-1">new line</span>
+              </span>
+            </div>
+          </div>
+        </div>
       </main>
 
-      <MonitoringWidget />
-      <FeedbackWidget sessionId={currentSessionId || null} turnCount={Math.floor(messages.length / 2)} />
     </div>
   );
 }

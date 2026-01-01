@@ -45,3 +45,4 @@ def handle_database_error(e: Exception) -> HTTPException:
     return HTTPException(status_code=500, detail="Internal server error")
 
 
+

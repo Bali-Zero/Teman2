@@ -82,6 +82,7 @@ class ToolCall:
     result: str | None = None
     success: bool = True
     error: str | None = None
+    execution_time: float = 0.0  # Duration in seconds for metrics
 
 
 @dataclass
@@ -101,6 +102,7 @@ class AgentState:
     final_answer: str | None = None
     max_steps: int = 3
     current_step: int = 0
+    skip_rag: bool = False  # Skip RAG evidence requirements for general tasks
 
 
 class BaseTool(ABC):

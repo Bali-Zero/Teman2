@@ -355,7 +355,8 @@ class TestBuildFollowupGenerationPrompt:
                 "What is KITAS?", "KITAS is a permit", None, "en"
             )
 
-            assert "English" in prompt
+            # New prompt uses language-agnostic "SAME LANGUAGE" approach
+            assert "SAME LANGUAGE" in prompt
             assert "KITAS" in prompt
 
     def test_build_prompt_italian(self):
@@ -368,7 +369,9 @@ class TestBuildFollowupGenerationPrompt:
             service = FollowupService()
             prompt = service._build_followup_generation_prompt("Ciao", "Ciao!", None, "it")
 
-            assert "italiano" in prompt
+            # New prompt uses language-agnostic approach
+            assert "SAME LANGUAGE" in prompt
+            assert "Ciao" in prompt
 
     def test_build_prompt_indonesian(self):
         """Test building prompt in Indonesian"""
@@ -380,7 +383,9 @@ class TestBuildFollowupGenerationPrompt:
             service = FollowupService()
             prompt = service._build_followup_generation_prompt("Halo", "Halo!", None, "id")
 
-            assert "Indonesia" in prompt
+            # New prompt uses language-agnostic approach
+            assert "SAME LANGUAGE" in prompt
+            assert "Halo" in prompt
 
     def test_build_prompt_with_context(self):
         """Test building prompt with conversation context"""

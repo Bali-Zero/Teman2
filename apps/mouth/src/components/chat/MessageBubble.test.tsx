@@ -8,8 +8,8 @@ vi.mock('react-markdown', () => ({
   default: ({ children }: { children: string }) => <div data-testid="markdown">{children}</div>,
 }));
 
-// Mock remark-gfm
-vi.mock('@/components/CitationCard', () => ({
+// Mock CitationCard from search folder
+vi.mock('@/components/search/CitationCard', () => ({
   CitationCard: ({ sources }: { sources: any[] }) => (
     <div data-testid="citation-card">
       {sources.map(s => (

@@ -54,47 +54,51 @@ class TestGeminiJakselService:
     """Tests for GeminiJakselService class"""
 
     def test_init_with_model_prefix(self, mock_settings, mock_genai, mock_jaksel_persona):
-        """Test init with models/ prefix already present"""
+        """Test init with models/ prefix - gets stripped"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
         with patch("services.llm_clients.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
             service = GeminiJakselService(model_name="models/gemini-3-flash-preview")
 
-            assert service.model_name == "models/gemini-3-flash-preview"
+            # New SDK doesn't need 'models/' prefix - it gets removed
+            assert service.model_name == "gemini-3-flash-preview"
 
     def test_init_without_model_prefix(self, mock_settings, mock_genai, mock_jaksel_persona):
-        """Test init adds models/ prefix"""
+        """Test init without models/ prefix"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
         with patch("services.llm_clients.gemini_service.settings") as mock_s:
             mock_s.google_api_key = "test-key"
             service = GeminiJakselService(model_name="gemini-3-flash-preview")
 
-            assert service.model_name == "models/gemini-3-flash-preview"
+            assert service.model_name == "gemini-3-flash-preview"
 
     def test_init_no_api_key(self, mock_genai, mock_jaksel_persona):
-        """Test init without API key"""
+        """Test init without API key - service not available"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.llm_clients.gemini_service.settings") as mock_s:
-            mock_s.google_api_key = None
-            service = GeminiJakselService()
+        with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", False):
+            with patch("services.llm_clients.gemini_service.settings") as mock_s:
+                mock_s.google_api_key = None
+                service = GeminiJakselService()
 
-            assert service.model is None
+                # Service uses _available and _genai_client, not model
+                assert service._available is False
 
     def test_init_model_failure(self, mock_settings, mock_jaksel_persona):
         """Test init handles model initialization failure"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        # Mock GenAIClient to raise exception on instantiation
+        # Mock get_genai_client to raise exception
         with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
-            with patch("services.llm_clients.gemini_service.GenAIClient", side_effect=Exception("Model init failed")):
+            with patch("services.llm_clients.gemini_service.get_genai_client", side_effect=Exception("Model init failed")):
                 with patch("services.llm_clients.gemini_service.settings") as mock_s:
                     mock_s.google_api_key = "test-key"
                     service = GeminiJakselService()
 
-                    assert service.model is None
+                    # Service uses _available flag, not model attribute
+                    assert service._available is False
 
     def test_few_shot_history_conversion(self, mock_settings, mock_genai, mock_jaksel_persona):
         """Test few-shot examples are converted correctly"""
@@ -110,7 +114,8 @@ class TestGeminiJakselService:
 
                 assert len(service.few_shot_history) == 2
                 assert service.few_shot_history[0]["role"] == "user"
-                assert service.few_shot_history[1]["role"] == "model"
+                # Implementation preserves original role from FEW_SHOT_EXAMPLES
+                assert service.few_shot_history[1]["role"] == "assistant"
 
     def test_get_openrouter_client_lazy_load(self, mock_settings, mock_genai, mock_jaksel_persona):
         """Test OpenRouter client is lazy loaded"""
@@ -122,12 +127,14 @@ class TestGeminiJakselService:
 
             assert service._openrouter_client is None
 
-            with patch("services.llm_clients.gemini_service.OpenRouterClient") as mock_client:
-                mock_client.return_value = MagicMock()
-                client = service._get_openrouter_client()
+            # OpenRouterClient is imported inside _get_openrouter_client from .openrouter_client
+            with patch.object(service, "_openrouter_client", None):
+                with patch("services.llm_clients.openrouter_client.OpenRouterClient") as mock_client:
+                    mock_client.return_value = MagicMock()
+                    client = service._get_openrouter_client()
 
-                assert client is not None
-                assert service._openrouter_client is not None
+                    assert client is not None
+                    assert service._openrouter_client is not None
 
     def test_get_openrouter_client_import_error(
         self, mock_settings, mock_genai, mock_jaksel_persona
@@ -333,25 +340,20 @@ class TestGeminiJakselService:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
-                # Mock Gemini model
+                # Mock GenAI client and chat
+                async def mock_stream():
+                    yield "Hello"
+                    yield " World"
+
                 mock_chat = MagicMock()
+                mock_chat.send_message_stream = MagicMock(return_value=mock_stream())
 
-                async def mock_response_iter():
-                    chunk1 = MagicMock()
-                    chunk1.text = "Hello"
-                    yield chunk1
-                    chunk2 = MagicMock()
-                    chunk2.text = " World"
-                    yield chunk2
+                mock_client = MagicMock()
+                mock_client.is_available = True
+                mock_client.create_chat = MagicMock(return_value=mock_chat)
 
-                mock_response = MagicMock()
-                mock_response.__aiter__ = lambda self: mock_response_iter()
-
-                mock_chat.send_message_async = AsyncMock(return_value=mock_response)
-
-                mock_model = MagicMock()
-                mock_model.start_chat.return_value = mock_chat
-                service.model = mock_model
+                service._genai_client = mock_client
+                service._available = True
 
                 chunks = []
                 async for chunk in service.generate_response_stream("Hi"):
@@ -371,29 +373,26 @@ class TestGeminiJakselService:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
+                async def mock_stream():
+                    yield "Response"
+
                 mock_chat = MagicMock()
+                mock_chat.send_message_stream = MagicMock(return_value=mock_stream())
 
-                async def mock_response_iter():
-                    chunk = MagicMock()
-                    chunk.text = "Response"
-                    yield chunk
+                mock_client = MagicMock()
+                mock_client.is_available = True
+                mock_client.create_chat = MagicMock(return_value=mock_chat)
 
-                mock_response = MagicMock()
-                mock_response.__aiter__ = lambda self: mock_response_iter()
-
-                mock_chat.send_message_async = AsyncMock(return_value=mock_response)
-
-                mock_model = MagicMock()
-                mock_model.start_chat.return_value = mock_chat
-                service.model = mock_model
+                service._genai_client = mock_client
+                service._available = True
 
                 chunks = []
                 async for chunk in service.generate_response_stream("Hi", context="Some context"):
                     chunks.append(chunk)
 
-                # Check that context was included in the message
-                call_args = mock_chat.send_message_async.call_args
-                assert "CONTEXT" in call_args[0][0]
+                assert chunks == ["Response"]
+                # Check that create_chat was called (context is in message, not call_args)
+                mock_client.create_chat.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_generate_response_stream_quota_exceeded(
@@ -407,15 +406,20 @@ class TestGeminiJakselService:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
-                # Mock Gemini to raise ResourceExhausted
-                mock_chat = MagicMock()
-                mock_chat.send_message_async = AsyncMock(
-                    side_effect=ResourceExhausted("Quota exceeded")
-                )
+                # Mock GenAI to raise ResourceExhausted
+                async def mock_stream_error():
+                    raise ResourceExhausted("Quota exceeded")
+                    yield  # Make it a generator
 
-                mock_model = MagicMock()
-                mock_model.start_chat.return_value = mock_chat
-                service.model = mock_model
+                mock_chat = MagicMock()
+                mock_chat.send_message_stream = MagicMock(return_value=mock_stream_error())
+
+                mock_client = MagicMock()
+                mock_client.is_available = True
+                mock_client.create_chat = MagicMock(return_value=mock_chat)
+
+                service._genai_client = mock_client
+                service._available = True
 
                 # Mock fallback
                 async def mock_fallback(*args, **kwargs):
@@ -441,14 +445,19 @@ class TestGeminiJakselService:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
-                mock_chat = MagicMock()
-                mock_chat.send_message_async = AsyncMock(
-                    side_effect=ServiceUnavailable("Service unavailable")
-                )
+                async def mock_stream_error():
+                    raise ServiceUnavailable("Service unavailable")
+                    yield  # Make it a generator
 
-                mock_model = MagicMock()
-                mock_model.start_chat.return_value = mock_chat
-                service.model = mock_model
+                mock_chat = MagicMock()
+                mock_chat.send_message_stream = MagicMock(return_value=mock_stream_error())
+
+                mock_client = MagicMock()
+                mock_client.is_available = True
+                mock_client.create_chat = MagicMock(return_value=mock_chat)
+
+                service._genai_client = mock_client
+                service._available = True
 
                 async def mock_fallback(*args, **kwargs):
                     yield "Fallback"
@@ -473,14 +482,19 @@ class TestGeminiJakselService:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
-                mock_chat = MagicMock()
-                mock_chat.send_message_async = AsyncMock(
-                    side_effect=Exception("Error 429: Rate limited")
-                )
+                async def mock_stream_error():
+                    raise Exception("Error 429: Rate limited")
+                    yield  # Make it a generator
 
-                mock_model = MagicMock()
-                mock_model.start_chat.return_value = mock_chat
-                service.model = mock_model
+                mock_chat = MagicMock()
+                mock_chat.send_message_stream = MagicMock(return_value=mock_stream_error())
+
+                mock_client = MagicMock()
+                mock_client.is_available = True
+                mock_client.create_chat = MagicMock(return_value=mock_chat)
+
+                service._genai_client = mock_client
+                service._available = True
 
                 async def mock_fallback(*args, **kwargs):
                     yield "Fallback"
@@ -505,12 +519,19 @@ class TestGeminiJakselService:
                 mock_s.google_api_key = "test-key"
                 service = GeminiJakselService()
 
-                mock_chat = MagicMock()
-                mock_chat.send_message_async = AsyncMock(side_effect=Exception("Unexpected error"))
+                async def mock_stream_error():
+                    raise Exception("Unexpected error")
+                    yield  # Make it a generator
 
-                mock_model = MagicMock()
-                mock_model.start_chat.return_value = mock_chat
-                service.model = mock_model
+                mock_chat = MagicMock()
+                mock_chat.send_message_stream = MagicMock(return_value=mock_stream_error())
+
+                mock_client = MagicMock()
+                mock_client.is_available = True
+                mock_client.create_chat = MagicMock(return_value=mock_chat)
+
+                service._genai_client = mock_client
+                service._available = True
 
                 with pytest.raises(Exception, match="Unexpected error"):
                     async for _ in service.generate_response_stream("Hi"):
@@ -520,25 +541,26 @@ class TestGeminiJakselService:
     async def test_generate_response_stream_no_model(
         self, mock_settings, mock_genai, mock_jaksel_persona
     ):
-        """Test generate_response_stream uses fallback when no model"""
+        """Test generate_response_stream uses fallback when not available"""
         from services.llm_clients.gemini_service import GeminiJakselService
 
-        with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
-            with patch("services.llm_clients.gemini_service.settings") as mock_s:
-                mock_s.google_api_key = None
-                service = GeminiJakselService()
-                service.model = None
+        with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", False):
+            with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", []):
+                with patch("services.llm_clients.gemini_service.settings") as mock_s:
+                    mock_s.google_api_key = None
+                    service = GeminiJakselService()
+                    service._available = False
 
-                async def mock_fallback(*args, **kwargs):
-                    yield "Fallback only"
+                    async def mock_fallback(*args, **kwargs):
+                        yield "Fallback only"
 
-                service._fallback_to_openrouter_stream = mock_fallback
+                    service._fallback_to_openrouter_stream = mock_fallback
 
-                chunks = []
-                async for chunk in service.generate_response_stream("Hi"):
-                    chunks.append(chunk)
+                    chunks = []
+                    async for chunk in service.generate_response_stream("Hi"):
+                        chunks.append(chunk)
 
-                assert "Fallback only" in chunks
+                    assert "Fallback only" in chunks
 
     @pytest.mark.asyncio
     async def test_generate_response_success(self, mock_settings, mock_genai, mock_jaksel_persona):

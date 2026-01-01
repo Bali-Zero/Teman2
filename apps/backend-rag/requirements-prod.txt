@@ -3,19 +3,24 @@
 # Last updated: 2025-12-04
 
 # Core Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
-python-multipart==0.0.6
+# Core Framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.12.0
+pydantic-settings>=2.5.2
+python-multipart>=0.0.9
+
+# MCP Protocol (Critical for Client Handshake)
+mcp>=1.25.0
+anyio>=4.5.0
 
 # Vector Database
 qdrant-client>=1.12.0
 
-# AI API Clients (lightweight - no local models)
-openai>=1.0.0,<2.0.0
+# AI API Clients (optimized for resolution speed)
+openai>=1.55.0  # Pin to recent version to avoid resolving against 1.0.0+
 anthropic==0.7.8
-google-generativeai>=0.5.0
+google-genai>=1.56.0  # Unified SDK (replaces google-generativeai)
 google-api-python-client>=2.100.0
 google-auth>=2.23.0
 google-auth-oauthlib>=1.1.0
@@ -37,7 +42,7 @@ ebooklib>=0.18
 python-docx>=1.1.0
 
 # HTTP/Network
-httpx==0.27.2
+httpx>=0.28.1,<1.0.0
 requests==2.31.0
 aiohttp>=3.10.0
 urllib3>=2.0.0
@@ -64,6 +69,9 @@ prometheus-fastapi-instrumentator>=6.1.0
 
 # XML/HTML Processing
 lxml>=5.3.0
+
+# ML/Math
+scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 
 # REMOVED FOR SIZE OPTIMIZATION:
 # - sentence-transformers (2GB+ with PyTorch) - using OpenAI API embeddings

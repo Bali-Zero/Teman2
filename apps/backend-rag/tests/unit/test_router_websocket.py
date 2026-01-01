@@ -94,7 +94,7 @@ def mock_websocket():
     ws.receive_text = AsyncMock()
     ws.close = AsyncMock()
     ws.headers = {}  # SECURITY: Token now comes from headers/subprotocol, not query param
-    ws.subprotocols = []
+    ws.scope = {"subprotocols": []}  # Use scope.get() pattern like real code
     ws.url = MagicMock()
     ws.url.query = ""
     return ws
@@ -447,7 +447,7 @@ class TestWebSocketEndpoint:
         """Test that WebSocket endpoint rejects invalid token"""
         # SECURITY: Token now comes from header/subprotocol, not query param
         mock_websocket.headers = {"authorization": "Bearer invalid-token"}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
 
         with (
             patch("app.routers.websocket.settings", mock_settings),
@@ -467,7 +467,7 @@ class TestWebSocketEndpoint:
         """Test WebSocket connects with valid token via Authorization header"""
         # SECURITY: Token now comes from header/subprotocol, not query param
         mock_websocket.headers = {"authorization": f"Bearer {valid_jwt_token}"}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
 
         # Set up the mock to raise WebSocketDisconnect after accepting
         from fastapi import WebSocketDisconnect
@@ -495,7 +495,7 @@ class TestWebSocketEndpoint:
         """Test WebSocket connects with valid token via subprotocol"""
         # SECURITY: Test subprotocol fallback when header not available
         mock_websocket.headers = {}
-        mock_websocket.subprotocols = [f"bearer.{valid_jwt_token}"]
+        mock_websocket.scope = {"subprotocols": [f"bearer.{valid_jwt_token}"]}
 
         from fastapi import WebSocketDisconnect
 
@@ -520,7 +520,7 @@ class TestWebSocketEndpoint:
         """Test that WebSocket endpoint rejects connection without token"""
         # SECURITY: No token provided in header, subprotocol, or query param
         mock_websocket.headers = {}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = ""
 
         with (

@@ -54344,13 +54344,13 @@
         -0.007621763739734888
       ],
       "payload": {
-        "text": "# Investor KITAP + MERP\n**Category**: Kitap Permits\n**Price**: 50.000.000 IDR\n**Notes**: Plus ACC 5 mill\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia",
+        "text": "# Investor KITAP + MERP\n**Category**: Kitap Permits\n**Price**: 55.000.000 IDR\n**Notes**: Expedited processing available\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia",
         "name": "Investor KITAP + MERP",
         "category": "kitap_permits",
-        "price": "50.000.000 IDR",
+        "price": "55.000.000 IDR",
         "duration": "",
         "validity": "",
-        "notes": "Plus ACC 5 mill",
+        "notes": "Expedited processing available",
         "source_type": "bali_zero_pricing",
         "last_updated": "2025-12-24",
         "currency": "IDR (Indonesian Rupiah)"
@@ -55897,13 +55897,13 @@
         0.005567419342696667
       ],
       "payload": {
-        "text": "# Dependent KITAP MERP\n**Category**: Kitap Permits\n**Price**: 30.000.000 IDR\n**Notes**: Plus ACC 3 mill\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia",
+        "text": "# Dependent KITAP MERP\n**Category**: Kitap Permits\n**Price**: 33.000.000 IDR\n**Notes**: Expedited processing available\n\n---\n\n**Contact**: info@balizero.com\n**WhatsApp**: +62 813 3805 1876\n**Location**: Canggu, Bali, Indonesia",
         "name": "Dependent KITAP MERP",
         "category": "kitap_permits",
-        "price": "30.000.000 IDR",
+        "price": "33.000.000 IDR",
         "duration": "",
         "validity": "",
-        "notes": "Plus ACC 3 mill",
+        "notes": "Expedited processing available",
         "source_type": "bali_zero_pricing",
         "last_updated": "2025-12-24",
         "currency": "IDR (Indonesian Rupiah)"

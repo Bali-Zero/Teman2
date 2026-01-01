@@ -53,11 +53,7 @@ export function useChatAudio(options: UseChatAudioOptions = {}): UseChatAudioRet
   } = useAudioRecorder();
 
   const startRecording = useCallback(async () => {
-    try {
-      await baseStartRecording();
-    } catch (error) {
-      throw error;
-    }
+    await baseStartRecording();
   }, [baseStartRecording]);
 
   const transcribeAudio = useCallback(
@@ -93,7 +89,6 @@ export function useChatAudio(options: UseChatAudioOptions = {}): UseChatAudioRet
     if (audioBlob && isMountedRef.current) {
       transcribeAudio(audioBlob, audioMimeType);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioBlob, audioMimeType]);
 
   return {

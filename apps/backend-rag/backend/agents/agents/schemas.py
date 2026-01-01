@@ -29,3 +29,4 @@ class EntitySearchRequest(BaseModel):
     top_k: int = Field(ge=1, le=100, default=10, description="Number of results to return (1-100)")
 
 
+

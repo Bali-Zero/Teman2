@@ -107,6 +107,15 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/oracle/health",  # Oracle health check (public)
             "/api/debug/migrate",  # Temporary debug endpoint
             "/api/legal/parent-documents",  # Internal ingestion endpoint (no auth)
+            "/api/portal/invite/validate/",  # Client invitation validation (public)
+            "/api/portal/invite/complete",  # Client registration completion (public)
+            "/api/integrations/zoho/callback",  # Zoho OAuth callback (public)
+            "/api/integrations/google-drive/callback",  # Google Drive OAuth callback (public)
+            "/api/audio/",  # Audio TTS/STT endpoints (public for now)
+            "/api/knowledge/visa",  # Visa types knowledge base (public)
+            "/api/blog/newsletter/subscribe",  # Newsletter subscription (public)
+            "/api/blog/newsletter/confirm",  # Newsletter confirmation (public)
+            "/api/blog/newsletter/unsubscribe",  # Newsletter unsubscribe (public)
         ]
 
         logger.info(

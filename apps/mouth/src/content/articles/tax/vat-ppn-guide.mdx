@@ -1,0 +1,481 @@
+---
+title: "VAT (PPN) in Indonesia 2025: Complete Business Guide"
+slug: "vat-ppn-guide"
+description: "Value Added Tax (PPN) in Indonesia. Registration, rates, invoicing, and compliance for businesses and PT PMA."
+excerpt: "Understanding Indonesian VAT (PPN) is essential for business compliance. Here's everything you need to know."
+category: "tax"
+tags:
+  - VAT
+  - PPN
+  - business tax
+  - tax invoice
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Tax Advisor"
+featured: false
+image:
+  src: "/images/insights/tax-legal/vat-ppn.jpg"
+  alt: "VAT PPN Indonesia"
+seo:
+  title: "VAT PPN Indonesia 2025 | Business Tax Guide"
+  description: "Indonesian VAT (PPN) guide. Registration requirements, rates, and compliance for PT PMA and businesses."
+  keywords:
+    - VAT indonesia
+    - PPN indonesia
+    - faktur pajak
+readingTime: 10
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "tax_docs"
+    documentsUsed: 16
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "corporate-income-tax"
+  - "withholding-tax-guide"
+  - "pt-pma-registration-guide"
+tableOfContents: true
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  JourneyMap,
+  InfoCard,
+  Checklist,
+  AskZantara
+} from '@/components/insights/interactive';
+
+# VAT (PPN) in Indonesia 2025: Complete Business Guide
+
+Pajak Pertambahan Nilai (PPN) is Indonesia's Value Added Tax. Understanding it is crucial for business compliance.
+
+## VAT Rates
+
+<ComparisonTable
+  title="Indonesian VAT Rates"
+  description="Current applicable rates"
+  items={[
+    {
+      name: "Standard Rate",
+      subtitle: "Most goods/services",
+      values: {
+        "Rate": "11%",
+        "Effective": "April 2022",
+        "Applies To": "General transactions"
+      },
+      highlight: true
+    },
+    {
+      name: "Planned Rate",
+      subtitle: "Future increase",
+      values: {
+        "Rate": "12%",
+        "Effective": "January 2025",
+        "Applies To": "Per government schedule"
+      }
+    },
+    {
+      name: "Export Rate",
+      subtitle: "Export of goods",
+      values: {
+        "Rate": "0%",
+        "Effective": "Current",
+        "Applies To": "Exported goods"
+      }
+    },
+    {
+      name: "Certain Services",
+      subtitle: "Some services abroad",
+      values: {
+        "Rate": "0%",
+        "Effective": "Current",
+        "Applies To": "Exported services"
+      }
+    }
+  ]}
+/>
+
+---
+
+## VAT Registration
+
+### Who Must Register?
+
+<InfoCard variant="note" title="PKP Registration Threshold">
+You must register as **PKP (Pengusaha Kena Pajak)** if:
+
+- Gross turnover exceeds **IDR 4.8 billion/year**
+- Or you **voluntarily register**
+
+As PKP, you must:
+- Charge VAT on sales
+- Issue tax invoices (Faktur Pajak)
+- File monthly VAT returns
+- Can claim input VAT credits
+</InfoCard>
+
+### Registration Process
+
+<JourneyMap
+  title="PKP Registration"
+  description="Steps to become VAT registered"
+  estimatedTotal="2-4 weeks"
+  steps={[
+    {
+      id: "prepare",
+      title: "Prepare Documents",
+      description: "Gather requirements",
+      duration: "1-2 days",
+      status: "required",
+      documents: [
+        "NPWP (company tax number)",
+        "NIB (business license)",
+        "Articles of Association",
+        "Directors' ID",
+        "Office lease agreement",
+        "Sample transactions"
+      ]
+    },
+    {
+      id: "apply",
+      title: "Submit Application",
+      description: "Through tax office or online",
+      duration: "1 day",
+      status: "required",
+      tips: [
+        "Can be done online via DJP",
+        "Or visit tax office",
+        "Complete PKP application form"
+      ]
+    },
+    {
+      id: "verify",
+      title: "Verification Visit",
+      description: "Tax officer inspection",
+      duration: "1-2 weeks",
+      status: "required",
+      tips: [
+        "Tax officer visits office",
+        "Verifies address and business",
+        "Reviews documentation"
+      ]
+    },
+    {
+      id: "certificate",
+      title: "Receive PKP Certificate",
+      description: "Official registration",
+      duration: "1-2 weeks",
+      status: "final",
+      tips: [
+        "PKP certificate issued",
+        "Can start issuing tax invoices",
+        "Monthly filing obligations begin"
+      ]
+    }
+  ]}
+/>
+
+---
+
+## VAT Calculation
+
+<Calculator
+  title="VAT Calculator"
+  description="Calculate VAT on transactions"
+  fields={[
+    {
+      id: "amount",
+      label: "Transaction Amount (IDR)",
+      type: "number",
+      defaultValue: 100000000,
+      min: 0,
+      step: 1000000,
+      suffix: "IDR"
+    },
+    {
+      id: "type",
+      label: "Transaction Type",
+      type: "select",
+      options: [
+        { value: "exclusive", label: "Add VAT to price" },
+        { value: "inclusive", label: "VAT included in price" }
+      ],
+      defaultValue: "exclusive"
+    }
+  ]}
+  calculateResult={(values) => {
+    const amount = Number(values.amount);
+    const rate = 0.11; // 11%
+
+    let baseAmount, vatAmount, totalAmount;
+
+    if (values.type === "exclusive") {
+      baseAmount = amount;
+      vatAmount = amount * rate;
+      totalAmount = amount + vatAmount;
+    } else {
+      totalAmount = amount;
+      baseAmount = amount / (1 + rate);
+      vatAmount = totalAmount - baseAmount;
+    }
+
+    return {
+      total: vatAmount,
+      breakdown: [
+        { label: "Base Amount (DPP)", amount: Math.round(baseAmount) },
+        { label: "VAT (11%)", amount: Math.round(vatAmount) },
+        { label: "Total with VAT", amount: Math.round(totalAmount) }
+      ],
+      currency: "IDR",
+      note: "Rate: 11% (standard)"
+    };
+  }}
+/>
+
+---
+
+## Tax Invoices (Faktur Pajak)
+
+### E-Faktur System
+
+<InfoCard variant="warning" title="E-Faktur Required">
+All VAT-registered businesses must use the **e-Faktur** electronic invoicing system:
+
+- Download e-Faktur application
+- Register digital certificate
+- Issue all invoices electronically
+- Upload to DJP system
+- Input VAT credits electronically
+</InfoCard>
+
+### Faktur Pajak Contents
+
+| Required Field | Description |
+|----------------|-------------|
+| Seller NPWP | Your tax number |
+| Buyer NPWP | Customer tax number |
+| Invoice number | Sequential, system-generated |
+| Transaction date | Date of supply |
+| Description | Goods/services detail |
+| DPP | Tax base (price before VAT) |
+| PPN | VAT amount |
+| Digital signature | Electronic verification |
+
+---
+
+## Input vs Output VAT
+
+### How VAT Credits Work
+
+| Transaction | VAT Type | Treatment |
+|-------------|----------|-----------|
+| Sales to customers | Output VAT | Collect and remit |
+| Purchases from suppliers | Input VAT | Claim as credit |
+| Net position | Difference | Pay if output > input |
+| Net credit | Difference | Carry forward or refund |
+
+### Example Monthly Calculation
+
+| Description | Amount |
+|-------------|--------|
+| Output VAT (sales) | IDR 110M |
+| Input VAT (purchases) | IDR 55M |
+| Net VAT payable | IDR 55M |
+
+---
+
+## VAT Exempt vs Zero-Rated
+
+<ComparisonTable
+  title="VAT Treatment Types"
+  description="Understanding different VAT treatments"
+  items={[
+    {
+      name: "Standard Rated",
+      subtitle: "Most transactions",
+      values: {
+        "Rate": "11%",
+        "Input Credit": "Yes",
+        "Example": "Most goods/services"
+      }
+    },
+    {
+      name: "Zero-Rated",
+      subtitle: "Exports",
+      values: {
+        "Rate": "0%",
+        "Input Credit": "Yes",
+        "Example": "Export of goods"
+      }
+    },
+    {
+      name: "Exempt",
+      subtitle: "Specific items",
+      values: {
+        "Rate": "N/A",
+        "Input Credit": "No",
+        "Example": "Basic necessities"
+      }
+    },
+    {
+      name: "Non-VATable",
+      subtitle: "Outside VAT",
+      values: {
+        "Rate": "N/A",
+        "Input Credit": "No",
+        "Example": "Small businesses"
+      }
+    }
+  ]}
+/>
+
+### VAT Exempt Items
+
+Some goods and services are VAT exempt:
+- Basic necessities (certain food items)
+- Health services
+- Education services
+- Religious services
+- Financial services (certain)
+- Small-scale businesses (under threshold)
+
+---
+
+## Monthly Filing
+
+### SPT Masa PPN
+
+<Checklist
+  title="Monthly VAT Return Requirements"
+  description="What to prepare each month"
+  persistKey="vat-filing-checklist"
+  items={[
+    {
+      id: "invoices-out",
+      label: "Output tax invoices",
+      description: "All sales invoices issued",
+      required: true,
+      category: "output"
+    },
+    {
+      id: "invoices-in",
+      label: "Input tax invoices",
+      description: "Purchase invoices for credit",
+      required: true,
+      category: "input"
+    },
+    {
+      id: "efaktur",
+      label: "E-Faktur upload",
+      description: "All invoices in system",
+      required: true,
+      category: "system"
+    },
+    {
+      id: "reconcile",
+      label: "Reconciliation",
+      description: "Match to accounting records",
+      required: true,
+      category: "review"
+    },
+    {
+      id: "file",
+      label: "File SPT Masa PPN",
+      description: "Submit return online",
+      required: true,
+      category: "filing"
+    },
+    {
+      id: "pay",
+      label: "Pay VAT due",
+      description: "If output exceeds input",
+      required: true,
+      category: "payment"
+    }
+  ]}
+  categories={[
+    { id: "output", label: "Output", color: "blue" },
+    { id: "input", label: "Input", color: "green" },
+    { id: "system", label: "System", color: "amber" },
+    { id: "review", label: "Review", color: "purple" },
+    { id: "filing", label: "Filing", color: "red" },
+    { id: "payment", label: "Payment", color: "cyan" }
+  ]}
+  showProgress={true}
+/>
+
+### Filing Deadline
+
+- **SPT Masa PPN**: End of following month
+- **Payment**: Before filing
+- **Example**: January VAT due by February 28/29
+
+---
+
+## Common Issues
+
+### VAT Problems to Avoid
+
+| Issue | Consequence |
+|-------|-------------|
+| Late filing | IDR 500K penalty |
+| Incorrect invoices | Credits disallowed |
+| Missing invoices | Unable to claim credits |
+| Wrong NPWP | Invoice rejected |
+| Late payment | Interest penalties |
+
+### Input VAT Credit Rules
+
+<InfoCard variant="warning" title="Claimable Input VAT">
+Not all input VAT is creditable. Credits are **denied** for:
+
+- Entertainment expenses
+- Non-business purchases
+- Purchases without valid tax invoice
+- Purchases from non-PKP suppliers
+- Luxury goods (cars, etc.)
+</InfoCard>
+
+---
+
+## VAT Refund
+
+### When Refund Available
+
+- Output VAT consistently less than input VAT
+- Export businesses (zero-rated sales)
+- New investments with large input VAT
+
+### Refund Process
+
+1. File annual or special refund request
+2. Tax audit typically required
+3. Processing time: 1-12 months
+4. Full documentation required
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="VAT Indonesia, PPN, tax invoice, Faktur Pajak, PKP registration"
+  placeholder="Ask about VAT/PPN..."
+  suggestedQuestions={[
+    "When do I need to register for VAT?",
+    "How do I issue e-Faktur?",
+    "Can I claim input VAT on rent?",
+    "What's the VAT filing deadline?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Corporate Income Tax](/insights/tax-legal/corporate-income-tax)
+- [Withholding Tax Guide](/insights/tax-legal/withholding-tax-guide)
+- [PT PMA Setup Guide](/insights/business/pt-pma-setup-guide)

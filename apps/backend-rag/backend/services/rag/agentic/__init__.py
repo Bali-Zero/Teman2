@@ -49,10 +49,12 @@ from .pipeline import (
 )
 from .tools import (
     CalculatorTool,
+    ImageGenerationTool,
     PricingTool,
     TeamKnowledgeTool,
     VectorSearchTool,
     VisionTool,
+    WebSearchTool,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,8 @@ __all__ = [
     "VisionTool",
     "PricingTool",
     "TeamKnowledgeTool",
+    "ImageGenerationTool",
+    "WebSearchTool",
     "GraphTraversalTool",
     # Pipeline components
     "ResponsePipeline",
@@ -105,13 +109,21 @@ def create_agentic_rag(
         1. VectorSearchTool (primary knowledge base search)
         2. PricingTool (official Bali Zero pricing)
         3. TeamKnowledgeTool (team member queries)
-        4. CalculatorTool (numerical computations)
-        5. VisionTool (visual document analysis)
+        4. KnowledgeGraphTool (structured knowledge graph)
+        5. CalculatorTool (numerical computations)
+        6. VisionTool (visual document analysis)
+        7. ImageGenerationTool (AI image generation)
+        8. WebSearchTool (web search for out-of-KB queries via Brave)
     """
     logger.debug("create_agentic_rag: Initializing tools...")
 
-    # Initialize GraphService (kept for potential future use or dependency satisfaction)
-    graph_service = GraphService(db_pool)
+    # Initialize New Knowledge Graph Builder (Dec 2025)
+    # Uses PostgreSQL persistence and LLM semantic extraction
+    from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
+    from services.tools.knowledge_graph_tool import KnowledgeGraphTool
+    
+    # We pass the ai_client later if needed, but for now we use the factory's db_pool
+    kg_builder = KnowledgeGraphBuilder(search_service=retriever, db_pool=db_pool)
 
     # IMPORTANT: vector_search comes first to be the default tool
     # ZANTARA LEAN STRATEGY (Dec 2025): Reduced to essential tools only.
@@ -119,11 +131,13 @@ def create_agentic_rag(
         VectorSearchTool(retriever),  # FIRST: Primary tool for knowledge base search
         PricingTool(),               # SECOND: Official Pricing
         TeamKnowledgeTool(db_pool),  # THIRD: Team member queries
-        CalculatorTool(),            # FOURTH: Math safety
-        VisionTool(),                # FIFTH: Document analysis
+        KnowledgeGraphTool(kg_builder), # FOURTH: Structured Knowledge Graph (NEW)
+        CalculatorTool(),            # FIFTH: Math safety
+        VisionTool(),                # SIXTH: Document analysis
+        ImageGenerationTool(),       # SEVENTH: Image generation (Imagen)
+        WebSearchTool(),             # EIGHTH: Web search for out-of-KB queries (Brave)
     ]
     logger.debug("create_agentic_rag: Tools list created")
-    # web_search_client ignored (WebSearchTool removed)
 
     logger.debug("create_agentic_rag: Instantiating AgenticRAGOrchestrator...")
     orchestrator = AgenticRAGOrchestrator(

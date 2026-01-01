@@ -307,6 +307,220 @@ async def run_knowledge_graph_builder(
 
 
 # ============================================================================
+# KNOWLEDGE GRAPH - CONTROLLED EXTRACTION FROM QDRANT
+# ============================================================================
+
+
+@router.get("/knowledge-graph/extract-sample")
+async def extract_kg_sample(
+    collection: str = Query(default="legal_unified_hybrid", description="Qdrant collection name"),
+    sample_size: int = Query(default=50, ge=10, le=200, description="Number of chunks to sample"),
+):
+    """
+    🔬 Extract KG sample from Qdrant for review (DRY RUN)
+
+    Extracts entities and relationships from a sample of chunks
+    WITHOUT persisting to database. For review before commit.
+
+    Returns entities and relationships found for human approval.
+    """
+    import re
+    from app.main_cloud import app
+
+    retriever = getattr(app.state, "retriever", None)
+    if not retriever or not retriever.client:
+        raise HTTPException(status_code=503, detail="Qdrant not available")
+
+    qdrant = retriever.client
+
+    # Entity patterns
+    ENTITY_PATTERNS = {
+        "legal_entity": [
+            r"\b(PT\s+PMA)\b", r"\b(PT\s+PMDN)\b", r"\b(CV)\b",
+            r"\b(Perseroan\s+Terbatas)\b", r"\b(Firma)\b", r"\b(Koperasi)\b", r"\b(Yayasan)\b",
+        ],
+        "permit": [r"\b(NIB)\b", r"\b(SIUP)\b", r"\b(TDP)\b", r"\b(NPWP)\b", r"\b(IMTA)\b", r"\b(RPTKA)\b"],
+        "visa_type": [r"\b(KITAS)\b", r"\b(KITAP)\b", r"\b(VOA)\b", r"\b(E-Visa)\b"],
+        "tax_type": [r"\b(PPh\s*\d+)\b", r"\b(PPN)\b", r"\b(PBB)\b"],
+        "kbli": [r"\bKBLI\s+(\d{5})\b"],
+    }
+
+    RELATIONSHIP_KEYWORDS = {
+        "REQUIRES": ["memerlukan", "membutuhkan", "requires", "needs", "wajib"],
+        "COSTS": ["biaya", "tarif", "cost", "Rp"],
+        "DURATION": ["hari", "bulan", "tahun", "days", "months", "years"],
+    }
+
+    try:
+        # Scroll chunks
+        results = qdrant.scroll(
+            collection_name=collection,
+            limit=sample_size,
+            with_payload=True,
+            with_vectors=False
+        )
+        chunks = results[0]
+
+        # Extract entities
+        all_entities = {}
+        all_relationships = []
+
+        for chunk in chunks:
+            text = chunk.payload.get("text", "") or chunk.payload.get("content", "") or ""
+            chunk_id = str(chunk.id)
+
+            if not text:
+                continue
+
+            chunk_entities = []
+            for entity_type, patterns in ENTITY_PATTERNS.items():
+                for pattern in patterns:
+                    matches = re.findall(pattern, text, re.IGNORECASE)
+                    for match in matches:
+                        name = match.strip().upper() if isinstance(match, str) else match[0].upper()
+                        entity_id = f"{entity_type}_{name.replace(' ', '_').lower()}"
+
+                        if entity_id not in all_entities:
+                            all_entities[entity_id] = {
+                                "entity_id": entity_id,
+                                "entity_type": entity_type,
+                                "name": name,
+                                "mentions": 0,
+                                "source_chunks": []
+                            }
+                        all_entities[entity_id]["mentions"] += 1
+                        if chunk_id not in all_entities[entity_id]["source_chunks"]:
+                            all_entities[entity_id]["source_chunks"].append(chunk_id)
+                        chunk_entities.append(entity_id)
+
+            # Infer relationships within same chunk
+            if len(chunk_entities) >= 2:
+                for rel_type, keywords in RELATIONSHIP_KEYWORDS.items():
+                    if any(kw.lower() in text.lower() for kw in keywords):
+                        for i, e1 in enumerate(chunk_entities):
+                            for e2 in chunk_entities[i+1:]:
+                                rel_id = f"{e1}_{rel_type}_{e2}"
+                                if rel_id not in [r["relationship_id"] for r in all_relationships]:
+                                    all_relationships.append({
+                                        "relationship_id": rel_id,
+                                        "source": e1,
+                                        "target": e2,
+                                        "type": rel_type,
+                                        "confidence": 0.7
+                                    })
+
+        # Sort by mentions
+        sorted_entities = sorted(all_entities.values(), key=lambda x: x["mentions"], reverse=True)
+
+        # Entity type distribution
+        type_dist = {}
+        for e in sorted_entities:
+            t = e["entity_type"]
+            type_dist[t] = type_dist.get(t, 0) + 1
+
+        return {
+            "status": "dry_run",
+            "collection": collection,
+            "chunks_processed": len(chunks),
+            "entities_found": len(sorted_entities),
+            "relationships_inferred": len(all_relationships),
+            "entity_type_distribution": type_dist,
+            "top_entities": sorted_entities[:30],
+            "sample_relationships": all_relationships[:20],
+            "message": "Review above. Call /knowledge-graph/persist-sample to commit to DB."
+        }
+
+    except Exception as e:
+        logger.error(f"KG sample extraction failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/knowledge-graph/persist-sample")
+async def persist_kg_sample(
+    collection: str = Query(default="legal_unified_hybrid"),
+    sample_size: int = Query(default=50, ge=10, le=200),
+):
+    """
+    💾 Persist KG sample to database (LIVE)
+
+    Extracts and persists entities/relationships to PostgreSQL.
+    Run /extract-sample first to review!
+    """
+    import re
+    from app.main_cloud import app
+    from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder, Entity, Relationship
+
+    retriever = getattr(app.state, "retriever", None)
+    db_pool = getattr(app.state, "db_pool", None)
+
+    if not retriever or not retriever.client:
+        raise HTTPException(status_code=503, detail="Qdrant not available")
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    qdrant = retriever.client
+    kg_builder = KnowledgeGraphBuilder(db_pool=db_pool)
+
+    # Same extraction logic as above
+    ENTITY_PATTERNS = {
+        "legal_entity": [
+            r"\b(PT\s+PMA)\b", r"\b(PT\s+PMDN)\b", r"\b(CV)\b",
+            r"\b(Perseroan\s+Terbatas)\b", r"\b(Firma)\b", r"\b(Koperasi)\b", r"\b(Yayasan)\b",
+        ],
+        "permit": [r"\b(NIB)\b", r"\b(SIUP)\b", r"\b(TDP)\b", r"\b(NPWP)\b", r"\b(IMTA)\b", r"\b(RPTKA)\b"],
+        "visa_type": [r"\b(KITAS)\b", r"\b(KITAP)\b", r"\b(VOA)\b", r"\b(E-Visa)\b"],
+        "tax_type": [r"\b(PPh\s*\d+)\b", r"\b(PPN)\b", r"\b(PBB)\b"],
+        "kbli": [r"\bKBLI\s+(\d{5})\b"],
+    }
+
+    try:
+        results = qdrant.scroll(collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False)
+        chunks = results[0]
+
+        entities_added = 0
+        relationships_added = 0
+
+        for chunk in chunks:
+            text = chunk.payload.get("text", "") or chunk.payload.get("content", "") or ""
+            chunk_id = str(chunk.id)
+
+            if not text:
+                continue
+
+            for entity_type, patterns in ENTITY_PATTERNS.items():
+                for pattern in patterns:
+                    matches = re.findall(pattern, text, re.IGNORECASE)
+                    for match in matches:
+                        name = match.strip().upper() if isinstance(match, str) else match[0].upper()
+                        entity_id = f"{entity_type}_{name.replace(' ', '_').lower()}"
+
+                        entity = Entity(
+                            entity_id=entity_id,
+                            entity_type=entity_type,
+                            name=name,
+                            description=f"Extracted from {collection}",
+                            source_collection=collection,
+                            confidence=0.9,
+                            source_chunk_ids=[chunk_id]
+                        )
+                        await kg_builder.add_entity(entity)
+                        entities_added += 1
+
+        return {
+            "status": "persisted",
+            "collection": collection,
+            "chunks_processed": len(chunks),
+            "entities_added": entities_added,
+            "relationships_added": relationships_added,
+            "message": "Knowledge Graph populated successfully!"
+        }
+
+    except Exception as e:
+        logger.error(f"KG persist failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # AGENT STATUS & MANAGEMENT
 # ============================================================================
 

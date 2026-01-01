@@ -7,6 +7,7 @@ import json
 import logging
 
 from llm.zantara_ai_client import ZantaraAIClient
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class AICRMExtractor:
         """Initialize with ZANTARA AI client"""
         try:
             self.client = ai_client if ai_client else ZantaraAIClient()
-            logger.info("✅ AICRMExtractor initialized with ZANTARA AI")
+            logger.info(f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}")
         except Exception as e:
             logger.error(f"❌ Failed to initialize ZANTARA AI: {e}")
             raise
@@ -78,11 +79,11 @@ class AICRMExtractor:
             )
 
         # Extraction prompt
-        extraction_prompt = f"""You are an AI assistant analyzing a customer service conversation for Bali Zero, a company providing immigration, visa, company setup, and tax services in Bali, Indonesia.
+        extraction_prompt = f"""You are an AI assistant analyzing a customer service conversation for {settings.COMPANY_NAME}, a company providing immigration, visa, company setup, and tax services in Bali, Indonesia.
 
 Your task is to extract structured information from the conversation to populate a CRM system.
 
-BALI ZERO SERVICES (practice_type_code):
+{settings.COMPANY_NAME.upper()} SERVICES (practice_type_code):
 - KITAS: Limited Stay Permit (work permit)
 - PT_PMA: Foreign Investment Company
 - INVESTOR_VISA: Investor Visa
@@ -97,43 +98,7 @@ CONVERSATION:
 {existing_data_str}
 
 Extract the following information and return ONLY valid JSON (no markdown, no extra text):
-
-{{
-  "client": {{
-    "full_name": "extracted full name or null",
-    "email": "extracted email or null",
-    "phone": "extracted phone number or null",
-    "whatsapp": "extracted WhatsApp number or null",
-    "nationality": "extracted nationality or null",
-    "confidence": 0.0-1.0
-  }},
-  "practice_intent": {{
-    "detected": true/false,
-    "practice_type_code": "KITAS|PT_PMA|INVESTOR_VISA|RETIREMENT_VISA|NPWP|BPJS|IMTA or null",
-    "confidence": 0.0-1.0,
-    "details": "brief description of what client wants"
-  }},
-  "sentiment": "positive|neutral|negative|urgent",
-  "urgency": "low|normal|high|urgent",
-  "summary": "1-2 sentence summary of the conversation",
-  "action_items": ["action 1", "action 2"],
-  "topics_discussed": ["topic 1", "topic 2"],
-  "extracted_entities": {{
-    "dates": ["2025-10-21"],
-    "amounts": ["15000000 IDR"],
-    "locations": ["Kerobokan, Bali"],
-    "documents_mentioned": ["passport", "sponsor letter"]
-  }}
-}}
-
-RULES:
-1. Return ONLY the JSON object, nothing else
-2. Use null for missing values, not empty strings
-3. Be conservative with confidence scores (0.7+ means very confident)
-4. If multiple practice types mentioned, choose the primary one
-5. If existing client data provided, enrich it (don't replace with null)
-6. Extract phone/WhatsApp even if formatted differently (+62, 0, etc.)
-7. Detect urgency from language ("urgent", "asap", "quickly", etc.)"""
+"""
 
         try:
             # Use ZANTARA AI for extraction

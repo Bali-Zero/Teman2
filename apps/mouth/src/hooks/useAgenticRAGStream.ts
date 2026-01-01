@@ -148,7 +148,7 @@ export function useAgenticRAGStream(baseUrl: string, apiKey?: string) {
         }));
         break;
 
-      case 'done':
+      case 'done': {
         const doneData = event.data as Record<string, unknown>;
         setState((prev) => ({
           ...prev,
@@ -158,8 +158,9 @@ export function useAgenticRAGStream(baseUrl: string, apiKey?: string) {
           routeUsed: doneData.route_used as string | null,
         }));
         break;
+      }
 
-      case 'error':
+      case 'error': {
         const errorData = event.data as Record<string, unknown>;
         setState((prev) => ({
           ...prev,
@@ -167,6 +168,7 @@ export function useAgenticRAGStream(baseUrl: string, apiKey?: string) {
           error: (errorData.message as string) || 'Unknown error',
         }));
         break;
+      }
     }
   }, []);
 
@@ -197,6 +199,7 @@ export function useAgenticRAGStream(baseUrl: string, apiKey?: string) {
     reset,
   };
 }
+
 
 
 

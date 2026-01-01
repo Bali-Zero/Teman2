@@ -249,7 +249,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {"Authorization": "Bearer valid_token"}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = ""
         mock_websocket.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
 
@@ -267,7 +267,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {}
-        mock_websocket.subprotocols = ["bearer.subprotocol_token"]
+        mock_websocket.scope = {"subprotocols": ["bearer.subprotocol_token"]}
         mock_websocket.url.query = ""
         mock_websocket.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
 
@@ -285,7 +285,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = "token=query_token"
         mock_websocket.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
 
@@ -303,7 +303,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = ""
 
         await websocket_endpoint(mock_websocket)
@@ -317,7 +317,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {"Authorization": "Bearer invalid"}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = ""
 
         with patch("backend.app.routers.websocket.get_current_user_ws") as mock_auth:
@@ -334,7 +334,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {"Authorization": "Bearer valid_token"}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = ""
 
         # Simulate ping then disconnect
@@ -356,7 +356,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {"Authorization": "Bearer valid_token"}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = ""
 
         # Non-JSON then disconnect
@@ -375,7 +375,7 @@ class TestWebsocketEndpoint:
 
         mock_websocket = AsyncMock(spec=WebSocket)
         mock_websocket.headers = {"Authorization": "Bearer valid_token"}
-        mock_websocket.subprotocols = []
+        mock_websocket.scope = {"subprotocols": []}
         mock_websocket.url.query = ""
         mock_websocket.receive_text = AsyncMock(side_effect=Exception("Unexpected error"))
 

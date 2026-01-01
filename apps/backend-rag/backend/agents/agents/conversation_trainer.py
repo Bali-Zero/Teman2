@@ -7,7 +7,7 @@ import asyncio
 import json
 import logging
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -98,7 +98,7 @@ class ConversationTrainer:
                     LIMIT $3
                     """,
                     MIN_RATING_THRESHOLD,
-                    f"{days_back} days",
+                    timedelta(days=days_back),
                     TOP_CONVERSATIONS_LIMIT,
                 )
 

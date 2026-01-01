@@ -1,10 +1,10 @@
-import { ApiClientBase } from '../client';
+import type { IApiClient } from '../types/api-client.types';
 
 /**
  * WebSocket utilities
  */
 export class WebSocketUtils {
-  constructor(private client: ApiClientBase) {}
+  constructor(private client: IApiClient) {}
 
   getWebSocketUrl(): string {
     // SECURITY: Return base URL only - token should be passed via subprotocol, not query param

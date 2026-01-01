@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>KBLI Deep Dive: {kbli_code}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Playfair+Display:wght@700&display=swap');
+        
+        body {{
+            font-family: 'Inter', sans-serif;
+            color: #202020;
+            margin: 0;
+            padding: 0;
+            background: white;
+            line-height: 1.6;
+        }}
+        
+        /* Cover Page */
+        .cover {{
+            height: 1123px; /* A4 height at 96dpi approx */
+            position: relative;
+            background: #202020;
+            color: #ededed;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px;
+            overflow: hidden;
+            page-break-after: always;
+        }}
+        
+        .cover-accent {{
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 100%;
+            background: #D4AF37; /* Gold */
+            opacity: 0.1;
+            clip-path: polygon(20% 0, 100% 0, 100% 100%, 0% 100%);
+        }}
+        
+        .brand {{
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #D4AF37;
+            margin-bottom: 20px;
+        }}
+        
+        h1.title {{
+            font-family: 'Playfair Display', serif;
+            font-size: 64px;
+            line-height: 1.1;
+            margin: 0 0 20px 0;
+        }}
+        
+        .subtitle {{
+            font-size: 24px;
+            color: #9ca3af;
+            font-weight: 300;
+            max-width: 600px;
+        }}
+        
+        .meta-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-top: 80px;
+            border-top: 1px solid #444;
+            padding-top: 40px;
+        }}
+        
+        .meta-item label {{
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #D4AF37;
+            margin-bottom: 5px;
+        }}
+        
+        .meta-item value {{
+            font-size: 20px;
+            font-weight: 600;
+        }}
+
+        /* Content Pages */
+        .page {{
+            padding: 60px;
+            page-break-after: always;
+        }}
+        
+        h2 {{
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            color: #202020;
+            border-bottom: 3px solid #D4AF37;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }}
+        
+        h3 {{
+            font-size: 20px;
+            color: #CE1126; /* Red accent */
+            margin-top: 30px;
+        }}
+        
+        .two-col {{
+            column-count: 2;
+            column-gap: 40px;
+            text-align: justify;
+        }}
+        
+        .highlight-box {{
+            background: #f8f9fa;
+            border-left: 4px solid #D4AF37;
+            padding: 20px;
+            margin: 20px 0;
+            break-inside: avoid;
+        }}
+        
+        .stat-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }}
+        
+        .stat-card {{
+            background: #202020;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }}
+        
+        .stat-value {{
+            font-size: 32px;
+            font-weight: 800;
+            color: #D4AF37;
+            display: block;
+        }}
+        
+        .stat-label {{
+            font-size: 12px;
+            text-transform: uppercase;
+        }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }}
+        
+        th {{
+            background: #202020;
+            color: #D4AF37;
+            padding: 12px;
+            text-align: left;
+        }}
+        
+        td {{
+            border-bottom: 1px solid #ddd;
+            padding: 12px;
+        }}
+        
+        ul {{
+            padding-left: 20px;
+        }}
+        
+        li {{
+            margin-bottom: 10px;
+        }}
+
+        /* Footer */
+        .footer {{
+            position: fixed;
+            bottom: 20px;
+            left: 60px;
+            right: 60px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #999;
+        }}
+    </style>
+</head>
+<body>
+
+    <!-- COVER -->
+    <div class="cover">
+        <div class="cover-accent"></div>
+        <div class="brand">BALI ZERO INTELLIGENCE</div>
+        <h1 class="title">KBLI {kbli_code}</h1>
+        <div class="subtitle">{kbli_title}</div>
+        <div class="subtitle" style="font-size: 18px; margin-top: 10px;">Comprehensive Business Guide & Compliance Roadmap</div>
+        
+        <div class="meta-grid">
+            <div class="meta-item">
+                <label>Risk Level</label>
+                <value>{risk_level}</value>
+            </div>
+            <div class="meta-item">
+                <label>Minimum Capital</label>
+                <value>{min_capital}</value>
+            </div>
+            <div class="meta-item">
+                <label>Category</label>
+                <value>{category}</value>
+            </div>
+            <div class="meta-item">
+                <label>Last Updated</label>
+                <value>January 2026</value>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXECUTIVE SUMMARY -->
+    <div class="page">
+        <h2>Executive Summary</h2>
+        <div class="two-col">
+            {executive_summary}
+        </div>
+        
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span class="stat-value">{processing_time}</span>
+                <span class="stat-label">Est. Processing Time</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{permit_count}</span>
+                <span class="stat-label">Required Permits</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value">{foreign_ownership}</span>
+                <span class="stat-label">Max Foreign Ownership</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETAILED REQUIREMENTS -->
+    <div class="page">
+        <h2>Key Requirements</h2>
+        {requirements_content}
+    </div>
+
+    <!-- LICENSING ROADMAP -->
+    <div class="page">
+        <h2>Licensing Roadmap</h2>
+        <div class="highlight-box">
+            <p><strong>OSS Risk-Based Approach:</strong> This classification follows the specific pipeline for {risk_level} risk businesses.</p>
+        </div>
+        {roadmap_content}
+    </div>
+    
+</body>
+</html>

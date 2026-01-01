@@ -5,6 +5,15 @@
 # Python
 __pycache__/
 *.py[cod]
+uv.lock
+apps/backend-rag/data/
+check_ingest.py
+run_ingest.py
+scripts/*.py
+scripts/smoke_test_quick.py
+scripts/verify_json.py
+test_playwright.py
+test_playwright.pylass
 *$py.class
 *.so
 .Python
@@ -155,3 +164,13 @@ ZANTARA_JAKSEL/models/
 docs/*.log
 docs/*.json
 docs/generated/
+)/
+*.JPG
+*.HEIC
+*.PNG
+coverage.json
+# Auto-generated Playwright extensions
+.playwright-mcp/
+apps/mouth/coverage/
+lint_*.txt
+*.py[cod]

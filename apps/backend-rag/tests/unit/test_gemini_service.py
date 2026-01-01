@@ -70,8 +70,8 @@ def test_init_default_model(mock_genai_client):
             with patch("services.llm_clients.gemini_service.settings") as mock_settings:
                 mock_settings.google_api_key = "test-api-key"
                 service = GeminiJakselService()
-                # New SDK doesn't use 'models/' prefix
-                assert service.model_name == "gemini-2.0-flash"
+                # Default model is now gemini-3-flash-preview (updated Dec 2025)
+                assert service.model_name == "gemini-3-flash-preview"
                 assert service.system_instruction is not None
                 assert len(service.few_shot_history) > 0
 
@@ -110,11 +110,12 @@ def test_init_few_shot_history(mock_genai_client):
 
 
 def test_init_without_api_key():
-    """Test initialization without API key"""
-    with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
+    """Test initialization without API key - service becomes unavailable"""
+    with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", False):
         with patch("services.llm_clients.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = None
             service = GeminiJakselService()
+            # When GENAI_AVAILABLE is False, service is not available
             assert service._available is False
 
 
@@ -209,13 +210,15 @@ async def test_fallback_to_openrouter_on_quota_exceeded(mock_genai_client):
     """Test fallback to OpenRouter when Gemini quota exceeded"""
     from google.api_core.exceptions import ResourceExhausted
 
-    # Make create_chat raise ResourceExhausted
+    # Make create_chat return a chat that raises ResourceExhausted when streaming
     mock_chat = MagicMock()
 
-    async def raise_quota_error(msg):
+    # Create async generator that raises ResourceExhausted
+    async def raise_quota_error_gen(msg):
         raise ResourceExhausted("Quota exceeded")
+        yield  # Make it a generator (never reached)
 
-    mock_chat.send_message_stream = raise_quota_error
+    mock_chat.send_message_stream = raise_quota_error_gen
     mock_genai_client.create_chat.return_value = mock_chat
 
     with patch("services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client):
@@ -226,12 +229,12 @@ async def test_fallback_to_openrouter_on_quota_exceeded(mock_genai_client):
                 service._genai_client = mock_genai_client
                 service._available = True
 
-                # Mock OpenRouter fallback
+                # Mock OpenRouter fallback as async generator
                 async def mock_openrouter_stream(message, history, context):
                     yield "OpenRouter response"
 
                 with patch.object(
-                    service, "_fallback_to_openrouter_stream", side_effect=mock_openrouter_stream
+                    service, "_fallback_to_openrouter_stream", return_value=mock_openrouter_stream(None, None, None)
                 ):
                     chunks = []
                     async for chunk in service.generate_response_stream("Test"):

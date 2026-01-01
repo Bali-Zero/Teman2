@@ -171,12 +171,14 @@ class TestHealthMonitorChecks:
 
     @pytest.mark.asyncio
     async def test_check_postgresql_not_using_postgres(self):
-        """Test PostgreSQL check when not using postgres"""
+        """Test PostgreSQL check when service has no pool"""
         mock_alert = MagicMock(spec=AlertService)
         monitor = HealthMonitor(mock_alert)
 
-        mock_memory = MagicMock()
+        mock_memory = MagicMock(spec=["use_postgres"])  # No pool attribute
         mock_memory.use_postgres = False
+        # Remove auto-created pool attribute
+        del mock_memory.pool
 
         result = await monitor._check_postgresql(mock_memory)
 
@@ -207,11 +209,11 @@ class TestHealthMonitorChecks:
 
     @pytest.mark.asyncio
     async def test_check_ai_router_no_clients(self):
-        """Test AI Router check without clients"""
+        """Test AI Router check without orchestrator or clients"""
         mock_alert = MagicMock(spec=AlertService)
         monitor = HealthMonitor(mock_alert)
 
-        mock_router = MagicMock()
+        mock_router = MagicMock(spec=["llama_client", "haiku_client"])  # No orchestrator
         mock_router.llama_client = None
         mock_router.haiku_client = None
 
@@ -281,6 +283,10 @@ class TestHealthMonitorStatus:
         monitor = HealthMonitor(mock_alert, check_interval=30)
         monitor.running = True
         monitor.last_status = {"qdrant": True, "postgresql": False}
+        # Mock task that is running (not done)
+        mock_task = MagicMock()
+        mock_task.done.return_value = False
+        monitor.task = mock_task
 
         status = monitor.get_status()
 
@@ -296,9 +302,9 @@ class TestHealthMonitorSingleton:
     def test_get_health_monitor_none(self):
         """Test get_health_monitor when not initialized"""
         # Clear singleton
-        import services.health_monitor
+        import services.monitoring.health_monitor as health_monitor_module
 
-        services.health_monitor._health_monitor = None
+        health_monitor_module._health_monitor = None
 
         result = get_health_monitor()
         assert result is None
@@ -308,9 +314,9 @@ class TestHealthMonitorSingleton:
         mock_alert = MagicMock(spec=AlertService)
 
         # Clear singleton
-        import services.health_monitor
+        import services.monitoring.health_monitor as health_monitor_module
 
-        services.health_monitor._health_monitor = None
+        health_monitor_module._health_monitor = None
 
         monitor = init_health_monitor(mock_alert, check_interval=45)
 

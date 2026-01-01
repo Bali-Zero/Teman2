@@ -76,11 +76,11 @@ When using information from provided sources, include inline citations:
 
 Example:
 "Indonesia requires a KITAS visa for business activities [1]. The minimum investment
-for foreign companies is IDR 10 billion [2]."
+requirement varies by business sector [2]."
 
 Sources:
-[1] Immigration Regulations 2024 - Ministry of Law and Human Rights
-[2] Investment Requirements - BKPM Official Guidelines - 2024
+[1] Immigration Regulations - Ministry of Law and Human Rights
+[2] Investment Requirements - BKPM Official Guidelines
 """
         return instructions
 

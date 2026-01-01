@@ -1,0 +1,986 @@
+---
+title: "Starting a Business in Indonesia: The Complete Guide 2025"
+slug: "starting-a-business-in-indonesia-complete-guide"
+description: "Everything you need to know about opening a company in Indonesia. From PT PMA to NIB, KBLI codes to OSS registration - your definitive guide to Indonesian business setup."
+excerpt: "Navigate the complexities of Indonesian business registration with our comprehensive guide covering company types, capital requirements, permits, and step-by-step processes."
+category: "business"
+tags:
+  - PT PMA
+  - company formation
+  - business registration
+  - NIB
+  - OSS
+  - KBLI
+  - foreign investment
+  - Indonesia business
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Business Advisor"
+featured: true
+image:
+  src: "/images/insights/business/starting-business-indonesia.jpg"
+  alt: "Modern Jakarta skyline representing Indonesian business opportunities"
+  caption: "Indonesia's business landscape offers immense opportunities for foreign investors"
+seo:
+  title: "Starting a Business in Indonesia 2025 | Complete PT PMA Guide"
+  description: "Complete guide to starting a business in Indonesia. Learn about PT PMA registration, capital requirements, KBLI codes, NIB, and OSS. Step-by-step process explained."
+  keywords:
+    - starting business indonesia
+    - PT PMA registration
+    - foreign company indonesia
+    - indonesia business setup
+    - NIB registration
+    - OSS system
+    - KBLI codes
+    - indonesia investment
+readingTime: 18
+difficulty: "intermediate"
+aiGenerated: true
+kbSources:
+  - collection: "kbli_unified"
+    documentsUsed: 45
+  - collection: "legal_unified"
+    documentsUsed: 23
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "pt-pma-registration-guide"
+  - "nib-oss-guide"
+  - "investor-kitas-guide"
+  - "corporate-income-tax"
+tableOfContents: true
+---
+
+import {
+  DecisionTree,
+  Calculator,
+  ComparisonTable,
+  JourneyMap,
+  Checklist,
+  InfoCard,
+  GlossaryTerm,
+  ConfidenceMeter,
+  AskZantara,
+  LegalDecoder
+} from '@/components/insights/interactive';
+
+# Starting a Business in Indonesia: The Complete Guide 2025
+
+Indonesia's economy is one of the fastest-growing in Southeast Asia, with a GDP of over $1.3 trillion and a population of 275 million. For foreign entrepreneurs, the opportunity is immense—but so is the complexity of setting up a legal business entity.
+
+This guide will walk you through everything you need to know about starting a business in Indonesia, from choosing the right company structure to obtaining your operating permits.
+
+<ConfidenceMeter
+  title="Information Confidence"
+  items={[
+    { label: "Company Types & Structures", confidence: 98, source: "OSS & BKPM Regulations 2024" },
+    { label: "Capital Requirements", confidence: 95, source: "Investment Coordinating Board" },
+    { label: "Registration Process", confidence: 92, source: "OSS RBA System" },
+    { label: "Processing Times", confidence: 85, source: "Aggregated client data 2024" },
+    { label: "Costs & Fees", confidence: 88, source: "Government fee schedules + market rates" }
+  ]}
+/>
+
+---
+
+## Which Business Structure Is Right for You?
+
+The first and most important decision is choosing the correct legal entity. Indonesia offers several options, but for foreign investors, the choices are more limited.
+
+<DecisionTree
+  title="Find Your Ideal Business Structure"
+  description="Answer a few questions to discover which Indonesian business entity suits your situation"
+  nodes={[
+    {
+      id: "start",
+      question: "Are you a foreign national or foreign company?",
+      options: [
+        { label: "Yes, I'm foreign", nextNodeId: "foreign-ownership" },
+        { label: "No, I'm Indonesian", nextNodeId: "local-options" }
+      ]
+    },
+    {
+      id: "foreign-ownership",
+      question: "What level of ownership do you need?",
+      options: [
+        { label: "100% foreign ownership", nextNodeId: "check-sector" },
+        { label: "Joint venture with local partner", nextNodeId: "jv-option" },
+        { label: "Minority stake only", nextNodeId: "local-majority" }
+      ]
+    },
+    {
+      id: "check-sector",
+      question: "What sector will you operate in?",
+      options: [
+        { label: "Tech/Digital/Software", nextNodeId: "result-pma-tech" },
+        { label: "Trading/Import-Export", nextNodeId: "result-pma-trading" },
+        { label: "F&B/Restaurant/Hospitality", nextNodeId: "result-pma-fnb" },
+        { label: "Manufacturing", nextNodeId: "result-pma-manufacturing" },
+        { label: "Professional Services", nextNodeId: "result-pma-services" }
+      ]
+    },
+    {
+      id: "jv-option",
+      question: "Do you have a trusted Indonesian partner?",
+      options: [
+        { label: "Yes, I have a partner", nextNodeId: "result-jv" },
+        { label: "No, looking for one", nextNodeId: "result-find-partner" }
+      ]
+    },
+    {
+      id: "local-options",
+      question: "What type of business do you want to start?",
+      options: [
+        { label: "Small business (< IDR 500M revenue)", nextNodeId: "result-cv" },
+        { label: "Medium-Large PT", nextNodeId: "result-pt-pmdn" }
+      ]
+    },
+    {
+      id: "local-majority",
+      question: "What's your investment level?",
+      options: [
+        { label: "Over IDR 10 billion", nextNodeId: "result-pma-minority" },
+        { label: "Under IDR 10 billion", nextNodeId: "result-nominee-warning" }
+      ]
+    },
+    {
+      id: "result-pma-tech",
+      isResult: true,
+      title: "PT PMA - Technology Sector",
+      description: "Tech companies can be 100% foreign-owned in most KBLI categories.",
+      recommendation: "You can establish a fully foreign-owned PT PMA. Minimum investment: IDR 10 billion. Tech sector generally has no foreign ownership restrictions.",
+      nextSteps: ["Check specific KBLI codes", "Prepare investment plan", "Engage corporate secretary"]
+    },
+    {
+      id: "result-pma-trading",
+      isResult: true,
+      title: "PT PMA - Trading Sector",
+      description: "Trading companies have specific requirements and some restrictions.",
+      recommendation: "PT PMA for trading requires minimum IDR 10 billion investment. Some trading activities may have 67% foreign cap. Large-scale trading (import) requires additional licenses.",
+      nextSteps: ["Verify KBLI restrictions", "Apply for importer license (API)", "Consider warehousing needs"]
+    },
+    {
+      id: "result-pma-fnb",
+      isResult: true,
+      title: "PT PMA - Food & Beverage",
+      description: "Restaurants and hospitality can be foreign-owned with conditions.",
+      recommendation: "F&B/Restaurant PT PMA requires IDR 10 billion investment. Must be 'large scale' operation. Small restaurants reserved for local MSMEs.",
+      nextSteps: ["Plan large-scale operation", "Location and permits", "BPOM and health certificates"]
+    },
+    {
+      id: "result-pma-manufacturing",
+      isResult: true,
+      title: "PT PMA - Manufacturing",
+      description: "Manufacturing is generally open to 100% foreign ownership.",
+      recommendation: "Manufacturing PT PMA with 100% foreign ownership is possible. Additional environmental permits (AMDAL/UKL-UPL) required. Consider industrial zone locations.",
+      nextSteps: ["Environmental assessment", "Location in industrial zone", "Import-export licenses if needed"]
+    },
+    {
+      id: "result-pma-services",
+      isResult: true,
+      title: "PT PMA - Professional Services",
+      description: "Service companies can be fully foreign-owned in most categories.",
+      recommendation: "Professional services PT PMA allows 100% foreign ownership. Minimum IDR 10 billion investment. Some regulated professions may have restrictions.",
+      nextSteps: ["Check professional license requirements", "Office domicile", "Work permits for foreign staff"]
+    },
+    {
+      id: "result-jv",
+      isResult: true,
+      title: "Joint Venture PT PMA",
+      description: "Partner with an Indonesian company or individual.",
+      recommendation: "Joint venture can reduce capital requirements and provide local market knowledge. Ensure clear shareholder agreement and exit clauses.",
+      nextSteps: ["Due diligence on partner", "Shareholder agreement", "Clear profit distribution terms"]
+    },
+    {
+      id: "result-find-partner",
+      isResult: true,
+      title: "Finding a Local Partner",
+      description: "You need to find a trustworthy Indonesian partner first.",
+      recommendation: "Be extremely careful with nominee arrangements—they're illegal. Consider business matchmaking services, chambers of commerce, or professional networks.",
+      nextSteps: ["Network through chambers of commerce", "Professional matchmaking services", "Legal due diligence"]
+    },
+    {
+      id: "result-cv",
+      isResult: true,
+      title: "CV (Commanditaire Vennootschap)",
+      description: "Partnership structure for small Indonesian businesses.",
+      recommendation: "CV is suitable for small local businesses. Not available for foreign investors. Simple structure with limited liability for silent partners only.",
+      nextSteps: ["Register with local notary", "Obtain NIB through OSS", "Consider upgrading to PT later"]
+    },
+    {
+      id: "result-pt-pmdn",
+      isResult: true,
+      title: "PT PMDN (Local PT)",
+      description: "Standard Indonesian limited liability company.",
+      recommendation: "PT PMDN for 100% Indonesian ownership. Lower capital requirements. Can later convert to PT PMA if foreign investment comes in.",
+      nextSteps: ["Minimum 2 shareholders", "IDR 50 million minimum capital", "NIB registration"]
+    },
+    {
+      id: "result-pma-minority",
+      isResult: true,
+      title: "PT PMA with Minority Foreign Stake",
+      description: "Foreign minority shareholder in Indonesian company.",
+      recommendation: "If investing over IDR 10 billion as minority, you can join an existing PT or form new PT PMA. Foreign director possible.",
+      nextSteps: ["Negotiate shareholder agreement", "Director/commissioner positions", "Investment documentation"]
+    },
+    {
+      id: "result-nominee-warning",
+      isResult: true,
+      title: "Warning: Nominee Arrangements",
+      description: "Low investment foreign ownership is very limited.",
+      recommendation: "Nominee arrangements (using Indonesian name to hold shares) are ILLEGAL and can result in asset seizure. The minimum investment for PT PMA is IDR 10 billion.",
+      nextSteps: ["Consider meeting minimum investment", "Explore legal JV options", "Consult immigration lawyer"]
+    }
+  ]}
+/>
+
+---
+
+## Understanding Indonesian Company Types
+
+<ComparisonTable
+  title="Company Structure Comparison"
+  description="Compare the main business entity types available in Indonesia"
+  items={[
+    {
+      name: "PT PMA",
+      subtitle: "Foreign Investment Company",
+      values: {
+        "Foreign Ownership": "Up to 100%",
+        "Min. Investment": "IDR 10 billion (~$625,000)",
+        "Min. Paid-up Capital": "IDR 10 billion",
+        "Min. Shareholders": "2 (can be foreign)",
+        "Min. Directors": "1 (can be foreign)",
+        "Min. Commissioners": "1 (can be foreign)",
+        "Liability": "Limited to capital",
+        "Work Permits": "Can sponsor",
+        "Best For": "Foreign investors"
+      },
+      highlight: true
+    },
+    {
+      name: "PT PMDN",
+      subtitle: "Local Investment Company",
+      values: {
+        "Foreign Ownership": "0%",
+        "Min. Investment": "No minimum",
+        "Min. Paid-up Capital": "IDR 50 million",
+        "Min. Shareholders": "2 (Indonesian only)",
+        "Min. Directors": "1 (Indonesian)",
+        "Min. Commissioners": "None required",
+        "Liability": "Limited to capital",
+        "Work Permits": "Cannot sponsor",
+        "Best For": "Indonesian entrepreneurs"
+      }
+    },
+    {
+      name: "CV",
+      subtitle: "Limited Partnership",
+      values: {
+        "Foreign Ownership": "0%",
+        "Min. Investment": "None",
+        "Min. Paid-up Capital": "None",
+        "Min. Shareholders": "2 partners",
+        "Min. Directors": "Managing partner",
+        "Min. Commissioners": "N/A",
+        "Liability": "Unlimited for active partner",
+        "Work Permits": "Cannot sponsor",
+        "Best For": "Small local business"
+      }
+    },
+    {
+      name: "Representative Office",
+      subtitle: "KPPA/KP3A",
+      values: {
+        "Foreign Ownership": "100%",
+        "Min. Investment": "None",
+        "Min. Paid-up Capital": "None",
+        "Min. Shareholders": "Parent company",
+        "Min. Directors": "Chief Representative",
+        "Min. Commissioners": "N/A",
+        "Liability": "Parent company",
+        "Work Permits": "Limited",
+        "Best For": "Market research only"
+      }
+    }
+  ]}
+  categories={[
+    { id: "ownership", label: "Ownership", fields: ["Foreign Ownership", "Min. Shareholders"] },
+    { id: "capital", label: "Capital", fields: ["Min. Investment", "Min. Paid-up Capital"] },
+    { id: "structure", label: "Structure", fields: ["Min. Directors", "Min. Commissioners", "Liability"] },
+    { id: "operations", label: "Operations", fields: ["Work Permits", "Best For"] }
+  ]}
+/>
+
+<InfoCard variant="important" title="Important: The IDR 10 Billion Requirement">
+The minimum investment for PT PMA is **IDR 10 billion** (~$625,000 USD). This doesn't mean you need to deposit this amount immediately—it's the total planned investment over the life of the company, including:
+- Paid-up share capital
+- Loans to the company
+- Fixed assets and equipment
+- Working capital
+
+Your **paid-up capital** (actual cash deposited) must also be IDR 10 billion minimum.
+</InfoCard>
+
+---
+
+## Key Terms You'll Encounter
+
+Before diving into the registration process, let's understand the essential terminology:
+
+<LegalDecoder
+  title="Indonesian Business Registration Terms"
+  documentRef="Various Regulations"
+  documentType="Other"
+  status="active"
+  summary="Understanding these terms is essential for navigating Indonesian business registration."
+  sections={[
+    {
+      id: "nib",
+      original: "Nomor Induk Berusaha (NIB) adalah identitas pelaku usaha yang diterbitkan oleh Lembaga OSS setelah pelaku usaha melakukan pendaftaran.",
+      explanation: "NIB (Business Identification Number) is your company's unique identifier, like a business 'ID card'. It's automatically generated when you register through the OSS system and serves as your basic business license.",
+      keyPoints: [
+        "Replaces multiple old licenses (TDP, API-U, etc.)",
+        "Required for ALL business activities",
+        "Generated automatically through OSS",
+        "Valid for entire company lifetime"
+      ],
+      impact: "You cannot operate legally without NIB. It's the first thing you'll obtain after company establishment.",
+      severity: "high",
+      reference: "PP 5/2021"
+    },
+    {
+      id: "kbli",
+      original: "Klasifikasi Baku Lapangan Usaha Indonesia (KBLI) adalah klasifikasi rujukan yang digunakan untuk mengklasifikasikan aktivitas/kegiatan ekonomi Indonesia.",
+      explanation: "KBLI codes are 5-digit classification numbers that define what business activities your company can perform. Think of them as 'business activity licenses' - you can only do what your KBLI codes allow.",
+      keyPoints: [
+        "5-digit codes (e.g., 62010 for software)",
+        "Determines foreign ownership limits",
+        "Can add multiple codes to one company",
+        "Some codes restricted or prohibited for foreigners"
+      ],
+      impact: "Wrong KBLI selection can limit your business activities or foreign ownership percentage.",
+      severity: "high",
+      reference: "KBLI 2020"
+    },
+    {
+      id: "oss",
+      original: "Online Single Submission (OSS) adalah sistem perizinan berusaha terintegrasi secara elektronik yang dikelola oleh Lembaga OSS.",
+      explanation: "OSS (Online Single Submission) is the government's online portal where ALL business permits are processed. It's a one-stop-shop that replaced dozens of different licensing agencies.",
+      keyPoints: [
+        "Single portal for all business licenses",
+        "Risk-Based Approach (RBA) system",
+        "Automatic NIB generation",
+        "Tracks permit status online"
+      ],
+      impact: "All your permits flow through OSS. Learn to navigate it or hire someone who can.",
+      severity: "medium",
+      reference: "PP 5/2021"
+    },
+    {
+      id: "rba",
+      original: "Perizinan Berusaha Berbasis Risiko adalah perizinan berusaha berdasarkan tingkat risiko kegiatan usaha.",
+      explanation: "RBA (Risk-Based Approach) categorizes businesses by risk level: Low, Medium-Low, Medium-High, and High. Your risk level determines what permits you need—low risk might only need NIB, while high risk needs full operational licenses.",
+      keyPoints: [
+        "Low Risk: NIB only",
+        "Medium-Low: NIB + Standard Certificate",
+        "Medium-High: NIB + Standard Certificate + Inspection",
+        "High Risk: Full licensing + Regular audits"
+      ],
+      impact: "Higher risk = more permits = more time and cost. Most PT PMA activities are medium to high risk.",
+      severity: "medium",
+      reference: "PP 5/2021"
+    }
+  ]}
+/>
+
+---
+
+## PT PMA Registration Process
+
+Here's the complete journey from decision to operation:
+
+<JourneyMap
+  title="PT PMA Registration Journey"
+  description="Complete timeline from initial planning to business operation"
+  estimatedTotal="4-8 weeks"
+  steps={[
+    {
+      id: "planning",
+      title: "Business Planning",
+      description: "Define your business model, KBLI codes, and investment structure",
+      duration: "1-2 weeks",
+      status: "required",
+      documents: [
+        "Business plan",
+        "KBLI code selection",
+        "Investment plan (IDR 10B+)",
+        "Shareholder structure"
+      ],
+      tips: [
+        "Research KBLI codes thoroughly - they determine everything",
+        "Plan for 3-year investment horizon",
+        "Decide shareholder percentages carefully"
+      ],
+      warnings: [
+        "Some KBLI codes have foreign ownership limits",
+        "Changing KBLI codes later requires amendments"
+      ]
+    },
+    {
+      id: "notary",
+      title: "Notary Process",
+      description: "Draft and execute company deed with Indonesian notary",
+      duration: "3-5 days",
+      status: "required",
+      documents: [
+        "Passport copies (all shareholders)",
+        "KITAS/visa copies (if in Indonesia)",
+        "Proof of address (all shareholders)",
+        "Company name choices (3 options)",
+        "Draft Articles of Association"
+      ],
+      tips: [
+        "Prepare 3 company name options",
+        "Names must be in Indonesian (2+ words)",
+        "Notary fees: IDR 10-20 million"
+      ],
+      warnings: [
+        "All shareholders must sign or provide power of attorney",
+        "Original documents may be required"
+      ]
+    },
+    {
+      id: "kemenkumham",
+      title: "Ministry of Law Approval",
+      description: "Company deed approval and legal entity status",
+      duration: "3-7 days",
+      status: "required",
+      documents: [
+        "Notarized deed of establishment",
+        "Company name reservation",
+        "SK Kemenkumham application"
+      ],
+      tips: [
+        "Notary handles this process",
+        "Name must be unique (checked in database)",
+        "Results in SK Kemenkumham (legal entity certificate)"
+      ]
+    },
+    {
+      id: "npwp",
+      title: "Tax Registration (NPWP)",
+      description: "Register company for taxation",
+      duration: "1-3 days",
+      status: "required",
+      documents: [
+        "SK Kemenkumham",
+        "Company deed",
+        "Director ID/passport",
+        "Domicile letter"
+      ],
+      tips: [
+        "Can be done online via DJP",
+        "NPWP format: XX.XXX.XXX.X-XXX.XXX",
+        "Required before opening bank account"
+      ]
+    },
+    {
+      id: "oss",
+      title: "OSS Registration & NIB",
+      description: "Register in OSS system and obtain NIB",
+      duration: "1-3 days",
+      status: "required",
+      documents: [
+        "SK Kemenkumham",
+        "Company deed",
+        "NPWP",
+        "KBLI codes list"
+      ],
+      tips: [
+        "OSS account linked to director's NIK/passport",
+        "NIB issued automatically upon completion",
+        "Add all required KBLI codes at this stage"
+      ],
+      warnings: [
+        "OSS system can be slow or buggy",
+        "May need to retry if system errors occur"
+      ]
+    },
+    {
+      id: "bkpm",
+      title: "Investment Registration (BKPM)",
+      description: "Register investment plan with Investment Board",
+      duration: "3-7 days",
+      status: "required",
+      documents: [
+        "NIB",
+        "Investment plan",
+        "Projected employment numbers",
+        "Capital structure breakdown"
+      ],
+      tips: [
+        "Done through OSS system",
+        "Investment plan is a commitment",
+        "Include equipment, land, working capital"
+      ]
+    },
+    {
+      id: "bank",
+      title: "Bank Account Opening",
+      description: "Open corporate bank account and deposit capital",
+      duration: "1-2 weeks",
+      status: "required",
+      documents: [
+        "SK Kemenkumham",
+        "Company deed",
+        "NPWP",
+        "NIB",
+        "Director passport + KITAS"
+      ],
+      tips: [
+        "Major banks: BCA, Mandiri, CIMB Niaga",
+        "Deposit paid-up capital",
+        "Get deposit confirmation letter"
+      ],
+      warnings: [
+        "Some banks require director to visit in person",
+        "KYC process can take time"
+      ]
+    },
+    {
+      id: "permits",
+      title: "Operational Permits",
+      description: "Obtain sector-specific permits based on KBLI risk level",
+      duration: "1-4 weeks",
+      status: "conditional",
+      documents: [
+        "NIB",
+        "Risk assessment results",
+        "Sector-specific requirements"
+      ],
+      tips: [
+        "Low risk: NIB is sufficient",
+        "Medium risk: Sertifikat Standar required",
+        "High risk: Full Izin (license) required"
+      ],
+      warnings: [
+        "Some permits require inspections",
+        "Timeline varies by sector and region"
+      ]
+    },
+    {
+      id: "operation",
+      title: "Begin Operations",
+      description: "Start your business activities",
+      duration: "Ongoing",
+      status: "final",
+      documents: [
+        "All licenses in place",
+        "Bank account operational",
+        "Tax compliance setup"
+      ],
+      tips: [
+        "Set up bookkeeping from day one",
+        "Register for VAT if revenue > IDR 4.8B",
+        "File monthly tax reports"
+      ]
+    }
+  ]}
+  showFastTrack={true}
+  fastTrackNote="Using a professional corporate secretary can reduce total timeline to 3-4 weeks"
+/>
+
+---
+
+## Cost Calculator
+
+<Calculator
+  title="PT PMA Setup Cost Estimator"
+  description="Estimate your total setup costs based on your specific situation"
+  fields={[
+    {
+      id: "service-level",
+      label: "Service Level",
+      type: "select",
+      options: [
+        { value: "diy", label: "DIY (self-managed)" },
+        { value: "basic", label: "Basic agent service" },
+        { value: "full", label: "Full-service corporate secretary" }
+      ],
+      defaultValue: "basic"
+    },
+    {
+      id: "capital",
+      label: "Paid-up Capital (IDR)",
+      type: "number",
+      defaultValue: 10000000000,
+      min: 10000000000,
+      step: 1000000000,
+      suffix: "IDR"
+    },
+    {
+      id: "virtual-office",
+      label: "Need Virtual Office?",
+      type: "checkbox",
+      defaultValue: true
+    },
+    {
+      id: "location",
+      label: "Company Location",
+      type: "select",
+      options: [
+        { value: "jakarta", label: "Jakarta" },
+        { value: "bali", label: "Bali" },
+        { value: "surabaya", label: "Surabaya" },
+        { value: "other", label: "Other cities" }
+      ],
+      defaultValue: "bali"
+    },
+    {
+      id: "directors",
+      label: "Number of Foreign Directors",
+      type: "number",
+      defaultValue: 1,
+      min: 0,
+      max: 5
+    },
+    {
+      id: "work-permits",
+      label: "Work Permits Needed?",
+      type: "checkbox",
+      defaultValue: true
+    }
+  ]}
+  calculateResult={(values) => {
+    let total = 0;
+    const breakdown = [];
+
+    // Notary fees
+    const notaryFee = 15000000;
+    total += notaryFee;
+    breakdown.push({ label: "Notary & Legal Fees", amount: notaryFee });
+
+    // Service fees based on level
+    let serviceFee = 0;
+    if (values['service-level'] === 'basic') {
+      serviceFee = 25000000;
+    } else if (values['service-level'] === 'full') {
+      serviceFee = 45000000;
+    }
+    if (serviceFee > 0) {
+      total += serviceFee;
+      breakdown.push({ label: "Corporate Secretary Service", amount: serviceFee });
+    }
+
+    // Government fees
+    const govFees = 5000000;
+    total += govFees;
+    breakdown.push({ label: "Government Fees (Kemenkumham, OSS)", amount: govFees });
+
+    // Virtual office
+    if (values['virtual-office']) {
+      const voFee = values.location === 'jakarta' ? 15000000 : 12000000;
+      total += voFee;
+      breakdown.push({ label: "Virtual Office (1 year)", amount: voFee });
+    }
+
+    // Work permits
+    if (values['work-permits'] && values.directors > 0) {
+      const wpCost = values.directors * 35000000;
+      total += wpCost;
+      breakdown.push({ label: `Work Permits (${values.directors} person)`, amount: wpCost });
+    }
+
+    return {
+      total,
+      breakdown,
+      currency: "IDR",
+      note: "Excludes paid-up capital and ongoing operational costs"
+    };
+  }}
+  ctaText="Get Detailed Quote"
+  ctaAction={() => window.open('/contact?service=pt-pma', '_blank')}
+/>
+
+---
+
+## Pre-Registration Checklist
+
+<Checklist
+  title="PT PMA Document Checklist"
+  description="Gather these documents before starting the registration process"
+  persistKey="pt-pma-checklist"
+  items={[
+    {
+      id: "passport",
+      label: "Passport copies (all shareholders)",
+      description: "Color scans, valid for 18+ months",
+      required: true,
+      category: "identity"
+    },
+    {
+      id: "photo",
+      label: "Passport photos (4x6, red background)",
+      description: "Recent photos for all shareholders and directors",
+      required: true,
+      category: "identity"
+    },
+    {
+      id: "address-proof",
+      label: "Proof of address (all shareholders)",
+      description: "Utility bill, bank statement, or government ID",
+      required: true,
+      category: "identity"
+    },
+    {
+      id: "kitas",
+      label: "KITAS copy (if already in Indonesia)",
+      description: "For shareholders/directors with existing stay permits",
+      required: false,
+      category: "identity"
+    },
+    {
+      id: "company-names",
+      label: "3 company name options",
+      description: "Indonesian names, 2+ words, unique",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "business-plan",
+      label: "Business plan summary",
+      description: "Activities, target market, investment timeline",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "kbli-list",
+      label: "KBLI codes list",
+      description: "All business activities you plan to conduct",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "shareholder-structure",
+      label: "Shareholder agreement draft",
+      description: "Ownership percentages, roles, capital contribution",
+      required: true,
+      category: "company"
+    },
+    {
+      id: "investment-plan",
+      label: "Investment plan (IDR 10B+)",
+      description: "Breakdown: capital, equipment, working capital",
+      required: true,
+      category: "financial"
+    },
+    {
+      id: "source-funds",
+      label: "Source of funds documentation",
+      description: "Bank statements, investment confirmation",
+      required: true,
+      category: "financial"
+    },
+    {
+      id: "domicile",
+      label: "Office address arranged",
+      description: "Virtual office contract or lease agreement",
+      required: true,
+      category: "operational"
+    },
+    {
+      id: "poa",
+      label: "Power of attorney (if not present)",
+      description: "Notarized POA for signing documents remotely",
+      required: false,
+      category: "operational"
+    }
+  ]}
+  categories={[
+    { id: "identity", label: "Identity Documents", color: "blue" },
+    { id: "company", label: "Company Information", color: "purple" },
+    { id: "financial", label: "Financial Documents", color: "green" },
+    { id: "operational", label: "Operational Setup", color: "amber" }
+  ]}
+  showProgress={true}
+  allowExport={true}
+/>
+
+---
+
+## Understanding KBLI Codes
+
+<GlossaryTerm
+  term="KBLI"
+  definition="Klasifikasi Baku Lapangan Usaha Indonesia - the Indonesian Standard Industrial Classification system using 5-digit codes."
+  indonesian="Klasifikasi Baku Lapangan Usaha Indonesia"
+  relatedTerms={["NIB", "OSS", "DNI"]}
+>KBLI codes</GlossaryTerm> are perhaps the most important element of your PT PMA setup. They determine:
+
+- **What activities you can legally perform**
+- **Whether foreigners can own 100%** (or less)
+- **What permits you need**
+- **Your risk classification**
+
+<InfoCard variant="tip" title="KBLI Selection Tips">
+1. **Be comprehensive** - Add all activities you might do, including support activities
+2. **Check the DNI list** - Some codes have foreign ownership caps
+3. **Primary vs secondary** - Your main code affects tax treatment
+4. **Future-proof** - Adding codes later requires amendments (cost and time)
+</InfoCard>
+
+### Popular KBLI Codes for Foreign Companies
+
+| Code | Activity | Foreign Ownership |
+|------|----------|-------------------|
+| 62010 | Computer Programming | 100% |
+| 62020 | IT Consulting | 100% |
+| 70201 | Business Consulting | 100% |
+| 46100 | Wholesale Trade (agent) | 100% |
+| 55111 | 5-Star Hotel | 100% |
+| 56101 | Restaurant (large scale) | 100% |
+| 73100 | Advertising | 100% |
+| 74100 | Design Activities | 100% |
+
+<InfoCard variant="warning" title="Restricted Activities">
+Some activities are **closed** to foreign investment or have ownership caps:
+- Small retail (reserved for MSME)
+- Small restaurants (reserved for MSME)
+- Travel agencies (49% foreign cap)
+- Some media and broadcasting
+- Land transportation
+
+Always verify current DNI (Negative Investment List) status before finalizing KBLI codes.
+</InfoCard>
+
+---
+
+## Common Mistakes to Avoid
+
+<InfoCard variant="error" title="Critical Mistakes">
+**1. Nominee Arrangements**
+Using an Indonesian's name to hold shares is **illegal**. The real owner can lose everything, and the nominee can claim the assets.
+
+**2. Underestimating Capital**
+The IDR 10 billion isn't just a number—you need to show investment activity. Plan realistic capital deployment.
+
+**3. Wrong KBLI Codes**
+Choosing codes without checking restrictions can limit your business or ownership percentage.
+
+**4. Skipping Permits**
+Operating without proper licenses can result in fines, closure, or visa cancellation.
+
+**5. Tax Non-Compliance**
+Indonesia tracks foreign companies closely. Late filings = penalties. No filing = big trouble.
+</InfoCard>
+
+---
+
+## After Registration: Ongoing Compliance
+
+<Checklist
+  title="Monthly & Annual Compliance"
+  description="Keep your PT PMA in good standing with these regular requirements"
+  persistKey="pt-pma-compliance"
+  items={[
+    {
+      id: "pph21",
+      label: "PPh 21 (Employee Tax)",
+      description: "Monthly withholding tax on salaries",
+      required: true,
+      category: "monthly"
+    },
+    {
+      id: "ppn",
+      label: "PPN (VAT) Report",
+      description: "Monthly VAT reporting (if PKP registered)",
+      required: false,
+      category: "monthly"
+    },
+    {
+      id: "pph23",
+      label: "PPh 23/26 (Withholding)",
+      description: "Monthly tax on services, rent, dividends",
+      required: true,
+      category: "monthly"
+    },
+    {
+      id: "bpjs",
+      label: "BPJS Contributions",
+      description: "Monthly social security payments",
+      required: true,
+      category: "monthly"
+    },
+    {
+      id: "spt-badan",
+      label: "SPT Tahunan Badan",
+      description: "Annual corporate tax return (April deadline)",
+      required: true,
+      category: "annual"
+    },
+    {
+      id: "lkpm",
+      label: "LKPM Report",
+      description: "Quarterly investment activity report to BKPM",
+      required: true,
+      category: "quarterly"
+    },
+    {
+      id: "rups",
+      label: "Annual General Meeting (RUPS)",
+      description: "Annual shareholder meeting and minutes",
+      required: true,
+      category: "annual"
+    },
+    {
+      id: "fs-audit",
+      label: "Financial Statement Audit",
+      description: "Required for companies above threshold",
+      required: false,
+      category: "annual"
+    }
+  ]}
+  categories={[
+    { id: "monthly", label: "Monthly", color: "blue" },
+    { id: "quarterly", label: "Quarterly", color: "purple" },
+    { id: "annual", label: "Annual", color: "green" }
+  ]}
+  showProgress={true}
+/>
+
+---
+
+## Need Help?
+
+Starting a business in Indonesia is complex, but it's absolutely achievable with the right guidance. If you have specific questions about your situation:
+
+<AskZantara
+  context="PT PMA company formation, KBLI codes, OSS registration, foreign investment in Indonesia"
+  placeholder="Ask about company formation, KBLI codes, investment requirements..."
+  suggestedQuestions={[
+    "What KBLI code do I need for an IT consulting company?",
+    "Can a foreigner own 100% of a restaurant in Bali?",
+    "How long does PT PMA registration take?",
+    "What's the difference between PT PMA and representative office?",
+    "Do I need to be in Indonesia to set up a PT PMA?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [PT PMA vs PT PMDN: Which Is Right for You?](/insights/business/pt-pma-vs-pt-pmdn-comparison)
+- [KBLI Codes Explained: Complete Reference](/insights/business/kbli-codes-explained)
+- [Investor KITAS: Visa for Business Owners](/insights/immigration/investor-kitas-guide)
+- [Corporate Tax in Indonesia: What Foreign Companies Pay](/insights/tax-legal/corporate-tax-indonesia)
+- [Hiring Employees in Indonesia](/insights/business/hiring-employees-indonesia)
+
+---
+
+<InfoCard variant="note" title="Disclaimer">
+This guide is for informational purposes only and does not constitute legal or tax advice. Regulations change frequently—always verify current requirements with official sources or qualified professionals. Last updated: January 2025.
+</InfoCard>

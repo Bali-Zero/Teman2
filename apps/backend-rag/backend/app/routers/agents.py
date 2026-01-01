@@ -28,7 +28,7 @@ from services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestr
 
 # Import all agent services
 from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
-from services.misc.knowledge_graph_builder import KnowledgeGraphBuilder
+from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
 from services.misc.proactive_compliance_monitor import (
     AlertSeverity,
     ProactiveComplianceMonitor,
@@ -364,12 +364,21 @@ async def extract_knowledge_graph(
     🧠 AGENT 3: Knowledge Graph Builder
 
     Extract entities and relationships from text to build knowledge graph.
+    Uses Semantic Extraction (LLM) if available, otherwise Regex patterns.
 
     Entities: Person, Organization, Location, Document, Concept
     Relationships: WORKS_FOR, LOCATED_IN, REQUIRES, RELATED_TO, etc.
     """
     try:
-        # Use the knowledge_graph service
+        # Dependency Injection (Lazy)
+        if not knowledge_graph.db_pool:
+            knowledge_graph.db_pool = getattr(request.app.state, "db_pool", None)
+        
+        if not knowledge_graph.llm_gateway:
+            # Try to get ai_client (ZantaraAIClient)
+            knowledge_graph.llm_gateway = getattr(request.app.state, "ai_client", None)
+
+        # Use the knowledge_graph service (Unified Method)
         result = await knowledge_graph.extract_entities(text)
 
         return {
@@ -389,6 +398,7 @@ async def extract_knowledge_graph(
                     "PART_OF",
                 ],
             },
+            "extraction_method": "LLM" if knowledge_graph.llm_gateway else "Regex"
         }
     except Exception as e:
         logger.error(f"Knowledge graph extraction failed: {e}")
@@ -420,22 +430,32 @@ async def export_knowledge_graph(
     """
     Export knowledge graph in Neo4j-ready format
 
-    ⚠️ PLACEHOLDER ENDPOINT: Service not implemented
-    Knowledge Graph builder exists but export functionality is not wired.
-
     Formats:
-    - neo4j: Cypher queries for Neo4j
-    - json: JSON format
-    - graphml: GraphML format
+    - neo4j: Cypher queries for Neo4j (.cypher)
+    - json: JSON format (.json)
+    - graphml: GraphML format for Gephi/Cytoscape (.graphml)
     """
-    return {
-        "success": True,
-        "warning": "PLACEHOLDER: Export functionality not implemented",
-        "format": format,
-        "message": "Knowledge graph export ready",
-        "supported_formats": ["neo4j", "json", "graphml"],
-        "note": "To enable: Implement KnowledgeGraphBuilder export in services and wire to this endpoint.",
-    }
+    try:
+        # Map requested format to internal format
+        internal_format = "json"
+        if format.lower() in ["neo4j", "cypher"]:
+            internal_format = "cypher"
+        elif format.lower() in ["graphml", "gephi"]:
+            internal_format = "graphml"
+            
+        # Generate export
+        export_data = knowledge_graph.export_graph(format=internal_format)
+        
+        return {
+            "success": True,
+            "format": format,
+            "internal_format": internal_format,
+            "data": export_data,
+            "stats": knowledge_graph.get_graph_stats()
+        }
+    except Exception as e:
+        logger.error(f"Export failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================

@@ -5,19 +5,22 @@ to ensure consistency and readability.
 """
 
 
+from app.core.config import settings
+
+
 def get_visa_template(language: str = "en") -> str:
     """
     Returns the markdown template for Visa/KITAS responses.
     """
     if language == "it":
-        return """
+        return f"""
 ### 📋 Scheda Visto: [NOME_VISTO] (Codice: [CODICE])
 
 | Caratteristica | Dettaglio |
 | :--- | :--- |
 | **Scopo** | [Scopo principale: Lavoro, Investimento, Turismo, etc.] |
 | **Durata** | [Validità del visto] |
-| **Costo (Bali Zero)** | [Prezzo ufficiale da get_pricing] |
+| **Costo ({settings.COMPANY_NAME})** | [Prezzo ufficiale da get_pricing] |
 | **Tempo di Processo** | [Giorni lavorativi stimati] |
 
 #### ✅ Requisiti Principali
@@ -29,14 +32,14 @@ def get_visa_template(language: str = "en") -> str:
 [Eventuali restrizioni, divieti o consigli strategici]
 """
     elif language == "id":
-        return """
+        return f"""
 ### 📋 Detail Visa: [NAMA_VISA] (Kode: [KODE])
 
 | Fitur | Detail |
 | :--- | :--- |
 | **Tujuan** | [Tujuan utama: Kerja, Investasi, Wisata, dll.] |
 | **Durasi** | [Masa berlaku] |
-| **Biaya (Bali Zero)** | [Harga resmi dari get_pricing] |
+| **Biaya ({settings.COMPANY_NAME})** | [Harga resmi dari get_pricing] |
 | **Waktu Proses** | [Estimasi hari kerja] |
 
 #### ✅ Persyaratan Utama
@@ -48,14 +51,14 @@ def get_visa_template(language: str = "en") -> str:
 [Batasan, larangan, atau saran strategis]
 """
     else:  # Default English
-        return """
+        return f"""
 ### 📋 Visa Snapshot: [VISA_NAME] (Code: [CODE])
 
 | Feature | Detail |
 | :--- | :--- |
 | **Purpose** | [Main purpose: Work, Investment, Tourism, etc.] |
 | **Duration** | [Validity period] |
-| **Cost (Bali Zero)** | [Official price from get_pricing] |
+| **Cost ({settings.COMPANY_NAME})** | [Official price from get_pricing] |
 | **Process Time** | [Estimated working days] |
 
 #### ✅ Key Requirements

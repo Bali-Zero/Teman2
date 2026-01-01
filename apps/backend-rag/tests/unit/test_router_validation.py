@@ -34,26 +34,36 @@ from app.routers import (
 def client_agentic():
     """Create FastAPI test client for agentic_rag router"""
     from app.routers.agentic_rag import get_orchestrator
+    from app.dependencies import get_current_user
 
     app = FastAPI()
     app.include_router(agentic_rag.router)
 
     # Mock orchestrator dependency
     mock_orchestrator = MagicMock()
-    mock_orchestrator.process_query = AsyncMock(
-        return_value={
-            "answer": "test",
-            "sources": [],
-            "context_used": 0,
-            "execution_time": 0.1,
-            "route_used": "test",
-        }
-    )
+    # Create a mock result with attributes (not dict)
+    mock_result = MagicMock()
+    mock_result.answer = "test"
+    mock_result.sources = []
+    mock_result.context_used = 0
+    mock_result.execution_time = 0.1
+    mock_result.route_used = "test"
+    mock_result.citations = []
+    mock_result.debug_info = {}
+    mock_result.model_used = "test-model"
+    mock_result.tokens_used = 0
+    mock_result.uncertainty_info = None
+    mock_orchestrator.process_query = AsyncMock(return_value=mock_result)
 
     async def override_get_orchestrator():
         return mock_orchestrator
 
+    # Mock authentication - return a fake user
+    async def override_get_current_user():
+        return {"user_id": "test_user", "email": "test@example.com"}
+
     app.dependency_overrides[get_orchestrator] = override_get_orchestrator
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     yield TestClient(app)
 

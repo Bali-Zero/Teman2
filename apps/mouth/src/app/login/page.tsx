@@ -27,7 +27,7 @@ export default function LoginPage() {
 
     try {
       // 2. Real API call
-      await api.login(email, pin);
+      const loginResponse = await api.login(email, pin);
 
       // 3. Success
       setLoginStage('success');
@@ -40,10 +40,14 @@ export default function LoginPage() {
         throw new Error('Token not saved after login');
       }
 
+      // Get redirect path based on user role
+      // Clients go to /portal, team members go to /dashboard
+      const redirectTo = loginResponse.user?.role === 'client' ? '/portal' : '/dashboard';
+
       // Use window.location.replace for a clean redirect without history entry
       // This ensures a full page reload so the layout can properly read the token
       setTimeout(() => {
-        window.location.replace('/dashboard');
+        window.location.replace(redirectTo);
       }, 1500);
     } catch (error) {
       // 4. Failure
@@ -126,9 +130,9 @@ export default function LoginPage() {
             className="relative w-32 md:w-40"
           >
             <img
-              src="/assets/login/zantara-logo-classic.png"
-              alt="Zantara Classic Logo"
-              className="w-full h-auto drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+              src="/images/balizero-logo-clean.png"
+              alt="Bali Zero Logo"
+              className="w-full h-auto rounded-full drop-shadow-[0_15px_35px_rgba(255,255,255,0.15)] shadow-[0_8px_25px_rgba(255,255,255,0.1)]"
               loading="eager"
             />
           </motion.div>

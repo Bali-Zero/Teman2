@@ -38,3 +38,4 @@ COMMENT ON COLUMN review_queue.source_feedback_id IS 'Foreign key to conversatio
 COMMENT ON COLUMN review_queue.status IS 'Status: pending (needs review), resolved (reviewed and handled), ignored (dismissed)';
 COMMENT ON COLUMN review_queue.priority IS 'Optional priority level for manual prioritization';
 
+

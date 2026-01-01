@@ -1,0 +1,577 @@
+---
+title: "Employee Termination & Severance Indonesia 2025"
+slug: "termination-severance"
+description: "How to terminate employees in Indonesia legally. Severance pay calculations, procedures, and compliance requirements."
+excerpt: "Terminating employees in Indonesia requires specific procedures. Here's the complete guide to severance."
+category: "business"
+tags:
+  - termination
+  - severance
+  - HR
+  - labor law
+publishedAt: "2025-01-15"
+updatedAt: "2025-01-15"
+author:
+  name: "Zantara AI"
+  avatar: "/images/zantara-avatar.png"
+  role: "AI Legal Advisor"
+featured: false
+image:
+  src: "/images/insights/business/termination.jpg"
+  alt: "Employee termination Indonesia"
+seo:
+  title: "Employee Termination Severance Indonesia 2025 | Guide"
+  description: "Complete guide to employee termination and severance in Indonesia. Legal procedures and calculations."
+  keywords:
+    - termination indonesia
+    - severance pay
+    - PHK indonesia
+readingTime: 12
+difficulty: "advanced"
+aiGenerated: true
+kbSources:
+  - collection: "legal_docs"
+    documentsUsed: 18
+lastKbSync: "2025-01-15T10:00:00Z"
+relatedArticles:
+  - "labor-law-guide"
+  - "hiring-indonesian-employees"
+  - "pt-pma-registration-guide"
+tableOfContents: true
+---
+
+import {
+  ComparisonTable,
+  Calculator,
+  JourneyMap,
+  InfoCard,
+  Checklist,
+  AskZantara
+} from '@/components/insights/interactive';
+
+# Employee Termination & Severance Indonesia 2025
+
+Terminating employees in Indonesia (PHK - Pemutusan Hubungan Kerja) requires following specific legal procedures and paying proper severance.
+
+## Termination Types
+
+<ComparisonTable
+  title="Termination Categories"
+  description="Different types of employment termination"
+  items={[
+    {
+      name: "Employer-Initiated",
+      subtitle: "Company decision",
+      values: {
+        "Examples": "Redundancy, poor performance",
+        "Severance": "Full or partial",
+        "Notice": "Required",
+        "Process": "Formal procedure"
+      }
+    },
+    {
+      name: "Employee Resignation",
+      subtitle: "Voluntary",
+      values: {
+        "Examples": "Employee choice",
+        "Severance": "Compensation only",
+        "Notice": "30 days typically",
+        "Process": "Resignation letter"
+      }
+    },
+    {
+      name: "End of Contract",
+      subtitle: "PKWT expiry",
+      values: {
+        "Examples": "Contract term ends",
+        "Severance": "Compensation payment",
+        "Notice": "Per contract",
+        "Process": "Automatic unless renewed"
+      }
+    },
+    {
+      name: "Serious Misconduct",
+      subtitle: "Immediate dismissal",
+      values: {
+        "Examples": "Theft, violence, fraud",
+        "Severance": "None (usually)",
+        "Notice": "Not required",
+        "Process": "Investigation required"
+      },
+      highlight: true
+    }
+  ]}
+/>
+
+---
+
+## Severance Components
+
+<InfoCard variant="note" title="Three Components">
+Severance in Indonesia typically has **three components**:
+
+1. **Uang Pesangon (UP)** - Base severance pay
+2. **Uang Penghargaan Masa Kerja (UPMK)** - Long service pay
+3. **Uang Penggantian Hak (UPH)** - Compensation for unused benefits
+
+The amount depends on reason for termination and years of service.
+</InfoCard>
+
+---
+
+## Severance Calculator
+
+<Calculator
+  title="Severance Estimate"
+  description="Calculate potential severance payment"
+  fields={[
+    {
+      id: "salary",
+      label: "Monthly Salary (IDR)",
+      type: "number",
+      defaultValue: 15000000,
+      min: 0,
+      step: 1000000,
+      suffix: "IDR"
+    },
+    {
+      id: "years",
+      label: "Years of Service",
+      type: "number",
+      defaultValue: 5,
+      min: 0,
+      max: 30,
+      suffix: "years"
+    },
+    {
+      id: "reason",
+      label: "Termination Reason",
+      type: "select",
+      options: [
+        { value: "redundancy", label: "Redundancy/Efficiency" },
+        { value: "closure", label: "Company Closure" },
+        { value: "performance", label: "Poor Performance" },
+        { value: "misconduct", label: "Serious Misconduct" },
+        { value: "resignation", label: "Resignation" },
+        { value: "retirement", label: "Retirement" }
+      ],
+      defaultValue: "redundancy"
+    },
+    {
+      id: "leave",
+      label: "Unused Annual Leave (days)",
+      type: "number",
+      defaultValue: 5,
+      min: 0,
+      max: 24,
+      suffix: "days"
+    }
+  ]}
+  calculateResult={(values) => {
+    const salary = Number(values.salary);
+    const years = Number(values.years);
+    const leave = Number(values.leave);
+
+    // UP (Pesangon) table - max 9 months
+    const upTable = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    const upMonths = years >= 8 ? 9 : upTable[Math.min(years, 8)] || 0;
+
+    // UPMK table - long service
+    let upmkMonths = 0;
+    if (years >= 3 && years < 6) upmkMonths = 2;
+    else if (years >= 6 && years < 9) upmkMonths = 3;
+    else if (years >= 9 && years < 12) upmkMonths = 4;
+    else if (years >= 12 && years < 15) upmkMonths = 5;
+    else if (years >= 15 && years < 18) upmkMonths = 6;
+    else if (years >= 18 && years < 21) upmkMonths = 7;
+    else if (years >= 21 && years < 24) upmkMonths = 8;
+    else if (years >= 24) upmkMonths = 10;
+
+    // Multipliers based on reason
+    let upMultiplier = 1;
+    let upmkMultiplier = 1;
+
+    switch (values.reason) {
+      case "redundancy":
+        upMultiplier = 1;
+        upmkMultiplier = 1;
+        break;
+      case "closure":
+        upMultiplier = 1;
+        upmkMultiplier = 1;
+        break;
+      case "performance":
+        upMultiplier = 0.5;
+        upmkMultiplier = 1;
+        break;
+      case "misconduct":
+        upMultiplier = 0;
+        upmkMultiplier = 0;
+        break;
+      case "resignation":
+        upMultiplier = 0;
+        upmkMultiplier = 0;
+        break;
+      case "retirement":
+        upMultiplier = 1.75;
+        upmkMultiplier = 1;
+        break;
+    }
+
+    const up = salary * upMonths * upMultiplier;
+    const upmk = salary * upmkMonths * upmkMultiplier;
+
+    // UPH - unused leave and other entitlements
+    const dailySalary = salary / 30;
+    const leaveCompensation = dailySalary * leave;
+    const housingMedical = (up + upmk) * 0.15; // 15% estimate
+    const uph = leaveCompensation + housingMedical;
+
+    const total = up + upmk + uph;
+
+    return {
+      total: Math.round(total),
+      breakdown: [
+        { label: "Pesangon (UP)", amount: Math.round(up) },
+        { label: "Long Service (UPMK)", amount: Math.round(upmk) },
+        { label: "Leave Compensation", amount: Math.round(leaveCompensation) },
+        { label: "Housing/Medical (15%)", amount: Math.round(housingMedical) },
+        { label: "Total Severance", amount: Math.round(total) }
+      ],
+      currency: "IDR",
+      note: `UP: ${upMonths} months × ${upMultiplier}, UPMK: ${upmkMonths} months`
+    };
+  }}
+/>
+
+---
+
+## Severance Tables
+
+### Uang Pesangon (UP) - Base Severance
+
+| Service Period | Months |
+|----------------|--------|
+| < 1 year | 1 month |
+| 1 to < 2 years | 2 months |
+| 2 to < 3 years | 3 months |
+| 3 to < 4 years | 4 months |
+| 4 to < 5 years | 5 months |
+| 5 to < 6 years | 6 months |
+| 6 to < 7 years | 7 months |
+| 7 to < 8 years | 8 months |
+| 8+ years | 9 months |
+
+### UPMK - Long Service
+
+| Service Period | Months |
+|----------------|--------|
+| 3 to < 6 years | 2 months |
+| 6 to < 9 years | 3 months |
+| 9 to < 12 years | 4 months |
+| 12 to < 15 years | 5 months |
+| 15 to < 18 years | 6 months |
+| 18 to < 21 years | 7 months |
+| 21 to < 24 years | 8 months |
+| 24+ years | 10 months |
+
+---
+
+## Severance by Reason
+
+<ComparisonTable
+  title="Severance Entitlements"
+  description="Based on termination reason"
+  items={[
+    {
+      name: "Company Closure",
+      values: {
+        "UP": "1× full",
+        "UPMK": "1× full",
+        "UPH": "Yes"
+      }
+    },
+    {
+      name: "Redundancy",
+      values: {
+        "UP": "1× full",
+        "UPMK": "1× full",
+        "UPH": "Yes"
+      }
+    },
+    {
+      name: "Company Loss (2 years)",
+      values: {
+        "UP": "0.5×",
+        "UPMK": "1× full",
+        "UPH": "Yes"
+      }
+    },
+    {
+      name: "Force Majeure",
+      values: {
+        "UP": "0.5×",
+        "UPMK": "1× full",
+        "UPH": "Yes"
+      }
+    },
+    {
+      name: "Retirement",
+      values: {
+        "UP": "1.75×",
+        "UPMK": "1× full",
+        "UPH": "Yes"
+      }
+    },
+    {
+      name: "Serious Misconduct",
+      values: {
+        "UP": "None",
+        "UPMK": "None",
+        "UPH": "Only unused leave"
+      }
+    },
+    {
+      name: "Resignation",
+      values: {
+        "UP": "None",
+        "UPMK": "Compensation only",
+        "UPH": "Unused leave"
+      }
+    }
+  ]}
+/>
+
+---
+
+## Termination Process
+
+<JourneyMap
+  title="Termination Procedure"
+  description="Steps for legal termination"
+  estimatedTotal="2-8 weeks"
+  steps={[
+    {
+      id: "grounds",
+      title: "Establish Grounds",
+      description: "Document the reason",
+      duration: "Ongoing",
+      status: "required",
+      tips: [
+        "Performance documentation",
+        "Warning letters (if applicable)",
+        "Business justification",
+        "Legal review"
+      ]
+    },
+    {
+      id: "bipartite",
+      title: "Bipartite Negotiation",
+      description: "Direct discussion",
+      duration: "Max 30 days",
+      status: "required",
+      tips: [
+        "Meet with employee/union",
+        "Attempt mutual agreement",
+        "Document all discussions",
+        "Sign agreement if reached"
+      ]
+    },
+    {
+      id: "tripartite",
+      title: "Tripartite (if needed)",
+      description: "Manpower office mediation",
+      duration: "30 days",
+      status: "required",
+      tips: [
+        "If bipartite fails",
+        "Apply to Disnaker",
+        "Mediation/conciliation",
+        "Seek recommendation"
+      ]
+    },
+    {
+      id: "court",
+      title: "Industrial Court (if needed)",
+      description: "PHI proceedings",
+      duration: "Weeks-months",
+      status: "required",
+      tips: [
+        "If no agreement reached",
+        "File with PHI court",
+        "Present case",
+        "Await decision"
+      ]
+    },
+    {
+      id: "payment",
+      title: "Severance Payment",
+      description: "Pay entitlements",
+      duration: "Upon termination",
+      status: "final",
+      tips: [
+        "Calculate all components",
+        "Prepare documentation",
+        "Process payment",
+        "Obtain receipts"
+      ]
+    }
+  ]}
+/>
+
+---
+
+## Warning System
+
+<InfoCard variant="warning" title="Progressive Discipline">
+For performance/conduct issues, use progressive discipline:
+
+1. **First Warning (SP1)** - Written, valid 6 months
+2. **Second Warning (SP2)** - Written, valid 6 months
+3. **Third Warning (SP3)** - Final warning
+
+After SP3, termination is possible with reduced severance.
+
+**Note:** For serious misconduct, immediate termination possible without warnings.
+</InfoCard>
+
+---
+
+## Serious Misconduct
+
+### What Qualifies?
+
+<Checklist
+  title="Serious Misconduct Examples"
+  description="Grounds for immediate dismissal"
+  persistKey="misconduct-checklist"
+  items={[
+    {
+      id: "fraud",
+      label: "Fraud or embezzlement",
+      description: "Stealing company assets",
+      required: false,
+      category: "criminal"
+    },
+    {
+      id: "violence",
+      label: "Violence or threats",
+      description: "Physical assault, threats",
+      required: false,
+      category: "criminal"
+    },
+    {
+      id: "drugs",
+      label: "Drug use at workplace",
+      description: "Possession or use",
+      required: false,
+      category: "criminal"
+    },
+    {
+      id: "secrets",
+      label: "Disclosing trade secrets",
+      description: "Confidential information leak",
+      required: false,
+      category: "breach"
+    },
+    {
+      id: "gambling",
+      label: "Gambling at workplace",
+      description: "During work hours",
+      required: false,
+      category: "policy"
+    },
+    {
+      id: "absent",
+      label: "Absent 5+ days without notice",
+      description: "Consecutive days",
+      required: false,
+      category: "attendance"
+    },
+    {
+      id: "immoral",
+      label: "Immoral acts at workplace",
+      description: "Sexual harassment, etc.",
+      required: false,
+      category: "policy"
+    }
+  ]}
+  categories={[
+    { id: "criminal", label: "Criminal", color: "red" },
+    { id: "breach", label: "Contract Breach", color: "amber" },
+    { id: "policy", label: "Policy Violation", color: "purple" },
+    { id: "attendance", label: "Attendance", color: "blue" }
+  ]}
+  showProgress={false}
+/>
+
+---
+
+## PKWT Compensation
+
+For fixed-term contracts (PKWT), upon expiry:
+
+### Compensation Formula
+
+| Contract Length | Compensation |
+|-----------------|--------------|
+| Each month of service | 1 day's wages |
+| Example: 12 months | 12 days' wages |
+| Example: 24 months | 24 days' wages |
+
+<InfoCard variant="note" title="PKWT Early Termination">
+If PKWT terminated early by employer:
+- Must pay remaining contract value
+- Plus compensation for service period
+- Unless for serious misconduct
+</InfoCard>
+
+---
+
+## Documentation
+
+### Required Documents
+
+| Document | Purpose |
+|----------|---------|
+| Termination letter | Official notice |
+| Severance calculation | Detailed breakdown |
+| Bipartite minutes | Meeting records |
+| Agreement | Mutual consent |
+| Receipt | Proof of payment |
+| Reference letter | For employee (optional) |
+
+---
+
+## Common Mistakes
+
+| Mistake | Impact |
+|---------|--------|
+| No written warnings | Can't prove cause |
+| Skipping bipartite | Process invalid |
+| Underpaying severance | Legal claims |
+| Immediate termination without grounds | Must reinstate or pay full |
+| Not documenting | Weak legal position |
+
+---
+
+## Common Questions
+
+<AskZantara
+  context="Employee termination Indonesia, severance pay, PHK, labor law termination"
+  placeholder="Ask about termination and severance..."
+  suggestedQuestions={[
+    "How much severance for 5 years service?",
+    "Can I fire without severance?",
+    "What's the termination process?",
+    "Do PKWT employees get severance?"
+  ]}
+/>
+
+---
+
+## Related Articles
+
+- [Labor Law Guide](/insights/business/labor-law-guide)
+- [Hiring Indonesian Employees](/insights/business/hiring-indonesian-employees)
+- [PT PMA Setup Guide](/insights/business/pt-pma-setup-guide)

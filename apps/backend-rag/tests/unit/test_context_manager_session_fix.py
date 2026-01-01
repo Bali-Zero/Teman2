@@ -55,6 +55,7 @@ class TestContextManagerSessionFiltering:
             "department": None,
             "preferred_language": "en",
             "notes": None,
+            "email": user_id,
             "latest_conversation": json.dumps(
                 {
                     "id": 123,
@@ -104,6 +105,7 @@ class TestContextManagerSessionFiltering:
             "department": None,
             "preferred_language": "en",
             "notes": None,
+            "email": user_id,
             "latest_conversation": json.dumps(
                 {
                     "id": 456,
@@ -138,8 +140,13 @@ class TestContextManagerSessionFiltering:
         assert len(result["history"]) == 2
 
     @pytest.mark.asyncio
-    async def test_empty_history_skips_memory_facts(self, mock_db_pool, mock_memory_orchestrator):
-        """Test: First query (empty history) skips memory facts to prevent hallucination"""
+    async def test_empty_history_still_loads_memory_facts(self, mock_db_pool, mock_memory_orchestrator):
+        """Test: Memory facts are ALWAYS loaded, even on first query (for user recognition)
+
+        FIX USER RECOGNITION BUG: The previous logic skipped facts on first query
+        to "avoid hallucination", but this prevented user recognition completely.
+        Now we ALWAYS load memory facts.
+        """
         session_id = str(uuid4())
         user_id = "test@example.com"
 
@@ -150,6 +157,7 @@ class TestContextManagerSessionFiltering:
             "department": None,
             "preferred_language": "en",
             "notes": None,
+            "email": user_id,
             "latest_conversation": None,  # No conversation history
         }
 
@@ -164,11 +172,10 @@ class TestContextManagerSessionFiltering:
             session_id=session_id,
         )
 
-        # Verify memory orchestrator was NOT called (first query)
-        assert not mock_memory_orchestrator.get_user_context.called
+        # Verify memory orchestrator WAS called (always load for user recognition)
+        assert mock_memory_orchestrator.get_user_context.called
 
-        # Verify facts are empty
-        assert result["facts"] == []
+        # History should be empty (no conversation), but facts loaded from orchestrator
         assert result["history"] == []
 
     @pytest.mark.asyncio
@@ -186,6 +193,7 @@ class TestContextManagerSessionFiltering:
             "department": None,
             "preferred_language": "en",
             "notes": None,
+            "email": user_id,
             "latest_conversation": json.dumps(
                 {
                     "id": 789,

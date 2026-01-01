@@ -30,24 +30,23 @@ class TestKnowledgeGraphRepositoryMethods:
 
     @pytest.mark.asyncio
     async def test_get_user_related_entities_with_function(self, mock_pool):
-        """Test get_user_related_entities when function exists"""
+        """Test get_user_related_entities using kg_nodes table (Dec 2025 unified schema)"""
         from agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
-        conn.fetchval = AsyncMock(return_value=True)  # Function exists
-        # FIX: SQL function returns 'mention_count' not 'mentions'
+        # Mock kg_nodes query results (SQL uses "entity_type as type" alias)
         conn.fetch = AsyncMock(
             return_value=[
                 {
                     "entity_id": "entity-1",
-                    "entity_type": "kbli",
-                    "entity_name": "Software Development",
+                    "type": "kbli",  # aliased from entity_type
+                    "name": "Software Development",
                     "mention_count": 5,
                 },
                 {
                     "entity_id": "entity-2",
-                    "entity_type": "visa",
-                    "entity_name": "KITAS",
+                    "type": "visa",  # aliased from entity_type
+                    "name": "KITAS",
                     "mention_count": 3,
                 },
             ]
@@ -60,23 +59,21 @@ class TestKnowledgeGraphRepositoryMethods:
         assert entities[0]["type"] == "kbli"
         assert entities[0]["name"] == "Software Development"
         assert entities[0]["mentions"] == 5  # Python uses 'mentions' externally
-        # FIX: entity_id is VARCHAR(64) not INTEGER
         assert entities[0]["entity_id"] == "entity-1"
         assert entities[1]["type"] == "visa"
 
     @pytest.mark.asyncio
     async def test_get_user_related_entities_fallback(self, mock_pool):
-        """Test get_user_related_entities fallback when function doesn't exist"""
+        """Test get_user_related_entities with kg_nodes table (Dec 2025 unified schema)"""
         from agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
-        conn.fetchval = AsyncMock(return_value=False)  # Function doesn't exist
-        # Fallback query returns entity_id as VARCHAR(64)
+        # Mock kg_nodes query results (no function needed anymore)
         conn.fetch = AsyncMock(
             return_value=[
                 {
                     "entity_id": "entity-uuid-1",
-                    "type": "kbli",
+                    "type": "kbli",  # aliased from entity_type
                     "name": "Software Development",
                     "mention_count": 5,
                 },
@@ -88,7 +85,7 @@ class TestKnowledgeGraphRepositoryMethods:
 
         assert len(entities) == 1
         assert entities[0]["type"] == "kbli"
-        assert entities[0]["entity_id"] == "entity-uuid-1"  # VARCHAR(64)
+        assert entities[0]["entity_id"] == "entity-uuid-1"
 
     @pytest.mark.asyncio
     async def test_get_user_related_entities_empty(self, mock_pool):
@@ -105,18 +102,19 @@ class TestKnowledgeGraphRepositoryMethods:
 
     @pytest.mark.asyncio
     async def test_get_entity_context_for_query(self, mock_pool):
-        """Test get_entity_context_for_query finds relevant entities"""
+        """Test get_entity_context_for_query finds relevant entities (Dec 2025 unified schema)"""
         from agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
+        # Mock kg_nodes + kg_edges join results
         conn.fetch = AsyncMock(
             return_value=[
                 {
-                    "id": "kbli-62010",  # VARCHAR(64)
-                    "type": "kbli",
+                    "entity_id": "kbli-62010",  # TEXT primary key
+                    "type": "kbli",  # aliased from entity_type
                     "name": "Software Development",
-                    "canonical_name": "software_development",
-                    "metadata": {"code": "62010"},
+                    "description": "Software development services",
+                    "properties": {"code": "62010"},
                     "mention_count": 10,
                     "relationship_types": ["requires", "related_to"],
                 },
@@ -130,7 +128,7 @@ class TestKnowledgeGraphRepositoryMethods:
         assert entities[0]["type"] == "kbli"
         assert entities[0]["name"] == "Software Development"
         assert entities[0]["relationships"] == ["requires", "related_to"]
-        assert entities[0]["entity_id"] == "kbli-62010"  # VARCHAR(64)
+        assert entities[0]["entity_id"] == "kbli-62010"
 
     @pytest.mark.asyncio
     async def test_get_entity_context_for_query_empty(self, mock_pool):
