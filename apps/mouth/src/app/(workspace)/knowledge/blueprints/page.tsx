@@ -48,7 +48,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Medium',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'KBLI_5510_Stars_Hotel_eng.pdf',
+    pdf_filename: 'KBLI_55110_Star_Hotel.pdf',
     icon: 'hotel',
     description: 'Comprehensive guide for establishing star-rated hotels in Indonesia under PP 28/2025.',
   },
@@ -61,7 +61,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'KBLI_55120_HOTEL_MELATI_ENG.pdf',
+    pdf_filename: 'KBLI_55120_Budget_Hotel.pdf',
     icon: 'hotel',
     description: 'Investment guide for non-star rated hotels and budget accommodations.',
   },
@@ -74,7 +74,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'Kbli_55130_Pondok_Wisata_eng.pdf',
+    pdf_filename: 'KBLI_55130_Homestay.pdf',
     icon: 'home',
     description: 'Blueprint for tourism homestays with high guest interaction.',
   },
@@ -87,7 +87,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'Indonesia_Hostel_Blueprint_Investor_Guide.pdf',
+    pdf_filename: 'KBLI_55191_Youth_Hostel.pdf',
     icon: 'home',
     description: 'Guide for youth hostels with shared room accommodations.',
   },
@@ -100,7 +100,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'Indonesia_Tourism_Frontier_Investment_Guide.pdf',
+    pdf_filename: 'KBLI_55192_Campground_Caravan.pdf',
     icon: 'tent',
     description: 'Investment guide for campgrounds and caravan parks.',
   },
@@ -113,7 +113,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'KBLI_55193_Villa_eng.pdf',
+    pdf_filename: 'KBLI_55193_Villa.pdf',
     icon: 'home',
     description: 'Complete guide for villa investment and operations in Indonesia.',
   },
@@ -126,7 +126,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'KBLI_55194_apt_hotel_eng.pdf',
+    pdf_filename: 'KBLI_55194_Condotel.pdf',
     icon: 'building',
     description: 'Blueprint for apartment hotels and condotel investments.',
   },
@@ -139,7 +139,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'Indonesia_Tourism_Bungalow_Investment_Guide.pdf',
+    pdf_filename: 'KBLI_55199_Bungalow_Cottage.pdf',
     icon: 'home',
     description: 'Guide for bungalows, cottages and other short-term accommodations.',
   },
@@ -152,7 +152,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Medium',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'Indonesia_Alternative_Accommodation_Blueprint.pdf',
+    pdf_filename: 'KBLI_55900_Alternative_Accommodation.pdf',
     icon: 'home',
     description: 'Long-term and alternative accommodation investment guide.',
   },
@@ -165,7 +165,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Medium',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'KBLI_68111_Indonesia_Real_Estate_Strategy (1).pdf',
+    pdf_filename: 'KBLI_68111_Real_Estate.pdf',
     icon: 'building',
     description: 'Strategic guide for real estate operations and property management.',
   },
@@ -178,7 +178,7 @@ const BLUEPRINTS: Blueprint[] = [
     risk_level: 'Low',
     pma_allowed: true,
     pma_percentage: '100%',
-    pdf_filename: 'KBLI_96121_Pijat_Rumah_eng.pdf',
+    pdf_filename: 'KBLI_96121_Massage_Services.pdf',
     icon: 'scissors',
     description: 'Blueprint for massage and wellness services business.',
   },
@@ -243,8 +243,10 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
   const IconComponent = getIcon(blueprint.icon);
 
   const handleDownload = () => {
-    const url = `/downloads/blueprints/${encodeURIComponent(blueprint.pdf_filename)}`;
-    window.open(url, '_blank');
+    // Google Drive folder with all blueprints
+    const driveFolder = 'https://drive.google.com/drive/folders/1DOBzlToHhYrq_qZb5hAVdTsBOKBCCCti';
+    // Open folder - user can find the specific file by name
+    window.open(driveFolder, '_blank');
   };
 
   return (
@@ -308,7 +310,7 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
             className="gap-2 bg-[var(--background)]/60 hover:bg-[var(--accent)] hover:text-white transition-all"
           >
             <Download className="w-4 h-4" />
-            Download PDF
+            Open in Drive
           </Button>
         </div>
       </div>
