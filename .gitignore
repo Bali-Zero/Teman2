@@ -12,6 +12,7 @@ run_ingest.py
 scripts/*.py
 scripts/smoke_test_quick.py
 scripts/verify_json.py
+test_playwright.py
 test_playwright.pylass
 *$py.class
 *.so

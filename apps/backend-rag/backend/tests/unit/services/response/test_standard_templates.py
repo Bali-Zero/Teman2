@@ -65,8 +65,8 @@ class TestStandardTemplates:
     def test_get_company_setup_template_italian(self):
         """Test getting company setup template in Italian"""
         template = get_company_setup_template("it")
-        assert "[TIPO_AZIENDA]" in template or "[TIPE_PERUSAHAAN]" in template
-        assert "Company Setup" in template or "Pendirian Perusahaan" in template
+        assert "[TIPO_AZIENDA]" in template
+        assert "Setup Aziendale" in template
 
     def test_get_company_setup_template_english(self):
         """Test getting company setup template in English"""

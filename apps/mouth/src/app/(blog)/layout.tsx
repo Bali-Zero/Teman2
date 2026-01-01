@@ -149,17 +149,10 @@ export default function BlogLayout({
               </div>
 
               <Link
-                href="/about"
+                href="/chat"
                 className="px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
               >
-                About
-              </Link>
-
-              <Link
-                href="/contact"
-                className="px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
-              >
-                Contact
+                Ask Zantara AI
               </Link>
             </nav>
 
@@ -215,7 +208,7 @@ export default function BlogLayout({
 
               {/* CTA Button */}
               <Link
-                href="/contact"
+                href="/chat"
                 className="hidden md:inline-flex px-5 py-2.5 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
               >
                 Get Started
@@ -274,18 +267,11 @@ export default function BlogLayout({
 
               <div className="py-2 border-t border-white/10">
                 <Link
-                  href="/about"
+                  href="/chat"
                   className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  About
-                </Link>
-                <Link
-                  href="/contact"
-                  className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Contact
+                  Ask Zantara AI
                 </Link>
               </div>
 
@@ -317,7 +303,7 @@ export default function BlogLayout({
 
               <div className="pt-4">
                 <Link
-                  href="/contact"
+                  href="/chat"
                   className="block w-full px-4 py-3 rounded-lg bg-[#2251ff] text-white text-sm font-medium text-center hover:bg-[#1a41cc] transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -461,31 +447,20 @@ export default function BlogLayout({
 
               <div className="mt-6">
                 <Link
-                  href="/contact"
+                  href="/chat"
                   className="inline-flex px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
                 >
-                  Get in touch
+                  Ask Zantara AI
                 </Link>
               </div>
             </div>
           </div>
 
           {/* Copyright */}
-          <div className="mt-16 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="mt-16 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-center">
             <p className="text-xs text-white/40">
               &copy; {new Date().getFullYear()} Bali Zero. All rights reserved.
             </p>
-            <div className="flex items-center gap-6 text-xs text-white/40">
-              <Link href="/privacy" className="hover:text-white transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="hover:text-white transition-colors">
-                Terms of Service
-              </Link>
-              <Link href="/sitemap" className="hover:text-white transition-colors">
-                Sitemap
-              </Link>
-            </div>
           </div>
         </div>
       </footer>

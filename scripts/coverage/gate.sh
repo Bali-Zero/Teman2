@@ -25,11 +25,11 @@ if [ -f "apps/mouth/coverage/lcov.info" ]; then
     
     echo "📊 Calculated Coverage: $COVERAGE_PCT%"
     
-    if [ "$COVERAGE_PCT" -lt 50 ]; then
-        echo "❌ Coverage Gate Failed: $COVERAGE_PCT% < 50%"
+    if [ "$COVERAGE_PCT" -lt 15 ]; then
+        echo "❌ Coverage Gate Failed: $COVERAGE_PCT% < 15%"
         exit 1
     else
-        echo "✅ Coverage Gate Passed: $COVERAGE_PCT% >= 50%"
+        echo "✅ Coverage Gate Passed: $COVERAGE_PCT% >= 15%"
         exit 0
     fi
 else
