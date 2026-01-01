@@ -70,6 +70,9 @@ prometheus-fastapi-instrumentator>=6.1.0
 # XML/HTML Processing
 lxml>=5.3.0
 
+# ML/Math
+scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
+
 # REMOVED FOR SIZE OPTIMIZATION:
 # - sentence-transformers (2GB+ with PyTorch) - using OpenAI API embeddings
 # - playwright (500MB+ with browsers) - not needed for API
