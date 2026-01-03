@@ -54,35 +54,17 @@ class HealthMonitor:
 
     async def stop(self):
         """Stop the health monitoring loop"""
-        # #region agent log
-        import json
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"health_monitor.py:55","message":"HealthMonitor stop called","data":{"running_before":self.running,"has_task":self.task is not None},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-        # #endregion
         self.running = False
         if self.task:
             self.task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self.task
-        # #region agent log
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"health_monitor.py:61","message":"HealthMonitor stop completed","data":{"running_after":self.running},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-        # #endregion
         logger.info("🛑 HealthMonitor stopped")
 
     async def _monitoring_loop(self):
         """Main monitoring loop with robust error handling"""
         logger.info("🔄 HealthMonitor loop entered")
-        # #region agent log
-        import json
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"health_monitor.py:67","message":"HealthMonitor loop entered","data":{"running":self.running,"check_interval":self.check_interval},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-        # #endregion
         while self.running:
-            # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"health_monitor.py:68","message":"HealthMonitor loop iteration","data":{"running":self.running},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-            # #endregion
             try:
                 await self._check_health()
             except Exception as e:
