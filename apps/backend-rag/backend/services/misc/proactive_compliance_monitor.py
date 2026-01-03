@@ -143,7 +143,8 @@ class ProactiveComplianceMonitor:
             f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"proactive_compliance_monitor.py:139","message":"ProactiveComplianceMonitor loop entered","data":{"running":self.running,"check_interval":self.check_interval},"timestamp":int(time.time()*1000)}) + '\n')
         # #endregion
 
-        while self.running:
+        try:
+            while self.running:
             # #region agent log
             import time
             with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
@@ -167,6 +168,13 @@ class ProactiveComplianceMonitor:
                     f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"proactive_compliance_monitor.py:150","message":"ProactiveComplianceMonitor loop cancelled","data":{},"timestamp":int(time.time()*1000)}) + '\n')
                 # #endregion
                 break
+        except asyncio.CancelledError:
+            # #region agent log
+            import time
+            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"proactive_compliance_monitor.py:170","message":"ProactiveComplianceMonitor loop cancelled outside sleep","data":{},"timestamp":int(time.time()*1000)}) + '\n')
+            # #endregion
+            logger.info("🛑 ProactiveComplianceMonitor loop cancelled")
 
     def add_compliance_item(
         self,
