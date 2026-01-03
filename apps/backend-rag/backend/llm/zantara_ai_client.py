@@ -19,7 +19,7 @@ from typing import Any
 
 # Import helper modules
 from llm.fallback_messages import get_fallback_message
-from llm.genai_client import GenAIClient, get_genai_client, GENAI_AVAILABLE
+from llm.genai_client import GENAI_AVAILABLE, GenAIClient
 from llm.prompt_manager import PromptManager
 from llm.retry_handler import RetryHandler
 from llm.token_estimator import TokenEstimator

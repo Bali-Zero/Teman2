@@ -244,9 +244,9 @@
 
 ### Conversation 1
 
-**Client:** Saya umur 60 tahun, ingin pensiun dan tinggal di Bali. Tapi saya tidak mau beli properti mahal seperti syarat Second Home Visa. Ada opsi lain?
+**Client:** Saya umur 58 tahun, ingin pensiun dan tinggal di Bali. Tapi saya tidak mau beli properti mahal seperti syarat Second Home Visa. Ada opsi lain?
 
-**Consultant:** Bapak bisa memilih Visa E33E atau Visa Lanjut Usia (Citra baru dari Visa Lansia/Retirement). Syaratnya lebih ringan daripada Second Home Visa properti.
+**Consultant:** Bapak bisa memilih Visa E33E atau Visa Lanjut Usia (Retirement KITAS). Syarat umur minimal **55 tahun** (bukan 60 seperti yang sering salah dipahami). Syaratnya lebih ringan daripada Second Home Visa properti.
 
 **Client:** Berapa dana yang harus saya tunjukkan?
 

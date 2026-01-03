@@ -191,7 +191,8 @@ export class ApiClient extends ApiClientBase {
     abortSignal?: AbortSignal,
     correlationId?: string,
     idleTimeoutMs: number = 60000,
-    maxTotalTimeMs: number = 600000
+    maxTotalTimeMs: number = 600000,
+    images?: Array<{ base64: string; name: string }> // Vision images
   ): Promise<void> {
     return this.chatApi.sendMessageStreaming(
       message,
@@ -205,7 +206,8 @@ export class ApiClient extends ApiClientBase {
       abortSignal,
       correlationId,
       idleTimeoutMs,
-      maxTotalTimeMs
+      maxTotalTimeMs,
+      images
     );
   }
 

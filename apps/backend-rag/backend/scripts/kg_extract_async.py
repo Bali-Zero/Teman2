@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Extract KG entities from 500 chunks using backend's async QdrantClient"""
 import asyncio
-import re
 import json
+import re
 import sys
-import os
 
 # Add backend to path
 sys.path.insert(0, "/app")
@@ -179,7 +178,7 @@ async def main():
     }
     with open("/tmp/kg_extraction_500.json", "w") as f:
         json.dump(output, f, indent=2)
-    print(f"\nSaved to /tmp/kg_extraction_500.json")
+    print("\nSaved to /tmp/kg_extraction_500.json")
 
     await client.close()
 

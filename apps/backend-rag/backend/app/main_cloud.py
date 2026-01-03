@@ -77,8 +77,8 @@ async def on_shutdown() -> None:
     import inspect
     from contextlib import suppress
 
-    from services.monitoring.health_monitor import HealthMonitor
     from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+    from services.monitoring.health_monitor import HealthMonitor
 
     # Shutdown WebSocket Redis Listener
     redis_task = getattr(app.state, "redis_listener_task", None)

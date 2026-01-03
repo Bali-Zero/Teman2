@@ -67,7 +67,7 @@ function FeaturedCard({
   article,
   index = 0,
 }: ArticleCardProps) {
-  const href = `/insights/${article.category}/${article.slug}`;
+  const href = `/${article.category}/${article.slug}`;
 
   return (
     <motion.article
@@ -161,7 +161,7 @@ function DefaultCard({
   showAuthor = true,
   showReadTime = true,
 }: ArticleCardProps) {
-  const href = `/insights/${article.category}/${article.slug}`;
+  const href = `/${article.category}/${article.slug}`;
 
   return (
     <motion.article
@@ -264,7 +264,7 @@ function CompactCard({
   article,
   index = 0,
 }: ArticleCardProps) {
-  const href = `/insights/${article.category}/${article.slug}`;
+  const href = `/${article.category}/${article.slug}`;
 
   return (
     <motion.article
@@ -307,7 +307,7 @@ function HorizontalCard({
   index = 0,
   showCategory = true,
 }: ArticleCardProps) {
-  const href = `/insights/${article.category}/${article.slug}`;
+  const href = `/${article.category}/${article.slug}`;
 
   return (
     <motion.article

@@ -4,9 +4,9 @@ Target: >95% coverage
 """
 
 import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 from contextlib import asynccontextmanager
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -52,7 +52,7 @@ class TestRootEndpoints:
         assert "sessionId" in data
         assert len(data["csrfToken"]) == 64  # 32 bytes = 64 hex chars
         assert "session_" in data["sessionId"]
-        
+
         # Check headers
         assert "X-CSRF-Token" in response.headers
         assert "X-Session-Id" in response.headers
@@ -61,7 +61,7 @@ class TestRootEndpoints:
         """Test that CSRF tokens are unique"""
         response1 = client.get("/api/csrf-token")
         response2 = client.get("/api/csrf-token")
-        
+
         assert response1.json()["csrfToken"] != response2.json()["csrfToken"]
         assert response1.json()["sessionId"] != response2.json()["sessionId"]
 
@@ -70,19 +70,19 @@ class TestRootEndpoints:
         """Test dashboard stats with database"""
         mock_conn = AsyncMock()
         mock_conn.fetchval = AsyncMock(side_effect=[10, 1000])  # active_conversations, kb_documents
-        
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
-        
+
         mock_pool = MagicMock()
         mock_pool.acquire = acquire
-        
+
         app.state.db_pool = mock_pool
-        
+
         from fastapi.testclient import TestClient
         client = TestClient(app)
-        
+
         response = client.get("/api/dashboard/stats")
         assert response.status_code == 200
         data = response.json()
@@ -95,10 +95,10 @@ class TestRootEndpoints:
     async def test_get_dashboard_stats_no_db(self, app):
         """Test dashboard stats without database"""
         app.state.db_pool = None
-        
+
         from fastapi.testclient import TestClient
         client = TestClient(app)
-        
+
         response = client.get("/api/dashboard/stats")
         assert response.status_code == 200
         data = response.json()
@@ -110,22 +110,25 @@ class TestRootEndpoints:
         """Test dashboard stats with database error"""
         mock_conn = AsyncMock()
         mock_conn.fetchval = AsyncMock(side_effect=Exception("DB error"))
-        
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
-        
+
         mock_pool = MagicMock()
         mock_pool.acquire = acquire
-        
+
         app.state.db_pool = mock_pool
-        
+
         from fastapi.testclient import TestClient
         client = TestClient(app)
-        
+
         response = client.get("/api/dashboard/stats")
         assert response.status_code == 200
         data = response.json()
         assert data["system_health"] == "error"
         assert "error" in data
+
+
+
 

@@ -45,3 +45,59 @@ export interface AuthUrlResponse {
 export interface DisconnectResponse {
   success: boolean;
 }
+
+// ============== CRUD Operation Types ==============
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percentage: number;
+}
+
+export interface CreateFolderRequest {
+  name: string;
+  parent_id: string;
+}
+
+export interface CreateDocRequest {
+  name: string;
+  parent_id: string;
+  doc_type: 'document' | 'spreadsheet' | 'presentation';
+}
+
+export interface RenameRequest {
+  new_name: string;
+}
+
+export interface MoveRequest {
+  new_parent_id: string;
+  old_parent_id?: string;
+}
+
+export interface CopyRequest {
+  new_name?: string;
+  parent_folder_id?: string;
+}
+
+export interface OperationResponse {
+  success: boolean;
+  file?: FileItem;
+  message?: string;
+}
+
+export interface BulkOperationResponse {
+  success: boolean;
+  results: Array<{
+    file_id: string;
+    success: boolean;
+    message?: string;
+  }>;
+}
+
+export type DocType = 'document' | 'spreadsheet' | 'presentation';
+
+export interface UploadFile {
+  file: File;
+  parentId: string;
+  onProgress?: (progress: UploadProgress) => void;
+}

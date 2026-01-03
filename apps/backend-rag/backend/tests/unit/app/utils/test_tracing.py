@@ -7,19 +7,16 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from app.utils.tracing import (
-    get_tracer,
-    trace_span,
     add_span_event,
+    get_tracer,
     set_span_attribute,
     set_span_status,
-    OTEL_AVAILABLE,
+    trace_span,
 )
 
 
@@ -38,7 +35,7 @@ class TestTracingUtilities:
         """Test getting tracer when OpenTelemetry available"""
         mock_tracer = MagicMock()
         mock_trace.get_tracer.return_value = mock_tracer
-        
+
         tracer = get_tracer("test_tracer")
         assert tracer == mock_tracer
         mock_trace.get_tracer.assert_called_once_with("test_tracer")
@@ -48,7 +45,7 @@ class TestTracingUtilities:
     def test_get_tracer_exception(self, mock_trace):
         """Test getting tracer with exception"""
         mock_trace.get_tracer.side_effect = Exception("Tracer error")
-        
+
         tracer = get_tracer()
         assert tracer is None
 
@@ -69,7 +66,7 @@ class TestTracingUtilities:
         mock_context.__exit__ = MagicMock(return_value=False)
         mock_tracer.start_as_current_span.return_value = mock_context
         mock_get_tracer.return_value = mock_tracer
-        
+
         with trace_span("test_span", {"key": "value"}) as span:
             assert span == mock_span
             mock_span.set_attribute.assert_called()
@@ -87,7 +84,7 @@ class TestTracingUtilities:
         mock_span = MagicMock()
         mock_span.is_recording.return_value = True
         mock_trace.get_current_span.return_value = mock_span
-        
+
         add_span_event("test_event", {"key": "value"})
         mock_span.add_event.assert_called_once_with("test_event", attributes={"key": "value"})
 
@@ -104,7 +101,7 @@ class TestTracingUtilities:
         mock_span = MagicMock()
         mock_span.is_recording.return_value = True
         mock_trace.get_current_span.return_value = mock_span
-        
+
         set_span_attribute("key", "value")
         mock_span.set_attribute.assert_called_once_with("key", "value")
 
@@ -113,4 +110,7 @@ class TestTracingUtilities:
         """Test set_span_status when OpenTelemetry not available"""
         # Should not raise exception
         set_span_status("ok")
+
+
+
 

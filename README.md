@@ -69,13 +69,25 @@ The system now runs on the **Agentic RAG** architecture with **Conscious GraphRA
 └─────────────────────────────────────────────────────────┘
 ```
 
-## 📊 Test Coverage
+## 📊 Code Quality & Test Coverage
 
+### Test Coverage
 The project maintains **95.01%** test coverage (exceeding 90% target):
 - **reasoning.py**: 96.30% coverage
 - **feedback.py**: 89.61% coverage
 - **72+ comprehensive tests** covering all critical paths
 - Run coverage tests: `cd apps/backend-rag && pytest --cov=services.rag.agentic.reasoning --cov=app.routers.feedback --cov-report=html`
+
+### Code Quality & Linting
+- **Linting Tool:** Ruff (Python linter and formatter)
+- **Current Status:** ~1001 warnings (reduced from 2574, ~61% reduction)
+- **Critical Warnings:** ~673 (excluding intentional ARG001/ARG002/E402)
+- **Key Improvements:**
+  - B904 (exception chaining): Mostly fixed - remaining cases require manual review
+  - SIM117 (nested with statements): Many fixed automatically
+  - ARG001/ARG002/E402: Often intentional (FastAPI API compatibility, circular imports)
+- **Run Linting:** `cd apps/backend-rag && ruff check backend/`
+- **Auto-fix:** `cd apps/backend-rag && ruff check backend/ --fix`
 
 ## 🚀 Quick Start
 
@@ -190,6 +202,7 @@ Il deploy è **manuale e locale** tramite `flyctl deploy` per garantire il contr
 - [**System Map 4D**](docs/SYSTEM_MAP_4D.md) - Space, Time, Logic, Scale dimensions
 - [**Living Architecture**](docs/LIVING_ARCHITECTURE.md) - Auto-generated API & module reference
 - [**Race Conditions & Locking**](docs/RACE_CONDITIONS_LOCKING.md) - Locking behavior and race condition prevention
+- [**Code Quality Status**](docs/operations/CODE_QUALITY_STATUS.md) - Linting status and code quality metrics
 - [**Deploy Checklist**](docs/operations/DEPLOY_CHECKLIST.md) - Deployment procedures
 
 ### 🦟 Flyctl Management (Crucial)

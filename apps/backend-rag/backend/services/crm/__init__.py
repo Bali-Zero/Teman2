@@ -1,8 +1,8 @@
 """CRM services module."""
 
-from .auto_crm_service import AutoCRMService, get_auto_crm_service
 from .ai_crm_extractor import AICRMExtractor, get_extractor
-from .collaborator_service import CollaboratorService, CollaboratorProfile
+from .auto_crm_service import AutoCRMService, get_auto_crm_service
+from .collaborator_service import CollaboratorProfile, CollaboratorService
 
 __all__ = [
     "AutoCRMService",

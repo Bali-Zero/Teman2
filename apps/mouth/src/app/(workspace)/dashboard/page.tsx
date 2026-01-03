@@ -13,6 +13,7 @@ import {
   FinancialRealityWidget,
   NusantaraHealthWidget,
   AutoCRMWidget,
+  GrafanaWidget,
 } from '@/components/dashboard';
 import { api } from '@/lib/api';
 import type {
@@ -236,6 +237,9 @@ export default function DashboardPage() {
 
           {/* Nusantara System Health Map */}
           <NusantaraHealthWidget className="animate-in fade-in slide-in-from-top-4 duration-700 delay-150" />
+
+          {/* Grafana Observability Widget */}
+          <GrafanaWidget className="animate-in fade-in slide-in-from-top-4 duration-700 delay-200" />
         </>
       )}
 
@@ -286,7 +290,18 @@ export default function DashboardPage() {
         <PratichePreview pratiche={cases} isLoading={isLoading} />
 
         {/* WhatsApp Preview */}
-        <WhatsAppPreview messages={whatsappMessages} isLoading={isLoading} />
+        <WhatsAppPreview
+          messages={whatsappMessages}
+          isLoading={isLoading}
+          onDelete={async (id) => {
+            try {
+              await api.crm.deleteInteraction(parseInt(id), userEmail);
+              setWhatsappMessages(prev => prev.filter(m => m.id !== id));
+            } catch (error) {
+              console.error('Failed to delete interaction:', error);
+            }
+          }}
+        />
       </div>
     </div>
   );

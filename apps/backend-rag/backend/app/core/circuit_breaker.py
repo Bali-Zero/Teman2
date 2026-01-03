@@ -5,11 +5,11 @@ Prevents cascading failures by stopping requests to failing services
 and allowing them to recover.
 """
 
-import asyncio
 import logging
 import time
+from collections.abc import Callable
 from enum import Enum
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +176,7 @@ class CircuitBreaker:
             result = await func()
             self.record_success()
             return result
-        except Exception as e:
+        except Exception:
             self.record_failure()
             raise
 

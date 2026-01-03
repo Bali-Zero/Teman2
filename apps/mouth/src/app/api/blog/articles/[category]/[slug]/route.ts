@@ -198,9 +198,9 @@ The Golden Visa program positions Indonesia, and particularly Bali, as a premier
       trending: true,
       aiGenerated: true,
       status: 'published',
-      seoTitle: "Golden Visa Indonesia 2025: Complete Guide | Bali Zero",
+      seoTitle: "Golden Visa Indonesia 2026: Complete Guide | Bali Zero",
       seoDescription: "Everything you need to know about Indonesia's Golden Visa program. Investment requirements, benefits, and application process explained.",
-      relatedArticleIds: ['oss-2-complete-guide', 'kitas-application-2025'],
+      relatedArticleIds: ['oss-2-complete-guide', 'kitas-application-2026'],
       coverImageAlt: 'Golden Visa Indonesia program',
       createdAt: new Date('2024-12-20'),
       shareCount: 234,
@@ -297,47 +297,50 @@ Under OSS-RBA, businesses are classified by risk level:
       status: 'published',
       seoTitle: "OSS 2.0 Guide: Indonesia Business License System | Bali Zero",
       seoDescription: "Complete guide to Indonesia's OSS 2.0 system. Learn how to register your business, obtain licenses, and navigate KBLI codes.",
-      relatedArticleIds: ['golden-visa-revolution', 'tax-deadlines-2025'],
+      relatedArticleIds: ['golden-visa-revolution', 'tax-deadlines-2026'],
       coverImageAlt: 'OSS 2.0 Business Licensing Indonesia',
       createdAt: new Date('2024-12-18'),
       shareCount: 156,
       locale: 'en',
     },
-    'tax-legal/tax-deadlines-2025': {
+    'tax-legal/tax-deadlines-2026': {
       id: '3',
-      slug: 'tax-deadlines-2025',
-      title: 'Tax Deadlines 2025: What Every Expat in Indonesia Needs to Know',
-      excerpt: 'Key dates and obligations for personal and corporate tax filings in Indonesia.',
+      slug: 'tax-deadlines-2026',
+      title: 'Tax Deadlines 2026: What Every Expat in Indonesia Needs to Know',
+      excerpt: 'Key dates and obligations for personal and corporate tax filings. Coretax system now fully operational.',
       content: `
-# Tax Deadlines 2025
+# Tax Deadlines 2026
 
-Stay compliant with Indonesia's tax requirements. Here are the key dates you need to know for 2025.
+Stay compliant with Indonesia's tax requirements. The new **Coretax** system is now fully operational for all filings.
 
 ## Personal Tax (PPh 21)
 
 | Deadline | Obligation |
 |----------|------------|
 | Monthly (10th) | Employer withholding deposit |
-| Monthly (20th) | Monthly tax report (SPT Masa) |
-| March 31, 2025 | Annual personal tax return |
+| Monthly (20th) | Monthly tax report (SPT Masa) via Coretax |
+| March 31, 2026 | Annual personal tax return |
 
 ## Corporate Tax (PPh 25/29)
 
 | Deadline | Obligation |
 |----------|------------|
 | Monthly (15th) | Installment payment |
-| April 30, 2025 | Annual corporate tax return |
+| April 30, 2026 | Annual corporate tax return |
 
-## VAT (PPN)
+## VAT (PPN) - Now 12%
 
 - Monthly reporting by the end of the following month
 - Payment by the 15th of the following month
+- **Note:** VAT increased to 12% as of January 2025
 
-## Key Changes for 2025
+## Key Changes for 2026
 
-1. **New Tax Brackets** - Adjusted income thresholds
-2. **Digital Services Tax** - Extended to more platforms
-3. **Carbon Tax** - Introduction in select industries
+1. **Coretax Integration** - All filings now through the new system
+2. **VAT at 12%** - Full implementation from 2025
+3. **NIK as NPWP** - National ID now serves as tax number
+4. **Digital Services Tax** - Expanded to include more platforms
+5. **Carbon Tax** - Wider industry coverage
 
 ## Penalties for Late Filing
 
@@ -351,7 +354,7 @@ Stay compliant with Indonesia's tax requirements. Here are the key dates you nee
       `,
       coverImage: '/images/blog/tax-calendar.jpg',
       category: 'tax-legal',
-      tags: ['tax', 'deadlines', 'compliance', 'indonesia'],
+      tags: ['tax', 'deadlines', 'compliance', 'indonesia', 'coretax'],
       author: {
         id: 'zantara-ai',
         name: 'Zantara AI',
@@ -359,19 +362,19 @@ Stay compliant with Indonesia's tax requirements. Here are the key dates you nee
         role: 'AI Research Assistant',
         isAI: true,
       },
-      publishedAt: new Date('2024-12-15'),
-      updatedAt: new Date('2024-12-15'),
+      publishedAt: new Date('2025-12-28'),
+      updatedAt: new Date('2025-12-28'),
       readingTime: 8,
       viewCount: 6234,
       featured: false,
-      trending: false,
+      trending: true,
       aiGenerated: true,
       status: 'published',
-      seoTitle: "Indonesia Tax Deadlines 2025: Expat Guide | Bali Zero",
-      seoDescription: "Complete 2025 tax calendar for expats in Indonesia. Personal, corporate, and VAT deadlines explained.",
+      seoTitle: "Indonesia Tax Deadlines 2026: Expat Guide | Bali Zero",
+      seoDescription: "Complete 2026 tax calendar for expats in Indonesia. Personal, corporate, and VAT deadlines with Coretax integration.",
       relatedArticleIds: ['oss-2-complete-guide', 'golden-visa-revolution'],
-      coverImageAlt: 'Indonesia Tax Calendar 2025',
-      createdAt: new Date('2024-12-15'),
+      coverImageAlt: 'Indonesia Tax Calendar 2026',
+      createdAt: new Date('2025-12-28'),
       shareCount: 89,
       locale: 'en',
     },

@@ -20,11 +20,10 @@ The LLM decides which collection to search based on the tool description.
 import json
 import logging
 
-from app.utils.tracing import trace_span, set_span_attribute, set_span_status
+from app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from services.pricing.pricing_service import get_pricing_service
 from services.rag.vision_rag import VisionRAGService
 from services.tools.definitions import BaseTool
-from services.tools.knowledge_graph_tool import KnowledgeGraphTool
 
 logger = logging.getLogger(__name__)
 
@@ -90,13 +89,13 @@ class VectorSearchTool(BaseTool):
                 },
                 "top_k": {
                     "type": "integer",
-                    "description": "Number of results to return (default: 5)",
+                    "description": "Number of results to return (default: 8)",
                 },
             },
             "required": ["query"],
         }
 
-    async def execute(self, query: str, collection: str = None, top_k: int = 5, **kwargs) -> str:
+    async def execute(self, query: str, collection: str = None, top_k: int = 8, **kwargs) -> str:
         """
         Execute vector search.
 
@@ -108,7 +107,7 @@ class VectorSearchTool(BaseTool):
             "requested_collection": collection or "federated_all",
             "top_k": top_k,
         }):
-            top_k = int(top_k) if top_k else 5
+            top_k = int(top_k) if top_k else 8
 
             # Determine which collections to search
             if collection:
@@ -132,14 +131,14 @@ class VectorSearchTool(BaseTool):
                         res = await self.retriever.search_with_reranking(
                             query=query,
                             user_level=1,
-                            limit=3 if len(target_collections) > 1 else top_k,
+                            limit=5 if len(target_collections) > 1 else top_k,
                             collection_override=target_col
                         )
                     else:
                         res = await self.retriever.search(
                             query=query,
                             user_level=1,
-                            limit=3 if len(target_collections) > 1 else top_k,
+                            limit=5 if len(target_collections) > 1 else top_k,
                             collection_override=target_col
                         )
 
@@ -465,6 +464,7 @@ class ImageGenerationTool(BaseTool):
     async def execute(self, prompt: str, aspect_ratio: str = "1:1", **kwargs) -> str:
         """Generate an image using Google Imagen API."""
         import httpx
+
         from app.core.config import settings
 
         with trace_span("tool.generate_image", {"prompt_length": len(prompt)}):

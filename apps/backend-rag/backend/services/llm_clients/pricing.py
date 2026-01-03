@@ -10,9 +10,9 @@ Author: Nuzantara Team
 Date: 2025-12-28
 """
 
-from dataclasses import dataclass, field
-from typing import Any
 import logging
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -239,4 +239,4 @@ def list_available_models() -> list[str]:
     Returns:
         List of model names
     """
-    return [m for m in LLM_PRICING.keys() if m != "unknown"]
+    return [m for m in LLM_PRICING if m != "unknown"]

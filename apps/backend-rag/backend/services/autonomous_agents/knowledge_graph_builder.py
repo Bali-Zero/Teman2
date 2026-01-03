@@ -24,7 +24,8 @@ import logging
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 import asyncpg
 
 logger = logging.getLogger(__name__)
@@ -149,8 +150,8 @@ class KnowledgeGraphBuilder:
         self.llm_gateway = llm_gateway
 
         # In-memory cache (synchronized with DB on export/load)
-        self.entities: Dict[str, Entity] = {}
-        self.relationships: Dict[str, Relationship] = {}
+        self.entities: dict[str, Entity] = {}
+        self.relationships: dict[str, Relationship] = {}
 
         self.graph_stats = {
             "total_entities": 0,
@@ -166,13 +167,13 @@ class KnowledgeGraphBuilder:
         """Add entity to graph (Persistent)"""
         # 1. Update In-Memory
         self.entities[entity.entity_id] = entity
-        
+
         # 2. Persist to DB
         if self.db_pool:
             try:
                 # Ensure chunk_ids is a list for SQL array
                 chunks = entity.source_chunk_ids or []
-                
+
                 query = """
                     INSERT INTO kg_nodes (
                         entity_id, entity_type, name, description, properties, 
@@ -204,12 +205,12 @@ class KnowledgeGraphBuilder:
         """Add relationship to graph (Persistent)"""
         # 1. Update In-Memory
         self.relationships[relationship.relationship_id] = relationship
-        
+
         # 2. Persist to DB
         if self.db_pool:
             try:
                 chunks = relationship.source_chunk_ids or []
-                
+
                 query = """
                     INSERT INTO kg_edges (
                         relationship_id, source_entity_id, target_entity_id, 
@@ -242,18 +243,18 @@ class KnowledgeGraphBuilder:
         """
         if self.llm_gateway:
             return await self.extract_via_llm(text, source_collection="api_request")
-        
+
         # Fallback to Regex
         logger.info("⚠️ LLM not available, using Regex extraction fallback")
         entities = self.extract_entities_from_text(text, source_collection="api_request")
         relationships = self.infer_relationships_from_text(text, entities, source_collection="api_request")
-        
+
         # Save to DB (async)
         for e in entities:
             await self.add_entity(e)
         for r in relationships:
             await self.add_relationship(r)
-            
+
         return {
             "entities": [asdict(e) for e in entities],
             "relationships": [asdict(r) for r in relationships]
@@ -268,7 +269,7 @@ class KnowledgeGraphBuilder:
                 for match in matches:
                     entity_name = (match.group(1) if match.groups() else match.group(0)).strip()
                     entity_id = f"{entity_type}_{entity_name.replace(' ', '_').lower()}"
-                    
+
                     if entity_id in self.entities:
                         continue
 
@@ -343,7 +344,7 @@ class KnowledgeGraphBuilder:
         for doc in documents:
             text = doc.get("text", "")
             chunk_id = str(doc.get("id", "")) or None
-            
+
             # Use LLM extraction if available (more accurate)
             if self.llm_gateway:
                 await self.extract_via_llm(text, source_collection=collection_name, chunk_id=chunk_id)
@@ -372,7 +373,7 @@ class KnowledgeGraphBuilder:
         """Fetch all nodes and edges from DB to memory for export"""
         if not self.db_pool:
             return
-            
+
         try:
             # Fetch Nodes
             nodes = await self.db_pool.fetch("SELECT * FROM kg_nodes")
@@ -390,7 +391,7 @@ class KnowledgeGraphBuilder:
                     source_chunk_ids=row['source_chunk_ids'] or []
                 )
                 self.entities[entity.entity_id] = entity
-                
+
             # Fetch Edges
             edges = await self.db_pool.fetch("SELECT * FROM kg_edges")
             self.relationships = {}
@@ -407,7 +408,7 @@ class KnowledgeGraphBuilder:
                     source_chunk_ids=row['source_chunk_ids'] or []
                 )
                 self.relationships[rel.relationship_id] = rel
-                
+
             logger.info(f"🔄 Refreshed graph from DB: {len(self.entities)} nodes, {len(self.relationships)} edges")
         except Exception as e:
             logger.error(f"Failed to refresh from DB: {e}")
@@ -457,23 +458,23 @@ class KnowledgeGraphBuilder:
                 memory_context="You are a strict JSON extractor. Output ONLY valid JSON.",
                 max_tokens=8192
             )
-            
+
             response_text = response.get("text", "")
             cleaned_text = response_text.replace("```json", "").replace("```", "").strip()
             if "{" in cleaned_text:
                 cleaned_text = cleaned_text[cleaned_text.find("{"):cleaned_text.rfind("}")+1]
-                
+
             data = json.loads(cleaned_text)
-            
+
             extracted_entities = []
             extracted_relationships = []
-            
+
             chunk_ids = [chunk_id] if chunk_id else []
-            
+
             for e_data in data.get("entities", []):
                 e_id = e_data.get("id") or f"{e_data.get('type')}_{e_data.get('name').replace(' ', '_')}".lower()
                 e_id = re.sub(r'[^a-zA-Z0-9_]', '', e_id)
-                
+
                 entity = Entity(
                     entity_id=e_id,
                     entity_type=e_data.get("type", "UNKNOWN"),
@@ -485,11 +486,11 @@ class KnowledgeGraphBuilder:
                 )
                 extracted_entities.append(entity)
                 await self.add_entity(entity)
-                
+
             for r_data in data.get("relationships", []):
                 rel_id = f"{r_data.get('source')}_{r_data.get('type')}_{r_data.get('target')}".lower()
                 rel_id = re.sub(r'[^a-zA-Z0-9_]', '', rel_id)
-                
+
                 rel = Relationship(
                     relationship_id=rel_id,
                     source_entity_id=r_data.get("source"),
@@ -502,10 +503,10 @@ class KnowledgeGraphBuilder:
                 )
                 extracted_relationships.append(rel)
                 await self.add_relationship(rel)
-                
+
             logger.info(f"🧠 Semantic Extraction: {len(extracted_entities)} entities, {len(extracted_relationships)} relationships")
             return {"entities": extracted_entities, "relationships": extracted_relationships}
-            
+
         except Exception as e:
             logger.error(f"Semantic extraction failed: {e}")
             return {"entities": [], "relationships": []}
@@ -535,42 +536,42 @@ class KnowledgeGraphBuilder:
         """Generate Cypher queries"""
         lines = ["// Knowledge Graph Export for Neo4j"]
         lines.append("CREATE CONSTRAINT IF NOT EXISTS FOR (e:Entity) REQUIRE e.id IS UNIQUE;\n")
-        
+
         for entity in self.entities.values():
             name = entity.name.replace('"', '\"')
             desc = (entity.description or "").replace('"', '\"')
-            
+
             props = [
-                f'id: "{entity.entity_id}"', 
-                f'name: "{name}"', 
-                f'type: "{entity.entity_type}"', 
-                f'description: "{desc}"', 
+                f'id: "{entity.entity_id}"',
+                f'name: "{name}"',
+                f'type: "{entity.entity_type}"',
+                f'description: "{desc}"',
                 f'confidence: {entity.confidence}'
             ]
-            
+
             for k, v in entity.properties.items():
                 if isinstance(v, (int, float, bool)):
                     props.append(f'{k}: {v}')
                 else:
                     val_safe = str(v).replace('"', '\"')
                     props.append(f'{k}: "{val_safe}"')
-            
+
             lines.append(f'MERGE (e:Entity {{id: "{entity.entity_id}"}}) SET e += {{{", ".join(props)}}}, e:{entity.entity_type};')
 
         lines.append("")
         for rel in self.relationships.values():
             rel_type = rel.relationship_type.upper().replace(" ", "_")
             props = [f'id: "{rel.relationship_id}"', f'confidence: {rel.confidence}']
-            
+
             for k, v in rel.properties.items():
                 if isinstance(v, (int, float, bool)):
                     props.append(f'{k}: {v}')
                 else:
                     val_safe = str(v).replace('"', '\"')
                     props.append(f'{k}: "{val_safe}"')
-            
+
             lines.append(f'MATCH (s:Entity {{id: "{rel.source_entity_id}"}}) MATCH (t:Entity {{id: "{rel.target_entity_id}"}}) MERGE (s)-[r:{rel_type}]->(t) SET r += {{{", ".join(props)}}};')
-        
+
         return "\n".join(lines)
 
     def _export_graphml(self) -> str:

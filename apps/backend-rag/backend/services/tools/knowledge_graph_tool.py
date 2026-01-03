@@ -5,8 +5,8 @@ Allows the AI Agent to query the persistent Knowledge Graph to find structured
 relationships between business entities (e.g., "What connects PT PMA to KITAS?").
 """
 
-from services.tools.definitions import BaseTool
 from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
+from services.tools.definitions import BaseTool
 
 
 class KnowledgeGraphTool(BaseTool):

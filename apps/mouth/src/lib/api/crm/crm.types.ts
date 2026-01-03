@@ -77,6 +77,10 @@ export interface Client {
   company_name?: string;
   nationality?: string;
   passport_number?: string;
+  passport_expiry?: string;
+  date_of_birth?: string;
+  avatar_url?: string;
+  google_drive_folder_id?: string;
   notes?: string;
   status?: string;
   client_type?: string;
@@ -87,6 +91,151 @@ export interface Client {
   last_interaction_date?: string;
   created_at: string;
   updated_at?: string;
+}
+
+// ============================================
+// FAMILY MEMBERS
+// ============================================
+
+export interface FamilyMember {
+  id: number;
+  client_id: number;
+  full_name: string;
+  relationship: 'spouse' | 'child' | 'parent' | 'sibling' | 'other';
+  date_of_birth?: string;
+  nationality?: string;
+  passport_number?: string;
+  passport_expiry?: string;
+  current_visa_type?: string;
+  visa_expiry?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  passport_alert?: 'green' | 'yellow' | 'red' | 'expired';
+  visa_alert?: 'green' | 'yellow' | 'red' | 'expired';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FamilyMemberCreate {
+  full_name: string;
+  relationship: string;
+  date_of_birth?: string;
+  nationality?: string;
+  passport_number?: string;
+  passport_expiry?: string;
+  current_visa_type?: string;
+  visa_expiry?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+}
+
+// ============================================
+// DOCUMENTS
+// ============================================
+
+export interface ClientDocument {
+  id: number;
+  client_id: number;
+  document_type: string;
+  document_category?: 'immigration' | 'pma' | 'tax' | 'personal' | 'other';
+  file_name?: string;
+  file_id?: string;
+  file_url?: string;
+  google_drive_file_url?: string;
+  status?: 'pending' | 'received' | 'verified' | 'rejected' | 'expired';
+  expiry_date?: string;
+  notes?: string;
+  is_archived?: boolean;
+  family_member_id?: number;
+  family_member_name?: string;
+  practice_id?: number;
+  alert_color?: 'green' | 'yellow' | 'red' | 'expired';
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface DocumentCreate {
+  document_type: string;
+  document_category?: string;
+  file_name?: string;
+  file_id?: string;
+  file_url?: string;
+  google_drive_file_url?: string;
+  expiry_date?: string;
+  notes?: string;
+  family_member_id?: number;
+  practice_id?: number;
+}
+
+export interface DocumentCategory {
+  code: string;
+  name: string;
+  category_group: 'immigration' | 'pma' | 'tax' | 'personal' | 'other';
+  description?: string;
+  has_expiry: boolean;
+}
+
+// ============================================
+// EXPIRY ALERTS
+// ============================================
+
+export interface ExpiryAlert {
+  entity_type: 'client' | 'family_member' | 'document';
+  entity_id: number;
+  entity_name: string;
+  client_id: number;
+  client_name: string;
+  document_type: string;
+  expiry_date: string;
+  days_until_expiry: number;
+  alert_color: 'green' | 'yellow' | 'red' | 'expired';
+  assigned_to?: string;
+}
+
+export interface ExpiryAlertsSummary {
+  counts: {
+    expired: number;
+    red: number;
+    yellow: number;
+    green: number;
+  };
+  urgent_alerts: Array<{
+    client_name: string;
+    entity_name: string;
+    document_type: string;
+    expiry_date: string;
+    days_until_expiry: number;
+    alert_color: string;
+  }>;
+}
+
+// ============================================
+// CLIENT PROFILE (Enhanced)
+// ============================================
+
+export interface ClientProfile {
+  client: Client;
+  family_members: FamilyMember[];
+  documents: ClientDocument[];
+  expiry_alerts: ExpiryAlert[];
+  practices: Array<{
+    id: number;
+    status: string;
+    expiry_date?: string;
+    practice_type_code: string;
+    practice_type_name: string;
+    alert_color?: string;
+  }>;
+  stats: {
+    family_count: number;
+    documents_count: number;
+    practices_count: number;
+    expired_count: number;
+    red_alerts: number;
+    yellow_alerts: number;
+  };
 }
 
 export interface ClientSummary {

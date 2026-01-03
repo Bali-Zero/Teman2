@@ -6,7 +6,7 @@ Composer: 4
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -59,14 +59,14 @@ class TestDatabaseManager:
             "email": "test@example.com",
             "name": "Test User"
         }
-        
+
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_result
         mock_engine = MagicMock()
         mock_engine.connect.return_value.__enter__.return_value = mock_conn
-        
+
         database_manager._engine = mock_engine
-        
+
         profile = await database_manager.get_user_profile("test@example.com")
         assert profile is not None
 
@@ -77,9 +77,9 @@ class TestDatabaseManager:
         mock_engine = MagicMock()
         mock_engine.begin.return_value.__enter__.return_value = mock_conn
         mock_conn.execute = MagicMock()
-        
+
         database_manager._engine = mock_engine
-        
+
         # store_feedback returns None (void)
         await database_manager.store_feedback({
             "user_id": "test@example.com",
@@ -87,7 +87,7 @@ class TestDatabaseManager:
             "query_text": "test",
             "original_answer": "answer"
         })
-        
+
         # Verify execute was called
         mock_conn.execute.assert_called_once()
 

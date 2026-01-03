@@ -9,9 +9,7 @@ This provides cost savings when Pollinations works,
 with reliable fallback to OpenAI when needed.
 """
 
-import base64
 import logging
-from typing import Optional
 from urllib.parse import quote
 
 import httpx
@@ -30,12 +28,14 @@ class AudioService:
     """
     Hybrid Audio Service: Pollinations (free) with OpenAI fallback.
 
-    TTS: Pollinations GET endpoint -> OpenAI fallback
+    TTS: Pollinations GET endpoint -> OpenAI fallback (5s timeout for fast response)
     STT: OpenAI Whisper (more reliable for transcription)
     """
 
     def __init__(self):
-        self.http_client = httpx.AsyncClient(timeout=30.0)
+        # Short timeout for TTS - fallback to OpenAI quickly if Pollinations is slow
+        self.http_client = httpx.AsyncClient(timeout=10.0)
+        self.tts_timeout = 5.0  # Fast fallback to OpenAI for TTS
 
         # OpenAI client for fallback and STT
         self.openai_api_key = settings.openai_api_key
@@ -47,7 +47,7 @@ class AudioService:
             logger.warning("AudioService: OpenAI not available (no API key), Pollinations only")
 
     async def transcribe_audio(
-        self, file_path_or_buffer, model: str = "whisper-1", language: Optional[str] = None
+        self, file_path_or_buffer, model: str = "whisper-1", language: str | None = None
     ) -> str:
         """
         Transcribe audio to text.
@@ -81,7 +81,7 @@ class AudioService:
         text: str,
         voice: str = "alloy",
         model: str = "tts-1",
-        output_path: Optional[str] = None,
+        output_path: str | None = None,
     ) -> bytes:
         """
         Generate speech from text.
@@ -141,7 +141,7 @@ class AudioService:
 
             logger.debug(f"Pollinations TTS request: voice={voice}, text_len={len(text)}")
 
-            response = await self.http_client.get(url, params=params, timeout=30.0)
+            response = await self.http_client.get(url, params=params, timeout=self.tts_timeout)
 
             if response.status_code != 200:
                 logger.warning(f"Pollinations TTS returned {response.status_code}")
@@ -184,7 +184,7 @@ class AudioService:
 
 
 # Singleton instance
-_audio_service: Optional[AudioService] = None
+_audio_service: AudioService | None = None
 
 
 def get_audio_service() -> AudioService:

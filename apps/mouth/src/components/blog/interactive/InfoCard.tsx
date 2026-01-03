@@ -24,7 +24,8 @@ export type InfoCardVariant =
   | 'error'
   | 'tip'
   | 'important'
-  | 'note';
+  | 'note'
+  | 'highlight';
 
 export interface InfoCardProps {
   /** Variant determines color and icon */
@@ -120,6 +121,15 @@ const variantStyles: Record<InfoCardVariant, {
     titleColor: 'text-white/80',
     defaultTitle: 'Note',
     icon: BookOpen,
+  },
+  highlight: {
+    bg: 'bg-[#2251ff]/10',
+    border: 'border-[#2251ff]/30',
+    iconBg: 'bg-[#2251ff]/20',
+    iconColor: 'text-[#2251ff]',
+    titleColor: 'text-[#2251ff]',
+    defaultTitle: 'Highlight',
+    icon: Zap,
   },
 };
 

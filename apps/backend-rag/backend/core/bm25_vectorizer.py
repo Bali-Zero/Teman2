@@ -96,7 +96,6 @@ INDONESIAN_STOPWORDS = {
     "butir",
     "nomor",
     "tahun",
-    "tentang",
     "peraturan",
     "undang",
     "pemerintah",

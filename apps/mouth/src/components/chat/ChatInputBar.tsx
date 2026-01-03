@@ -30,6 +30,7 @@ export interface ChatInputBarProps {
   recordingTime: number;
   onStartRecording: () => void;
   onStopRecording: () => void;
+  onToggleRecording?: () => void; // Click-to-toggle handler
 }
 
 export function ChatInputBar({
@@ -49,7 +50,18 @@ export function ChatInputBar({
   recordingTime,
   onStartRecording,
   onStopRecording,
+  onToggleRecording,
 }: ChatInputBarProps) {
+  // Use toggle handler if provided, otherwise fall back to start/stop
+  const handleMicClick = () => {
+    if (onToggleRecording) {
+      onToggleRecording();
+    } else if (isRecording) {
+      onStopRecording();
+    } else {
+      onStartRecording();
+    }
+  };
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -106,18 +118,8 @@ export function ChatInputBar({
                   ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse scale-110'
                   : 'text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]'
               }`}
-              onMouseDown={onStartRecording}
-              onMouseUp={onStopRecording}
-              onMouseLeave={onStopRecording}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                onStartRecording();
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                onStopRecording();
-              }}
-              title="Hold to Record"
+              onClick={handleMicClick}
+              title={isRecording ? 'Stop Recording' : 'Start Recording'}
             >
               <Mic className={`w-3.5 h-3.5 ${isRecording ? 'animate-bounce' : ''}`} />
             </Button>

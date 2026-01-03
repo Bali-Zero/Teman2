@@ -618,3 +618,43 @@ async def create_interaction_from_conversation(
 
 
 # NOTE: Gmail sync endpoint removed - will be replaced by MCP integration
+
+
+@router.delete("/interactions/{interaction_id}")
+async def delete_interaction(
+    interaction_id: int,
+    deleted_by: str = Query(..., description="Email of user deleting"),
+    pool=Depends(get_database_pool),
+):
+    """
+    Delete an interaction (soft delete - marks as archived).
+    Only allows deletion of interactions, not system-generated records.
+    """
+    try:
+        async with pool.acquire() as conn:
+            # Check if interaction exists
+            existing = await conn.fetchrow(
+                "SELECT id, interaction_type FROM interactions WHERE id = $1",
+                interaction_id,
+            )
+            if not existing:
+                raise HTTPException(status_code=404, detail="Interaction not found")
+
+            # Delete the interaction
+            await conn.execute(
+                "DELETE FROM interactions WHERE id = $1",
+                interaction_id,
+            )
+
+            logger.info(f"Interaction {interaction_id} deleted by {deleted_by}")
+
+            return {
+                "success": True,
+                "interaction_id": interaction_id,
+                "deleted_by": deleted_by,
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise handle_database_error(e)

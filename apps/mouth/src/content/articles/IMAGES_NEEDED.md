@@ -9,10 +9,10 @@
 |-----------|-------------------|
 | `/images/blog/immigration/complete-indonesia-visa-guide.jpg` | Passport with Indonesia visa stamp |
 | `/images/blog/immigration/visa-on-arrival.jpg` | VOA counter at Bali airport |
-| `/images/blog/immigration/b211a-visa.jpg` | Indonesia visa document close-up |
+| `/images/blog/immigration/e33g-visa.jpg` | E33G Digital Nomad visa document |
 | `/images/blog/immigration/extending-tourist-visa.jpg` | Immigration office queue |
 | `/images/blog/immigration/visa-free-countries.jpg` | World map with highlighted countries |
-| `/images/blog/immigration/voa-vs-b211a.jpg` | Split comparison visual |
+| `/images/blog/immigration/voa-vs-e33g.jpg` | Split comparison visual |
 | `/images/blog/immigration/voa-extension.jpg` | Calendar with visa dates |
 | `/images/blog/immigration/kitas-work-permit.jpg` | KITAS card sample |
 | `/images/blog/immigration/rptka-imta.jpg` | Official documents on desk |
@@ -22,7 +22,7 @@
 | `/images/blog/immigration/investor-kitas.jpg` | Business person with passport |
 | `/images/blog/immigration/director-employee-kitas.jpg` | Corporate office setting |
 | `/images/blog/immigration/shareholder-kitas.jpg` | Shareholders meeting |
-| `/images/blog/immigration/converting-b211a-kitas.jpg` | Transition arrows concept |
+| `/images/blog/immigration/converting-d12-kitas.jpg` | Transition arrows concept |
 | `/images/blog/immigration/retirement-visa.jpg` | Retiree enjoying Bali |
 | `/images/blog/immigration/second-home-visa.jpg` | Luxury villa lifestyle |
 | `/images/blog/immigration/digital-nomad-visa.jpg` | Laptop on Bali beach |

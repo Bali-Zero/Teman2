@@ -744,7 +744,7 @@ Perfect! Ini typical path:
 | **D12 Business Investigation** | **180 days** | For pre-investment survey |
 | **D1 Tourism Multiple Entry** | 60 days | For tourism only |
 | **VOA (Visa on Arrival)** | 30+30 = 60 days | Short visits |
-| **B211A Social/Business** | 60 days (extendable) | Social/business visit |
+| **C1 Tourism Single Entry** | 60 days | Social/tourism visit |
 
 **D12 = 180 days per entry, NOT 60!**
 

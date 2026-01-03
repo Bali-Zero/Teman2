@@ -1,24 +1,24 @@
 """Ingestion services module."""
 
-from .ingestion_service import IngestionService
-from .collection_manager import CollectionManager
-from .collection_health_service import (
-    CollectionHealthService,
-    HealthStatus,
-    StalenessSeverity,
-    CollectionMetrics,
-)
-from .collection_warmup_service import CollectionWarmupService
-from .legal_ingestion_service import LegalIngestionService
 from .auto_ingestion_orchestrator import (
     AutoIngestionOrchestrator,
-    SourceType,
-    UpdateType,
+    IngestionJob,
     IngestionStatus,
     MonitoredSource,
     ScrapedContent,
-    IngestionJob,
+    SourceType,
+    UpdateType,
 )
+from .collection_health_service import (
+    CollectionHealthService,
+    CollectionMetrics,
+    HealthStatus,
+    StalenessSeverity,
+)
+from .collection_manager import CollectionManager
+from .collection_warmup_service import CollectionWarmupService
+from .ingestion_service import IngestionService
+from .legal_ingestion_service import LegalIngestionService
 from .politics_ingestion import PoliticsIngestionService
 
 __all__ = [

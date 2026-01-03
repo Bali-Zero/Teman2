@@ -64,9 +64,10 @@ Untuk kerja di PT sendiri, butuh:
 - Satu paket processing
 - Biaya include semua
 
-**Harga E28A + IMTA:**
+**Harga E28A + IMTA (Bali Zero 2025):**
 - **Offshore:** Rp 17.000.000 - 19.000.000
 - **Onshore:** Rp 19.000.000 - 21.000.000
+- **MERP 5 tahun SUDAH TERMASUK** (Re-entry Permit langsung 5 tahun)
 
 **4 — Client:**
 RPTKA itu apa? Ribet nggak?
@@ -216,9 +217,9 @@ Kalau E28A sudah dapat, kewajiban saya apa?
 **Consultant:**
 **Kewajiban KITAS Holder:**
 
-1. **SKTT Reporting** (setiap 3 bulan)
+1. **SKTT Reporting** (setiap tahun)
    - Lapor domicile ke immigration office
-   - Gratis (atau pakai jasa Rp 500K)
+   - Gratis
 
 2. **LKPM Quarterly** (laporan investasi)
    - Lapor ke BKPM setiap kuartal
@@ -354,7 +355,7 @@ Kamu bebas:
 - ✅ No minimum stay requirement di Indonesia
 
 **Tapi ingat:**
-- **SKTT** tetap harus lapor every 3 months (bisa diwakilkan)
+- **SKTT** tetap harus lapor setiap tahun (bisa diwakilkan)
 - **Tax residency:** kalau stay < 183 hari/tahun, mungkin tidak tax resident (consult tax advisor)
 
 **Praktis untuk:**
@@ -528,9 +529,10 @@ To work in your own PT, you need:
 - One package processing
 - Cost includes all
 
-**E28A + IMTA Pricing:**
+**E28A + IMTA Pricing (Bali Zero 2025):**
 - **Offshore:** IDR 17,000,000 - 19,000,000
 - **Onshore:** IDR 19,000,000 - 21,000,000
+- **5-YEAR MERP INCLUDED** (Multiple Entry Re-entry Permit for 5 years)
 
 **4 — Client:**
 What's RPTKA? Is it complicated?
@@ -616,8 +618,8 @@ What's the total cost from start to receiving KITAS?
 **Total Cost Breakdown:**
 
 **E28A Package (Bali Zero 2025):**
-- **Investor KITAS 2 Years (Offshore):** **IDR 17,000,000** (all-inclusive: KITAS + IMTA + RPTKA)
-- **Investor KITAS 2 Years (Onshore):** **IDR 19,000,000** (all-inclusive)
+- **Investor KITAS 2 Years (Offshore):** **IDR 17,000,000** (all-inclusive: KITAS + IMTA + RPTKA + **5-year MERP**)
+- **Investor KITAS 2 Years (Onshore):** **IDR 19,000,000** (all-inclusive + **5-year MERP**)
 
 **Supporting Costs:**
 - Medical checkup: IDR 500,000
@@ -680,9 +682,9 @@ Once I get E28A, what are my obligations?
 **Consultant:**
 **KITAS Holder Obligations:**
 
-1. **SKTT Reporting** (every 3 months)
+1. **SKTT Reporting** (annually)
    - Report domicile to immigration office
-   - Free (or use service IDR 500K)
+   - Free
 
 2. **LKPM Quarterly** (investment report)
    - Report to BKPM every quarter
@@ -818,7 +820,7 @@ You're free to:
 - ✅ No minimum stay requirement in Indonesia
 
 **But remember:**
-- **SKTT** must still be reported every 3 months (can be represented)
+- **SKTT** must still be reported annually (can be represented)
 - **Tax residency:** if stay < 183 days/year, may not be tax resident (consult tax advisor)
 
 **Practical for:**
@@ -995,6 +997,7 @@ Kanggo kerjo neng PT dewe, butuh:
 **Rego E28A + IMTA:**
 - **Offshore:** Rp 17.000.000 - 19.000.000
 - **Onshore:** Rp 19.000.000 - 21.000.000
+- **MERP 5 taun WIS TERMASUK** (Re-entry Permit langsung 5 taun)
 
 **4 — Client:**
 RPTKA iku opo? Ribet ora?
@@ -1144,9 +1147,9 @@ Nek E28A wis entuk, kewajiban ku opo?
 **Consultant:**
 **Kewajiban KITAS Holder:**
 
-1. **SKTT Reporting** (saben 3 sasi)
+1. **SKTT Reporting** (saben taun)
    - Lapor domicile neng immigration office
-   - Gratis (utowo pake jasa Rp 500K)
+   - Gratis
 
 2. **LKPM Quarterly** (laporan investasi)
    - Lapor neng BKPM saben kuartal
@@ -1282,7 +1285,7 @@ Sampeyan bebas:
 - ✅ Ora ono minimum stay requirement neng Indonesia
 
 **Tapi elingo:**
-- **SKTT** tetep kudu lapor every 3 months (iso diwakilke)
+- **SKTT** tetep kudu lapor saben taun (iso diwakilke)
 - **Tax residency:** nek stay < 183 dino/taun, mungkin ora tax resident (consult tax advisor)
 
 **Praktis kanggo:**
@@ -1407,8 +1410,8 @@ Congrats neng PT PMA sampeyan — welcome to doing business in Indonesia! 🇮�
 | **For** | PT PMA directors, commissioners, active shareholders |
 | **IMTA Required** | Yes (work permit, included in package) |
 | **RPTKA Required** | Yes (foreign worker employment plan) |
-| **Offshore Cost** | IDR 17,000,000 - 19,000,000 (E28A + IMTA) |
-| **Onshore Cost** | IDR 19,000,000 - 21,000,000 |
+| **Offshore Cost** | IDR 17,000,000 - 19,000,000 (E28A + IMTA + 5-year MERP) |
+| **Onshore Cost** | IDR 19,000,000 - 21,000,000 (includes 5-year MERP) |
 | **Extension Cost** | IDR 18,000,000 (after 2 years) |
 | **Timeline Offshore** | 4-6 weeks |
 | **Timeline Onshore** | 5-8 weeks |
@@ -1417,7 +1420,7 @@ Congrats neng PT PMA sampeyan — welcome to doing business in Indonesia! 🇮�
 | **UMR Bali** | IDR 2.9M - 3.2M/month (varies by regency) |
 | **UMR Jakarta** | IDR 5.067M/month |
 | **BPJS Cost** | ~10-15% of salary (employer + employee) |
-| **SKTT Reporting** | Every 3 months |
+| **SKTT Reporting** | Annually |
 | **LKPM Reporting** | Quarterly to BKPM |
 | **KITAP Eligibility** | After 4-5 years continuous KITAS |
 | **Multiple Entry** | Yes (no stay limit) |

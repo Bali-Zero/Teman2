@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -52,15 +52,15 @@ class TestWhatsAppNotificationService:
         """Test sending message successfully"""
         mock_message = MagicMock()
         mock_message.sid = "test_sid_123"
-        
+
         mock_client = MagicMock()
         mock_client.messages.create = MagicMock(return_value=mock_message)
-        
+
         with patch("agents.services.whatsapp_notification.Client", return_value=mock_client), \
              patch("asyncio.get_event_loop") as mock_loop, \
              patch("asyncio.run_in_executor") as mock_executor:
             mock_executor.return_value = mock_message
-            
+
             result = await whatsapp_service.send_message("+1234567890", "Test message")
             assert result == "test_sid_123"
 
@@ -76,15 +76,15 @@ class TestWhatsAppNotificationService:
         """Test sending message with phone number formatting"""
         mock_message = MagicMock()
         mock_message.sid = "test_sid_123"
-        
+
         mock_client = MagicMock()
         mock_client.messages.create = MagicMock(return_value=mock_message)
-        
+
         with patch("agents.services.whatsapp_notification.Client", return_value=mock_client), \
              patch("asyncio.get_event_loop") as mock_loop, \
              patch("asyncio.run_in_executor") as mock_executor:
             mock_executor.return_value = mock_message
-            
+
             # Phone without +
             result = await whatsapp_service.send_message("1234567890", "Test message")
             assert result == "test_sid_123"
@@ -98,11 +98,11 @@ class TestWhatsAppNotificationService:
         """Test sending message with retry"""
         mock_message = MagicMock()
         mock_message.sid = "test_sid_123"
-        
+
         mock_client = MagicMock()
         # First call fails, second succeeds
         mock_client.messages.create = MagicMock(side_effect=[Exception("Error"), mock_message])
-        
+
         with patch("agents.services.whatsapp_notification.Client", return_value=mock_client), \
              patch("asyncio.get_event_loop") as mock_loop, \
              patch("asyncio.run_in_executor") as mock_executor, \
@@ -115,9 +115,9 @@ class TestWhatsAppNotificationService:
                 if call_count == 1:
                     raise Exception("Error")
                 return mock_message
-            
+
             mock_executor.side_effect = mock_executor_func
-            
+
             result = await whatsapp_service.send_message("+1234567890", "Test message", max_retries=3)
             assert result == "test_sid_123"
 
@@ -125,16 +125,16 @@ class TestWhatsAppNotificationService:
     async def test_send_message_timeout(self, whatsapp_service):
         """Test sending message with timeout"""
         import asyncio
-        
+
         mock_client = MagicMock()
         mock_client.messages.create = MagicMock()
-        
+
         with patch("agents.services.whatsapp_notification.Client", return_value=mock_client), \
              patch("asyncio.get_event_loop") as mock_loop, \
              patch("asyncio.run_in_executor") as mock_executor, \
              patch("asyncio.wait_for") as mock_wait_for:
             mock_wait_for.side_effect = asyncio.TimeoutError()
-            
+
             result = await whatsapp_service.send_message("+1234567890", "Test message", timeout=0.1)
             assert result is None
 
@@ -143,13 +143,13 @@ class TestWhatsAppNotificationService:
         """Test sending message with error"""
         mock_client = MagicMock()
         mock_client.messages.create = MagicMock(side_effect=Exception("Error"))
-        
+
         with patch("agents.services.whatsapp_notification.Client", return_value=mock_client), \
              patch("asyncio.get_event_loop") as mock_loop, \
              patch("asyncio.run_in_executor") as mock_executor, \
              patch("asyncio.sleep") as mock_sleep:
             mock_executor.side_effect = Exception("Error")
-            
+
             result = await whatsapp_service.send_message("+1234567890", "Test message", max_retries=1)
             assert result is None
 

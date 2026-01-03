@@ -6,23 +6,23 @@ with agents module.
 """
 
 # Eager imports - no circular dependencies
+from .collective_memory_emitter import CollectiveMemoryEmitter
+from .collective_memory_service import CollectiveMemory, CollectiveMemoryService
+from .collective_memory_workflow import (
+    CollectiveMemoryState,
+    MemoryCategory,
+    create_collective_memory_workflow,
+)
+from .episodic_memory_service import Emotion, EpisodicMemoryService, EventType
+from .memory_fact_extractor import MemoryFactExtractor
+from .memory_fallback import InMemoryConversationCache, get_memory_cache
+from .memory_service_postgres import MemoryServicePostgres, UserMemory
 from .models import (
     FactType,
     MemoryContext,
     MemoryFact,
     MemoryProcessResult,
     MemoryStats,
-)
-from .memory_fact_extractor import MemoryFactExtractor
-from .memory_fallback import InMemoryConversationCache, get_memory_cache
-from .memory_service_postgres import MemoryServicePostgres, UserMemory
-from .episodic_memory_service import EpisodicMemoryService, EventType, Emotion
-from .collective_memory_service import CollectiveMemoryService, CollectiveMemory
-from .collective_memory_emitter import CollectiveMemoryEmitter
-from .collective_memory_workflow import (
-    MemoryCategory,
-    CollectiveMemoryState,
-    create_collective_memory_workflow,
 )
 
 # Lazy imports - orchestrator imports agents which causes circular imports

@@ -18,7 +18,8 @@ load_dotenv(override=True)
 # Add project root to sys.path
 sys.path.append(os.getcwd())
 
-from llm.genai_client import GenAIClient, GENAI_AVAILABLE
+from llm.genai_client import GENAI_AVAILABLE, GenAIClient
+
 from services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)

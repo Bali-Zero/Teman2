@@ -307,7 +307,7 @@ export function SearchModal({
       } else if (e.key === 'Enter' && results[selectedIndex]) {
         e.preventDefault();
         const article = results[selectedIndex];
-        window.location.href = `/insights/${article.category}/${article.slug}`;
+        window.location.href = `/${article.category}/${article.slug}`;
         onClose();
       }
     };
@@ -383,7 +383,7 @@ export function SearchModal({
                 {results.map((article, index) => (
                   <a
                     key={article.id}
-                    href={`/insights/${article.category}/${article.slug}`}
+                    href={`/${article.category}/${article.slug}`}
                     onClick={onClose}
                     className={cn(
                       'flex items-start gap-4 px-4 py-3 hover:bg-white/5 transition-colors',

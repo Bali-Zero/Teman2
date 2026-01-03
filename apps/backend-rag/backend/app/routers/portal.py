@@ -18,7 +18,7 @@ Created: 2025-12-30
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, File, UploadFile, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 
 from app.dependencies import get_database_pool

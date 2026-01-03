@@ -5,9 +5,9 @@ Provides a single interface to multiple LLM providers with automatic fallback.
 """
 
 import logging
-from typing import AsyncIterator, List, Optional
+from collections.abc import AsyncIterator
 
-from llm.base import LLMProvider, LLMMessage, LLMResponse
+from llm.base import LLMMessage, LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class UnifiedLLMClient:
         ])
     """
 
-    def __init__(self, providers: List[LLMProvider]):
+    def __init__(self, providers: list[LLMProvider]):
         """
         Initialize with a list of providers in priority order.
 
@@ -50,13 +50,13 @@ class UnifiedLLMClient:
         if unavailable:
             logger.warning(f"Unavailable providers: {unavailable}")
 
-    def get_available_providers(self) -> List[str]:
+    def get_available_providers(self) -> list[str]:
         """Return list of available provider names."""
         return [p.name for p in self.providers if p.is_available]
 
     async def generate(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         max_tokens: int = 4096,
         **kwargs
@@ -76,7 +76,7 @@ class UnifiedLLMClient:
         Raises:
             RuntimeError: If all providers fail
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for provider in self.providers:
             if not provider.is_available:
@@ -106,7 +106,7 @@ class UnifiedLLMClient:
 
     async def stream(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         **kwargs
     ) -> AsyncIterator[str]:
@@ -124,7 +124,7 @@ class UnifiedLLMClient:
         Raises:
             RuntimeError: If all providers fail
         """
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
 
         for provider in self.providers:
             if not provider.is_available:
@@ -165,7 +165,7 @@ def create_default_client() -> UnifiedLLMClient:
     Returns:
         Configured UnifiedLLMClient
     """
-    from llm.providers import GeminiProvider, OpenRouterProvider, DeepSeekProvider
+    from llm.providers import DeepSeekProvider, GeminiProvider, OpenRouterProvider
 
     return UnifiedLLMClient([
         GeminiProvider(),

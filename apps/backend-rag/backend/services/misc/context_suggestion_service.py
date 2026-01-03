@@ -3,7 +3,7 @@ Context Suggestion Service Stub
 Restored to fix ImportError in IntelligentRouter.
 """
 import logging
-from typing import Any, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -12,17 +12,17 @@ class ContextSuggestionService:
     Service for generating proactive context suggestions based on chat history.
     Currently a stub to satisfy dependencies; logic to be implemented.
     """
-    
+
     def __init__(self, db_pool: Any = None):
         self.db_pool = db_pool
 
     async def get_suggestions(
-        self, 
-        query: str, 
-        user_id: str, 
-        response: str, 
-        conversation_history: List[dict] = None
-    ) -> List[str]:
+        self,
+        query: str,
+        user_id: str,
+        response: str,
+        conversation_history: list[dict] = None
+    ) -> list[str]:
         """
         Generate follow-up suggestions based on the interaction.
         

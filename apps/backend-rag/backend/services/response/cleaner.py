@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Optional
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ OUT_OF_DOMAIN_RESPONSES = {
 }
 
 
-def is_out_of_domain(query: str) -> tuple[bool, Optional[str]]:
+def is_out_of_domain(query: str) -> tuple[bool, str | None]:
     """
     Check if query is outside Zantara's domain of expertise.
     """
@@ -54,18 +54,16 @@ def is_out_of_domain(query: str) -> tuple[bool, Optional[str]]:
         if re.search(pattern, query_lower):
             return True, "personal_data"
 
-    # Real-time information
-    realtime_patterns = [
-        r"(che )?tempo fa",
-        r"meteo (a|di|in)",
-        r"news\b",
-        r"notizie (di )?oggi",
-        r"weather (in|at|for)",
+    # Real-time FINANCIAL information (blocked - cannot verify)
+    # NOTE: Weather, news, tourism info are NOW ALLOWED - handled by web_search tool
+    realtime_financial_patterns = [
         r"stock price",
         r"bitcoin price",
+        r"crypto (price|value)",
+        r"forex (rate|exchange)",
     ]
 
-    for pattern in realtime_patterns:
+    for pattern in realtime_financial_patterns:
         if re.search(pattern, query_lower):
             return True, "realtime_info"
 

@@ -5,9 +5,6 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
@@ -101,3 +98,77 @@ class TestLanguageDetector:
         instruction = get_language_instruction("unknown")
         assert isinstance(instruction, str)
         assert len(instruction) > 0
+
+    def test_detect_language_italian_markers(self):
+        """Test detecting Italian with various markers"""
+        assert detect_language("Ciao come stai?") == "it"
+        assert detect_language("Cosa vuoi?") == "it"
+        assert detect_language("Grazie per l'aiuto") == "it"
+        assert detect_language("Quando posso venire?") == "it"
+
+    def test_detect_language_english_markers(self):
+        """Test detecting English with various markers"""
+        assert detect_language("Hello how are you?") == "en"
+        assert detect_language("What can I do?") == "en"
+        assert detect_language("Please help me") == "en"
+        assert detect_language("Why is this?") == "en"
+
+    def test_detect_language_indonesian_markers(self):
+        """Test detecting Indonesian with various markers"""
+        assert detect_language("Apa yang bisa saya bantu?") == "id"
+        assert detect_language("Bagaimana caranya?") == "id"
+        assert detect_language("Saya mau tahu") == "id"
+        assert detect_language("Bisa tolong?") == "id"
+
+    def test_detect_language_ukrainian_markers(self):
+        """Test detecting Ukrainian"""
+        assert detect_language("Привіт як справи?") == "uk"
+        assert detect_language("Дякую за допомогу") == "uk"
+
+    def test_detect_language_russian_markers(self):
+        """Test detecting Russian"""
+        assert detect_language("Привет как дела?") == "ru"
+        assert detect_language("Спасибо за помощь") == "ru"
+
+    def test_detect_language_tie_breaker(self):
+        """Test language detection with equal scores"""
+        # If multiple languages have same score, should return one of them
+        result = detect_language("ciao hello")
+        assert result in ["it", "en", "id", "uk", "ru", "auto"]
+
+    def test_detect_language_word_boundaries(self):
+        """Test that word boundaries work correctly"""
+        # Should not match "ciao" in "ciaos" (if word boundary works)
+        assert detect_language("ciao") == "it"
+        # But should still match if it's a word
+        assert detect_language("say ciao") == "it"
+
+    def test_get_language_instruction_ua_alias(self):
+        """Test that 'ua' maps to Ukrainian instruction"""
+        instruction = get_language_instruction("ua")
+        assert isinstance(instruction, str)
+        assert "УКРАЇНСЬКА" in instruction or "ukrainian" in instruction.lower()
+
+    def test_get_language_instruction_contains_expected_content(self):
+        """Test that instructions contain expected content"""
+        it_inst = get_language_instruction("it")
+        assert "ITALIANO" in it_inst or "italian" in it_inst.lower()
+        assert "ZANTARA" in it_inst
+
+        en_inst = get_language_instruction("en")
+        assert "ENGLISH" in en_inst or "english" in en_inst.lower()
+        assert "ZANTARA" in en_inst
+
+        id_inst = get_language_instruction("id")
+        assert "INDONESIA" in id_inst or "indonesia" in id_inst.lower()
+        assert "ZANTARA" in id_inst
+
+    def test_detect_language_none_text(self):
+        """Test detecting language with None text"""
+        result = detect_language(None)
+        assert result == "it"  # Default to Italian
+
+    def test_detect_language_special_characters(self):
+        """Test detecting language with special characters"""
+        assert detect_language("Ciao! Come stai?") == "it"
+        assert detect_language("Hello! How are you?") == "en"

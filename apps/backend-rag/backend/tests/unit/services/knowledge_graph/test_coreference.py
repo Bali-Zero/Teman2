@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.knowledge_graph.coreference import CoreferenceResolver, EntityMention, EntityCluster
+from services.knowledge_graph.coreference import CoreferenceResolver, EntityCluster, EntityMention
 from services.knowledge_graph.ontology import EntityType
 
 
@@ -46,7 +46,7 @@ class TestCoreferenceResolver:
     def test_cluster_entities(self, coreference_resolver):
         """Test clustering entities"""
         from services.knowledge_graph.extractor import ExtractedEntity
-        
+
         entities = [
             ExtractedEntity(
                 id="id1",
@@ -103,7 +103,7 @@ class TestCoreferenceResolver:
             mock_response.content = [mock_message]
             mock_client.messages.create = AsyncMock(return_value=mock_response)
             mock_anthropic.return_value = mock_client
-            
+
             mention = EntityMention(text="peraturan tersebut", position=0)
             # Add some context entities to cache
             clusters = {
@@ -121,7 +121,7 @@ class TestCoreferenceResolver:
     def test_deduplicate_entities(self, coreference_resolver):
         """Test deduplicating entities"""
         from services.knowledge_graph.extractor import ExtractedEntity
-        
+
         entities = [
             ExtractedEntity(
                 id="id1",

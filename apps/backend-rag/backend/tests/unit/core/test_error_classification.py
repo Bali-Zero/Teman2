@@ -5,9 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
 
-import pytest
 import asyncpg
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
@@ -15,7 +13,12 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.core.error_classification import ErrorClassifier, ErrorCategory, ErrorSeverity, get_error_context
+from app.core.error_classification import (
+    ErrorCategory,
+    ErrorClassifier,
+    ErrorSeverity,
+    get_error_context,
+)
 
 
 class TestErrorClassifier:
@@ -83,7 +86,7 @@ class TestErrorClassifier:
             "resource exhausted",
             "deadline exceeded",
         ]
-        
+
         for pattern in patterns:
             error = Exception(pattern)
             category, severity = ErrorClassifier.classify_error(error)
@@ -105,7 +108,7 @@ class TestErrorClassifier:
             "type error",
             "attribute error",
         ]
-        
+
         for pattern in patterns:
             error = Exception(pattern)
             category, severity = ErrorClassifier.classify_error(error)
@@ -122,7 +125,7 @@ class TestErrorClassifier:
         """Test is_retryable method"""
         transient_error = ResourceExhausted("Quota exceeded")
         assert ErrorClassifier.is_retryable(transient_error) is True
-        
+
         permanent_error = asyncpg.UniqueViolationError("Duplicate")
         assert ErrorClassifier.is_retryable(permanent_error) is False
 
@@ -130,7 +133,7 @@ class TestErrorClassifier:
         """Test should_alert method"""
         high_severity_error = ServiceUnavailable("Service down")
         assert ErrorClassifier.should_alert(high_severity_error) is True
-        
+
         medium_severity_error = ResourceExhausted("Quota exceeded")
         assert ErrorClassifier.should_alert(medium_severity_error) is False
 
@@ -138,7 +141,7 @@ class TestErrorClassifier:
         """Test getting error context"""
         error = ValueError("Test error")
         context = get_error_context(error, model="test_model", user_id="user123")
-        
+
         assert "error_type" in context
         assert "error_message" in context
         assert context["model"] == "test_model"
@@ -148,7 +151,7 @@ class TestErrorClassifier:
         """Test getting error context with minimal info"""
         error = Exception("Error")
         context = get_error_context(error)
-        
+
         assert "error_type" in context
         assert "error_message" in context
 

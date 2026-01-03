@@ -196,8 +196,11 @@ class KnowledgeService:
             logger.debug(f"Final collection: {collection_name}")
 
             # Search (async)
+            # CRITICAL: Hybrid collections require named vector "dense"
+            use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
             raw_results = await vector_db.search(
-                query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                vector_name=use_vector_name,
             )
 
             # Format results consistently

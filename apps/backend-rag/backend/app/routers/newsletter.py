@@ -11,8 +11,7 @@ Endpoints:
 """
 
 import secrets
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, field_validator
@@ -33,7 +32,7 @@ router = APIRouter(prefix="/api/blog/newsletter", tags=["newsletter"])
 class SubscribeRequest(BaseModel):
     """Subscribe request model"""
     email: EmailStr
-    name: Optional[str] = None
+    name: str | None = None
     categories: list[str] = []
     frequency: str = "weekly"
     language: str = "en"
@@ -51,7 +50,7 @@ class SubscribeResponse(BaseModel):
     """Subscribe response model"""
     success: bool
     message: str
-    subscriberId: Optional[str] = None
+    subscriberId: str | None = None
 
 
 class ConfirmRequest(BaseModel):
@@ -62,30 +61,30 @@ class ConfirmRequest(BaseModel):
 
 class UnsubscribeRequest(BaseModel):
     """Unsubscribe request"""
-    subscriberId: Optional[str] = None
-    email: Optional[str] = None
-    token: Optional[str] = None
+    subscriberId: str | None = None
+    email: str | None = None
+    token: str | None = None
 
 
 class PreferencesRequest(BaseModel):
     """Update preferences request"""
-    subscriberId: Optional[str] = None
-    email: Optional[str] = None
-    categories: Optional[list[str]] = None
-    frequency: Optional[str] = None
-    language: Optional[str] = None
+    subscriberId: str | None = None
+    email: str | None = None
+    categories: list[str] | None = None
+    frequency: str | None = None
+    language: str | None = None
 
 
 class SubscriberResponse(BaseModel):
     """Subscriber response model"""
     id: str
     email: str
-    name: Optional[str] = None
+    name: str | None = None
     categories: list[str] = []
     frequency: str = "weekly"
     language: str = "en"
     confirmed: bool = False
-    created_at: Optional[datetime] = None
+    created_at: datetime | None = None
 
 
 # ============================================================================
@@ -344,9 +343,9 @@ async def update_preferences(
 
 @router.get("/subscribers")
 async def list_subscribers(
-    category: Optional[str] = Query(None),
-    frequency: Optional[str] = Query(None),
-    confirmed: Optional[bool] = Query(None),
+    category: str | None = Query(None),
+    frequency: str | None = Query(None),
+    confirmed: bool | None = Query(None),
     limit: int = Query(100, le=500),
     offset: int = Query(0),
     pool=Depends(get_database_pool)

@@ -15,7 +15,12 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.orchestrator import AgenticRAGOrchestrator, StreamEvent, _wrap_query_with_language_instruction, _is_conversation_recall_query
+from services.rag.agentic.orchestrator import (
+    AgenticRAGOrchestrator,
+    StreamEvent,
+    _is_conversation_recall_query,
+    _wrap_query_with_language_instruction,
+)
 from services.rag.agentic.schema import CoreResult
 from services.tools.definitions import BaseTool
 
@@ -132,7 +137,7 @@ class TestAgenticRAGOrchestrator:
             mock_instance = AsyncMock()
             mock_instance.initialize = AsyncMock()
             mock_memory.return_value = mock_instance
-            
+
             result = await orchestrator._get_memory_orchestrator()
             assert result == mock_instance
             assert orchestrator._memory_orchestrator == mock_instance
@@ -146,7 +151,7 @@ class TestAgenticRAGOrchestrator:
             def raise_exception(*args, **kwargs):
                 raise RuntimeError("DB error")
             mock_memory.side_effect = raise_exception
-            
+
             result = await orchestrator._get_memory_orchestrator()
             # Should return None on failure
             assert result is None
@@ -162,7 +167,7 @@ class TestAgenticRAGOrchestrator:
                     raise ValueError("db_pool is required")
                 return MagicMock()
             mock_memory.side_effect = raise_error
-            
+
             result = await orchestrator._get_memory_orchestrator()
             # Should return None when db_pool is None
             assert result is None
@@ -172,12 +177,12 @@ class TestAgenticRAGOrchestrator:
         """Test successful stream response"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator, 'stream_query') as mock_stream:
             async def async_gen():
                 yield StreamEvent(type="text", data="KITAS is")
             mock_stream.return_value = async_gen()
-            
+
             async for event in orchestrator.stream_query(query, user_id):
                 assert event.type == "text"
 
@@ -190,12 +195,12 @@ class TestAgenticRAGOrchestrator:
             {"role": "user", "content": "What is KITAS?"},
             {"role": "assistant", "content": "KITAS is a work permit"}
         ]
-        
+
         with patch.object(orchestrator, 'stream_query') as mock_stream:
             async def async_gen():
                 yield StreamEvent(type="text", data="More info")
             mock_stream.return_value = async_gen()
-            
+
             async for event in orchestrator.stream_query(query, user_id, conversation_history=history):
                 assert event.type == "text"
 
@@ -205,12 +210,12 @@ class TestAgenticRAGOrchestrator:
         query = "What is KITAS?"
         user_id = "test_user"
         context = {"client_id": 123}
-        
+
         with patch.object(orchestrator, 'stream_query') as mock_stream:
             async def async_gen():
                 yield StreamEvent(type="text", data="KITAS")
             mock_stream.return_value = async_gen()
-            
+
             async for event in orchestrator.stream_query(query, user_id, context=context):
                 assert event.type == "text"
 
@@ -219,16 +224,16 @@ class TestAgenticRAGOrchestrator:
         """Test stream response error handling"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator, 'stream_query') as mock_stream:
             async def async_gen():
                 yield StreamEvent(type="error", data="Processing error")
             mock_stream.return_value = async_gen()
-            
+
             events = []
             async for event in orchestrator.stream_query(query, user_id):
                 events.append(event)
-            
+
             assert len(events) > 0
             assert any(e.type == "error" for e in events)
 
@@ -237,7 +242,7 @@ class TestAgenticRAGOrchestrator:
         """Test non-streaming response"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator, 'process_query') as mock_process:
             mock_result = CoreResult(
                 answer="KITAS is a work permit",
@@ -246,7 +251,7 @@ class TestAgenticRAGOrchestrator:
                 evidence_score=1.0
             )
             mock_process.return_value = mock_result
-            
+
             result = await orchestrator.process_query(query, user_id)
             assert result.answer == "KITAS is a work permit"
 
@@ -255,7 +260,7 @@ class TestAgenticRAGOrchestrator:
         """Test tool execution flow"""
         query = "Calculate 2+2"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator, 'process_query') as mock_process:
             mock_result = CoreResult(
                 answer="4",
@@ -264,7 +269,7 @@ class TestAgenticRAGOrchestrator:
                 evidence_score=1.0
             )
             mock_process.return_value = mock_result
-            
+
             result = await orchestrator.process_query(query, user_id)
             assert result.answer == "4"
 
@@ -273,7 +278,7 @@ class TestAgenticRAGOrchestrator:
         """Test early exit when answer is found"""
         query = "What is 2+2?"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator, 'process_query') as mock_process:
             mock_result = CoreResult(
                 answer="4",
@@ -282,7 +287,7 @@ class TestAgenticRAGOrchestrator:
                 evidence_score=1.0
             )
             mock_process.return_value = mock_result
-            
+
             result = await orchestrator.process_query(query, user_id)
             assert result.answer == "4"
 
@@ -291,10 +296,10 @@ class TestAgenticRAGOrchestrator:
         """Test intent-based routing"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator.intent_classifier, 'classify') as mock_classify:
             mock_classify.return_value = {"intent": "visa_query", "confidence": 0.9}
-            
+
             with patch.object(orchestrator, 'process_query') as mock_process:
                 mock_result = CoreResult(
                     answer="KITAS info",
@@ -303,7 +308,7 @@ class TestAgenticRAGOrchestrator:
                     evidence_score=1.0
                 )
                 mock_process.return_value = mock_result
-                
+
                 await orchestrator.process_query(query, user_id)
                 # Intent classifier should be called during processing
                 assert True  # Just verify it doesn't crash
@@ -313,10 +318,10 @@ class TestAgenticRAGOrchestrator:
         """Test follow-up question generation"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator.followup_service, 'generate') as mock_followup:
             mock_followup.return_value = ["How to apply?", "What documents needed?"]
-            
+
             with patch.object(orchestrator, 'process_query') as mock_process:
                 mock_result = CoreResult(
                     answer="KITAS info",
@@ -325,7 +330,7 @@ class TestAgenticRAGOrchestrator:
                     evidence_score=1.0
                 )
                 mock_process.return_value = mock_result
-                
+
                 result = await orchestrator.process_query(query, user_id)
                 # Followup should be generated
                 assert result is not None
@@ -335,17 +340,17 @@ class TestAgenticRAGOrchestrator:
         """Test metadata emission in stream"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         with patch.object(orchestrator, 'stream_query') as mock_stream:
             async def async_gen():
                 yield StreamEvent(type="metadata", data={"sources": []})
                 yield StreamEvent(type="text", data="KITAS")
             mock_stream.return_value = async_gen()
-            
+
             events = []
             async for event in orchestrator.stream_query(query, user_id):
                 events.append(event)
-            
+
             assert any(e.type == "metadata" for e in events)
 
     @pytest.mark.asyncio
@@ -353,12 +358,12 @@ class TestAgenticRAGOrchestrator:
         """Test fallback when quota exceeded"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         from google.api_core.exceptions import ResourceExhausted
-        
+
         with patch.object(orchestrator, 'process_query') as mock_process:
             mock_process.side_effect = ResourceExhausted("Quota exceeded")
-            
+
             # Should handle gracefully
             try:
                 await orchestrator.process_query(query, user_id)
@@ -370,12 +375,12 @@ class TestAgenticRAGOrchestrator:
         """Test handling of service unavailable errors"""
         query = "What is KITAS?"
         user_id = "test_user"
-        
+
         from google.api_core.exceptions import ServiceUnavailable
-        
+
         with patch.object(orchestrator, 'process_query') as mock_process:
             mock_process.side_effect = ServiceUnavailable("Service down")
-            
+
             try:
                 await orchestrator.process_query(query, user_id)
             except ServiceUnavailable:

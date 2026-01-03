@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import Optional
 
 from services.rag.agent.structures import ToolCall
 
@@ -120,7 +119,7 @@ def clean_response(response: str) -> str:
     return cleaned
 
 
-def parse_tool_call(text: str) -> Optional[ToolCall]:
+def parse_tool_call(text: str) -> ToolCall | None:
     """Simple parser for ReAct tool calls (ACTION: tool_name(args))"""
     # This is a simplified parser. In production, use structured output or native function calling.
 

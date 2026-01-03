@@ -89,20 +89,20 @@ export default function KnowledgePage() {
         />
       </div>
 
-      {/* Categories */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Categories - 30% smaller */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { name: 'KITAS & Visa', icon: FileText, key: 'kitas', href: '/knowledge/kitas', hasPage: true },
-          { name: 'Company & Classifications', icon: FolderOpen, key: 'pma', href: '/knowledge/blueprints', hasPage: true },
-          { name: 'Tax & NPWP', icon: FileText, key: 'tax', href: null, hasPage: false },
-          { name: 'Procedure', icon: Tag, key: 'procedure', href: null, hasPage: false },
+          { name: 'Company & KBLI', icon: FolderOpen, key: 'pma', href: '/knowledge/blueprints', hasPage: true },
+          { name: 'Tax & NPWP', icon: FileText, key: 'tax', href: '/knowledge/tax', hasPage: true },
+          { name: 'Licenses', icon: Tag, key: 'licenses', href: '/knowledge/licenses', hasPage: true },
         ].map((category) => {
           const count = searchResults.filter((r) => {
             const collection = r.metadata?.collection?.toLowerCase() || '';
             if (category.key === 'kitas') return collection.includes('kitas') || collection.includes('visa');
             if (category.key === 'pma') return collection.includes('pma') || collection.includes('company');
             if (category.key === 'tax') return collection.includes('tax') || collection.includes('npwp');
-            if (category.key === 'procedure') return collection.includes('procedure') || collection.includes('process');
+            if (category.key === 'licenses') return collection.includes('license') || collection.includes('slhs') || collection.includes('npbbkc') || collection.includes('halal');
             return false;
           }).length;
 
@@ -113,22 +113,22 @@ export default function KnowledgePage() {
                 if (category.hasPage && category.href) {
                   router.push(category.href);
                 } else {
-                  setSearchQuery(category.key === 'kitas' ? 'KITAS visa' : category.key === 'pma' ? 'PT PMA company' : category.key === 'tax' ? 'tax NPWP' : 'procedure process');
+                  setSearchQuery(category.key === 'kitas' ? 'KITAS visa' : category.key === 'pma' ? 'PT PMA company' : category.key === 'tax' ? 'tax NPWP' : category.key === 'licenses' ? 'SLHS NPBBKC alcohol halal license' : 'procedure process');
                   handleSearch();
                 }
               }}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`p-3 rounded-lg border cursor-pointer transition-all ${
                 category.hasPage
                   ? 'border-[var(--accent)]/30 bg-gradient-to-br from-[var(--accent)]/5 to-purple-500/5 hover:border-[var(--accent)]/50 hover:shadow-lg hover:shadow-[var(--accent)]/10'
                   : 'border-[var(--border)] bg-[var(--background-secondary)] hover:bg-[var(--background-elevated)]/50'
               }`}
             >
-              <category.icon className={`w-8 h-8 mb-3 ${category.hasPage ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
-              <h3 className="font-medium text-[var(--foreground)]">{category.name}</h3>
-              <p className="text-xs text-[var(--foreground-muted)]">
+              <category.icon className={`w-6 h-6 mb-2 ${category.hasPage ? 'text-[var(--accent)]' : 'text-[var(--foreground-muted)]'}`} />
+              <h3 className="text-sm font-medium text-[var(--foreground)]">{category.name}</h3>
+              <p className="text-[10px] text-[var(--foreground-muted)]">
                 {category.hasPage
-                  ? (category.key === 'kitas' ? 'View visa guides' : 'View KBLI blueprints')
-                  : `${count} documents`}
+                  ? (category.key === 'kitas' ? 'View visa guides' : category.key === 'pma' ? 'View KBLI blueprints' : category.key === 'tax' ? 'NPWP, SPT, BPJS, LKPM' : 'SLHS, Alcohol, Halal')
+                  : ((category as any).subtitle || `${count} documents`)}
               </p>
             </div>
           );

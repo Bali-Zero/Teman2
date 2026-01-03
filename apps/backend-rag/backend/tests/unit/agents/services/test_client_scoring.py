@@ -4,10 +4,10 @@ Target: >95% coverage
 """
 
 import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -22,14 +22,14 @@ from agents.services.client_scoring import ClientScoringService
 def mock_db_pool():
     """Mock database pool"""
     pool = MagicMock()
-    
+
     @asynccontextmanager
     async def acquire():
         conn = MagicMock()
         conn.fetchrow = AsyncMock(return_value=None)
         conn.fetch = AsyncMock(return_value=[])
         yield conn
-    
+
     pool.acquire = acquire
     return pool
 
@@ -80,21 +80,21 @@ class TestClientScoringService:
             "practice_statuses": ["active", "pending"],
             "practice_count": 2
         }.get(key, default)
-        
+
         async with mock_db_pool.acquire() as conn:
             conn.fetchrow = AsyncMock(return_value=mock_row)
-        
+
         mock_db_pool.acquire = lambda: mock_db_pool.acquire()
-        
+
         # Patch the acquire method properly
         @asynccontextmanager
         async def acquire():
             conn = MagicMock()
             conn.fetchrow = AsyncMock(return_value=mock_row)
             yield conn
-        
+
         mock_db_pool.acquire = acquire
-        
+
         result = await client_scoring_service.calculate_client_score("123")
         assert result is not None
         assert "ltv_score" in result
@@ -114,9 +114,9 @@ class TestClientScoringService:
             conn = MagicMock()
             conn.fetchrow = AsyncMock(return_value=None)
             yield conn
-        
+
         mock_db_pool.acquire = acquire
-        
+
         result = await client_scoring_service.calculate_client_score("999")
         assert result is None
 
@@ -128,9 +128,9 @@ class TestClientScoringService:
             conn = MagicMock()
             conn.fetchrow = AsyncMock(side_effect=Exception("DB error"))
             yield conn
-        
+
         mock_db_pool.acquire = acquire
-        
+
         result = await client_scoring_service.calculate_client_score("123")
         assert result is None
 
@@ -141,15 +141,15 @@ class TestClientScoringService:
             MagicMock(**{"__getitem__": lambda self, key: {"id": "1"}.get(key)}),
             MagicMock(**{"__getitem__": lambda self, key: {"id": "2"}.get(key)})
         ]
-        
+
         @asynccontextmanager
         async def acquire():
             conn = MagicMock()
             conn.fetch = AsyncMock(return_value=mock_rows)
             yield conn
-        
+
         mock_db_pool.acquire = acquire
-        
+
         result = await client_scoring_service.calculate_scores_batch(["1", "2"])
         assert isinstance(result, dict)
 
@@ -158,4 +158,7 @@ class TestClientScoringService:
         """Test calculating scores batch with empty list"""
         result = await client_scoring_service.calculate_scores_batch([])
         assert result == {}
+
+
+
 

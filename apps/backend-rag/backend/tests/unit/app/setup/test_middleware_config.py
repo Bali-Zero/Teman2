@@ -1,6 +1,6 @@
 """
-Unit tests for middleware_config.py
-Target: 100% coverage
+Unit tests for middleware configuration
+Target: >95% coverage
 """
 
 import sys
@@ -25,14 +25,15 @@ def mock_app():
 
 
 class TestMiddlewareConfig:
-    """Tests for middleware_config.py"""
+    """Tests for middleware configuration"""
 
     def test_register_middleware(self, mock_app):
-        """Test registering all middleware"""
+        """Test registering middleware"""
         with patch("app.setup.middleware_config.register_cors_middleware") as mock_cors:
             register_middleware(mock_app)
-            
-            mock_cors.assert_called_once_with(mock_app)
-            # Verify middleware were added
-            assert mock_app.add_middleware.called
 
+            # Verify CORS middleware was registered
+            mock_cors.assert_called_once_with(mock_app)
+
+            # Verify other middleware were added
+            assert mock_app.add_middleware.call_count >= 4

@@ -5,16 +5,16 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from jose import jwt, JWTError
+from jose import jwt
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.auth.validation import validate_api_key, validate_auth_token, validate_auth_mixed
+from app.auth.validation import validate_api_key, validate_auth_mixed, validate_auth_token
 from app.core.config import settings
 
 
@@ -80,7 +80,7 @@ class TestAuthValidation:
             "role": "admin"
         }
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-        
+
         result = await validate_auth_token(token)
         assert result is not None
         assert result["id"] == "user123"
@@ -95,7 +95,7 @@ class TestAuthValidation:
             "email": "test2@example.com"
         }
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-        
+
         result = await validate_auth_token(token)
         assert result is not None
         assert result["id"] == "user456"
@@ -105,7 +105,7 @@ class TestAuthValidation:
         """Test validating token with missing required fields"""
         payload = {"sub": "user123"}  # Missing email
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-        
+
         result = await validate_auth_token(token)
         assert result is None
 
@@ -123,7 +123,7 @@ class TestAuthValidation:
             "email": "test@example.com"
         }
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-        
+
         result = await validate_auth_mixed(authorization=f"Bearer {token}")
         assert result is not None
         assert result["id"] == "user123"
@@ -136,7 +136,7 @@ class TestAuthValidation:
             "email": "test@example.com"
         }
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-        
+
         result = await validate_auth_mixed(auth_token=token)
         assert result is not None
         assert result["id"] == "user123"
@@ -161,7 +161,7 @@ class TestAuthValidation:
             "email": "test@example.com"
         }
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
-        
+
         with patch("app.auth.validation._api_key_auth") as mock_auth:
             mock_auth.validate_api_key.return_value = {
                 "id": "user456",
@@ -173,4 +173,7 @@ class TestAuthValidation:
             )
             assert result is not None
             assert result["id"] == "user123"  # Bearer token takes priority
+
+
+
 

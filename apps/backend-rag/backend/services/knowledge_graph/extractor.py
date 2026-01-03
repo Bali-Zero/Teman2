@@ -17,11 +17,10 @@ from typing import Any
 import anthropic
 
 from .ontology import (
-    EntityType,
-    RelationType,
     ENTITY_SCHEMAS,
     RELATION_SCHEMAS,
-    get_extraction_schema_prompt,
+    EntityType,
+    RelationType,
 )
 
 logger = logging.getLogger(__name__)

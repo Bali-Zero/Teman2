@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -13,8 +13,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.monitoring.health_monitor import HealthMonitor
 from services.monitoring.alert_service import AlertService
+from services.monitoring.health_monitor import HealthMonitor
 
 
 @pytest.fixture
@@ -50,12 +50,12 @@ class TestHealthMonitor:
         """Test stopping monitor"""
         import asyncio
         health_monitor.running = True
-        
+
         # Create a real task that can be cancelled
         async def dummy_task():
             while True:
                 await asyncio.sleep(1)
-        
+
         health_monitor.task = asyncio.create_task(dummy_task())
         await health_monitor.stop()
         assert health_monitor.running is False
@@ -65,7 +65,7 @@ class TestHealthMonitor:
         mock_memory = MagicMock()
         mock_router = MagicMock()
         mock_executor = MagicMock()
-        
+
         health_monitor.set_services(
             memory_service=mock_memory,
             intelligent_router=mock_router,

@@ -10,13 +10,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Request
-from fastapi.testclient import TestClient
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.streaming import router, ChatStreamRequest, _parse_history, bali_zero_chat_stream
+from app.streaming import ChatStreamRequest, _parse_history, bali_zero_chat_stream
 
 
 @pytest.fixture
@@ -75,14 +74,14 @@ class TestStreamingRouter:
     async def test_bali_zero_chat_stream_success(self, mock_request, mock_intelligent_router):
         """Test successful streaming"""
         mock_request.app.state.intelligent_router = mock_intelligent_router
-        
+
         with patch("app.streaming.validate_auth_mixed", return_value={"email": "test@example.com"}):
             response = await bali_zero_chat_stream(
                 request=mock_request,
                 query="test query",
                 background_tasks=MagicMock()
             )
-            
+
             assert response is not None
 
     @pytest.mark.asyncio
@@ -99,7 +98,7 @@ class TestStreamingRouter:
     async def test_bali_zero_chat_stream_no_auth(self, mock_request):
         """Test without authentication"""
         mock_request.state.user = None
-        
+
         with patch("app.streaming.validate_auth_mixed", return_value=None):
             with pytest.raises(Exception):  # Should raise HTTPException
                 await bali_zero_chat_stream(
@@ -112,7 +111,7 @@ class TestStreamingRouter:
     async def test_bali_zero_chat_stream_services_not_initialized(self, mock_request):
         """Test when services not initialized"""
         mock_request.app.state.services_initialized = False
-        
+
         with pytest.raises(Exception):  # Should raise HTTPException
             await bali_zero_chat_stream(
                 request=mock_request,
@@ -145,4 +144,7 @@ class TestChatStreamRequest:
             metadata={"key": "value"}
         )
         assert request.metadata["key"] == "value"
+
+
+
 

@@ -144,7 +144,7 @@ class MigrationRunner:
             Ordered list of migration numbers
         """
         # Build dependency graph
-        graph: dict[int, set[int]] = {num: set() for num in migrations.keys()}
+        graph: dict[int, set[int]] = {num: set() for num in migrations}
 
         for num, migration_class in migrations.items():
             instance = migration_class()

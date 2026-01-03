@@ -153,7 +153,7 @@ class PricingService:
                     # Match by any keyword in service name or service data
                     service_text = service_name.lower() + " " + str(service_data).lower()
 
-                    # Also check legacy_names if present (e.g., B211A -> C1 Tourism)
+                    # Also check legacy_names if present (e.g., old codes -> new codes)
                     legacy_names = (
                         service_data.get("legacy_names", [])
                         if isinstance(service_data, dict)

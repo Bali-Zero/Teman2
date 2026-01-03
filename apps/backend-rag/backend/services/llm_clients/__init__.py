@@ -1,8 +1,8 @@
 """LLM client services module."""
 
-from .gemini_service import GeminiService, GeminiJakselService
 from .deepseek_client import DeepSeekClient, DeepSeekResponse
-from .openrouter_client import OpenRouterClient, ModelTier, CompletionResult
+from .gemini_service import GeminiJakselService, GeminiService
+from .openrouter_client import CompletionResult, ModelTier, OpenRouterClient
 from .vertex_ai_service import VertexAIService
 
 __all__ = [

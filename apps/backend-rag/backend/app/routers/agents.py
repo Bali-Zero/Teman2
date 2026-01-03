@@ -24,11 +24,11 @@ from core.cache import cached
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
 from services.ingestion.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 
 # Import all agent services
 from services.misc.client_journey_orchestrator import ClientJourneyOrchestrator
-from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
 from services.misc.proactive_compliance_monitor import (
     AlertSeverity,
     ProactiveComplianceMonitor,
@@ -373,7 +373,7 @@ async def extract_knowledge_graph(
         # Dependency Injection (Lazy)
         if not knowledge_graph.db_pool:
             knowledge_graph.db_pool = getattr(request.app.state, "db_pool", None)
-        
+
         if not knowledge_graph.llm_gateway:
             # Try to get ai_client (ZantaraAIClient)
             knowledge_graph.llm_gateway = getattr(request.app.state, "ai_client", None)
@@ -442,10 +442,10 @@ async def export_knowledge_graph(
             internal_format = "cypher"
         elif format.lower() in ["graphml", "gephi"]:
             internal_format = "graphml"
-            
+
         # Generate export
         export_data = knowledge_graph.export_graph(format=internal_format)
-        
+
         return {
             "success": True,
             "format": format,

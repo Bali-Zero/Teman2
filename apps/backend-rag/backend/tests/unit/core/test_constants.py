@@ -6,18 +6,16 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 
-import pytest
-
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from app.core.constants import (
-    SearchConstants,
-    RoutingConstants,
     CRMConstants,
-    MemoryConstants,
     DatabaseConstants,
+    MemoryConstants,
+    RoutingConstants,
+    SearchConstants,
 )
 
 
@@ -101,4 +99,7 @@ class TestDatabaseConstants:
         assert DatabaseConstants.POOL_MIN_SIZE == 2
         assert DatabaseConstants.POOL_MAX_SIZE == 10
         assert DatabaseConstants.COMMAND_TIMEOUT == 60
+
+
+
 

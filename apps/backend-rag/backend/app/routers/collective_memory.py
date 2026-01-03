@@ -4,7 +4,6 @@ Endpoints for managing shared knowledge across users
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -83,7 +82,7 @@ async def refute_fact(
 
 @router.get("/facts")
 async def get_collective_facts(
-    category: Optional[str] = None,
+    category: str | None = None,
     db_pool=Depends(get_db_pool),
 ):
     """

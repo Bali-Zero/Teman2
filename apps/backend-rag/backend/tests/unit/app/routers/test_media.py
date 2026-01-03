@@ -6,11 +6,9 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-import tempfile
-import os
 
 import pytest
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
@@ -47,7 +45,7 @@ class TestMediaRouter:
             "prompt": "test prompt"
         })
         mock_service_class.return_value = mock_service
-        
+
         response = client.post(
             "/media/generate-image",
             json={"prompt": "test prompt"}
@@ -66,7 +64,7 @@ class TestMediaRouter:
             "error": "Invalid prompt"
         })
         mock_service_class.return_value = mock_service
-        
+
         response = client.post(
             "/media/generate-image",
             json={"prompt": "test"}
@@ -82,7 +80,7 @@ class TestMediaRouter:
             "error": "Service not configured"
         })
         mock_service_class.return_value = mock_service
-        
+
         response = client.post(
             "/media/generate-image",
             json={"prompt": "test"}
@@ -95,7 +93,7 @@ class TestMediaRouter:
         mock_service = MagicMock()
         mock_service.generate_image = AsyncMock(side_effect=Exception("Service error"))
         mock_service_class.return_value = mock_service
-        
+
         response = client.post(
             "/media/generate-image",
             json={"prompt": "test"}
@@ -108,16 +106,16 @@ class TestMediaRouter:
     def test_upload_file(self, mock_uuid, mock_shutil, mock_path_class, client):
         """Test uploading a file"""
         mock_uuid.uuid4.return_value.hex = "test-uuid"
-        
+
         # Mock Path
         mock_path = MagicMock()
         mock_path.mkdir = MagicMock()
         mock_path.__truediv__ = MagicMock(return_value=mock_path)
         mock_path_class.return_value = mock_path
-        
+
         # Create a test file
         test_file = ("test.txt", "test content", "text/plain")
-        
+
         response = client.post(
             "/media/upload",
             files={"file": test_file}
@@ -133,9 +131,9 @@ class TestMediaRouter:
         mock_path = MagicMock()
         mock_path.mkdir.side_effect = Exception("Permission error")
         mock_path_class.return_value = mock_path
-        
+
         test_file = ("test.txt", "test content", "text/plain")
-        
+
         response = client.post(
             "/media/upload",
             files={"file": test_file}

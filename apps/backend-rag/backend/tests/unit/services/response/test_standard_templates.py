@@ -5,14 +5,16 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
-import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.response.standard_templates import get_visa_template, get_tax_template, get_company_setup_template
+from services.response.standard_templates import (
+    get_company_setup_template,
+    get_tax_template,
+    get_visa_template,
+)
 
 
 class TestStandardTemplates:

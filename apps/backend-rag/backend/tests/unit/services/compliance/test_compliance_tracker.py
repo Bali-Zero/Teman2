@@ -5,15 +5,16 @@ Composer: 5
 """
 
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.compliance.compliance_tracker import ComplianceTrackerService, ComplianceItem
+from services.compliance.compliance_tracker import ComplianceItem, ComplianceTrackerService
 
 
 @pytest.fixture
@@ -141,8 +142,8 @@ class TestComplianceTrackerService:
 
     def test_get_upcoming_deadlines(self, compliance_tracker):
         """Test getting upcoming deadlines"""
-        from datetime import datetime, timedelta
-        
+        from datetime import timedelta
+
         # Add item with deadline in 30 days
         future_date = (datetime.now() + timedelta(days=30)).isoformat()
         compliance_tracker.add_compliance_item(
@@ -151,14 +152,14 @@ class TestComplianceTrackerService:
             title="Visa Renewal",
             deadline=future_date
         )
-        
+
         upcoming = compliance_tracker.get_upcoming_deadlines(days_ahead=90)
         assert len(upcoming) > 0
 
     def test_get_upcoming_deadlines_filtered_by_client(self, compliance_tracker):
         """Test getting upcoming deadlines filtered by client"""
-        from datetime import datetime, timedelta
-        
+        from datetime import timedelta
+
         future_date = (datetime.now() + timedelta(days=30)).isoformat()
         compliance_tracker.add_compliance_item(
             client_id="client1",
@@ -172,7 +173,7 @@ class TestComplianceTrackerService:
             title="Tax Filing",
             deadline=future_date
         )
-        
+
         upcoming = compliance_tracker.get_upcoming_deadlines(client_id="client1", days_ahead=90)
         assert all(item.client_id == "client1" for item in upcoming)
 
@@ -185,7 +186,7 @@ class TestComplianceTrackerService:
             deadline="2025-12-31"
         )
         initial_active = compliance_tracker.tracker_stats["active_items"]
-        
+
         result = compliance_tracker.resolve_compliance_item(item.item_id)
         assert result is True
         assert compliance_tracker.tracker_stats["active_items"] == initial_active - 1
@@ -210,7 +211,7 @@ class TestComplianceTrackerService:
             title="Tax Filing",
             deadline="2025-12-31"
         )
-        
+
         client1_items = compliance_tracker.get_all_items(client_id="client1")
         assert len(client1_items) == 1
         assert all(item.client_id == "client1" for item in client1_items)

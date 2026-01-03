@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 def _convert_schema_to_gemini_format(schema: dict) -> dict:
@@ -79,9 +79,9 @@ class Tool:
 class ToolCall:
     tool_name: str
     arguments: dict[str, Any]
-    result: Optional[str] = None
+    result: str | None = None
     success: bool = True
-    error: Optional[str] = None
+    error: str | None = None
     execution_time: float = 0.0  # Duration in seconds for metrics
 
 
@@ -89,8 +89,8 @@ class ToolCall:
 class AgentStep:
     step_number: int
     thought: str
-    action: Optional[ToolCall] = None
-    observation: Optional[str] = None
+    action: ToolCall | None = None
+    observation: str | None = None
     is_final: bool = False
 
 
@@ -99,7 +99,7 @@ class AgentState:
     query: str
     steps: list[AgentStep] = field(default_factory=list)
     context_gathered: list[str] = field(default_factory=list)
-    final_answer: Optional[str] = None
+    final_answer: str | None = None
     max_steps: int = 3  # Optimized: reduced from 5 to 3 for faster responses
     current_step: int = 0
     skip_rag: bool = False  # Skip RAG evidence requirements for general tasks (translation, etc.)

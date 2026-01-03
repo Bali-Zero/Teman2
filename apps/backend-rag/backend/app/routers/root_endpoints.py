@@ -50,7 +50,6 @@ async def get_dashboard_stats(request: Request) -> dict[str, str | dict[str, str
 
     PRODUCTION: Returns actual statistics from database and services.
     """
-    from app.dependencies import get_database_pool
 
     try:
         # Get database pool from app state
@@ -65,7 +64,6 @@ async def get_dashboard_stats(request: Request) -> dict[str, str | dict[str, str
                 "error": "Database pool not initialized",
             }
 
-        import asyncpg
 
         async with db_pool.acquire() as conn:
             # Get real statistics from database

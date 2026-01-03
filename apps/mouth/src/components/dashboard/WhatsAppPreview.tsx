@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ChevronRight, MessageCircle, Bot, AlertCircle } from 'lucide-react';
+import { ChevronRight, MessageCircle, Bot, AlertCircle, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface WhatsAppMessage {
@@ -20,9 +20,10 @@ export interface WhatsAppMessage {
 interface WhatsAppPreviewProps {
   messages: WhatsAppMessage[];
   isLoading?: boolean;
+  onDelete?: (id: string) => void;
 }
 
-export function WhatsAppPreview({ messages, isLoading }: WhatsAppPreviewProps) {
+export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPreviewProps) {
   if (isLoading) {
     return (
       <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
@@ -43,6 +44,14 @@ export function WhatsAppPreview({ messages, isLoading }: WhatsAppPreviewProps) {
   }
 
   const unreadCount = messages.filter((m) => !m.isRead).length;
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(id);
+    }
+  };
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
@@ -78,64 +87,76 @@ export function WhatsAppPreview({ messages, isLoading }: WhatsAppPreviewProps) {
           </div>
         ) : (
           messages.map((msg) => (
-            <Link
+            <div
               key={msg.id}
-              href="/whatsapp"
               className={cn(
-                'block p-3 rounded-lg border transition-all',
+                'block p-3 rounded-lg border transition-all relative group',
                 msg.isRead
                   ? 'border-[var(--border)] hover:border-[var(--border-hover)]'
                   : 'border-[var(--accent)]/30 bg-[var(--accent)]/5 hover:bg-[var(--accent)]/10'
               )}
             >
-              <div className="flex items-start gap-3">
-                {/* Status Indicator */}
-                <div className="relative mt-0.5">
-                  <span
-                    className={cn(
-                      'flex w-2 h-2 rounded-full',
-                      msg.isRead ? 'bg-[var(--foreground-muted)]' : 'bg-[var(--success)]'
-                    )}
-                  />
-                </div>
+              <Link href="/whatsapp" className="block">
+                <div className="flex items-start gap-3">
+                  {/* Status Indicator */}
+                  <div className="relative mt-0.5">
+                    <span
+                      className={cn(
+                        'flex w-2 h-2 rounded-full',
+                        msg.isRead ? 'bg-[var(--foreground-muted)]' : 'bg-[var(--success)]'
+                      )}
+                    />
+                  </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-[var(--foreground)] truncate">
-                      {msg.contactName}
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-[var(--foreground)] truncate">
+                        {msg.contactName}
+                      </p>
+                      <span className="text-xs text-[var(--foreground-muted)]">
+                        {msg.timestamp}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--foreground-muted)] truncate mt-0.5">
+                      {msg.message}
                     </p>
-                    <span className="text-xs text-[var(--foreground-muted)]">
-                      {msg.timestamp}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[var(--foreground-muted)] truncate mt-0.5">
-                    {msg.message}
-                  </p>
 
-                  {/* Tags */}
-                  <div className="flex items-center gap-2 mt-1.5">
-                    {msg.practiceId && (
-                      <span className="text-xs text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded">
-                        #{msg.practiceId}
-                      </span>
-                    )}
-                    {msg.hasAiSuggestion && (
-                      <span className="text-xs text-[var(--success)] flex items-center gap-1">
-                        <Bot className="w-3 h-3" />
-                        AI
-                      </span>
-                    )}
-                    {msg.isNewLead && (
-                      <span className="text-xs text-[var(--warning)] flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        New lead
-                      </span>
-                    )}
+                    {/* Tags */}
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {msg.practiceId && (
+                        <span className="text-xs text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded">
+                          #{msg.practiceId}
+                        </span>
+                      )}
+                      {msg.hasAiSuggestion && (
+                        <span className="text-xs text-[var(--success)] flex items-center gap-1">
+                          <Bot className="w-3 h-3" />
+                          AI
+                        </span>
+                      )}
+                      {msg.isNewLead && (
+                        <span className="text-xs text-[var(--warning)] flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          New lead
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Link>
+              </Link>
+
+              {/* Delete Button */}
+              {onDelete && (
+                <button
+                  onClick={(e) => handleDelete(e, msg.id)}
+                  className="absolute right-2 top-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-500/20 text-[var(--foreground-muted)] hover:text-red-500 transition-all"
+                  title="Delete"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           ))
         )}
       </div>

@@ -228,7 +228,7 @@ class EpisodicMemoryService:
         """Extract a concise title from text"""
         # Remove temporal expressions
         cleaned = text
-        for pattern in TEMPORAL_PATTERNS.keys():
+        for pattern in TEMPORAL_PATTERNS:
             cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
 
         # Take first sentence or first N chars

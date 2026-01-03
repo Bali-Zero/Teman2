@@ -5,7 +5,7 @@ Target: 100% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -34,7 +34,7 @@ class TestResponseHandler:
         """Test query classification"""
         with patch("services.routing.response_handler.classify_query_for_rag") as mock_classify:
             mock_classify.return_value = "business"
-            
+
             result = response_handler.classify_query("How to open a company?")
             assert result == "business"
 
@@ -47,7 +47,7 @@ class TestResponseHandler:
         """Test successful response sanitization"""
         with patch("services.routing.response_handler.process_zantara_response") as mock_process:
             mock_process.return_value = "Sanitized response"
-            
+
             result = response_handler.sanitize_response("Raw response", "business")
             assert result == "Sanitized response"
 
@@ -55,7 +55,7 @@ class TestResponseHandler:
         """Test sanitization error handling"""
         with patch("services.routing.response_handler.process_zantara_response") as mock_process:
             mock_process.side_effect = Exception("Error")
-            
+
             result = response_handler.sanitize_response("Raw response", "business")
             assert result == "Raw response"  # Should return original on error
 
@@ -63,7 +63,7 @@ class TestResponseHandler:
         """Test sanitization with SANTAI mode"""
         with patch("services.routing.response_handler.process_zantara_response") as mock_process:
             mock_process.return_value = "Sanitized"
-            
+
             result = response_handler.sanitize_response(
                 "Raw response",
                 "casual",
@@ -75,7 +75,7 @@ class TestResponseHandler:
         """Test sanitization without contact info"""
         with patch("services.routing.response_handler.process_zantara_response") as mock_process:
             mock_process.return_value = "Sanitized"
-            
+
             result = response_handler.sanitize_response(
                 "Raw response",
                 "greeting",

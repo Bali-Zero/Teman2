@@ -6,6 +6,7 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
@@ -69,4 +70,7 @@ class TestPortalService:
         mock_db_pool.acquire = MagicMock(return_value=mock_conn)
         with pytest.raises(ValueError):
             await portal_service.get_dashboard(999)
+
+
+
 

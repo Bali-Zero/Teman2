@@ -4,9 +4,8 @@ Target: >95% coverage
 """
 
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 import time
+from pathlib import Path
 
 import pytest
 
@@ -55,7 +54,7 @@ class TestCircuitBreaker:
         breaker = CircuitBreaker(success_threshold=2)
         breaker.state = CircuitState.HALF_OPEN
         breaker.success_count = 1
-        
+
         breaker.record_success()
         # After transition to CLOSED, success_count is reset to 0
         assert breaker.state == CircuitState.CLOSED
@@ -67,7 +66,7 @@ class TestCircuitBreaker:
         breaker.record_failure()
         assert breaker.failure_count == 1
         assert breaker.state == CircuitState.CLOSED
-        
+
         breaker.record_failure()
         assert breaker.failure_count == 2
         assert breaker.state == CircuitState.OPEN
@@ -124,10 +123,10 @@ class TestCircuitBreaker:
     async def test_call_success(self):
         """Test calling function successfully"""
         breaker = CircuitBreaker()
-        
+
         async def success_func():
             return "success"
-        
+
         result = await breaker.call(success_func)
         assert result == "success"
         assert breaker.state == CircuitState.CLOSED
@@ -136,13 +135,13 @@ class TestCircuitBreaker:
     async def test_call_failure(self):
         """Test calling function that fails"""
         breaker = CircuitBreaker(failure_threshold=1)
-        
+
         async def fail_func():
             raise ValueError("Test error")
-        
+
         with pytest.raises(ValueError):
             await breaker.call(fail_func)
-        
+
         assert breaker.state == CircuitState.OPEN
 
     @pytest.mark.asyncio
@@ -150,10 +149,10 @@ class TestCircuitBreaker:
         """Test calling function when circuit is OPEN"""
         breaker = CircuitBreaker(failure_threshold=1)
         breaker.state = CircuitState.OPEN
-        
+
         async def func():
             return "should not execute"
-        
+
         with pytest.raises(RuntimeError, match="Circuit breaker.*is OPEN"):
             await breaker.call(func)
 
@@ -162,13 +161,13 @@ class TestCircuitBreaker:
         """Test calling function when circuit is OPEN with fallback"""
         breaker = CircuitBreaker(failure_threshold=1)
         breaker.state = CircuitState.OPEN
-        
+
         async def func():
             return "should not execute"
-        
+
         async def fallback():
             return "fallback result"
-        
+
         result = await breaker.call(func, fallback=fallback)
         assert result == "fallback result"
 
@@ -177,10 +176,10 @@ class TestCircuitBreaker:
         """Test calling function in HALF_OPEN state with success"""
         breaker = CircuitBreaker(success_threshold=1)
         breaker.state = CircuitState.HALF_OPEN
-        
+
         async def success_func():
             return "success"
-        
+
         result = await breaker.call(success_func)
         assert result == "success"
         assert breaker.state == CircuitState.CLOSED
@@ -190,13 +189,13 @@ class TestCircuitBreaker:
         """Test calling function in HALF_OPEN state with failure"""
         breaker = CircuitBreaker()
         breaker.state = CircuitState.HALF_OPEN
-        
+
         async def fail_func():
             raise ValueError("Test error")
-        
+
         with pytest.raises(ValueError):
             await breaker.call(fail_func)
-        
+
         assert breaker.state == CircuitState.OPEN
 
     def test_timeout_transition(self):
@@ -204,7 +203,7 @@ class TestCircuitBreaker:
         breaker = CircuitBreaker(timeout=0.1)
         breaker.state = CircuitState.OPEN
         breaker.last_failure_time = time.time() - 0.2  # Past timeout
-        
+
         # Check timeout - should transition
         breaker._check_timeout()
         assert breaker.state == CircuitState.HALF_OPEN
@@ -214,7 +213,7 @@ class TestCircuitBreaker:
         breaker = CircuitBreaker(timeout=60.0)
         breaker.state = CircuitState.OPEN
         breaker.last_failure_time = time.time()  # Just now
-        
+
         breaker._check_timeout()
         assert breaker.state == CircuitState.OPEN  # Still open
 
@@ -223,7 +222,7 @@ class TestCircuitBreaker:
         breaker = CircuitBreaker()
         breaker.state = CircuitState.OPEN
         breaker.failure_count = 5
-        
+
         state = breaker.get_state()
         assert state["state"] == "open"
         assert state["failure_count"] == 5

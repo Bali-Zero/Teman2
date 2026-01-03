@@ -15,11 +15,11 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, field_validator
 
+from app.core.config import settings
 from app.dependencies import get_current_user, get_database_pool
 from app.utils.logging_utils import get_logger
-from app.core.config import settings
-from services.portal import InviteService
 from services.integrations.zoho_email_service import ZohoEmailService
+from services.portal import InviteService
 
 logger = get_logger(__name__)
 
@@ -186,7 +186,7 @@ async def send_invitation(
                 await email_service.send_email(
                     user_id=user_email,
                     to=[request.email],
-                    subject=f"Welcome to Bali Zero Client Portal",
+                    subject="Welcome to Bali Zero Client Portal",
                     content=html_content,
                     is_html=True,
                 )

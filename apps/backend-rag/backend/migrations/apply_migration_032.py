@@ -19,7 +19,7 @@ import asyncpg
 # Add backend to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from migrations.migration_032_drop_legacy_kg_tables import run, MIGRATION_ID, MIGRATION_NAME
+from migrations.migration_032_drop_legacy_kg_tables import MIGRATION_ID, MIGRATION_NAME, run
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,7 +34,7 @@ async def main():
         logger.error("DATABASE_URL environment variable not set")
         sys.exit(1)
 
-    logger.info(f"Connecting to database...")
+    logger.info("Connecting to database...")
     conn = await asyncpg.connect(database_url)
 
     try:

@@ -83,11 +83,11 @@ const TrustHeader = ({ metadata }: { metadata: NonNullable<Message['metadata']> 
           />
           <span>
             {metadata.route_used.toLowerCase().includes('fast')
-              ? 'FAST (ZAN 1.2)'
+              ? 'FAST'
               : metadata.route_used.toLowerCase().includes('pro')
-                ? 'PRO (ZAN 1.2)'
+                ? 'PRO'
                 : metadata.route_used.toLowerCase().includes('deep')
-                  ? 'ULTRA (ZAN 1.2)'
+                  ? 'DEEP'
                   : metadata.route_used.toUpperCase()}
           </span>
         </div>

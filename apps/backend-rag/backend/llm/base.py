@@ -6,7 +6,7 @@ All LLM providers (Gemini, OpenRouter, DeepSeek, Vertex) implement this interfac
 """
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Optional, List
+from collections.abc import AsyncIterator
 
 from pydantic import BaseModel
 
@@ -24,9 +24,9 @@ class LLMResponse(BaseModel):
     """Standard response format from LLM providers."""
     content: str
     model: str
-    tokens_used: Optional[int] = None
-    finish_reason: Optional[str] = None
-    provider: Optional[str] = None  # Which provider served the request
+    tokens_used: int | None = None
+    finish_reason: str | None = None
+    provider: str | None = None  # Which provider served the request
 
 
 class LLMProvider(ABC):
@@ -51,7 +51,7 @@ class LLMProvider(ABC):
     @abstractmethod
     async def generate(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         max_tokens: int = 4096,
         **kwargs
@@ -73,7 +73,7 @@ class LLMProvider(ABC):
     @abstractmethod
     async def stream(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         **kwargs
     ) -> AsyncIterator[str]:

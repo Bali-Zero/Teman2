@@ -208,8 +208,8 @@ BUSINESS_KEYWORDS = [
     "investor",
     "investitori",
     "voa",
-    "b211",
-    "211a",
+    "c1",
+    "d12",
     "e33g",
     "e28a",
     # Indonesian tax terms (critical for tax_genius routing)

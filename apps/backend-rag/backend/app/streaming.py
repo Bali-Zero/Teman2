@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 from app.auth.validation import validate_auth_mixed
 from app.utils.state_helpers import get_app_state, get_request_state
-from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
+from app.utils.tracing import add_span_event, set_span_status, trace_span
 from services.routing.intelligent_router import IntelligentRouter
 
 logger = logging.getLogger(__name__)

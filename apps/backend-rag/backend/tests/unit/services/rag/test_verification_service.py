@@ -14,9 +14,9 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from services.rag.verification_service import (
+    VerificationResult,
     VerificationService,
     VerificationStatus,
-    VerificationResult
 )
 
 
@@ -90,11 +90,11 @@ class TestVerificationService:
             "corrected_answer": None,
             "missing_citations": []
         }
-        
+
         verification_service._genai_client.generate_text = AsyncMock(
             return_value='{"is_valid": true, "status": "verified", "score": 0.9, "reasoning": "Answer is supported", "corrected_answer": null, "missing_citations": []}'
         )
-        
+
         result = await verification_service.verify_response(
             query="Test query",
             draft_answer="Test answer",
@@ -109,7 +109,7 @@ class TestVerificationService:
         verification_service._genai_client.generate_text = AsyncMock(
             return_value="Invalid JSON"
         )
-        
+
         result = await verification_service.verify_response(
             query="Test query",
             draft_answer="Test answer",

@@ -115,7 +115,7 @@ const QUESTIONS = [
   },
   {
     category: 'Complex',
-    query: 'Compare the cost of VOA runs vs getting a B211A (now C-type) for 6 months.',
+    query: 'Compare the cost of VOA runs vs getting an E33G Digital Nomad Visa for 6 months.',
     expected: ['cost', 'visa'],
   },
 

@@ -1,12 +1,12 @@
 """LLM clients for ZANTARA AI"""
 
 # Unified LLM Provider System (new - no circular deps)
-from .base import LLMProvider, LLMMessage, LLMResponse
+from .base import LLMMessage, LLMProvider, LLMResponse
 from .client import UnifiedLLMClient, create_default_client
-from .provider_registry import register_provider, get_provider, list_providers
 
 # Fallback messages (no circular deps)
 from .fallback_messages import FALLBACK_MESSAGES, get_fallback_message
+from .provider_registry import get_provider, list_providers, register_provider
 
 
 def __getattr__(name: str):

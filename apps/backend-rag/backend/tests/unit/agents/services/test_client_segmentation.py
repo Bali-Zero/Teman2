@@ -5,7 +5,6 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -77,7 +76,7 @@ class TestClientSegmentationService:
             "ltv_score": 75.0,
             "days_since_last_interaction": 20
         }
-        
+
         enriched = client_segmentation_service.enrich_client_data(client_data)
         assert "segment" in enriched
         assert "risk_level" in enriched
@@ -91,7 +90,7 @@ class TestClientSegmentationService:
             "risk_level": "LOW_RISK",
             "days_since_last_interaction": 20
         }
-        
+
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
         assert should_nurture is True
         assert "VIP" in reason
@@ -103,7 +102,7 @@ class TestClientSegmentationService:
             "risk_level": "HIGH_RISK",
             "days_since_last_interaction": 35
         }
-        
+
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
         assert should_nurture is True
         assert "risk" in reason.lower()
@@ -115,7 +114,7 @@ class TestClientSegmentationService:
             "risk_level": "LOW_RISK",
             "days_since_last_interaction": 65
         }
-        
+
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
         assert should_nurture is True
 
@@ -126,7 +125,10 @@ class TestClientSegmentationService:
             "risk_level": "LOW_RISK",
             "days_since_last_interaction": 10
         }
-        
+
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
         assert should_nurture is False
+
+
+
 

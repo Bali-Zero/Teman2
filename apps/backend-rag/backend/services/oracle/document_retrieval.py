@@ -6,7 +6,6 @@ Responsibility: PDF download and document handling from Google Drive
 import io
 import logging
 import os
-from typing import Optional
 
 from googleapiclient.http import MediaIoBaseDownload
 
@@ -22,7 +21,7 @@ class DocumentRetrievalService:
     Responsibility: Download PDFs from Google Drive using fuzzy search.
     """
 
-    def download_pdf_from_drive(self, filename: str) -> Optional[str]:
+    def download_pdf_from_drive(self, filename: str) -> str | None:
         """
         Download PDF from Google Drive using fuzzy search.
 

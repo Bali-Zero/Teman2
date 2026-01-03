@@ -6,8 +6,6 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 
-import pytest
-
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
@@ -28,7 +26,7 @@ class TestComplianceTemplatesService:
         """Test getting existing template"""
         service = ComplianceTemplatesService()
         template = service.get_template("spt_tahunan_individual")
-        
+
         assert template is not None
         assert template["title"] == "SPT Tahunan (Individual Tax Return)"
         assert template["deadline_month"] == 3
@@ -44,7 +42,7 @@ class TestComplianceTemplatesService:
         """Test getting all annual deadlines"""
         service = ComplianceTemplatesService()
         deadlines = service.get_annual_deadlines()
-        
+
         assert isinstance(deadlines, dict)
         assert "spt_tahunan_individual" in deadlines
         assert "spt_tahunan_corporate" in deadlines
@@ -53,7 +51,7 @@ class TestComplianceTemplatesService:
         """Test listing all template keys"""
         service = ComplianceTemplatesService()
         templates = service.list_templates()
-        
+
         assert isinstance(templates, list)
         assert "spt_tahunan_individual" in templates
         assert len(templates) > 0
@@ -72,7 +70,7 @@ class TestComplianceTemplatesService:
         """Test that templates have required structure"""
         service = ComplianceTemplatesService()
         template = service.get_template("spt_tahunan_individual")
-        
+
         assert "title" in template
         assert "deadline_month" in template
         assert "deadline_day" in template

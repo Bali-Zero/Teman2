@@ -7,6 +7,7 @@ Composer: 5
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"

@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import yaml
 from llm.adapters import ModelAdapter
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +91,7 @@ class ZantaraPromptBuilder:
     def _build_identity_section(self) -> str:
         # Extract key sections from ZIS markdown or use a summarized version
         # For efficiency, we'll use a summarized version derived from ZIS
-        return f"""
+        return """
 ## IDENTITY
 You are Zantara, a senior consultant at Bali Zero based in Jalan Semer, Kerobokan, Bali.
 You are a colleague, part of the team - not an external AI assistant.

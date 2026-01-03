@@ -527,33 +527,32 @@ class PortalService:
         self, client_id: int, company_id: int
     ) -> dict[str, Any]:
         """Set a company as primary for the client."""
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                # Clear previous primary
-                await conn.execute(
-                    """
+        async with self.pool.acquire() as conn, conn.transaction():
+            # Clear previous primary
+            await conn.execute(
+                """
                     UPDATE client_companies
                     SET is_primary = false
                     WHERE client_id = $1
                     """,
-                    client_id,
-                )
+                client_id,
+            )
 
-                # Set new primary
-                result = await conn.execute(
-                    """
+            # Set new primary
+            result = await conn.execute(
+                """
                     UPDATE client_companies
                     SET is_primary = true
                     WHERE client_id = $1 AND company_id = $2
                     """,
-                    client_id,
-                    company_id,
-                )
+                client_id,
+                company_id,
+            )
 
-                if result == "UPDATE 0":
-                    raise ValueError("Company not found or not accessible")
+            if result == "UPDATE 0":
+                raise ValueError("Company not found or not accessible")
 
-                return {"success": True, "primary_company_id": company_id}
+            return {"success": True, "primary_company_id": company_id}
 
     # ================================================
     # TAXES

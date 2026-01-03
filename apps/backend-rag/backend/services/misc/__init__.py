@@ -5,6 +5,15 @@ Uses lazy imports to avoid circular dependencies with llm module.
 
 from typing import TYPE_CHECKING
 
+# KnowledgeGraphBuilder moved to autonomous_agents, importing here for backward compatibility
+from ..autonomous_agents.knowledge_graph_builder import (
+    Entity,
+    EntityType,
+    KnowledgeGraphBuilder,
+    Relationship,
+    RelationType,
+)
+
 # Eager imports - these don't cause circular imports
 from .autonomous_research_service import AutonomousResearchService
 from .autonomous_scheduler import AutonomousScheduler
@@ -17,8 +26,6 @@ from .cultural_rag_service import CulturalRAGService
 from .emotional_attunement import EmotionalAttunementService, ToneStyle
 from .graph_extractor import GraphExtractor
 from .graph_service import GraphService
-# KnowledgeGraphBuilder moved to autonomous_agents, importing here for backward compatibility
-from ..autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder, Entity, EntityType, Relationship, RelationType
 from .mcp_client_service import MCPClientService
 from .migration_runner import MigrationRunner
 from .performance_optimizer import PerformanceMonitor, async_timed, timed

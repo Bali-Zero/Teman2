@@ -8,3 +8,4 @@ export { AiPulseWidget } from './AiPulseWidget';
 export { FinancialRealityWidget } from './FinancialRealityWidget';
 export { NusantaraHealthWidget } from './NusantaraHealthWidget';
 export { AutoCRMWidget } from './AutoCRMWidget';
+export { GrafanaWidget } from './GrafanaWidget';

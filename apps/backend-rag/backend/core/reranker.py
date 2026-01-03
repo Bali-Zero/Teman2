@@ -13,7 +13,7 @@ from app.core.config import settings
 
 # Tracing utilities (with fallback for standalone usage)
 try:
-    from app.utils.tracing import trace_span, set_span_attribute, set_span_status
+    from app.utils.tracing import set_span_attribute, set_span_status, trace_span
 except ImportError:
     from contextlib import contextmanager
 

@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from services.crm.collaborator_service import CollaboratorService, CollaboratorProfile
+from services.crm.collaborator_service import CollaboratorProfile, CollaboratorService
 
 
 @pytest.fixture

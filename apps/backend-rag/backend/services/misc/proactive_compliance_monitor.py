@@ -136,7 +136,19 @@ class ProactiveComplianceMonitor:
         """Main monitoring loop"""
         import asyncio
 
+        # #region agent log
+        import json
+        import time
+        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"proactive_compliance_monitor.py:139","message":"ProactiveComplianceMonitor loop entered","data":{"running":self.running,"check_interval":self.check_interval},"timestamp":int(time.time()*1000)}) + '\n')
+        # #endregion
+
         while self.running:
+            # #region agent log
+            import time
+            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"proactive_compliance_monitor.py:140","message":"ProactiveComplianceMonitor loop iteration","data":{"running":self.running},"timestamp":int(time.time()*1000)}) + '\n')
+            # #endregion
             try:
                 logger.info("🔍 Running daily compliance check...")
                 self.check_compliance_items()
@@ -146,7 +158,15 @@ class ProactiveComplianceMonitor:
                 logger.error(f"❌ Error in compliance monitoring loop: {e}")
 
             # Wait for next interval
-            await asyncio.sleep(self.check_interval)
+            try:
+                await asyncio.sleep(self.check_interval)
+            except asyncio.CancelledError:
+                # #region agent log
+                import time
+                with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"proactive_compliance_monitor.py:150","message":"ProactiveComplianceMonitor loop cancelled","data":{},"timestamp":int(time.time()*1000)}) + '\n')
+                # #endregion
+                break
 
     def add_compliance_item(
         self,

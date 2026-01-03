@@ -5,96 +5,104 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
-
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
+backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.metrics import MetricsCollector
+from app import metrics
 
 
 class TestMetrics:
     """Tests for metrics module"""
 
-    @pytest.fixture
-    def metrics_collector(self):
-        """Create MetricsCollector instance"""
-        return MetricsCollector()
+    def test_metrics_imported(self):
+        """Test that metrics can be imported"""
+        assert metrics is not None
 
-    def test_init(self):
-        """Test initialization"""
-        collector = MetricsCollector()
-        assert collector.session_count == 0
+    def test_system_metrics_exist(self):
+        """Test that system metrics are defined"""
+        assert hasattr(metrics, "active_sessions")
+        assert hasattr(metrics, "redis_latency")
+        assert hasattr(metrics, "system_uptime")
+        assert hasattr(metrics, "cpu_usage")
+        assert hasattr(metrics, "memory_usage")
 
-    def test_update_session_count(self, metrics_collector):
-        """Test updating session count"""
-        metrics_collector.update_session_count(5)
-        assert metrics_collector.session_count == 5
+    def test_request_metrics_exist(self):
+        """Test that request metrics are defined"""
+        assert hasattr(metrics, "http_requests_total")
+        assert hasattr(metrics, "request_duration")
 
-    @pytest.mark.asyncio
-    async def test_measure_redis_latency(self, metrics_collector):
-        """Test measuring Redis latency"""
-        with patch("core.cache.get_cache_service") as mock_get_cache:
-            mock_cache = MagicMock()
-            mock_cache.set = MagicMock()
-            mock_cache.get = MagicMock(return_value="pong")
-            mock_get_cache.return_value = mock_cache
-            
-            latency = await metrics_collector.measure_redis_latency()
-            assert latency >= 0
+    def test_cache_metrics_exist(self):
+        """Test that cache metrics are defined"""
+        assert hasattr(metrics, "cache_hits")
+        assert hasattr(metrics, "cache_misses")
+        assert hasattr(metrics, "cache_set_operations")
 
-    @pytest.mark.asyncio
-    async def test_measure_redis_latency_error(self, metrics_collector):
-        """Test measuring Redis latency with error"""
-        with patch("core.cache.get_cache_service", side_effect=Exception("Error")):
-            latency = await metrics_collector.measure_redis_latency()
-            assert latency == -1
+    def test_ai_metrics_exist(self):
+        """Test that AI metrics are defined"""
+        assert hasattr(metrics, "ai_requests")
+        assert hasattr(metrics, "ai_latency")
+        assert hasattr(metrics, "ai_tokens_used")
 
-    @pytest.mark.asyncio
-    async def test_measure_sse_latency(self, metrics_collector):
-        """Test measuring SSE latency"""
-        latency = await metrics_collector.measure_sse_latency()
-        assert latency == 0  # Initial value
+    def test_llm_metrics_exist(self):
+        """Test that LLM metrics are defined"""
+        assert hasattr(metrics, "llm_prompt_tokens")
+        assert hasattr(metrics, "llm_completion_tokens")
+        assert hasattr(metrics, "llm_cost_usd")
 
-    def test_update_sse_latency(self, metrics_collector):
-        """Test updating SSE latency"""
-        metrics_collector.update_sse_latency(100.0)
-        assert metrics_collector.last_sse_latency == 100.0
+    def test_database_metrics_exist(self):
+        """Test that database metrics are defined"""
+        assert hasattr(metrics, "db_connections_active")
+        assert hasattr(metrics, "db_query_duration")
+        assert hasattr(metrics, "db_pool_size")
 
-    def test_update_system_metrics(self, metrics_collector):
-        """Test updating system metrics"""
-        with patch("app.metrics.psutil") as mock_psutil:
-            mock_psutil.cpu_percent.return_value = 50.0
-            mock_psutil.virtual_memory.return_value = MagicMock(used=1024*1024*1024)
-            
-            metrics_collector.update_system_metrics()
-            # Should not raise exception
+    def test_rag_metrics_exist(self):
+        """Test that RAG metrics are defined"""
+        assert hasattr(metrics, "rag_embedding_duration")
+        assert hasattr(metrics, "rag_vector_search_duration")
+        assert hasattr(metrics, "rag_reranking_duration")
+        assert hasattr(metrics, "rag_pipeline_duration")
 
-    def test_record_request(self, metrics_collector):
-        """Test recording HTTP request"""
-        metrics_collector.record_request("GET", "/api/test", 200, 0.1)
+    def test_metrics_increment(self):
+        """Test incrementing a counter metric"""
+        metrics.cache_hits.inc()
         # Should not raise exception
 
-    def test_record_cache_hit(self, metrics_collector):
-        """Test recording cache hit"""
-        metrics_collector.record_cache_hit()
+    def test_metrics_increment_with_value(self):
+        """Test incrementing a counter metric with value"""
+        metrics.cache_hits.inc(5)
         # Should not raise exception
 
-    def test_record_cache_miss(self, metrics_collector):
-        """Test recording cache miss"""
-        metrics_collector.record_cache_miss()
+    def test_metrics_set_gauge(self):
+        """Test setting a gauge metric"""
+        metrics.active_sessions.set(10)
         # Should not raise exception
 
-    def test_record_ai_request(self, metrics_collector):
-        """Test recording AI request"""
-        metrics_collector.record_ai_request("gemini-3-flash-preview", 0.5, tokens=100)
+    def test_metrics_observe_histogram(self):
+        """Test observing a histogram metric"""
+        metrics.request_duration.observe(0.5)
         # Should not raise exception
 
-    def test_record_rag_query(self, metrics_collector):
-        """Test recording RAG query"""
-        metrics_collector.record_rag_query("visa_oracle", "keyword", "success")
+    def test_metrics_labels(self):
+        """Test metrics with labels"""
+        metrics.http_requests_total.labels(method="GET", endpoint="/test", status=200).inc()
         # Should not raise exception
 
+    def test_rag_queries_total(self):
+        """Test RAG queries counter"""
+        metrics.rag_queries_total.labels(collection="test", route_used="fast", status="success").inc()
+        # Should not raise exception
+
+    def test_rag_tool_calls_total(self):
+        """Test RAG tool calls counter"""
+        metrics.rag_tool_calls_total.labels(tool_name="vector_search", status="success").inc()
+        # Should not raise exception
+
+    def test_database_init_metrics(self):
+        """Test database initialization metrics"""
+        if hasattr(metrics, "database_init_success_total"):
+            metrics.database_init_success_total.inc()
+        if hasattr(metrics, "database_init_failed_total"):
+            metrics.database_init_failed_total.labels(error_type="test", is_transient="true").inc()
+        # Should not raise exception

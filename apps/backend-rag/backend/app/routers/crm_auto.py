@@ -8,7 +8,7 @@ from typing import Any
 
 import asyncpg
 from core.cache import cached
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
 from app.dependencies import get_database_pool

@@ -15,8 +15,8 @@ from typing import Any
 
 import anthropic
 
-from .ontology import EntityType
 from .extractor import ExtractedEntity
+from .ontology import EntityType
 
 logger = logging.getLogger(__name__)
 

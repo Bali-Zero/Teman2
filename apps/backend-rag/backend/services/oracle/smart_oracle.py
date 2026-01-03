@@ -18,9 +18,9 @@ import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from llm.genai_client import GENAI_AVAILABLE, GenAIClient, genai, get_genai_client
 
 from app.core.config import settings
-from llm.genai_client import GenAIClient, GENAI_AVAILABLE, genai, get_genai_client
 
 logger = logging.getLogger(__name__)
 

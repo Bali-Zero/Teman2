@@ -1,7 +1,7 @@
 # PT PMA Restaurant Setup — Full Conversation
 
 > **Generated**: 2025-12-10
-> **Topics Covered**: KBLI 56101, PT PMA capital requirements, OSS/NIB registration, health permits (BPOM, Dinkes), foreign ownership limits, LKPM reporting, alcohol licensing (NPPBKC), location zoning, timeline & costs
+> **Topics Covered**: KBLI 56101, PT PMA capital requirements, OSS/NIB registration, health permits (BPOM, Dinkes), foreign ownership limits, LKPM reporting, alcohol licensing (NPBBKC), location zoning, timeline & costs
 > **Style**: Aspiring restaurant owner (expat entrepreneur), detail-oriented planner with budget concerns
 
 ---
@@ -113,18 +113,18 @@ Apakah restoran akan serve alcohol (beer, wine, spirits)?
 ---
 
 **4 — Client:**
-Yes, saya mau serve alcohol. Izinnya ribet ya? Perlu NPPBKC atau apa? Dan apa bedanya restoran dengan bar/pub dalam hal licensing?
+Yes, saya mau serve alcohol. Izinnya ribet ya? Perlu NPBBKC atau apa? Dan apa bedanya restoran dengan bar/pub dalam hal licensing?
 
 **Consultant:**
 **Alcohol licensing di Indonesia lumayan kompleks**, tapi doable.
 
-**NPPBKC (Nomor Pokok Pengusaha Barang Kena Cukai):**
+**NPBBKC (Nomor Pokok Pengusaha Barang Kena Cukai):**
 - Ini **tax registration number** untuk businesses yang jual **cukai goods** (alcohol, tobacco)
 - **Wajib** jika restoran serve alcohol (even just beer)
 - Di-apply ke **Bea Cukai (Customs)** setelah PT PMA + NIB sudah jadi
 - **Gratis** (no fee), tapi proses agak lama: **2-4 minggu**
 
-**Syarat NPPBKC:**
+**Syarat NPBBKC:**
 - PT PMA sudah punya **NIB + KBLI 56101**
 - **Izin lokasi** (IMB + HO) sudah complete
 - **Surat Keterangan Domisili Usaha (SKDU)** dari kelurahan
@@ -142,8 +142,8 @@ Yes, saya mau serve alcohol. Izinnya ribet ya? Perlu NPPBKC atau apa? Dan apa be
 |-------|----------------------|---------------------|
 | **Primary business** | Food service | Alcohol service |
 | **Alcohol ratio** | < 50% revenue from alcohol | > 50% revenue from alcohol |
-| **NPPBKC** | Diperlukan jika serve alcohol | **Wajib** |
-| **Izin tambahan** | NPPBKC saja | NPPBKC + **Izin Khusus Penjualan Minuman Beralkohol** dari Pemda Bali |
+| **NPBBKC** | Diperlukan jika serve alcohol | **Wajib** |
+| **Izin tambahan** | NPBBKC saja | NPBBKC + **Izin Khusus Penjualan Minuman Beralkohol** dari Pemda Bali |
 | **Modal disetor** | IDR 2.5 miliar | IDR 2.5 miliar (sama) |
 | **Foreign ownership** | 100% | 100% (di Bali allowed) |
 
@@ -154,14 +154,14 @@ Yes, saya mau serve alcohol. Izinnya ribet ya? Perlu NPPBKC atau apa? Dan apa be
 **Timeline alcohol licensing:**
 1. Setup PT PMA + NIB: **2-3 minggu**
 2. Location permits (IMB, HO, SKDU): **2-4 minggu**
-3. NPPBKC application: **2-4 minggu**
+3. NPBBKC application: **2-4 minggu**
 4. Site inspection + approval: **1-2 minggu**
 5. **Total: 2-3 bulan** dari start sampai boleh jual alcohol legally
 
 **Biaya alcohol licensing:**
-- NPPBKC application: **Gratis** (government fee)
-- Consultant fee (NPPBKC setup): **IDR 5 juta**
-- **Total: IDR 5 juta**
+- NPBBKC application: **Gratis** (government fee)
+- Consultant fee (NPBBKC Golongan A+B+C): **IDR 15 juta**
+- **Total: IDR 15 juta**
 
 Resto Anda lebih ke arah fine dining atau casual dining?
 
@@ -191,7 +191,7 @@ Benar, **KBLI 56101 sudah cukup** untuk casual dining + bar.
   - Pest control system
 - **Proses:** Site inspection oleh Dinkes officer
 - **Timeline:** 3-4 minggu
-- **Biaya:** IDR 2-3 juta (inspection + certificate)
+- **Biaya:** IDR 9 juta (Bali Zero 2025)
 - **Renewal:** Setiap **tahun**
 
 **3. Sertifikat Halal (Optional tapi recommended)**
@@ -225,10 +225,10 @@ Benar, **KBLI 56101 sudah cukup** untuk casual dining + bar.
 4. **Parallel process:** Bisa apply SLHS + PIRT + Halal **bersamaan** setelah location ready
 
 **Biaya total health permits:**
-- SLHS: IDR 2-3 juta
+- SLHS: IDR 9 juta
 - PIRT: IDR 500rb - 1 juta
 - Halal: IDR 5-8 juta
-- **Total: IDR 5 juta** (jika ambil semua)
+- **Total: IDR 15-18 juta** (jika ambil semua)
 
 **Consultant fee:**
 - Health permits setup (SLHS + PIRT + Halal): **IDR 10-15 juta**
@@ -315,7 +315,7 @@ Target 60 seats. Timeline dari start setup PT sampai grand opening kira-kira ber
 **Phase 2: Location Permits (Month 2-3)**
 - Week 1-2: Secure lease, get IMB from landlord
 - Week 3-4: Apply SKDU, HO (auto-issued via OSS)
-- Week 5-6: NPPBKC application (for alcohol)
+- Week 5-6: NPBBKC application (for alcohol)
 - Week 7-8: Site inspection by Bea Cukai
 - **Deliverable:** Location legally ready, alcohol license approved
 
@@ -350,9 +350,9 @@ Target 60 seats. Timeline dari start setup PT sampai grand opening kira-kira ber
 - **Subtotal B: IDR 22-26 juta** (first year)
 
 **C. Licensing Costs (Alcohol + Health):**
-- NPPBKC setup (consultant): **IDR 5 juta**
-- Health permits (SLHS, PIRT, Halal): **IDR 5 juta**
-- **Subtotal C: IDR 16-24 juta**
+- NPBBKC setup (consultant): **IDR 15 juta**
+- Health permits (SLHS IDR 9M, PIRT IDR 500k-1M, Halal IDR 5-8M): **IDR 15-18 juta**
+- **Subtotal C: IDR 30-33 juta**
 
 **D. Capital Requirement:**
 - Modal disetor (cash in bank): **IDR 2,500,000,000** (must have)
@@ -1599,7 +1599,7 @@ Konsep menu sudah ada (Western + Asian fusion, sekitar 25 items). Last question:
 
 **6. Clean Legal & Tax Compliance:**
 - **Must-have:**
-  - ✅ All licenses valid (NIB, NPPBKC, health permits)
+  - ✅ All licenses valid (NIB, NPBBKC, health permits)
   - ✅ LKPM up to date (no BKPM red flags)
   - ✅ Tax filings current (no outstanding DJP debt)
   - ✅ BPJS enrollment for all staff (no Disnaker issues)
@@ -1728,7 +1728,7 @@ Konsep menu sudah ada (Western + Asian fusion, sekitar 25 items). Last question:
 
 **1 Year Before Sale:**
 - ✅ Financial audit (clean up bookkeeping, ensure all tax filings current)
-- ✅ Renew all licenses (NIB, NPPBKC, health permits)
+- ✅ Renew all licenses (NIB, NPBBKC, health permits)
 - ✅ Submit all LKPM on time (no BKPM red flags)
 - ✅ Maximize profit margin (optimize costs, increase revenue)
 
@@ -1828,7 +1828,7 @@ Tentu! Saya akan prepare **comprehensive summary document** mencakup:
 
 2. **Timeline Roadmap** (Gantt chart)
    - Month 1-2: PT PMA setup, IMTA, E28A KITAS
-   - Month 2-3: Location permits, NPPBKC
+   - Month 2-3: Location permits, NPBBKC
    - Month 3-5: Renovation, health permits
    - Month 5-6: Recruitment, soft opening, grand opening
 
@@ -1888,7 +1888,7 @@ Also, jika Anda ready untuk proceed dengan PT PMA setup, kami bisa mulai **immed
 
 **Our Package Price (All-Inclusive PT PMA + KITAS + Licensing):**
 - **Standard package:** IDR 95 juta (PT PMA setup + E28A KITAS + IMTA + basic licensing)
-- **Premium package:** IDR 135 juta (everything + NPPBKC + health permits + LKPM support 1st year)
+- **Premium package:** IDR 135 juta (everything + NPBBKC + health permits + LKPM support 1st year)
 
 **Payment terms:**
 - **50% deposit** (start work)
@@ -2008,18 +2008,18 @@ Will the restaurant serve alcohol (beer, wine, spirits)?
 ---
 
 **4 — Client:**
-Yes, I want to serve alcohol. Is the licensing complicated? Do I need NPPBKC or something? And what's the difference between restaurant and bar/pub in terms of licensing?
+Yes, I want to serve alcohol. Is the licensing complicated? Do I need NPBBKC or something? And what's the difference between restaurant and bar/pub in terms of licensing?
 
 **Consultant:**
 **Alcohol licensing in Indonesia is moderately complex**, but doable.
 
-**NPPBKC (Excise Goods Entrepreneur Registration Number):**
+**NPBBKC (Excise Goods Entrepreneur Registration Number):**
 - This is a **tax registration number** for businesses selling **excise goods** (alcohol, tobacco)
 - **Mandatory** if restaurant serves alcohol (even just beer)
 - Applied to **Bea Cukai (Customs)** after PT PMA + NIB is complete
 - **Free** (no fee), but process is somewhat long: **2-4 weeks**
 
-**NPPBKC requirements:**
+**NPBBKC requirements:**
 - PT PMA already has **NIB + KBLI 56101**
 - **Location permit** (IMB + HO) already complete
 - **SKDU (Business Domicile Letter)** from kelurahan (sub-district office)
@@ -2037,8 +2037,8 @@ Yes, I want to serve alcohol. Is the licensing complicated? Do I need NPPBKC or 
 |--------|-------------------------|----------------------|
 | **Primary business** | Food service | Alcohol service |
 | **Alcohol ratio** | < 50% revenue from alcohol | > 50% revenue from alcohol |
-| **NPPBKC** | Required if serving alcohol | **Mandatory** |
-| **Additional permits** | NPPBKC only | NPPBKC + **Special Alcohol Sales Permit** from Bali local government |
+| **NPBBKC** | Required if serving alcohol | **Mandatory** |
+| **Additional permits** | NPBBKC only | NPBBKC + **Special Alcohol Sales Permit** from Bali local government |
 | **Paid-up capital** | IDR 2.5 billion | IDR 2.5 billion (same) |
 | **Foreign ownership** | 100% | 100% (allowed in Bali) |
 
@@ -2049,14 +2049,14 @@ Yes, I want to serve alcohol. Is the licensing complicated? Do I need NPPBKC or 
 **Alcohol licensing timeline:**
 1. PT PMA + NIB setup: **2-3 weeks**
 2. Location permits (IMB, HO, SKDU): **2-4 weeks**
-3. NPPBKC application: **2-4 weeks**
+3. NPBBKC application: **2-4 weeks**
 4. Site inspection + approval: **1-2 weeks**
 5. **Total: 2-3 months** from start to legal alcohol sales
 
 **Alcohol licensing costs:**
-- NPPBKC application: **Free** (government fee)
-- Consultant fee (NPPBKC setup): **IDR 5 million**
-- **Total: IDR 5 million**
+- NPBBKC application: **Free** (government fee)
+- Consultant fee (NPBBKC Category A+B+C): **IDR 15 million**
+- **Total: IDR 15 million**
 
 Is your restaurant more fine dining or casual dining?
 
@@ -2086,7 +2086,7 @@ Correct, **KBLI 56101 is sufficient** for casual dining + bar.
   - Pest control system
 - **Process:** Site inspection by Dinkes officer
 - **Timeline:** 3-4 weeks
-- **Cost:** IDR 2-3 million (inspection + certificate)
+- **Cost:** IDR 9 million (Bali Zero 2025)
 - **Renewal:** **Annual**
 
 **3. Halal Certificate (Optional but recommended)**
@@ -2120,10 +2120,10 @@ Correct, **KBLI 56101 is sufficient** for casual dining + bar.
 4. **Parallel process:** Can apply for SLHS + PIRT + Halal **simultaneously** after location is ready
 
 **Total health permits cost:**
-- SLHS: IDR 2-3 million
+- SLHS: IDR 9 million
 - PIRT: IDR 500k - 1 million
 - Halal: IDR 5-8 million
-- **Total: IDR 5 million** (if taking all)
+- **Total: IDR 15-18 million** (if taking all)
 
 **Consultant fee:**
 - Health permits setup (SLHS + PIRT + Halal): **IDR 10-15 million**
@@ -2186,9 +2186,9 @@ Lokasi restoran nang endi nang Bali?
 | **Setup Timeline** | 2-3 weeks (PT PMA + NIB + bank account) |
 | **Total Timeline to Opening** | 5-6 months (setup → renovation → permits → grand opening) |
 | **Setup Costs** | IDR 25 million (PT PMA 20M + VO 5M, Bali Zero 2025) |
-| **Immigration Costs** | IDR 22-26 million (E28A KITAS + IMTA for active director) |
-| **Health Permits** | SLHS (IDR 2-3M), PIRT (IDR 500k-1M), Halal (IDR 5-8M) — 3-6 weeks |
-| **Alcohol License** | NPPBKC (free govt fee, IDR 5M consultant) — 2-4 weeks |
+| **Immigration Costs** | IDR 17-19 million (E28A Investor KITAS 2Y offshore/onshore) |
+| **Health Permits** | SLHS (IDR 9M), PIRT (IDR 500k-1M), Halal (IDR 5-8M) — 3-6 weeks |
+| **Alcohol License** | NPBBKC Golongan A+B+C (IDR 15M) — 45-60 days minimum |
 | **LKPM Reporting** | Quarterly to BKPM, deadline 10th of following month — NIB suspended if 60+ days late |
 | **Employee Ratio** | 1 expat : 10 local employees (mandatory for IMTA compliance) |
 | **IMTA Fee** | USD 100/month/expat (~IDR 1.5M/month) + 4.24% TKA Compensation Fund |

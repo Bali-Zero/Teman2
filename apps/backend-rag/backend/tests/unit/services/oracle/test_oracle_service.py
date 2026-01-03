@@ -61,12 +61,12 @@ class TestOracleService:
             }
             mock_get_pool.return_value = AsyncMock()
             mock_get_orch.return_value = AsyncMock()
-            
+
             result = await oracle_service.process_query(
                 query="test",
                 user_email="test@example.com"
             )
-            
+
             assert result["answer"] == "test answer"
 
     @pytest.mark.asyncio
@@ -78,13 +78,13 @@ class TestOracleService:
             mock_process.return_value = {"answer": "test"}
             mock_get_pool.return_value = AsyncMock()
             mock_get_orch.return_value = AsyncMock()
-            
+
             result = await oracle_service.process_query(
                 query="test",
                 user_email="test@example.com",
                 context={"client_id": 123}
             )
-            
+
             assert result is not None
 
     @pytest.mark.asyncio
@@ -102,7 +102,7 @@ class TestOracleService:
             is_ambiguous=False,
             clarification_question=None
         ))
-        
+
         with patch.object(oracle_service, '_get_orchestrator', return_value=mock_orchestrator), \
              patch.object(oracle_service.user_context, 'get_full_user_context') as mock_context, \
              patch.object(oracle_service.analytics, 'build_analytics_data') as mock_analytics_build, \
@@ -115,7 +115,7 @@ class TestOracleService:
                 "user_role": "user"
             }
             mock_analytics_build.return_value = {}
-            
+
             result = await oracle_service.process_query(
                 request_query="test query",
                 request_user_email="test@example.com",
@@ -127,7 +127,7 @@ class TestOracleService:
                 request_conversation_history=None,
                 search_service=mock_search_service
             )
-            
+
             assert result["success"] is True
             assert result["answer"] == "answer"
 
@@ -135,7 +135,7 @@ class TestOracleService:
     async def test_process_query_error(self, oracle_service):
         """Test process_query error handling"""
         mock_search_service = MagicMock()
-        
+
         with patch.object(oracle_service.user_context, 'get_full_user_context') as mock_context, \
              patch.object(oracle_service, '_get_orchestrator') as mock_get_orch, \
              patch.object(oracle_service.analytics, 'store_query_analytics') as mock_store:
@@ -146,12 +146,12 @@ class TestOracleService:
                 "user_name": "Test",
                 "user_role": "user"
             }
-            
+
             # Make orchestrator.process_query raise a catchable exception (RuntimeError is in the except list)
             mock_orchestrator = AsyncMock()
             mock_orchestrator.process_query = AsyncMock(side_effect=RuntimeError("Error"))
             mock_get_orch.return_value = mock_orchestrator
-            
+
             result = await oracle_service.process_query(
                 request_query="test",
                 request_user_email="test@example.com",
@@ -163,7 +163,7 @@ class TestOracleService:
                 request_conversation_history=None,
                 search_service=mock_search_service
             )
-            
+
             assert result["success"] is False
             assert "error" in result
 
@@ -171,7 +171,7 @@ class TestOracleService:
     async def test_process_query_with_conversation_history(self, oracle_service):
         """Test process_query with conversation history"""
         from app.routers.agentic_rag import ConversationMessageInput
-        
+
         mock_search_service = MagicMock()
         mock_orchestrator = AsyncMock()
         mock_orchestrator.process_query = AsyncMock(return_value=MagicMock(
@@ -184,7 +184,7 @@ class TestOracleService:
             is_ambiguous=False,
             clarification_question=None
         ))
-        
+
         with patch.object(oracle_service, '_get_orchestrator', return_value=mock_orchestrator), \
              patch.object(oracle_service.user_context, 'get_full_user_context') as mock_context, \
              patch.object(oracle_service.analytics, 'build_analytics_data') as mock_analytics_build, \
@@ -197,7 +197,7 @@ class TestOracleService:
                 "user_role": "user"
             }
             mock_analytics_build.return_value = {}
-            
+
             # Use proper dict format, not ConversationMessageInput
             result = await oracle_service.process_query(
                 request_query="test",
@@ -210,7 +210,7 @@ class TestOracleService:
                 request_conversation_history=[ConversationMessageInput(role="user", content="previous")],
                 search_service=mock_search_service
             )
-            
+
             assert result["success"] is True
 
     @pytest.mark.asyncio
@@ -219,7 +219,7 @@ class TestOracleService:
         # Mock create_pool to return a coroutine
         async def mock_create_pool(*args, **kwargs):
             return AsyncMock()
-        
+
         with patch("asyncpg.create_pool", side_effect=mock_create_pool):
             pool = await oracle_service._get_db_pool()
             assert pool is not None
@@ -235,7 +235,7 @@ class TestOracleService:
     async def test_get_orchestrator(self, oracle_service):
         """Test _get_orchestrator"""
         mock_search_service = MagicMock()
-        
+
         with patch.object(oracle_service, '_get_db_pool', return_value=AsyncMock()), \
              patch("services.oracle.oracle_service.create_agentic_rag") as mock_create:
             mock_create.return_value = AsyncMock()
@@ -246,16 +246,16 @@ class TestOracleService:
         """Test lazy-loaded properties"""
         # Test followup_service
         assert oracle_service.followup_service is not None
-        
+
         # Test citation_service
         assert oracle_service.citation_service is not None
-        
+
         # Test clarification_service
         assert oracle_service.clarification_service is not None
-        
+
         # Test personality_service
         assert oracle_service.personality_service is not None
-        
+
         # Test fact_extractor
         assert oracle_service.fact_extractor is not None
 
@@ -264,7 +264,7 @@ class TestOracleService:
         """Test submit_feedback"""
         with patch("services.oracle.oracle_service.db_manager") as mock_db:
             mock_db.store_feedback = AsyncMock(return_value={"success": True})
-            
+
             result = await oracle_service.submit_feedback({"user_email": "test@example.com", "rating": 5})
             assert result is not None
 

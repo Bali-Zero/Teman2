@@ -14,7 +14,11 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder, Entity, EntityType
+from services.autonomous_agents.knowledge_graph_builder import (
+    Entity,
+    EntityType,
+    KnowledgeGraphBuilder,
+)
 
 
 @pytest.fixture
@@ -58,17 +62,17 @@ class TestKnowledgeGraphBuilder:
             confidence=0.9,
             source_chunk_ids=["chunk1"]
         )
-        
+
         from contextlib import asynccontextmanager
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()
-        
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
-        
+
         kg_builder.db_pool.acquire = acquire
-        
+
         await kg_builder.add_entity(entity)
         assert entity.entity_id in kg_builder.entities
 
@@ -80,7 +84,7 @@ class TestKnowledgeGraphBuilder:
             mock_llm.return_value = {
                 "text": '{"entities": [{"id": "test", "type": "LEGAL_ENTITY", "name": "PT PMA"}], "relationships": []}'
             }
-            
+
             result = await kg_builder.extract_via_llm("PT PMA requires investment", "test_collection", "chunk1")
             assert "entities" in result
 

@@ -14,7 +14,7 @@ QUESTIONS = [
     "How much does a Working KITAS cost?",
     "Can I extend my VoA online?",
     "Tell me about the Second Home Visa.",
-    "What is the difference between Offshore and Onshore B211A?",
+    "What is the difference between VOA and E33G Digital Nomad Visa?",
     "What is the minimum capital for a PT PMA?",
     "Can a foreigner be a Director in a PT PMA?",
     "What does a Commissioner do in a PT PMA?",

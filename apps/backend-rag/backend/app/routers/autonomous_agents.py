@@ -325,6 +325,7 @@ async def extract_kg_sample(
     Returns entities and relationships found for human approval.
     """
     import re
+
     from app.main_cloud import app
 
     retriever = getattr(app.state, "retriever", None)
@@ -447,8 +448,12 @@ async def persist_kg_sample(
     Run /extract-sample first to review!
     """
     import re
+
     from app.main_cloud import app
-    from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder, Entity, Relationship
+    from services.autonomous_agents.knowledge_graph_builder import (
+        Entity,
+        KnowledgeGraphBuilder,
+    )
 
     retriever = getattr(app.state, "retriever", None)
     db_pool = getattr(app.state, "db_pool", None)

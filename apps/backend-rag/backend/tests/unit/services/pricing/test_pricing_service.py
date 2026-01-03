@@ -7,8 +7,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
@@ -32,7 +30,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_pricing("all")
             assert isinstance(result, dict)
@@ -44,7 +42,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_pricing("visa")
             assert isinstance(result, dict)
@@ -56,7 +54,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_pricing("kitas")
             assert isinstance(result, dict)
@@ -75,7 +73,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.search_service("test")
             assert isinstance(result, dict)
@@ -87,7 +85,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {"single_entry_visas": []}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_visa_prices()
             assert isinstance(result, dict)
@@ -99,7 +97,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {"kitas_permits": []}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_kitas_prices()
             assert isinstance(result, dict)
@@ -111,7 +109,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {"company_services": []}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_business_prices()
             assert isinstance(result, dict)
@@ -123,7 +121,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_tax_prices()
             assert isinstance(result, dict)
@@ -135,7 +133,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_quick_quotes()
             assert isinstance(result, dict)
@@ -147,7 +145,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.get_warnings()
             assert isinstance(result, dict)
@@ -159,7 +157,7 @@ class TestPricingService:
              patch("json.load") as mock_json_load:
             mock_json_load.return_value = {"services": {}}
             mock_open.return_value.__enter__.return_value = MagicMock()
-            
+
             service = PricingService()
             result = service.format_for_llm_context("visa")
             assert isinstance(result, str)

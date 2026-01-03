@@ -4,11 +4,8 @@ Target: >95% coverage
 """
 
 import sys
-from pathlib import Path
-from unittest.mock import patch
 from datetime import datetime, timedelta
-
-import pytest
+from pathlib import Path
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
@@ -98,10 +95,10 @@ class TestInMemoryConversationCache:
         InMemoryConversationCache._instance = None
         cache = InMemoryConversationCache(ttl_minutes=1)
         cache.add_message("conv1", "user", "Hello")
-        
+
         # Set timestamp to old
         cache._timestamps["conv1"] = datetime.now() - timedelta(minutes=2)
-        
+
         cache._cleanup_old()
         assert "conv1" not in cache._cache
 
@@ -110,4 +107,7 @@ class TestInMemoryConversationCache:
         cache1 = get_memory_cache()
         cache2 = get_memory_cache()
         assert cache1 is cache2
+
+
+
 

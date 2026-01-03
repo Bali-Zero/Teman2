@@ -1,7 +1,7 @@
 # Import Duty Basics (Bea Cukai) — Full Conversation
 
 > **Generated**: 2025-12-10
-> **Topics Covered**: Customs duty calculation, import documentation (PIB, B/L, invoice, packing list), CIF valuation, duty rates (0-150%), personal vs commercial import, red/green lane, customs clearance timeline, freight forwarder, penalties for misdeclaration, NPPBKC for alcohol/tobacco
+> **Topics Covered**: Customs duty calculation, import documentation (PIB, B/L, invoice, packing list), CIF valuation, duty rates (0-150%), personal vs commercial import, red/green lane, customs clearance timeline, freight forwarder, penalties for misdeclaration, NPBBKC for alcohol/tobacco
 > **Style**: First-time importer (expat relocating to Indonesia), anxious about customs process
 
 ---
@@ -600,7 +600,7 @@ Belum ada Certificate of Origin. Apakah worth it untuk apply? Dan kalau ada disc
 **3. Smuggling Penalty (Severe):**
 - **Untuk:** Intentional misdeclaration, concealment, prohibited goods
 - **Penalty:** **100-1000%** dari duty value + possible **criminal charges**
-- **Example:** Smuggle alcohol without NPPBKC → duty USD 5,000 → penalty bisa **USD 50,000+**
+- **Example:** Smuggle alcohol without NPBBKC → duty USD 5,000 → penalty bisa **USD 50,000+**
 
 **4. Confiscation (Penyitaan):**
 - **Untuk:** Prohibited goods (drugs, weapons, counterfeit, endangered species)
@@ -618,8 +618,8 @@ Belum ada Certificate of Origin. Apakah worth it untuk apply? Dan kalau ada disc
 - ❌ Endangered species (CITES-listed)
 
 **Restricted (Boleh import dengan izin khusus):**
-- ⚠️ **Alcohol** (need NPPBKC from Bea Cukai)
-- ⚠️ **Tobacco** (need NPPBKC)
+- ⚠️ **Alcohol** (need NPBBKC from Bea Cukai)
+- ⚠️ **Tobacco** (need NPBBKC)
 - ⚠️ **Medicines** (need BPOM approval)
 - ⚠️ **Radio equipment** (need frequency permit from POSTEL)
 - ⚠️ **Live animals, plants** (need quarantine certificate)
@@ -1474,7 +1474,7 @@ Halo! Sugeng rawuh nang Indonesia!
 | **IMEI Registration (Phones)** | Mandatory for smartphones brought from overseas — register via Beacukai app within 60 days or phone blocked |
 | **Drone Registration** | Register via Sikudera app (Kemenhub) for hobby drones — free, required before flying |
 | **Prohibited Items** | Narcotics, firearms, counterfeit goods, pornography, endangered species — confiscation + prosecution |
-| **Restricted Items** | Alcohol (need NPPBKC), tobacco (need NPPBKC), medicines (need BPOM), radio equipment (need POSTEL permit) |
+| **Restricted Items** | Alcohol (need NPBBKC), tobacco (need NPBBKC), medicines (need BPOM), radio equipment (need POSTEL permit) |
 | **Underpayment Penalty** | (Correct Duty - Paid Duty) × 2 — double the difference for undervaluation |
 | **Total Timeline (Australia-Bali)** | 3-5 weeks (sea freight 7-14 days + clearance 7-10 days + delivery 3-5 days) |
 

@@ -12,10 +12,10 @@ import logging
 from collections.abc import AsyncGenerator
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+from llm.genai_client import GENAI_AVAILABLE, get_genai_client
 from prompts.jaksel_persona import FEW_SHOT_EXAMPLES, SYSTEM_INSTRUCTION
 
 from app.core.config import settings
-from llm.genai_client import GenAIClient, GENAI_AVAILABLE, get_genai_client
 
 logger = logging.getLogger(__name__)
 

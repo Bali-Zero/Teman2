@@ -20,6 +20,7 @@ import logging
 from typing import Any, Literal
 
 from app.core.constants import RoutingConstants
+
 from . import (
     ConfidenceCalculatorService,
     FallbackManagerService,
@@ -61,7 +62,7 @@ class QueryRouter:
     """
 
     # Domain-specific keywords for multi-collection routing
-    # Generic patterns only - no specific codes (B211, C1, E23, etc. are in database)
+    # Generic patterns only - no specific codes (C1, D12, E23, etc. are in database)
     VISA_KEYWORDS = [
         "visa",
         "immigration",

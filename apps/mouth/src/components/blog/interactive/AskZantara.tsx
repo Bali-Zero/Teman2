@@ -19,13 +19,24 @@ import { cn } from '@/lib/utils';
 // Types
 // ============================================================================
 
+export interface ScriptedQA {
+  /** The question */
+  q: string;
+  /** The pre-written answer */
+  a: string;
+  /** Optional sources to display */
+  sources?: { title: string; url: string }[];
+}
+
 export interface AskZantaraProps {
   /** Context for the AI (article topic, category, etc.) */
   context?: string;
   /** Placeholder text */
   placeholder?: string;
-  /** Suggested questions */
+  /** Suggested questions (for AI mode) */
   suggestedQuestions?: string[];
+  /** Pre-scripted Q&A pairs (no API calls, fully controlled) */
+  scripted?: ScriptedQA[];
   /** API endpoint for asking questions */
   apiEndpoint?: string;
   /** Custom class */
@@ -50,6 +61,7 @@ export function AskZantara({
   context,
   placeholder = 'Ask a question about this topic...',
   suggestedQuestions = [],
+  scripted,
   apiEndpoint = '/api/blog/ask',
   className,
   variant = 'inline',
@@ -60,7 +72,40 @@ export function AskZantara({
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
 
-  // Handle sending a question
+  // Check if we're in scripted mode
+  const isScriptedMode = scripted && scripted.length > 0;
+
+  // Handle scripted question click
+  const handleScriptedQuestion = useCallback((qa: ScriptedQA) => {
+    if (isLoading) return;
+
+    // Add user message
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: qa.q,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setShowSuggestions(false);
+    setIsLoading(true);
+
+    // Simulate "thinking" delay (200-500ms for realism)
+    const delay = 200 + Math.random() * 300;
+    setTimeout(() => {
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: qa.a,
+        sources: qa.sources,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+      setIsLoading(false);
+    }, delay);
+  }, [isLoading]);
+
+  // Handle sending a question (AI mode)
   const handleSend = useCallback(async (question?: string) => {
     const q = question || input.trim();
     if (!q || isLoading) return;
@@ -152,6 +197,9 @@ export function AskZantara({
                 isLoading={isLoading}
                 showSuggestions={showSuggestions}
                 suggestedQuestions={suggestedQuestions}
+                scripted={scripted}
+                isScriptedMode={isScriptedMode}
+                onScriptedQuestion={handleScriptedQuestion}
                 placeholder={placeholder}
                 onSend={handleSend}
                 onKeyDown={handleKeyDown}
@@ -177,6 +225,9 @@ export function AskZantara({
         isLoading={isLoading}
         showSuggestions={showSuggestions}
         suggestedQuestions={suggestedQuestions}
+        scripted={scripted}
+        isScriptedMode={isScriptedMode}
+        onScriptedQuestion={handleScriptedQuestion}
         placeholder={placeholder}
         onSend={handleSend}
         onKeyDown={handleKeyDown}
@@ -196,6 +247,9 @@ function AskZantaraContent({
   isLoading,
   showSuggestions,
   suggestedQuestions,
+  scripted,
+  isScriptedMode,
+  onScriptedQuestion,
   placeholder,
   onSend,
   onKeyDown,
@@ -206,10 +260,18 @@ function AskZantaraContent({
   isLoading: boolean;
   showSuggestions: boolean;
   suggestedQuestions: string[];
+  scripted?: ScriptedQA[];
+  isScriptedMode?: boolean;
+  onScriptedQuestion?: (qa: ScriptedQA) => void;
   placeholder: string;
   onSend: (q?: string) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
 }) {
+  // Get questions that haven't been asked yet (for scripted mode)
+  const askedQuestions = new Set(
+    messages.filter((m) => m.role === 'user').map((m) => m.content)
+  );
+  const remainingScriptedQuestions = scripted?.filter((qa) => !askedQuestions.has(qa.q)) || [];
   return (
     <>
       {/* Header */}
@@ -227,7 +289,32 @@ function AskZantaraContent({
 
       {/* Messages */}
       <div className="max-h-[300px] overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && showSuggestions && suggestedQuestions.length > 0 && (
+        {/* Scripted mode: show remaining questions */}
+        {isScriptedMode && remainingScriptedQuestions.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-white/40 text-xs">
+              {messages.length === 0 ? 'Ask me about:' : 'More questions:'}
+            </p>
+            {remainingScriptedQuestions.map((qa, i) => (
+              <button
+                key={i}
+                onClick={() => onScriptedQuestion?.(qa)}
+                disabled={isLoading}
+                className={cn(
+                  'w-full text-left p-3 rounded-lg border text-sm transition-colors',
+                  'bg-white/5 hover:bg-white/10 border-white/10',
+                  'text-white/70 hover:text-white',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                {qa.q}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* AI mode: show suggested questions */}
+        {!isScriptedMode && messages.length === 0 && showSuggestions && suggestedQuestions.length > 0 && (
           <div className="space-y-2">
             <p className="text-white/40 text-xs">Suggested questions:</p>
             {suggestedQuestions.map((q, i) => (
@@ -301,37 +388,46 @@ function AskZantaraContent({
         )}
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-white/10">
-        <div className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={placeholder}
-            disabled={isLoading}
-            className={cn(
-              'w-full px-4 py-2.5 pr-12 rounded-xl',
-              'bg-white/5 border border-white/10',
-              'text-white placeholder:text-white/30',
-              'focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/20',
-              'transition-colors disabled:opacity-50'
-            )}
-          />
-          <button
-            onClick={() => onSend()}
-            disabled={!input.trim() || isLoading}
-            className={cn(
-              'absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg',
-              'text-white/40 hover:text-[#2251ff] hover:bg-[#2251ff]/10',
-              'transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
-            )}
-          >
-            <Send className="w-4 h-4" />
-          </button>
+      {/* Input - only show in AI mode or when all scripted questions are exhausted */}
+      {!isScriptedMode ? (
+        <div className="p-4 border-t border-white/10">
+          <div className="relative">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder={placeholder}
+              disabled={isLoading}
+              className={cn(
+                'w-full px-4 py-2.5 pr-12 rounded-xl',
+                'bg-white/5 border border-white/10',
+                'text-white placeholder:text-white/30',
+                'focus:outline-none focus:border-[#2251ff]/50 focus:ring-1 focus:ring-[#2251ff]/20',
+                'transition-colors disabled:opacity-50'
+              )}
+            />
+            <button
+              onClick={() => onSend()}
+              disabled={!input.trim() || isLoading}
+              className={cn(
+                'absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg',
+                'text-white/40 hover:text-[#2251ff] hover:bg-[#2251ff]/10',
+                'transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+              )}
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      ) : remainingScriptedQuestions.length === 0 && messages.length > 0 ? (
+        // All questions answered in scripted mode
+        <div className="p-4 border-t border-white/10">
+          <p className="text-center text-white/40 text-sm">
+            All questions answered! Need more help? Contact us.
+          </p>
+        </div>
+      ) : null}
     </>
   );
 }

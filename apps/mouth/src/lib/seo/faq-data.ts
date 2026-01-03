@@ -33,7 +33,7 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
   },
   {
     question: 'How long can I stay in Bali on a tourist visa?',
-    answer: 'Tourist visas (B211A) allow 60-day stays, extendable up to 180 days. Visa on Arrival (VoA) allows 30 days, extendable once for 30 more days. For longer stays, you need KITAS (work permit), retirement visa (55+), Second Home Visa (proof of $130,000+), or Golden Visa. Digital nomads can use B211A while the new remote worker visa is being finalized.',
+    answer: 'Visa on Arrival (VOA) allows 30 days, extendable once for 30 more days (60 total). C1 Tourism visa allows 60 days. For longer stays, you need KITAS (work permit), retirement visa (55+), Second Home Visa (proof of $130,000+), or Golden Visa. Digital nomads can use VOA with extensions or apply for E33G Digital Nomad KITAS.',
     category: 'immigration',
   },
   {

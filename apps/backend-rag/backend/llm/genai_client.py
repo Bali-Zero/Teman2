@@ -29,8 +29,8 @@ Date: 2025-12-23
 import json
 import logging
 import os
-import tempfile
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 from app.core.config import settings
 
@@ -57,6 +57,7 @@ except ImportError as e:
         logger.warning("⚠️ Using deprecated google-generativeai as fallback")
     except ImportError:
         logger.error("❌ No Google AI SDK available")
+        GENAI_AVAILABLE = False
 
 
 def _setup_service_account_credentials() -> tuple[bool, str | None]:
@@ -123,7 +124,7 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
         logger.info(f"✅ Service Account credentials configured: {creds_dict.get('client_email', 'unknown')} (project: {project_id})")
         return True, project_id
 
-    except (json.JSONDecodeError, KeyError, IOError) as e:
+    except (OSError, json.JSONDecodeError, KeyError) as e:
         logger.warning(f"⚠️ Failed to setup Service Account credentials: {e}")
         return False, None
 
@@ -363,7 +364,7 @@ class GenAIClient:
             logger.error(f"❌ GenAI stream failed: {e}")
             raise
 
-    def create_chat(
+    def create_chat_session(
         self,
         model: str | None = None,
         system_instruction: str | None = None,

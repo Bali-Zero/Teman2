@@ -16,7 +16,7 @@ ENTITIES = [
     ),
     ("visa_work", "visa", "Work Visa (KITAS)", {"validity": "1 year", "code": "312"}),
     ("visa_retirement", "visa", "Retirement Visa", {"min_age": 60}),
-    ("visa_b211a", "visa", "B211A Visit Visa", {"purpose": "Business/Tourism"}),
+    ("visa_e33g", "visa", "E33G Digital Nomad Visa", {"purpose": "Remote Work/Digital Nomad"}),
     ("voa", "visa", "Visa on Arrival", {"validity": "30 days"}),
     ("kitas", "permit", "Limited Stay Permit", {}),
     ("kitap", "permit", "Permanent Stay Permit", {}),

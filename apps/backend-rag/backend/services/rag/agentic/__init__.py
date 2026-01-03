@@ -121,7 +121,7 @@ def create_agentic_rag(
     # Uses PostgreSQL persistence and LLM semantic extraction
     from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
     from services.tools.knowledge_graph_tool import KnowledgeGraphTool
-    
+
     # We pass the ai_client later if needed, but for now we use the factory's db_pool
     kg_builder = KnowledgeGraphBuilder(search_service=retriever, db_pool=db_pool)
 

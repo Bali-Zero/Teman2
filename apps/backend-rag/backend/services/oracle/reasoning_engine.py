@@ -5,13 +5,13 @@ Responsibility: Gemini reasoning logic for query processing
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from llm.adapters.gemini import GeminiAdapter
 from prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
 
-from .oracle_google_services import google_services
 from ..response.validator import ZantaraResponseValidator
+from .oracle_google_services import google_services
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,8 @@ class ReasoningEngineService:
     def build_context(
         self,
         documents: list[str],
-        user_memory_facts: Optional[list[str]] = None,
-        conversation_history: Optional[list[dict]] = None,
+        user_memory_facts: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
         use_full_docs: bool = False,
     ) -> str:
         """
@@ -103,8 +103,8 @@ class ReasoningEngineService:
         query: str,
         context: PromptContext,
         use_full_docs: bool = False,
-        user_memory_facts: Optional[list[str]] = None,
-        conversation_history: Optional[list[dict]] = None,
+        user_memory_facts: list[str] | None = None,
+        conversation_history: list[dict] | None = None,
     ) -> dict[str, Any]:
         """
         Advanced reasoning with Google Gemini 3 Flash Preview using Zantara Identity Layer.

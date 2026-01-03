@@ -5,9 +5,9 @@ Wraps the existing OpenRouterClient to implement the LLMProvider interface.
 """
 
 import logging
-from typing import AsyncIterator, List
+from collections.abc import AsyncIterator
 
-from llm.base import LLMProvider, LLMMessage, LLMResponse
+from llm.base import LLMMessage, LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class OpenRouterProvider(LLMProvider):
     def _init_client(self):
         """Lazy initialize the underlying client."""
         try:
-            from services.llm_clients.openrouter_client import OpenRouterClient, ModelTier
+            from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
             tier_map = {
                 "fast": ModelTier.FAST,
                 "balanced": ModelTier.BALANCED,
@@ -62,7 +62,7 @@ class OpenRouterProvider(LLMProvider):
 
     async def generate(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         max_tokens: int = 4096,
         **kwargs
@@ -94,7 +94,7 @@ class OpenRouterProvider(LLMProvider):
 
     async def stream(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         **kwargs
     ) -> AsyncIterator[str]:

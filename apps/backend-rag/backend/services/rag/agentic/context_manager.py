@@ -228,6 +228,6 @@ async def get_user_context(
             context["facts"] = []
             context["collective_facts"] = []
     else:
-        logger.warning(f"⚠️  [ContextManager] NO memory_orchestrator provided - memory facts will be empty!")
+        logger.warning("⚠️  [ContextManager] NO memory_orchestrator provided - memory facts will be empty!")
 
     return context

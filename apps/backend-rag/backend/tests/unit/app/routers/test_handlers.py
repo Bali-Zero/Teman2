@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.handlers import router, extract_handlers_from_router
+from app.routers.handlers import extract_handlers_from_router, router
 
 
 @pytest.fixture
@@ -43,10 +43,10 @@ class TestHandlersRouter:
         mock_route.path = "/test"
         mock_route.methods = {"GET", "POST"}
         mock_route.endpoint.__doc__ = "Test handler"
-        
+
         mock_module.router.routes = [mock_route]
         mock_module.__name__ = "test_module"
-        
+
         handlers = extract_handlers_from_router(mock_module)
         assert len(handlers) == 1
         assert handlers[0]["name"] == "test_handler"
@@ -57,7 +57,7 @@ class TestHandlersRouter:
         """Test extracting handlers from module without router"""
         mock_module = MagicMock()
         del mock_module.router
-        
+
         handlers = extract_handlers_from_router(mock_module)
         assert handlers == []
 
@@ -94,7 +94,7 @@ class TestHandlersRouter:
         # First get list to find a category
         list_response = client.get("/api/handlers/list")
         categories = list_response.json()["categories"]
-        
+
         if categories:
             category_name = list(categories.keys())[0]
             response = client.get(f"/api/handlers/category/{category_name}")
@@ -107,4 +107,7 @@ class TestHandlersRouter:
         """Test getting handlers by non-existent category"""
         response = client.get("/api/handlers/category/nonexistent")
         assert response.status_code == 404
+
+
+
 

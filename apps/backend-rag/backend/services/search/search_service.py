@@ -45,11 +45,12 @@ from core.cache import cached
 
 from app.core.config import settings
 from app.models import TierLevel
+
 from ..ingestion.collection_manager import CollectionManager
 from ..ingestion.collection_warmup_service import CollectionWarmupService
-from ..routing.conflict_resolver import ConflictResolver
 from ..misc.cultural_insights_service import CulturalInsightsService
 from ..misc.result_formatter import format_search_results
+from ..routing.conflict_resolver import ConflictResolver
 from .search_filters import build_search_filter
 
 # from services.routing.query_router_integration import QueryRouterIntegration
@@ -134,7 +135,7 @@ class SearchService:
         self._bm25_enabled = False
         self._bm25_initialization_attempts = 0
         self._max_bm25_init_attempts = 3
-        
+
         # BM25 initialization will be done synchronously in __init__
         # For async retry, use initialize_bm25() method after instantiation
         if settings.enable_bm25:
@@ -208,23 +209,23 @@ class SearchService:
         if not settings.enable_bm25:
             logger.info("BM25 disabled via settings")
             return False
-        
+
         for attempt in range(self._max_bm25_init_attempts):
             try:
                 from core.bm25_vectorizer import BM25Vectorizer
-                
+
                 self._bm25_vectorizer = BM25Vectorizer(
                     vocab_size=settings.bm25_vocab_size,
                     k1=settings.bm25_k1,
                     b=settings.bm25_b,
                 )
-                
+
                 self._bm25_enabled = True
                 logger.info("✅ BM25Vectorizer initialized successfully")
                 if metrics_collector:
                     metrics_collector.bm25_initialization_success_total.inc()
                 return True
-                
+
             except ImportError as e:
                 logger.error(
                     f"❌ BM25Vectorizer import failed: {e}",
@@ -240,7 +241,7 @@ class SearchService:
                     ).inc()
                 # Import errors are permanent - don't retry
                 return False
-                
+
             except Exception as e:
                 self._bm25_initialization_attempts = attempt + 1
                 logger.warning(
@@ -255,7 +256,7 @@ class SearchService:
                     metrics_collector.bm25_initialization_failed_total.labels(
                         error_type=type(e).__name__
                     ).inc()
-                
+
                 if attempt < self._max_bm25_init_attempts - 1:
                     # Exponential backoff
                     await asyncio.sleep(2 ** attempt)
@@ -271,9 +272,9 @@ class SearchService:
                     # Alert on persistent failure
                     await self._alert_bm25_failure(e)
                     return False
-        
+
         return False
-    
+
     async def _alert_bm25_failure(self, error: Exception):
         """Alert on BM25 persistent failure."""
         # Send alert to monitoring system
@@ -432,7 +433,7 @@ class SearchService:
                 try:
                     # Generate sparse vector using BM25
                     query_sparse = self._bm25_vectorizer.generate_query_sparse_vector(query)
-                    
+
                     # Try hybrid search if vector_db supports it
                     if query_sparse and hasattr(vector_db, "hybrid_search"):
                         raw_results = await vector_db.hybrid_search(
@@ -447,7 +448,7 @@ class SearchService:
                     else:
                         # Fallback to dense-only if hybrid_search not available
                         raise AttributeError("vector_db does not support hybrid_search")
-                    
+
                 except Exception as e:
                     logger.warning(
                         f"⚠️ Hybrid search failed, falling back to dense-only: {e}",
@@ -460,15 +461,21 @@ class SearchService:
                     if metrics_collector:
                         metrics_collector.search_hybrid_failed_total.inc()
                     # Fall through to dense-only search
+                    # CRITICAL: Hybrid collections require named vector "dense"
+                    use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                     raw_results = await vector_db.search(
-                        query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                        query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                        vector_name=use_vector_name,
                     )
                     if metrics_collector:
                         metrics_collector.search_dense_only_total.inc()
             else:
                 # Fallback: Dense-only search
+                # CRITICAL: Hybrid collections require named vector "dense"
+                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                 raw_results = await vector_db.search(
-                    query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                    query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                    vector_name=use_vector_name,
                 )
                 if metrics_collector:
                     metrics_collector.search_dense_only_total.inc()
@@ -499,9 +506,9 @@ class SearchService:
                 "collection_used": collection_name,  # NEW: tracking which collection was searched
             }
 
-        except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError) as e:
+        except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError):
             logger.exception(
-                f"❌ Search failed completely",
+                "❌ Search failed completely",
                 extra={
                     "query": query[:100],
                     "user_level": user_level,
@@ -510,7 +517,7 @@ class SearchService:
             )
             if metrics_collector:
                 metrics_collector.search_failed_total.inc()
-            
+
             # Return empty results instead of raising
             return {
                 "query": query,
@@ -669,8 +676,11 @@ class SearchService:
                 search_type = raw_results.get("search_type", "hybrid_rrf")
             else:
                 # Fallback to dense-only search
+                # CRITICAL: Hybrid collections require named vector "dense"
+                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                 raw_results = await vector_db.search(
-                    query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                    query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                    vector_name=use_vector_name,
                 )
                 search_type = "dense_only"
 
@@ -907,9 +917,12 @@ class SearchService:
                 )
 
                 # Search this collection (async) - track duration
+                # CRITICAL: Hybrid collections require named vector "dense"
+                use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                 search_start = time.time() if METRICS_AVAILABLE else None
                 raw_results = await vector_db.search(
-                    query_embedding=query_embedding, filter=chroma_filter, limit=limit
+                    query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                    vector_name=use_vector_name,
                 )
                 if METRICS_AVAILABLE and search_start:
                     rag_vector_search_duration.observe(time.time() - search_start)

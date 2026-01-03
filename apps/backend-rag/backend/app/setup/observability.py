@@ -98,9 +98,14 @@ def setup_observability(app: FastAPI) -> None:
                     trace.get_tracer_provider().add_span_processor(
                         BatchSpanProcessor(otlp_exporter)
                     )
-                    FastAPIInstrumentor.instrument_app(app)
+                    # Skip FastAPIInstrumentor to avoid conflicts with @app.on_event handlers
+                    # The instrumentation can cause infinite loops when combined with event handlers
+                    # Tracing will still work for manual spans, but automatic FastAPI instrumentation is disabled
+                    logger.warning(
+                        "⚠️ Skipping FastAPIInstrumentor.instrument_app() to avoid conflicts with @app.on_event handlers"
+                    )
                     logger.info(
-                        f"✅ OpenTelemetry tracing enabled (Grafana Cloud) → {settings.otel_exporter_endpoint}"
+                        f"✅ OpenTelemetry tracing enabled (Grafana Cloud) → {settings.otel_exporter_endpoint} (manual spans only)"
                     )
             else:
                 # Local Jaeger mode: gRPC without authentication
@@ -111,9 +116,14 @@ def setup_observability(app: FastAPI) -> None:
                 trace.get_tracer_provider().add_span_processor(
                     BatchSpanProcessor(otlp_exporter)
                 )
-                FastAPIInstrumentor.instrument_app(app)
+                # Skip FastAPIInstrumentor to avoid conflicts with @app.on_event handlers
+                # The instrumentation can cause infinite loops when combined with event handlers
+                # Tracing will still work for manual spans, but automatic FastAPI instrumentation is disabled
+                logger.warning(
+                    "⚠️ Skipping FastAPIInstrumentor.instrument_app() to avoid conflicts with @app.on_event handlers"
+                )
                 logger.info(
-                    f"✅ OpenTelemetry tracing enabled (Jaeger) → {settings.otel_exporter_endpoint}"
+                    f"✅ OpenTelemetry tracing enabled (Jaeger) → {settings.otel_exporter_endpoint} (manual spans only)"
                 )
 
         except Exception as e:

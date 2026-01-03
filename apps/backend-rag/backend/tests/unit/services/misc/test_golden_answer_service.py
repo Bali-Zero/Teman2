@@ -4,9 +4,9 @@ Target: >95% coverage
 """
 
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-from contextlib import asynccontextmanager
 
 import pytest
 
@@ -21,14 +21,14 @@ from services.misc.golden_answer_service import GoldenAnswerService
 def mock_db_pool():
     """Mock database pool"""
     pool = MagicMock()
-    
+
     @asynccontextmanager
     async def acquire():
         conn = MagicMock()
         conn.fetchrow = AsyncMock(return_value=None)
         conn.fetch = AsyncMock(return_value=[])
         yield conn
-    
+
     pool.acquire = acquire
     return pool
 
@@ -56,7 +56,7 @@ class TestGoldenAnswerService:
         with patch("services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock) as mock_create_pool:
             mock_pool = MagicMock()
             mock_create_pool.return_value = mock_pool
-            
+
             await golden_answer_service.connect()
             assert golden_answer_service.pool == mock_pool
 
@@ -66,7 +66,7 @@ class TestGoldenAnswerService:
         mock_pool = MagicMock()
         mock_pool.close = AsyncMock()
         golden_answer_service.pool = mock_pool
-        
+
         await golden_answer_service.close()
         mock_pool.close.assert_called_once()
 
@@ -94,16 +94,16 @@ class TestGoldenAnswerService:
             "answer": "Test answer",
             "sources": ["source1"]
         }.get(key, default)
-        
+
         @asynccontextmanager
         async def acquire():
             conn = MagicMock()
             conn.fetchrow = AsyncMock(return_value=mock_row)
             yield conn
-        
+
         mock_db_pool.acquire = acquire
         golden_answer_service.pool = mock_db_pool
-        
+
         result = await golden_answer_service.lookup_golden_answer("Test query")
         assert isinstance(result, dict) or result is None
 
@@ -113,23 +113,23 @@ class TestGoldenAnswerService:
         mock_rows = [
             MagicMock(**{"__getitem__": lambda self, key: {"canonical_question": "Test", "answer": "Answer", "sources": []}.get(key)})
         ]
-        
+
         @asynccontextmanager
         async def acquire():
             conn = MagicMock()
             conn.fetchrow = AsyncMock(return_value=None)  # No exact match
             conn.fetch = AsyncMock(return_value=mock_rows)
             yield conn
-        
+
         mock_db_pool.acquire = acquire
         golden_answer_service.pool = mock_db_pool
-        
+
         with patch.object(golden_answer_service, "_load_model"), \
              patch("services.misc.golden_answer_service.SentenceTransformer") as mock_st:
             mock_model = MagicMock()
             mock_model.encode.return_value = [[0.1] * 384]
             mock_st.return_value = mock_model
             golden_answer_service.model = mock_model
-            
+
             result = await golden_answer_service.lookup_golden_answer("Test query")
             assert isinstance(result, dict) or result is None

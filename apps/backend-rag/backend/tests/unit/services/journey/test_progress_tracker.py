@@ -7,6 +7,7 @@ Composer: 5
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
@@ -14,7 +15,12 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from services.journey.progress_tracker import ProgressTrackerService
-from services.misc.client_journey_orchestrator import ClientJourney, JourneyStatus, JourneyStep, StepStatus
+from services.misc.client_journey_orchestrator import (
+    ClientJourney,
+    JourneyStatus,
+    JourneyStep,
+    StepStatus,
+)
 
 
 @pytest.fixture
@@ -170,15 +176,15 @@ class TestProgressTrackerService:
         with patch("services.journey.prerequisites_checker.PrerequisitesCheckerService") as mock_checker_class:
             mock_checker = MagicMock()
             mock_checker_class.return_value = mock_checker
-            
+
             # Mock prerequisites check: step3 has prerequisites met, step5 doesn't
             def check_prereqs(journey, step_id):
                 if step_id == "step3":
                     return True, []
                 return False, ["step2"]
-            
+
             mock_checker.check_prerequisites.side_effect = check_prereqs
-            
+
             next_steps = progress_tracker.get_next_steps(mock_journey)
             # Only step3 should be returned (step5 prerequisites not met)
             assert len(next_steps) >= 0  # At least step3 if prerequisites met
@@ -217,12 +223,12 @@ class TestProgressTrackerService:
             steps=steps,
             status=JourneyStatus.BLOCKED
         )
-        
+
         with patch("services.journey.prerequisites_checker.PrerequisitesCheckerService") as mock_checker_class:
             mock_checker = MagicMock()
             mock_checker_class.return_value = mock_checker
             mock_checker.check_prerequisites.return_value = (False, ["step1"])
-            
+
             next_steps = progress_tracker.get_next_steps(journey)
             # No steps should be returned (all completed/blocked or prerequisites not met)
             assert isinstance(next_steps, list)

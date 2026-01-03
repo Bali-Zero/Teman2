@@ -6,13 +6,14 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.pricing.dynamic_pricing_service import DynamicPricingService, CostItem, PricingResult
+from services.pricing.dynamic_pricing_service import DynamicPricingService, PricingResult
 
 
 @pytest.fixture
@@ -71,7 +72,6 @@ class TestDynamicPricingService:
     @pytest.mark.asyncio
     async def test_calculate_pricing(self, dynamic_pricing_service, mock_synthesis_service, mock_search_service):
         """Test calculating pricing"""
-        from services.oracle.cross_oracle_synthesis_service import SynthesisResult
         mock_synthesis_result = MagicMock()
         mock_synthesis_result.sources = {"oracle1": {"success": True, "results": [{"text": "Setup cost: Rp 50 juta"}]}}
         mock_synthesis_result.timeline = "4-6 months"

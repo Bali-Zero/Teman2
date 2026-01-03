@@ -49,15 +49,15 @@ class TestWorkSessionService:
     async def test_connect(self, work_session_service):
         """Test connecting to database"""
         mock_pool = MagicMock()  # Pool doesn't need to be AsyncMock
-        
+
         with patch("services.misc.work_session_service.asyncpg.create_pool", new_callable=AsyncMock) as mock_create_pool, \
              patch("app.core.config.settings") as mock_settings:
             mock_create_pool.return_value = mock_pool
             mock_settings.database_url = "postgresql://test:test@localhost/test"
-            
+
             # Update db_url on the service instance
             work_session_service.db_url = "postgresql://test:test@localhost/test"
-            
+
             await work_session_service.connect()
             # Verify create_pool was called
             mock_create_pool.assert_called_once()
@@ -74,7 +74,7 @@ class TestWorkSessionService:
     async def test_start_session_new(self, work_session_service, mock_db_pool):
         """Test starting new session"""
         work_session_service.pool = mock_db_pool
-        
+
         # First call returns None (no existing), second call returns new session
         mock_db_pool.fetchrow = AsyncMock(side_effect=[
             None,  # No existing session
@@ -83,7 +83,7 @@ class TestWorkSessionService:
                 "session_start": MagicMock(isoformat=lambda: "2024-01-01T00:00:00")
             }
         ])
-        
+
         with patch.object(work_session_service, "_write_to_log") as mock_log, \
              patch.object(work_session_service, "_notify_zero") as mock_notify:
             result = await work_session_service.start_session("user1", "Test User", "test@example.com")
@@ -93,12 +93,12 @@ class TestWorkSessionService:
     async def test_start_session_existing(self, work_session_service, mock_db_pool):
         """Test starting session when already exists"""
         work_session_service.pool = mock_db_pool
-        
+
         mock_db_pool.fetchrow = AsyncMock(return_value={
             "id": 1,
             "session_start": MagicMock(isoformat=lambda: "2024-01-01T00:00:00")
         })
-        
+
         result = await work_session_service.start_session("user1", "Test User", "test@example.com")
         assert result["status"] == "already_active"
 
@@ -106,7 +106,7 @@ class TestWorkSessionService:
     async def test_update_activity(self, work_session_service, mock_db_pool):
         """Test updating activity"""
         work_session_service.pool = mock_db_pool
-        
+
         await work_session_service.update_activity("user1")
         mock_db_pool.execute.assert_called()
 
@@ -114,7 +114,7 @@ class TestWorkSessionService:
     async def test_increment_conversations(self, work_session_service, mock_db_pool):
         """Test incrementing conversations"""
         work_session_service.pool = mock_db_pool
-        
+
         await work_session_service.increment_conversations("user1")
         mock_db_pool.execute.assert_called()
 
@@ -122,13 +122,13 @@ class TestWorkSessionService:
     async def test_end_session(self, work_session_service, mock_db_pool):
         """Test ending session"""
         work_session_service.pool = mock_db_pool
-        
+
         mock_db_pool.fetchrow = AsyncMock(return_value={
             "id": 1,
             "session_start": MagicMock(),
             "last_activity": MagicMock()
         })
-        
+
         with patch.object(work_session_service, "_write_to_log") as mock_log, \
              patch.object(work_session_service, "_notify_zero") as mock_notify:
             result = await work_session_service.end_session("user1")
@@ -138,11 +138,11 @@ class TestWorkSessionService:
     async def test_get_today_sessions(self, work_session_service, mock_db_pool):
         """Test getting today's sessions"""
         work_session_service.pool = mock_db_pool
-        
+
         mock_db_pool.fetch = AsyncMock(return_value=[
             {"id": 1, "user_name": "Test User"}
         ])
-        
+
         sessions = await work_session_service.get_today_sessions()
         assert isinstance(sessions, list)
 

@@ -6,8 +6,8 @@ Creates tables for blog newsletter subscriptions.
 Created: 2025-12-31
 """
 
-from typing import Any
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

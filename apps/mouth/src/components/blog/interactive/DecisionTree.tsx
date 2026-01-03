@@ -47,15 +47,16 @@ export interface DecisionOption {
 
 export interface DecisionTreeProps {
   /** Unique ID for saving progress */
-  id: string;
+  id?: string;
   /** Title of the decision tree */
   title: string;
   /** Subtitle/description */
   subtitle?: string;
+  description?: string;
   /** All nodes in the tree */
   nodes: DecisionNode[];
-  /** ID of the starting node */
-  startNodeId: string;
+  /** ID of the starting node (defaults to "start" or first node) */
+  startNodeId?: string;
   /** Show progress indicator */
   showProgress?: boolean;
   /** Callback when result is reached */
@@ -109,14 +110,20 @@ export function DecisionTree({
   id,
   title,
   subtitle,
+  description,
   nodes,
   startNodeId,
   showProgress = true,
   onComplete,
   className,
 }: DecisionTreeProps) {
+  // Compute defaults
+  const effectiveId = id || title.toLowerCase().replace(/\s+/g, '-');
+  const effectiveStartNodeId = startNodeId || nodes.find(n => n.id === 'start')?.id || nodes[0]?.id || '';
+  const effectiveSubtitle = subtitle || description;
+
   // Track the path of node IDs visited
-  const [path, setPath] = useState<string[]>([startNodeId]);
+  const [path, setPath] = useState<string[]>([effectiveStartNodeId]);
   const [isAnimating, setIsAnimating] = useState(false);
 
   // Get current node
@@ -125,8 +132,8 @@ export function DecisionTree({
 
   // Calculate progress
   const nodesMap = new Map(nodes.map((n) => [n.id, n]));
-  const maxDepth = calculateMaxDepth(nodesMap, startNodeId);
-  const progress = Math.min(((path.length - 1) / maxDepth) * 100, 100);
+  const maxDepth = calculateMaxDepth(nodesMap, effectiveStartNodeId);
+  const progress = maxDepth > 0 ? Math.min(((path.length - 1) / maxDepth) * 100, 100) : 0;
 
   // Handle option selection
   const handleSelect = useCallback(
@@ -156,8 +163,8 @@ export function DecisionTree({
 
   // Handle restart
   const handleRestart = useCallback(() => {
-    setPath([startNodeId]);
-  }, [startNodeId]);
+    setPath([effectiveStartNodeId]);
+  }, [effectiveStartNodeId]);
 
   if (!currentNode) {
     return (

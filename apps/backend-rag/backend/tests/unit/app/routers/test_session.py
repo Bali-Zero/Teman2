@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.session import router, get_session_service
+from app.routers.session import get_session_service, router
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ class TestSessionRouter:
         # Reset global
         import app.routers.session as module
         module._session_service = None
-        
+
         with patch("app.routers.session.SessionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service_class.return_value = mock_service
@@ -73,7 +73,7 @@ class TestSessionRouter:
         """Test creating session with error"""
         mock_session_service.create_session.side_effect = Exception("Service error")
         app.dependency_overrides[get_session_service] = lambda: mock_session_service
-        
+
         response = client.post("/api/sessions/create")
         assert response.status_code == 500
 
@@ -90,7 +90,7 @@ class TestSessionRouter:
         """Test getting non-existent session"""
         mock_session_service.get_history = AsyncMock(return_value=None)
         app.dependency_overrides[get_session_service] = lambda: mock_session_service
-        
+
         response = client.get("/api/sessions/nonexistent")
         assert response.status_code == 404
 
@@ -109,7 +109,7 @@ class TestSessionRouter:
         """Test updating session that fails"""
         mock_session_service.update_history = AsyncMock(return_value=False)
         app.dependency_overrides[get_session_service] = lambda: mock_session_service
-        
+
         response = client.put(
             "/api/sessions/session123",
             json={"history": [{"role": "user", "content": "Updated"}]}

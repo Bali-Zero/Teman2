@@ -572,5 +572,35 @@ def run_stage3_upload(categories: Optional[List[str]] = None) -> Dict:
     return orchestrator.run_stage3_vector_upload(categories)
 
 
+def run_stage4_webhook(
+    categories: Optional[List[str]] = None,
+    limit: int = 50,
+    dry_run: bool = False
+) -> Dict:
+    """
+    Standalone function for Stage 4 (Webhook to BaliZero).
+    Sends scraped news to BaliZero website for review and publication.
+    """
+    from news_webhook import BaliZeroNewsWebhook
+
+    logger.info("=" * 70)
+    logger.info("📡 STAGE 4: WEBHOOK TO BALIZERO")
+    logger.info("=" * 70)
+
+    webhook = BaliZeroNewsWebhook()
+    result = asyncio.run(webhook.send_all_raw(
+        categories=categories,
+        limit=limit,
+        dry_run=dry_run
+    ))
+
+    return {
+        "success": True,
+        "sent": result.get("sent", 0),
+        "failed": result.get("failed", 0),
+        "skipped": result.get("skipped", 0),
+    }
+
+
 if __name__ == "__main__":
     main()

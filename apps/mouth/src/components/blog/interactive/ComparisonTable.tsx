@@ -41,15 +41,24 @@ export interface ComparisonFeature {
   important?: boolean;
 }
 
+// Simple item format (used in MDX)
+export interface SimpleComparisonItem {
+  name: string;
+  subtitle?: string;
+  values: Record<string, string>;
+  highlight?: boolean;
+}
+
 export interface ComparisonTableProps {
   /** Title */
   title: string;
-  /** Subtitle */
+  /** Subtitle or description */
   subtitle?: string;
-  /** Items to compare */
-  items: ComparisonItem[];
-  /** Features/rows */
-  features: ComparisonFeature[];
+  description?: string;
+  /** Items to compare - supports both complex and simple formats */
+  items: ComparisonItem[] | SimpleComparisonItem[];
+  /** Features/rows (optional for simple format) */
+  features?: ComparisonFeature[];
   /** Show only differences */
   showDifferencesOnly?: boolean;
   /** Enable toggle for differences only */
@@ -98,9 +107,79 @@ const itemColors = {
 // Main Component
 // ============================================================================
 
+// Helper to check if using simple format
+function isSimpleFormat(items: ComparisonItem[] | SimpleComparisonItem[]): items is SimpleComparisonItem[] {
+  return items.length > 0 && 'values' in items[0] && typeof (items[0] as SimpleComparisonItem).values === 'object';
+}
+
+// Simple table component for MDX format
+function SimpleComparisonTableContent({
+  items,
+  title,
+  subtitle
+}: {
+  items: SimpleComparisonItem[];
+  title: string;
+  subtitle?: string;
+}) {
+  // Extract all unique keys from all items
+  const allKeys = Array.from(
+    new Set(items.flatMap(item => Object.keys(item.values || {})))
+  );
+
+  return (
+    <div className="bg-black/40 rounded-2xl border border-white/10 overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-white/10">
+        <h3 className="font-serif text-xl font-semibold text-white">{title}</h3>
+        {subtitle && <p className="text-white/60 text-sm mt-1">{subtitle}</p>}
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/10">
+              <th className="text-left p-4 text-white/40 text-sm font-normal">Feature</th>
+              {items.map((item, idx) => (
+                <th key={idx} className={cn(
+                  "text-left p-4 min-w-[180px]",
+                  item.highlight && "bg-[#2251ff]/10"
+                )}>
+                  <div className="font-medium text-white">{item.name}</div>
+                  {item.subtitle && <div className="text-xs text-white/50 mt-0.5">{item.subtitle}</div>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {allKeys.map((key, rowIdx) => (
+              <tr key={key} className={cn(
+                "border-b border-white/5",
+                rowIdx % 2 === 0 && "bg-white/[0.02]"
+              )}>
+                <td className="p-4 text-white/70 text-sm font-medium">{key}</td>
+                {items.map((item, colIdx) => (
+                  <td key={colIdx} className={cn(
+                    "p-4 text-sm text-white/80",
+                    item.highlight && "bg-[#2251ff]/5"
+                  )}>
+                    {item.values?.[key] || '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function ComparisonTable({
   title,
   subtitle,
+  description,
   items,
   features,
   showDifferencesOnly: initialShowDifferences = false,
@@ -111,6 +190,33 @@ export function ComparisonTable({
 }: ComparisonTableProps) {
   const [showDifferencesOnly, setShowDifferencesOnly] = useState(initialShowDifferences);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  // Handle simple format (used in MDX)
+  if (!items || items.length === 0) {
+    return (
+      <div className={cn('bg-black/40 rounded-2xl border border-white/10 p-6', className)}>
+        <p className="text-white/60">No comparison data available</p>
+      </div>
+    );
+  }
+
+  // Check if using simple format
+  if (isSimpleFormat(items)) {
+    return <SimpleComparisonTableContent
+      items={items}
+      title={title}
+      subtitle={subtitle || description}
+    />;
+  }
+
+  // Complex format with features
+  if (!features || features.length === 0) {
+    return (
+      <div className={cn('bg-black/40 rounded-2xl border border-white/10 p-6', className)}>
+        <p className="text-white/60">No features to compare</p>
+      </div>
+    );
+  }
 
   // Get recommended item
   const recommendedItem = items.find((item) => item.recommended);

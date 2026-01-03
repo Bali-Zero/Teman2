@@ -37,19 +37,16 @@ UPDATED 2025-12-23:
 
 import json
 import logging
-import time
-from collections import defaultdict
 from typing import Any
 
 import httpx
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+from llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 
-from app.core.config import settings
 from app.core.circuit_breaker import CircuitBreaker
 from app.core.error_classification import ErrorClassifier, get_error_context
 from app.metrics import metrics_collector
-from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
-from llm.genai_client import GenAIClient, GENAI_AVAILABLE, types, get_genai_client
+from app.utils.tracing import set_span_attribute, set_span_status, trace_span
 from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 from services.llm_clients.pricing import TokenUsage, create_token_usage
 
@@ -136,7 +133,7 @@ class LLMGateway:
 
         # Lazy-loaded OpenRouter client (fallback)
         self._openrouter_client: OpenRouterClient | None = None
-        
+
         # Circuit breaker configuration using CircuitBreaker class
         self._circuit_breakers: dict[str, CircuitBreaker] = {}
         self._circuit_breaker_threshold = 5
@@ -240,7 +237,7 @@ class LLMGateway:
             )
         except Exception as e:
             logger.exception(
-                f"All LLM models failed",
+                "All LLM models failed",
                 extra={
                     "tier": tier,
                     "fallback_depth": query_cost_tracker["depth"],
@@ -264,33 +261,33 @@ class LLMGateway:
                 name=f"llm_{model_name}",
             )
         return self._circuit_breakers[model_name]
-    
+
     def _is_circuit_open(self, model_name: str) -> bool:
         """Check if circuit breaker is open."""
         circuit = self._get_circuit_breaker(model_name)
         return circuit.is_open()
-    
+
     def _record_success(self, model_name: str):
         """Record successful call."""
         circuit = self._get_circuit_breaker(model_name)
         circuit.record_success()
-    
+
     def _record_failure(self, model_name: str, error: Exception):
         """Record failed call with error classification."""
         circuit = self._get_circuit_breaker(model_name)
         circuit.record_failure()
-        
+
         # Classify error and log metrics
         error_category, error_severity = ErrorClassifier.classify_error(error)
         error_type = type(error).__name__
-        
+
         # Log with structured context
         error_context = get_error_context(error, model=model_name)
         logger.warning(
             f"LLM call failed for {model_name}",
             extra=error_context
         )
-        
+
         # Record metrics if circuit opened
         if circuit.is_open():
             try:
@@ -301,7 +298,7 @@ class LLMGateway:
                 ).inc()
             except ImportError:
                 pass
-    
+
     def _get_fallback_chain(self, model_tier: int) -> list[str]:
         """Get fallback chain for given tier."""
         chain = []
@@ -535,7 +532,7 @@ class LLMGateway:
 
         # Get fallback chain
         models_to_try = self._get_fallback_chain(model_tier)
-        
+
         for model_name in models_to_try:
             # Check circuit breaker
             if self._is_circuit_open(model_name):
@@ -546,7 +543,7 @@ class LLMGateway:
                 except ImportError:
                     pass
                 continue
-            
+
             # Check cost limit
             if query_cost_tracker["cost"] >= self._max_fallback_cost_usd:
                 logger.warning(
@@ -559,7 +556,7 @@ class LLMGateway:
                 except ImportError:
                     pass
                 break
-            
+
             # Check fallback depth
             if query_cost_tracker["depth"] >= self._max_fallback_depth:
                 logger.warning(
@@ -572,33 +569,33 @@ class LLMGateway:
                 except ImportError:
                     pass
                 break
-            
+
             # Check if model is available
             if not self._available:
                 continue
-            
+
             try:
                 # Try model
                 text_content, response, token_usage = await _call_model(
                     model_name,
                     with_tools=enable_function_calling,
                 )
-                
+
                 # Success - reset circuit breaker
                 self._record_success(model_name)
                 query_cost_tracker["cost"] += token_usage.cost_usd
                 query_cost_tracker["depth"] += 1
-                
+
                 try:
                     from app.metrics import llm_fallback_depth, llm_query_cost_usd
                     llm_fallback_depth.observe(query_cost_tracker["depth"])
                     llm_query_cost_usd.observe(query_cost_tracker["cost"])
                 except ImportError:
                     pass
-                
+
                 logger.debug(f"✅ LLMGateway: {model_name} response received")
                 return (text_content, model_name, response, token_usage)
-                
+
             except ResourceExhausted as e:
                 # Quota exceeded - record failure with error classification
                 self._record_failure(model_name, e)
@@ -610,7 +607,7 @@ class LLMGateway:
                     pass
                 metrics_collector.record_llm_fallback(model_name, "next_model")
                 continue
-                
+
             except ServiceUnavailable as e:
                 # Service unavailable - record failure with error classification
                 self._record_failure(model_name, e)
@@ -622,7 +619,7 @@ class LLMGateway:
                     pass
                 metrics_collector.record_llm_fallback(model_name, "next_model")
                 continue
-                
+
             except Exception as e:
                 # Other errors - record failure with error classification
                 self._record_failure(model_name, e)
@@ -638,7 +635,7 @@ class LLMGateway:
                     pass
                 metrics_collector.record_llm_fallback(model_name, "next_model")
                 continue
-        
+
         # All models failed
         raise RuntimeError("All models in fallback chain failed")
 
@@ -740,7 +737,7 @@ class LLMGateway:
         logger.debug(
             f"LLMGateway: Created chat session with {len(gemini_history)} history messages"
         )
-        return self._genai_client.create_chat(
+        return self._genai_client.create_chat_session(
             model=selected_model_name,
             history=gemini_history,
         )

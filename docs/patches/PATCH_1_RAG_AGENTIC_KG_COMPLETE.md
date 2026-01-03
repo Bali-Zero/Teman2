@@ -181,3 +181,6 @@ pytest backend/tests/unit/services/rag/agentic/test_*comprehensive*.py \
 
 **Patch completata con successo! ✅**
 
+
+
+

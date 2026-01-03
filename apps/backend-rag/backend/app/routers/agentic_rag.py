@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.dependencies import get_current_user, get_database_pool
-from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
+from app.utils.tracing import add_span_event, set_span_status, trace_span
 from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
 
 logger = logging.getLogger(__name__)
@@ -392,7 +392,7 @@ async def stream_agentic_rag(
         final_answer_received = False
         error_count = 0
         max_errors = 5
-        
+
         try:
             # Yield initial status
             initial_status = {
@@ -404,7 +404,7 @@ async def stream_agentic_rag(
             }
             yield f"data: {json.dumps(initial_status)}\n\n"
             events_yielded += 1
-            
+
             # Priority 1: Use conversation_history from frontend if provided
             conversation_history: list[dict] = []
 
@@ -510,7 +510,7 @@ async def stream_agentic_rag(
                             yield f"data: {json.dumps(error_event)}\n\n"
                             break
                         continue
-                    
+
                     # Post-process token events to clean image generation URLs
                     if event.get("type") == "token" and isinstance(event.get("data"), str):
                         event["data"] = clean_image_generation_response(event["data"])
@@ -522,12 +522,12 @@ async def stream_agentic_rag(
 
                     # Reset error count on success
                     error_count = 0
-                    
+
                     # Check for client disconnect
                     if await http_request.is_disconnected():
                         logger.info(f"Client disconnected: {correlation_id}")
                         break
-                    
+
                     # Track event type and tokens
                     event_type = event.get("type", "unknown")
                     events_by_type[event_type] = events_by_type.get(event_type, 0) + 1
@@ -549,7 +549,7 @@ async def stream_agentic_rag(
                         event_type == "status" and event.get("data") == "[DONE]"
                     ):
                         final_answer_received = True
-                        
+
                 except json.JSONEncodeError as e:
                     error_count += 1
                     logger.error(f"JSON serialization failed: {e}")
@@ -564,7 +564,7 @@ async def stream_agentic_rag(
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
-                    
+
                 except Exception as e:
                     error_count += 1
                     logger.exception(f"Error processing stream event: {e}")
@@ -579,10 +579,10 @@ async def stream_agentic_rag(
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
-                    
+
                     if error_count >= max_errors:
                         break
-            
+
             # Yield final status
             final_status = {
                 'type': 'status',

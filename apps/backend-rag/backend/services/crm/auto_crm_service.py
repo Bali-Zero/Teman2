@@ -20,6 +20,7 @@ from datetime import datetime
 import asyncpg
 
 from app.core.constants import CRMConstants
+
 from .ai_crm_extractor import get_extractor
 
 logger = logging.getLogger(__name__)
@@ -293,20 +294,24 @@ class AutoCRMService:
                     )
 
                     # Insert interaction
+                    # Note: 'type' and 'content' are NOT NULL columns in the DB schema
                     interaction_id = await conn.fetchval(
                         """
                         INSERT INTO interactions (
                             client_id, practice_id,
-                            interaction_type, channel, summary, full_content,
+                            type, interaction_type, channel,
+                            content, summary, full_content,
                             sentiment, team_member, direction,
                             extracted_entities, action_items, interaction_date
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                         RETURNING id
                     """,
                         client_id,
                         practice_id,
-                        "chat",
+                        "chat",  # type (NOT NULL)
+                        "chat",  # interaction_type
                         "web_chat",
+                        conversation_summary[: self.SUMMARY_MAX_LENGTH],  # content (NOT NULL)
                         conversation_summary[: self.SUMMARY_MAX_LENGTH],
                         full_content,
                         extracted.get("sentiment"),

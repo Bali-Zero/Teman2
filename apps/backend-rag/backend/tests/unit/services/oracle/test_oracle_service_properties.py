@@ -86,7 +86,7 @@ class TestOracleServiceProperties:
         mock_orchestrator = MagicMock()
         type(mock_orchestrator).is_initialized = True  # Set property value
         oracle_service._memory_orchestrator = mock_orchestrator
-        
+
         result = await oracle_service._ensure_memory_orchestrator_initialized()
         assert result is True
 
@@ -97,7 +97,7 @@ class TestOracleServiceProperties:
         mock_orchestrator.is_initialized = False
         mock_orchestrator.initialize = AsyncMock()
         oracle_service._memory_orchestrator = mock_orchestrator
-        
+
         result = await oracle_service._ensure_memory_orchestrator_initialized()
         assert result is True
 
@@ -110,12 +110,12 @@ class TestOracleServiceProperties:
         mock_result.facts_saved = 2
         mock_result.facts_extracted = 3
         mock_result.processing_time_ms = 10.5
-        
+
         mock_orchestrator = MagicMock()
         mock_orchestrator.process_conversation = AsyncMock(return_value=mock_result)
         mock_orchestrator.is_initialized = True
         oracle_service._memory_orchestrator = mock_orchestrator
-        
+
         await oracle_service._save_memory_facts(
             user_email="test@example.com",
             user_message="test message",

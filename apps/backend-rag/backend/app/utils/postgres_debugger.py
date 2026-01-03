@@ -359,10 +359,9 @@ class PostgreSQLDebugger:
 
         try:
             if pool:
-                async with pool.acquire() as conn:
-                    async with conn.transaction(readonly=True):
-                        rows = await conn.fetch(normalized_query, timeout=QUERY_TIMEOUT_SECONDS)
-                        columns = [desc.name for desc in rows[0]._row_desc] if rows else []
+                async with pool.acquire() as conn, conn.transaction(readonly=True):
+                    rows = await conn.fetch(normalized_query, timeout=QUERY_TIMEOUT_SECONDS)
+                    columns = [desc.name for desc in rows[0]._row_desc] if rows else []
             else:
                 conn = await self._get_connection()
                 try:

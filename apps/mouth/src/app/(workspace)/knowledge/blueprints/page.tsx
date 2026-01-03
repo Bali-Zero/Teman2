@@ -17,6 +17,11 @@ import {
   Star,
   Search,
   Filter,
+  Code,
+  Gamepad2,
+  Globe,
+  Database,
+  Server,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -29,12 +34,13 @@ interface Blueprint {
   kbli_code: string;
   title: string;
   title_id: string;
-  category: 'Hospitality' | 'Real Estate' | 'Services';
+  category: 'Hospitality' | 'Real Estate' | 'Services' | 'Technology';
   risk_level: 'Low' | 'Medium' | 'High';
   pma_allowed: boolean;
   pma_percentage: string;
   pdf_filename: string;
-  icon: 'hotel' | 'home' | 'tent' | 'building' | 'scissors';
+  pdf_url?: string; // Direct download URL
+  icon: 'hotel' | 'home' | 'tent' | 'building' | 'scissors' | 'code' | 'gamepad' | 'globe' | 'database' | 'server';
   description: string;
 }
 
@@ -182,6 +188,161 @@ const BLUEPRINTS: Blueprint[] = [
     icon: 'scissors',
     description: 'Blueprint for massage and wellness services business.',
   },
+  // Technology Category
+  {
+    id: 'kbli-62011',
+    kbli_code: '62011',
+    title: 'Video Game Development',
+    title_id: 'Aktivitas Pengembangan Video Game',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_62011_Videogame_Teknis.pdf',
+    pdf_url: '/blueprints/KBLI_62011_Videogame_Teknis.pdf',
+    icon: 'gamepad',
+    description: 'Technical guide for video game development business in Indonesia.',
+  },
+  {
+    id: 'kbli-62011-bisnis',
+    kbli_code: '62011',
+    title: 'Video Game Development (Business)',
+    title_id: 'Aktivitas Pengembangan Video Game - Bisnis',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_62011_Videogame_Bisnis.pdf',
+    pdf_url: '/blueprints/KBLI_62011_Videogame_Bisnis.pdf',
+    icon: 'gamepad',
+    description: 'Business guide for video game development company setup.',
+  },
+  {
+    id: 'kbli-62012',
+    kbli_code: '62012',
+    title: 'E-Commerce App Development',
+    title_id: 'Aplikasi Perdagangan Internet',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_62012_Ecommerce_Teknis.pdf',
+    pdf_url: '/blueprints/KBLI_62012_Ecommerce_Teknis.pdf',
+    icon: 'globe',
+    description: 'Technical guide for e-commerce application development.',
+  },
+  {
+    id: 'kbli-62014',
+    kbli_code: '62014',
+    title: 'Blockchain Technology',
+    title_id: 'Teknologi Blockchain',
+    category: 'Technology',
+    risk_level: 'Medium',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_62014_Blockchain_Teknis.pdf',
+    pdf_url: '/blueprints/KBLI_62014_Blockchain_Teknis.pdf',
+    icon: 'code',
+    description: 'Technical guide for blockchain technology development.',
+  },
+  {
+    id: 'kbli-62014-bisnis',
+    kbli_code: '62014',
+    title: 'Blockchain Technology (Business)',
+    title_id: 'Teknologi Blockchain - Bisnis',
+    category: 'Technology',
+    risk_level: 'Medium',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_62014_Blockchain_Bisnis.pdf',
+    pdf_url: '/blueprints/KBLI_62014_Blockchain_Bisnis.pdf',
+    icon: 'code',
+    description: 'Business guide for blockchain company setup in Indonesia.',
+  },
+  {
+    id: 'kbli-62019',
+    kbli_code: '62019',
+    title: 'Computer Programming',
+    title_id: 'Pemrograman Komputer Lainnya',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_62019_Programming_Teknis.pdf',
+    pdf_url: '/blueprints/KBLI_62019_Programming_Teknis.pdf',
+    icon: 'code',
+    description: 'Technical guide for software development and programming services.',
+  },
+  {
+    id: 'kbli-63111',
+    kbli_code: '63111',
+    title: 'Data Processing',
+    title_id: 'Aktivitas Pengolahan Data',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_63111_Data_Processing_Teknis.pdf',
+    pdf_url: '/blueprints/KBLI_63111_Data_Processing_Teknis.pdf',
+    icon: 'database',
+    description: 'Technical guide for data processing and analytics services.',
+  },
+  {
+    id: 'kbli-63111-bisnis',
+    kbli_code: '63111',
+    title: 'Data Processing (Business)',
+    title_id: 'Aktivitas Pengolahan Data - Bisnis',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_63111_Data_Processing_Bisnis.pdf',
+    pdf_url: '/blueprints/KBLI_63111_Data_Processing_Bisnis.pdf',
+    icon: 'database',
+    description: 'Business guide for data processing company setup.',
+  },
+  {
+    id: 'kbli-63112',
+    kbli_code: '63112',
+    title: 'Web Hosting Services',
+    title_id: 'Aktivitas Hosting',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_63112_Hosting_Teknis.pdf',
+    pdf_url: '/blueprints/KBLI_63112_Hosting_Teknis.pdf',
+    icon: 'server',
+    description: 'Technical guide for web hosting and cloud services.',
+  },
+  {
+    id: 'kbli-63112-bisnis',
+    kbli_code: '63112',
+    title: 'Web Hosting Services (Business)',
+    title_id: 'Aktivitas Hosting - Bisnis',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_63112_Hosting_Bisnis.pdf',
+    pdf_url: '/blueprints/KBLI_63112_Hosting_Bisnis.pdf',
+    icon: 'server',
+    description: 'Business guide for hosting company setup in Indonesia.',
+  },
+  {
+    id: 'kbli-63121',
+    kbli_code: '63121',
+    title: 'Web Portal (Non-Commercial)',
+    title_id: 'Portal Web Digital Non-Komersial',
+    category: 'Technology',
+    risk_level: 'Low',
+    pma_allowed: true,
+    pma_percentage: '100%',
+    pdf_filename: 'KBLI_63121_Portal_Web_Teknis.pdf',
+    pdf_url: '/blueprints/KBLI_63121_Portal_Web_Teknis.pdf',
+    icon: 'globe',
+    description: 'Technical guide for non-commercial web portals and platforms.',
+  },
 ];
 
 // =============================================================================
@@ -209,6 +370,8 @@ function getCategoryColor(category: string): string {
       return 'from-purple-500/20 to-pink-500/20 border-purple-500/30';
     case 'Services':
       return 'from-emerald-500/20 to-teal-500/20 border-emerald-500/30';
+    case 'Technology':
+      return 'from-orange-500/20 to-red-500/20 border-orange-500/30';
     default:
       return 'from-gray-500/20 to-slate-500/20 border-gray-500/30';
   }
@@ -226,6 +389,16 @@ function getIcon(icon: string) {
       return Building2;
     case 'scissors':
       return Scissors;
+    case 'code':
+      return Code;
+    case 'gamepad':
+      return Gamepad2;
+    case 'globe':
+      return Globe;
+    case 'database':
+      return Database;
+    case 'server':
+      return Server;
     default:
       return FileText;
   }
@@ -243,10 +416,19 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
   const IconComponent = getIcon(blueprint.icon);
 
   const handleDownload = () => {
-    // Google Drive folder with all blueprints
-    const driveFolder = 'https://drive.google.com/drive/folders/1DOBzlToHhYrq_qZb5hAVdTsBOKBCCCti';
-    // Open folder - user can find the specific file by name
-    window.open(driveFolder, '_blank');
+    if (blueprint.pdf_url) {
+      // Direct download from public folder
+      const link = document.createElement('a');
+      link.href = blueprint.pdf_url;
+      link.download = blueprint.pdf_filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // Fallback to Google Drive folder
+      const driveFolder = 'https://drive.google.com/drive/folders/1DOBzlToHhYrq_qZb5hAVdTsBOKBCCCti';
+      window.open(driveFolder, '_blank');
+    }
   };
 
   return (
@@ -310,7 +492,7 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
             className="gap-2 bg-[var(--background)]/60 hover:bg-[var(--accent)] hover:text-white transition-all"
           >
             <Download className="w-4 h-4" />
-            Open in Drive
+            Download PDF
           </Button>
         </div>
       </div>
@@ -330,7 +512,7 @@ export default function BlueprintsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const categories = ['Hospitality', 'Real Estate', 'Services'];
+  const categories = ['Hospitality', 'Real Estate', 'Services', 'Technology'];
 
   const filteredBlueprints = BLUEPRINTS.filter((bp) => {
     const matchesSearch =

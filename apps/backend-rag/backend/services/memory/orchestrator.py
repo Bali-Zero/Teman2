@@ -34,6 +34,8 @@ from agents.services.kg_repository import KnowledgeGraphRepository
 
 from .collective_memory_service import CollectiveMemoryService
 from .episodic_memory_service import EpisodicMemoryService
+from .memory_fact_extractor import MemoryFactExtractor
+from .memory_service_postgres import MemoryServicePostgres
 from .models import (
     FactType,
     MemoryContext,
@@ -41,8 +43,6 @@ from .models import (
     MemoryProcessResult,
     MemoryStats,
 )
-from .memory_fact_extractor import MemoryFactExtractor
-from .memory_service_postgres import MemoryServicePostgres
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class MemoryOrchestrator:
         self._episodic_memory: EpisodicMemoryService | None = None
         self._kg_repository: KnowledgeGraphRepository | None = None
         self._is_initialized = False
-        
+
         # Status tracking for graceful degradation
         self._status = MemoryServiceStatus.UNAVAILABLE
         self._degraded_mode_allowed = False
@@ -124,7 +124,7 @@ class MemoryOrchestrator:
 
         critical_failures = []
         non_critical_failures = []
-        
+
         try:
             # CRITICAL: Memory service must initialize
             self._memory_service = MemoryServicePostgres(database_url=self._database_url)
@@ -135,64 +135,64 @@ class MemoryOrchestrator:
             else:
                 await self._memory_service.connect()
                 self._db_pool = self._memory_service.pool
-            
+
             # Verify connection works
             test_memory = await self._memory_service.get_memory("__test__", force_refresh=False)
             if test_memory is None:
                 raise RuntimeError("Memory service connection test failed")
-            
+
             logger.info("✅ Memory service initialized and verified")
-            
+
         except Exception as e:
             critical_failures.append(("memory_service", str(e)))
             logger.error(
                 f"❌ CRITICAL: Memory service initialization failed: {e}",
                 extra={"error_type": type(e).__name__}
             )
-        
+
         try:
             # NON-CRITICAL: Fact extractor
             self._fact_extractor = MemoryFactExtractor()
         except Exception as e:
             non_critical_failures.append(("fact_extractor", str(e)))
             logger.warning(f"⚠️ Fact extractor initialization failed: {e}")
-        
+
         try:
             # NON-CRITICAL: Collective memory
             self._collective_memory = CollectiveMemoryService(pool=self._db_pool)
         except Exception as e:
             non_critical_failures.append(("collective_memory", str(e)))
             logger.warning(f"⚠️ Collective memory initialization failed: {e}")
-        
+
         try:
             # NON-CRITICAL: Episodic memory
             self._episodic_memory = EpisodicMemoryService(pool=self._db_pool)
         except Exception as e:
             non_critical_failures.append(("episodic_memory", str(e)))
             logger.warning(f"⚠️ Episodic memory initialization failed: {e}")
-        
+
         try:
             # NON-CRITICAL: Knowledge graph repository
             self._kg_repository = KnowledgeGraphRepository(db_pool=self._db_pool)
         except Exception as e:
             non_critical_failures.append(("kg_repository", str(e)))
             logger.warning(f"⚠️ Knowledge graph repository initialization failed: {e}")
-        
+
         # Determine status
         if critical_failures:
             self._status = MemoryServiceStatus.UNAVAILABLE
             self._is_initialized = False
-            
+
             # Import metrics
             try:
                 from app.metrics import memory_orchestrator_unavailable_total
                 memory_orchestrator_unavailable_total.inc()
             except ImportError:
                 pass
-            
+
             # Alert on critical failure
             await self._alert_critical_failure(critical_failures)
-            
+
             raise RuntimeError(
                 f"MemoryOrchestrator initialization failed: {critical_failures}"
             )
@@ -200,51 +200,51 @@ class MemoryOrchestrator:
             self._status = MemoryServiceStatus.DEGRADED
             self._is_initialized = True
             self._degraded_mode_allowed = True
-            
+
             logger.warning(
-                f"⚠️ MemoryOrchestrator running in DEGRADED mode",
+                "⚠️ MemoryOrchestrator running in DEGRADED mode",
                 extra={
                     "non_critical_failures": non_critical_failures,
                     "degraded_features": [f[0] for f in non_critical_failures],
                 }
             )
-            
+
             # Import metrics
             try:
                 from app.metrics import memory_orchestrator_degraded_total
                 memory_orchestrator_degraded_total.inc()
             except ImportError:
                 pass
-            
+
             # Alert on degraded mode
             await self._alert_degraded_mode(non_critical_failures)
         else:
             self._status = MemoryServiceStatus.HEALTHY
             self._is_initialized = True
             logger.info("✅ MemoryOrchestrator initialized successfully (HEALTHY)")
-            
+
             # Import metrics
             try:
                 from app.metrics import memory_orchestrator_healthy_total
                 memory_orchestrator_healthy_total.inc()
             except ImportError:
                 pass
-    
+
     async def _alert_critical_failure(self, failures: list[tuple[str, str]]):
         """Alert on critical initialization failure."""
         logger.error(
-            f"🚨 CRITICAL: MemoryOrchestrator initialization failed completely",
+            "🚨 CRITICAL: MemoryOrchestrator initialization failed completely",
             extra={
                 "failures": failures,
                 "action": "system_unavailable"
             }
         )
         # TODO: Integrate with alerting system when available
-    
+
     async def _alert_degraded_mode(self, failures: list[tuple[str, str]]):
         """Alert on degraded mode activation."""
         logger.warning(
-            f"⚠️ MemoryOrchestrator running in DEGRADED mode",
+            "⚠️ MemoryOrchestrator running in DEGRADED mode",
             extra={
                 "failures": failures,
                 "degraded_features": [f[0] for f in failures],
@@ -276,7 +276,7 @@ class MemoryOrchestrator:
         """Raise error if not initialized or unavailable."""
         if not self._is_initialized:
             raise RuntimeError("MemoryOrchestrator not initialized. Call initialize() first.")
-        
+
         if self._status == MemoryServiceStatus.UNAVAILABLE:
             raise RuntimeError("MemoryOrchestrator is unavailable. Check initialization errors.")
 
@@ -310,7 +310,7 @@ class MemoryOrchestrator:
                 memory_context_degraded_total.inc()
             except ImportError:
                 pass
-        
+
         try:
             async with semaphore:
                 # Read operations can proceed concurrently (up to 10 per user)
@@ -402,9 +402,9 @@ class MemoryOrchestrator:
 
                 return context
 
-        except Exception as e:
+        except Exception:
             logger.exception(
-                f"Failed to get user context",
+                "Failed to get user context",
                 extra={"user_email": user_email}
             )
             try:
@@ -412,7 +412,7 @@ class MemoryOrchestrator:
                 memory_context_failed_total.inc()
             except ImportError:
                 pass
-            
+
             # Return empty context instead of raising
             return MemoryContext(user_id=user_email, has_data=False)
 

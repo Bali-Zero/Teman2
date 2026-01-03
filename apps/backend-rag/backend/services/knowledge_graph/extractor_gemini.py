@@ -9,18 +9,16 @@ import json
 import logging
 import os
 import re
-from dataclasses import dataclass, field
-from typing import Any
 
 from google import genai
 
+from .extractor import ExtractedEntity, ExtractedRelation, ExtractionResult
 from .ontology import (
-    EntityType,
-    RelationType,
     ENTITY_SCHEMAS,
     RELATION_SCHEMAS,
+    EntityType,
+    RelationType,
 )
-from .extractor import ExtractedEntity, ExtractedRelation, ExtractionResult
 
 logger = logging.getLogger(__name__)
 

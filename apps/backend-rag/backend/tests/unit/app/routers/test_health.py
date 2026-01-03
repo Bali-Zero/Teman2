@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.health import router, get_qdrant_stats
+from app.routers.health import get_qdrant_stats, router
 
 
 @pytest.fixture
@@ -51,10 +51,10 @@ class TestHealthRouter:
         mock_embedder.dimensions = 384
         mock_search_service.embedder = mock_embedder
         app.state.search_service = mock_search_service
-        
+
         with patch("app.routers.health.get_qdrant_stats") as mock_stats:
             mock_stats.return_value = AsyncMock(return_value={"collections": 5, "total_documents": 1000})
-            
+
             response = client.get("/health")
             assert response.status_code == 200
             data = response.json()
@@ -80,24 +80,24 @@ class TestHealthRouter:
                 }
             }
             mock_response.raise_for_status = MagicMock()
-            
+
             mock_coll_response = MagicMock()
             mock_coll_response.json.return_value = {
                 "result": {"points_count": 100}
             }
             mock_coll_response.raise_for_status = MagicMock()
-            
+
             async def get_side_effect(url):
                 if url == "/collections":
                     return mock_response
                 else:
                     return mock_coll_response
-            
+
             mock_client.get = AsyncMock(side_effect=get_side_effect)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=False)
             mock_client_class.return_value = mock_client
-            
+
             result = await get_qdrant_stats()
             assert result["collections"] == 2
             assert result["total_documents"] == 200
@@ -111,7 +111,7 @@ class TestHealthRouter:
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=False)
             mock_client_class.return_value = mock_client
-            
+
             result = await get_qdrant_stats()
             assert result["collections"] == 0
             assert "error" in result

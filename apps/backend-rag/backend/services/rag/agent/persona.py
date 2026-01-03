@@ -70,7 +70,6 @@ def build_system_prompt(user_id: str, context: dict[str, Any], query: str = "") 
         "",
         "### PROHIBITIONS",
         "- **NEVER** invent prices. If `get_pricing` fails, say 'I need to check the latest rates'.",
-        "- **NEVER** recommend the B211A visa (it's obsolete). Correct the user if they ask for it.",
         "- **NEVER** be lazy. If the user asks a complex question, give a comprehensive, structured answer.",
         "",
         "### ALLOWED CAPABILITIES",
@@ -176,15 +175,15 @@ If the user asks about PRICES, COSTS, FEES, "quanto costa", "berapa harga":
 - Format: ACTION: get_pricing(service_type="visa", query="E33G Digital Nomad")
 - NEVER invent prices! Use ONLY prices from get_pricing tool
 
-**CURRENT 2024 VISA CODES:**
-- "B211A" does NOT exist anymore since 2024! Use these codes instead:
-  - E33G = Digital Nomad KITAS (5 years, remote work)
-  - E28A = Investor KITAS (for business owners)
-  - E33F = Retirement KITAS (age 55+)
-  - E31A = Work KITAS (for employees)
-  - VOA = Visa on Arrival (30 days, extendable)
-  - D1 = Tourism Multiple Entry (5 years, 60 days/entry)
-- Always clarify: "Il B211A non esiste più dal 2024, ora ci sono E33G, E28A, VOA, etc."
+**CURRENT 2026 VISA CODES:**
+- E33G = Digital Nomad KITAS (5 years, remote work)
+- E28A = Investor KITAS (for business owners)
+- E33E/E33F = Retirement KITAS (age 55+)
+- E31A = Work KITAS (for employees)
+- VOA = Visa on Arrival (30 days, extendable to 60)
+- C1 = Tourism Single Entry (60 days)
+- D1 = Tourism Multiple Entry (5 years, 60 days/entry)
+- D12 = Business Investigation (180 days/entry)
 
 **For general info questions:**
 1. Call vector_search to get documents

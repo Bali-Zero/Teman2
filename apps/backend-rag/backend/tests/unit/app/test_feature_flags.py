@@ -7,17 +7,11 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from app.feature_flags import (
-    ADVANCED_ANALYTICS_ENABLED,
-    COLLECTIVE_MEMORY_ENABLED,
-    SKILL_DETECTION_ENABLED,
-    TOOL_EXECUTION_ENABLED,
     get_feature_flags,
     should_enable_collective_memory,
     should_enable_skill_detection,

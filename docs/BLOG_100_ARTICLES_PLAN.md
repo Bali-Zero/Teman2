@@ -25,7 +25,7 @@
 
 | # | Titolo | Formato | Priority | Status |
 |---|--------|---------|----------|--------|
-| 1 | **The Complete Indonesia Visa Guide 2025** | Navigator + Calculator + Comparison | P1 | ✅ DONE |
+| 1 | **The Complete Indonesia Visa Guide 2026** | Navigator + Calculator + Comparison | P1 | ✅ DONE |
 | 2 | **KITAS vs KITAP: Everything You Need to Know** | Versus + Journey Map | P1 | Pending |
 | 3 | **Digital Nomad in Indonesia: The Ultimate Guide** | Navigator + Calculator | P1 | Pending |
 
@@ -34,10 +34,10 @@
 | # | Titolo | Formato | KB Query |
 |---|--------|---------|----------|
 | 4 | How to Get a Visa on Arrival in Indonesia | Checklist + Journey | "VOA requirements" |
-| 5 | B211A Visa Explained: Complete Application Guide | Journey Map | "B211A social visa" |
+| 5 | Digital Nomad E33G Visa: Complete Application Guide | Journey Map | "E33G digital nomad visa" |
 | 6 | Extending Your Tourist Visa in Bali: Step by Step | Journey + Calculator | "visa extension" |
 | 7 | Visa Free Entry to Indonesia: Which Countries Qualify? | Comparison Table | "visa free countries" |
-| 8 | VOA vs B211A: Which Tourist Visa Should You Choose? | Versus | "VOA vs B211" |
+| 8 | VOA vs E33G: Which Visa Should You Choose? | Versus | "VOA vs E33G" |
 
 ### Cluster: Work Permits (5)
 
@@ -56,7 +56,7 @@
 | 14 | Investor KITAS: Visa for PT PMA Owners | Journey + Calculator | "investor KITAS" |
 | 15 | Director KITAS vs Employee KITAS | Versus | "director work permit" |
 | 16 | ITAS for Shareholders: Requirements & Process | Checklist | "shareholder KITAS" |
-| 17 | Converting B211A to Investor KITAS | Journey Map | "convert visa KITAS" |
+| 17 | Converting D12 Business Visa to Investor KITAS | Journey Map | "convert visa KITAS" |
 
 ### Cluster: Family & Spouse Visas (4)
 
@@ -126,7 +126,7 @@
 |---|--------|---------|----------|
 | 46 | Hiring Employees in Indonesia: Labor Law Basics | Decoder + Checklist | "labor law employment" |
 | 47 | Indonesian Employment Contracts: What to Include | Checklist | "employment contract" |
-| 48 | Minimum Wage in Indonesia by Province (2025) | Comparison | "UMR UMP minimum wage" |
+| 48 | Minimum Wage in Indonesia by Province (2026) | Comparison | "UMR UMP minimum wage" |
 | 49 | BPJS: Indonesia's Social Security for Employees | Decoder | "BPJS Kesehatan Ketenagakerjaan" |
 | 50 | Business Bank Account in Indonesia: How to Open | Journey | "bank account company" |
 
@@ -172,7 +172,7 @@
 | 67 | Contract Law in Indonesia: Key Principles | Decoder | "contract law Indonesia" |
 | 68 | Dispute Resolution: Arbitration vs Court | Versus | "dispute resolution" |
 | 69 | Intellectual Property Protection in Indonesia | Checklist | "trademark patent IP" |
-| 70 | Regulatory Changes 2025: What You Need to Know | Alert | "regulatory update 2025" |
+| 70 | Regulatory Changes 2026: What You Need to Know | Alert | "regulatory update 2026" |
 
 ---
 
@@ -212,7 +212,7 @@
 
 | # | Titolo | Formato | KB Query |
 |---|--------|---------|----------|
-| 82 | Cost of Living in Bali 2025 | Calculator + Comparison | general KB |
+| 82 | Cost of Living in Bali 2026 | Calculator + Comparison | general KB |
 | 83 | Healthcare in Indonesia: Insurance & Hospitals | Comparison | general KB |
 | 84 | International Schools in Bali | Comparison | general KB |
 | 85 | Opening a Bank Account in Indonesia | Journey | general KB |
@@ -230,7 +230,7 @@
 
 | # | Titolo | Formato | Priority |
 |---|--------|---------|----------|
-| 91 | **Bali for Digital Nomads: The Complete 2025 Guide** | Navigator + Calculator | P1 |
+| 91 | **Bali for Digital Nomads: The Complete 2026 Guide** | Navigator + Calculator | P1 |
 
 ### Cluster Articles (9)
 
@@ -339,6 +339,6 @@ npm run dev
 
 ---
 
-*Piano creato: 2025-12-31*
+*Piano creato: 2026-01-02*
 *Articoli totali: 100*
 *Stima completamento: 8 settimane*

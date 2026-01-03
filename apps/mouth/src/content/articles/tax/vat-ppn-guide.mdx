@@ -1,5 +1,5 @@
 ---
-title: "VAT (PPN) in Indonesia 2025: Complete Business Guide"
+title: "VAT (PPN) in Indonesia 2026: Complete Business Guide"
 slug: "vat-ppn-guide"
 description: "Value Added Tax (PPN) in Indonesia. Registration, rates, invoicing, and compliance for businesses and PT PMA."
 excerpt: "Understanding Indonesian VAT (PPN) is essential for business compliance. Here's everything you need to know."
@@ -9,8 +9,8 @@ tags:
   - PPN
   - business tax
   - tax invoice
-publishedAt: "2025-01-15"
-updatedAt: "2025-01-15"
+publishedAt: "2026-01-15"
+updatedAt: "2026-01-15"
 author:
   name: "Zantara AI"
   avatar: "/images/zantara-avatar.png"
@@ -20,7 +20,7 @@ image:
   src: "/images/insights/tax-legal/vat-ppn.jpg"
   alt: "VAT PPN Indonesia"
 seo:
-  title: "VAT PPN Indonesia 2025 | Business Tax Guide"
+  title: "VAT PPN Indonesia 2026 | Business Tax Guide"
   description: "Indonesian VAT (PPN) guide. Registration requirements, rates, and compliance for PT PMA and businesses."
   keywords:
     - VAT indonesia
@@ -32,7 +32,7 @@ aiGenerated: true
 kbSources:
   - collection: "tax_docs"
     documentsUsed: 16
-lastKbSync: "2025-01-15T10:00:00Z"
+lastKbSync: "2026-01-15T10:00:00Z"
 relatedArticles:
   - "corporate-income-tax"
   - "withholding-tax-guide"
@@ -49,33 +49,45 @@ import {
   AskZantara
 } from '@/components/insights/interactive';
 
-# VAT (PPN) in Indonesia 2025: Complete Business Guide
+# VAT (PPN) in Indonesia 2026: Complete Business Guide
 
 Pajak Pertambahan Nilai (PPN) is Indonesia's Value Added Tax. Understanding it is crucial for business compliance.
+
+<InfoCard variant="warning" title="Aggiornamento VAT 2026 (Fonte: pajak.go.id)">
+**PPN 12% in vigore dal 1 gennaio 2025:**
+
+L'IVA indonesiana è ufficialmente al **12%** dal 1 gennaio 2025. Tuttavia, grazie al meccanismo **DPP Nilai Lain** (Base Imponibile Altra), l'aliquota effettiva per la maggior parte dei beni e servizi rimane all'**11%**.
+
+- **Beni normali**: 12% × (11/12) = **11% effettivo**
+- **Beni di lusso**: **12% pieno** (senza DPP Nilai Lain)
+- **Tutte le fatture (Faktur Pajak)** devono essere emesse tramite **Coretax/e-Faktur**
+
+**Nota Importante**: Questa struttura è stata implementata per minimizzare l'impatto sui consumatori mantenendo formalmente l'aliquota del 12% prevista dalla legge.
+</InfoCard>
 
 ## VAT Rates
 
 <ComparisonTable
   title="Indonesian VAT Rates"
-  description="Current applicable rates"
+  description="Aliquote 2026 in vigore"
   items={[
     {
-      name: "Standard Rate",
-      subtitle: "Most goods/services",
+      name: "Standard Rate (Effective)",
+      subtitle: "Maggior parte beni/servizi",
       values: {
-        "Rate": "11%",
-        "Effective": "April 2022",
-        "Applies To": "General transactions"
+        "Rate": "11% effettivo",
+        "Nominale": "12% con DPP Nilai Lain",
+        "Applies To": "Transazioni generali"
       },
       highlight: true
     },
     {
-      name: "Planned Rate",
-      subtitle: "Future increase",
+      name: "Luxury Goods Rate",
+      subtitle: "Beni di lusso",
       values: {
-        "Rate": "12%",
-        "Effective": "January 2025",
-        "Applies To": "Per government schedule"
+        "Rate": "12% pieno",
+        "Nominale": "Senza DPP Nilai Lain",
+        "Applies To": "Beni considerati lusso"
       }
     },
     {
@@ -83,7 +95,7 @@ Pajak Pertambahan Nilai (PPN) is Indonesia's Value Added Tax. Understanding it i
       subtitle: "Export of goods",
       values: {
         "Rate": "0%",
-        "Effective": "Current",
+        "Nominale": "Zero-rated",
         "Applies To": "Exported goods"
       }
     },
@@ -92,7 +104,7 @@ Pajak Pertambahan Nilai (PPN) is Indonesia's Value Added Tax. Understanding it i
       subtitle: "Some services abroad",
       values: {
         "Rate": "0%",
-        "Effective": "Current",
+        "Nominale": "Zero-rated",
         "Applies To": "Exported services"
       }
     }

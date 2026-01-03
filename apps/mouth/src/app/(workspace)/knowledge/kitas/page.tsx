@@ -582,6 +582,39 @@ export default function KitasVisaPage() {
         </div>
       )}
 
+      {/* Auxiliary Immigration Services */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-purple-500/40 text-purple-500 dark:text-purple-400 border border-purple-500/50 flex items-center justify-center">
+            <FileCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-[var(--foreground)]">
+              Auxiliary Immigration Services
+            </h2>
+            <p className="text-sm text-[var(--foreground-muted)]">
+              Additional documents & procedures
+            </p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {AUXILIARY_SERVICES.map((service) => (
+            <div
+              key={service.name}
+              className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:border-purple-500/50 transition-all"
+            >
+              <h3 className="font-semibold text-[var(--foreground)] mb-1">{service.name}</h3>
+              <p className="text-xs text-[var(--foreground-muted)] mb-3">{service.description}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-bold text-purple-400">{service.price}</span>
+                <span className="text-xs text-[var(--foreground-muted)]">{service.processing}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Contact CTA */}
       <div className="p-8 rounded-2xl bg-gradient-to-r from-[var(--accent)]/10 to-purple-500/10 border border-[var(--accent)]/20">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -606,3 +639,24 @@ export default function KitasVisaPage() {
     </div>
   );
 }
+
+// Auxiliary Immigration Services Data
+const AUXILIARY_SERVICES = [
+  { name: 'EPO', description: 'Exit Permit Only (one-way exit)', price: 'Rp 700K', processing: '1-3 days' },
+  { name: 'ERP', description: 'Exit Re-entry Permit', price: 'Rp 800K', processing: '1-3 days' },
+  { name: 'Mutation Passport', description: 'Update KITAS with new passport', price: 'Rp 500K', processing: '5-7 days' },
+  { name: 'Mutation Address', description: 'Update registered address', price: 'Rp 500K', processing: '5-7 days' },
+  { name: 'Cancel Full (RPTKA+IMTA+WL)', description: 'Complete work permit cancellation', price: 'Rp 3.5M', processing: '7-10 days' },
+  { name: 'Cancel RPTKA', description: 'Cancel RPTKA permit only', price: 'Rp 500K', processing: '3-5 days' },
+  { name: 'Cancel Wajib Lapor', description: 'Cancel employment report', price: 'Rp 500K', processing: '3-5 days' },
+  { name: 'Reset Molina', description: 'Reset immigration account', price: 'Rp 1M', processing: '1-3 days' },
+  { name: 'SKTT', description: 'Temporary residence certificate', price: 'Rp 1.5M', processing: '7-10 days' },
+  { name: 'SKCK', description: 'Police clearance letter', price: 'Rp 2M', processing: '5-7 days' },
+  { name: 'Domicile Letter', description: 'Residence confirmation', price: 'Rp 800K', processing: '3-5 days' },
+  { name: 'Domicile + SKTT', description: 'Combined package', price: 'Rp 1.6M', processing: '7-10 days' },
+  { name: 'Born Report', description: 'Birth registration for foreigner child', price: 'Rp 4M', processing: '7-14 days' },
+  { name: 'Passport 5 Years', description: 'Indonesian passport renewal', price: 'Rp 1.3M', processing: '7-14 days' },
+  { name: 'Passport 10 Years', description: 'Indonesian passport (10yr)', price: 'Rp 2M', processing: '7-14 days' },
+  { name: 'E-Passport 5 Years', description: 'Biometric passport', price: 'Rp 2M', processing: '7-14 days' },
+  { name: 'E-Passport 10 Years', description: 'Biometric passport (10yr)', price: 'Rp 2.5M', processing: '7-14 days' },
+];

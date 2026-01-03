@@ -29,7 +29,7 @@ class TestEmbeddingsGenerator:
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         assert generator.provider == "sentence-transformers"
         assert generator.dimensions == 384
@@ -39,7 +39,7 @@ class TestEmbeddingsGenerator:
         """Test initialization with OpenAI and API key"""
         mock_client = MagicMock()
         mock_openai_class.return_value = mock_client
-        
+
         generator = EmbeddingsGenerator(
             provider="openai",
             api_key="test-key"
@@ -51,9 +51,8 @@ class TestEmbeddingsGenerator:
     @patch("core.embeddings._default_settings", None)
     def test_init_openai_no_key(self):
         """Test initialization with OpenAI without API key"""
-        with patch("openai.OpenAI"):
-            with pytest.raises(ValueError, match="API key"):
-                EmbeddingsGenerator(provider="openai", api_key=None)
+        with patch("openai.OpenAI"), pytest.raises(ValueError, match="API key"):
+            EmbeddingsGenerator(provider="openai", api_key=None)
 
     @patch("sentence_transformers.SentenceTransformer")
     def test_init_default_provider(self, mock_st):
@@ -61,7 +60,7 @@ class TestEmbeddingsGenerator:
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator()
         # May be sentence-transformers or openai depending on availability
         assert generator.provider in ["sentence-transformers", "openai"]
@@ -82,7 +81,7 @@ class TestEmbeddingsGenerator:
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         result = generator.generate_embeddings([])
         assert result == []
@@ -95,7 +94,7 @@ class TestEmbeddingsGenerator:
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384, [0.2] * 384])
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         result = generator.generate_embeddings(["text1", "text2"])
         assert len(result) == 2
@@ -113,7 +112,7 @@ class TestEmbeddingsGenerator:
         mock_response.data = [mock_item1, mock_item2]
         mock_client.embeddings.create.return_value = mock_response
         mock_openai_class.return_value = mock_client
-        
+
         generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
         result = generator.generate_embeddings(["text1", "text2"])
         assert len(result) == 2
@@ -123,7 +122,7 @@ class TestEmbeddingsGenerator:
     def test_generate_embeddings_openai_batch(self, mock_openai_class):
         """Test OpenAI batching for large requests"""
         mock_client = MagicMock()
-        
+
         # Create responses for multiple batches
         def create_batch_response(batch_size):
             mock_response = MagicMock()
@@ -134,14 +133,14 @@ class TestEmbeddingsGenerator:
                 mock_items.append(mock_item)
             mock_response.data = mock_items
             return mock_response
-        
+
         # Mock to return different responses for each batch
         mock_client.embeddings.create.side_effect = [
             create_batch_response(2048),  # First batch
             create_batch_response(952),   # Second batch (3000 - 2048)
         ]
         mock_openai_class.return_value = mock_client
-        
+
         generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
         texts = ["text"] * 3000  # Larger than MAX_BATCH_SIZE
         result = generator.generate_embeddings(texts)
@@ -156,7 +155,7 @@ class TestEmbeddingsGenerator:
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         result = generator.generate_single_embedding("test text")
         assert len(result) == 384
@@ -169,7 +168,7 @@ class TestEmbeddingsGenerator:
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         result = generator.generate_query_embedding("query")
         assert len(result) == 384
@@ -182,7 +181,7 @@ class TestEmbeddingsGenerator:
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         result = generator.generate_batch_embeddings(["text"])
         assert len(result) == 1
@@ -192,7 +191,7 @@ class TestEmbeddingsGenerator:
         """Test getting model info for OpenAI"""
         mock_client = MagicMock()
         mock_openai_class.return_value = mock_client
-        
+
         generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
         info = generator.get_model_info()
         assert info["provider"] == "openai"
@@ -204,7 +203,7 @@ class TestEmbeddingsGenerator:
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         info = generator.get_model_info()
         assert info["provider"] == "sentence-transformers"
@@ -216,7 +215,7 @@ class TestEmbeddingsGenerator:
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_st.return_value = mock_transformer
-        
+
         generator = create_embeddings_generator()
         assert generator is not None
         assert hasattr(generator, "provider")
@@ -230,7 +229,7 @@ class TestEmbeddingsGenerator:
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
         mock_st.return_value = mock_transformer
-        
+
         result = generate_embeddings(["test"], api_key=None)  # Use None to force sentence-transformers
         assert len(result) == 1
         # May be 384 (sentence-transformers) or 1536 (OpenAI fallback)
@@ -243,7 +242,7 @@ class TestEmbeddingsGenerator:
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.side_effect = Exception("Encoding error")
         mock_st.return_value = mock_transformer
-        
+
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         with pytest.raises(Exception):
             generator.generate_embeddings(["test"])

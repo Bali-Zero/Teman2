@@ -14,15 +14,15 @@ import secrets
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, Path, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 
-from app.dependencies import get_database_pool, get_current_user
 from app.core.config import settings
+from app.dependencies import get_current_user, get_database_pool
 from app.utils.logging_utils import get_logger
-from services.integrations.zoho_oauth_service import ZohoOAuthService
 from services.integrations.zoho_email_service import ZohoEmailService
+from services.integrations.zoho_oauth_service import ZohoOAuthService
 
 logger = get_logger(__name__)
 

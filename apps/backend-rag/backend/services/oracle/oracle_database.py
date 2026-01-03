@@ -32,7 +32,7 @@ class DatabaseManager:
             if not self.database_url or self.database_url == "postgresql://user:pass@localhost/db":
                 logger.warning("⚠️ Database URL is placeholder - skipping engine initialization")
                 return
-                
+
             self._engine = create_engine(
                 self.database_url,
                 poolclass=QueuePool,
@@ -231,7 +231,7 @@ def get_db_manager() -> DatabaseManager:
 # Backward compatibility: provide db_manager as a property-like accessor
 class _DatabaseManagerProxy:
     """Proxy class for backward compatibility with direct db_manager access"""
-    
+
     def __getattr__(self, name: str):
         return getattr(get_db_manager(), name)
 

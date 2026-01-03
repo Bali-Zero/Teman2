@@ -22,7 +22,6 @@ import logging
 import os
 import sys
 import time
-from typing import Optional
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -91,7 +90,7 @@ async def migrate_collection(
 
     try:
         # Step 1: Check source collection
-        logger.info(f"Step 1: Checking source collection...")
+        logger.info("Step 1: Checking source collection...")
         http_client = await source_client._get_client()
 
         # Get collection info
@@ -111,7 +110,7 @@ async def migrate_collection(
         has_sparse = bool(sparse_config)
 
         if is_named and has_sparse:
-            logger.info(f"  Collection already has hybrid format, skipping")
+            logger.info("  Collection already has hybrid format, skipping")
             result["status"] = "skipped"
             result["documents_migrated"] = total_docs
             return result
@@ -119,7 +118,7 @@ async def migrate_collection(
         logger.info(f"  Found {total_docs} documents (named={is_named}, sparse={has_sparse})")
 
         if total_docs == 0:
-            logger.warning(f"  Collection is empty, nothing to migrate")
+            logger.warning("  Collection is empty, nothing to migrate")
             result["status"] = "skipped"
             return result
 
@@ -141,7 +140,7 @@ async def migrate_collection(
         # Delete existing target if exists
         check_response = await http_client.get(f"/collections/{target_collection}")
         if check_response.status_code == 200:
-            logger.info(f"  Deleting existing target collection...")
+            logger.info("  Deleting existing target collection...")
             await http_client.delete(f"/collections/{target_collection}")
 
         # Create with hybrid schema
@@ -156,10 +155,10 @@ async def migrate_collection(
             result["error"] = "Failed to create target collection"
             return result
 
-        logger.info(f"  Created hybrid collection")
+        logger.info("  Created hybrid collection")
 
         # Step 3: Migrate documents
-        logger.info(f"Step 3: Migrating documents with BM25 sparse vectors...")
+        logger.info("Step 3: Migrating documents with BM25 sparse vectors...")
 
         bm25 = BM25Vectorizer()
         start_time = time.time()
@@ -251,7 +250,7 @@ async def migrate_collection(
         logger.info(f"  Migration completed: {total_migrated} docs in {elapsed:.1f}s")
 
         # Step 4: Verify
-        logger.info(f"Step 4: Verifying migration...")
+        logger.info("Step 4: Verifying migration...")
         target_info = await http_client.get(f"/collections/{target_collection}")
         target_count = target_info.json()["result"]["points_count"]
 
@@ -261,7 +260,7 @@ async def migrate_collection(
             logger.warning(f"  Document mismatch: expected {total_migrated}, got {target_count}")
 
         # Step 5: Swap collections
-        logger.info(f"Step 5: Swapping collections...")
+        logger.info("Step 5: Swapping collections...")
 
         # Rename original to _legacy
         rename_payload = {
@@ -299,7 +298,7 @@ async def migrate_collection(
 
         result["status"] = "success"
         result["documents_migrated"] = total_migrated
-        logger.info(f"  Migration complete!")
+        logger.info("  Migration complete!")
 
         await target_client.close()
 

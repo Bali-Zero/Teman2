@@ -14,8 +14,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import httpx
 import asyncpg
+import httpx
 
 from app.core.config import settings
 
@@ -137,7 +137,7 @@ class ZohoOAuthService:
                     logger.error(f"[ZOHO_DEBUG] Zoho OAuth error in response: {token_data}")
                     raise ValueError(f"OAuth error: {token_data.get('error')}")
 
-                logger.info(f"[ZOHO_DEBUG] Token exchange successful, getting account info...")
+                logger.info("[ZOHO_DEBUG] Token exchange successful, getting account info...")
 
                 # Get account information
                 account_info = await self._get_account_info(token_data["access_token"])
@@ -248,7 +248,7 @@ class ZohoOAuthService:
                 logger.error(f"[ZOHO_DEBUG] Invalid email extracted: '{primary_email}'")
                 # Last resort: search in the entire account object
                 logger.info(f"[ZOHO_DEBUG] Full account object keys: {account.keys()}")
-                raise ValueError(f"Could not extract valid email address from Zoho account")
+                raise ValueError("Could not extract valid email address from Zoho account")
 
             logger.info(f"[ZOHO_DEBUG] ===== FINAL EMAIL: {primary_email} =====")
 

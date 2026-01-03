@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, Menu, ChevronDown, X, Globe } from 'lucide-react';
+import { Search, Menu, ChevronDown, X, Globe, Newspaper, Bell } from 'lucide-react';
 import { SearchModal } from '@/components/blog/SearchBar';
 
 // Language options
@@ -29,12 +29,44 @@ export default function BlogLayout({
   const [language, setLanguage] = React.useState<LanguageCode>('en');
   const [langMenuOpen, setLangMenuOpen] = React.useState(false);
   const langMenuRef = React.useRef<HTMLDivElement>(null);
+  const [pendingNewsCount, setPendingNewsCount] = React.useState(0);
+  const [isAdmin, setIsAdmin] = React.useState(false);
 
   // Load saved language preference
   React.useEffect(() => {
     const saved = localStorage.getItem('blog-language') as LanguageCode | null;
     if (saved && LANGUAGES.some(l => l.code === saved)) {
       setLanguage(saved);
+    }
+  }, []);
+
+  // Check admin status and fetch pending news count
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const adminMode = urlParams.get('admin') === 'true' || localStorage.getItem('balizero-admin') === 'true';
+    setIsAdmin(adminMode);
+    if (adminMode) {
+      localStorage.setItem('balizero-admin', 'true');
+    }
+
+    // Fetch pending news count for admins
+    const fetchPendingCount = async () => {
+      try {
+        const res = await fetch('/api/news?status=pending');
+        const data = await res.json();
+        if (data.success) {
+          setPendingNewsCount(data.data?.length || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending news count:', error);
+      }
+    };
+
+    if (adminMode) {
+      fetchPendingCount();
+      // Refresh every 30 seconds
+      const interval = setInterval(fetchPendingCount, 30000);
+      return () => clearInterval(interval);
     }
   }, []);
 
@@ -72,19 +104,19 @@ export default function BlogLayout({
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#051C2C] text-white">
+    <div className="min-h-screen bg-[#0c1f3a] text-white">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#051C2C] border-b border-white/10">
+      <header className="sticky top-0 z-50 bg-[#0c1f3a] border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* Logo */}
-            <Link href="/insights" className="flex items-center">
+            {/* Logo - clean version without white border */}
+            <Link href="/" className="flex items-center">
               <Image
-                src="/images/balizero-logo.png"
+                src="/images/balizero-logo-clean.png"
                 alt="Bali Zero"
                 width={52}
                 height={52}
-                className="rounded-full ring-2 ring-black/80"
+                className="rounded-full"
               />
             </Link>
 
@@ -96,20 +128,19 @@ export default function BlogLayout({
                 onMouseEnter={() => setActiveDropdown('insights')}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
-                <Link
-                  href="/insights"
+                <button
                   className="flex items-center gap-1 px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
                 >
                   Insights
                   <ChevronDown className="w-4 h-4" />
-                </Link>
+                </button>
 
                 {activeDropdown === 'insights' && (
                   <div className="absolute top-full left-0 w-64 bg-[#0a2540] border border-white/10 rounded-lg shadow-xl py-2 mt-1">
                     {INSIGHT_CATEGORIES.map((category) => (
                       <Link
                         key={category.slug}
-                        href={`/insights/${category.slug}`}
+                        href={`/${category.slug}`}
                         className="block px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                       >
                         {category.name}
@@ -148,17 +179,34 @@ export default function BlogLayout({
                 )}
               </div>
 
+              {/* News Feed */}
               <Link
-                href="/chat"
-                className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
+                href={isAdmin ? "/news?admin=true" : "/news"}
+                className="relative px-4 py-2 text-sm text-white/80 hover:text-white transition-colors flex items-center gap-1.5"
               >
-                <Image
-                  src="/images/zantara-lotus.png"
-                  alt="Zantara"
-                  width={20}
-                  height={20}
-                />
-                Ask Zantara AI
+                <Newspaper className="w-4 h-4" />
+                News
+                {isAdmin && pendingNewsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
+                    {pendingNewsCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Team */}
+              <Link
+                href="/team"
+                className="px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
+              >
+                Team
+              </Link>
+
+              {/* Contact */}
+              <Link
+                href="/contact"
+                className="px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
+              >
+                Contact
               </Link>
             </nav>
 
@@ -212,13 +260,20 @@ export default function BlogLayout({
                 )}
               </div>
 
-              {/* CTA Button */}
-              <Link
-                href="/chat"
-                className="hidden md:inline-flex px-5 py-2.5 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
+              {/* Zantara AI Button */}
+              <a
+                href={`${APP_DOMAIN}/chat`}
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
               >
-                Get Started
-              </Link>
+                <Image
+                  src="/images/zantara-lotus.png"
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="w-6 h-6"
+                />
+                Zantara
+              </a>
 
               {/* Mobile menu button */}
               <button
@@ -246,7 +301,7 @@ export default function BlogLayout({
                 {INSIGHT_CATEGORIES.map((category) => (
                   <Link
                     key={category.slug}
-                    href={`/insights/${category.slug}`}
+                    href={`/${category.slug}`}
                     className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -273,17 +328,31 @@ export default function BlogLayout({
 
               <div className="py-2 border-t border-white/10">
                 <Link
-                  href="/chat"
+                  href={isAdmin ? "/news?admin=true" : "/news"}
                   className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <Image
-                    src="/images/zantara-lotus.png"
-                    alt="Zantara"
-                    width={18}
-                    height={18}
-                  />
-                  Ask Zantara AI
+                  <Newspaper className="w-4 h-4" />
+                  News
+                  {isAdmin && pendingNewsCount > 0 && (
+                    <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                      {pendingNewsCount}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  href="/team"
+                  className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Team
+                </Link>
+                <Link
+                  href="/contact"
+                  className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Contact
                 </Link>
               </div>
 
@@ -314,13 +383,20 @@ export default function BlogLayout({
               </div>
 
               <div className="pt-4">
-                <Link
-                  href="/chat"
-                  className="block w-full px-4 py-3 rounded-lg bg-[#2251ff] text-white text-sm font-medium text-center hover:bg-[#1a41cc] transition-colors"
+                <a
+                  href={`${APP_DOMAIN}/chat`}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Get Started
-                </Link>
+                  <Image
+                    src="/images/zantara-lotus.png"
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="w-6 h-6"
+                  />
+                  Zantara
+                </a>
               </div>
             </nav>
           </div>
@@ -339,13 +415,13 @@ export default function BlogLayout({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
             {/* Brand */}
             <div className="lg:col-span-2">
-              <Link href="/insights" className="flex items-center mb-6">
+              <Link href="/" className="flex items-center mb-6">
                 <Image
-                  src="/images/balizero-logo.png"
+                  src="/images/balizero-logo-clean.png"
                   alt="Bali Zero"
                   width={52}
                   height={52}
-                  className="rounded-full ring-2 ring-black/80"
+                  className="rounded-full"
                 />
               </Link>
               <p className="text-white/50 max-w-sm mb-6 leading-relaxed">
@@ -416,7 +492,7 @@ export default function BlogLayout({
                 {INSIGHT_CATEGORIES.map((category) => (
                   <li key={category.slug}>
                     <Link
-                      href={`/insights/${category.slug}`}
+                      href={`/${category.slug}`}
                       className="text-sm text-white/50 hover:text-white transition-colors"
                     >
                       {category.name}
@@ -434,42 +510,43 @@ export default function BlogLayout({
               <ul className="space-y-3">
                 <li>
                   <a
-                    href="mailto:hello@balizero.com"
+                    href="mailto:info@balizero.com"
                     className="text-sm text-white/50 hover:text-white transition-colors"
                   >
-                    hello@balizero.com
+                    info@balizero.com
                   </a>
                 </li>
                 <li>
                   <a
-                    href="https://wa.me/6281234567890"
+                    href="https://wa.me/6285904369574"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-white/50 hover:text-white transition-colors"
                   >
-                    +62 812 3456 7890
+                    +62 859 0436 9574
                   </a>
                 </li>
                 <li>
                   <span className="text-sm text-white/50">
-                    Bali, Indonesia
+                    Kerobokan, Bali
                   </span>
                 </li>
               </ul>
 
               <div className="mt-6">
-                <Link
-                  href="/chat"
+                <a
+                  href={`${APP_DOMAIN}/chat`}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2251ff] text-white text-sm font-medium hover:bg-[#1a41cc] transition-colors"
                 >
                   <Image
                     src="/images/zantara-lotus.png"
-                    alt="Zantara"
-                    width={18}
-                    height={18}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="w-6 h-6"
                   />
-                  Ask Zantara AI
-                </Link>
+                  Zantara
+                </a>
               </div>
             </div>
           </div>
@@ -501,3 +578,6 @@ const SERVICES = [
   { name: 'Tax & Compliance', slug: 'tax' },
   { name: 'Property', slug: 'property' },
 ];
+
+// App domain for internal routes
+const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'https://zantara.balizero.com';

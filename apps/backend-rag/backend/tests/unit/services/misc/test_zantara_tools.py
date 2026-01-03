@@ -5,7 +5,8 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
@@ -102,4 +103,62 @@ class TestZantaraTools:
         result = await zantara_tools.execute_tool("get_pricing", {"service_type": "visa"})
         assert result["success"] is False
         assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_search_team_member_empty_query(self, zantara_tools):
+        """Test search_team_member with empty query"""
+        result = await zantara_tools.execute_tool("search_team_member", {"query": ""})
+        assert result["success"] is False
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_search_team_member_with_results(self, zantara_tools, mock_collaborator_service):
+        """Test search_team_member with results"""
+        mock_profile = MagicMock()
+        mock_profile.name = "Test User"
+        mock_profile.email = "test@example.com"
+        mock_profile.role = "Developer"
+        mock_profile.department = "Tech"
+        mock_profile.expertise_level = "Senior"
+        mock_profile.language = "English"
+        mock_profile.notes = "Test notes"
+        mock_profile.traits = ["helpful", "friendly"]
+        mock_collaborator_service.search_members.return_value = [mock_profile]
+
+        result = await zantara_tools.execute_tool("search_team_member", {"query": "test"})
+        assert result["success"] is True
+        assert result["data"]["count"] == 1
+        assert len(result["data"]["results"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_get_team_members_list_with_department(self, zantara_tools, mock_collaborator_service):
+        """Test get_team_members_list with department filter"""
+        mock_profile = MagicMock()
+        mock_profile.name = "Test User"
+        mock_profile.email = "test@example.com"
+        mock_profile.role = "Developer"
+        mock_profile.department = "Tech"
+        mock_profile.expertise_level = "Senior"
+        mock_profile.language = "English"
+        mock_profile.traits = []
+        mock_profile.notes = ""
+        mock_collaborator_service.list_members.return_value = [mock_profile]
+        mock_collaborator_service.get_team_stats.return_value = {"total": 1}
+
+        result = await zantara_tools.execute_tool("get_team_members_list", {"department": "Tech"})
+        assert result["success"] is True
+        assert result["data"]["total_members"] == 1
+
+    def test_get_tool_definitions(self, zantara_tools):
+        """Test get_tool_definitions"""
+        tools = zantara_tools.get_tool_definitions()
+        assert isinstance(tools, list)
+        assert len(tools) > 0
+        assert any(tool["name"] == "get_pricing" for tool in tools)
+
+    def test_get_tool_definitions_with_admin(self, zantara_tools):
+        """Test get_tool_definitions (parameter is ignored but method accepts it)"""
+        # The method signature has _include_admin_tools but it's ignored
+        tools = zantara_tools.get_tool_definitions()
+        assert isinstance(tools, list)
 

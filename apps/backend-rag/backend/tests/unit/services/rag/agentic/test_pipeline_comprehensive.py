@@ -15,8 +15,13 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from services.rag.agentic.pipeline import (
-    PipelineStage, VerificationStage, PostProcessingStage,
-    CitationStage, FormatStage, ResponsePipeline, create_default_pipeline
+    CitationStage,
+    FormatStage,
+    PipelineStage,
+    PostProcessingStage,
+    ResponsePipeline,
+    VerificationStage,
+    create_default_pipeline,
 )
 
 
@@ -28,7 +33,7 @@ class TestPipelineStage:
         class TestStage(PipelineStage):
             async def process(self, data):
                 return data
-        
+
         stage = TestStage()
         assert stage.name == "TestStage"
 
@@ -51,7 +56,7 @@ class TestVerificationStage:
         """Test skipping verification for short responses"""
         stage = VerificationStage(min_response_length=50)
         data = {"response": "Hi", "query": "test", "context_chunks": []}
-        
+
         result = await stage.process(data)
         assert result["verification_status"] == "skipped"
         assert result["verification_score"] == 1.0
@@ -61,22 +66,21 @@ class TestVerificationStage:
         """Test skipping verification without context"""
         stage = VerificationStage()
         data = {"response": "Long response" * 10, "query": "test", "context_chunks": []}
-        
+
         result = await stage.process(data)
         assert result["verification_status"] == "skipped"
 
     @pytest.mark.asyncio
     async def test_process_with_verification(self):
         """Test verification with context"""
-        from services.rag.verification_service import VerificationStatus
-        
+
         stage = VerificationStage()
         data = {
             "response": "Long response" * 10,
             "query": "test",
             "context_chunks": [{"text": "context"}]
         }
-        
+
         # Mock verification result object
         mock_verification = MagicMock()
         mock_verification.is_valid = True
@@ -84,10 +88,10 @@ class TestVerificationStage:
         mock_verification.score = 0.9
         mock_verification.reasoning = "Good"
         mock_verification.missing_citations = []
-        
+
         with patch("services.rag.agentic.pipeline.verification_service") as mock_service:
             mock_service.verify_response = AsyncMock(return_value=mock_verification)
-            
+
             result = await stage.process(data)
             assert result["verification_score"] == 0.9
             assert result["verification_status"] == "verified"
@@ -104,7 +108,7 @@ class TestPostProcessingStage:
             "response": "THOUGHT: thinking\nACTION: action\nObservation: result\nFinal: answer",
             "query": "test query"
         }
-        
+
         result = await stage.process(data)
         # clean_response removes THOUGHT: patterns, but ACTION: might remain
         # The important thing is that the response is processed
@@ -116,7 +120,7 @@ class TestPostProcessingStage:
         """Test language detection"""
         stage = PostProcessingStage()
         data = {"response": "Ciao, questo è un test"}
-        
+
         result = await stage.process(data)
         assert result is not None
 
@@ -132,7 +136,7 @@ class TestCitationStage:
             "response": "KITAS costs 15M [1]",
             "sources": [{"id": 1, "title": "Visa Guide"}]
         }
-        
+
         result = await stage.process(data)
         assert "citations" in result or "sources" in result
 
@@ -141,7 +145,7 @@ class TestCitationStage:
         """Test without sources"""
         stage = CitationStage()
         data = {"response": "Answer", "sources": []}
-        
+
         result = await stage.process(data)
         assert result is not None
 
@@ -154,7 +158,7 @@ class TestFormatStage:
         """Test response formatting"""
         stage = FormatStage()
         data = {"response": "test response"}
-        
+
         result = await stage.process(data)
         assert result is not None
 
@@ -174,7 +178,7 @@ class TestResponsePipeline:
         stage = PostProcessingStage()
         pipeline = ResponsePipeline(stages=[stage])
         data = {"response": "test"}
-        
+
         result = await pipeline.process(data)
         assert result is not None
 
@@ -193,7 +197,7 @@ class TestResponsePipeline:
             "context_chunks": [],
             "sources": []
         }
-        
+
         result = await pipeline.process(data)
         assert result is not None
 
@@ -203,10 +207,10 @@ class TestResponsePipeline:
         class ErrorStage(PipelineStage):
             async def process(self, data):
                 raise Exception("Stage error")
-        
+
         pipeline = ResponsePipeline(stages=[ErrorStage()])
         data = {"response": "test"}
-        
+
         with pytest.raises(Exception):
             await pipeline.process(data)
 

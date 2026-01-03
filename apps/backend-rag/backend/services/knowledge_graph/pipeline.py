@@ -11,15 +11,14 @@ Based on:
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 import asyncpg
 
-from .ontology import EntityType, RelationType
-from .extractor import KGExtractor, ExtractedEntity, ExtractedRelation, ExtractionResult
 from .coreference import CoreferenceResolver
+from .extractor import ExtractedEntity, ExtractedRelation, ExtractionResult, KGExtractor
 
 logger = logging.getLogger(__name__)
 

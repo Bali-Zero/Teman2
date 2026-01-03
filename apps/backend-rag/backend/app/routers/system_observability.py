@@ -9,7 +9,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.routers.team_activity import get_admin_email
-from services.monitoring.unified_health_service import UnifiedHealthService, get_unified_health_service
+from services.monitoring.unified_health_service import (
+    UnifiedHealthService,
+    get_unified_health_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +58,7 @@ async def get_postgres_tables(
 ) -> list[str]:
     """List all public tables in PostgreSQL (ADMIN ONLY)"""
     import asyncpg
+
     from app.core.config import settings
 
     try:
@@ -83,10 +87,11 @@ async def get_table_data(
     _admin_email: str = Depends(get_admin_email),
 ) -> dict[str, Any]:
     """Get raw data from a table (ADMIN ONLY)"""
-    import asyncpg
-    from app.core.config import settings
-    import json
     from datetime import datetime
+
+    import asyncpg
+
+    from app.core.config import settings
 
     # Basic sanitized table name check (prevent injection)
     if not table.replace("_", "").isalnum():
@@ -143,6 +148,7 @@ async def get_qdrant_collections(
 ) -> dict[str, Any]:
     """List Qdrant collections with stats (ADMIN ONLY)"""
     from core.qdrant_db import QdrantClient
+
     from app.core.config import settings
 
     try:
@@ -179,8 +185,9 @@ async def get_qdrant_points(
     _admin_email: str = Depends(get_admin_email),
 ) -> dict[str, Any]:
     """Browse Qdrant points (ADMIN ONLY)"""
-    from app.core.config import settings
     import httpx
+
+    from app.core.config import settings
 
     try:
         # Using scroll API

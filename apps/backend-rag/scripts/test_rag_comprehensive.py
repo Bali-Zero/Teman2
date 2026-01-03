@@ -27,7 +27,7 @@ TEST_QUESTIONS = {
     "VISA": [
         "What are the requirements for E33G visa?",
         "Come ottenere il KITAS investor?",
-        "Apa syarat visa B211A?",
+        "Apa syarat visa C1 Tourism?",
         "How long does KITAP processing take?",
         "Requisiti per il visto C312?",
     ],

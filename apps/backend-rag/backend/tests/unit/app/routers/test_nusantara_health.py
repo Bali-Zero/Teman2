@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.nusantara_health import router, get_status_from_score
+from app.routers.nusantara_health import get_status_from_score, router
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ class TestNusantaraHealthRouter:
         response = client.get("/api/nusantara/health")
         assert response.status_code == 200
         data = response.json()
-        
+
         # Check island structure
         for island_name, island_data in data["islands"].items():
             assert "name" in island_data

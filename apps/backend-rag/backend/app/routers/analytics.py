@@ -6,12 +6,10 @@ Access restricted to zero@balizero.com only.
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from app.core.config import settings
 from app.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -279,8 +277,9 @@ async def get_llm_usage_stats(
     - Breakdown by endpoint
     - Daily trend data
     """
-    from prometheus_client import REGISTRY
     from datetime import datetime, timezone
+
+    from prometheus_client import REGISTRY
 
     # Extract metrics from Prometheus registry
     usage_by_model: dict[str, dict] = {}

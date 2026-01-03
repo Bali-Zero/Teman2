@@ -18,35 +18,32 @@ Architecture:
 """
 
 import asyncio
-import json
 import logging
 import time
 import uuid
 from collections import defaultdict
 from collections.abc import AsyncGenerator
-from dataclasses import asdict
 from typing import Any
 
 import asyncpg
-from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import settings
-from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
-from services.misc.clarification_service import ClarificationService
+from app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
 from services.classification.intent_classifier import IntentClassifier
-from services.misc.context_window_manager import AdvancedContextWindowManager, ContextWindowManager
+from services.memory import MemoryOrchestrator
+from services.misc.clarification_service import ClarificationService
+from services.misc.context_window_manager import ContextWindowManager
 from services.misc.emotional_attunement import EmotionalAttunementService
 from services.misc.followup_service import FollowupService
 from services.misc.golden_answer_service import GoldenAnswerService
-from services.memory import MemoryOrchestrator
-from services.search.semantic_cache import SemanticCache
+from services.rag.agentic.entity_extractor import EntityExtractionService
+from services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
 from services.response.cleaner import (
     OUT_OF_DOMAIN_RESPONSES,
     is_out_of_domain,
 )
-from services.rag.agentic.entity_extractor import EntityExtractionService
-from services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
+from services.search.semantic_cache import SemanticCache
 
 from .context_manager import get_user_context
 from .llm_gateway import LLMGateway
@@ -67,13 +64,12 @@ RECALL_TRIGGERS = [
     "ingat tidak", "kamu ingat", "tadi aku bilang", "sebelumnya",
     "klien yang tadi", "yang kita bahas",
 ]
-from .response_processor import post_process_response
-from .session_fact_extractor import SessionFactExtractor
-from .schema import CoreResult
-from .tool_executor import execute_tool, parse_tool_call
-from services.tools.definitions import AgentState, AgentStep, BaseTool
-from services.llm_clients.pricing import TokenUsage
 from app.metrics import metrics_collector
+from services.llm_clients.pricing import TokenUsage
+from services.tools.definitions import AgentState, BaseTool
+
+from .schema import CoreResult
+from .tool_executor import execute_tool
 
 logger = logging.getLogger(__name__)
 
@@ -458,9 +454,7 @@ class AgenticRAGOrchestrator:
                     set_span_status("error", str(e))
 
         history_to_use = conversation_history or user_context.get("history", [])
-        if not isinstance(history_to_use, list):
-            history_to_use = []
-        elif history_to_use and not isinstance(history_to_use[0], dict):
+        if not isinstance(history_to_use, list) or history_to_use and not isinstance(history_to_use[0], dict):
             history_to_use = []
 
         # Apply context window management for long conversations
@@ -492,7 +486,7 @@ class AgenticRAGOrchestrator:
         # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST!)
         is_injection, injection_response = self.prompt_builder.detect_prompt_injection(query)
         if is_injection:
-            logger.warning(f"🛡️ [Security] Blocked prompt injection/off-topic request")
+            logger.warning("🛡️ [Security] Blocked prompt injection/off-topic request")
             return CoreResult(
                 answer=injection_response,
                 sources=[],
@@ -519,6 +513,23 @@ class AgenticRAGOrchestrator:
                 is_ambiguous=False,
                 entities={},
                 model_used="greeting-pattern",
+                timings={"total": time.time() - start_time},
+                verification_status="passed",
+                document_count=0
+            )
+
+        # 0.05 Check Casual Conversation (skip RAG for "come stai", "how are you", etc.)
+        casual_response = self.prompt_builder.get_casual_response(query, context=user_context)
+        if casual_response:
+            logger.info("💬 [Casual] Returning direct casual response (skipping RAG)")
+            return CoreResult(
+                answer=casual_response,
+                sources=[],
+                verification_score=1.0,
+                evidence_score=1.0,
+                is_ambiguous=False,
+                entities={},
+                model_used="casual-pattern",
                 timings={"total": time.time() - start_time},
                 verification_status="passed",
                 document_count=0
@@ -667,7 +678,8 @@ class AgenticRAGOrchestrator:
             user_id=user_id or "anonymous",
             context=user_context,
             query=query,
-            additional_context=system_context_for_prompt # Inject extracted entities + KG context
+            additional_context=system_context_for_prompt, # Inject extracted entities + KG context
+            conversation_history=history_to_use  # Pass history for greeting check
         )
 
         # Create chat session
@@ -839,7 +851,7 @@ class AgenticRAGOrchestrator:
         """Stream query with comprehensive error handling. Supports vision with images."""
         correlation_id = str(uuid.uuid4())
         event_error_count = 0
-        
+
         # Security: Validate user_id format
         if user_id and user_id != "anonymous":
             if not isinstance(user_id, str) or len(user_id) < 1:
@@ -879,9 +891,7 @@ class AgenticRAGOrchestrator:
                 set_span_status("error", str(e))
 
         history_to_use = conversation_history or user_context.get("history", [])
-        if not isinstance(history_to_use, list):
-            history_to_use = []
-        elif history_to_use and not isinstance(history_to_use[0], dict):
+        if not isinstance(history_to_use, list) or history_to_use and not isinstance(history_to_use[0], dict):
             history_to_use = []
 
         # Apply context window management for long conversations
@@ -911,7 +921,7 @@ class AgenticRAGOrchestrator:
         # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST!)
         is_injection, injection_response = self.prompt_builder.detect_prompt_injection(query)
         if is_injection:
-            logger.warning(f"🛡️ [Security Stream] Blocked prompt injection/off-topic request")
+            logger.warning("🛡️ [Security Stream] Blocked prompt injection/off-topic request")
             yield {"type": "metadata", "data": {"status": "blocked", "route": "security-gate"}}
             for token in injection_response.split():
                 yield {"type": "token", "data": token + " "}
@@ -928,6 +938,17 @@ class AgenticRAGOrchestrator:
             for token in greeting_response.split():
                 yield {"type": "token", "data": token + " "}
                 await asyncio.sleep(0.01)
+            yield {"type": "done", "data": None}
+            return
+
+        # 0.05 Check Casual Conversation (skip RAG for "come stai", "how are you", etc.)
+        casual_response = self.prompt_builder.get_casual_response(query, context=user_context)
+        if casual_response:
+            logger.info("💬 [Casual Stream] Returning direct casual response (skipping RAG)")
+            yield {"type": "metadata", "data": {"status": "casual", "route": "casual-pattern"}}
+            for token in casual_response.split():
+                yield {"type": "token", "data": token + " "}
+                await asyncio.sleep(0.02)  # Slightly slower for natural feel
             yield {"type": "done", "data": None}
             return
 
@@ -1024,7 +1045,7 @@ Answer directly. Example: "Zainal Abidin è il CEO di {settings.COMPANY_NAME}."
         # This fixes the "lost in the middle" problem where LLM searches Qdrant
         # for information that's actually in the conversation history
         if _is_conversation_recall_query(query) and len(history_to_use) > 0:
-            logger.info(f"🧠 [Recall Gate] Detected conversation recall query - bypassing RAG")
+            logger.info("🧠 [Recall Gate] Detected conversation recall query - bypassing RAG")
             yield {"type": "metadata", "data": {"status": "recall", "route": "conversation-history"}}
             yield {"type": "status", "data": "Ricordando la conversazione..."}
 
@@ -1164,7 +1185,8 @@ Respond in the SAME language the user is using."""
 
         system_prompt = self.prompt_builder.build_system_prompt(
             user_id, user_context, query, deep_think_mode=deep_think_mode,
-            additional_context=system_context_for_prompt # Inject extracted entities + KG context
+            additional_context=system_context_for_prompt, # Inject extracted entities + KG context
+            conversation_history=history_to_use  # Pass history for greeting check
         )
 
         # Create chat session
@@ -1187,7 +1209,7 @@ Respond in the SAME language the user is using."""
                 "data": {"status": "processing", "correlation_id": correlation_id},
                 "timestamp": time.time(),
             }
-            
+
             async for raw_event in self.reasoning_engine.execute_react_loop_stream(
                 state=state,
                 llm_gateway=self.llm_gateway,
@@ -1205,7 +1227,7 @@ Respond in the SAME language the user is using."""
                     if raw_event is None:
                         event_error_count += 1
                         logger.warning(
-                            f"⚠️ [Stream] None event received",
+                            "⚠️ [Stream] None event received",
                             extra={
                                 "correlation_id": correlation_id,
                                 "user_id": user_id,
@@ -1213,7 +1235,7 @@ Respond in the SAME language the user is using."""
                             }
                         )
                         metrics_collector.stream_event_none_total.inc()
-                        
+
                         if event_error_count >= self._max_event_errors:
                             yield self._create_error_event(
                                 "too_many_errors",
@@ -1222,7 +1244,7 @@ Respond in the SAME language the user is using."""
                             )
                             break
                         continue
-                    
+
                     if not isinstance(raw_event, dict):
                         event_error_count += 1
                         logger.error(
@@ -1236,7 +1258,7 @@ Respond in the SAME language the user is using."""
                         )
                         metrics_collector.stream_event_invalid_type_total.inc()
                         continue
-                    
+
                     # Validate event schema
                     if self._event_validation_enabled:
                         try:
@@ -1254,7 +1276,7 @@ Respond in the SAME language the user is using."""
                                 }
                             )
                             metrics_collector.stream_event_validation_failed_total.inc()
-                            
+
                             # Yield error event to client
                             yield self._create_error_event(
                                 "validation_error",
@@ -1265,14 +1287,14 @@ Respond in the SAME language the user is using."""
                     else:
                         # Skip validation but still yield
                         event = raw_event
-                    
+
                     # Accumulate for memory saving later
                     if event.get("type") == "token":
                         full_answer += event.get("data", "")
 
                     # Yield validated event to frontend
                     yield event
-                        
+
                 except Exception as e:
                     event_error_count += 1
                     # Use error classification for better error handling
@@ -1284,13 +1306,13 @@ Respond in the SAME language the user is using."""
                         user_id=user_id,
                         event_error_count=event_error_count,
                     )
-                    
+
                     logger.exception(
-                        f"❌ [Stream] Unexpected error processing event",
+                        "❌ [Stream] Unexpected error processing event",
                         extra=error_context
                     )
                     metrics_collector.stream_event_processing_error_total.inc()
-                    
+
                     if event_error_count >= self._max_event_errors:
                         yield self._create_error_event(
                             "processing_error",
@@ -1355,9 +1377,9 @@ Respond in the SAME language the user is using."""
                 user_id=user_id,
                 query=query[:100],
             )
-            
+
             logger.exception(
-                f"❌ [Stream] Fatal error in stream_query",
+                "❌ [Stream] Fatal error in stream_query",
                 extra=error_context
             )
             add_span_event("react.stream.error", {"error": str(e)})

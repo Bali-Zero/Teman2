@@ -1,7 +1,7 @@
 # Blog Articles Manifest
 
 > 100 Evergreen Articles for Nuzantara/Bali Zero Platform
-> Generated: January 2025
+> Generated: January 2026
 
 ## Summary
 
@@ -20,23 +20,23 @@
 ## Immigration (22 articles)
 
 ### Pillar Article
-- [Complete Indonesia Visa Guide 2025](/blog/immigration/complete-indonesia-visa-guide-2025) - `featured`
+- [Complete Indonesia Visa Guide 2026](/blog/immigration/complete-indonesia-visa-guide-2026) - `featured`
 
 ### Tourist Visa Cluster
 | Slug | Title | Difficulty |
 |------|-------|------------|
-| visa-on-arrival-indonesia | Visa on Arrival Indonesia 2025 | beginner |
-| b211a-visa-guide | B211A Visa Guide 2025 | beginner |
+| visa-on-arrival-indonesia | Visa on Arrival Indonesia 2026 | beginner |
+| e33g-visa-guide | E33G Digital Nomad Visa Guide 2026 | beginner |
 | extending-tourist-visa-bali | Extending Tourist Visa in Bali | beginner |
 | visa-free-countries-indonesia | Visa-Free Countries Indonesia | beginner |
 | visa-free-countries | Visa Free Entry Indonesia | beginner |
-| voa-vs-b211a-comparison | VOA vs B211A Comparison | beginner |
+| voa-vs-e33g-comparison | VOA vs E33G Comparison | beginner |
 | voa-extension-guide | VOA Extension Guide | beginner |
 
 ### Work Permits Cluster
 | Slug | Title | Difficulty |
 |------|-------|------------|
-| kitas-work-permit-guide | KITAS Work Permit Guide 2025 | intermediate |
+| kitas-work-permit-guide | KITAS Work Permit Guide 2026 | intermediate |
 | rptka-imta-explained | RPTKA & IMTA Explained | intermediate |
 | work-permit-costs | Work Permit Costs Indonesia | intermediate |
 | work-permit-timeline | Work Permit Timeline | intermediate |
@@ -45,15 +45,15 @@
 ### Investor & Director KITAS
 | Slug | Title | Difficulty |
 |------|-------|------------|
-| investor-kitas-guide | Investor KITAS Guide 2025 | intermediate |
+| investor-kitas-guide | Investor KITAS Guide 2026 | intermediate |
 | director-vs-employee-kitas | Director vs Employee KITAS | intermediate |
 | shareholder-kitas-requirements | Shareholder KITAS Requirements | intermediate |
-| converting-b211a-to-kitas | Converting B211A to KITAS | intermediate |
+| converting-d12-to-kitas | Converting D12 Business Visa to KITAS | intermediate |
 
 ### Long-term Visas
 | Slug | Title | Difficulty |
 |------|-------|------------|
-| retirement-visa-indonesia | Retirement Visa Indonesia 2025 | intermediate |
+| retirement-visa-indonesia | Retirement Visa Indonesia 2026 | intermediate |
 | second-home-visa | Second Home Visa Indonesia | intermediate |
 | digital-nomad-visa-indonesia | Digital Nomad Visa Indonesia | intermediate |
 | family-dependent-visa | Family Dependent Visa | intermediate |
@@ -61,7 +61,7 @@
 ### Procedures & Compliance
 | Slug | Title | Difficulty |
 |------|-------|------------|
-| entry-requirements | Indonesia Entry Requirements 2025 | beginner |
+| entry-requirements | Indonesia Entry Requirements 2026 | beginner |
 | overstay-penalties | Overstay Penalties Indonesia | beginner |
 | visa-comparison-chart | Visa Comparison Chart | beginner | `featured` |
 | exit-reentry-permits | Exit Re-Entry Permits (MERP/EPO) | intermediate |
@@ -79,7 +79,7 @@
 |------|-------|------------|
 | pt-pma-registration-guide | PT PMA Registration Guide | intermediate |
 | pt-pma-capital-requirements | PT PMA Capital Requirements | intermediate |
-| capital-requirements-guide | Capital Requirements Guide 2025 | intermediate |
+| capital-requirements-guide | Capital Requirements Guide 2026 | intermediate |
 | nib-explained | NIB Explained | beginner |
 | oss-registration-guide | OSS Registration Guide | beginner |
 | nib-oss-guide | NIB & OSS Complete Guide | beginner |
@@ -98,7 +98,7 @@
 |------|-------|------------|
 | restaurant-business-guide | Restaurant Business Guide | intermediate |
 | ecommerce-business-guide | E-Commerce Business Guide | intermediate |
-| ecommerce-indonesia | E-Commerce Indonesia 2025 | intermediate |
+| ecommerce-indonesia | E-Commerce Indonesia 2026 | intermediate |
 | export-import-business-guide | Export Import Business Guide | advanced |
 | consulting-business-guide | Consulting Business Guide | intermediate |
 | tech-startup-guide | Tech Startup Guide Indonesia | intermediate |
@@ -226,7 +226,7 @@
 ### Cluster Articles
 | Slug | Title | Difficulty |
 |------|-------|------------|
-| bali-digital-nomad-guide | Bali Digital Nomad Guide 2025 | beginner | `featured` |
+| bali-digital-nomad-guide | Bali Digital Nomad Guide 2026 | beginner | `featured` |
 | coworking-spaces-bali | Coworking Spaces Bali | beginner |
 | freelancing-legally-indonesia | Freelancing Legally Indonesia | intermediate |
 | remote-work-tax | Remote Work Tax Guide | intermediate |
@@ -242,7 +242,7 @@ All articles reference images at `/images/blog/{category}/{slug}.jpg`. The follo
 ├── immigration/
 │   ├── complete-indonesia-visa-guide.jpg
 │   ├── visa-on-arrival.jpg
-│   ├── b211a-visa.jpg
+│   ├── e33g-visa.jpg
 │   ├── extending-tourist-visa.jpg
 │   ├── ... (22 images)
 ├── business/
@@ -306,5 +306,5 @@ Each pillar article links to its cluster articles:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | January 2025 | Initial 100 articles generated |
+| 1.0 | January 2026 | Initial 100 articles generated |
 

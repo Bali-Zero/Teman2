@@ -42,7 +42,9 @@ class TestContextWindowManager:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.misc.context_window_manager.ZantaraAIClient"):
+        with patch("llm.zantara_ai_client.ZantaraAIClient") as mock_client_class:
+            mock_client_instance = MagicMock()
+            mock_client_class.return_value = mock_client_instance
             manager = ContextWindowManager(max_messages=10, summary_threshold=15)
             assert manager.max_messages == 10
             assert manager.summary_threshold == 15
@@ -91,12 +93,12 @@ class TestContextWindowManager:
     async def test_generate_summary(self, context_window_manager):
         """Test generating summary"""
         messages = [{"role": "user", "content": f"Message {i}"} for i in range(10)]
-        
+
         if context_window_manager.zantara_client:
             context_window_manager.zantara_client.generate_text = AsyncMock(
                 return_value="Summary of old messages"
             )
-        
+
         result = await context_window_manager.generate_summary(messages)
         assert isinstance(result, str)
         assert len(result) > 0
@@ -105,7 +107,7 @@ class TestContextWindowManager:
     async def test_generate_summary_no_ai(self, context_window_manager_no_ai):
         """Test generating summary without AI"""
         messages = [{"role": "user", "content": f"Message {i}"} for i in range(10)]
-        
+
         result = await context_window_manager_no_ai.generate_summary(messages)
         assert isinstance(result, str)
         assert len(result) > 0
@@ -120,12 +122,12 @@ class TestContextWindowManager:
     async def test_generate_summary_with_existing_summary(self, context_window_manager):
         """Test generating summary with existing summary"""
         messages = [{"role": "user", "content": f"Message {i}"} for i in range(10)]
-        
+
         if context_window_manager.zantara_client:
             context_window_manager.zantara_client.generate_text = AsyncMock(
                 return_value="Updated summary"
             )
-        
+
         result = await context_window_manager.generate_summary(
             messages,
             existing_summary="Previous summary"

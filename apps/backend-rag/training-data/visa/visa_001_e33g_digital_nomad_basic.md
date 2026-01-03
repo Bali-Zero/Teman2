@@ -169,7 +169,7 @@ Ini **misconception** umum.
 
 Kamu bisa tinggal **365 hari non-stop** kalau mau, atau bisa keluar masuk sesuka hati.
 
-**30-day** itu berlaku untuk **B211 Tourist Visa**, bukan E33G.
+**30-day** itu berlaku untuk **VOA (Visa on Arrival)**, bukan E33G.
 
 **11 — Client:**
 Oke paham. Terus kewajiban saya apa setelah dapat E33G?
@@ -178,9 +178,9 @@ Oke paham. Terus kewajiban saya apa setelah dapat E33G?
 **Kewajiban KITAS holder:**
 
 1. **SKTT Reporting** (Surat Keterangan Tempat Tinggal)
-   - Lapor domicile setiap **3 bulan**
+   - Lapor domicile setiap **tahun**
    - Datang ke kantor imigrasi (atau pakai jasa)
-   - **Gratis** (tapi bisa pakai jasa ~Rp 500K)
+   - **Gratis**
 
 2. **Keep documents updated**
    - Paspor valid (min 6 bulan)
@@ -205,9 +205,7 @@ SKTT reporting itu ribet nggak?
 5. Dapat **stempel** di KITAS
 6. **Free**
 
-Tapi kalau kamu sibuk, bisa pakai jasa:
-- **Rp 500.000** per reporting
-- Atau pakai **KITAS management package** → Rp 2.500.000/tahun (4x reporting + reminder)
+Tapi kalau kamu sibuk, bisa pakai jasa ekspedisi yang antre untuk kamu.
 
 **13 — Client:**
 Kalau saya lupa SKTT reporting, ada sanksi?
@@ -221,8 +219,7 @@ Kalau saya lupa SKTT reporting, ada sanksi?
 - **Risk deportasi** (extreme case, kalau bertahun-tahun ignore)
 
 **Rekomendasi:**
-- Set reminder every 3 months
-- Atau pakai KITAS management service
+- Set reminder setiap tahun
 - Report on time untuk avoid hassle
 
 **14 — Client:**
@@ -238,7 +235,7 @@ E33G bisa diperpanjang kan setelah 1 tahun?
   - Police clearance Indonesia (baru)
   - Proof of income masih USD 5,000+/bulan (USD 60,000/tahun)
   - Updated insurance
-- **Biaya:** Rp 8.000.000
+- **Biaya:** Rp 10.000.000
 - **Timeline:** 3-4 minggu
 
 **Bisa extend berkali-kali** selama kamu masih memenuhi syarat.
@@ -352,12 +349,9 @@ Oke, biaya totalnya berapa dari awal sampai selesai?
 - **Medical Checkup:** Rp 500.000 (kalau belum punya)
 - **Total:** ~**Rp 9.500.000 - 10.500.000**
 
-**Optional (Recommended):**
-- **KITAS Management:** Rp 2.500.000/tahun (SKTT reporting 4x)
+**Optional:**
 - **Coworking membership:** Rp 1.500.000 - 3.000.000/bulan (Canggu/Ubud)
 - **Accommodation:** Rp 5.000.000 - 15.000.000/bulan (villa long-term)
-
-**First year total (with optional):** ~**Rp 42.000.000 - 66.000.000** (~USD 2,700 - 4,200)
 
 **20 — Client:**
 Perfect! Saya siap proceed. Kirim dokumen ke mana?
@@ -547,7 +541,7 @@ This is a **common misconception**.
 
 You can stay **365 days non-stop** if you want, or exit/enter at will.
 
-**30 days** applies to **B211 Tourist Visa**, not E33G.
+**30 days** applies to **VOA (Visa on Arrival)**, not E33G.
 
 **11 — Client:**
 Understood. What are my obligations after getting E33G?
@@ -556,9 +550,9 @@ Understood. What are my obligations after getting E33G?
 **KITAS holder obligations:**
 
 1. **SKTT Reporting** (Domicile Report)
-   - Report domicile every **3 months**
+   - Report domicile **annually**
    - Visit immigration office (or use service)
-   - **Free** (but can use service ~IDR 500K)
+   - **Free**
 
 2. **Keep documents updated**
    - Valid passport (min 6 months)
@@ -583,9 +577,7 @@ Is SKTT reporting complicated?
 5. Get **stamp** on KITAS
 6. **Free**
 
-But if you're busy, can use service:
-- **IDR 500,000** per report
-- Or use **KITAS management package** → IDR 2,500,000/year (4x reporting + reminders)
+But if you're busy, you can use courier services that queue at immigration for you.
 
 **13 — Client:**
 If I forget SKTT reporting, are there penalties?
@@ -599,8 +591,7 @@ If I forget SKTT reporting, are there penalties?
 - **Risk of deportation** (extreme case, if ignored for years)
 
 **Recommendation:**
-- Set reminder every 3 months
-- Or use KITAS management service
+- Set annual reminder
 - Report on time to avoid hassle
 
 **14 — Client:**
@@ -616,7 +607,7 @@ E33G can be extended after 1 year, right?
   - Indonesian police clearance (new)
   - Proof of income still USD 5,000+/month (USD 60,000/year)
   - Updated insurance
-- **Cost:** IDR 8,000,000
+- **Cost:** IDR 10,000,000
 - **Timeline:** 3-4 weeks
 
 **Can extend multiple times** as long as you meet requirements.
@@ -730,12 +721,9 @@ Okay, what's the total cost from start to finish?
 - **Medical Checkup:** IDR 500,000 (if don't have)
 - **Total:** ~**IDR 9,500,000 - 10,500,000**
 
-**Optional (Recommended):**
-- **KITAS Management:** IDR 2,500,000/year (SKTT reporting 4x)
+**Optional:**
 - **Coworking membership:** IDR 1,500,000 - 3,000,000/month (Canggu/Ubud)
 - **Accommodation:** IDR 5,000,000 - 15,000,000/month (long-term villa)
-
-**First year total (with optional):** ~**IDR 42,000,000 - 66,000,000** (~USD 2,700 - 4,200)
 
 **20 — Client:**
 Perfect! I'm ready to proceed. Where do I send documents?
@@ -776,7 +764,7 @@ Visa iki perfect kanggo sampeyan sing:
 - Ora ono employer neng Indonesia
 - Arep tinggal neng Indonesia sambil kerjo
 
-Validity: **2 taun**, multiple entry (bebas metu mlebu).
+Validity: **1 taun**, multiple entry (bebas metu mlebu).
 
 **2 — Client:**
 Wah apik! Syarate opo wae?
@@ -788,7 +776,7 @@ Syarat E33G cukup simple:
 - Paspor valid min 18 sasi
 - Foto background abang 4x6
 - Proof of remote work (employment letter utowo contract)
-- Proof of income min USD $2,000/sasi (bank statement 3 sasi)
+- Proof of income min USD $5,000/sasi (bank statement 3 sasi)
 - Travel/health insurance
 - CV singkat
 
@@ -802,7 +790,7 @@ Syarat E33G cukup simple:
 - Kantor neng Indonesia
 
 **3 — Client:**
-Income $2,000/sasi iku gross utowo net?
+Income $5,000/sasi iku gross utowo net?
 
 **Consultant:**
 **Net** (sakwise pajak).
@@ -833,7 +821,7 @@ Piro biaya E33G?
 **Rego E33G:**
 - **Offshore** (apply soko njaba Indonesia): **Rp 7.500.000 - Rp 8.500.000**
 - **Onshore** (apply soko dalam Indonesia): **Rp 9.000.000 - Rp 10.000.000**
-- **Extension** (sakwise 2 taun): **Rp 8.000.000**
+- **Extension** (sakwise 1 taun): **Rp 10.000.000**
 
 Biaya termasuk:
 - VOA/Evisa processing
@@ -919,13 +907,13 @@ Aku moco ono "30-day stay limit" — iku artine opo?
 Iki **misconception** umum.
 
 **Correct info:**
-- E33G validity: **2 taun**
+- E33G validity: **1 taun**
 - Multiple entry: **bebas metu mlebu**
 - **Ora ono** batas 30 dino per stay
 
 Sampeyan iso tinggal **365 dino non-stop** nek arep, utowo iso metu mlebu sesuka hati.
 
-**30 dino** iku berlaku kanggo **B211 Tourist Visa**, dudu E33G.
+**30 dino** iku berlaku kanggo **VOA (Visa on Arrival)**, dudu E33G.
 
 **11 — Client:**
 Oke paham. Terus kewajiban ku opo sakwise entuk E33G?
@@ -934,9 +922,9 @@ Oke paham. Terus kewajiban ku opo sakwise entuk E33G?
 **Kewajiban KITAS holder:**
 
 1. **SKTT Reporting** (Surat Keterangan Tempat Tinggal)
-   - Lapor domicile saben **3 sasi**
+   - Lapor domicile saben **taun**
    - Teko neng kantor imigrasi (utowo pake jasa)
-   - **Gratis** (tapi iso pake jasa ~Rp 500K)
+   - **Gratis**
 
 2. **Keep documents updated**
    - Paspor valid (min 6 sasi)
@@ -961,9 +949,7 @@ SKTT reporting iku ribet ora?
 5. Entuk **stempel** neng KITAS
 6. **Free**
 
-Tapi nek sampeyan sibuk, iso pake jasa:
-- **Rp 500.000** per reporting
-- Utowo pake **KITAS management package** → Rp 2.500.000/taun (4x reporting + reminder)
+Tapi nek sampeyan sibuk, iso pake jasa ekspedisi sing ngantri kanggo sampeyan.
 
 **13 — Client:**
 Nek aku lali SKTT reporting, ono sanksi?
@@ -977,12 +963,11 @@ Nek aku lali SKTT reporting, ono sanksi?
 - **Risk deportasi** (extreme case, nek bertahun-tahun ignore)
 
 **Rekomendasi:**
-- Set reminder saben 3 sasi
-- Utowo pake KITAS management service
+- Set reminder saben taun
 - Report on time kanggo avoid hassle
 
 **14 — Client:**
-E33G iso diperpanjang kan sakwise 2 taun?
+E33G iso diperpanjang kan sakwise 1 taun?
 
 **Consultant:**
 **Iso!**
@@ -994,7 +979,7 @@ E33G iso diperpanjang kan sakwise 2 taun?
   - Police clearance Indonesia (anyar)
   - Proof of income isih USD 5,000+/sasi (USD 60,000/taun)
   - Updated insurance
-- **Biaya:** Rp 8.000.000
+- **Biaya:** Rp 10.000.000
 - **Timeline:** 3-4 minggu
 
 **Iso extend pirang-pirang kali** salawase sampeyan isih memenuhi syarat.
@@ -1108,12 +1093,9 @@ Oke, biaya totale piro soko awal sampek rampung?
 - **Medical Checkup:** Rp 500.000 (nek durung duwe)
 - **Total:** ~**Rp 9.500.000 - 10.500.000**
 
-**Optional (Recommended):**
-- **KITAS Management:** Rp 2.500.000/taun (SKTT reporting 4x)
+**Optional:**
 - **Coworking membership:** Rp 1.500.000 - 3.000.000/sasi (Canggu/Ubud)
 - **Accommodation:** Rp 5.000.000 - 15.000.000/sasi (villa long-term)
-
-**First year total (karo optional):** ~**Rp 42.000.000 - 66.000.000** (~USD 2,700 - 4,200)
 
 **20 — Client:**
 Perfect! Aku siap proceed. Kirim dokumen neng endi?
@@ -1152,12 +1134,11 @@ Welcome to Indonesia — ketemu neng Bali sesuk! 🌴
 | **Extension Cost** | IDR 10,000,000 (after 1 year) |
 | **Timeline Offshore** | 7-14 working days |
 | **Timeline Onshore** | 3-4 weeks |
-| **SKTT Reporting** | Every 3 months, free (or IDR 500K service) |
+| **SKTT Reporting** | Annually, free |
 | **Tax Residency** | 183+ days/year triggers Indonesian tax |
 | **Work Permit** | Not required for remote work (foreign employer) |
 | **Embassy Visit** | Not required (fully online evisa) |
 | **Stay Limit** | No 30-day limit (can stay 365 days continuous) |
-| **KITAS Management** | IDR 2,500,000/year (optional) |
 | **Insurance** | Mandatory (~IDR 1,500,000/year) |
 | **Conversion** | Can switch to E28A, E26, KITAP without exiting |
 

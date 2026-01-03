@@ -469,7 +469,7 @@ export class NewsletterService {
           <p style="font-size: 14px; color: #666;">If you didn't subscribe to this newsletter, you can safely ignore this email.</p>
 
           <div class="footer">
-            <p>&copy; 2025 Bali Zero Insights. All rights reserved.</p>
+            <p>&copy; 2026 Bali Zero Insights. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -584,7 +584,7 @@ export class NewsletterService {
           </a>
 
           <div class="footer">
-            <p>&copy; 2025 Bali Zero Insights. All rights reserved.</p>
+            <p>&copy; 2026 Bali Zero Insights. All rights reserved.</p>
             <p>
               <a href="{{unsubscribe_url}}">Unsubscribe</a> &bull;
               <a href="https://balizero.com/newsletter/preferences?id={{subscriber_id}}">Manage preferences</a>
@@ -641,7 +641,7 @@ export class NewsletterService {
           ${articleCards}
 
           <div class="footer">
-            <p>&copy; 2025 Bali Zero Insights. All rights reserved.</p>
+            <p>&copy; 2026 Bali Zero Insights. All rights reserved.</p>
             <p>
               <a href="https://balizero.com/newsletter/unsubscribe?id=${subscriber.id}">Unsubscribe</a> &bull;
               <a href="https://balizero.com/newsletter/preferences?id=${subscriber.id}">Manage preferences</a>

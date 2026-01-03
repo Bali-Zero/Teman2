@@ -33,7 +33,7 @@ class TestPricingService95Coverage:
         """Mock prices JSON data"""
         return {
             "services": {
-                "single_entry_visas": {"C1 Tourism": {"price_usd": 50, "legacy_names": ["B211A"]}},
+                "single_entry_visas": {"C1 Tourism": {"price_usd": 50}},
                 "multiple_entry_visas": {"D1 Business": {"price_usd": 100}},
                 "kitas_permits": {"E23 Freelance": {"price_usd": 500}},
                 # Actual service uses company_services and urgent_services
@@ -213,7 +213,7 @@ class TestPricingService95Coverage:
             patch("builtins.open", mock_open(read_data=json.dumps(mock_prices_data))),
         ):
             service = PricingService()
-            result = service.search_service("B211A")
+            result = service.search_service("C1 Tourism")
             assert "results" in result
 
     def test_search_service_not_loaded(self):

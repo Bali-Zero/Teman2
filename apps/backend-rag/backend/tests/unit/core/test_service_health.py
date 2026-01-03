@@ -4,10 +4,8 @@ Target: >95% coverage
 """
 
 import sys
-from pathlib import Path
 from datetime import datetime, timezone
-
-import pytest
+from pathlib import Path
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
@@ -88,7 +86,7 @@ class TestServiceRegistry:
         """Test registering a service"""
         registry = ServiceRegistry()
         registry.register("test_service", ServiceStatus.HEALTHY)
-        
+
         service = registry.get_service("test_service")
         assert service is not None
         assert service.name == "test_service"
@@ -99,7 +97,7 @@ class TestServiceRegistry:
         """Test registering a critical service"""
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
-        
+
         service = registry.get_service("search")
         assert service is not None
         assert service.is_critical is True
@@ -108,7 +106,7 @@ class TestServiceRegistry:
         """Test registering service with error"""
         registry = ServiceRegistry()
         registry.register("test_service", ServiceStatus.UNAVAILABLE, error="Connection failed")
-        
+
         service = registry.get_service("test_service")
         assert service.error == "Connection failed"
         assert service.status == ServiceStatus.UNAVAILABLE
@@ -117,7 +115,7 @@ class TestServiceRegistry:
         """Test registering service with explicit critical flag"""
         registry = ServiceRegistry()
         registry.register("test_service", ServiceStatus.HEALTHY, critical=True)
-        
+
         service = registry.get_service("test_service")
         assert service.is_critical is True
 
@@ -126,7 +124,7 @@ class TestServiceRegistry:
         registry = ServiceRegistry()
         registry.register("test_service", ServiceStatus.HEALTHY)
         registry.register("test_service", ServiceStatus.DEGRADED, error="Degraded")
-        
+
         service = registry.get_service("test_service")
         assert service.status == ServiceStatus.DEGRADED
         assert service.error == "Degraded"
@@ -143,7 +141,7 @@ class TestServiceRegistry:
         registry.register("search", ServiceStatus.UNAVAILABLE, error="Failed")
         registry.register("ai", ServiceStatus.HEALTHY)
         registry.register("test_service", ServiceStatus.UNAVAILABLE)  # Not critical
-        
+
         failures = registry.get_critical_failures()
         assert len(failures) == 1
         assert failures[0].name == "search"
@@ -152,7 +150,7 @@ class TestServiceRegistry:
         """Test getting critical failures when none exist"""
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
-        
+
         failures = registry.get_critical_failures()
         assert len(failures) == 0
 
@@ -160,14 +158,14 @@ class TestServiceRegistry:
         """Test has_critical_failures returns True"""
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.UNAVAILABLE)
-        
+
         assert registry.has_critical_failures() is True
 
     def test_has_critical_failures_false(self):
         """Test has_critical_failures returns False"""
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
-        
+
         assert registry.has_critical_failures() is False
 
     def test_overall_status_healthy(self):
@@ -175,7 +173,7 @@ class TestServiceRegistry:
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
         registry.register("ai", ServiceStatus.HEALTHY)
-        
+
         status = registry._overall_status()
         assert status == "healthy"
 
@@ -184,7 +182,7 @@ class TestServiceRegistry:
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
         registry.register("ai", ServiceStatus.DEGRADED)
-        
+
         status = registry._overall_status()
         assert status == "degraded"
 
@@ -193,7 +191,7 @@ class TestServiceRegistry:
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.UNAVAILABLE)
         registry.register("ai", ServiceStatus.HEALTHY)
-        
+
         status = registry._overall_status()
         assert status == "critical"
 
@@ -207,7 +205,7 @@ class TestServiceRegistry:
         """Test getting complete status"""
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
-        
+
         status = registry.get_status()
         assert "overall" in status
         assert "services" in status
@@ -220,7 +218,7 @@ class TestServiceRegistry:
         """Test formatting failures message"""
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.UNAVAILABLE, error="Connection failed")
-        
+
         message = registry.format_failures_message()
         assert "Critical services failed" in message
         assert "search" in message
@@ -230,7 +228,7 @@ class TestServiceRegistry:
         """Test formatting failures message when no failures"""
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
-        
+
         message = registry.format_failures_message()
         assert message == ""
 
@@ -238,4 +236,7 @@ class TestServiceRegistry:
         """Test that service_registry is a singleton"""
         assert service_registry is not None
         assert isinstance(service_registry, ServiceRegistry)
+
+
+
 

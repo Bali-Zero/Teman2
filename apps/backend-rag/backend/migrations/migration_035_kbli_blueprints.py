@@ -7,6 +7,7 @@ Description: Stores high-quality KBLI Blueprint metadata and file references for
 
 from typing import Any
 
+
 async def apply(conn: Any) -> None:
     # 1. Create Blueprints Table
     await conn.execute("""

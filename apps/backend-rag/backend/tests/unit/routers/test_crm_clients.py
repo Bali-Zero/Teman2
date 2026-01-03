@@ -1,15 +1,12 @@
 """
 Tests for CRM Clients Router
 """
-import asyncio
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import EmailStr
 
-from app.setup.app_factory import create_app
 from app.dependencies import get_database_pool
 
 
@@ -17,14 +14,14 @@ from app.dependencies import get_database_pool
 def mock_db_pool():
     """Mock database pool"""
     from contextlib import asynccontextmanager
-    
+
     pool = AsyncMock()
     conn = AsyncMock()
-    
+
     @asynccontextmanager
     async def acquire():
         yield conn
-    
+
     pool.acquire = acquire
     return pool, conn
 
@@ -33,21 +30,22 @@ def mock_db_pool():
 def test_app(mock_db_pool):
     """Create test app without auth middleware"""
     from fastapi import FastAPI
+
     from app.routers import crm_clients
-    
+
     # Create minimal app
     app = FastAPI()
-    
+
     # Include router
     app.include_router(crm_clients.router)
-    
+
     # Override database dependency
     pool, conn = mock_db_pool
     def override_get_database_pool():
         return pool
-    
+
     app.dependency_overrides[get_database_pool] = override_get_database_pool
-    
+
     return app
 
 
@@ -89,7 +87,7 @@ class TestCreateClient:
 
         # Create mock row that supports both dict access and attribute access
         mock_row = self._create_mock_row(sample_client_data)
-        
+
         conn.fetchrow = AsyncMock(return_value=mock_row)
         conn.execute = AsyncMock()
 
@@ -111,7 +109,7 @@ class TestCreateClient:
         assert response.status_code == 200
         assert response.json()["full_name"] == "John Doe"
         assert response.json()["email"] == "john@example.com"
-    
+
     @staticmethod
     def _create_mock_row(data):
         """Helper to create mock row with dict access"""

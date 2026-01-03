@@ -4,7 +4,6 @@ Exposes SessionService functionality via REST API endpoints
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 # Global service instance
-_session_service: Optional[SessionService] = None
+_session_service: SessionService | None = None
 
 
 def get_session_service() -> SessionService:
@@ -39,7 +38,7 @@ class SessionUpdateRequest(BaseModel):
     """Request model for updating session with custom TTL"""
 
     history: list[dict] = Field(..., description="Conversation history")
-    ttl_hours: Optional[int] = Field(None, description="Custom TTL in hours")
+    ttl_hours: int | None = Field(None, description="Custom TTL in hours")
 
 
 class SessionTTLRequest(BaseModel):

@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -13,7 +13,10 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.context_suggestion_service import ContextSuggestionService, get_context_suggestion_service
+from services.misc.context_suggestion_service import (
+    ContextSuggestionService,
+    get_context_suggestion_service,
+)
 
 
 class TestContextSuggestionService:
@@ -68,7 +71,7 @@ class TestContextSuggestionService:
         # Reset singleton first
         import services.misc.context_suggestion_service as module
         module._context_suggestion_service = None
-        
+
         mock_pool = MagicMock()
         service = get_context_suggestion_service(db_pool=mock_pool)
         assert service.db_pool == mock_pool

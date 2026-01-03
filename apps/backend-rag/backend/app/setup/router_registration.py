@@ -11,12 +11,14 @@ from app.routers import (
     agentic_rag,
     agents,
     analytics,
+    audio,
     auth,
     autonomous_agents,
     collective_memory,
     conversations,
     crm_auto,
     crm_clients,
+    crm_enhanced,
     crm_interactions,
     crm_portal_integration,
     crm_practices,
@@ -42,6 +44,8 @@ from app.routers import (
     session,
     team_activity,
     team_analytics,
+    team_drive,
+    voice,
     websocket,
     zoho_email,
 )
@@ -88,6 +92,7 @@ def include_routers(api: FastAPI) -> None:
 
     # CRM routers
     api.include_router(crm_clients.router)
+    api.include_router(crm_enhanced.router)  # Family members, Documents, Expiry Alerts
     api.include_router(crm_interactions.router)
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
@@ -113,6 +118,7 @@ def include_routers(api: FastAPI) -> None:
     # Integrations routers
     api.include_router(zoho_email.router)
     api.include_router(google_drive.router)
+    api.include_router(team_drive.router)  # Service Account based - for Zoho team members
 
     # Blog routers
     api.include_router(newsletter.router)
@@ -131,6 +137,8 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
     api.include_router(media.router)
+    api.include_router(audio.router)
+    api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI
 
     # Image generation router
     from app.routers import image_generation

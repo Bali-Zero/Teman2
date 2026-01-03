@@ -10,12 +10,11 @@ UPDATED 2025-12-23:
 import json
 import logging
 from enum import Enum
-from typing import Optional
 
+from llm.genai_client import GENAI_AVAILABLE, GenAIClient
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class VerificationResult(BaseModel):
     status: VerificationStatus
     score: float = Field(ge=0.0, le=1.0)
     reasoning: str
-    corrected_answer: Optional[str] = None
+    corrected_answer: str | None = None
     missing_citations: list[str] = []
 
 

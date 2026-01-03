@@ -18,18 +18,32 @@ function cleanImageResponse(text: string): string {
     const lineLower = line.toLowerCase();
     // Skip lines with pollinations URLs
     if (lineLower.includes('pollinations')) return false;
+    // Skip lines with image.pollinations or any pollinations subdomain
+    if (lineLower.includes('image') && lineLower.includes('http')) return false;
+    // Skip markdown image syntax ![...](...)
+    if (/!\[.*?\]\(.*?\)/i.test(line)) return false;
+    // Skip lines that look like broken markdown images (start with ![ or contain](http)
+    if (line.includes('![') || line.includes('](http')) return false;
     // Skip [Visualizza Immagine] lines
     if (line.trim().startsWith('[Visualizza')) return false;
     // Skip numbered version lines like "1. **Versione..." or "1. Versione..."
     if (/^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)/i.test(line)) return false;
+    // Skip bullet version lines like "* Versione..." or "- Versione..."
+    if (/^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)/i.test(line)) return false;
+    // Skip lines that are just "Versione X" headers
+    if (/^\s*\*{0,2}Versione\s*\d/i.test(line)) return false;
     // Skip intro lines that mention "opzioni" or "varianti" for images
-    if (/ecco le opzioni|ho (elaborato|generato|creato) due|ti propongo|due varianti|ecco i risultati/i.test(lineLower)) return false;
+    if (/ecco le (opzioni|immagini)|ho (elaborato|generato|creato) (due|le)|ti propongo|due varianti|ecco i risultati|queste versioni/i.test(lineLower)) return false;
     // Skip "Spero che queste opzioni" outro lines
-    if (/spero che queste|se hai bisogno di|vadano bene per/i.test(lineLower)) return false;
+    if (/spero che queste|se hai bisogno di|vadano bene per|sembra che queste/i.test(lineLower)) return false;
     // Skip lines starting with (http...
     if (line.trim().startsWith('(http')) return false;
     // Skip lines that are just URLs
     if (/^https?:\/\//i.test(line.trim())) return false;
+    // Skip lines that contain URL-encoded content (long %20 sequences)
+    if (/%20.*%20.*%20/i.test(line)) return false;
+    // Skip lines mentioning "alta risoluzione" or "atmosfera" for image descriptions
+    if (/alta risoluzione|atmosfera tradizionale|luce dorata/i.test(lineLower)) return false;
     return true;
   });
 
@@ -104,7 +118,8 @@ export class ChatApi {
     abortSignal?: AbortSignal,
     correlationId?: string,
     idleTimeoutMs: number = 60000, // 60s idle timeout (reset on data)
-    maxTotalTimeMs: number = 600000 // 10min max total time
+    maxTotalTimeMs: number = 600000, // 10min max total time
+    images?: Array<{ base64: string; name: string }> // Vision images
   ): Promise<void> {
     // Always use standard Zantara AI endpoint (v2.0)
     const endpoint = '/api/agentic-rag/stream';
@@ -174,16 +189,19 @@ export class ChatApi {
     try {
       const userProfile = this.client.getUserProfile();
       // Build request body with session_id for conversation history
+      const hasImages = !!(images && images.length > 0);
       const requestBody: {
         query: string;
         user_id: string;
         enable_vision: boolean;
         session_id?: string;
         conversation_history?: Array<{ role: string; content: string }>;
+        images?: Array<{ base64: string; name: string }>;
       } = {
         query: message,
         user_id: userProfile?.email || userProfile?.id || 'anonymous',
-        enable_vision: false,
+        enable_vision: hasImages, // Enable vision when images are attached
+        ...(hasImages && { images }), // Include images if present
       };
 
       // Add session_id if provided (CRITICAL for conversation memory)

@@ -40,7 +40,7 @@ class TestImageGenerationRouter:
     def test_generate_image_success(self, mock_settings, mock_client_class, client):
         """Test generating image successfully"""
         mock_settings.google_imagen_api_key = "test-key"
-        
+
         mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -55,7 +55,7 @@ class TestImageGenerationRouter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_class.return_value = mock_client
-        
+
         response = client.post(
             "/api/v1/image/generate",
             json={
@@ -74,7 +74,7 @@ class TestImageGenerationRouter:
         mock_settings.google_imagen_api_key = None
         mock_settings.google_ai_studio_key = None
         mock_settings.google_api_key = None
-        
+
         response = client.post(
             "/api/v1/image/generate",
             json={"prompt": "test"}
@@ -86,12 +86,12 @@ class TestImageGenerationRouter:
     def test_generate_image_403_error(self, mock_settings, mock_client_class, client):
         """Test generating image with 403 error"""
         mock_settings.google_imagen_api_key = "test-key"
-        
+
         mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 403
         mock_response.text = "Forbidden"
-        
+
         # httpx.HTTPStatusError is raised when status_code is not 2xx
         import httpx
         error = httpx.HTTPStatusError("Forbidden", request=MagicMock(), response=mock_response)
@@ -99,7 +99,7 @@ class TestImageGenerationRouter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_class.return_value = mock_client
-        
+
         response = client.post(
             "/api/v1/image/generate",
             json={"prompt": "test"}
@@ -112,7 +112,7 @@ class TestImageGenerationRouter:
     def test_generate_image_no_images(self, mock_settings, mock_client_class, client):
         """Test generating image with no images returned"""
         mock_settings.google_imagen_api_key = "test-key"
-        
+
         mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -122,7 +122,7 @@ class TestImageGenerationRouter:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_class.return_value = mock_client
-        
+
         response = client.post(
             "/api/v1/image/generate",
             json={"prompt": "test"}

@@ -14,7 +14,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.tools import VectorSearchTool, CalculatorTool, PricingTool, TeamKnowledgeTool, VisionTool
+from services.rag.agentic.tools import (
+    CalculatorTool,
+    PricingTool,
+    TeamKnowledgeTool,
+    VectorSearchTool,
+    VisionTool,
+)
 
 
 @pytest.fixture
@@ -86,7 +92,7 @@ class TestVectorSearchTool:
         mock_retriever.search_with_reranking.return_value = {
             "results": [{"text": "test", "score": 0.9, "metadata": {"title": "Test"}}]
         }
-        
+
         result = await tool.execute(query="test", collection="visa_oracle", top_k=5)
         assert "test" in result
         mock_retriever.search_with_reranking.assert_called_once()
@@ -98,7 +104,7 @@ class TestVectorSearchTool:
         mock_retriever.search_with_reranking.return_value = {
             "results": [{"text": "test", "score": 0.9, "metadata": {"title": "Test"}}]
         }
-        
+
         result = await tool.execute(query="test", top_k=5)
         assert "test" in result
 
@@ -107,7 +113,7 @@ class TestVectorSearchTool:
         """Test execute with no results"""
         tool = VectorSearchTool(retriever=mock_retriever)
         mock_retriever.search_with_reranking.return_value = {"results": []}
-        
+
         result = await tool.execute(query="test")
         assert "No relevant documents" in result
 
@@ -121,7 +127,7 @@ class TestVectorSearchTool:
                 {"text": "test content", "score": 0.8, "metadata": {"title": "Test2"}}
             ]
         }
-        
+
         result = await tool.execute(query="test")
         # Should deduplicate by first 100 chars
         assert result is not None
@@ -131,7 +137,7 @@ class TestVectorSearchTool:
         """Test error handling"""
         tool = VectorSearchTool(retriever=mock_retriever)
         mock_retriever.search_with_reranking.side_effect = Exception("Search error")
-        
+
         result = await tool.execute(query="test")
         assert result is not None
 
@@ -221,7 +227,7 @@ class TestPricingTool:
             mock_pricing_service.get_pricing.return_value = {
                 "items": [{"name": "KITAS", "price": "15000000"}]
             }
-            
+
             result = await tool.execute(service_type="visa")
             assert "KITAS" in result or "15000000" in result
 
@@ -231,7 +237,7 @@ class TestPricingTool:
         with patch("services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service):
             tool = PricingTool()
             mock_pricing_service.get_pricing.return_value = {"items": []}
-            
+
             result = await tool.execute()
             assert result is not None
 
@@ -293,7 +299,7 @@ class TestVisionTool:
             tool.vision_service = mock_vision_service
             mock_vision_service.process_pdf = AsyncMock(return_value={"doc": "test"})
             mock_vision_service.query_with_vision = AsyncMock(return_value={"answer": "test analysis"})
-            
+
             result = await tool.execute(file_path="/path/to/file.pdf", query="test query")
             assert "test" in result.lower()
 
@@ -304,7 +310,7 @@ class TestVisionTool:
             tool = VisionTool()
             tool.vision_service = mock_vision_service
             mock_vision_service.process_pdf = AsyncMock(side_effect=Exception("Vision error"))
-            
+
             result = await tool.execute(file_path="invalid", query="test")
             assert "error" in result.lower()
 

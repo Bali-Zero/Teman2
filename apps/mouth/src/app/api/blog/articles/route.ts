@@ -109,9 +109,9 @@ const MOCK_ARTICLES = [
   },
   {
     id: '3',
-    slug: 'tax-deadlines-2025',
-    title: 'Tax Deadlines 2025: What Every Expat Needs to Know',
-    excerpt: 'Key dates for personal and corporate tax filings in Indonesia.',
+    slug: 'tax-deadlines-2026',
+    title: 'Tax Deadlines 2026: What Every Expat Needs to Know',
+    excerpt: 'Key dates for personal and corporate tax filings. New Coretax system fully operational.',
     coverImage: '/images/blog/tax-calendar.jpg',
     category: 'tax-legal',
     author: {

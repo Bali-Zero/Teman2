@@ -11,8 +11,8 @@ from contextlib import suppress
 
 from fastapi import FastAPI
 
-from services.monitoring.health_monitor import HealthMonitor
 from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+from services.monitoring.health_monitor import HealthMonitor
 
 logger = logging.getLogger("zantara.backend")
 
@@ -68,6 +68,18 @@ def register_shutdown_handlers(app: FastAPI) -> None:
             with suppress(asyncio.CancelledError):
                 await metrics_pusher_task
             logger.info("✅ Metrics Pusher stopped")
+
+        # Shutdown Daily Check-in Notifier
+        daily_notifier = getattr(app.state, "daily_notifier", None)
+        if daily_notifier:
+            await daily_notifier.stop()
+            logger.info("✅ Daily Check-in Notifier stopped")
+
+        # Shutdown Team Timesheet Service (auto-logout monitor)
+        ts_service = getattr(app.state, "ts_service", None)
+        if ts_service:
+            await ts_service.stop_auto_logout_monitor()
+            logger.info("✅ Team Timesheet Service stopped")
 
         # Plugin System shutdown not needed
 

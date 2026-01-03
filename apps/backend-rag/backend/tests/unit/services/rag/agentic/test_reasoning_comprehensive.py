@@ -6,7 +6,7 @@ Composer: 1
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -15,9 +15,12 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from services.rag.agentic.reasoning import (
-    ReasoningEngine, calculate_evidence_score, is_valid_tool_call, detect_team_query
+    ReasoningEngine,
+    calculate_evidence_score,
+    detect_team_query,
+    is_valid_tool_call,
 )
-from services.tools.definitions import AgentState, AgentStep
+from services.tools.definitions import AgentState
 
 
 @pytest.fixture
@@ -60,7 +63,7 @@ class TestReasoningEngine:
         mock_chat = MagicMock()
         mock_response_obj = MagicMock()
         mock_response_obj.candidates = []
-        
+
         # Mock LLM response with final answer (no tool calls)
         mock_llm_gateway.send_message = AsyncMock(return_value=(
             "The answer is 42",
@@ -68,12 +71,12 @@ class TestReasoningEngine:
             mock_response_obj,
             MagicMock(total_tokens=100)
         ))
-        
+
         state = AgentState(
             query="What is 2+2?",
             max_steps=5
         )
-        
+
         result_state, model_name, messages, token_usage = await reasoning_engine.execute_react_loop(
             state=state,
             llm_gateway=mock_llm_gateway,
@@ -85,7 +88,7 @@ class TestReasoningEngine:
             model_tier=1,
             tool_execution_counter={"count": 0}
         )
-        
+
         assert result_state is not None
         assert len(result_state.steps) > 0
         assert model_name == "gemini-3-flash"
@@ -97,21 +100,21 @@ class TestReasoningEngine:
         # Setup mocks
         mock_llm_gateway = AsyncMock()
         mock_chat = MagicMock()
-        
+
         # Create a mock tool call response
         mock_function_call = MagicMock()
         mock_function_call.name = "test_tool"
         mock_function_call.args = {"query": "test"}
-        
+
         mock_part = MagicMock()
         mock_part.function_call = mock_function_call
-        
+
         mock_candidate = MagicMock()
         mock_candidate.content.parts = [mock_part]
-        
+
         mock_response_obj = MagicMock()
         mock_response_obj.candidates = [mock_candidate]
-        
+
         # First call: tool call, second call: final answer
         call_count = 0
         async def mock_send_message(*args, **kwargs):
@@ -134,14 +137,14 @@ class TestReasoningEngine:
                     mock_response_obj,
                     MagicMock(total_tokens=100)
                 )
-        
+
         mock_llm_gateway.send_message = mock_send_message
-        
+
         state = AgentState(
             query="test query",
             max_steps=5
         )
-        
+
         result_state, model_name, messages, token_usage = await reasoning_engine.execute_react_loop(
             state=state,
             llm_gateway=mock_llm_gateway,
@@ -153,7 +156,7 @@ class TestReasoningEngine:
             model_tier=1,
             tool_execution_counter={"count": 0}
         )
-        
+
         assert result_state is not None
         assert len(result_state.steps) >= 1
         assert model_name == "gemini-3-flash"
@@ -165,7 +168,7 @@ class TestReasoningEngine:
         mock_chat = MagicMock()
         mock_response_obj = MagicMock()
         mock_response_obj.candidates = []
-        
+
         # Mock LLM to always return a thought (not final answer) to force max steps
         call_count = 0
         async def mock_send_message(*args, **kwargs):
@@ -177,14 +180,14 @@ class TestReasoningEngine:
                 mock_response_obj,
                 MagicMock(total_tokens=50)
             )
-        
+
         mock_llm_gateway.send_message = mock_send_message
-        
+
         state = AgentState(
             query="test query",
             max_steps=3  # Limit to 3 steps
         )
-        
+
         result_state, model_name, messages, token_usage = await reasoning_engine.execute_react_loop(
             state=state,
             llm_gateway=mock_llm_gateway,
@@ -196,7 +199,7 @@ class TestReasoningEngine:
             model_tier=1,
             tool_execution_counter={"count": 0}
         )
-        
+
         assert result_state is not None
         assert len(result_state.steps) <= state.max_steps
         assert result_state.current_step <= state.max_steps
@@ -210,7 +213,7 @@ class TestEvidenceScore:
         sources = [{"score": 0.8}, {"score": 0.6}]
         context = []
         query = "test"
-        
+
         score = calculate_evidence_score(sources, context, query)
         assert score >= 0.5
 
@@ -219,7 +222,7 @@ class TestEvidenceScore:
         sources = [{"score": 0.2}] * 5
         context = []
         query = "test"
-        
+
         score = calculate_evidence_score(sources, context, query)
         assert score >= 0.2
 
@@ -228,7 +231,7 @@ class TestEvidenceScore:
         sources = []
         context = ["test context with keywords"]
         query = "keywords"
-        
+
         score = calculate_evidence_score(sources, context, query)
         assert score >= 0.0
 
@@ -242,7 +245,7 @@ class TestEvidenceScore:
         sources = [{"score": 0.9}] * 5
         context = ["test"] * 10
         query = "test"
-        
+
         score = calculate_evidence_score(sources, context, query)
         assert score <= 1.0
 
@@ -256,7 +259,7 @@ class TestToolCallValidation:
             def __init__(self):
                 self.tool_name = "test"
                 self.arguments = {}
-        
+
         tool_call = ToolCall()
         assert is_valid_tool_call(tool_call) is True
 
@@ -269,7 +272,7 @@ class TestToolCallValidation:
         class ToolCall:
             def __init__(self):
                 self.arguments = {}
-        
+
         tool_call = ToolCall()
         assert is_valid_tool_call(tool_call) is False
 
@@ -279,7 +282,7 @@ class TestToolCallValidation:
             def __init__(self):
                 self.tool_name = "test"
                 self.arguments = None
-        
+
         tool_call = ToolCall()
         assert is_valid_tool_call(tool_call) is False
 

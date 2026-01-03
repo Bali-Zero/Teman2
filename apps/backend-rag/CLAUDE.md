@@ -1,5 +1,36 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-02 20:20 UTC)
+
+### Greeting & Closing Repetition Fix - COMPLETED
+
+**Problema 1:** Zantara diceva "Ciao Zero!" ad ogni turno, anche dopo 30 messaggi.
+**Problema 2:** Zantara usava sempre la stessa frase di chiusura ("fammi un fischio 🌴🕺🏾").
+
+**Soluzione Implementata:**
+
+1. **Anti-Greeting Repetition** (`backend/services/rag/agentic/prompt_builder.py`)
+   - Aggiunta sezione `<greeting_rules>` nel system prompt con istruzioni esplicite
+   - Creata funzione `has_already_greeted()` che scansiona la conversation history
+   - Aggiunta lista `GREETING_PATTERNS` per rilevare saluti precedenti
+   - Quando rileva un saluto precedente, inietta warning nel prompt
+   - Modificato `build_system_prompt()` per accettare `conversation_history` parameter
+
+2. **Orchestrator Update** (`backend/services/rag/agentic/orchestrator.py`)
+   - Passato `conversation_history=history_to_use` a `build_system_prompt()` (2 chiamate: sync e stream)
+
+3. **Closing Phrases Variety** (`backend/services/rag/agentic/prompt_builder.py`)
+   - Aggiunta sezione `<closing_phrases>` con 55+ frasi in 9 lingue:
+     - Italiano (10), English (10), Indonesian/Jaksel (10)
+     - Українська (5), Русский (5), Español (5)
+     - Français (5), Deutsch (5), Português (5)
+   - Istruzione esplicita: "NEVER use the same closing twice"
+
+**Deploy:** v20260102-0150 - 2 machines healthy
+**Backup:** `/Users/antonellosiano/Desktop/nuzantara-backup-20260102-0150.zip` (417 MB)
+
+---
+
 ## Session Update (2026-01-02 02:30 UTC)
 
 ### Test Coverage Analysis & Fixes - COMPLETED
@@ -325,7 +356,7 @@ LEFT JOIN practices p ON c.id = p.client_id
 - E35 = Second Home Visa (USD 130k)
 - D1 = Tourism Multiple Entry
 - D12 = Business Investigation
-- B211A = Social/Cultural Visa
+- C1 = Tourism Single Entry (60 days)
 - VOA = Visa on Arrival
 
 **Migrations Applied:**

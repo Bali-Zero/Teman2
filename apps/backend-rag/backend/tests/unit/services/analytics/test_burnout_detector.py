@@ -4,9 +4,10 @@ Target: >95% coverage
 """
 
 import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"

@@ -992,7 +992,7 @@ class QdrantClient:
             except Exception as e:
                 logger.error(f"Qdrant hybrid search request error: {e}")
                 raise ConnectionError(f"Qdrant connection error: {e}") from e
-        
+
         start_time = time.time()
         # 🔍 TRACING: Span for Qdrant hybrid search
         with trace_span("qdrant.hybrid_search", {

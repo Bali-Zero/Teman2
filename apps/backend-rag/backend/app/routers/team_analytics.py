@@ -4,7 +4,6 @@ Exposes TeamAnalyticsService functionality via REST API endpoints
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/team-analytics", tags=["team-analytics"])
 
 # Global service instance
-_team_analytics_service: Optional[TeamAnalyticsService] = None
+_team_analytics_service: TeamAnalyticsService | None = None
 
 
 def get_team_analytics_service(db_pool=Depends(get_database_pool)) -> TeamAnalyticsService:
@@ -29,7 +28,7 @@ def get_team_analytics_service(db_pool=Depends(get_database_pool)) -> TeamAnalyt
 
 @router.get("/patterns")
 async def get_work_patterns(
-    user_email: Optional[str] = Query(None, description="Filter by user email"),
+    user_email: str | None = Query(None, description="Filter by user email"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
@@ -58,7 +57,7 @@ async def get_productivity_scores(
 
 @router.get("/burnout")
 async def get_burnout_signals(
-    user_email: Optional[str] = Query(None, description="Filter by user email"),
+    user_email: str | None = Query(None, description="Filter by user email"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):
     """Detect early warning signs of burnout"""
@@ -101,7 +100,7 @@ async def get_workload_balance(
 
 @router.get("/optimal-hours")
 async def get_optimal_hours(
-    user_email: Optional[str] = Query(None, description="Filter by user email"),
+    user_email: str | None = Query(None, description="Filter by user email"),
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     service: TeamAnalyticsService = Depends(get_team_analytics_service),
 ):

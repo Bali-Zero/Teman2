@@ -56,10 +56,10 @@ class TestVertexAIService:
         """Test successful initialization"""
         mock_model = MagicMock()
         mock_model_class.return_value = mock_model
-        
+
         service = VertexAIService(project_id="test-project")
         service._ensure_initialized()
-        
+
         assert service._initialized is True
         assert service.model == mock_model
         mock_vertexai.init.assert_called_once_with(project="test-project", location="us-central1")
@@ -85,11 +85,11 @@ class TestVertexAIService:
         mock_response.text = '{"type": "UNDANG-UNDANG", "number": "12", "year": "2024"}'
         mock_model.generate_content = MagicMock(return_value=mock_response)
         mock_model_class.return_value = mock_model
-        
+
         service = VertexAIService(project_id="test-project")
         service._initialized = True
         service.model = mock_model
-        
+
         result = await service.extract_metadata("Test legal document text")
         assert "type" in result or isinstance(result, dict)
 
@@ -101,11 +101,11 @@ class TestVertexAIService:
         mock_model = MagicMock()
         mock_model.generate_content.side_effect = Exception("API error")
         mock_model_class.return_value = mock_model
-        
+
         service = VertexAIService(project_id="test-project")
         service._initialized = True
         service.model = mock_model
-        
+
         # The method may catch and return empty dict or raise
         try:
             result = await service.extract_metadata("Test text")

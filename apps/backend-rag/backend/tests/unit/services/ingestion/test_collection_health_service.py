@@ -4,9 +4,10 @@ Target: >95% coverage
 """
 
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
 from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import MagicMock
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
@@ -15,9 +16,9 @@ if str(backend_path) not in sys.path:
 
 from services.ingestion.collection_health_service import (
     CollectionHealthService,
+    CollectionMetrics,
     HealthStatus,
     StalenessSeverity,
-    CollectionMetrics
 )
 
 

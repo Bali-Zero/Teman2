@@ -7,6 +7,7 @@ Description: Links entities and relationships to vector DB chunk IDs.
 
 from typing import Any
 
+
 async def apply(conn: Any) -> None:
     # 1. Add source_chunk_ids to kg_nodes
     await conn.execute("""

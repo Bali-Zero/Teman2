@@ -232,6 +232,9 @@ async def create_practice(
                 raise HTTPException(status_code=500, detail="Failed to create practice")
 
             new_practice = dict(practice_row)
+            # Convert UUID to string for Pydantic validation
+            if new_practice.get("uuid"):
+                new_practice["uuid"] = str(new_practice["uuid"])
 
             # Update client's last_interaction_date
             await conn.execute(
@@ -633,6 +636,88 @@ async def update_practice(
                 updated_by=updated_by,
             )
             return updated_practice
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise handle_database_error(e)
+
+
+@router.delete("/{practice_id}")
+async def delete_practice(
+    practice_id: int = Path(..., gt=0, description="Practice ID"),
+    deleted_by: str = Query(..., description="Team member deleting the practice"),
+    request: Request = ...,
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Delete a practice (soft delete - marks as cancelled).
+
+    Access Control:
+    - Admin users: Can delete any practice
+    - Team members: Can only delete practices for clients they are the Lead of
+
+    The practice is marked as 'cancelled' and not permanently deleted.
+    """
+    try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_admin_user(current_user)
+
+        async with db_pool.acquire() as conn:
+            # RBAC: First check if user has access to this practice
+            if not user_is_admin:
+                check_row = await conn.fetchrow(
+                    """
+                    SELECT c.assigned_to as client_lead
+                    FROM practices p
+                    JOIN clients c ON p.client_id = c.id
+                    WHERE p.id = $1
+                    """,
+                    practice_id,
+                )
+                if not check_row:
+                    raise HTTPException(status_code=404, detail="Practice not found")
+
+                client_lead = (check_row.get("client_lead") or "").lower()
+                if client_lead != user_email:
+                    logger.warning(f"RBAC: User {user_email} denied delete of practice {practice_id}")
+                    raise HTTPException(status_code=403, detail="You don't have access to delete this practice")
+
+            # Soft delete - mark as cancelled
+            row = await conn.fetchrow(
+                """
+                UPDATE practices
+                SET status = 'cancelled', updated_at = NOW()
+                WHERE id = $1
+                RETURNING id
+                """,
+                practice_id,
+            )
+
+            if not row:
+                raise HTTPException(status_code=404, detail="Practice not found")
+
+            # Log activity
+            await conn.execute(
+                """
+                INSERT INTO activity_log (entity_type, entity_id, action, performed_by, description)
+                VALUES ($1, $2, $3, $4, $5)
+                """,
+                "practice",
+                practice_id,
+                "deleted",
+                deleted_by,
+                "Practice marked as cancelled",
+            )
+
+            log_success(
+                logger,
+                "Deleted (soft) practice",
+                practice_id=practice_id,
+                deleted_by=deleted_by,
+            )
+            return {"success": True, "message": "Practice marked as cancelled"}
 
     except HTTPException:
         raise

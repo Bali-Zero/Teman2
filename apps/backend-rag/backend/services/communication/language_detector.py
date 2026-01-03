@@ -16,8 +16,6 @@ Supported languages:
 import re
 from typing import Literal
 
-from app.core.config import settings
-
 
 def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
     """

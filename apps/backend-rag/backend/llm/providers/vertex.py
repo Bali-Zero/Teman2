@@ -7,9 +7,9 @@ Note: VertexAIService is sync-only, so we wrap it accordingly.
 
 import asyncio
 import logging
-from typing import AsyncIterator, List
+from collections.abc import AsyncIterator
 
-from llm.base import LLMProvider, LLMMessage, LLMResponse
+from llm.base import LLMMessage, LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class VertexProvider(LLMProvider):
 
     async def generate(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         max_tokens: int = 4096,
         **kwargs
@@ -111,7 +111,7 @@ class VertexProvider(LLMProvider):
 
     async def stream(
         self,
-        messages: List[LLMMessage],
+        messages: list[LLMMessage],
         temperature: float = 0.7,
         **kwargs
     ) -> AsyncIterator[str]:

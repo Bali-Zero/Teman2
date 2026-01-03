@@ -42,7 +42,7 @@ class TestExtractedGraph:
             }
         ]
         relationships = [
-            {"source": "law_12_2024", "target": "visa_b211", "type": "DEFINES", "strength": 0.9}
+            {"source": "law_12_2024", "target": "visa_c1", "type": "DEFINES", "strength": 0.9}
         ]
 
         graph = ExtractedGraph(entities=entities, relationships=relationships)
@@ -126,7 +126,7 @@ class TestGraphExtractorExtractFromText:
             "relationships": [
                 {
                     "source": "law_12_2024",
-                    "target": "visa_b211",
+                    "target": "visa_c1",
                     "type": "DEFINES",
                     "strength": 0.9,
                 }
@@ -314,10 +314,10 @@ class TestGraphExtractorExtractFromText:
                     "description": "Primary immigration regulation",
                 },
                 {
-                    "id": "visa_b211",
+                    "id": "visa_c1",
                     "type": "VISA",
-                    "name": "B211 Visa",
-                    "description": "Social-cultural visa",
+                    "name": "C1 Tourism Visa",
+                    "description": "Tourism single entry visa",
                 },
                 {
                     "id": "ditjen_imigrasi",
@@ -329,12 +329,12 @@ class TestGraphExtractorExtractFromText:
             "relationships": [
                 {
                     "source": "law_12_2024",
-                    "target": "visa_b211",
+                    "target": "visa_c1",
                     "type": "DEFINES",
                     "strength": 1.0,
                 },
                 {
-                    "source": "visa_b211",
+                    "source": "visa_c1",
                     "target": "ditjen_imigrasi",
                     "type": "ISSUED_BY",
                     "strength": 1.0,

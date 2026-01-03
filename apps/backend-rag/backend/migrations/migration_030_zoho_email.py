@@ -6,8 +6,8 @@ Creates tables for Zoho OAuth token storage and email caching.
 Created: 2025-12-30
 """
 
-from typing import Any
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

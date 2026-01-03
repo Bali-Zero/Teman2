@@ -3,34 +3,32 @@ Unit tests for legal constants
 Target: >95% coverage
 """
 
+import re
 import sys
 from pathlib import Path
-import re
-
-import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from core.legal.constants import (
-    NOISE_PATTERNS,
-    LEGAL_TYPE_PATTERN,
-    LEGAL_TYPE_ABBREV,
-    NUMBER_PATTERN,
-    YEAR_PATTERN,
-    TOPIC_PATTERN,
-    STATUS_PATTERNS,
-    KONSIDERANS_MARKERS,
+    AYAT_PATTERN,
     BAB_PATTERN,
     BAGIAN_PATTERN,
+    CONTEXT_TEMPLATE,
+    KONSIDERANS_MARKERS,
+    LEGAL_TYPE_ABBREV,
+    LEGAL_TYPE_PATTERN,
+    MAX_PASAL_TOKENS,
+    NOISE_PATTERNS,
+    NUMBER_PATTERN,
     PARAGRAF_PATTERN,
     PASAL_PATTERN,
-    AYAT_PATTERN,
     PENJELASAN_PATTERN,
-    MAX_PASAL_TOKENS,
-    CONTEXT_TEMPLATE,
+    STATUS_PATTERNS,
+    TOPIC_PATTERN,
     WHITESPACE_FIXES,
+    YEAR_PATTERN,
 )
 
 
@@ -127,4 +125,7 @@ class TestLegalConstants:
         """Test whitespace fixes patterns"""
         assert len(WHITESPACE_FIXES) > 0
         assert all(isinstance(fix, tuple) and len(fix) == 2 for fix in WHITESPACE_FIXES)
+
+
+
 

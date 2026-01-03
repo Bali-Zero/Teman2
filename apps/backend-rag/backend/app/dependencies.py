@@ -27,8 +27,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from llm.zantara_ai_client import ZantaraAIClient
 
-from services.routing.intelligent_router import IntelligentRouter
 from services.memory import MemoryServicePostgres
+from services.routing.intelligent_router import IntelligentRouter
 from services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
@@ -185,7 +185,7 @@ def get_database_pool(request: Request) -> asyncpg.Pool | None:
     # Get db_pool from app.state
     # Use direct attribute access with fallback to handle edge cases
     db_pool = getattr(request.app.state, "db_pool", None)
-    
+
     # Additional check: verify pool is actually usable (not just present)
     if db_pool is None or not hasattr(db_pool, "acquire"):
         # Fail fast in tests and surface a clear 503 for API callers that require DB

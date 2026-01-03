@@ -1,5 +1,24 @@
 import type { IApiClient } from '../types/api-client.types';
-import type { Practice, Interaction, PracticeStats, InteractionStats, Client, CreateClientParams, CreatePracticeParams, RenewalAlert, AutoCRMStats, ClientSummary } from './crm.types';
+import type {
+  Practice,
+  Interaction,
+  PracticeStats,
+  InteractionStats,
+  Client,
+  CreateClientParams,
+  CreatePracticeParams,
+  RenewalAlert,
+  AutoCRMStats,
+  ClientSummary,
+  ClientProfile,
+  FamilyMember,
+  FamilyMemberCreate,
+  ClientDocument,
+  DocumentCreate,
+  DocumentCategory,
+  ExpiryAlert,
+  ExpiryAlertsSummary,
+} from './crm.types';
 
 /**
  * Revenue growth statistics response
@@ -141,6 +160,16 @@ export class CrmApi {
   }
 
   /**
+   * Delete an interaction
+   */
+  async deleteInteraction(interactionId: number, deletedBy: string): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>(
+      `/api/crm/interactions/${interactionId}?deleted_by=${encodeURIComponent(deletedBy)}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  /**
    * Get all clients with optional search and filtering
    */
   async getClients(params: {
@@ -276,5 +305,246 @@ export class CrmApi {
    */
   async getClientPractices(clientId: number): Promise<Practice[]> {
     return this.client.request<Practice[]>(`/api/crm/practices/?client_id=${clientId}`);
+  }
+
+  // ============================================
+  // CLIENT PROFILE (Enhanced)
+  // ============================================
+
+  /**
+   * Get enhanced client profile with family, documents, alerts
+   */
+  async getClientProfile(clientId: number): Promise<ClientProfile> {
+    return this.client.request<ClientProfile>(`/api/crm/clients/${clientId}/profile`);
+  }
+
+  /**
+   * Update client profile (avatar, Google Drive folder, etc.)
+   */
+  async updateClientProfile(
+    clientId: number,
+    updates: Partial<{
+      avatar_url: string;
+      google_drive_folder_id: string;
+      date_of_birth: string;
+      passport_expiry: string;
+      company_name: string;
+    }>
+  ): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>(
+      `/api/crm/clients/${clientId}/profile`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      }
+    );
+  }
+
+  // ============================================
+  // FAMILY MEMBERS
+  // ============================================
+
+  /**
+   * Get family members for a client
+   */
+  async getFamilyMembers(clientId: number): Promise<FamilyMember[]> {
+    return this.client.request<FamilyMember[]>(`/api/crm/clients/${clientId}/family`);
+  }
+
+  /**
+   * Add a family member
+   */
+  async createFamilyMember(clientId: number, data: FamilyMemberCreate): Promise<{ id: number; success: boolean }> {
+    return this.client.request<{ id: number; success: boolean }>(
+      `/api/crm/clients/${clientId}/family`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Update a family member
+   */
+  async updateFamilyMember(
+    clientId: number,
+    memberId: number,
+    updates: Partial<FamilyMemberCreate>
+  ): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>(
+      `/api/crm/clients/${clientId}/family/${memberId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      }
+    );
+  }
+
+  /**
+   * Delete a family member
+   */
+  async deleteFamilyMember(clientId: number, memberId: number): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>(
+      `/api/crm/clients/${clientId}/family/${memberId}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  // ============================================
+  // DOCUMENTS
+  // ============================================
+
+  /**
+   * Get documents for a client
+   */
+  async getClientDocuments(
+    clientId: number,
+    category?: string,
+    includeArchived?: boolean
+  ): Promise<ClientDocument[]> {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (includeArchived) params.append('include_archived', 'true');
+    const query = params.toString();
+    return this.client.request<ClientDocument[]>(
+      `/api/crm/clients/${clientId}/documents${query ? `?${query}` : ''}`
+    );
+  }
+
+  /**
+   * Add a document
+   */
+  async createDocument(clientId: number, data: DocumentCreate): Promise<{ id: number; success: boolean }> {
+    return this.client.request<{ id: number; success: boolean }>(
+      `/api/crm/clients/${clientId}/documents`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Update a document
+   */
+  async updateDocument(
+    clientId: number,
+    docId: number,
+    updates: Partial<DocumentCreate & { status: string; is_archived: boolean }>
+  ): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>(
+      `/api/crm/clients/${clientId}/documents/${docId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      }
+    );
+  }
+
+  /**
+   * Archive or delete a document
+   */
+  async deleteDocument(
+    clientId: number,
+    docId: number,
+    permanent?: boolean
+  ): Promise<{ success: boolean; action: string }> {
+    return this.client.request<{ success: boolean; action: string }>(
+      `/api/crm/clients/${clientId}/documents/${docId}${permanent ? '?permanent=true' : ''}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  /**
+   * Get document categories for dropdowns
+   */
+  async getDocumentCategories(): Promise<DocumentCategory[]> {
+    return this.client.request<DocumentCategory[]>('/api/crm/document-categories');
+  }
+
+  // ============================================
+  // EXPIRY ALERTS
+  // ============================================
+
+  /**
+   * Get all expiry alerts (for team dashboard)
+   */
+  async getExpiryAlerts(params?: {
+    alertColor?: 'expired' | 'red' | 'yellow';
+    assignedTo?: string;
+    limit?: number;
+  }): Promise<ExpiryAlert[]> {
+    const queryParams = new URLSearchParams();
+    if (params?.alertColor) queryParams.append('alert_color', params.alertColor);
+    if (params?.assignedTo) queryParams.append('assigned_to', params.assignedTo);
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    const query = queryParams.toString();
+    return this.client.request<ExpiryAlert[]>(
+      `/api/crm/expiry-alerts${query ? `?${query}` : ''}`
+    );
+  }
+
+  /**
+   * Get expiry alerts summary for dashboard
+   */
+  async getExpiryAlertsSummary(): Promise<ExpiryAlertsSummary> {
+    return this.client.request<ExpiryAlertsSummary>('/api/crm/expiry-alerts/summary');
+  }
+
+  // ============================================
+  // CLIENT MANAGEMENT
+  // ============================================
+
+  /**
+   * Delete a client (soft delete - marks as inactive)
+   * Only admins or authorized team members should call this
+   */
+  async deleteClient(clientId: number, deletedBy: string): Promise<{ success: boolean; message: string }> {
+    return this.client.request<{ success: boolean; message: string }>(
+      `/api/crm/clients/${clientId}?deleted_by=${encodeURIComponent(deletedBy)}`,
+      { method: 'DELETE' }
+    );
+  }
+
+  /**
+   * Update a client's basic information
+   */
+  async updateClient(
+    clientId: number,
+    updates: Partial<{
+      full_name: string;
+      email: string;
+      phone: string;
+      whatsapp: string;
+      nationality: string;
+      passport_number: string;
+      status: string;
+      client_type: string;
+      assigned_to: string;
+      address: string;
+      notes: string;
+      tags: string[];
+    }>,
+    updatedBy: string
+  ): Promise<Client> {
+    return this.client.request<Client>(
+      `/api/crm/clients/${clientId}?updated_by=${encodeURIComponent(updatedBy)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(updates),
+      }
+    );
+  }
+
+  /**
+   * Delete a practice/case (soft delete - marks as cancelled)
+   * Only admins or the client's lead can delete practices
+   */
+  async deletePractice(practiceId: number, deletedBy: string): Promise<{ success: boolean; message: string }> {
+    return this.client.request<{ success: boolean; message: string }>(
+      `/api/crm/practices/${practiceId}?deleted_by=${encodeURIComponent(deletedBy)}`,
+      { method: 'DELETE' }
+    );
   }
 }

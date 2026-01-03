@@ -44,10 +44,10 @@ class TestHybridAuthMiddleware:
         mock_request.url.path = "/api/test"
         mock_request.method = "GET"
         mock_request.client.host = "127.0.0.1"
-        
+
         with patch.object(hybrid_auth_middleware, 'authenticate_request', return_value={"email": "test@example.com"}):
             call_next = AsyncMock(return_value=MagicMock())
-            
+
             response = await hybrid_auth_middleware.dispatch(mock_request, call_next)
             assert response is not None
 
@@ -58,10 +58,10 @@ class TestHybridAuthMiddleware:
         mock_request.url.path = "/api/test"
         mock_request.method = "GET"
         mock_request.client.host = "127.0.0.1"
-        
+
         with patch.object(hybrid_auth_middleware, 'authenticate_request', return_value={"email": "test@example.com"}):
             call_next = AsyncMock(return_value=MagicMock())
-            
+
             response = await hybrid_auth_middleware.dispatch(mock_request, call_next)
             assert response is not None
 
@@ -72,10 +72,10 @@ class TestHybridAuthMiddleware:
         mock_request.url.path = "/api/test"
         mock_request.method = "GET"
         mock_request.client.host = "127.0.0.1"
-        
+
         with patch.object(hybrid_auth_middleware, 'authenticate_request', return_value={"email": "test@example.com"}):
             call_next = AsyncMock(return_value=MagicMock())
-            
+
             response = await hybrid_auth_middleware.dispatch(mock_request, call_next)
             assert response is not None
 
@@ -86,9 +86,9 @@ class TestHybridAuthMiddleware:
         mock_request.cookies = {}
         mock_request.url.path = "/health"  # Public endpoint
         mock_request.method = "GET"
-        
+
         call_next = AsyncMock(return_value=MagicMock())
-        
+
         response = await hybrid_auth_middleware.dispatch(mock_request, call_next)
         # Should continue without auth for public endpoints
         assert response is not None

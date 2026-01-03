@@ -12,9 +12,9 @@ Valid Indonesian Visa Codes (as of 2025):
 - E30X: Social/Cultural visas
 - E31X: Family visas
 - E32X: Second Home visas
-- E33X: Retirement visas
-- B211: Visit visas (social/business)
-- D212: Education visas
+- E33X: Retirement/Digital Nomad visas
+- C1: Tourism Visit Visa
+- D1X: Multiple Entry (D1) / Education (D12)
 
 Usage:
     python scripts/validate_visa_codes.py
@@ -45,11 +45,10 @@ VALID_PATTERNS = [
     r"E30[A-Z]?",  # Social/Cultural
     r"E31[A-Z]?",  # Family
     r"E32[A-Z]?",  # Second Home
-    r"E33[A-Z]?",  # Retirement
-    # Visit visas
-    r"B211[A-Z]?",  # Visit visa (valid format is B211, NOT B211A as standalone)
-    # But B211A as part of description is OK
-    r"D212",  # Education
+    r"E33[A-Z]?",  # Retirement/Digital Nomad
+    # Visit visas - New C/D series
+    r"C1",  # Tourism Visit Visa
+    r"D1[0-9]?",  # Multiple Entry (D1) / Education (D12)
     # VOA
     r"VOA",  # Visa on Arrival
     # eVOA
@@ -84,7 +83,7 @@ async def scroll_collection(client, headers, collection, limit=100, offset=None)
 
 def extract_visa_codes(text: str) -> list[str]:
     """Extract all potential visa codes from text"""
-    # Match patterns like E31A, C317, B211, etc.
+    # Match patterns like E31A, C317, D12, etc.
     pattern = r"\b([A-Z]\d{2,3}[A-Z]?)\b"
     matches = re.findall(pattern, text.upper())
     return list(set(matches))

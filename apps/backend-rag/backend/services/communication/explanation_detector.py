@@ -173,7 +173,7 @@ The user is asking for alternatives. You MUST format your response as a numbered
 Example:
 1) Digital Nomad con E33G - lavori da remoto legalmente - nessun investimento minimo
 2) Partnership con indonesiano via PT Lokal - lui è il proprietario, tu consulente - costi ridotti
-3) Freelance con visto B211 - progetti a breve termine - flessibilità temporale
+3) Freelance con VOA/C1 - progetti a breve termine - flessibilità temporale
 
 DO NOT use bullet points (-) or paragraphs. Use ONLY numbered list format (1), 2), 3)).
 """

@@ -5,14 +5,12 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import patch
-import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.response.cleaner import is_out_of_domain, clean_response, OUT_OF_DOMAIN_RESPONSES
+from services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, clean_response, is_out_of_domain
 
 
 class TestResponseCleaner:
@@ -26,11 +24,18 @@ class TestResponseCleaner:
         assert category == "personal_data"
 
     def test_is_out_of_domain_realtime_info(self):
-        """Test detecting real-time info queries"""
-        query = "che tempo fa a Bali"
+        """Test detecting real-time FINANCIAL info queries (blocked)"""
+        query = "what's the current bitcoin price"
         is_out, category = is_out_of_domain(query)
         assert is_out is True
         assert category == "realtime_info"
+
+    def test_weather_query_allowed(self):
+        """Test that weather queries are NOT blocked (handled by web_search)"""
+        query = "che tempo fa a Bali"
+        is_out, category = is_out_of_domain(query)
+        assert is_out is False
+        assert category is None
 
     def test_is_out_of_domain_off_topic(self):
         """Test detecting off-topic queries"""

@@ -10,8 +10,6 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from app.core.config import settings
-
 logger = logging.getLogger(__name__)
 
 # Path to the SINGLE consolidated system prompt file
@@ -111,7 +109,7 @@ class PromptManager:
         Returns:
             Embedded system prompt string.
         """
-        return f"""# ZANTARA - Intelligent AI Assistant for Bali Zero
+        return """# ZANTARA - Intelligent AI Assistant for Bali Zero
 
 ## Core Identity
 

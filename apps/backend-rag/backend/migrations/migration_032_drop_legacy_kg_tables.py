@@ -7,8 +7,9 @@ which has been replaced by the unified schema (kg_nodes, kg_edges) in migrations
 Date: 2025-12-31
 """
 
-import asyncpg
 import logging
+
+import asyncpg
 
 logger = logging.getLogger(__name__)
 

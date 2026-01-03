@@ -10,7 +10,7 @@ Updated Dec 2025 to use unified KG schema (kg_nodes/kg_edges).
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import asyncpg
 from pydantic import BaseModel
@@ -22,7 +22,7 @@ class GraphEntity(BaseModel):
     id: str
     type: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     properties: dict[str, Any] = {}
 
 
@@ -90,7 +90,7 @@ class GraphService:
             )
 
     async def get_neighbors(
-        self, entity_id: str, relation_type: Optional[str] = None
+        self, entity_id: str, relation_type: str | None = None
     ) -> list[dict]:
         """Get outgoing edges and target entities for a node (kg_edges + kg_nodes)."""
         query = """

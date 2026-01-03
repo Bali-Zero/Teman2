@@ -12,30 +12,33 @@ REFACTORED: Uses sub-services following Single Responsibility Principle
 - OracleAnalyticsService: Analytics tracking
 """
 
-import asyncio
 import logging
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import asyncpg
 import httpx
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from llm.adapters.gemini import GeminiAdapter
 from prompts.zantara_prompt_builder import PromptContext, ZantaraPromptBuilder
 from qdrant_client.http import exceptions as qdrant_exceptions
 
-# Core Dependencies
-# Services
-from ..search.citation_service import CitationService
-from ..misc.clarification_service import ClarificationService
 from ..classification.intent_classifier import IntentClassifier
-from ..misc.followup_service import FollowupService
-from ..misc.golden_answer_service import GoldenAnswerService
 from ..memory import MemoryOrchestrator
 from ..memory.memory_fact_extractor import MemoryFactExtractor
 from ..memory.memory_service_postgres import MemoryServicePostgres
+from ..misc.clarification_service import ClarificationService
+from ..misc.followup_service import FollowupService
+from ..misc.golden_answer_service import GoldenAnswerService
+from ..misc.personality_service import PersonalityService
+from ..response.validator import ZantaraResponseValidator
+
+# Core Dependencies
+# Services
+from ..search.citation_service import CitationService
+from ..search.search_service import SearchService
 from . import (
     DocumentRetrievalService,
     LanguageDetectionService,
@@ -45,10 +48,6 @@ from . import (
 )
 from .oracle_config import oracle_config as config
 from .oracle_database import db_manager
-from ..misc.personality_service import PersonalityService
-from ..response.validator import ZantaraResponseValidator
-from ..search.search_service import SearchService
-from .smart_oracle import smart_oracle
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +57,9 @@ logger = logging.getLogger(__name__)
 # Note: Request/Response models are typically defined in routers or a shared schemas file.
 # Since they are currently in the router, we will assume the service receives typed arguments
 from ..rag.agentic import create_agentic_rag
+from ..rag.agentic.entity_extractor import EntityExtractionService
 from ..rag.agentic.orchestrator import AgenticRAGOrchestrator
 from ..rag.agentic.schema import CoreResult
-from ..rag.agentic.entity_extractor import EntityExtractionService
 
 # ---------------------------------------------------------------------------
 # HELPER FUNCTIONS (Backward Compatibility)
@@ -88,7 +87,7 @@ def generate_query_hash(query_text: str) -> str:
     return service.generate_query_hash(query_text)
 
 
-def download_pdf_from_drive(filename: str) -> Optional[str]:
+def download_pdf_from_drive(filename: str) -> str | None:
     """
     Download PDF from Google Drive (backward compatibility wrapper).
 
@@ -110,8 +109,8 @@ async def reason_with_gemini(
     prompt_builder: ZantaraPromptBuilder,
     response_validator: ZantaraResponseValidator,
     use_full_docs: bool = False,
-    user_memory_facts: Optional[list[str]] = None,
-    conversation_history: Optional[list[dict]] = None,
+    user_memory_facts: list[str] | None = None,
+    conversation_history: list[dict] | None = None,
 ) -> dict[str, Any]:
     """
     Advanced reasoning with Google Gemini (backward compatibility wrapper).
@@ -165,19 +164,19 @@ class OracleService:
         self.analytics = OracleAnalyticsService()
 
         # Adapter State
-        self._orchestrator: Optional[AgenticRAGOrchestrator] = None
-        self._db_pool: Optional[asyncpg.Pool] = None
+        self._orchestrator: AgenticRAGOrchestrator | None = None
+        self._db_pool: asyncpg.Pool | None = None
         self._entity_extractor = EntityExtractionService()
 
         # Lazy loaded services
-        self._followup_service: Optional[FollowupService] = None
-        self._citation_service: Optional[CitationService] = None
-        self._clarification_service: Optional[ClarificationService] = None
-        self._personality_service: Optional[PersonalityService] = None
-        self._golden_answer_service: Optional[GoldenAnswerService] = None
-        self._memory_service: Optional[MemoryServicePostgres] = None
-        self._fact_extractor: Optional[MemoryFactExtractor] = None
-        self._memory_orchestrator: Optional[MemoryOrchestrator] = None
+        self._followup_service: FollowupService | None = None
+        self._citation_service: CitationService | None = None
+        self._clarification_service: ClarificationService | None = None
+        self._personality_service: PersonalityService | None = None
+        self._golden_answer_service: GoldenAnswerService | None = None
+        self._memory_service: MemoryServicePostgres | None = None
+        self._fact_extractor: MemoryFactExtractor | None = None
+        self._memory_orchestrator: MemoryOrchestrator | None = None
 
     async def _get_db_pool(self) -> asyncpg.Pool:
         """Lazy load asyncpg pool for Agentic RAG tools"""
@@ -231,7 +230,7 @@ class OracleService:
         return self._personality_service
 
     @property
-    def golden_answer_service(self) -> Optional[GoldenAnswerService]:
+    def golden_answer_service(self) -> GoldenAnswerService | None:
         if not self._golden_answer_service:
             try:
                 database_url = config.database_url if hasattr(config, "database_url") else None
@@ -242,7 +241,7 @@ class OracleService:
         return self._golden_answer_service
 
     @property
-    def memory_service(self) -> Optional[MemoryServicePostgres]:
+    def memory_service(self) -> MemoryServicePostgres | None:
         if not self._memory_service:
             try:
                 database_url = config.database_url if hasattr(config, "database_url") else None
@@ -331,13 +330,13 @@ class OracleService:
     async def process_query(
         self,
         request_query: str,
-        request_user_email: Optional[str],
+        request_user_email: str | None,
         request_limit: int,
-        request_session_id: Optional[str],
+        request_session_id: str | None,
         request_include_sources: bool,
         request_use_ai: bool,
-        request_language_override: Optional[str],
-        request_conversation_history: Optional[list[Any]],
+        request_language_override: str | None,
+        request_conversation_history: list[Any] | None,
         search_service: SearchService,
     ) -> dict[str, Any]:
         """

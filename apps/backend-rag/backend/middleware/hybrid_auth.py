@@ -112,6 +112,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/integrations/zoho/callback",  # Zoho OAuth callback (public)
             "/api/integrations/google-drive/callback",  # Google Drive OAuth callback (public)
             "/api/audio/",  # Audio TTS/STT endpoints (public for now)
+            "/api/voice/elevenlabs",  # ElevenLabs webhook (public, no auth)
             "/api/knowledge/visa",  # Visa types knowledge base (public)
             "/api/blog/newsletter/subscribe",  # Newsletter subscription (public)
             "/api/blog/newsletter/confirm",  # Newsletter confirmation (public)

@@ -146,7 +146,7 @@ Oke, sekarang jelaskan E33E Silver Hair untuk referensi nanti.
 - No criminal record
 
 **Harga:**
-- **IDR 13.000.000** (5 tahun all-inclusive)
+- **IDR 18.000.000** (5 tahun all-inclusive)
 - Termasuk e-ITAS + Re-Entry Permit 5 tahun
 
 **9 — Client:**
@@ -183,7 +183,7 @@ Jadi ringkasnya, mana yang recommended untuk saya umur 58 dengan pension USD 2.0
 - ⏱️ Processing 2-3 minggu
 - 💰 IDR 14.000.000 tahun pertama
 
-**Nanti (umur 60):** Evaluate switch ke **E33E Silver Hair**
+**Alternatif (sekarang juga bisa):** Evaluate switch ke **E33E Retirement KITAS**
 - Kalau mau convenience 5 tahun tanpa renewal
 - Kalau punya USD 50.000 untuk deposit
 - Kalau income sudah USD 3.000+/bulan
@@ -272,7 +272,7 @@ What documents do I need for Silver Hair visa?
 **Personal:**
 - Passport valid **minimum 6 years** (until visa expires)
 - Photo 4x6 red background
-- Age proof (passport showing 60+)
+- Age proof (passport showing 55+)
 
 **Financial:**
 - Bank deposit **USD 50,000** (state bank certificate)
@@ -306,12 +306,12 @@ Can my spouse come with me?
 **Consultant:**
 **Spouse Options:**
 
-**Option 1:** If spouse is also 60+
-- Apply for separate Silver Hair visa
+**Option 1:** If spouse is also 55+
+- Apply for separate E33E Retirement visa
 - Same requirements (USD 50k deposit, USD 3k income)
 
-**Option 2:** If spouse is younger than 60
-- Apply for **Dependent KITAS** under your Silver Hair
+**Option 2:** If spouse is younger than 55
+- Apply for **Dependent KITAS** under your Retirement KITAS
 - Cost: IDR 11,000,000 (1 year)
 - Tied to your visa validity
 

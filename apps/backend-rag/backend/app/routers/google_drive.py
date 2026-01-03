@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from app.dependencies import get_database_pool, get_current_user
+from app.dependencies import get_current_user, get_database_pool
 from services.integrations.google_drive_service import GoogleDriveService
 
 logger = logging.getLogger(__name__)

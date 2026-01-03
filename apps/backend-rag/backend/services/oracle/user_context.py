@@ -7,8 +7,8 @@ import logging
 from typing import Any
 
 from ..memory.memory_service_postgres import MemoryServicePostgres
-from .oracle_database import db_manager
 from ..misc.personality_service import PersonalityService
+from .oracle_database import db_manager
 
 logger = logging.getLogger(__name__)
 

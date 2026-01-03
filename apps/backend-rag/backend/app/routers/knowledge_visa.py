@@ -8,10 +8,10 @@ Provides endpoints for:
 - Filtering by category
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from app.dependencies import get_database_pool as get_db_pool
 
@@ -75,7 +75,7 @@ class VisaTypeCreate(VisaTypeBase):
 
 @router.get("/", response_model=VisaTypeListResponse)
 async def list_visa_types(
-    category: Optional[str] = None,
+    category: str | None = None,
     pool=Depends(get_db_pool)
 ):
     """
@@ -297,7 +297,7 @@ async def update_visa_type(
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update")
 
-        updates.append(f"last_updated = NOW()")
+        updates.append("last_updated = NOW()")
         values.append(visa_id)
 
         query = f"""

@@ -6,7 +6,6 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-import json
 
 import pytest
 
@@ -89,7 +88,7 @@ class TestEntityExtractor:
         """Test extracting entities with timeout"""
         import asyncio
         mock_ai_client.generate_text = AsyncMock(side_effect=asyncio.TimeoutError())
-        
+
         result = await entity_extractor.extract_entities("Test text", timeout=0.1)
         assert result == []
 
@@ -97,7 +96,7 @@ class TestEntityExtractor:
     async def test_extract_entities_json_error(self, entity_extractor, mock_ai_client):
         """Test extracting entities with JSON error"""
         mock_ai_client.generate_text = AsyncMock(return_value="Invalid JSON")
-        
+
         result = await entity_extractor.extract_entities("Test text")
         assert result == []
 
@@ -105,7 +104,7 @@ class TestEntityExtractor:
     async def test_extract_entities_error(self, entity_extractor, mock_ai_client):
         """Test extracting entities with error"""
         mock_ai_client.generate_text = AsyncMock(side_effect=Exception("Error"))
-        
+
         result = await entity_extractor.extract_entities("Test text")
         assert result == []
 
@@ -132,9 +131,9 @@ class TestRelationshipExtractor:
             {"type": "topic", "name": "Ketenagakerjaan", "canonical_name": "Ketenagakerjaan"}
         ]
         text = "UU No. 1 Tahun 2020 tentang Ketenagakerjaan"
-        
+
         mock_ai_client.generate_text = AsyncMock(return_value='[{"source": "UU No. 1", "target": "Ketenagakerjaan", "relationship": "regulates", "strength": 0.9}]')
-        
+
         result = await relationship_extractor.extract_relationships(entities, text)
         assert isinstance(result, list)
         mock_ai_client.generate_text.assert_called_once()
@@ -158,7 +157,7 @@ class TestRelationshipExtractor:
         """Test extracting relationships with timeout"""
         import asyncio
         mock_ai_client.generate_text = AsyncMock(side_effect=asyncio.TimeoutError())
-        
+
         entities = [{"type": "law", "name": "Test"}]
         result = await relationship_extractor.extract_relationships(entities, "Test text", timeout=0.1)
         assert result == []
@@ -167,7 +166,7 @@ class TestRelationshipExtractor:
     async def test_extract_relationships_json_error(self, relationship_extractor, mock_ai_client):
         """Test extracting relationships with JSON error"""
         mock_ai_client.generate_text = AsyncMock(return_value="Invalid JSON")
-        
+
         entities = [{"type": "law", "name": "Test"}]
         result = await relationship_extractor.extract_relationships(entities, "Test text")
         assert result == []
@@ -176,7 +175,7 @@ class TestRelationshipExtractor:
     async def test_extract_relationships_error(self, relationship_extractor, mock_ai_client):
         """Test extracting relationships with error"""
         mock_ai_client.generate_text = AsyncMock(side_effect=Exception("Error"))
-        
+
         entities = [{"type": "law", "name": "Test"}]
         result = await relationship_extractor.extract_relationships(entities, "Test text")
         assert result == []

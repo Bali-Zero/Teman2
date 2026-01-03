@@ -484,7 +484,18 @@ export default function ChatPage() {
           }
         },
         120000, // timeoutMs
-        conversationHistory // conversation history for context
+        conversationHistory, // conversation history for context
+        undefined, // abortSignal
+        undefined, // correlationId
+        60000, // idleTimeoutMs
+        600000, // maxTotalTimeMs
+        // Transform images for vision: extract base64 and name only
+        imagesToSend.length > 0
+          ? imagesToSend.map(img => ({
+              base64: img.base64.replace(/^data:image\/[^;]+;base64,/, ''), // Remove data URL prefix
+              name: img.name
+            }))
+          : undefined
       );
 
     } catch (error) {
@@ -573,17 +584,38 @@ export default function ChatPage() {
     const processAudio = async () => {
       if (audioBlob) {
         try {
+          // Validate audio blob before sending
+          if (audioBlob.size < 1000) {
+            setInput('');
+            showToast('Recording too short. Please hold the mic button longer.', 'error');
+            return;
+          }
+
+          console.log(`[Audio] Processing blob: ${audioBlob.size} bytes, type: ${audioMimeType}`);
           setInput('Transcribing...');
+
           const text = await api.transcribeAudio(audioBlob, audioMimeType);
-          if (text) {
+          if (text && text.trim()) {
             setInput(text);
           } else {
             setInput('');
-            showToast('Could not transcribe audio', 'error');
+            showToast('No speech detected. Please speak clearly and try again.', 'error');
           }
-        } catch {
+        } catch (error) {
           setInput('');
-          showToast('Transcription failed', 'error');
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[Audio] Transcription error:', errorMessage);
+
+          // Provide specific error messages
+          if (errorMessage.includes('Unrecognized file format')) {
+            showToast('Audio format not supported. Try a different browser.', 'error');
+          } else if (errorMessage.includes('400')) {
+            showToast('Invalid audio. Please try recording again.', 'error');
+          } else if (errorMessage.includes('401') || errorMessage.includes('403')) {
+            showToast('Authentication error. Please refresh the page.', 'error');
+          } else {
+            showToast(`Transcription failed: ${errorMessage}`, 'error');
+          }
         }
       }
     };
@@ -1029,9 +1061,6 @@ export default function ChatPage() {
                   <div className={`max-w-[75%] ${message.role === 'user' ? 'order-1' : ''}`}>
                     {message.role === 'assistant' && !message.isStreaming && (
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 bg-blue-500/15 text-blue-400 text-xs font-medium rounded flex items-center gap-1">
-                          ✨ ULTRA
-                        </span>
                         <span className="px-2 py-0.5 bg-white/5 text-gray-500 text-xs rounded">
                           {thinkingElapsedTime}s
                         </span>
@@ -1211,8 +1240,7 @@ export default function ChatPage() {
                   {isRecording && (
                     <span className="text-xs text-red-400">{recordingTime}s</span>
                   )}
-                  <span className="text-xs text-gray-500">ULTRA mode</span>
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" title="Online" />
                 </div>
               </div>
 

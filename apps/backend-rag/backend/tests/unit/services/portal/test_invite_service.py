@@ -6,6 +6,7 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
@@ -76,7 +77,7 @@ class TestInviteService:
     @pytest.mark.asyncio
     async def test_validate_token(self, invite_service, mock_db_pool):
         """Test validating token"""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
         mock_conn = AsyncMock()
         mock_invitation = MagicMock()
         expires_at = datetime.now(timezone.utc) + timedelta(days=1)

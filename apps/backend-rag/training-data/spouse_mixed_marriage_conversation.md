@@ -1,7 +1,7 @@
-# Spouse KITAS E26 + Mixed Marriage — Full Conversation
+# Spouse KITAS E31A + Mixed Marriage — Full Conversation
 
 > **Generated**: 2025-12-10
-> **Topics Covered**: E26 Spouse KITAS, Mixed Marriage, Family Registration, Children Visa, ITKS
+> **Topics Covered**: E31A Spouse KITAS, Mixed Marriage, Family Registration, Children Visa, ITKS
 > **Style**: Multi-topic, concerned spouse, documentation heavy
 
 ---
@@ -12,7 +12,7 @@
 Halo, saya WNA menikah dengan orang Indonesia. Sekarang saya masih pakai tourist visa bolak-balik. Capek dan mahal. Ada solusi?
 
 **Consultant:**
-Halo! Ada solusi sempurna untuk situasi kamu: **E26 Spouse KITAS**.
+Halo! Ada solusi sempurna untuk situasi kamu: **E31A Spouse KITAS**.
 
 Ini visa khusus untuk pasangan WNA yang menikah dengan WNI (Warga Negara Indonesia).
 
@@ -55,7 +55,7 @@ Prosesnya:
 3. **Daftar ke Dukcapil** di kota domisili pasangan WNI kamu
 4. **Dapat Kutipan Akta Perkawinan Indonesia** (biasanya 2-4 minggu)
 
-Setelah dapat kutipan akta Indonesia, baru bisa apply E26.
+Setelah dapat kutipan akta Indonesia, baru bisa apply E31A.
 
 **4 — Client:**
 Ribet ya. Kalian bisa bantu proses legalisir?
@@ -73,22 +73,24 @@ Ribet ya. Kalian bisa bantu proses legalisir?
 Tapi kita guide step-by-step jadi kamu nggak bingung.
 
 **5 — Client:**
-Oke paham. Setelah akta nikah terdaftar, berapa lama proses E26?
+Oke paham. Setelah akta nikah terdaftar, berapa lama proses E31A?
 
 **Consultant:**
-**Timeline E26:**
+**Timeline E31A:**
 - **Offshore** (apply dari luar Indonesia): 7-14 hari kerja
 - **Onshore** (apply dari dalam Indonesia): 3-4 minggu
 
-**Harga:**
-- **Offshore**: Rp 14.500.000
-- **Onshore**: Rp 16.500.000
-- **Extension** (setelah 2 tahun): Rp 15.500.000
+**Harga E31A Spouse KITAS (Bali Zero 2025):**
 
-Lebih murah dari E33G Digital Nomad karena sponsor dari pasangan (bukan perusahaan).
+| Durasi | Offshore | Onshore | Extension |
+|--------|----------|---------|-----------|
+| **1 Tahun** | Rp 11.000.000 | Rp 13.500.000 | Rp 9.000.000 |
+| **2 Tahun** | Rp 15.000.000 | Rp 18.000.000 | Rp 15.000.000 |
+
+Sponsor dari pasangan WNI (bukan perusahaan), jadi prosesnya lebih sederhana dibanding visa kerja.
 
 **6 — Client:**
-Kalau saya mau kerja dengan E26, bisa?
+Kalau saya mau kerja dengan E31A, bisa?
 
 **Consultant:**
 **Bisa**, tapi harus apply **IMTA** (Izin Mempekerjakan Tenaga Asing) dan **RPTKA** terlebih dahulu.
@@ -96,7 +98,6 @@ Kalau saya mau kerja dengan E26, bisa?
 **2 opsi:**
 1. **Kerja di perusahaan lain**
    - Perusahaan sponsor IMTA/RPTKA
-   - Biaya: Rp 8.000.000 - Rp 12.000.000
    - Wajib ada karyawan lokal (rasio 1:10)
 
 2. **Buka usaha sendiri (PT PMA)**
@@ -104,10 +105,10 @@ Kalau saya mau kerja dengan E26, bisa?
    - IMTA/RPTKA dari PT sendiri
    - Bisa switch ke **E28A Investor KITAS** (lebih mudah)
 
-**Tapi** untuk freelance/remote work (klien luar negeri), **grey area** — banyak yang tetap pakai E26 tanpa IMTA.
+**Tapi** untuk freelance/remote work (klien luar negeri), **grey area** — banyak yang tetap pakai E31A tanpa IMTA.
 
 **7 — Client:**
-Hmm saya freelance designer untuk klien luar negeri. Bayar saya transfer ke rekening luar. Apa aman pakai E26 tanpa IMTA?
+Hmm saya freelance designer untuk klien luar negeri. Bayar saya transfer ke rekening luar. Apa aman pakai E31A tanpa IMTA?
 
 **Consultant:**
 **Grey area.**
@@ -117,9 +118,9 @@ Secara teknis:
 - ✅ Tapi kalau income dari luar negeri, transfer ke rekening luar, tidak ada employer lokal → **low risk**
 
 Praktisnya:
-- Banyak expat di Bali pakai E26/E33G untuk remote work
+- Banyak expat di Bali pakai E31A/E33G untuk remote work
 - Imigrasi jarang periksa selama kamu nggak "kerja kantoran" di company lokal
-- Tetap **report** SKTT (domicile report) tiap 3 bulan
+- Tetap **report** SKTT (domicile report) setiap tahun
 
 **Rekomendasi:** Kalau income stabil dan mau lebih aman, consider **E33G Digital Nomad** atau **E28A Investor** (kalau punya PT PMA).
 
@@ -131,20 +132,13 @@ Oke noted. Terus soal anak — kami punya anak 1, lahir di Australia, paspor Aus
 
 Anak WNA (meskipun orang tua satu WNI) tetap dianggap WNA di Indonesia.
 
-**3 opsi visa untuk anak:**
+**2 opsi visa untuk anak:**
 
 1. **ITKS (Izin Tinggal Keluarga)**
-   - Ikut visa orang tua (E26)
-   - Validity sama dengan E26 (2 tahun)
-   - Harga: **Rp 12.000.000** (offshore) / **Rp 14.000.000** (onshore)
+   - Ikut visa orang tua (E31A)
+   - Validity sama dengan E31A (1-2 tahun)
 
-2. **KITAS 317 (anak dari WNI)**
-   - Visa khusus anak dari WNI
-   - Tidak ikut visa orang tua
-   - Validity: 2 tahun
-   - Harga: **Rp 13.000.000**
-
-3. **Proses kewarganegaraan Indonesia**
+2. **Proses kewarganegaraan Indonesia**
    - Anak dari WNI berhak jadi WNI (dual citizenship sampai umur 18)
    - Gratis, tapi proses lama (6-12 bulan)
 
@@ -173,7 +167,7 @@ Oke. Satu lagi — saya baca ada namanya SKTT. Itu apa?
 Ini **laporan domicile** yang wajib untuk semua pemegang KITAS.
 
 **Wajib lapor:**
-- **Setiap 3 bulan sekali**
+- **Sesetiap tahun sekali**
 - Atau setiap kali pindah alamat
 
 **Cara lapor:**
@@ -192,33 +186,13 @@ Wah ribet juga ya. Nggak ada cara online?
 **Consultant:**
 **Belum ada sistem online resmi** untuk SKTT.
 
-Harus datang langsung. Tapi ada **jasa ekspedisi** yang bisa bantuin (mereka yang antre ke imigrasi).
-
-**Harga jasa SKTT reporting:** Rp 500.000 - Rp 1.000.000 per laporan.
-
-Atau kalau kamu pakai **paket KITAS management** dari kita (**Rp 2.500.000/tahun**), kita handle semua SKTT reporting + reminder.
+Harus datang langsung. Ada juga jasa ekspedisi yang bisa bantu (mereka yang antre ke imigrasi untuk kamu).
 
 **12 — Client:**
-Menarik. Paket itu include apa aja?
-
-**Consultant:**
-**Paket KITAS Management (Rp 2.500.000/tahun):**
-- SKTT reporting 4x per tahun (tiap 3 bulan)
-- Reminder deadline via WhatsApp
-- Koordinasi dengan imigrasi
-- Document courier (ambil/antar KITAS)
-- Konsultasi immigration unlimited
-
-**Cocok untuk:**
-- Expat yang sibuk
-- Yang tinggal jauh dari kantor imigrasi
-- Yang nggak mau ribet antri
-
-**13 — Client:**
 Bagus. Terus kalau nanti KITAS saya mau habis (2 tahun lagi), extend gimana?
 
 **Consultant:**
-**Extension E26** (setelah 2 tahun pertama):
+**Extension E31A** (setelah 1-2 tahun pertama):
 
 **Syarat:**
 - Akta nikah masih valid (masih menikah)
@@ -227,9 +201,7 @@ Bagus. Terus kalau nanti KITAS saya mau habis (2 tahun lagi), extend gimana?
 - Medical checkup baru
 - SKCK baru (dari Indonesia)
 
-**Harga:** Rp 15.500.000
-
-**Timeline:** 3-4 minggu sebelum KITAS expire.
+**Timeline:** Apply 3-4 minggu sebelum KITAS expire.
 
 **Penting:** Jangan tunggu sampai last minute. Apply extension **minimal 30 hari sebelum expire**.
 
@@ -243,9 +215,9 @@ Harus switch ke visa lain:
 1. **E33G Digital Nomad** (kalau income dari remote work)
 2. **E28A Investor** (kalau punya PT PMA)
 3. **C2 Business** atau **D12 Investigation** (kalau bisnis)
-4. **B211 Tourist** (60 hari, temporary)
+4. **VOA/C1 Tourism** (30-60 hari, temporary)
 
-**Tidak bisa extend E26** tanpa status menikah dengan WNI.
+**Tidak bisa extend E31A** tanpa status menikah dengan WNI.
 
 Jadi kalau ada tanda-tanda masalah pernikahan, **plan B** harus ready.
 
@@ -253,7 +225,7 @@ Jadi kalau ada tanda-tanda masalah pernikahan, **plan B** harus ready.
 Paham. Oh iya, pasangan saya (WNI) harus punya NPWP ya? Dia belum punya. Gimana?
 
 **Consultant:**
-**Wajib punya** untuk sponsor E26.
+**Wajib punya** untuk sponsor E31A.
 
 **Cara bikin NPWP:**
 1. **Online via ereg.pajak.go.id**
@@ -269,61 +241,42 @@ Paham. Oh iya, pasangan saya (WNI) harus punya NPWP ya? Dia belum punya. Gimana?
 **Tapi:** Setelah punya NPWP, wajib **lapor SPT tahunan** (tax return) — meskipun nggak ada income.
 
 **16 — Client:**
-Oke noted. Kesimpulannya, total biaya untuk setup E26 + ITKS anak berapa?
+Oke noted. Dokumen apa saja yang perlu disiapkan untuk E31A + ITKS anak?
 
 **Consultant:**
-**Breakdown biaya (offshore):**
+**Dokumen yang perlu disiapkan:**
 
-1. **Legalisir akta nikah:**
-   - Legalisir di KBRI: ~AUD 100-200
-   - Sworn translator: Rp 1.000.000
-   - Registrasi Dukcapil: Rp 500.000
+**Dari WNA (kamu):**
+- Paspor valid min 18 bulan
+- Foto background merah
+- Akta lahir asli (apostille dari negara asal)
+- SKCK dari negara asal (apostille)
+- Surat keterangan sehat
 
-2. **E26 Spouse KITAS:** Rp 14.500.000
+**Dari WNI (pasangan):**
+- KTP & KK asli
+- Akta nikah (sudah terdaftar di Dukcapil Indonesia)
+- NPWP
+- Surat sponsor
 
-3. **ITKS anak:** Rp 12.000.000
-
-4. **SKCK & Medical (WNA):**
-   - SKCK apostille: ~Rp 2.000.000
-   - Medical checkup: Rp 500.000
-
-5. **NPWP pasangan WNI:** Gratis
-
-**Total:** sekitar **Rp 30.500.000** untuk setup awal (kamu + anak).
-
-**Opsional:**
-- KITAS Management: Rp 2.500.000/tahun
-- Jasa SKTT per laporan: Rp 500.000
+**Untuk anak:**
+- Paspor anak
+- Akta lahir anak (apostille)
+- Foto anak background merah
 
 **17 — Client:**
-Lumayan juga. Ada diskon kalau pakai paket family?
-
-**Consultant:**
-**Ada!**
-
-**Paket Family (E26 + ITKS):**
-- E26 Spouse: Rp 14.500.000
-- ITKS Child: Rp 12.000.000
-- **Diskon Rp 2.000.000**
-- **Total: Rp 24.500.000** (offshore)
-
-**Plus:**
-- Free KITAS Management 6 bulan pertama
-- Free konsultasi tax & legalisir dokumen
-
-**18 — Client:**
-Bagus! Satu pertanyaan terakhir — berapa lama saya harus di Indonesia per tahun dengan E26?
+Bagus! Satu pertanyaan terakhir — berapa lama saya harus di Indonesia per tahun dengan E31A?
 
 **Consultant:**
 **Tidak ada minimum stay requirement.**
 
-E26 adalah **residence permit**, bukan **visa turis**. Kamu bisa:
+E31A adalah **residence permit**, bukan **visa turis**. Kamu bisa:
 - Tinggal 365 hari di Indonesia
 - Atau cuma 30 hari per tahun
 - Atau nol hari (asal SKTT tetap dilaporkan)
 
 **Yang penting:**
-- Lapor SKTT tiap 3 bulan (bisa diwakilkan)
+- Lapor SKTT setiap tahun (bisa diwakilkan)
 - KITAS belum expire
 - Masih menikah dengan WNI
 
@@ -368,7 +321,7 @@ Kita proses sesegera mungkin — welcome home!
 Hi, I'm a foreigner married to an Indonesian. Currently using tourist visa, going in and out. It's tiring and expensive. Any solution?
 
 **Consultant:**
-Hi! There's a perfect solution for your situation: **E26 Spouse KITAS**.
+Hi! There's a perfect solution for your situation: **E31A Spouse KITAS**.
 
 This is a special visa for foreign nationals married to Indonesian citizens (WNI).
 
@@ -411,7 +364,7 @@ Process:
 3. **Register at Dukcapil** in your Indonesian spouse's city of residence
 4. **Receive Indonesian Marriage Certificate** (usually 2-4 weeks)
 
-After getting Indonesian certificate, can apply for E26.
+After getting Indonesian certificate, can apply for E31A.
 
 **4 — Client:**
 Quite involved. Can you help with legalization?
@@ -429,22 +382,24 @@ Quite involved. Can you help with legalization?
 But we guide step-by-step so you won't be confused.
 
 **5 — Client:**
-Got it. After marriage cert is registered, how long for E26 process?
+Got it. After marriage cert is registered, how long for E31A process?
 
 **Consultant:**
-**E26 Timeline:**
+**E31A Timeline:**
 - **Offshore** (apply from outside Indonesia): 7-14 working days
 - **Onshore** (apply from inside Indonesia): 3-4 weeks
 
-**Pricing:**
-- **Offshore**: IDR 14,500,000
-- **Onshore**: IDR 16,500,000
-- **Extension** (after 2 years): IDR 15,500,000
+**E31A Spouse KITAS Pricing (Bali Zero 2025):**
 
-Cheaper than E33G Digital Nomad because sponsor is spouse (not company).
+| Duration | Offshore | Onshore | Extension |
+|----------|----------|---------|-----------|
+| **1 Year** | IDR 11,000,000 | IDR 13,500,000 | IDR 9,000,000 |
+| **2 Years** | IDR 15,000,000 | IDR 18,000,000 | IDR 15,000,000 |
+
+Sponsor is your Indonesian spouse (not a company), so the process is simpler than work visas.
 
 **6 — Client:**
-If I want to work with E26, is it possible?
+If I want to work with E31A, is it possible?
 
 **Consultant:**
 **Yes**, but must apply for **IMTA** (Work Permit) and **RPTKA** first.
@@ -452,7 +407,6 @@ If I want to work with E26, is it possible?
 **2 options:**
 1. **Work at another company**
    - Company sponsors IMTA/RPTKA
-   - Cost: IDR 8,000,000 - 12,000,000
    - Must have local employees (1:10 ratio)
 
 2. **Start own business (PT PMA)**
@@ -460,10 +414,10 @@ If I want to work with E26, is it possible?
    - IMTA/RPTKA from own PT
    - Can switch to **E28A Investor KITAS** (easier)
 
-**But** for freelance/remote work (foreign clients), it's a **grey area** — many use E26 without IMTA.
+**But** for freelance/remote work (foreign clients), it's a **grey area** — many use E31A without IMTA.
 
 **7 — Client:**
-I'm a freelance designer for foreign clients. Payments go to my overseas account. Is it safe to use E26 without IMTA?
+I'm a freelance designer for foreign clients. Payments go to my overseas account. Is it safe to use E31A without IMTA?
 
 **Consultant:**
 **Grey area.**
@@ -473,9 +427,9 @@ Technically:
 - ✅ But if income from abroad, transfers to foreign account, no local employer → **low risk**
 
 In practice:
-- Many expats in Bali use E26/E33G for remote work
+- Many expats in Bali use E31A/E33G for remote work
 - Immigration rarely checks as long as you're not "office working" at local company
-- Still must **report** SKTT (domicile report) every 3 months
+- Still must **report** SKTT (domicile report) annually
 
 **Recommendation:** If income is stable and want to be safer, consider **E33G Digital Nomad** or **E28A Investor** (if you have PT PMA).
 
@@ -487,20 +441,13 @@ Noted. About children — we have one child, born in Australia, Australian passp
 
 Foreign children (even if one parent is Indonesian) are still considered foreign nationals in Indonesia.
 
-**3 visa options for children:**
+**2 visa options for children:**
 
 1. **ITKS (Family Stay Permit)**
-   - Follows parent's visa (E26)
-   - Same validity as E26 (2 years)
-   - Price: **IDR 12,000,000** (offshore) / **IDR 14,000,000** (onshore)
+   - Follows parent's visa (E31A)
+   - Same validity as E31A (2 years)
 
-2. **KITAS 317 (child of Indonesian citizen)**
-   - Special visa for children of WNI
-   - Independent from parent's visa
-   - Validity: 2 years
-   - Price: **IDR 13,000,000**
-
-3. **Process Indonesian citizenship**
+2. **Process Indonesian citizenship**
    - Children of WNI eligible for Indonesian citizenship (dual citizenship until age 18)
    - Free, but long process (6-12 months)
 
@@ -529,7 +476,7 @@ Okay. One more thing — I read about SKTT. What's that?
 This is **mandatory domicile reporting** for all KITAS holders.
 
 **Must report:**
-- **Every 3 months**
+- **Annually**
 - Or whenever you change address
 
 **How to report:**
@@ -548,33 +495,13 @@ Quite tedious. No online option?
 **Consultant:**
 **No official online system** for SKTT yet.
 
-Must go in person. But there are **courier services** that can help (they queue at immigration for you).
-
-**SKTT reporting service price:** IDR 500,000 - 1,000,000 per report.
-
-Or if you use our **KITAS Management package** (**IDR 2,500,000/year**), we handle all SKTT reporting + reminders.
+Must go in person. But there are courier services that can help (they queue at immigration for you).
 
 **12 — Client:**
-Interesting. What does that package include?
-
-**Consultant:**
-**KITAS Management Package (IDR 2,500,000/year):**
-- SKTT reporting 4x per year (every 3 months)
-- Deadline reminders via WhatsApp
-- Immigration coordination
-- Document courier (pick up/deliver KITAS)
-- Unlimited immigration consultation
-
-**Good for:**
-- Busy expats
-- Those living far from immigration office
-- Those who don't want to queue
-
-**13 — Client:**
 Nice. When my KITAS expires (in 2 years), how to extend?
 
 **Consultant:**
-**E26 Extension** (after first 2 years):
+**E31A Extension** (after first 2 years):
 
 **Requirements:**
 - Marriage certificate still valid (still married)
@@ -583,9 +510,7 @@ Nice. When my KITAS expires (in 2 years), how to extend?
 - New medical checkup
 - New police clearance (from Indonesia)
 
-**Price:** IDR 15,500,000
-
-**Timeline:** 3-4 weeks before KITAS expires.
+**Timeline:** Apply 3-4 weeks before KITAS expires.
 
 **Important:** Don't wait until last minute. Apply for extension **minimum 30 days before expiry**.
 
@@ -599,9 +524,9 @@ Must switch to another visa:
 1. **E33G Digital Nomad** (if income from remote work)
 2. **E28A Investor** (if you have PT PMA)
 3. **C2 Business** or **D12 Investigation** (if business)
-4. **B211 Tourist** (60 days, temporary)
+4. **VOA/C1 Tourism** (30-60 days, temporary)
 
-**Cannot extend E26** without married status to WNI.
+**Cannot extend E31A** without married status to WNI.
 
 So if there are signs of marriage trouble, **plan B** should be ready.
 
@@ -609,7 +534,7 @@ So if there are signs of marriage trouble, **plan B** should be ready.
 Understood. My spouse (Indonesian) needs NPWP right? She doesn't have one yet. How to get it?
 
 **Consultant:**
-**Mandatory** for E26 sponsorship.
+**Mandatory** for E31A sponsorship.
 
 **How to get NPWP:**
 1. **Online via ereg.pajak.go.id**
@@ -625,61 +550,42 @@ Understood. My spouse (Indonesian) needs NPWP right? She doesn't have one yet. H
 **But:** After having NPWP, must **file annual tax return (SPT)** — even if no income.
 
 **16 — Client:**
-Noted. In summary, total cost for E26 + child ITKS setup?
+Noted. What documents do I need to prepare for E31A + child ITKS?
 
 **Consultant:**
-**Cost breakdown (offshore):**
+**Documents needed:**
 
-1. **Marriage cert legalization:**
-   - Legalization at Embassy: ~AUD 100-200
-   - Sworn translator: IDR 1,000,000
-   - Dukcapil registration: IDR 500,000
+**From foreigner (you):**
+- Valid passport min 18 months
+- Red background photo
+- Original birth certificate (apostilled from home country)
+- Police clearance from home country (apostilled)
+- Health certificate
 
-2. **E26 Spouse KITAS:** IDR 14,500,000
+**From Indonesian spouse:**
+- Original KTP & KK
+- Marriage certificate (registered at Indonesian Dukcapil)
+- NPWP
+- Sponsor letter
 
-3. **ITKS child:** IDR 12,000,000
-
-4. **Police clearance & Medical (foreigner):**
-   - Apostilled police clearance: ~IDR 2,000,000
-   - Medical checkup: IDR 500,000
-
-5. **NPWP for Indonesian spouse:** Free
-
-**Total:** approximately **IDR 30,500,000** for initial setup (you + child).
-
-**Optional:**
-- KITAS Management: IDR 2,500,000/year
-- SKTT reporting per visit: IDR 500,000
+**For child:**
+- Child's passport
+- Child's birth certificate (apostilled)
+- Child's red background photo
 
 **17 — Client:**
-Quite substantial. Any discount for family package?
-
-**Consultant:**
-**Yes!**
-
-**Family Package (E26 + ITKS):**
-- E26 Spouse: IDR 14,500,000
-- ITKS Child: IDR 12,000,000
-- **Discount IDR 2,000,000**
-- **Total: IDR 24,500,000** (offshore)
-
-**Plus:**
-- Free KITAS Management first 6 months
-- Free tax & document legalization consultation
-
-**18 — Client:**
-Great! Last question — how long must I be in Indonesia per year with E26?
+Great! Last question — how long must I be in Indonesia per year with E31A?
 
 **Consultant:**
 **No minimum stay requirement.**
 
-E26 is a **residence permit**, not a **tourist visa**. You can:
+E31A is a **residence permit**, not a **tourist visa**. You can:
 - Stay 365 days in Indonesia
 - Or only 30 days per year
 - Or zero days (as long as SKTT is reported)
 
 **What matters:**
-- Report SKTT every 3 months (can be represented)
+- Report SKTT annually (can be represented)
 - KITAS not expired
 - Still married to WNI
 
@@ -724,7 +630,7 @@ We'll process as soon as possible — welcome home!
 Mas, aku WNA nikah karo wong Indonesia. Saiki isih nganggo visa turis metu mlebu terus. Capek lan larang. Ono solusi?
 
 **Consultant:**
-Halo! Ono solusi sempurna kanggo situasi sampeyan: **E26 Spouse KITAS**.
+Halo! Ono solusi sempurna kanggo situasi sampeyan: **E31A Spouse KITAS**.
 
 Iki visa khusus kanggo pasangan WNA sing nikah karo WNI (Warga Negara Indonesia).
 
@@ -767,7 +673,7 @@ Prosesne:
 3. **Daftar neng Dukcapil** neng kota domisili pasangan WNI sampeyan
 4. **Entuk Kutipan Akta Perkawinan Indonesia** (biasane 2-4 minggu)
 
-Sakwise entuk kutipan akta Indonesia, anyar iso apply E26.
+Sakwise entuk kutipan akta Indonesia, anyar iso apply E31A.
 
 **4 — Client:**
 Ribet yo. Awakdewe iso bantu proses legalisir?
@@ -785,22 +691,24 @@ Ribet yo. Awakdewe iso bantu proses legalisir?
 Tapi kito guide step-by-step dadi sampeyan ora bingung.
 
 **5 — Client:**
-Oke paham. Sakwise akta nikah terdaftar, suwi piro proses E26?
+Oke paham. Sakwise akta nikah terdaftar, suwi piro proses E31A?
 
 **Consultant:**
-**Timeline E26:**
+**Timeline E31A:**
 - **Offshore** (apply soko njaba Indonesia): 7-14 dino kerjo
 - **Onshore** (apply soko dalam Indonesia): 3-4 minggu
 
-**Rego:**
-- **Offshore**: Rp 14.500.000
-- **Onshore**: Rp 16.500.000
-- **Extension** (sakwise 2 taun): Rp 15.500.000
+**Rego E31A Spouse KITAS (Bali Zero 2025):**
 
-Luwih murah soko E33G Digital Nomad amarga sponsor soko pasangan (dudu perusahaan).
+| Durasi | Offshore | Onshore | Extension |
+|--------|----------|---------|-----------|
+| **1 Taun** | Rp 11.000.000 | Rp 13.500.000 | Rp 9.000.000 |
+| **2 Taun** | Rp 15.000.000 | Rp 18.000.000 | Rp 15.000.000 |
+
+Sponsor soko pasangan WNI (dudu perusahaan), dadi prosesne luwih gampang dibanding visa kerjo.
 
 **6 — Client:**
-Nek aku arep kerjo karo E26, iso?
+Nek aku arep kerjo karo E31A, iso?
 
 **Consultant:**
 **Iso**, tapi kudu apply **IMTA** (Izin Mempekerjakan Tenaga Asing) lan **RPTKA** terlebih dhisik.
@@ -808,7 +716,6 @@ Nek aku arep kerjo karo E26, iso?
 **2 opsi:**
 1. **Kerjo neng perusahaan liyo**
    - Perusahaan sponsor IMTA/RPTKA
-   - Biaya: Rp 8.000.000 - Rp 12.000.000
    - Wajib ono karyawan lokal (rasio 1:10)
 
 2. **Buka usaha dewe (PT PMA)**
@@ -816,10 +723,10 @@ Nek aku arep kerjo karo E26, iso?
    - IMTA/RPTKA soko PT dewe
    - Iso switch neng **E28A Investor KITAS** (luwih gampang)
 
-**Tapi** kanggo freelance/remote work (klien luar negeri), **grey area** — kathah sing tetep nganggo E26 tanpo IMTA.
+**Tapi** kanggo freelance/remote work (klien luar negeri), **grey area** — kathah sing tetep nganggo E31A tanpo IMTA.
 
 **7 — Client:**
-Hmm aku freelance designer kanggo klien luar negeri. Bayar aku transfer neng rekening luar. Opo aman nganggo E26 tanpo IMTA?
+Hmm aku freelance designer kanggo klien luar negeri. Bayar aku transfer neng rekening luar. Opo aman nganggo E31A tanpo IMTA?
 
 **Consultant:**
 **Grey area.**
@@ -829,9 +736,9 @@ Secara teknis:
 - ✅ Tapi nek income soko luar negeri, transfer neng rekening luar, ora ono employer lokal → **low risk**
 
 Praktisne:
-- Kathah expat neng Bali nganggo E26/E33G kanggo remote work
+- Kathah expat neng Bali nganggo E31A/E33G kanggo remote work
 - Imigrasi jarang periksa salawase sampeyan ora "kerjo kantoran" neng company lokal
-- Tetep **report** SKTT (domicile report) saben 3 sasi
+- Tetep **report** SKTT (domicile report) saben taun
 
 **Rekomendasi:** Nek income stabil lan arep luwih aman, consider **E33G Digital Nomad** utowo **E28A Investor** (nek duwe PT PMA).
 
@@ -843,20 +750,13 @@ Oke noted. Terus soal anak — kito duwe anak 1, lahir neng Australia, paspor Au
 
 Anak WNA (sanajan wong tuwo siji WNI) tetep dianggep WNA neng Indonesia.
 
-**3 opsi visa kanggo anak:**
+**2 opsi visa kanggo anak:**
 
 1. **ITKS (Izin Tinggal Keluarga)**
-   - Ikut visa wong tuwo (E26)
-   - Validity podo karo E26 (2 taun)
-   - Rego: **Rp 12.000.000** (offshore) / **Rp 14.000.000** (onshore)
+   - Ikut visa wong tuwo (E31A)
+   - Validity podo karo E31A (2 taun)
 
-2. **KITAS 317 (anak soko WNI)**
-   - Visa khusus anak soko WNI
-   - Ora ikut visa wong tuwo
-   - Validity: 2 taun
-   - Rego: **Rp 13.000.000**
-
-3. **Proses kewarganegaraan Indonesia**
+2. **Proses kewarganegaraan Indonesia**
    - Anak soko WNI berhak dadi WNI (dual citizenship sampek umur 18)
    - Gratis, tapi proses suwi (6-12 sasi)
 
@@ -885,7 +785,7 @@ Oke. Siji maneh — aku moco ono jenengé SKTT. Iku opo?
 Iki **laporan domicile** sing wajib kanggo kabeh pemegang KITAS.
 
 **Wajib lapor:**
-- **Saben 3 sasi pisan**
+- **Saben taun pisan**
 - Utowo saben pindah alamat
 
 **Cara lapor:**
@@ -904,33 +804,13 @@ Wah ribet yo. Ora ono cara online?
 **Consultant:**
 **Durung ono sistem online resmi** kanggo SKTT.
 
-Kudu teko langsung. Tapi ono **jasa ekspedisi** sing iso bantuin (wong-wong iku sing ngantri neng imigrasi).
-
-**Rego jasa SKTT reporting:** Rp 500.000 - Rp 1.000.000 per laporan.
-
-Utowo nek sampeyan nganggo **paket KITAS management** soko kito (**Rp 2.500.000/taun**), kito handle kabeh SKTT reporting + reminder.
+Kudu teko langsung. Tapi ono jasa ekspedisi sing iso bantuin (wong-wong iku sing ngantri neng imigrasi kanggo sampeyan).
 
 **12 — Client:**
-Menarik. Paket iku include opo wae?
-
-**Consultant:**
-**Paket KITAS Management (Rp 2.500.000/taun):**
-- SKTT reporting 4x per taun (saben 3 sasi)
-- Reminder deadline via WhatsApp
-- Koordinasi karo imigrasi
-- Document courier (jukut/antar KITAS)
-- Konsultasi immigration unlimited
-
-**Cocok kanggo:**
-- Expat sing sibuk
-- Sing tinggal adoh soko kantor imigrasi
-- Sing ora arep ribet ngantri
-
-**13 — Client:**
 Bagus. Terus nek mengko KITAS ku arep entek (2 taun maneh), extend piye?
 
 **Consultant:**
-**Extension E26** (sakwise 2 taun pertama):
+**Extension E31A** (sakwise 2 taun pertama):
 
 **Syarat:**
 - Akta nikah isih valid (isih nikah)
@@ -939,9 +819,7 @@ Bagus. Terus nek mengko KITAS ku arep entek (2 taun maneh), extend piye?
 - Medical checkup anyar
 - SKCK anyar (soko Indonesia)
 
-**Rego:** Rp 15.500.000
-
-**Timeline:** 3-4 minggu sakdurunge KITAS expire.
+**Timeline:** Apply 3-4 minggu sakdurunge KITAS expire.
 
 **Penting:** Ojo ngenteni sampek last minute. Apply extension **minimal 30 dino sakdurunge expire**.
 
@@ -955,9 +833,9 @@ Kudu switch neng visa liyo:
 1. **E33G Digital Nomad** (nek income soko remote work)
 2. **E28A Investor** (nek duwe PT PMA)
 3. **C2 Business** utowo **D12 Investigation** (nek bisnis)
-4. **B211 Tourist** (60 dino, temporary)
+4. **VOA/C1 Tourism** (30-60 dino, temporary)
 
-**Ora iso extend E26** tanpo status nikah karo WNI.
+**Ora iso extend E31A** tanpo status nikah karo WNI.
 
 Dadi nek ono tanda-tanda masalah pernikahan, **plan B** kudu ready.
 
@@ -965,7 +843,7 @@ Dadi nek ono tanda-tanda masalah pernikahan, **plan B** kudu ready.
 Paham. Oh iyo, pasangan ku (WNI) kudu duwe NPWP yo? Dheweke durung duwe. Piye?
 
 **Consultant:**
-**Wajib duwe** kanggo sponsor E26.
+**Wajib duwe** kanggo sponsor E31A.
 
 **Cara gawe NPWP:**
 1. **Online via ereg.pajak.go.id**
@@ -981,61 +859,42 @@ Paham. Oh iyo, pasangan ku (WNI) kudu duwe NPWP yo? Dheweke durung duwe. Piye?
 **Tapi:** Sakwise duwe NPWP, wajib **lapor SPT tahunan** (tax return) — sanajan ora ono income.
 
 **16 — Client:**
-Oke noted. Kesimpulane, total biaya kanggo setup E26 + ITKS anak piro?
+Oke noted. Dokumen opo wae sing kudu disiapke kanggo E31A + ITKS anak?
 
 **Consultant:**
-**Breakdown biaya (offshore):**
+**Dokumen sing kudu disiapke:**
 
-1. **Legalisir akta nikah:**
-   - Legalisir neng KBRI: ~AUD 100-200
-   - Sworn translator: Rp 1.000.000
-   - Registrasi Dukcapil: Rp 500.000
+**Soko WNA (sampeyan):**
+- Paspor valid min 18 sasi
+- Foto background abang
+- Akta lahir asli (apostille soko negara asal)
+- SKCK soko negara asal (apostille)
+- Surat keterangan sehat
 
-2. **E26 Spouse KITAS:** Rp 14.500.000
+**Soko WNI (pasangan):**
+- KTP & KK asli
+- Akta nikah (wis terdaftar neng Dukcapil Indonesia)
+- NPWP
+- Surat sponsor
 
-3. **ITKS anak:** Rp 12.000.000
-
-4. **SKCK & Medical (WNA):**
-   - SKCK apostille: ~Rp 2.000.000
-   - Medical checkup: Rp 500.000
-
-5. **NPWP pasangan WNI:** Gratis
-
-**Total:** sekitar **Rp 30.500.000** kanggo setup awal (sampeyan + anak).
-
-**Opsional:**
-- KITAS Management: Rp 2.500.000/taun
-- Jasa SKTT per laporan: Rp 500.000
+**Kanggo anak:**
+- Paspor anak
+- Akta lahir anak (apostille)
+- Foto anak background abang
 
 **17 — Client:**
-Lumayan yo. Ono diskon nek nganggo paket family?
-
-**Consultant:**
-**Ono!**
-
-**Paket Family (E26 + ITKS):**
-- E26 Spouse: Rp 14.500.000
-- ITKS Child: Rp 12.000.000
-- **Diskon Rp 2.000.000**
-- **Total: Rp 24.500.000** (offshore)
-
-**Plus:**
-- Free KITAS Management 6 sasi pertama
-- Free konsultasi tax & legalisir dokumen
-
-**18 — Client:**
-Bagus! Siji pertanyaan terakhir — suwi piro aku kudu neng Indonesia per taun karo E26?
+Bagus! Siji pertanyaan terakhir — suwi piro aku kudu neng Indonesia per taun karo E31A?
 
 **Consultant:**
 **Ora ono minimum stay requirement.**
 
-E26 iku **residence permit**, dudu **visa turis**. Sampeyan iso:
+E31A iku **residence permit**, dudu **visa turis**. Sampeyan iso:
 - Tinggal 365 dino neng Indonesia
 - Utowo mung 30 dino per taun
 - Utowo nol dino (salawase SKTT tetep dilaporke)
 
 **Sing penting:**
-- Lapor SKTT saben 3 sasi (iso diwakilke)
+- Lapor SKTT saben taun (iso diwakilke)
 - KITAS durung expire
 - Isih nikah karo WNI
 
@@ -1078,18 +937,12 @@ Kito proses sesegera mungkin — welcome home!
 
 | Topic | Details |
 |-------|---------|
-| **E26 Spouse KITAS** | For foreigners married to Indonesians |
-| **Validity** | 2 years, renewable |
-| **E26 Offshore** | IDR 14,500,000 |
-| **E26 Onshore** | IDR 16,500,000 |
-| **E26 Extension** | IDR 15,500,000 |
-| **ITKS Child** | IDR 12,000,000 (offshore) / 14,000,000 (onshore) |
-| **KITAS 317** | IDR 13,000,000 |
+| **E31A Spouse KITAS** | For foreigners married to Indonesians |
+| **Validity** | 1 or 2 years, renewable |
+| **1 Year Price** | Offshore IDR 11M / Onshore IDR 13.5M / Extend IDR 9M |
+| **2 Years Price** | Offshore IDR 15M / Onshore IDR 18M / Extend IDR 15M |
 | **Marriage Registration** | Must register at Dukcapil Indonesia |
-| **SKTT Reporting** | Every 3 months, free |
-| **Work Permit (IMTA)** | IDR 8,000,000 - 12,000,000 |
-| **KITAS Management** | IDR 2,500,000/year |
-| **Family Package Discount** | IDR 2,000,000 off |
+| **SKTT Reporting** | Annually, free |
 | **No Minimum Stay** | Flexible residence |
 
 ---

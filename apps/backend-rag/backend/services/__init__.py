@@ -6,197 +6,198 @@ All services can still be imported from services.X for compatibility.
 """
 
 # Search services
-from .search.search_service import SearchService
-from .search.search_filters import build_search_filter
-from .search.semantic_cache import SemanticCache
-from .search.citation_service import CitationService
-
-# Memory services
-from .memory import (
-    MemoryOrchestrator,
-    MemoryContext,
-    MemoryFact,
-    MemoryStats,
-    MemoryProcessResult,
-    FactType,
-    MemoryFactExtractor,
-    InMemoryConversationCache,
-    get_memory_cache,
-    MemoryServicePostgres,
-    UserMemory,
-    EpisodicMemoryService,
-    EventType,
-    Emotion,
-    CollectiveMemoryService,
-    CollectiveMemory,
-    CollectiveMemoryEmitter,
-    MemoryCategory,
-    CollectiveMemoryState,
-    create_collective_memory_workflow,
-)
-
-# Oracle services
-from .oracle import (
-    OracleService,
-    OracleConfiguration,
-    oracle_config,
-    DatabaseManager,
-    db_manager,
-    GoogleServices,
-    google_services,
-    detect_query_language,
-    generate_query_hash,
-    smart_oracle,
-    download_pdf_from_drive,
-    get_drive_service,
-    test_drive_connection,
-    CrossOracleSynthesisService,
-    OracleQuery,
-    SynthesisResult,
-    LanguageDetectionService,
-    UserContextService,
-    ReasoningEngineService,
-    DocumentRetrievalService,
-    OracleAnalyticsService,
-)
-
-# Routing services
-from .routing import (
-    QueryRouter,
-    QueryRouterIntegration,
-    IntelligentRouter,
-    GoldenRouterService,
-    ConflictResolver,
-    KeywordMatcherService,
-    ConfidenceCalculatorService,
-    FallbackManagerService,
-    PriorityOverrideService,
-    RoutingStatsService,
+# Analytics services
+from .analytics import (
+    AnalyticsAggregator,
+    BurnoutDetectorService,
+    OptimalHoursService,
+    PatternAnalyzerService,
+    PerformanceTrendService,
+    ProductivityScorerService,
+    TeamAnalyticsService,
+    TeamInsightsService,
+    TeamTimesheetService,
+    WorkloadBalanceService,
+    get_timesheet_service,
+    init_timesheet_service,
 )
 
 # CRM services
 from .crm import (
-    AutoCRMService,
-    get_auto_crm_service,
     AICRMExtractor,
-    get_extractor,
-    CollaboratorService,
+    AutoCRMService,
     CollaboratorProfile,
+    CollaboratorService,
+    get_auto_crm_service,
+    get_extractor,
 )
 
 # Ingestion services
 from .ingestion import (
-    IngestionService,
-    CollectionManager,
+    AutoIngestionOrchestrator,
     CollectionHealthService,
-    HealthStatus,
-    StalenessSeverity,
+    CollectionManager,
     CollectionMetrics,
     CollectionWarmupService,
-    LegalIngestionService,
-    AutoIngestionOrchestrator,
-    SourceType,
-    UpdateType,
-    IngestionStatus,
-    MonitoredSource,
-    ScrapedContent,
+    HealthStatus,
     IngestionJob,
+    IngestionService,
+    IngestionStatus,
+    LegalIngestionService,
+    MonitoredSource,
     PoliticsIngestionService,
+    ScrapedContent,
+    SourceType,
+    StalenessSeverity,
+    UpdateType,
 )
 
 # LLM client services
 from .llm_clients import (
-    GeminiService,
-    GeminiJakselService,
+    CompletionResult,
     DeepSeekClient,
     DeepSeekResponse,
-    OpenRouterClient,
+    GeminiJakselService,
+    GeminiService,
     ModelTier,
-    CompletionResult,
+    OpenRouterClient,
     VertexAIService,
 )
 
-# Pricing services
-from .pricing import (
-    PricingService,
-    get_pricing_service,
-    get_all_prices,
-    search_service as pricing_search_service,
-    get_visa_prices,
-    get_kitas_prices,
-    get_business_prices,
-    get_tax_prices,
-    get_pricing_context_for_llm,
-    DynamicPricingService,
-)
-
-# Monitoring services
-from .monitoring import (
-    HealthMonitor,
-    get_health_monitor,
-    init_health_monitor,
-    AlertService,
-    AlertLevel,
-    get_alert_service,
-    AuditService,
-    get_audit_service,
-    UnifiedHealthService,
-    get_unified_health_service,
-    HealthCheckResult,
-    SystemMetrics,
-)
-
-# Analytics services
-from .analytics import (
-    AnalyticsAggregator,
-    TeamAnalyticsService,
-    TeamTimesheetService,
-    get_timesheet_service,
-    init_timesheet_service,
-    PatternAnalyzerService,
-    ProductivityScorerService,
-    BurnoutDetectorService,
-    PerformanceTrendService,
-    WorkloadBalanceService,
-    OptimalHoursService,
-    TeamInsightsService,
+# Memory services
+from .memory import (
+    CollectiveMemory,
+    CollectiveMemoryEmitter,
+    CollectiveMemoryService,
+    CollectiveMemoryState,
+    Emotion,
+    EpisodicMemoryService,
+    EventType,
+    FactType,
+    InMemoryConversationCache,
+    MemoryCategory,
+    MemoryContext,
+    MemoryFact,
+    MemoryFactExtractor,
+    MemoryOrchestrator,
+    MemoryProcessResult,
+    MemoryServicePostgres,
+    MemoryStats,
+    UserMemory,
+    create_collective_memory_workflow,
+    get_memory_cache,
 )
 
 # Misc services
 from .misc import (
-    ClarificationService,
-    ContextSuggestionService,
-    get_context_suggestion_service,
     AdvancedContextWindowManager,
+    AutonomousResearchService,
+    AutonomousScheduler,
+    ClarificationService,
+    ClientJourneyOrchestrator,
+    ContextSuggestionService,
     ConversationService,
     CulturalInsightsService,
     CulturalRAGService,
     EmotionalAttunementService,
+    Entity,
+    EntityType,
     FollowupService,
     GoldenAnswerService,
     GraphExtractor,
     GraphService,
     ImageGenerationService,
     KnowledgeGraphBuilder,
-    Entity,
-    EntityType,
-    Relationship,
-    RelationType,
     MCPClientService,
     MigrationRunner,
     PerformanceMonitor,
     PersonalityService,
     ProactiveComplianceMonitor,
-    format_search_results,
+    Relationship,
+    RelationType,
     SessionService,
     ToolExecutor,
     WorkSessionService,
     ZantaraTools,
+    format_search_results,
+    get_context_suggestion_service,
     get_zantara_tools,
-    AutonomousResearchService,
-    AutonomousScheduler,
-    ClientJourneyOrchestrator,
 )
+
+# Monitoring services
+from .monitoring import (
+    AlertLevel,
+    AlertService,
+    AuditService,
+    HealthCheckResult,
+    HealthMonitor,
+    SystemMetrics,
+    UnifiedHealthService,
+    get_alert_service,
+    get_audit_service,
+    get_health_monitor,
+    get_unified_health_service,
+    init_health_monitor,
+)
+
+# Oracle services
+from .oracle import (
+    CrossOracleSynthesisService,
+    DatabaseManager,
+    DocumentRetrievalService,
+    GoogleServices,
+    LanguageDetectionService,
+    OracleAnalyticsService,
+    OracleConfiguration,
+    OracleQuery,
+    OracleService,
+    ReasoningEngineService,
+    SynthesisResult,
+    UserContextService,
+    db_manager,
+    detect_query_language,
+    download_pdf_from_drive,
+    generate_query_hash,
+    get_drive_service,
+    google_services,
+    oracle_config,
+    smart_oracle,
+    test_drive_connection,
+)
+
+# Pricing services
+from .pricing import (
+    DynamicPricingService,
+    PricingService,
+    get_all_prices,
+    get_business_prices,
+    get_kitas_prices,
+    get_pricing_context_for_llm,
+    get_pricing_service,
+    get_tax_prices,
+    get_visa_prices,
+)
+from .pricing import (
+    search_service as pricing_search_service,
+)
+
+# Routing services
+from .routing import (
+    ConfidenceCalculatorService,
+    ConflictResolver,
+    FallbackManagerService,
+    GoldenRouterService,
+    IntelligentRouter,
+    KeywordMatcherService,
+    PriorityOverrideService,
+    QueryRouter,
+    QueryRouterIntegration,
+    RoutingStatsService,
+)
+from .search.citation_service import CitationService
+from .search.search_filters import build_search_filter
+from .search.search_service import SearchService
+from .search.semantic_cache import SemanticCache
 
 __all__ = [
     # Search

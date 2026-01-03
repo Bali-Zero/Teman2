@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -39,7 +39,7 @@ class TestPerformanceRouter:
     def test_get_performance_metrics(self, mock_monitor, client):
         """Test getting performance metrics"""
         mock_monitor.get_metrics.return_value = {"cpu": 50, "memory": 60}
-        
+
         response = client.get("/api/performance/metrics")
         assert response.status_code == 200
         data = response.json()
@@ -50,7 +50,7 @@ class TestPerformanceRouter:
     def test_get_performance_metrics_error(self, mock_monitor, client):
         """Test getting performance metrics with error"""
         mock_monitor.get_metrics.side_effect = Exception("Monitor error")
-        
+
         response = client.get("/api/performance/metrics")
         assert response.status_code == 500
 
@@ -60,7 +60,7 @@ class TestPerformanceRouter:
         """Test clearing all caches"""
         mock_embedding_cache.clear = AsyncMock()
         mock_search_cache.clear = AsyncMock()
-        
+
         response = client.post("/api/performance/clear-cache")
         assert response.status_code == 200
         data = response.json()
@@ -71,7 +71,7 @@ class TestPerformanceRouter:
     def test_clear_embedding_cache(self, mock_cache, client):
         """Test clearing embedding cache"""
         mock_cache.clear = AsyncMock()
-        
+
         response = client.post("/api/performance/clear-cache/embedding")
         assert response.status_code == 200
         data = response.json()
@@ -82,7 +82,7 @@ class TestPerformanceRouter:
     def test_clear_search_cache(self, mock_cache, client):
         """Test clearing search cache"""
         mock_cache.clear = AsyncMock()
-        
+
         response = client.post("/api/performance/clear-cache/search")
         assert response.status_code == 200
         data = response.json()
@@ -99,7 +99,7 @@ class TestPerformanceRouter:
         mock_search_cache.cache = {"key2": "value2"}
         mock_search_cache.hits = 20
         mock_search_cache.misses = 10
-        
+
         response = client.get("/api/performance/cache/stats")
         assert response.status_code == 200
         data = response.json()
@@ -118,7 +118,7 @@ class TestPerformanceRouter:
             delattr(mock_embedding_cache, "cache")
         if hasattr(mock_search_cache, "cache"):
             delattr(mock_search_cache, "cache")
-        
+
         response = client.get("/api/performance/cache/stats")
         assert response.status_code == 200
         data = response.json()

@@ -12,13 +12,12 @@ Features:
 """
 
 import logging
-import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlencode
 
-import httpx
 import asyncpg
+import httpx
 
 from app.core.config import settings
 

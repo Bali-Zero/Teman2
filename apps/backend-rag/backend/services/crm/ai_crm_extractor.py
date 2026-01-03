@@ -7,6 +7,7 @@ import json
 import logging
 
 from llm.zantara_ai_client import ZantaraAIClient
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -16,8 +16,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.feedback import router
 from app.dependencies import get_database_pool
+from app.routers.feedback import router
 
 
 @pytest.fixture
@@ -56,7 +56,7 @@ class TestFeedbackRouter:
 
     def test_submit_feedback_success(self, client, mock_db_pool):
         """Test submitting feedback successfully"""
-        
+
         response = client.post(
             "/api/v2/feedback/",
             json={
@@ -73,7 +73,7 @@ class TestFeedbackRouter:
         """Test submitting feedback with low rating (creates review queue)"""
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchval = AsyncMock(side_effect=[uuid4(), uuid4()])  # rating_id, review_queue_id
-        
+
         response = client.post(
             "/api/v2/feedback/",
             json={
@@ -91,7 +91,7 @@ class TestFeedbackRouter:
         """Test submitting feedback with correction text"""
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchval = AsyncMock(side_effect=[uuid4(), uuid4()])
-        
+
         response = client.post(
             "/api/v2/feedback/",
             json={
@@ -146,7 +146,7 @@ class TestFeedbackRouter:
             "created_at": "2025-01-01T00:00:00"
         }.get(key, default)
         conn.fetchrow = AsyncMock(return_value=mock_rating)
-        
+
         response = client.get(f"/api/v2/feedback/ratings/{session_id}")
         assert response.status_code == 200
 
@@ -154,7 +154,7 @@ class TestFeedbackRouter:
         """Test getting non-existent conversation rating"""
         conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         conn.fetchrow = AsyncMock(return_value=None)
-        
+
         response = client.get(f"/api/v2/feedback/ratings/{uuid4()}")
         assert response.status_code == 404
 
@@ -175,7 +175,7 @@ class TestFeedbackRouter:
         }.get(key, 0)
         conn.fetchrow = AsyncMock(return_value=mock_stats)
         conn.fetchval = AsyncMock(return_value=3)
-        
+
         response = client.get("/api/v2/feedback/stats")
         assert response.status_code == 200
         data = response.json()

@@ -6,8 +6,6 @@ Target: >95% coverage
 import sys
 from pathlib import Path
 
-import pytest
-
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))

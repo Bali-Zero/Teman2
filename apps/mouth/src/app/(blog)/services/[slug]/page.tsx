@@ -162,7 +162,7 @@ export default function ServiceDetailPage() {
                   href="/chat"
                   className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border border-white/40 text-white font-medium hover:bg-white/10 transition-colors"
                 >
-                  <Image src="/images/zantara-lotus.png" alt="" width={24} height={24} />
+                  <Image src="/images/zantara-lotus.png" alt="" width={60} height={60} />
                   Ask Zantara AI
                 </Link>
               </div>
@@ -420,7 +420,7 @@ export default function ServiceDetailPage() {
                 href="/chat"
                 className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
               >
-                <Image src="/images/zantara-lotus.png" alt="" width={24} height={24} />
+                <Image src="/images/zantara-lotus.png" alt="" width={60} height={60} />
                 Ask Zantara AI
               </Link>
             </div>
@@ -658,6 +658,195 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         ],
         popular: false,
       },
+      // === AUXILIARY IMMIGRATION SERVICES ===
+      {
+        name: 'EPO (Exit Permit Only)',
+        description: 'Exit permit without re-entry',
+        price: '700.000',
+        features: [
+          'One-way exit from Indonesia',
+          'Required before leaving on expired permit',
+          '1-3 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'ERP (Exit Re-entry Permit)',
+        description: 'Exit permit with re-entry rights',
+        price: '800.000',
+        features: [
+          'Travel abroad and return',
+          'Preserves your KITAS validity',
+          '1-3 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Mutation Passport',
+        description: 'New passport data update',
+        price: '500.000',
+        features: [
+          'Update KITAS with new passport',
+          'Required when passport renewed',
+          '5-7 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Mutation Address',
+        description: 'Address change notification',
+        price: '500.000',
+        features: [
+          'Update registered address',
+          'Immigration records update',
+          '5-7 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Cancel RPTKA + IMTA + Wajib Lapor',
+        description: 'Full work permit cancellation',
+        price: '3.500.000',
+        features: [
+          'Complete work permit cancellation',
+          'RPTKA, IMTA, Wajib Lapor closed',
+          'Required when leaving employment',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Cancel RPTKA Only',
+        description: 'RPTKA cancellation only',
+        price: '500.000',
+        features: [
+          'Cancel RPTKA permit',
+          'For partial permit closure',
+          '3-5 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Cancel Wajib Lapor Only',
+        description: 'Employment report cancellation',
+        price: '500.000',
+        features: [
+          'Cancel Wajib Lapor registration',
+          'Required when changing employer',
+          '3-5 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Reset Molina',
+        description: 'Reset immigration online account',
+        price: '1.000.000',
+        features: [
+          'Molina system account reset',
+          'Fix account issues',
+          '1-3 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'SKTT Registration',
+        description: 'Temporary residence certificate',
+        price: '1.500.000',
+        features: [
+          'Surat Keterangan Tempat Tinggal',
+          'Required for all KITAS holders',
+          '7-10 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'SKCK (Police Clearance)',
+        description: 'Indonesian police clearance letter',
+        price: '2.000.000',
+        features: [
+          'Surat Keterangan Catatan Kepolisian',
+          'Clean record certificate',
+          '5-7 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Domicile Letter',
+        description: 'Residence confirmation letter',
+        price: '800.000',
+        features: [
+          'Official domicile confirmation',
+          'For various admin purposes',
+          '3-5 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Domicile + SKTT Package',
+        description: 'Combined domicile & SKTT',
+        price: '1.600.000',
+        features: [
+          'Both documents together',
+          'Save time & money',
+          '7-10 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Born Report (Lapor Lahir)',
+        description: 'Birth registration for foreigner child',
+        price: '4.000.000',
+        features: [
+          'Birth report to immigration',
+          'Required within 30 days of birth',
+          'Full documentation support',
+        ],
+        popular: false,
+      },
+      // === PASSPORT SERVICES ===
+      {
+        name: 'Indonesian Passport 5 Years',
+        description: 'New/renewal 5-year passport',
+        price: '1.300.000',
+        features: [
+          'Standard Indonesian passport',
+          '5 years validity',
+          '7-14 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Indonesian Passport 10 Years',
+        description: 'New/renewal 10-year passport',
+        price: '2.000.000',
+        features: [
+          'Standard Indonesian passport',
+          '10 years validity',
+          '7-14 days processing',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Electronic Passport 5 Years',
+        description: 'E-passport with biometric chip',
+        price: '2.000.000',
+        features: [
+          'Biometric e-passport',
+          '5 years validity',
+          'Faster immigration clearance',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Electronic Passport 10 Years',
+        description: 'E-passport 10-year validity',
+        price: '2.500.000',
+        features: [
+          'Biometric e-passport',
+          '10 years validity',
+          'Premium travel document',
+        ],
+        popular: false,
+      },
     ],
     included: [
       'Document review and preparation',
@@ -732,14 +921,27 @@ const SERVICES_DATA: Record<string, ServiceData> = {
         popular: false,
       },
       {
-        name: 'Alcohol License',
-        description: 'SIUP-MB for alcohol sales',
+        name: 'SLHS (Hygiene Certificate)',
+        description: 'Mandatory for F&B businesses',
+        price: '9.000.000',
+        features: [
+          'Sertifikat Laik Higiene Sanitasi',
+          'Required for all restaurants/cafés',
+          'Dinas Kesehatan approval',
+          '3-4 weeks processing',
+          'Full documentation support',
+        ],
+        popular: false,
+      },
+      {
+        name: 'Alcohol License (NPBBKC)',
+        description: 'Golongan A+B+C for alcohol sales',
         price: '15.000.000',
         features: [
           'Restaurant/bar alcohol permit',
-          'Full OSS registration',
-          'Category A/B/C licensing',
-          'Compliance documentation',
+          'Golongan A (≤5%), B (5-20%), C (>20%)',
+          'Bea Cukai registration',
+          '45-60 days processing',
           'Renewal guidance',
         ],
         popular: false,
@@ -805,10 +1007,10 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     ],
   },
   tax: {
-    name: 'Tax Consulting',
+    name: 'Tax & BPJS Services',
     slug: 'tax',
     tagline: "Navigate Indonesia's tax system with confidence",
-    description: 'Indonesian tax compliance made simple. From NPWP registration to annual SPT filing, corporate tax planning to personal income optimization — we handle it all with expert precision.',
+    description: 'Indonesian tax compliance made simple. From NPWP registration to annual SPT filing, BPJS enrollment to monthly reporting — we handle it all with expert precision.',
     icon: Calculator,
     bgColor: 'bg-amber-500/10',
     iconColor: 'text-amber-400',
@@ -817,40 +1019,110 @@ const SERVICES_DATA: Record<string, ServiceData> = {
     validity: 'Annual',
     packages: [
       {
-        name: 'Tax Registration (NPWP)',
-        description: 'Get your Indonesian Tax ID',
-        price: 'Contact',
+        name: 'NPWP Personal + Coretax',
+        description: 'Personal tax ID registration',
+        price: '1.000.000',
         features: [
-          'Personal or corporate NPWP',
+          'Personal NPWP registration',
+          'Coretax system integration',
           'Full documentation support',
-          'Tax office registration',
           'Digital NPWP card',
         ],
         popular: false,
       },
       {
-        name: 'Tax Filing (SPT)',
-        description: 'Annual tax return submission',
-        price: 'Contact',
+        name: 'NPWPD Corporate',
+        description: 'Corporate/regional tax ID',
+        price: '2.500.000',
         features: [
-          'Personal & corporate SPT',
+          'Corporate tax ID registration',
+          'Regional tax registration',
+          'Company documentation',
+          'Tax office liaison',
+        ],
+        popular: false,
+      },
+      {
+        name: 'SPT Annual Personal',
+        description: 'Individual tax return filing',
+        price: '2.000.000',
+        features: [
+          'Personal income tax return',
           'Income calculation',
           'Deduction optimization',
           'E-filing submission',
-          'Payment guidance',
+        ],
+        popular: false,
+      },
+      {
+        name: 'SPT Annual Company (Zero)',
+        description: 'For dormant/zero-activity companies',
+        price: '3.000.000',
+        features: [
+          'Zero-activity tax return',
+          'Company & personal filing',
+          'Compliance documentation',
+          'E-filing submission',
+        ],
+        popular: false,
+      },
+      {
+        name: 'SPT Annual Company (Operational)',
+        description: 'For active companies',
+        price: '4.000.000',
+        features: [
+          'Full company tax return',
+          'Personal director filing included',
+          'Financial statement review',
+          'E-filing submission',
         ],
         popular: true,
       },
       {
-        name: 'Corporate Tax Planning',
-        description: 'Strategic tax optimization',
-        price: 'Contact',
+        name: 'Monthly Tax Report',
+        description: 'Ongoing tax compliance',
+        price: '1.500.000',
         features: [
-          'Tax structure review',
-          'Compliance assessment',
-          'Withholding tax (PPh 21/23/26)',
-          'VAT registration & filing',
-          'Transfer pricing support',
+          'Monthly PPh 21/23/26 filing',
+          'PPN (VAT) reporting',
+          'Payment slip preparation',
+          'Deadline management',
+        ],
+        popular: false,
+      },
+      {
+        name: 'BPJS Health Insurance',
+        description: 'Mandatory health coverage',
+        price: '2.500.000',
+        features: [
+          'Company BPJS Kesehatan registration',
+          'Minimum 2 employees',
+          'Employee enrollment',
+          'Monthly administration',
+        ],
+        popular: false,
+      },
+      {
+        name: 'BPJS Employment Insurance',
+        description: 'Mandatory employment coverage',
+        price: '1.500.000',
+        features: [
+          'BPJS Ketenagakerjaan registration',
+          'JHT, JP, JKK, JKM coverage',
+          'Minimum 2 employees',
+          'Monthly administration',
+        ],
+        popular: false,
+      },
+      {
+        name: 'LKPM Report',
+        description: 'Investment Activity Report',
+        price: '1.000.000',
+        features: [
+          'Quarterly LKPM submission',
+          'OSS compliance',
+          'Investment progress report',
+          'Government liaison',
         ],
         popular: false,
       },

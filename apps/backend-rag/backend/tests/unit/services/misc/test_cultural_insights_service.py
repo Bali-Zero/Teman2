@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -75,10 +75,44 @@ class TestCulturalInsightsService:
         assert result is False
 
     @pytest.mark.asyncio
+    async def test_add_insight_with_list_metadata(self, cultural_insights_service):
+        """Test adding insight with list metadata (when_to_use)"""
+        metadata = {
+            "topic": "business",
+            "when_to_use": ["first_contact", "casual_chat"],
+        }
+        result = await cultural_insights_service.add_insight(
+            text="Test insight",
+            metadata=metadata
+        )
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_add_insight_error(self, cultural_insights_service):
+        """Test handling error when adding insight"""
+        cultural_insights_service.embedder.generate_query_embedding = MagicMock(
+            side_effect=Exception("Embedding error")
+        )
+        result = await cultural_insights_service.add_insight(
+            text="Test insight",
+            metadata={"topic": "business"}
+        )
+        assert result is False
+
+    @pytest.mark.asyncio
     async def test_query_insights(self, cultural_insights_service):
         """Test querying cultural insights"""
+        mock_collection = MagicMock()
+        mock_collection.search = AsyncMock(return_value={
+            "ids": ["id1"],
+            "documents": ["Test document"],
+            "metadatas": [{"topic": "business"}],
+        })
+        cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
+
         result = await cultural_insights_service.query_insights("business query")
         assert isinstance(result, list)
+        assert len(result) == 1
 
     @pytest.mark.asyncio
     async def test_query_insights_empty(self, cultural_insights_service):
@@ -86,3 +120,71 @@ class TestCulturalInsightsService:
         cultural_insights_service.collection_manager.get_collection.return_value = None
         result = await cultural_insights_service.query_insights("business query")
         assert isinstance(result, list)
+        assert len(result) == 0
+
+    @pytest.mark.asyncio
+    async def test_query_insights_with_when_to_use(self, cultural_insights_service):
+        """Test querying insights with when_to_use filter"""
+        mock_collection = MagicMock()
+        mock_collection.search = AsyncMock(return_value={
+            "ids": [],
+            "documents": [],
+            "metadatas": [],
+        })
+        cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
+
+        result = await cultural_insights_service.query_insights(
+            "business query",
+            when_to_use="first_contact"
+        )
+        assert isinstance(result, list)
+
+    @pytest.mark.asyncio
+    async def test_query_insights_error(self, cultural_insights_service):
+        """Test handling error when querying insights"""
+        mock_collection = MagicMock()
+        mock_collection.search = AsyncMock(side_effect=Exception("Search error"))
+        cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
+
+        result = await cultural_insights_service.query_insights("business query")
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    @pytest.mark.asyncio
+    async def test_query_insights_with_results(self, cultural_insights_service):
+        """Test querying insights with results"""
+        mock_collection = MagicMock()
+        mock_collection.search = AsyncMock(return_value={
+            "ids": ["id1", "id2"],
+            "documents": ["Doc 1", "Doc 2"],
+            "metadatas": [{"topic": "business"}, {"topic": "casual"}],
+            "distances": [0.1, 0.2],
+        })
+        cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
+
+        result = await cultural_insights_service.query_insights("business query")
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["score"] > 0
+
+    @pytest.mark.asyncio
+    async def test_query_insights_missing_distances(self, cultural_insights_service):
+        """Test querying insights with missing distances"""
+        mock_collection = MagicMock()
+        mock_collection.search = AsyncMock(return_value={
+            "ids": ["id1"],
+            "documents": ["Doc 1"],
+            "metadatas": [{"topic": "business"}],
+            "distances": [],
+        })
+        cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
+
+        result = await cultural_insights_service.query_insights("business query")
+        assert isinstance(result, list)
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_get_topics_coverage(self, cultural_insights_service):
+        """Test getting topics coverage"""
+        result = await cultural_insights_service.get_topics_coverage()
+        assert isinstance(result, dict)

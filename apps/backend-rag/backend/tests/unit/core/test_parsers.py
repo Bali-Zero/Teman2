@@ -3,11 +3,11 @@ Unit tests for document parsers
 Target: >95% coverage
 """
 
-import sys
-from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
-import tempfile
 import os
+import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -17,10 +17,10 @@ if str(backend_path) not in sys.path:
 
 from core.parsers import (
     DocumentParseError,
-    extract_text_from_pdf,
-    extract_text_from_epub,
-    extract_text_from_txt,
     auto_detect_and_parse,
+    extract_text_from_epub,
+    extract_text_from_pdf,
+    extract_text_from_txt,
     get_document_info,
 )
 
@@ -127,7 +127,7 @@ class TestExtractTextFromEpub:
     def test_extract_text_success(self, mock_soup, mock_read):
         """Test successful EPUB extraction"""
         import ebooklib
-        
+
         mock_book = MagicMock()
         mock_item = MagicMock()
         mock_item.get_type.return_value = ebooklib.ITEM_DOCUMENT
@@ -145,8 +145,7 @@ class TestExtractTextFromEpub:
     @patch("core.parsers.epub.read_epub")
     def test_extract_text_empty(self, mock_read):
         """Test extraction from empty EPUB"""
-        import ebooklib
-        
+
         mock_book = MagicMock()
         mock_book.get_items.return_value = []
         mock_read.return_value = mock_book
@@ -188,7 +187,7 @@ class TestAutoDetectAndParse:
         mock_extract.return_value = "PDF content"
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             temp_path = f.name
-        
+
         try:
             result = auto_detect_and_parse(temp_path)
             assert result == "PDF content"

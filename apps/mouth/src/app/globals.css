@@ -211,6 +211,21 @@ body {
   animation: float 3s ease-in-out infinite;
 }
 
+/* === SCROLL REVIEWS ANIMATION === */
+@keyframes scroll-reviews {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-scroll-reviews {
+  animation: scroll-reviews 40s linear infinite;
+  width: max-content;
+}
+
+.animate-scroll-reviews:hover {
+  animation-play-state: paused;
+}
+
 /* === UTILITY CLASSES === */
 .glass {
   background: rgba(20, 20, 20, 0.8);

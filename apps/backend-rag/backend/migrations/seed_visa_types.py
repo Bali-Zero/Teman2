@@ -7,11 +7,10 @@ Run with:
 """
 
 import asyncio
-import os
 import json
+import os
 
 import asyncpg
-
 
 # =============================================================================
 # Visa Types Data - Official Indonesian Immigration Codes
@@ -590,65 +589,6 @@ VISA_TYPES = [
     # VOA - Visa on Arrival
     # =========================================================================
     {
-        "code": "B211A",
-        "name": "B211A Social/Cultural Visa",
-        "category": "Visit",
-        "duration": "60 days",
-        "extensions": "Up to 4 extensions (30 days each)",
-        "total_stay": "180 days maximum",
-        "renewable": False,
-        "processing_time_normal": "5-7 working days",
-        "processing_time_express": "2-3 working days",
-        "cost_visa": "IDR 5,500,000",
-        "cost_extension": "IDR 1,500,000",
-        "cost_details": {
-            "government_fees": "IDR 2,000,000",
-            "service_fee": "IDR 3,500,000",
-            "extension_per_30_days": "IDR 1,500,000"
-        },
-        "requirements": [
-            "Valid passport (min 6 months)",
-            "Sponsor letter from Indonesian citizen/company",
-            "Return flight booking",
-            "Accommodation proof",
-            "Bank statement (min USD 2,000)"
-        ],
-        "restrictions": [
-            "Cannot work or earn income",
-            "Must exit after 180 days",
-            "Single entry only"
-        ],
-        "allowed_activities": [
-            "Tourism",
-            "Visiting family",
-            "Attending courses (non-degree)",
-            "Cultural activities",
-            "Volunteer work"
-        ],
-        "benefits": [
-            "Up to 180 days total",
-            "Multiple extensions",
-            "Relatively easy to obtain"
-        ],
-        "process_steps": [
-            "1. Find local sponsor",
-            "2. Submit online application",
-            "3. Receive Telex approval",
-            "4. Enter Indonesia",
-            "5. Extend at immigration office"
-        ],
-        "tips": [
-            "Start extension 14 days before expiry",
-            "Budget for all 4 extensions",
-            "Bali Zero can provide sponsorship"
-        ],
-        "foreign_eligible": True,
-        "metadata": {
-            "popularity": "very_high",
-            "difficulty": "low"
-        }
-    },
-    {
         "code": "VOA",
         "name": "Visa on Arrival (VOA)",
         "category": "Visit",
@@ -694,7 +634,7 @@ VISA_TYPES = [
         "tips": [
             "Bring IDR cash if possible",
             "Extension takes 4-5 working days",
-            "Consider B211A for longer stay"
+            "Consider C1 or D12 for longer stay"
         ],
         "foreign_eligible": True,
         "metadata": {

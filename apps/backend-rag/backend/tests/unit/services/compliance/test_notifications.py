@@ -5,15 +5,16 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from services.compliance.alert_generator import ComplianceAlert
 from services.compliance.notifications import ComplianceNotificationService
-from services.compliance.alert_generator import ComplianceAlert, AlertStatus
 from services.compliance.severity_calculator import AlertSeverity
 
 

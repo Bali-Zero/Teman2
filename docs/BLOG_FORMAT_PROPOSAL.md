@@ -37,7 +37,7 @@
     │   └── Freelance/Remote → Digital Nomad Visa
     │
     └── Solo vivere? → [Sì] → Per quanto?
-        ├── < 60 giorni → VOA/B211
+        ├── < 60 giorni → VOA
         ├── 1-5 anni → KITAS Retirement/Second Home
         └── Permanente → KITAP
 ```
@@ -113,7 +113,7 @@ MESE 1        MESE 2        MESE 3        MESE 4
    │             │             │             │
    ▼             ▼             ▼             ▼
 ┌──────┐     ┌──────┐     ┌──────┐     ┌──────┐
-│B211A │ ──▶ │ NIB  │ ──▶ │IMTA  │ ──▶ │KITAS │
+│D12   │ ──▶ │ NIB  │ ──▶ │IMTA  │ ──▶ │KITAS │
 │Visa  │     │ OSS  │     │Domicile│    │Final │
 └──────┘     └──────┘     └──────┘     └──────┘
    📄           📄           📄           📄
@@ -138,10 +138,10 @@ MESE 1        MESE 2        MESE 3        MESE 4
 > ⚡ Ultimo aggiornamento: [AUTO-DATE]
 > 🔔 Questo articolo si aggiorna automaticamente
 
-## B211A - Visa Sociale
-- Durata: [PULL FROM KB: visa_oracle.b211a.duration]
-- Costo: [PULL FROM KB: bali_zero_pricing.b211a.fee]
-- Requisiti: [PULL FROM KB: visa_oracle.b211a.requirements]
+## VOA - Visa on Arrival
+- Durata: [PULL FROM KB: visa_oracle.voa.duration]
+- Costo: [PULL FROM KB: bali_zero_pricing.voa.fee]
+- Requisiti: [PULL FROM KB: visa_oracle.voa.requirements]
 
 ## Changelog
 | Data | Cambiamento | Fonte |
@@ -177,7 +177,7 @@ MESE 1        MESE 2        MESE 3        MESE 4
 
 **Articoli Esempio**:
 - "KITAS vs KITAP: Quale Scegliere e Perché"
-- "VOA vs B211A vs Visa Turistico: La Guida Definitiva"
+- "VOA vs C1 vs D1: La Guida Definitiva ai Visti Turistici"
 - "Aprire Business a Bali: PT vs Nominee vs Freelance"
 
 ---
@@ -326,7 +326,7 @@ In ogni articolo, box per fare domande specifiche che vengono processate dal RAG
 │                                         │
 │  Domande frequenti su questo topic:    │
 │  • "Quanto tempo per il KITAS?"        │
-│  • "Serve sponsor per B211A?"          │
+│  • "Come funziona la VOA?"             │
 └─────────────────────────────────────────┘
 ```
 
@@ -357,8 +357,8 @@ Per utenti autorizzati, mostrare casi simili (anonimizzati):
 BALI ZERO KNOWLEDGE HUB
 │
 ├── 🛂 IMMIGRATION (visa_oracle: 1,612 docs)
-│   ├── Pillar: "The Complete Indonesia Visa Guide 2025"
-│   ├── Cluster: Tourist Visas (VOA, B211A, B211B)
+│   ├── Pillar: "The Complete Indonesia Visa Guide 2026"
+│   ├── Cluster: Tourist Visas (VOA, C1, D1)
 │   ├── Cluster: Work Permits (KITAS, IMTA, RPTKA)
 │   ├── Cluster: Permanent Residency (KITAP)
 │   └── Cluster: Digital Nomad & Remote Work
@@ -391,7 +391,7 @@ BALI ZERO KNOWLEDGE HUB
 │   └── Cluster: Culture & Integration
 │
 └── 💻 DIGITAL NOMAD (cross-collection)
-    ├── Pillar: "Bali for Digital Nomads: The Complete 2025 Guide"
+    ├── Pillar: "Bali for Digital Nomads: The Complete 2026 Guide"
     ├── Cluster: Visa Options
     ├── Cluster: Coworking & Lifestyle
     ├── Cluster: Tax Implications

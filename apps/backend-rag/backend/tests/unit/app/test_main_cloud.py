@@ -13,7 +13,14 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.main_cloud import app, on_startup, on_shutdown, _parse_history, _allowed_origins, _safe_endpoint_label
+from app.main_cloud import (
+    _allowed_origins,
+    _parse_history,
+    _safe_endpoint_label,
+    app,
+    on_shutdown,
+    on_startup,
+)
 
 
 class TestMainCloud:
@@ -31,9 +38,9 @@ class TestMainCloud:
              patch("app.main_cloud.AlertService") as mock_alert:
             mock_init_services.return_value = None
             mock_init_plugins.return_value = None
-            
+
             await on_startup()
-            
+
             mock_init_services.assert_called_once()
             mock_init_plugins.assert_called_once()
 
@@ -45,7 +52,7 @@ class TestMainCloud:
         app.state.health_monitor = None
         app.state.compliance_monitor = None
         app.state.autonomous_scheduler = None
-        
+
         await on_shutdown()
         # Should complete without errors
 
@@ -54,12 +61,12 @@ class TestMainCloud:
         """Test shutdown with Redis task"""
         mock_task = MagicMock()
         mock_task.cancel = MagicMock()
-        
+
         app.state.redis_listener_task = mock_task
         app.state.health_monitor = None
         app.state.compliance_monitor = None
         app.state.autonomous_scheduler = None
-        
+
         await on_shutdown()
         mock_task.cancel.assert_called_once()
 
@@ -68,12 +75,12 @@ class TestMainCloud:
         """Test shutdown with health monitor"""
         mock_monitor = AsyncMock()
         mock_monitor.stop = AsyncMock()
-        
+
         app.state.redis_listener_task = None
         app.state.health_monitor = mock_monitor
         app.state.compliance_monitor = None
         app.state.autonomous_scheduler = None
-        
+
         await on_shutdown()
         mock_monitor.stop.assert_called_once()
 
@@ -82,12 +89,12 @@ class TestMainCloud:
         """Test shutdown with compliance monitor"""
         mock_monitor = AsyncMock()
         mock_monitor.stop = AsyncMock()
-        
+
         app.state.redis_listener_task = None
         app.state.health_monitor = None
         app.state.compliance_monitor = mock_monitor
         app.state.autonomous_scheduler = None
-        
+
         await on_shutdown()
         mock_monitor.stop.assert_called_once()
 
@@ -96,12 +103,12 @@ class TestMainCloud:
         """Test shutdown with autonomous scheduler"""
         mock_scheduler = AsyncMock()
         mock_scheduler.stop = AsyncMock()
-        
+
         app.state.redis_listener_task = None
         app.state.health_monitor = None
         app.state.compliance_monitor = None
         app.state.autonomous_scheduler = mock_scheduler
-        
+
         await on_shutdown()
         mock_scheduler.stop.assert_called_once()
 
@@ -151,4 +158,7 @@ class TestMainCloud:
         """Test safe endpoint label with empty string"""
         label = _safe_endpoint_label("")
         assert label == "unknown"
+
+
+
 

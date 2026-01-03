@@ -161,7 +161,7 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
         {data.contact_info && (
           <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/5">
              <div className="text-xs text-white/40">
-               Official Pricing 2025 • Subject to change
+               Official Pricing 2026 • Subject to change
              </div>
              <a 
                href={`https://wa.me/${data.contact_info.whatsapp?.replace(/[^0-9]/g, '')}`}

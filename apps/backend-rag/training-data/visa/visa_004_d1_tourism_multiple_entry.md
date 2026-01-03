@@ -15,7 +15,7 @@ Halo, saya sering bolak-balik Indonesia untuk liburan dan visit keluarga. Ada vi
 Halo! Untuk frequent traveler seperti kamu, **D1 Tourism Multiple Entry Visa** adalah pilihan terbaik.
 
 Keuntungan D1:
-- **Validity 5 tahun** (5 years!)
+- **Validity 1 atau 2 tahun** (pilih sesuai kebutuhan)
 - **Multiple entry** — bebas keluar masuk
 - **Max stay 60 hari** per kunjungan
 - Tidak perlu apply visa baru setiap trip
@@ -23,7 +23,7 @@ Keuntungan D1:
 Perfect untuk yang visit Indonesia 3-4x setahun.
 
 **2 — Client:**
-Wah 5 tahun? Mantap! Itu 60 hari per entry bisa diperpanjang?
+Wah, bagus! Itu 60 hari per entry bisa diperpanjang?
 
 **Consultant:**
 **Tidak bisa diperpanjang**.
@@ -45,7 +45,7 @@ Oh I see. Jadi D1 untuk frequent short trips, E33G untuk long stay + remote work
 
 | Visa | Validity | Max Stay | Extension | Best For |
 |------|----------|----------|-----------|----------|
-| **D1 Tourism** | 5 tahun | 60 hari/entry | Tidak bisa | Frequent traveler |
+| **D1 Tourism** | 1-2 tahun | 60 hari/entry | Tidak bisa | Frequent traveler |
 | **E33G Digital Nomad** | 1 tahun | Extendable | Bisa extend | Long-term + remote work |
 | **VOA** | 30 hari | 30 hari | 1x extend | Short holiday |
 
@@ -94,11 +94,12 @@ Contoh acceptable:
 Berapa biaya D1?
 
 **Consultant:**
-**Harga D1 Tourism Multiple Entry:**
+**Harga D1 Tourism Multiple Entry (Bali Zero 2025):**
 
-- **Government fee**: USD 100
-- **Agent processing**: Rp 3.500.000 - Rp 5.000.000
-- **Total estimasi**: **Rp 5.000.000 - Rp 7.000.000**
+| Durasi | Harga Bali Zero |
+|--------|-----------------|
+| **D1 1 Tahun** | IDR 5.000.000 |
+| **D1 2 Tahun** | IDR 7.000.000 |
 
 **Timeline:**
 - Processing: **5-10 hari kerja**
@@ -106,7 +107,7 @@ Berapa biaya D1?
 
 **Validity:**
 - Mulai dari tanggal issue, bukan first entry
-- 5 tahun fixed, tidak bisa extend
+- Pilihan 1 tahun atau 2 tahun, tidak bisa extend
 
 **7 — Client:**
 Bisa apply D1 dari dalam Indonesia?
@@ -125,12 +126,12 @@ Kalau sekarang di Indonesia dengan VOA:
 4. Baru masuk lagi dengan D1
 
 **8 — Client:**
-Kalau visa D1 habis setelah 5 tahun, gimana perpanjangnya?
+Kalau visa D1 habis, gimana perpanjangnya?
 
 **Consultant:**
 **D1 tidak bisa diperpanjang** setelah expire.
 
-Process setelah 5 tahun:
+Process setelah 1/2 tahun habis:
 - Apply **D1 baru** dari embassy (fresh application)
 - Dokumen lengkap lagi
 - Biaya full lagi
@@ -159,7 +160,7 @@ D1 adalah **purely tourism visa**. Technically:
 
 **Safer option:**
 - Kalau frequent + kerja remote → **E33G Digital Nomad KITAS**
-- Legal, 2 tahun, bisa kerja remote officially
+- Legal, 1 tahun (extendable), bisa kerja remote officially
 
 Tapi kalau pure vacation + kadang check email = D1 fine.
 
@@ -238,7 +239,7 @@ Hi, I travel to Indonesia frequently for holidays and family visits. Is there a 
 Hello! For frequent travelers like yourself, the **D1 Tourism Multiple Entry Visa** is your best option.
 
 D1 Benefits:
-- **5-year validity**
+- **1 or 2-year validity** (choose based on your needs)
 - **Multiple entry** — unlimited exits and entries
 - **60-day maximum stay** per visit
 - No need to apply for a new visa each trip
@@ -246,7 +247,7 @@ D1 Benefits:
 Perfect if you visit Indonesia 3-4 times per year.
 
 **2 — Client:**
-5 years? That's impressive! Can the 60 days per entry be extended?
+Nice! Can the 60 days per entry be extended?
 
 **Consultant:**
 **No extensions possible.**
@@ -268,7 +269,7 @@ Got it. So D1 is for frequent short trips, E33G for long stays + remote work?
 
 | Visa | Validity | Max Stay | Extension | Best For |
 |------|----------|----------|-----------|----------|
-| **D1 Tourism** | 5 years | 60 days/entry | No | Frequent travelers |
+| **D1 Tourism** | 1-2 years | 60 days/entry | No | Frequent travelers |
 | **E33G Digital Nomad** | 1 year | Extendable | Yes | Long-term + remote work |
 | **VOA** | 30 days | 30 days | 1x | Short holidays |
 
@@ -317,11 +318,12 @@ Acceptable examples:
 What's the cost of D1?
 
 **Consultant:**
-**D1 Tourism Multiple Entry Pricing:**
+**D1 Tourism Multiple Entry Pricing (Bali Zero 2025):**
 
-- **Government fee**: USD 100
-- **Agent processing**: Rp 3,500,000 - Rp 5,000,000
-- **Total estimate**: **Rp 5,000,000 - Rp 7,000,000** (approx USD 320-450)
+| Duration | Bali Zero Price |
+|----------|-----------------|
+| **D1 1 Year** | IDR 5,000,000 |
+| **D1 2 Years** | IDR 7,000,000 |
 
 **Timeline:**
 - Processing: **5-10 working days**
@@ -329,7 +331,7 @@ What's the cost of D1?
 
 **Validity:**
 - Starts from issue date, not first entry
-- Fixed 5 years, cannot extend
+- Choice of 1 year or 2 years, cannot extend
 
 **7 — Client:**
 Can I apply for D1 from inside Indonesia?
@@ -348,12 +350,12 @@ If you're currently in Indonesia on VOA:
 4. Enter Indonesia again with D1
 
 **8 — Client:**
-When my D1 expires after 5 years, how do I renew it?
+When my D1 expires, how do I renew it?
 
 **Consultant:**
 **D1 cannot be renewed** after expiry.
 
-Process after 5 years:
+Process after 1/2 years:
 - Apply for **new D1** from embassy (fresh application)
 - Full document submission again
 - Full fee payment again
@@ -382,7 +384,7 @@ D1 is **purely a tourism visa**. Technically:
 
 **Safer option:**
 - If frequent travel + remote work → **E33G Digital Nomad KITAS**
-- Legal, 2 years, officially allows remote work
+- Legal, 1 year (extendable), officially allows remote work
 
 But if purely vacation + occasional email checks = D1 is fine.
 
@@ -454,13 +456,12 @@ Would you like us to assist with the processing?
 | Aspect | Detail |
 |--------|--------|
 | **Visa Type** | D1 Tourism Multiple Entry |
-| **Validity** | 5 years from issue |
+| **Validity** | 1 year or 2 years from issue |
 | **Max Stay** | 60 days per entry |
 | **Extension** | Not possible (must exit and re-enter) |
 | **Apply From** | Embassy/Consulate (offshore only) |
 | **Min Bank Balance** | USD 5,000 equivalent |
-| **Govt Fee** | USD 100 |
-| **Total Cost** | Rp 5-7 million |
+| **Bali Zero Price** | IDR 5M (1 year) / IDR 7M (2 years) |
 | **Processing** | 5-10 working days |
 | **Work Allowed** | No (tourism only) |
 | **Entry Points** | All international ports |

@@ -4,6 +4,7 @@ from typing import Any
 import asyncpg
 
 from app.utils.logging_utils import get_logger, log_success
+
 from ..memory.memory_fallback import get_memory_cache
 
 logger = get_logger(__name__)

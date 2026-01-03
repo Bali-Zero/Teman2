@@ -146,7 +146,7 @@ Output ATTESO: "Il KITAS è come un biglietto speciale che ti permette di stare 
 
 Input: "Non posso permettermi un PT PMA, ci sono alternative?"
 Output ATTUALE: "Alright bro, sounds good. Whenever you're ready..."
-Output ATTESO: "Certo! Ecco le alternative al PT PMA: 1) Digital Nomad con E33G, 2) Partnership con indonesiano via PT Lokal, 3) Freelance con visto B211..."
+Output ATTESO: "Certo! Ecco le alternative al PT PMA: 1) Digital Nomad con E33G, 2) Partnership con indonesiano via PT Lokal, 3) Freelance con VOA + visa runs..."
 ```
 
 ### Task

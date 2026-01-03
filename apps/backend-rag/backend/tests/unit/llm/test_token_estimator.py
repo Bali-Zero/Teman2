@@ -7,13 +7,11 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.token_estimator import TokenEstimator, TIKTOKEN_AVAILABLE
+from llm.token_estimator import TokenEstimator
 
 
 class TestTokenEstimator:
@@ -25,7 +23,7 @@ class TestTokenEstimator:
             with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_encoding = MagicMock()
                 mock_tiktoken.encoding_for_model.return_value = mock_encoding
-                
+
                 estimator = TokenEstimator("gpt-4")
                 assert estimator.model == "gpt-4"
                 assert estimator._encoding == mock_encoding
@@ -36,7 +34,7 @@ class TestTokenEstimator:
             with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_encoding = MagicMock()
                 mock_tiktoken.get_encoding.return_value = mock_encoding
-                
+
                 estimator = TokenEstimator("gemini-pro")
                 mock_tiktoken.get_encoding.assert_called_with("cl100k_base")
 
@@ -51,7 +49,7 @@ class TestTokenEstimator:
         with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", True):
             with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_tiktoken.encoding_for_model.side_effect = Exception("Error")
-                
+
                 estimator = TokenEstimator("gpt-4")
                 assert estimator._encoding is None
 
@@ -64,7 +62,7 @@ class TestTokenEstimator:
                 tokens_list = [1, 2, 3, 4, 5]
                 mock_encoding.encode = MagicMock(return_value=tokens_list)
                 mock_tiktoken.encoding_for_model.return_value = mock_encoding
-                
+
                 estimator = TokenEstimator("gpt-4")
                 count = estimator.estimate_tokens("test text")
                 # len([1,2,3,4,5]) = 5
@@ -78,7 +76,7 @@ class TestTokenEstimator:
                 mock_encoding = MagicMock()
                 mock_encoding.encode.side_effect = Exception("Encoding error")
                 mock_tiktoken.encoding_for_model.return_value = mock_encoding
-                
+
                 estimator = TokenEstimator("gpt-4")
                 count = estimator.estimate_tokens("test text")
                 # Should fallback to approximation: "test text" has 2 words, * 1.3 = 2

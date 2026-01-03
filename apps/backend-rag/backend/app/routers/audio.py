@@ -1,6 +1,5 @@
 import io
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -14,14 +13,14 @@ logger = logging.getLogger(__name__)
 
 class SpeechRequest(BaseModel):
     text: str
-    voice: Optional[str] = "alloy"  # alloy, echo, fable, onyx, nova, shimmer
-    model: Optional[str] = "tts-1"
+    voice: str | None = "alloy"  # alloy, echo, fable, onyx, nova, shimmer
+    model: str | None = "tts-1"
 
 
 @router.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(...),
-    language: Optional[str] = None,
+    language: str | None = None,
     audio_service: AudioService = Depends(get_audio_service),
     # current_user = Depends(get_current_user) # Optional: Enable auth
 ):

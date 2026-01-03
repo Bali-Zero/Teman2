@@ -13,11 +13,11 @@ import os
 from typing import Any
 
 import fitz  # PyMuPDF
+from llm.genai_client import GENAI_AVAILABLE, GenAIClient
 from PIL import Image
 
 from app.core.config import settings
 from services.oracle.smart_oracle import download_pdf_from_drive
-from llm.genai_client import GenAIClient, GENAI_AVAILABLE
 
 logger = logging.getLogger(__name__)
 

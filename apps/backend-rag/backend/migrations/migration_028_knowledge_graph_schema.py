@@ -7,6 +7,7 @@ Description: Adds persistence for Knowledge Graph nodes and edges.
 
 from typing import Any
 
+
 async def apply(conn: Any) -> None:
     # 1. Create Nodes Table
     await conn.execute("""

@@ -329,13 +329,19 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                     raise ValueError("Pool validation failed")
 
             from services.analytics.team_timesheet_service import init_timesheet_service
+            from services.analytics.daily_checkin_notifier import init_daily_notifier
 
             ts_service = init_timesheet_service(db_pool)
             app.state.ts_service = ts_service
             app.state.db_pool = db_pool  # Store pool for other services
 
+            # Initialize daily check-in notifier (emails at 10:00 Bali time)
+            daily_notifier = init_daily_notifier(db_pool)
+            app.state.daily_notifier = daily_notifier
+
             # Start background tasks
             await ts_service.start_auto_logout_monitor()
+            await daily_notifier.start()
 
             # Start health check task
             app.state.db_health_check_task = asyncio.create_task(
@@ -458,8 +464,18 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
     check_interval = 30  # seconds
     from app.core.service_health import ServiceStatus, service_registry
 
+    # #region agent log
+    import json
+    with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:467","message":"Database health check loop entered","data":{"check_interval":check_interval},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+    # #endregion
+
     while True:
         try:
+            # #region agent log
+            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:472","message":"Before sleep in database health check loop","data":{}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+            # #endregion
             await asyncio.sleep(check_interval)
 
             # Check pool health
@@ -494,9 +510,17 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                     # Recovery logic could be added here
 
         except asyncio.CancelledError:
+            # #region agent log
+            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:503","message":"Database health check loop cancelled","data":{}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+            # #endregion
             logger.info("Database health check loop cancelled")
             break
         except Exception as e:
+            # #region agent log
+            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:508","message":"Exception in database health check loop","data":{"error":str(e)}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+            # #endregion
             logger.exception(f"Error in database health check loop: {e}")
 
 
@@ -533,7 +557,7 @@ async def initialize_crm_and_memory_services(
         await app.state.memory_service.connect()
 
         # Initialize Conversation Service
-        app.state.conversation_service = ConversationService(app.state.db_pool)
+        app.state.conversation_service = ConversationService(db_pool)
         logger.info("✅ Conversation Service initialized")
 
         # Initialize Collective Memory Workflow

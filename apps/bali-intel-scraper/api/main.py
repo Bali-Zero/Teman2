@@ -22,6 +22,7 @@ from orchestrator import (
     run_stage1_scraping,
     run_stage2_generation,
     run_stage3_upload,
+    run_stage4_webhook,
 )
 
 # Configure logging
@@ -63,7 +64,16 @@ class ScrapeRequest(BaseModel):
     limit: int = 10
     generate_articles: bool = True
     upload_to_vector_db: bool = False
+    send_to_balizero: bool = True  # Send to BaliZero news feed
     max_articles: int = 100
+
+
+class WebhookRequest(BaseModel):
+    """Request to trigger webhook to BaliZero."""
+
+    categories: Optional[List[str]] = None
+    limit: int = 50
+    dry_run: bool = False
 
 
 class JobStatus(BaseModel):
@@ -151,6 +161,7 @@ async def trigger_scrape(request: ScrapeRequest, background_tasks: BackgroundTas
         request.limit,
         request.generate_articles,
         request.upload_to_vector_db,
+        request.send_to_balizero,
         request.max_articles,
     )
 
@@ -196,6 +207,7 @@ async def _run_scrape_job(
     limit: int,
     generate_articles: bool,
     upload_to_vector_db: bool,
+    send_to_balizero: bool,
     max_articles: int,
 ):
     """Run the scraping job in background."""
@@ -239,6 +251,17 @@ async def _run_scrape_job(
                 f"[{job_id}] Stage 3 complete: {upload_results.get('uploaded', 0)} documents"
             )
 
+        # Stage 4: Webhook to BaliZero
+        if send_to_balizero:
+            logger.info(f"[{job_id}] Starting Stage 4: Webhook to BaliZero")
+            jobs[job_id]["stage"] = "webhook"
+
+            webhook_results = run_stage4_webhook(categories=categories, limit=50)
+            results["webhook"] = webhook_results
+            logger.info(
+                f"[{job_id}] Stage 4 complete: {webhook_results.get('sent', 0)} items sent"
+            )
+
         # Success
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["completed_at"] = datetime.utcnow().isoformat()
@@ -250,6 +273,41 @@ async def _run_scrape_job(
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["completed_at"] = datetime.utcnow().isoformat()
         jobs[job_id]["error"] = str(e)
+
+
+# ============================================================================
+# WEBHOOK ENDPOINTS
+# ============================================================================
+
+
+@app.post("/api/v1/webhook/balizero")
+async def trigger_webhook(request: WebhookRequest):
+    """
+    Send scraped news to BaliZero website.
+
+    This sends raw scraped items to balizero.com/api/news for review and publication.
+    Items are sent with 'pending' status and need admin approval.
+    """
+    logger.info(f"Webhook triggered: categories={request.categories}, limit={request.limit}")
+
+    try:
+        result = run_stage4_webhook(
+            categories=request.categories,
+            limit=request.limit,
+            dry_run=request.dry_run
+        )
+
+        return {
+            "success": True,
+            "message": "Webhook completed",
+            "sent": result.get("sent", 0),
+            "failed": result.get("failed", 0),
+            "skipped": result.get("skipped", 0),
+            "dry_run": request.dry_run,
+        }
+    except Exception as e:
+        logger.error(f"Webhook failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================

@@ -92,14 +92,15 @@ export default function InsightsPage() {
             {/* Column 2: Main Headline - shifted right 2.5cm (~100px) */}
             <div className="lg:col-span-1 border-b lg:border-b-0 lg:border-r border-white/10 flex flex-col justify-center p-8 lg:p-12 lg:pl-28 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
               <div className="max-w-md">
-                <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
+                <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-4">
                   Decode Indonesia.{' '}
                   <span className="text-[#e85c41]">Thrive</span>{' '}
                   here.
                 </h1>
 
-                <p className="text-lg text-white/70 mb-8 leading-relaxed">
-                  Navigate Indonesia with confidence. Expert insights on visas, business setup, and building your life in Bali.
+                <p className="text-xl italic font-bold text-white tracking-wide mb-8">
+                  Legal, immigration & business intelligence for Indonesia.
+                  <span className="ml-2">Forged by Zantara AI.</span>
                 </p>
 
                 <a
@@ -131,13 +132,14 @@ export default function InsightsPage() {
                     }}
                   >
                     <article className="relative bg-[#0a2a3d] rounded-xl overflow-hidden border border-white/10 hover:border-white/20 transition-all shadow-lg hover:shadow-xl">
-                      {/* Image - no gradient/blur */}
+                      {/* Image - no gradient/blur, positioned to hide yellow text at bottom */}
                       <div className="aspect-[16/9] relative overflow-hidden">
                         <Image
                           src={article.coverImage}
                           alt={article.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          style={{ objectPosition: 'center 20%' }}
                         />
                       </div>
 
@@ -235,13 +237,14 @@ export default function InsightsPage() {
               <div key={article.id} className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
                 <Link href={`/${article.category}/${article.slug}`}>
                   <article className="group">
-                    {/* Image */}
+                    {/* Image - positioned to hide yellow text overlays */}
                     <div className="aspect-[16/10] relative overflow-hidden rounded-lg mb-5">
                       <Image
                         src={article.coverImage}
                         alt={article.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
+                        style={{ objectPosition: 'center 25%' }}
                       />
                       {article.aiGenerated && (
                         <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#2251ff] text-white text-xs font-medium">
@@ -476,12 +479,14 @@ function formatCategory(category: string): string {
     'tax-legal': 'Tax & Legal',
     'property': 'Property',
     'lifestyle': 'Lifestyle',
+    'tech': 'Tech & AI',
   };
   return categoryMap[category] || category.replace('-', ' & ');
 }
 
 // Topics for filter pills - each needs unique id for React keys
 const TOPICS = [
+  { id: 'ai-tech', name: 'AI & Tech', slug: 'tech' },
   { id: 'gci', name: 'GCI', slug: 'immigration' },
   { id: 'golden-visa', name: 'Golden Visa', slug: 'immigration' },
   { id: 'pt-pma', name: 'PT PMA', slug: 'business' },
@@ -542,6 +547,27 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     readingTime: 8,
     viewCount: 24150,
     featured: true,
+    trending: true,
+    aiGenerated: false,
+  },
+  {
+    id: '11',
+    slug: 'claude-opus-revolutionizes-ai',
+    title: "Claude 4.5 Opus: How Anthropic Just Redefined What AI Can Do",
+    excerpt: "Claude 4.5 Opus sets a new benchmark for AI. Extended thinking, deeper reasoning, and the first AI that truly understands nuance.",
+    coverImage: '/images/insights/tech/claude-opus-revolutionizes-ai.jpg',
+    category: 'tech',
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/images/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
+    publishedAt: new Date('2026-01-02'),
+    readingTime: 6,
+    viewCount: 18420,
+    featured: false,
     trending: true,
     aiGenerated: false,
   },
@@ -651,27 +677,6 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     aiGenerated: false,
   },
   {
-    id: '5',
-    slug: 'kerobokan-traffic-trial',
-    title: "Bali Takes Bold Action: The Kerobokan Kelod Traffic Trial",
-    excerpt: "With 2.8M tourists arriving for Christmas and New Year, Bali experiments with radical traffic changes. One-month trial in Kerobokan.",
-    coverImage: '/images/blog/kerobokan-traffic.jpg',
-    category: 'lifestyle',
-    author: {
-      id: 'editorial',
-      name: 'Bali Zero Editorial',
-      avatar: '/images/team/editorial.jpg',
-      role: 'Editorial',
-      isAI: false,
-    },
-    publishedAt: new Date('2026-01-01'),
-    readingTime: 4,
-    viewCount: 8920,
-    featured: false,
-    trending: false,
-    aiGenerated: false,
-  },
-  {
     id: '6',
     slug: 'north-bali-airport-2026',
     title: 'North Bali Airport 2026: Construction Finally Begins?',
@@ -733,5 +738,68 @@ const MOCK_ARTICLES: ArticleListItem[] = [
     featured: false,
     trending: false,
     aiGenerated: false,
+  },
+  {
+    id: '12',
+    slug: 'ai-agents-autonomous-era',
+    title: "The Rise of AI Agents: When Software Does Your Job (For Real)",
+    excerpt: "AI agents now book travel, manage emails, file permits, and run businesses. The autonomous revolution isn't coming — it's here.",
+    coverImage: '/images/insights/tech/ai-agents-autonomous-era.jpg',
+    category: 'tech',
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/images/zantara-lotus.png',
+      role: 'AI Research',
+      isAI: true,
+    },
+    publishedAt: new Date('2026-01-02'),
+    readingTime: 6,
+    viewCount: 3890,
+    featured: false,
+    trending: false,
+    aiGenerated: true,
+  },
+  {
+    id: '13',
+    slug: 'midjourney-v7-photorealism',
+    title: "Midjourney v7: Photorealism So Perfect It's Breaking Reality",
+    excerpt: "Midjourney v7's photorealism is so precise that professional photographers are pivoting to AI. The image industry will never be the same.",
+    coverImage: '/images/insights/tech/midjourney-v7-photorealism.jpg',
+    category: 'tech',
+    author: {
+      id: 'editorial',
+      name: 'Bali Zero Editorial',
+      avatar: '/images/team/editorial.jpg',
+      role: 'Editorial',
+      isAI: false,
+    },
+    publishedAt: new Date('2026-01-02'),
+    readingTime: 5,
+    viewCount: 4210,
+    featured: false,
+    trending: false,
+    aiGenerated: false,
+  },
+  {
+    id: '14',
+    slug: 'sora-video-generation',
+    title: "Sora Has Arrived: OpenAI's Video Generator Changes Everything",
+    excerpt: "Sora creates cinematic videos from text prompts. A drone shot over Bali, a product demo, a training video — all generated in minutes.",
+    coverImage: '/images/insights/tech/sora-video-generation.jpg',
+    category: 'tech',
+    author: {
+      id: 'zantara-ai',
+      name: 'Zantara AI',
+      avatar: '/images/zantara-lotus.png',
+      role: 'AI Research',
+      isAI: true,
+    },
+    publishedAt: new Date('2026-01-02'),
+    readingTime: 5,
+    viewCount: 6120,
+    featured: false,
+    trending: false,
+    aiGenerated: true,
   },
 ];

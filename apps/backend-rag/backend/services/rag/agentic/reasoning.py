@@ -23,9 +23,9 @@ from typing import Any
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
-from app.utils.tracing import trace_span, set_span_attribute, set_span_status, add_span_event
-from services.tools.definitions import AgentState, AgentStep
+from app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
 from services.llm_clients.pricing import TokenUsage
+from services.tools.definitions import AgentState, AgentStep
 
 from .response_processor import post_process_response
 from .tool_executor import execute_tool, parse_tool_call
@@ -114,7 +114,7 @@ def calculate_evidence_score(
             "who", "whom", "whose", "where", "when", "why", "how", "all", "each",
             "every", "both", "few", "more", "most", "other", "some", "such", "no",
             "nor", "not", "only", "own", "same", "so", "than", "too", "very",
-            "il", "la", "lo", "gli", "le", "un", "una", "uno", "di", "a", "da",
+            "il", "la", "lo", "gli", "le", "un", "una", "uno", "di", "da",
             "in", "con", "su", "per", "tra", "fra", "che", "chi", "cosa", "come",
             "dove", "quando", "perché", "quale", "quali",
         }
@@ -151,29 +151,29 @@ def _validate_context_quality(
     """
     if not context_items:
         return 0.0
-    
+
     # Check minimum items
     if len(context_items) < 1:
         return 0.0
-    
+
     # Simple heuristic: check if context contains query keywords
     query_keywords = set(query.lower().split())
     quality_scores = []
-    
+
     for item in context_items:
         item_lower = item.lower()
         matching_keywords = sum(1 for kw in query_keywords if kw in item_lower)
         relevance = matching_keywords / max(len(query_keywords), 1)
         quality_scores.append(relevance)
-    
+
     # Average quality
     avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
-    
+
     # Penalize if too few items
     item_count_penalty = min(len(context_items) / 5.0, 1.0)  # Prefer 5+ items
-    
+
     final_score = avg_quality * 0.7 + item_count_penalty * 0.3
-    
+
     return min(final_score, 1.0)
 
 
@@ -212,7 +212,7 @@ class ReasoningEngine:
         self.response_pipeline = response_pipeline
         self._min_context_quality_score = 0.3
         self._min_context_items = 1
-    
+
     def _validate_context_quality(
         self,
         query: str,
@@ -437,7 +437,7 @@ class ReasoningEngine:
                                 query=query,
                                 context_items=state.context_gathered,
                             )
-                            
+
                             if quality_score < self._min_context_quality_score:
                                 logger.warning(
                                     f"⚠️ Context quality too low ({quality_score:.2f} < {self._min_context_quality_score})",
@@ -452,10 +452,10 @@ class ReasoningEngine:
                                     reasoning_low_context_quality_total.inc()
                                 except ImportError:
                                     pass
-                                
+
                                 # Try to gather more context if not at max steps
                                 if state.current_step < state.max_steps:
-                                    logger.info(f"🔄 [Agent] Low quality context, continuing to gather more...")
+                                    logger.info("🔄 [Agent] Low quality context, continuing to gather more...")
                                     continue  # Try another tool
                                 else:
                                     # Last step - use what we have but warn
@@ -551,9 +551,9 @@ class ReasoningEngine:
                 "Posso aiutarti con altro?"
             )
         elif state.skip_rag and evidence_score < 0.3:
-            logger.info(f"🏷️ [General Task] Skipping evidence check (skip_rag=True)")
+            logger.info("🏷️ [General Task] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < 0.3:
-            logger.info(f"🧮 [Trusted Tool] Skipping evidence check (trusted_tools_used=True)")
+            logger.info("🧮 [Trusted Tool] Skipping evidence check (trusted_tools_used=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
         # Generate final answer if not present
@@ -955,9 +955,9 @@ Do not invent information. If the context is insufficient, admit it.
                 "Posso aiutarti con altro?"
             )
         elif state.skip_rag and evidence_score < 0.3:
-            logger.info(f"🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
+            logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < 0.3:
-            logger.info(f"🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)")
+            logger.info("🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)")
 
         # ==================== FINAL ANSWER GENERATION ====================
         if not state.final_answer and state.context_gathered:

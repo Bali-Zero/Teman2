@@ -6,7 +6,7 @@ Composer: 4
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -41,11 +41,11 @@ class TestIngestionCLI:
             mock_qdrant_instance = MagicMock()
             mock_qdrant_instance.upsert_documents = MagicMock(return_value={"success": True})
             mock_qdrant.return_value = mock_qdrant_instance
-            
+
             mock_embedder_instance = MagicMock()
             mock_embedder_instance.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
             mock_embedder.return_value = mock_embedder_instance
-            
+
             with patch("json.load", return_value=[{"name": "Test", "role": "Dev", "department": "Tech", "email": "test@test.com"}]):
                 result = await ingestion_cli.ingest_team_members()
                 # Should return dict with success or error
@@ -61,11 +61,11 @@ class TestIngestionCLI:
             mock_qdrant_instance = MagicMock()
             mock_qdrant_instance.upsert_points = MagicMock(return_value={"success": True})
             mock_qdrant.return_value = mock_qdrant_instance
-            
+
             mock_embedder_instance = MagicMock()
             mock_embedder_instance.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
             mock_embedder.return_value = mock_embedder_instance
-            
+
             with patch("json.load", return_value=[{"role": "user", "content": "test"}]):
                 result = await ingestion_cli.ingest_conversations(source="/path/to/data")
                 # Should return dict with success or error
@@ -78,7 +78,7 @@ class TestIngestionCLI:
              patch("builtins.open", create=True):
             with patch.object(ingestion_cli.legal_ingestion_service, 'ingest_legal_document') as mock_ingest:
                 mock_ingest.return_value = {"ingested": 1}
-                
+
                 result = await ingestion_cli.ingest_laws(file_path="/path/to/law.pdf")
                 assert result is not None
 
@@ -107,11 +107,11 @@ class TestIngestionCLI:
             mock_qdrant_instance = MagicMock()
             mock_qdrant_instance.upsert_points = MagicMock(return_value={"success": True})
             mock_qdrant.return_value = mock_qdrant_instance
-            
+
             mock_embedder_instance = MagicMock()
             mock_embedder_instance.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
             mock_embedder.return_value = mock_embedder_instance
-            
+
             with patch("json.load", return_value=[{"name": "Test", "role": "Dev", "department": "Tech", "email": "test@test.com", "bio": "Bio"}]):
                 result = await ingestion_cli.ingest_team_members(source="/custom/path.json")
                 assert isinstance(result, dict)
@@ -136,11 +136,11 @@ class TestIngestionCLI:
             mock_qdrant_instance = MagicMock()
             mock_qdrant_instance.upsert_points = MagicMock(return_value={"success": True})
             mock_qdrant.return_value = mock_qdrant_instance
-            
+
             mock_embedder_instance = MagicMock()
             mock_embedder_instance.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
             mock_embedder.return_value = mock_embedder_instance
-            
+
             with patch("json.load", return_value=[{"role": "user", "content": "test"}]):
                 result = await ingestion_cli.ingest_conversations(source="/path/to/dir")
                 assert isinstance(result, dict)
@@ -156,11 +156,11 @@ class TestIngestionCLI:
             mock_qdrant_instance = MagicMock()
             mock_qdrant_instance.upsert_points = MagicMock(return_value={"success": True})
             mock_qdrant.return_value = mock_qdrant_instance
-            
+
             mock_embedder_instance = MagicMock()
             mock_embedder_instance.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
             mock_embedder.return_value = mock_embedder_instance
-            
+
             with patch("json.load", return_value=[{"question": "Q", "answer": "A"}]):
                 result = await ingestion_cli.ingest_conversations(source="/path/to/file.json")
                 assert isinstance(result, dict)
@@ -176,12 +176,12 @@ class TestIngestionCLI:
     async def test_ingest_laws_directory(self, ingestion_cli):
         """Test ingesting laws from directory"""
         from pathlib import Path
-        
+
         with patch("pathlib.Path.exists", return_value=True), \
              patch("pathlib.Path.glob", return_value=[Path("law1.pdf"), Path("law2.txt")]), \
              patch.object(ingestion_cli.legal_ingestion_service, 'ingest_legal_document') as mock_ingest:
             mock_ingest.return_value = {"ingested": 1}
-            
+
             result = await ingestion_cli.ingest_laws(directory="/path/to/dir")
             assert result["success"] is True
             assert result["ingested"] > 0
@@ -190,12 +190,12 @@ class TestIngestionCLI:
     async def test_ingest_laws_directory_with_errors(self, ingestion_cli):
         """Test ingesting laws directory with some errors"""
         from pathlib import Path
-        
+
         with patch("pathlib.Path.exists", return_value=True), \
              patch("pathlib.Path.glob", return_value=[Path("law1.pdf"), Path("law2.pdf")]), \
              patch.object(ingestion_cli.legal_ingestion_service, 'ingest_legal_document') as mock_ingest:
             mock_ingest.side_effect = [{"ingested": 1}, Exception("Error")]
-            
+
             result = await ingestion_cli.ingest_laws(directory="/path/to/dir")
             assert result["ingested"] == 1
 
@@ -218,7 +218,7 @@ class TestIngestionCLI:
         """Test ingesting general document"""
         with patch.object(ingestion_cli.ingestion_service, 'ingest_book') as mock_ingest:
             mock_ingest.return_value = {"ingested": 1, "collection": "test_collection"}
-            
+
             result = await ingestion_cli.ingest_document(
                 file_path="/path/to/doc.pdf",
                 title="Test Doc",

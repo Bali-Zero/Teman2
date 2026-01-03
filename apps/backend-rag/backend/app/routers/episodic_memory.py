@@ -5,7 +5,6 @@ Endpoints for managing user timeline events and experiences
 
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -23,12 +22,12 @@ class AddEventRequest(BaseModel):
     """Request to add an event to user's timeline"""
 
     title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str | None = None
     event_type: str = Field(
         default="general"
     )  # milestone, problem, resolution, decision, meeting, deadline
     emotion: str = Field(default="neutral")  # positive, negative, neutral, urgent, frustrated
-    occurred_at: Optional[datetime] = None
+    occurred_at: datetime | None = None
     related_entities: list = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
 
@@ -37,7 +36,7 @@ class ExtractEventRequest(BaseModel):
     """Request to extract and save event from message"""
 
     message: str = Field(..., min_length=1)
-    ai_response: Optional[str] = None
+    ai_response: str | None = None
 
 
 @router.post("/events")
@@ -136,10 +135,10 @@ async def extract_and_save_event(
 
 @router.get("/timeline")
 async def get_timeline(
-    event_type: Optional[str] = None,
-    emotion: Optional[str] = None,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
+    event_type: str | None = None,
+    emotion: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
     limit: int = 20,
     current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_db_pool),

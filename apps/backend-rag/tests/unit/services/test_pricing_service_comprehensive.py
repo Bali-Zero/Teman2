@@ -26,7 +26,7 @@ class TestPricingService:
             "services": {
                 "single_entry_visas": {
                     "C1 Tourism": {"price": "1.5M IDR"},
-                    "B211A": {"price": "2M IDR", "legacy_names": ["B211A"]},
+                    "C1 Tourism 60 days": {"price": "2M IDR"},
                 },
                 "multiple_entry_visas": {
                     "D1 Multiple Entry": {"price_1y": "5M IDR", "price_2y": "8M IDR"},

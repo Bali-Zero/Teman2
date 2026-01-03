@@ -11,7 +11,6 @@ Enhances RAG retrieval by:
 import logging
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 import asyncpg
 

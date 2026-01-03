@@ -212,7 +212,7 @@
 │                              VECTOR SEARCH PIPELINE                                      │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 
-     QUERY: "How to get B211A visa?"
+     QUERY: "How to get E33G Digital Nomad visa?"
               │
               ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
@@ -554,11 +554,11 @@
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                         │
 │   {                                                                                     │
-│     "answer": "B211A visa adalah visa kunjungan tunggal...",                           │
+│     "answer": "E33G visa adalah visa untuk remote worker/digital nomad...",                           │
 │                                                                                         │
 │     "sources": [                                                                        │
 │       {                                                                                 │
-│         "title": "B211A Visa Requirements",                                            │
+│         "title": "E33G Digital Nomad Visa Requirements",                                            │
 │         "collection": "visa_oracle",                                                   │
 │         "relevance_score": 0.94                                                        │
 │       }                                                                                 │

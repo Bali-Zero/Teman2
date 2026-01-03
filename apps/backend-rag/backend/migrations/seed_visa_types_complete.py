@@ -6,10 +6,10 @@ Run: fly ssh console -a nuzantara-rag -C "python -m backend.migrations.seed_visa
 """
 
 import asyncio
-import asyncpg
-import os
 import json
-from datetime import datetime
+import os
+
+import asyncpg
 
 VISA_TYPES = [
     # ==========================================================================
