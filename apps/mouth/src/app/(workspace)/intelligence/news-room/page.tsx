@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Loader2, ExternalLink, Calendar, Globe, ArrowRight, RefreshCw } from "lucide-react";
+import { Loader2, ExternalLink, Calendar, RefreshCw, Sparkles, Flame } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 export default function NewsRoomPage() {
   const [items, setItems] = useState<StagingItem[]>([]);
@@ -14,15 +15,33 @@ export default function NewsRoomPage() {
   const toast = useToast();
 
   useEffect(() => {
+    logger.componentMount('NewsRoomPage');
     loadNews();
+
+    return () => {
+      logger.componentUnmount('NewsRoomPage');
+    };
   }, []);
 
   const loadNews = async () => {
+    logger.info('Loading news items', { component: 'NewsRoomPage', action: 'load_news' });
     setLoading(true);
     try {
       const res = await intelligenceApi.getPendingItems("news");
       setItems(res.items);
+      logger.info(`Loaded ${res.count} news items`, {
+        component: 'NewsRoomPage',
+        action: 'load_news_success',
+        metadata: {
+          count: res.count,
+          criticalCount: res.items.filter(i => i.is_critical).length,
+        },
+      });
     } catch (error) {
+      logger.error('Failed to load news items', {
+        component: 'NewsRoomPage',
+        action: 'load_news_error',
+      }, error as Error);
       toast.error("Error", "Failed to load news drafts");
     } finally {
       setLoading(false);
@@ -32,18 +51,25 @@ export default function NewsRoomPage() {
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">Gathering Global Intelligence...</p>
+        <Loader2 className="h-12 w-12 animate-spin text-[var(--accent)]" />
+        <p className="text-[var(--foreground-muted)] animate-pulse text-lg">
+          Gathering Global Intelligence...
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-end border-b pb-6">
+      {/* Header */}
+      <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
         <div className="space-y-1">
-          <h2 className="text-3xl font-bold tracking-tight">News Room</h2>
-          <p className="text-muted-foreground text-lg">Curate and publish intelligence reports.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
+            News Room
+          </h2>
+          <p className="text-[var(--foreground-muted)] text-lg">
+            Curate and publish intelligence reports
+          </p>
         </div>
         <Button onClick={loadNews} variant="secondary" size="sm" className="gap-2">
           <RefreshCw className="h-4 w-4" /> Sync Sources
@@ -51,60 +77,87 @@ export default function NewsRoomPage() {
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-32 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border-2 border-dashed">
-          <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-full mb-6">
-            <Globe className="h-12 w-12 text-slate-400" />
+        <div className="flex flex-col items-center justify-center py-32 bg-[var(--background-secondary)] rounded-2xl border-2 border-dashed border-[var(--border)]">
+          <div className="bg-[var(--accent)]/10 p-6 rounded-full mb-6">
+            <Sparkles className="h-12 w-12 text-[var(--accent)]" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">No Drafts Pending</h3>
-          <p className="text-muted-foreground max-w-md text-center">
-            The intelligence scraper hasn't flagged any new items for review. 
-            Check back later or run a manual scrape.
+          <h3 className="text-xl font-semibold mb-2 text-[var(--foreground)]">
+            No Drafts Pending
+          </h3>
+          <p className="text-[var(--foreground-muted)] max-w-md text-center">
+            The intelligence scraper hasn't flagged any new items for review. Check
+            back later or run a manual scrape.
           </p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <Card key={item.id} className="group flex flex-col h-full overflow-hidden hover:shadow-lg transition-all duration-300 border-t-4 border-t-transparent hover:border-t-primary">
-              <div className="h-40 bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
-                {/* Placeholder pattern since we don't have real images yet */}
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-900 opacity-50" />
+            <Card
+              key={item.id}
+              className="group flex flex-col h-full overflow-hidden hover:shadow-lg transition-all duration-300 border-t-4 border-t-transparent hover:border-t-[var(--accent)]"
+            >
+              {/* Header Image Placeholder */}
+              <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 opacity-50" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                   <span className="text-4xl">📰</span>
+                  <span className="text-5xl">📰</span>
                 </div>
+                {item.is_critical && (
+                  <div className="absolute top-3 right-3">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
+                      <Flame className="w-3 h-3" />
+                      CRITICAL
+                    </span>
+                  </div>
+                )}
                 <div className="absolute top-3 left-3">
-                   <span className={cn(
+                  <span
+                    className={cn(
                       "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide",
                       "bg-white/90 text-slate-900 shadow-sm backdrop-blur-sm"
-                    )}>
-                      {item.source || "Unknown Source"}
-                    </span>
+                    )}
+                  >
+                    {item.source || "Unknown Source"}
+                  </span>
                 </div>
               </div>
-              
+
               <CardContent className="flex-1 p-5 space-y-4">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-xs text-[var(--foreground-muted)]">
                     <Calendar className="h-3 w-3" />
-                    <span>{new Date(item.detected_at).toLocaleDateString()}</span>
+                    <span>
+                      {new Date(item.detected_at).toLocaleDateString()}
+                    </span>
                     <span>•</span>
-                    <span className="text-primary font-medium">{item.detection_type}</span>
+                    <span className="text-[var(--accent)] font-medium">
+                      {item.detection_type}
+                    </span>
                   </div>
-                  <h3 className="font-bold text-lg leading-snug group-hover:text-primary transition-colors line-clamp-3">
+                  <h3 className="font-bold text-lg leading-snug group-hover:text-[var(--accent)] transition-colors line-clamp-3 text-[var(--foreground)]">
                     {item.title}
                   </h3>
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {/* Summary would go here if available in list view */}
-                  Pending editorial review. Click to open the full editor and generated content.
+                <p className="text-sm text-[var(--foreground-muted)] line-clamp-3">
+                  Pending editorial review. Agent-detected immigration news awaiting
+                  approval.
                 </p>
               </CardContent>
-              
+
               <CardFooter className="p-5 pt-0 mt-auto">
                 <div className="flex gap-2 w-full">
-                  <Button className="flex-1 gap-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    Open Editor <ArrowRight className="h-4 w-4" />
+                  <Button
+                    className="flex-1 gap-2 group-hover:bg-[var(--accent)] group-hover:text-white transition-colors"
+                    size="sm"
+                  >
+                    Open Editor
                   </Button>
-                  <Button size="icon" variant="secondary" asChild title="View Source">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    asChild
+                    title="View Source"
+                  >
                     <a href={item.source} target="_blank" rel="noreferrer">
                       <ExternalLink className="h-4 w-4" />
                     </a>

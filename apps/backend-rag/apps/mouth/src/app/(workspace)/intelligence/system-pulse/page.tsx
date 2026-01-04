@@ -15,7 +15,6 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { logger } from "@/lib/logger";
 
 interface SystemMetrics {
   agent_status: "active" | "idle" | "error";
@@ -32,47 +31,24 @@ export default function SystemPulsePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    logger.componentMount('SystemPulsePage');
     loadMetrics();
-
-    return () => {
-      logger.componentUnmount('SystemPulsePage');
-    };
   }, []);
 
   const loadMetrics = async () => {
-    logger.info('Loading system metrics', { component: 'SystemPulsePage', action: 'load_metrics' });
     setLoading(true);
-
-    try {
-      const response = await fetch('/api/intel/metrics');
-      if (!response.ok) {
-        throw new Error(`Metrics API failed: ${response.statusText}`);
-      }
-
-      const metricsData: SystemMetrics = await response.json();
-      setMetrics(metricsData);
-
-      logger.info('System metrics loaded successfully', {
-        component: 'SystemPulsePage',
-        action: 'load_metrics_success',
-        metadata: {
-          agent_status: metricsData.agent_status,
-          qdrant_health: metricsData.qdrant_health,
-          items_processed: metricsData.items_processed_today,
-        },
+    // TODO: Replace with real API call when backend endpoint is ready
+    setTimeout(() => {
+      setMetrics({
+        agent_status: "active",
+        last_run: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 min ago
+        items_processed_today: 29,
+        avg_response_time_ms: 1250,
+        qdrant_health: "healthy",
+        next_scheduled_run: new Date(Date.now() + 1000 * 60 * 45).toISOString(), // 45 min from now
+        uptime_percentage: 99.8,
       });
-    } catch (error) {
-      logger.error('Failed to load system metrics', {
-        component: 'SystemPulsePage',
-        action: 'load_metrics_error',
-      }, error as Error);
-
-      // Set null to trigger error state
-      setMetrics(null);
-    } finally {
       setLoading(false);
-    }
+    }, 800);
   };
 
   if (loading) {
@@ -88,27 +64,44 @@ export default function SystemPulsePage() {
 
   if (!metrics) {
     return (
-      <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <AlertCircle className="h-12 w-12 text-red-500" />
-        <p className="text-[var(--foreground-muted)] text-lg">
+      <div className="flex flex-col items-center justify-center py-32">
+        <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+        <h3 className="text-xl font-semibold text-[var(--foreground)] mb-2">
           Metrics Unavailable
+        </h3>
+        <p className="text-[var(--foreground-muted)] mb-6">
+          Unable to load system health metrics
         </p>
-        <Button onClick={loadMetrics} variant="secondary">
+        <Button onClick={loadMetrics} variant="outline" className="gap-2">
+          <RefreshCw className="w-4 h-4" />
           Retry
         </Button>
       </div>
     );
   }
 
-  const formatTime = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+  const statusColor = {
+    active: "text-green-600",
+    idle: "text-amber-600",
+    error: "text-red-600",
+  }[metrics.agent_status];
+
+  const statusBgColor = {
+    active: "bg-green-100 border-green-200",
+    idle: "bg-amber-100 border-amber-200",
+    error: "bg-red-100 border-red-200",
+  }[metrics.agent_status];
+
+  const qdrantColor = {
+    healthy: "text-green-600",
+    degraded: "text-amber-600",
+    down: "text-red-600",
+  }[metrics.qdrant_health];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex justify-between items-end border-b border-[var(--border)] pb-6">
+      <div className="flex justify-between items-center pb-4 border-b border-[var(--border)]">
         <div className="space-y-1">
           <h2 className="text-3xl font-bold tracking-tight text-[var(--foreground)]">
             System Pulse
@@ -118,64 +111,77 @@ export default function SystemPulsePage() {
           </p>
         </div>
         <Button onClick={loadMetrics} variant="secondary" size="sm" className="gap-2">
-          <RefreshCw className="h-4 w-4" /> Refresh
+          <RefreshCw className="h-4 w-4" />
+          Refresh
         </Button>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Primary Metrics Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Agent Status */}
         <Card className="border-t-4 border-t-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Agent Status
             </CardTitle>
-            <Activity className="h-5 w-5 text-green-500" />
+            <Activity className={cn("h-5 w-5", statusColor)} />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-600">
-                <span className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></span>
-                ACTIVE
+            <div className="flex items-center gap-3">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold border shadow-sm",
+                  statusBgColor,
+                  statusColor
+                )}
+              >
+                <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
+                {metrics.agent_status.toUpperCase()}
               </span>
             </div>
-            <p className="mt-3 text-xs text-[var(--foreground-muted)]">
+            <p className="text-xs text-[var(--foreground-muted)] mt-3">
               Uptime: {metrics.uptime_percentage}%
             </p>
           </CardContent>
         </Card>
 
-        {/* Last Scan */}
+        {/* Last Run */}
         <Card className="border-t-4 border-t-blue-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Last Scan
             </CardTitle>
-            <Clock className="h-5 w-5 text-blue-500" />
+            <Clock className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--foreground)]">
-              {formatTime(metrics.last_run)}
+              {new Date(metrics.last_run).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </div>
-            <p className="mt-3 text-xs text-[var(--foreground-muted)]">
-              15 minutes ago
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              {new Date(metrics.last_run).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
             </p>
           </CardContent>
         </Card>
 
-        {/* Items Processed Today */}
+        {/* Items Processed */}
         <Card className="border-t-4 border-t-purple-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Items Processed Today
             </CardTitle>
-            <TrendingUp className="h-5 w-5 text-purple-500" />
+            <TrendingUp className="h-5 w-5 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--foreground)]">
               {metrics.items_processed_today}
             </div>
-            <p className="mt-3 text-xs text-[var(--foreground-muted)]">
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
               Visa pages analyzed
             </p>
           </CardContent>
@@ -187,13 +193,13 @@ export default function SystemPulsePage() {
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Avg Response Time
             </CardTitle>
-            <Zap className="h-5 w-5 text-amber-500" />
+            <Zap className="h-5 w-5 text-amber-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--foreground)]">
               {(metrics.avg_response_time_ms / 1000).toFixed(2)}s
             </div>
-            <p className="mt-3 text-xs text-[var(--foreground-muted)]">
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
               Per page analysis
             </p>
           </CardContent>
@@ -205,80 +211,78 @@ export default function SystemPulsePage() {
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Qdrant Health
             </CardTitle>
-            <Database className="h-5 w-5 text-green-500" />
+            <Database className={cn("h-5 w-5", qdrantColor)} />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="text-2xl font-bold text-green-600">
-                Healthy
+              {metrics.qdrant_health === "healthy" && (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              )}
+              {metrics.qdrant_health === "degraded" && (
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+              )}
+              {metrics.qdrant_health === "down" && (
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              )}
+              <span className={cn("text-lg font-bold", qdrantColor)}>
+                {metrics.qdrant_health.charAt(0).toUpperCase() +
+                  metrics.qdrant_health.slice(1)}
               </span>
             </div>
-            <p className="mt-3 text-xs text-[var(--foreground-muted)]">
-              All collections operational
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
+              Vector database status
             </p>
           </CardContent>
         </Card>
 
         {/* Next Scheduled Run */}
-        <Card className="border-t-4 border-t-blue-500">
+        <Card className="border-t-4 border-t-slate-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Next Scheduled Run
             </CardTitle>
-            <Clock className="h-5 w-5 text-blue-500" />
+            <Clock className="h-5 w-5 text-slate-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--foreground)]">
-              {formatTime(metrics.next_scheduled_run)}
+              {new Date(metrics.next_scheduled_run).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </div>
-            <p className="mt-3 text-xs text-[var(--foreground-muted)]">
+            <p className="text-xs text-[var(--foreground-muted)] mt-1">
               Every 2 hours
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Agent Configuration */}
-      <Card>
+      {/* Agent Configuration Info */}
+      <Card className="bg-[var(--background-secondary)] border-[var(--border)]">
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-[var(--foreground)]">
+          <CardTitle className="text-lg text-[var(--foreground)]">
             Agent Configuration
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-[var(--foreground-muted)]">
-                LLM Provider
-              </p>
-              <p className="text-base font-semibold text-[var(--foreground)]">
-                Gemini 2.0 Flash (Vision)
-              </p>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="space-y-1">
+              <p className="text-[var(--foreground-muted)] font-medium">Model</p>
+              <p className="text-[var(--foreground)]">Gemini 2.0 Flash (Vision)</p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-[var(--foreground-muted)]">
-                Browser Engine
-              </p>
-              <p className="text-base font-semibold text-[var(--foreground)]">
-                Playwright Webkit
-              </p>
+            <div className="space-y-1">
+              <p className="text-[var(--foreground-muted)] font-medium">Browser</p>
+              <p className="text-[var(--foreground)]">Playwright Webkit</p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-[var(--foreground-muted)]">
-                Target URL
-              </p>
-              <p className="text-base font-semibold text-[var(--foreground)]">
+            <div className="space-y-1">
+              <p className="text-[var(--foreground-muted)] font-medium">Target URL</p>
+              <p className="text-[var(--foreground)] text-xs font-mono">
                 imigrasi.go.id/wna/permohonan-visa
               </p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-[var(--foreground-muted)]">
-                Change Detection
-              </p>
-              <p className="text-base font-semibold text-[var(--foreground)]">
-                MD5 Hash + Vision Analysis
-              </p>
+            <div className="space-y-1">
+              <p className="text-[var(--foreground-muted)] font-medium">Detection Mode</p>
+              <p className="text-[var(--foreground)]">MD5 Hash + Vision Analysis</p>
             </div>
           </div>
         </CardContent>

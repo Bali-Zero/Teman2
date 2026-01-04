@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppSidebar } from '@/components/workspace/AppSidebar';
 import { Header } from '@/components/workspace/Header';
+import { ToastProvider } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { useTeamStatus } from '@/hooks/useTeamStatus';
 
@@ -160,52 +161,54 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#2a2a2a]">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block">
-        <AppSidebar
-          user={user}
-          unreadWhatsApp={0}
-          onLogout={handleLogout}
-        />
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {isMobileMenuOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={() => setIsMobileMenuOpen(false)}
+    <ToastProvider>
+      <div className="min-h-screen bg-[#2a2a2a]">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:block">
+          <AppSidebar
+            user={user}
+            unreadWhatsApp={0}
+            onLogout={handleLogout}
           />
-          <div className="fixed inset-y-0 left-0 z-50 md:hidden">
-            <AppSidebar
-              user={user}
-              unreadWhatsApp={0}
-              onLogout={handleLogout}
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        {isMobileMenuOpen && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
             />
-          </div>
-        </>
-      )}
+            <div className="fixed inset-y-0 left-0 z-50 md:hidden">
+              <AppSidebar
+                user={user}
+                unreadWhatsApp={0}
+                onLogout={handleLogout}
+              />
+            </div>
+          </>
+        )}
 
-      {/* Main Content */}
-      <div className="md:ml-60 min-h-screen flex flex-col">
-        {/* Header */}
-        <Header
-          userName={user.name}
-          isClockIn={isClockIn}
-          isClockLoading={isClockLoading}
-          onToggleClock={toggleClock}
-          onMobileMenuToggle={handleMobileMenuToggle}
-          isMobileMenuOpen={isMobileMenuOpen}
-          notificationCount={0}
-          whatsappUnread={0}
-        />
+        {/* Main Content */}
+        <div className="md:ml-60 min-h-screen flex flex-col">
+          {/* Header */}
+          <Header
+            userName={user.name}
+            isClockIn={isClockIn}
+            isClockLoading={isClockLoading}
+            onToggleClock={toggleClock}
+            onMobileMenuToggle={handleMobileMenuToggle}
+            isMobileMenuOpen={isMobileMenuOpen}
+            notificationCount={0}
+            whatsappUnread={0}
+          />
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
-          {children}
-        </main>
+          {/* Page Content */}
+          <main className="flex-1 p-4 md:p-6 lg:p-8">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

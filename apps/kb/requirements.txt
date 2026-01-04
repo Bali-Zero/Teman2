@@ -1,5 +1,20 @@
-# Peraturan.go.id Spider Dependencies
+# KB Tools Dependencies
+
+# Web Automation (shared by all spiders)
 playwright==1.40.0
+
+# HTTP Clients
 aiohttp==3.9.1
+httpx>=0.25.0
+
+# Utilities
 fake-useragent==1.4.0
 loguru==0.7.2
+python-dotenv>=1.0.0
+
+# Google Gemini AI (for IntelligentVisaAgent)
+google-genai>=0.2.0
+
+# Installation:
+# pip install -r requirements.txt
+# playwright install webkit

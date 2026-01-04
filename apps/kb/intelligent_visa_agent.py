@@ -2,6 +2,7 @@ import os
 import asyncio
 import json
 import hashlib
+import httpx
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import urljoin
@@ -22,6 +23,10 @@ SITES = {
     "kemnaker_tka": "https://tka-online.kemnaker.go.id",
 }
 
+# Base URLs
+VISA_URL = "https://www.imigrasi.go.id/wna/permohonan-visa-republik-indonesia"
+BACKEND_API_URL = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
+
 EMAILS = {
     "to": ["ari.firda@balizero.com", "sahira@balizero.com"],
     "cc": ["zero@balizero.com"],
@@ -31,10 +36,15 @@ EMAILS = {
 BASE_DIR = Path(__file__).parent.absolute()
 CONFIG_DIR = BASE_DIR / "config"
 DATA_DIR = BASE_DIR / "data" / "immigration"
+OUTPUT_DIR = DATA_DIR  # Raw scraped visa files
+STAGING_DIR = Path("data/staging")  # Staging for backend approval
 MAP_FILE = CONFIG_DIR / "immigration_site_map.json"
 
 CONFIG_DIR.mkdir(exist_ok=True)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+STAGING_DIR.mkdir(parents=True, exist_ok=True)
+(STAGING_DIR / "visa").mkdir(exist_ok=True)
+(STAGING_DIR / "news").mkdir(exist_ok=True)
 
 
 class SiteMapper:
@@ -70,28 +80,76 @@ class SiteMapper:
         return is_changed, old_hash
 
 
-class EmailReporter:
+class BackendReporter:
+    """Save discoveries to backend staging directory for human approval."""
+
     def __init__(self):
-        self.report_items = []
+        self.visa_items = []
+        self.news_items = []
 
-    def add_item(self, site, title, details, is_alert=False):
-        icon = "🚨" if is_alert else "ℹ️"
-        self.report_items.append(f"{icon} **[{site.upper()}]** {title}\n{details}\n")
+    def add_visa_change(self, title, url, content, detection_type="NEW"):
+        """Add a visa change for staging approval."""
+        item_id = hashlib.md5(url.encode()).hexdigest()[:12]
+        self.visa_items.append({
+            "id": item_id,
+            "type": "visa",
+            "title": title,
+            "url": url,
+            "content": content,
+            "status": "pending",
+            "detected_at": datetime.now().isoformat(),
+            "detection_type": detection_type,  # NEW or UPDATED
+            "source": "intelligent_visa_agent"
+        })
 
-    def send(self):
-        if not self.report_items:
-            logger.info("No report items to send.")
-            return
+    def add_news_item(self, title, summary, is_critical=False):
+        """Add a news item for staging approval."""
+        item_id = hashlib.md5(f"{title}{datetime.now()}".encode()).hexdigest()[:12]
+        self.news_items.append({
+            "id": item_id,
+            "type": "news",
+            "title": title,
+            "content": summary,
+            "status": "pending",
+            "detected_at": datetime.now().isoformat(),
+            "detection_type": "NEW",
+            "source": "imigrasi_news",
+            "is_critical": is_critical
+        })
 
-        body = "<h2>Bali Zero Immigration & Labor Daily Intel</h2><hr>"
-        body += "<br><br>".join([i.replace("\n", "<br>") for i in self.report_items])
-        body += f"<br><hr><small>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</small>"
+    async def save_to_staging(self):
+        """Save all items to staging directory (backend will pick them up)."""
+        saved_count = 0
 
-        logger.info(f"📧 EMAIL REPORT PREPARED for {EMAILS['to']} (CC: {EMAILS['cc']})")
-        logger.info("--- CONTENT ---")
-        logger.info(body)
-        logger.info("--- END ---")
-        # TODO: Implement actual SMTP sending here using os.getenv("SMTP_...")
+        # Save visa items
+        for item in self.visa_items:
+            staging_file = STAGING_DIR / "visa" / f"{item['id']}.json"
+            try:
+                with open(staging_file, "w", encoding="utf-8") as f:
+                    json.dump(item, f, indent=2, ensure_ascii=False)
+                logger.info(f"✅ Saved to staging: {item['title']}")
+                saved_count += 1
+            except Exception as e:
+                logger.error(f"Failed to save {item['id']}: {e}")
+
+        # Save news items
+        for item in self.news_items:
+            staging_file = STAGING_DIR / "news" / f"{item['id']}.json"
+            try:
+                with open(staging_file, "w", encoding="utf-8") as f:
+                    json.dump(item, f, indent=2, ensure_ascii=False)
+                logger.info(f"✅ Saved to staging: {item['title']}")
+                saved_count += 1
+            except Exception as e:
+                logger.error(f"Failed to save {item['id']}: {e}")
+
+        if saved_count > 0:
+            logger.info(f"📦 Total items saved to staging: {saved_count}")
+            logger.info("👁️ Review at: https://zantara.balizero.com/intelligence/visa-oracle")
+        else:
+            logger.info("ℹ️ No new changes detected.")
+
+        return saved_count
 
 
 class IntelligentVisaAgent:
@@ -101,7 +159,7 @@ class IntelligentVisaAgent:
         self.client = genai.Client(api_key=self.api_key)
         self.model_id = "gemini-2.0-flash"
         self.mapper = SiteMapper()
-        self.reporter = EmailReporter()
+        self.reporter = BackendReporter()
 
     def _calculate_hash(self, text):
         return hashlib.md5(text.encode("utf-8")).hexdigest()
@@ -199,11 +257,20 @@ class IntelligentVisaAgent:
                 ],
             )
             text = response.text.replace("```json", "").replace("```", "").strip()
-            result = json.loads(text)
+
+            # Safe JSON parsing with error handling
+            try:
+                result = json.loads(text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON from banner scan: {e}")
+                logger.debug(f"Raw response: {text}")
+                return False
 
             if result.get("found"):
-                self.reporter.add_item(
-                    site_name, result["title"], result["summary"], is_alert=True
+                self.reporter.add_news_item(
+                    title=f"[{site_name.upper()}] {result['title']}",
+                    summary=result["summary"],
+                    is_critical=True
                 )
                 return True
             return False
@@ -244,7 +311,15 @@ class IntelligentVisaAgent:
             )
 
             raw_text = response.text.replace("```json", "").replace("```", "").strip()
-            labels = json.loads(raw_text)
+
+            # Safe JSON parsing with error handling
+            try:
+                labels = json.loads(raw_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON from Gemini visa labels: {e}")
+                logger.debug(f"Raw response: {raw_text}")
+                return await self._fallback_link_extraction(page)
+
             logger.info(f"🔍 Gemini identified {len(labels)} visa labels.")
 
             urls = []
@@ -304,13 +379,23 @@ class IntelligentVisaAgent:
             )
 
             text = response.text.replace("```json", "").replace("```", "").strip()
-            news_items = json.loads(text)
+
+            # Safe JSON parsing with error handling
+            try:
+                news_items = json.loads(text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON from news scan: {e}")
+                logger.debug(f"Raw response: {text}")
+                return
 
             for item in news_items:
-                if item.get("is_critical"):
-                    self.reporter.add_item(
-                        "IMIGRASI NEWS", item["title"], item["summary"], is_alert=True
-                    )
+                is_critical = item.get("is_critical", False)
+                self.reporter.add_news_item(
+                    title=item["title"],
+                    summary=item["summary"],
+                    is_critical=is_critical
+                )
+                if is_critical:
                     logger.info(f"🚨 Found critical news: {item['title']}")
 
         except Exception as e:
@@ -355,22 +440,27 @@ class IntelligentVisaAgent:
                     if status in ["NEW", "UPDATED"]:
                         await self.scrape_page(page, link)
                         title = link.split("/")[-1].replace("-", " ").title()
+
+                        # Get content for staging
+                        slug = link.split("/")[-1].split("?")[0]
+                        content_file = OUTPUT_DIR / f"visa_{slug}.txt"
+                        content = ""
+                        if content_file.exists():
+                            content = content_file.read_text(encoding="utf-8")
+
+                        # Add to staging with proper detection type
+                        self.reporter.add_visa_change(
+                            title=f"{'🆕 NEW' if status == 'NEW' else '📝 UPDATED'} VISA: {title}",
+                            url=link,
+                            content=content,
+                            detection_type=status
+                        )
+
                         if status == "NEW":
-                            self.reporter.add_item(
-                                "IMIGRASI",
-                                f"🆕 NEW VISA: {title}",
-                                f"Link: {link}",
-                                is_alert=True,
-                            )
                             new_items += 1
                         else:
-                            self.reporter.add_item(
-                                "IMIGRASI",
-                                f"📝 UPDATED VISA: {title}",
-                                f"Content changed.\nLink: {link}",
-                                is_alert=False,
-                            )
                             updated_items += 1
+
                         await asyncio.sleep(1)
 
                 logger.info(
@@ -404,7 +494,8 @@ class IntelligentVisaAgent:
 
             await browser.close()
 
-        self.reporter.send()
+        # Save all discoveries to staging directory
+        await self.reporter.save_to_staging()
         logger.info("🏁 Daily Intel Run Complete.")
 
 

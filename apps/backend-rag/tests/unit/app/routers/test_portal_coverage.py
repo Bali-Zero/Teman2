@@ -375,3 +375,261 @@ def test_profile(monkeypatch):
     client_missing = _make_client(module, client_override={"client_id": 1}, pool=pool_missing)
     response = client_missing.get("/api/portal/profile")
     assert response.status_code == 404
+
+
+def test_dashboard_error(monkeypatch):
+    """Test dashboard exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_dashboard(self, _client_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/dashboard")
+    assert response.status_code == 500
+
+
+def test_visa_status_success(monkeypatch):
+    """Test get visa status"""
+    module = _load_module(monkeypatch)
+    client = _make_client(
+        module, client_override={"client_id": 1}, portal_service=_PortalService(None)
+    )
+    response = client.get("/api/portal/visa")
+    assert response.status_code == 200
+    assert response.json()["data"]["visa"] is True
+
+
+def test_visa_status_error(monkeypatch):
+    """Test visa status exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_visa_status(self, _client_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/visa")
+    assert response.status_code == 500
+
+
+def test_companies_success(monkeypatch):
+    """Test get companies"""
+    module = _load_module(monkeypatch)
+    client = _make_client(
+        module, client_override={"client_id": 1}, portal_service=_PortalService(None)
+    )
+    response = client.get("/api/portal/companies")
+    assert response.status_code == 200
+    assert isinstance(response.json()["data"], list)
+
+
+def test_companies_error(monkeypatch):
+    """Test companies exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_companies(self, _client_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/companies")
+    assert response.status_code == 500
+
+
+def test_company_detail_error(monkeypatch):
+    """Test company detail exception handler (non-HTTPException)"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_company_detail(self, _client_id, _company_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/company/1")
+    assert response.status_code == 500
+
+
+def test_set_primary_company_error(monkeypatch):
+    """Test set primary company exception handler (non-ValueError)"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def set_primary_company(self, _client_id, _company_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.post("/api/portal/company/1/select")
+    assert response.status_code == 500
+
+
+def test_get_tax_overview_success(monkeypatch):
+    """Test get tax overview"""
+    module = _load_module(monkeypatch)
+    client = _make_client(
+        module, client_override={"client_id": 1}, portal_service=_PortalService(None)
+    )
+    response = client.get("/api/portal/taxes")
+    assert response.status_code == 200
+    assert response.json()["data"]["tax"] is True
+
+
+def test_get_tax_overview_error(monkeypatch):
+    """Test tax overview exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_tax_overview(self, _client_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/taxes")
+    assert response.status_code == 500
+
+
+def test_get_documents_success(monkeypatch):
+    """Test get documents"""
+    module = _load_module(monkeypatch)
+    client = _make_client(
+        module, client_override={"client_id": 1}, portal_service=_PortalService(None)
+    )
+    response = client.get("/api/portal/documents")
+    assert response.status_code == 200
+    assert isinstance(response.json()["data"], list)
+
+
+def test_get_documents_with_filter(monkeypatch):
+    """Test get documents with document_type filter"""
+    module = _load_module(monkeypatch)
+    client = _make_client(
+        module, client_override={"client_id": 1}, portal_service=_PortalService(None)
+    )
+    response = client.get("/api/portal/documents?document_type=passport")
+    assert response.status_code == 200
+
+
+def test_get_documents_error(monkeypatch):
+    """Test documents exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_documents(self, _client_id, document_type=None):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/documents")
+    assert response.status_code == 500
+
+
+def test_upload_document_error(monkeypatch):
+    """Test upload document exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def upload_document(self, **_kwargs):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.post(
+        "/api/portal/documents/upload",
+        files={"file": ("doc.pdf", b"data", "application/pdf")},
+        data={"document_type": "passport"},
+    )
+    assert response.status_code == 500
+
+
+def test_get_messages_error(monkeypatch):
+    """Test get messages exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_messages(self, _client_id, limit, offset):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/messages")
+    assert response.status_code == 500
+
+
+def test_send_message_error(monkeypatch):
+    """Test send message exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def send_message(self, **_kwargs):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.post("/api/portal/messages", json={"content": "hi"})
+    assert response.status_code == 500
+
+
+def test_mark_message_read_error(monkeypatch):
+    """Test mark message read exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def mark_message_read(self, _client_id, _message_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.post("/api/portal/messages/1/read")
+    assert response.status_code == 500
+
+
+def test_get_preferences_error(monkeypatch):
+    """Test get preferences exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def get_preferences(self, _client_id):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.get("/api/portal/settings")
+    assert response.status_code == 500
+
+
+def test_update_preferences_with_updates(monkeypatch):
+    """Test update preferences with actual updates"""
+    module = _load_module(monkeypatch)
+    client = _make_client(
+        module, client_override={"client_id": 1}, portal_service=_PortalService(None)
+    )
+    response = client.patch(
+        "/api/portal/settings", json={"email_notifications": True, "language": "en"}
+    )
+    assert response.status_code == 200
+
+
+def test_update_preferences_error(monkeypatch):
+    """Test update preferences exception handler"""
+    module = _load_module(monkeypatch)
+
+    class _Service(_PortalService):
+        async def update_preferences(self, _client_id, _updates):
+            raise Exception("Service error")
+
+    client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
+    response = client.patch(
+        "/api/portal/settings", json={"email_notifications": True}
+    )
+    assert response.status_code == 500
+
+
+def test_get_profile_error(monkeypatch):
+    """Test get profile exception handler (non-HTTPException)"""
+    module = _load_module(monkeypatch)
+
+    class _ErrorConn:
+        async def fetchrow(self, _query, *_args):
+            raise Exception("DB error")
+
+    class _ErrorPool:
+        def acquire(self):
+            return _AcquireCtx(_ErrorConn())
+
+    client = _make_client(module, client_override={"client_id": 1}, pool=_ErrorPool())
+    response = client.get("/api/portal/profile")
+    assert response.status_code == 500

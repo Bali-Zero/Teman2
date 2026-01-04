@@ -222,3 +222,27 @@ def test_get_stats():
     router = IntelligentRouter()
     stats = router.get_stats()
     assert stats["router"] == "agentic_rag_wrapper"
+
+
+@pytest.mark.asyncio
+async def test_route_chat_with_object_no_attributes():
+    """Test route_chat when result is object without attributes (covers line 109: return default)"""
+    # Create an object that is not a dict and doesn't have the attributes
+    result = object()  # Plain object with no attributes
+    orchestrator = DummyOrchestrator(result=result)
+    suggestion_service = DummyContextSuggestionService()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(module, "create_agentic_rag", lambda **_kw: orchestrator)
+        mp.setattr(
+            module, "get_context_suggestion_service", lambda db_pool=None: suggestion_service
+        )
+        router = IntelligentRouter()
+        response = await router.route_chat("hi", "user", conversation_history=[])
+
+    # get_val should return default values when object has no attributes
+    assert response["response"] == ""  # default from get_val(result, "answer", "")
+    assert response["sources"] == []  # default from get_val(result, "sources", [])
+    # routing_stats is only included if it's not None
+    if "routing_stats" in response:
+        assert response["routing_stats"] is None

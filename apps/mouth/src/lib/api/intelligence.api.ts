@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 export interface StagingItem {
   id: string;
@@ -9,30 +10,127 @@ export interface StagingItem {
   source: string;
   detection_type: "NEW" | "UPDATED";
   content?: string;
+  is_critical?: boolean;
+}
+
+export interface StagingResponse {
+  items: StagingItem[];
+  count: number;
+}
+
+export interface ApproveResponse {
+  success: boolean;
+  message: string;
+  id: string;
 }
 
 export const intelligenceApi = {
-  getPendingItems: async (type: "all" | "visa" | "news" = "all") => {
-    return api.request<{ items: StagingItem[]; count: number }>(
-      `/api/intel/staging/pending?type=${type}`
-    );
+  /**
+   * Get pending items from staging
+   */
+  getPendingItems: async (type: "all" | "visa" | "news" = "all"): Promise<StagingResponse> => {
+    const endpoint = `/api/intel/staging/pending?type=${type}`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'GET', { itemType: type === 'all' ? undefined : type });
+
+    try {
+      const response = await api.request<StagingResponse>(endpoint);
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        itemType: type === 'all' ? undefined : type,
+        metadata: { count: response.count },
+      });
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { itemType: type === 'all' ? undefined : type });
+      throw error;
+    }
   },
 
-  getPreview: async (type: "visa" | "news", id: string) => {
-    return api.request<StagingItem>(`/api/intel/staging/preview/${type}/${id}`);
+  /**
+   * Get preview of staging item (full content)
+   */
+  getPreview: async (type: "visa" | "news", id: string): Promise<StagingItem> => {
+    const endpoint = `/api/intel/staging/preview/${type}/${id}`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'GET', { itemType: type, itemId: id });
+
+    try {
+      const response = await api.request<StagingItem>(endpoint);
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        itemType: type,
+        itemId: id,
+        metadata: { title: response.title },
+      });
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id });
+      throw error;
+    }
   },
 
-  approveItem: async (type: "visa" | "news", id: string) => {
-    return api.request<{ success: boolean; id: string }>(
-      `/api/intel/staging/approve/${type}/${id}`,
-      { method: "POST" }
-    );
+  /**
+   * Approve item and ingest to Qdrant
+   */
+  approveItem: async (type: "visa" | "news", id: string): Promise<ApproveResponse> => {
+    const endpoint = `/api/intel/staging/approve/${type}/${id}`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'approve' });
+
+    try {
+      const response = await api.request<ApproveResponse>(endpoint, { method: "POST" });
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        itemType: type,
+        itemId: id,
+        action: 'approve',
+        metadata: { success: response.success },
+      });
+
+      logger.userAction('approve_item', type, id);
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'approve' });
+      throw error;
+    }
   },
 
-  rejectItem: async (type: "visa" | "news", id: string) => {
-    return api.request<{ success: boolean; id: string }>(
-      `/api/intel/staging/reject/${type}/${id}`,
-      { method: "POST" }
-    );
+  /**
+   * Reject item and archive
+   */
+  rejectItem: async (type: "visa" | "news", id: string): Promise<ApproveResponse> => {
+    const endpoint = `/api/intel/staging/reject/${type}/${id}`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'reject' });
+
+    try {
+      const response = await api.request<ApproveResponse>(endpoint, { method: "POST" });
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        itemType: type,
+        itemId: id,
+        action: 'reject',
+        metadata: { success: response.success },
+      });
+
+      logger.userAction('reject_item', type, id);
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'reject' });
+      throw error;
+    }
   },
 };
