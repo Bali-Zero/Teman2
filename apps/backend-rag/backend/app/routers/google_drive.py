@@ -309,7 +309,7 @@ async def list_files(
     """
     service = GoogleDriveService(db_pool)
 
-    if not await service.is_connected(current_user["id"]):
+    if not await service.is_connected("SYSTEM"):
         raise HTTPException(
             status_code=401,
             detail="Google Drive not connected. Please connect first.",
@@ -317,7 +317,7 @@ async def list_files(
 
     try:
         result = await service.list_files(
-            user_id=current_user["id"],
+            user_id="SYSTEM",
             folder_id=folder_id,
             page_token=page_token,
             page_size=page_size,
@@ -365,11 +365,11 @@ async def get_file(
     """
     service = GoogleDriveService(db_pool)
 
-    if not await service.is_connected(current_user["id"]):
+    if not await service.is_connected("SYSTEM"):
         raise HTTPException(status_code=401, detail="Google Drive not connected")
 
     try:
-        f = await service.get_file(current_user["id"], file_id)
+        f = await service.get_file("SYSTEM", file_id)
 
         return FileItem(
             id=f["id"],
@@ -399,11 +399,11 @@ async def search_files(
     """
     service = GoogleDriveService(db_pool)
 
-    if not await service.is_connected(current_user["id"]):
+    if not await service.is_connected("SYSTEM"):
         raise HTTPException(status_code=401, detail="Google Drive not connected")
 
     files = await service.search_files(
-        user_id=current_user["id"],
+        user_id="SYSTEM",
         query=q,
         page_size=page_size,
     )
@@ -435,11 +435,11 @@ async def get_my_folder(
     """
     service = GoogleDriveService(db_pool)
 
-    if not await service.is_connected(current_user["id"]):
+    if not await service.is_connected("SYSTEM"):
         raise HTTPException(status_code=401, detail="Google Drive not connected")
 
     folder = await service.get_user_folder(
-        user_id=current_user["id"],
+        user_id="SYSTEM",
         user_email=current_user["email"],
     )
 
