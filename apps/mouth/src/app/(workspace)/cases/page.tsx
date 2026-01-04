@@ -97,13 +97,6 @@ export default function PratichePage() {
     trackViewModeChange(viewMode);
   }, [viewMode]);
 
-  // Track search operations
-  useEffect(() => {
-    if (searchQuery) {
-      trackSearch(searchQuery, filteredPractices.length);
-    }
-  }, [searchQuery, filteredPractices.length]);
-
   // Track filter changes
   useEffect(() => {
     const previousFilters = useRef<typeof filters>(filters);
@@ -285,6 +278,13 @@ export default function PratichePage() {
     in_progress: filteredPractices.filter((p) => getStatusColumn(p.status) === 'in_progress'),
     completed: filteredPractices.filter((p) => getStatusColumn(p.status) === 'completed'),
   }), [filteredPractices]);
+
+  // Track search operations (moved after filteredPractices declaration)
+  useEffect(() => {
+    if (searchQuery) {
+      trackSearch(searchQuery, filteredPractices.length);
+    }
+  }, [searchQuery, filteredPractices.length]);
 
   // Pagination for list view
   const paginatedPractices = useMemo(() => {
