@@ -36,6 +36,7 @@ export const navigation: NavSection[] = [
   {
     items: [
       { title: 'Dashboard', href: '/dashboard', icon: 'Home' },
+      { title: 'Intelligence Center', href: '/intelligence', icon: 'Activity' },
       { title: 'Zantara AI', href: '/chat', icon: 'MessageSquare' },
       { title: 'WhatsApp', href: '/whatsapp', icon: 'MessageCircle' },
       { title: 'Email', href: '/email', icon: 'Mail' },
@@ -68,6 +69,10 @@ export const navigation: NavSection[] = [
 // Route titles for breadcrumbs and page titles
 export const routeTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
+  '/intelligence': 'Intelligence Center',
+  '/intelligence/visa-oracle': 'Visa Oracle',
+  '/intelligence/news-room': 'News Room',
+  '/intelligence/system-pulse': 'System Pulse',
   '/chat': 'Zantara AI',
   '/whatsapp': 'WhatsApp',
   '/email': 'Email',

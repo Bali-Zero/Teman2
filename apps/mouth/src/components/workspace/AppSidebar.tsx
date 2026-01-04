@@ -43,6 +43,7 @@ const iconMap: Record<string, React.ElementType> = {
 // cssClass: for inactive state with hover, activeColor: for active state
 const navColors: Record<string, { cssClass: string; activeColor: string }> = {
   '/dashboard': { cssClass: 'nav-icon-blue', activeColor: '#60A5FA' },
+  '/intelligence': { cssClass: 'nav-icon-orange', activeColor: '#FB923C' },
   '/chat': { cssClass: 'nav-icon-purple', activeColor: '#A78BFA' },
   '/whatsapp': { cssClass: 'nav-icon-emerald', activeColor: '#34D399' },
   '/email': { cssClass: 'nav-icon-sky', activeColor: '#38BDF8' },
