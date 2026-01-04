@@ -86,11 +86,29 @@ export default function NewClientPage() {
       await api.crm.createClient(cleanData, user.email);
       router.push('/clients');
     } catch (error) {
-      console.error('Failed to create client', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const detail = (error as any).detail;
-      alert(`Failed to create client: ${detail || message}`);
+      console.error('Failed to create client:', error);
+
+      // Extract error message from various error formats
+      let errorMessage = 'Failed to create client';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        // Check if message contains JSON (from API response)
+        if (error.message.includes('{"')) {
+          try {
+            const parsed = JSON.parse(error.message);
+            errorMessage = parsed.detail || parsed.message || error.message;
+          } catch {
+            // Not JSON, use message as-is
+          }
+        }
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle object errors (shouldn't happen but be defensive)
+        const errObj = error as Record<string, unknown>;
+        errorMessage = (errObj.detail as string) || (errObj.message as string) || 'Unknown error';
+      }
+
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }

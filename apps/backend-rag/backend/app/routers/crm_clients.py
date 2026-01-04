@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients"])
 # Constants
 MAX_LIMIT = 200
 DEFAULT_LIMIT = 50
-STATUS_VALUES = {"active", "inactive", "prospect"}
+STATUS_VALUES = {"active", "inactive", "prospect", "lead"}
 CACHE_TTL_STATS_SECONDS = 300  # 5 minutes
 STATS_DAYS_RECENT = 30  # Days for "recent" stats queries
 
@@ -39,15 +39,30 @@ class ClientCreate(BaseModel):
     email: EmailStr | None = None
     phone: str | None = None
     whatsapp: str | None = None
+    company_name: str | None = None  # For corporate clients
     nationality: str | None = None
     passport_number: str | None = None
+    passport_expiry: str | None = None  # ISO date string (YYYY-MM-DD)
+    date_of_birth: str | None = None  # ISO date string (YYYY-MM-DD)
+    status: str = "active"  # 'active', 'inactive', 'prospect', 'lead'
     client_type: str = "individual"  # 'individual' or 'company'
     assigned_to: str | None = None  # team member email
     avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
     tags: list[str] = []
+    lead_source: str | None = None  # 'website', 'referral', 'event', 'social_media', etc
+    service_interest: list[str] = []  # Services client is interested in
     custom_fields: dict = {}
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        """Validate status is one of allowed values"""
+        allowed_statuses = {"active", "inactive", "prospect", "lead"}
+        if v not in allowed_statuses:
+            raise ValueError(f"status must be one of {allowed_statuses}, got '{v}'")
+        return v
 
     @field_validator("client_type")
     @classmethod
@@ -74,15 +89,20 @@ class ClientUpdate(BaseModel):
     email: EmailStr | None = None
     phone: str | None = None
     whatsapp: str | None = None
+    company_name: str | None = None
     nationality: str | None = None
     passport_number: str | None = None
-    status: str | None = None  # 'active', 'inactive', 'prospect'
+    passport_expiry: str | None = None  # ISO date string
+    date_of_birth: str | None = None  # ISO date string
+    status: str | None = None  # 'active', 'inactive', 'prospect', 'lead'
     client_type: str | None = None
     assigned_to: str | None = None
     avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
     tags: list[str] | None = None
+    lead_source: str | None = None
+    service_interest: list[str] | None = None
     custom_fields: dict | None = None
 
     @field_validator("status")
@@ -122,18 +142,28 @@ class ClientResponse(BaseModel):
     email: str | None
     phone: str | None
     whatsapp: str | None
+    company_name: str | None = None
     nationality: str | None
+    passport_number: str | None = None
+    passport_expiry: str | None = None
+    date_of_birth: str | None = None
     status: str
     client_type: str
     assigned_to: str | None
     avatar_url: str | None
+    address: str | None = None
+    notes: str | None = None
     first_contact_date: datetime | None
     last_interaction_date: datetime | None
     last_sentiment: str | None = None
     last_interaction_summary: str | None = None
     tags: list[str] = []  # Default to empty list if None
+    lead_source: str | None = None
+    service_interest: list[str] = []  # Default to empty list
+    custom_fields: dict = {}  # Default to empty dict
     created_at: datetime
     updated_at: datetime
+    created_by: str | None = None
 
     @field_validator("uuid", mode="before")
     @classmethod
@@ -182,11 +212,14 @@ async def create_client(
             row = await conn.fetchrow(
                 """
                 INSERT INTO clients (
-                    full_name, email, phone, whatsapp, nationality, passport_number,
-                    client_type, assigned_to, avatar_url, address, notes, tags, custom_fields,
-                    first_contact_date, created_by, status
+                    full_name, email, phone, whatsapp, company_name,
+                    nationality, passport_number, passport_expiry, date_of_birth,
+                    status, client_type, assigned_to, avatar_url, address, notes,
+                    tags, lead_source, service_interest, custom_fields,
+                    first_contact_date, created_by
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                    $16, $17, $18, $19, $20, $21
                 )
                 RETURNING *
                 """,
@@ -194,18 +227,23 @@ async def create_client(
                 client.email,
                 client.phone,
                 client.whatsapp,
+                client.company_name,
                 client.nationality,
                 client.passport_number,
+                client.passport_expiry,
+                client.date_of_birth,
+                client.status,  # Use client's status instead of hardcoded "active"
                 client.client_type,
                 client.assigned_to,
                 client.avatar_url,
                 client.address,
                 client.notes,
                 client.tags,
+                client.lead_source,
+                client.service_interest,
                 client.custom_fields,
                 datetime.now(),
                 created_by,
-                "active",
             )
 
             if not row:
