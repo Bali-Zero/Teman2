@@ -26,13 +26,28 @@ const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
   { value: 'completed', label: 'Completed', column: 'completed' },
 ];
 
+type ViewMode = 'kanban' | 'list';
+
+interface FilterState {
+  status: string;
+  type: string;
+  assigned_to: string;
+}
+
 export default function PratichePage() {
   const router = useRouter();
   const toast = useToast();
   const [practices, setPractices] = useState<Practice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    status: '',
+    type: '',
+    assigned_to: '',
+  });
+
   // Context Menu State
   const [selectedPractice, setSelectedPractice] = useState<Practice | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
@@ -113,14 +128,39 @@ export default function PratichePage() {
     return 'inquiry';
   };
 
-  const filteredPractices = searchQuery
-    ? practices.filter(
-        (p) =>
-          p.id.toString().includes(searchQuery) ||
-          p.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.practice_type_code?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : practices;
+  const clearFilters = () => {
+    setFilters({ status: '', type: '', assigned_to: '' });
+  };
+
+  const activeFiltersCount = Object.values(filters).filter(Boolean).length;
+
+  const filteredPractices = practices.filter((p) => {
+    // Search filter
+    if (searchQuery) {
+      const matchesSearch =
+        p.id.toString().includes(searchQuery) ||
+        p.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.practice_type_code?.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+    }
+
+    // Status filter
+    if (filters.status && getStatusColumn(p.status) !== filters.status) {
+      return false;
+    }
+
+    // Type filter
+    if (filters.type && p.practice_type_code !== filters.type) {
+      return false;
+    }
+
+    // Assigned to filter
+    if (filters.assigned_to && p.client_lead !== filters.assigned_to) {
+      return false;
+    }
+
+    return true;
+  });
 
   const practicesByStatus = {
     inquiry: filteredPractices.filter((p) => getStatusColumn(p.status) === 'inquiry'),
@@ -157,171 +197,397 @@ export default function PratichePage() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
-          <input
-            type="text"
-            placeholder="Search cases by ID, client, type..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2 border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)]">
-            <Filter className="w-4 h-4" />
-            Filters
-          </Button>
-          <div className="flex rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
-            <button className="p-2 bg-[var(--accent)]/10 text-[var(--accent)]">
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button className="p-2 text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)] transition-colors">
-              <List className="w-4 h-4" />
-            </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+            <input
+              type="text"
+              placeholder="Search cases by ID, client, type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant={showFilters ? 'default' : 'outline'}
+              className="gap-2 border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)]"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[var(--accent)] text-white">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+            <div className="flex rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] overflow-hidden">
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`p-2 transition-all ${
+                  viewMode === 'kanban'
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                    : 'text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
+                }`}
+                title="Kanban Board"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)]'
+                    : 'text-[var(--foreground-muted)] hover:bg-[var(--background-elevated)]'
+                }`}
+                title="List View"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(['Inquiry', 'Quotation', 'In Progress', 'Completed'] as const).map((column, idx) => {
-          const statusKey = ['inquiry', 'quotation', 'in_progress', 'completed'][idx] as CaseStatus;
-          const columnPractices = practicesByStatus[statusKey] || [];
-          
-          return (
-            <div
-              key={column}
-              className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4 flex flex-col h-full min-h-[500px]"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${
-                    idx === 0 ? 'bg-blue-500' : 
-                    idx === 1 ? 'bg-yellow-500' : 
-                    idx === 2 ? 'bg-purple-500' : 
-                    'bg-green-500'
-                  }`} />
-                  <h3 className="font-semibold text-[var(--foreground)]">{column}</h3>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
-                  {columnPractices.length}
-                </span>
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-[var(--foreground)]">Filters</h3>
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-[var(--accent)] hover:underline flex items-center gap-1"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                >
+                  <option value="">All statuses</option>
+                  <option value="inquiry">Inquiry</option>
+                  <option value="quotation">Quotation</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="completed">Completed</option>
+                </select>
               </div>
-              
-              <div className="flex-1 space-y-3">
-                {isLoading ? (
-                  <>
-                    <SkeletonCard />
-                    <SkeletonCard />
-                    <SkeletonCard />
-                  </>
-                ) : columnPractices.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
-                    <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
-                    <p className="text-xs text-[var(--foreground-muted)]">No cases</p>
-                  </div>
-                ) : (
-                  columnPractices.map((practice) => (
-                    <div
-                      key={practice.id}
-                      className={`p-3 rounded-lg border bg-[var(--background-elevated)] cursor-pointer transition-all hover:shadow-md relative group ${
-                        updatingId === practice.id ? 'opacity-70 pointer-events-none' : ''
-                      } ${
-                        selectedPractice?.id === practice.id
-                          ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30'
-                          : 'border-[var(--border)] hover:border-[var(--accent)]/30'
-                      }`}
-                      onClick={() => router.push(`/cases/${practice.id}`)}
-                    >
-                      {updatingId === practice.id && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-elevated)]/80 rounded-lg z-10">
-                          <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
-                        </div>
-                      )}
-                      
-                      {/* Card Header */}
-                      <div className="flex items-start justify-between mb-1">
-                        <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
-                          {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Case'}
-                        </p>
-                        
-                        {/* 3-Dot Menu Trigger */}
-                        <button
-                          className="absolute top-3 right-2 p-1 rounded-md text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => handleMenuClick(e, practice)}
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </div>
 
-                      <p className="text-xs text-[var(--foreground-muted)] truncate mb-2">
-                        {practice.client_name || 'Unknown Client'}
-                      </p>
-                      
-                      <div className="flex items-center justify-between">
-                        {practice.client_lead ? (
-                          <div className="flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
-                            <User className="w-3 h-3" />
-                            <p className="text-[10px] font-medium truncate max-w-[80px]">
-                              {practice.client_lead.split('@')[0]}
-                            </p>
-                          </div>
-                        ) : (
-                          <div />
-                        )}
-                        <span className="text-[10px] text-[var(--foreground-muted)]">
-                          #{practice.id}
-                        </span>
-                      </div>
+              {/* Type Filter */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                  Case Type
+                </label>
+                <select
+                  value={filters.type}
+                  onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                >
+                  <option value="">All types</option>
+                  <option value="KITAS">KITAS Work Permit</option>
+                  <option value="VISA">Visa Extension</option>
+                  <option value="PMA">PT PMA Setup</option>
+                  <option value="TAX">Tax Consulting</option>
+                </select>
+              </div>
 
-                      {/* Quick Actions */}
-                      <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--border)]">
-                        {practice.client_phone && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const phone = practice.client_phone?.replace(/\D/g, '');
-                              window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your case...`, '_blank');
-                            }}
-                            className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
-                            title="WhatsApp"
-                          >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        {practice.client_email && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(`mailto:${practice.client_email}`, '_blank');
-                            }}
-                            className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
-                            title="Email"
-                          >
-                            <Mail className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/clients/${practice.client_id}`);
-                          }}
-                          className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
-                          title="View Client"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
+              {/* Assigned To Filter */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                  Assigned To
+                </label>
+                <select
+                  value={filters.assigned_to}
+                  onChange={(e) => setFilters({ ...filters, assigned_to: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                >
+                  <option value="">All team members</option>
+                  {Array.from(
+                    new Set(
+                      practices
+                        .map((p) => p.client_lead)
+                        .filter(Boolean)
+                    )
+                  ).map((lead) => (
+                    <option key={lead} value={lead || ''}>
+                      {lead?.split('@')[0]}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          );
-        })}
+          </div>
+        )}
       </div>
+
+      {/* Kanban Board View */}
+      {viewMode === 'kanban' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {(['Inquiry', 'Quotation', 'In Progress', 'Completed'] as const).map((column, idx) => {
+            const statusKey = ['inquiry', 'quotation', 'in_progress', 'completed'][idx] as CaseStatus;
+            const columnPractices = practicesByStatus[statusKey] || [];
+
+            return (
+              <div
+                key={column}
+                className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 p-4 flex flex-col h-full min-h-[500px]"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${
+                      idx === 0 ? 'bg-blue-500' :
+                      idx === 1 ? 'bg-yellow-500' :
+                      idx === 2 ? 'bg-purple-500' :
+                      'bg-green-500'
+                    }`} />
+                    <h3 className="font-semibold text-[var(--foreground)]">{column}</h3>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-[var(--background-elevated)] text-[var(--foreground-muted)]">
+                    {columnPractices.length}
+                  </span>
+                </div>
+
+                <div className="flex-1 space-y-3">
+                  {isLoading ? (
+                    <>
+                      <SkeletonCard />
+                      <SkeletonCard />
+                      <SkeletonCard />
+                    </>
+                  ) : columnPractices.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
+                      <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
+                      <p className="text-xs text-[var(--foreground-muted)]">No cases</p>
+                    </div>
+                  ) : (
+                    columnPractices.map((practice) => (
+                      <div
+                        key={practice.id}
+                        className={`p-3 rounded-lg border bg-[var(--background-elevated)] cursor-pointer transition-all hover:shadow-md relative group ${
+                          updatingId === practice.id ? 'opacity-70 pointer-events-none' : ''
+                        } ${
+                          selectedPractice?.id === practice.id
+                            ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30'
+                            : 'border-[var(--border)] hover:border-[var(--accent)]/30'
+                        }`}
+                        onClick={() => router.push(`/cases/${practice.id}`)}
+                      >
+                        {updatingId === practice.id && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-[var(--background-elevated)]/80 rounded-lg z-10">
+                            <Loader2 className="w-5 h-5 animate-spin text-[var(--accent)]" />
+                          </div>
+                        )}
+
+                        {/* Card Header */}
+                        <div className="flex items-start justify-between mb-1">
+                          <p className="text-sm font-medium text-[var(--foreground)] line-clamp-2 pr-6">
+                            {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Case'}
+                          </p>
+
+                          {/* 3-Dot Menu Trigger */}
+                          <button
+                            className="absolute top-3 right-2 p-1 rounded-md text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => handleMenuClick(e, practice)}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-[var(--foreground-muted)] truncate mb-2">
+                          {practice.client_name || 'Unknown Client'}
+                        </p>
+
+                        <div className="flex items-center justify-between">
+                          {practice.client_lead ? (
+                            <div className="flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
+                              <User className="w-3 h-3" />
+                              <p className="text-[10px] font-medium truncate max-w-[80px]">
+                                {practice.client_lead.split('@')[0]}
+                              </p>
+                            </div>
+                          ) : (
+                            <div />
+                          )}
+                          <span className="text-[10px] text-[var(--foreground-muted)]">
+                            #{practice.id}
+                          </span>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-[var(--border)]">
+                          {practice.client_phone && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const phone = practice.client_phone?.replace(/\D/g, '');
+                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your case...`, '_blank');
+                              }}
+                              className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {practice.client_email && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`mailto:${practice.client_email}`, '_blank');
+                              }}
+                              className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+                              title="Email"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/clients/${practice.client_id}`);
+                            }}
+                            className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
+                            title="View Client"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* List View */}
+      {viewMode === 'list' && (
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)]/50 overflow-hidden">
+          {isLoading ? (
+            <div className="p-12 text-center">
+              <div className="animate-pulse space-y-4">
+                <div className="h-4 bg-[var(--background-elevated)] rounded w-1/3 mx-auto" />
+                <div className="h-4 bg-[var(--background-elevated)] rounded w-1/2 mx-auto" />
+              </div>
+            </div>
+          ) : filteredPractices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12">
+              <FolderKanban className="w-16 h-16 text-[var(--foreground-muted)] opacity-50 mb-4" />
+              <h3 className="text-lg font-semibold text-[var(--foreground)] mb-2">No cases found</h3>
+              <p className="text-sm text-[var(--foreground-muted)] max-w-md">
+                Try adjusting your search or filters to find cases.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[var(--background-elevated)] border-b border-[var(--border)]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">ID</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Case Type</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Client</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Assigned To</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {filteredPractices.map((practice) => (
+                    <tr
+                      key={practice.id}
+                      className="hover:bg-[var(--background-elevated)]/50 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/cases/${practice.id}`)}
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-[var(--foreground)]">
+                        #{practice.id}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">
+                        {practice.practice_type_code?.toUpperCase().replace(/_/g, ' ') || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[var(--foreground)]">
+                        {practice.client_name || 'Unknown'}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {practice.client_lead ? (
+                          <div className="inline-flex items-center gap-1.5 bg-[var(--accent)]/10 px-2 py-0.5 rounded text-[var(--accent)]">
+                            <User className="w-3 h-3" />
+                            <span className="text-[10px] font-medium">
+                              {practice.client_lead.split('@')[0]}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[var(--foreground-muted)]">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="inline-flex items-center gap-1">
+                          <span className={`w-2 h-2 rounded-full ${
+                            getStatusColumn(practice.status) === 'inquiry' ? 'bg-blue-500' :
+                            getStatusColumn(practice.status) === 'quotation' ? 'bg-yellow-500' :
+                            getStatusColumn(practice.status) === 'in_progress' ? 'bg-purple-500' :
+                            'bg-green-500'
+                          }`} />
+                          <span className="text-[var(--foreground)]">
+                            {practice.status?.replace(/_/g, ' ').charAt(0).toUpperCase() + practice.status?.replace(/_/g, ' ').slice(1) || '-'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          {practice.client_phone && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const phone = practice.client_phone?.replace(/\D/g, '');
+                                window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your case...`, '_blank');
+                              }}
+                              className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {practice.client_email && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`mailto:${practice.client_email}`, '_blank');
+                              }}
+                              className="p-1.5 rounded hover:bg-blue-500/20 text-blue-500 transition-colors"
+                              title="Email"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            className="p-1.5 rounded text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] transition-colors"
+                            onClick={(e) => handleMenuClick(e, practice)}
+                            title="More options"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Info Footer */}
       <div className="text-center py-8">
