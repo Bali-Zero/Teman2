@@ -18,12 +18,17 @@ from pydantic import BaseModel
 SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+# Old pipeline (static scraping)
 from orchestrator import (
     run_stage1_scraping,
     run_stage2_generation,
     run_stage3_upload,
     run_stage4_webhook,
 )
+
+# New pipeline (Google News RSS + Intel Processing)
+from rss_fetcher import GoogleNewsRSSFetcher
+from intel_pipeline import IntelPipeline
 
 # Configure logging
 logging.basicConfig(
@@ -66,6 +71,17 @@ class ScrapeRequest(BaseModel):
     upload_to_vector_db: bool = False
     send_to_balizero: bool = True  # Send to BaliZero news feed
     max_articles: int = 100
+
+
+class IntelRequest(BaseModel):
+    """Request to trigger intelligent pipeline (Google News RSS + AI Processing)."""
+
+    max_age_days: int = 7  # How fresh the news should be
+    min_score: int = 40  # Minimum LLAMA score to process
+    auto_approve_threshold: int = 75  # Auto-approve articles with score >= this
+    generate_images: bool = True  # Generate cover images
+    require_approval: bool = False  # Require Telegram approval before publishing
+    dry_run: bool = False  # Test mode without publishing
 
 
 class WebhookRequest(BaseModel):
@@ -201,6 +217,55 @@ async def list_jobs(
     return {"total": len(job_list), "jobs": job_list[:limit]}
 
 
+@app.post("/api/v1/intel/process")
+async def trigger_intel_pipeline(
+    request: IntelRequest, background_tasks: BackgroundTasks
+):
+    """
+    🚀 INTELLIGENT PIPELINE (RECOMMENDED)
+
+    Uses Google News RSS + AI Processing for dynamic news discovery.
+
+    Flow:
+    1. Fetch from Google News RSS (600+ query topics)
+    2. Score with LLAMA (local, fast, free)
+    3. Validate with Claude (intelligent gate)
+    4. Enrich with Claude Max (full article generation)
+    5. Generate cover image with Gemini
+    6. Optimize for SEO/AEO
+    7. Send to Telegram for approval (optional)
+    8. Publish to BaliZero API
+
+    Cost: ~$0.06 per article (95% cheaper than static scraping)
+    """
+    global job_counter, jobs
+
+    job_counter += 1
+    job_id = f"intel_{job_counter}"
+
+    jobs[job_id] = {
+        "job_id": job_id,
+        "status": "pending",
+        "stage": "fetching_rss",
+        "started_at": None,
+        "completed_at": None,
+        "results": None,
+        "error": None,
+    }
+
+    # Run in background
+    background_tasks.add_task(_run_intel_job, job_id, request)
+
+    logger.info(f"Intel pipeline job triggered: {job_id}")
+
+    return {
+        "success": True,
+        "job_id": job_id,
+        "message": "Intelligent pipeline started (Google News RSS + AI)",
+        "status_url": f"/api/v1/scrape/jobs/{job_id}",
+    }
+
+
 async def _run_scrape_job(
     job_id: str,
     categories: Optional[List[str]],
@@ -221,7 +286,7 @@ async def _run_scrape_job(
         logger.info(f"[{job_id}] Starting Stage 1: Scraping")
         jobs[job_id]["stage"] = "scraping"
 
-        scrape_results = run_stage1_scraping(categories=categories, limit=limit)
+        scrape_results = await run_stage1_scraping(categories=categories, limit=limit)
         results["scraping"] = scrape_results
         logger.info(
             f"[{job_id}] Stage 1 complete: {scrape_results.get('total_scraped', 0)} items"
@@ -266,6 +331,73 @@ async def _run_scrape_job(
         jobs[job_id]["status"] = "completed"
         jobs[job_id]["completed_at"] = datetime.utcnow().isoformat()
         jobs[job_id]["results"] = results
+        logger.info(f"[{job_id}] Job completed successfully")
+
+    except Exception as e:
+        logger.error(f"[{job_id}] Job failed: {e}", exc_info=True)
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["completed_at"] = datetime.utcnow().isoformat()
+        jobs[job_id]["error"] = str(e)
+
+
+async def _run_intel_job(job_id: str, request: IntelRequest):
+    """Run the intelligent pipeline job in background."""
+    try:
+        jobs[job_id]["status"] = "running"
+        jobs[job_id]["started_at"] = datetime.utcnow().isoformat()
+
+        # Stage 1: Fetch from Google News RSS
+        logger.info(f"[{job_id}] Stage 1: Fetching from Google News RSS")
+        jobs[job_id]["stage"] = "fetching_rss"
+
+        fetcher = GoogleNewsRSSFetcher(max_age_days=request.max_age_days)
+        raw_articles = []
+
+        for query, category in fetcher.TOPICS:
+            articles = await fetcher.fetch_topic(query, category)
+            raw_articles.extend(articles)
+            logger.info(f"[{job_id}] Fetched {len(articles)} from query: {query}")
+
+        logger.info(
+            f"[{job_id}] Stage 1 complete: {len(raw_articles)} articles from Google News"
+        )
+
+        # Stage 2-7: Process through Intel Pipeline
+        logger.info(f"[{job_id}] Stage 2-7: Processing through Intel Pipeline")
+        jobs[job_id]["stage"] = "processing"
+
+        pipeline = IntelPipeline(
+            min_llama_score=request.min_score,
+            auto_approve_threshold=request.auto_approve_threshold,
+            generate_images=request.generate_images,
+            require_approval=request.require_approval,
+            dry_run=request.dry_run,
+        )
+
+        processed, stats = await pipeline.process_batch(raw_articles)
+
+        logger.info(f"[{job_id}] Pipeline complete")
+        logger.info(f"  - Input: {stats.total_input}")
+        logger.info(f"  - Passed LLAMA: {stats.passed_llama}")
+        logger.info(f"  - Validated: {stats.validated}")
+        logger.info(f"  - Enriched: {stats.enriched}")
+        logger.info(f"  - Images: {stats.images_generated}")
+        logger.info(f"  - SEO Optimized: {stats.seo_optimized}")
+        logger.info(f"  - Published: {stats.published}")
+
+        # Success
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["completed_at"] = datetime.utcnow().isoformat()
+        jobs[job_id]["results"] = {
+            "total_fetched": len(raw_articles),
+            "total_input": stats.total_input,
+            "passed_llama": stats.passed_llama,
+            "validated": stats.validated,
+            "enriched": stats.enriched,
+            "images_generated": stats.images_generated,
+            "seo_optimized": stats.seo_optimized,
+            "published": stats.published,
+        }
         logger.info(f"[{job_id}] Job completed successfully")
 
     except Exception as e:
@@ -453,13 +585,16 @@ async def root():
     """API information."""
     return {
         "service": "Bali Intel Scraper API",
-        "version": "1.0.0",
-        "description": "REST API for 630+ Indonesian source scraping",
+        "version": "2.0.0",
+        "description": "Intelligent news scraping with Google News RSS + AI processing",
         "endpoints": {
             "health": "/health",
             "docs": "/docs",
+            "intelligence": {
+                "process": "POST /api/v1/intel/process 🚀 RECOMMENDED - Google News RSS + AI",
+            },
             "scraping": {
-                "trigger": "POST /api/v1/scrape/trigger",
+                "trigger": "POST /api/v1/scrape/trigger (legacy - static sources)",
                 "jobs": "GET /api/v1/scrape/jobs",
                 "job_status": "GET /api/v1/scrape/jobs/{job_id}",
             },
@@ -471,6 +606,19 @@ async def root():
                 "list": "GET /api/v1/signals",
                 "process": "POST /api/v1/signals/{signal_id}/process",
             },
+        },
+        "recommended_pipeline": {
+            "endpoint": "POST /api/v1/intel/process",
+            "features": [
+                "Dynamic Google News RSS (20+ topics)",
+                "LLAMA scoring (fast, local, free)",
+                "Claude validation (intelligent gate)",
+                "Claude Max enrichment (full articles)",
+                "Gemini image generation",
+                "SEO/AEO optimization",
+                "Telegram approval workflow",
+            ],
+            "cost_per_article": "$0.06",
         },
     }
 

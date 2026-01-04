@@ -240,7 +240,7 @@ class BaliZeroScraperV2:
 
     def __init__(
         self,
-        config_path: str = "config/categories.json",
+        config_path: str = "config/unified_sources.json",
         max_age_days: int = 5,
         max_concurrent: int = 10,
         min_score: int = 40,
