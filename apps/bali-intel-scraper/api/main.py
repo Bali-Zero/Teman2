@@ -27,8 +27,9 @@ from orchestrator import (
 )
 
 # New pipeline (Google News RSS + Intel Processing)
-from rss_fetcher import GoogleNewsRSSFetcher
-from intel_pipeline import IntelPipeline
+# Lazy import to avoid loading heavy dependencies at startup
+# from rss_fetcher import GoogleNewsRSSFetcher
+# from intel_pipeline import IntelPipeline
 
 # Configure logging
 logging.basicConfig(
@@ -345,6 +346,10 @@ async def _run_intel_job(job_id: str, request: IntelRequest):
     try:
         jobs[job_id]["status"] = "running"
         jobs[job_id]["started_at"] = datetime.utcnow().isoformat()
+
+        # Lazy import to avoid loading at startup
+        from rss_fetcher import GoogleNewsRSSFetcher
+        from intel_pipeline import IntelPipeline
 
         # Stage 1: Fetch from Google News RSS
         logger.info(f"[{job_id}] Stage 1: Fetching from Google News RSS")
