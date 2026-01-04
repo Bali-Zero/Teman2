@@ -15,45 +15,79 @@ export default function TeamPage() {
       {/* Hero Section */}
       <section className="border-b border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-8 py-16 lg:py-24">
-          <div className="max-w-3xl">
-            <div className="mb-8">
-              <Image
-                src="/images/balizero-logo.png"
-                alt="Bali Zero"
-                width={80}
-                height={80}
-                className="rounded-full"
-              />
-            </div>
-            <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
-              Our Team
-            </span>
-            <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
-              Meet the{' '}
-              <span className="text-[#e85c41]">Experts</span>{' '}
-              Behind Your Success
-            </h1>
-            <p className="text-lg text-white/70 mb-8 leading-relaxed">
-              A dedicated team of visa specialists, tax consultants, and business advisors
-              committed to making your Indonesian journey seamless.
-            </p>
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-center">
+            {/* Content - Left Side */}
+            <div className="flex-1">
+              <div className="mb-8">
+                <Image
+                  src="/images/balizero-logo.png"
+                  alt="Bali Zero"
+                  width={80}
+                  height={80}
+                  className="rounded-full"
+                />
+              </div>
+              <span className="text-[#2251ff] text-xs font-semibold uppercase tracking-wider mb-4 block">
+                Our Team
+              </span>
+              <h1 className="font-serif text-4xl lg:text-5xl xl:text-6xl text-white leading-[1.1] mb-6">
+                Meet the{' '}
+                <span className="text-[#e85c41]">Experts</span>{' '}
+                Behind Your Success
+              </h1>
+              <p className="text-lg text-white/70 mb-8 leading-relaxed">
+                A dedicated team of visa specialists, tax consultants, and business advisors
+                committed to making your Indonesian journey seamless.
+              </p>
 
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="https://wa.me/6285904369574"
-                target="_blank"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                Contact Us
-              </Link>
-              <Link
-                href="/services"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
-              >
-                View Services
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+              <div className="flex flex-wrap gap-4">
+                <Link
+                  href="https://wa.me/6285904369574"
+                  target="_blank"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2251ff] text-white font-medium hover:bg-[#1a41cc] transition-colors"
+                >
+                  <Phone className="w-4 h-4" />
+                  Contact Us
+                </Link>
+                <Link
+                  href="/services"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
+                >
+                  View Services
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Video - Right Side (9:16 aspect ratio) */}
+            <div className="w-full lg:w-auto flex-shrink-0">
+              <div className="relative w-[320px] sm:w-[380px] lg:w-[420px] mx-auto rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full aspect-[9/16] object-cover cursor-pointer"
+                  onMouseEnter={(e) => {
+                    const video = e.currentTarget;
+                    video.muted = false;
+                    video.volume = 0.5;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.muted = true;
+                  }}
+                >
+                  <source src="/videos/team-hero.mp4" type="video/mp4" />
+                </video>
+                {/* Gradient overlay at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#051C2C] to-transparent pointer-events-none" />
+                {/* Sound hint icon */}
+                <div className="absolute bottom-4 right-4 bg-black/50 rounded-full p-2 pointer-events-none">
+                  <svg className="w-5 h-5 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -388,5 +422,6 @@ const SUPPORT_TEAM: TeamMember[] = [
     initials: 'SH',
     role: 'Marketing Specialist',
     gradient: 'bg-gradient-to-br from-purple-500 to-violet-600',
+    photo: '/images/team/sahira.png',
   },
 ];

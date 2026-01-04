@@ -38,10 +38,14 @@ def mock_no_credentials(mock_settings):
     mock_settings.google_credentials_json = None
 
     # Also mock the environment variable checks
-    with patch.dict("os.environ", {
-        "GOOGLE_APPLICATION_CREDENTIALS": "",
-        "GOOGLE_CREDENTIALS_JSON": "",
-    }, clear=False):
+    with patch.dict(
+        "os.environ",
+        {
+            "GOOGLE_APPLICATION_CREDENTIALS": "",
+            "GOOGLE_CREDENTIALS_JSON": "",
+        },
+        clear=False,
+    ):
         with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
             yield mock_settings
 
@@ -312,9 +316,7 @@ async def test_conversational_with_tools_with_tools(mock_no_credentials):
     """Test conversational_with_tools with tools (fallback to conversational)"""
     client = ZantaraAIClient()
     tools = [{"type": "function", "function": {"name": "test_tool", "description": "Test"}}]
-    result = await client.conversational_with_tools(
-        message="Hello", user_id="user123", tools=tools
-    )
+    result = await client.conversational_with_tools(message="Hello", user_id="user123", tools=tools)
 
     # In mock mode, should fallback to conversational
     assert "text" in result
@@ -326,9 +328,7 @@ async def test_conversational_with_tools_with_tools(mock_no_credentials):
 async def test_conversational_with_tools_no_tools(mock_no_credentials):
     """Test conversational_with_tools without tools"""
     client = ZantaraAIClient()
-    result = await client.conversational_with_tools(
-        message="Hello", user_id="user123", tools=None
-    )
+    result = await client.conversational_with_tools(message="Hello", user_id="user123", tools=None)
 
     assert "text" in result
     assert result["tools_called"] == []

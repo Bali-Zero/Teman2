@@ -100,4 +100,3 @@ class TestSeverityCalculatorService:
 
         days = calculator.get_days_until_deadline(deadline)
         assert days <= 0  # Today or slightly past due to timing
-

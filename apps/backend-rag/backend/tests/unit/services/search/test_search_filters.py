@@ -69,4 +69,3 @@ class TestSearchFilters:
         tier_filter = {"status_vigensi": "berlaku"}
         result = build_search_filter(tier_filter=tier_filter, exclude_repealed=True)
         assert result["status_vigensi"] == {"$in": ["berlaku"]}
-

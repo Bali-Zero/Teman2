@@ -2,20 +2,16 @@
 Unit tests for app.feature_flags module
 """
 
-import os
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from app.feature_flags import (
-    should_enable_skill_detection,
-    should_enable_collective_memory,
-    should_enable_tool_execution,
-    get_feature_flags,
-    SKILL_DETECTION_ENABLED,
-    COLLECTIVE_MEMORY_ENABLED,
-    TOOL_EXECUTION_ENABLED,
     ADVANCED_ANALYTICS_ENABLED,
+    SKILL_DETECTION_ENABLED,
+    TOOL_EXECUTION_ENABLED,
+    get_feature_flags,
+    should_enable_collective_memory,
+    should_enable_skill_detection,
+    should_enable_tool_execution,
 )
 
 
@@ -137,6 +133,6 @@ class TestGetFeatureFlags:
         """Test that all flags in the dictionary are boolean values"""
         result = get_feature_flags()
         for flag_name, flag_value in result.items():
-            assert isinstance(flag_value, bool), f"Flag {flag_name} should be boolean, got {type(flag_value)}"
-
-
+            assert isinstance(flag_value, bool), (
+                f"Flag {flag_name} should be boolean, got {type(flag_value)}"
+            )

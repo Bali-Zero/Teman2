@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 class LLMMessage(BaseModel):
     """Standard message format for LLM conversations."""
+
     role: str  # "user" | "assistant" | "system"
     content: str
 
@@ -22,6 +23,7 @@ class LLMMessage(BaseModel):
 
 class LLMResponse(BaseModel):
     """Standard response format from LLM providers."""
+
     content: str
     model: str
     tokens_used: int | None = None
@@ -50,11 +52,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def generate(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        max_tokens: int = 4096,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
     ) -> LLMResponse:
         """
         Generate a response from the LLM.
@@ -72,10 +70,7 @@ class LLMProvider(ABC):
 
     @abstractmethod
     async def stream(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
     ) -> AsyncIterator[str]:
         """
         Stream a response from the LLM.

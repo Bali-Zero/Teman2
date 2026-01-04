@@ -48,13 +48,14 @@ class TestWorkloadBalanceService:
     async def test_analyze_workload_balance_with_sessions(self, workload_balance, mock_db_pool):
         """Test analyzing workload balance with sessions"""
         from unittest.mock import MagicMock
+
         session1 = MagicMock()
         session1.__getitem__ = lambda self, key: {
             "user_name": "User 1",
             "user_email": "user1@example.com",
             "total_minutes": 480,
             "total_conversations": 30,
-            "session_count": 1
+            "session_count": 1,
         }.get(key)
         session2 = MagicMock()
         session2.__getitem__ = lambda self, key: {
@@ -62,7 +63,7 @@ class TestWorkloadBalanceService:
             "user_email": "user2@example.com",
             "total_minutes": 240,
             "total_conversations": 15,
-            "session_count": 1
+            "session_count": 1,
         }.get(key)
         sessions = [session1, session2]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -76,4 +77,3 @@ class TestWorkloadBalanceService:
         mock_db_pool.fetch = AsyncMock(return_value=[])
         results = await workload_balance.analyze_workload_balance(days=14)
         assert isinstance(results, dict)
-

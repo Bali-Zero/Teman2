@@ -30,6 +30,7 @@ class TestPipelineStage:
 
     def test_name_property(self):
         """Test name property"""
+
         class TestStage(PipelineStage):
             async def process(self, data):
                 return data
@@ -78,7 +79,7 @@ class TestVerificationStage:
         data = {
             "response": "Long response" * 10,
             "query": "test",
-            "context_chunks": [{"text": "context"}]
+            "context_chunks": [{"text": "context"}],
         }
 
         # Mock verification result object
@@ -106,7 +107,7 @@ class TestPostProcessingStage:
         stage = PostProcessingStage()
         data = {
             "response": "THOUGHT: thinking\nACTION: action\nObservation: result\nFinal: answer",
-            "query": "test query"
+            "query": "test query",
         }
 
         result = await stage.process(data)
@@ -132,10 +133,7 @@ class TestCitationStage:
     async def test_process_with_sources(self):
         """Test citation extraction"""
         stage = CitationStage()
-        data = {
-            "response": "KITAS costs 15M [1]",
-            "sources": [{"id": 1, "title": "Visa Guide"}]
-        }
+        data = {"response": "KITAS costs 15M [1]", "sources": [{"id": 1, "title": "Visa Guide"}]}
 
         result = await stage.process(data)
         assert "citations" in result or "sources" in result
@@ -185,17 +183,13 @@ class TestResponsePipeline:
     @pytest.mark.asyncio
     async def test_process_multiple_stages(self):
         """Test processing with multiple stages"""
-        stages = [
-            VerificationStage(),
-            PostProcessingStage(),
-            CitationStage()
-        ]
+        stages = [VerificationStage(), PostProcessingStage(), CitationStage()]
         pipeline = ResponsePipeline(stages=stages)
         data = {
             "response": "Long response" * 10,
             "query": "test",
             "context_chunks": [],
-            "sources": []
+            "sources": [],
         }
 
         result = await pipeline.process(data)
@@ -204,6 +198,7 @@ class TestResponsePipeline:
     @pytest.mark.asyncio
     async def test_process_error_handling(self):
         """Test error handling"""
+
         class ErrorStage(PipelineStage):
             async def process(self, data):
                 raise Exception("Stage error")
@@ -220,4 +215,3 @@ def test_create_default_pipeline():
     pipeline = create_default_pipeline()
     assert pipeline is not None
     assert len(pipeline.stages) > 0
-

@@ -30,9 +30,7 @@ def mock_db_pool():
 def pipeline_config():
     """Create pipeline config"""
     return PipelineConfig(
-        extractor_type="gemini",
-        use_coreference=False,
-        database_url="postgresql://test"
+        extractor_type="gemini", use_coreference=False, database_url="postgresql://test"
     )
 
 
@@ -40,9 +38,11 @@ def pipeline_config():
 def kg_pipeline(pipeline_config):
     """Create KG pipeline instance"""
     # Patch both extractor types and coreference resolver
-    with patch("services.knowledge_graph.pipeline.KGExtractor"), \
-         patch("services.knowledge_graph.extractor_gemini.GeminiKGExtractor"), \
-         patch("services.knowledge_graph.pipeline.CoreferenceResolver"):
+    with (
+        patch("services.knowledge_graph.pipeline.KGExtractor"),
+        patch("services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
+        patch("services.knowledge_graph.pipeline.CoreferenceResolver"),
+    ):
         return KGPipeline(config=pipeline_config)
 
 
@@ -51,16 +51,20 @@ class TestKGPipeline:
 
     def test_init(self, pipeline_config):
         """Test initialization"""
-        with patch("services.knowledge_graph.pipeline.KGExtractor"), \
-             patch("services.knowledge_graph.extractor_gemini.GeminiKGExtractor"), \
-             patch("services.knowledge_graph.pipeline.CoreferenceResolver"):
+        with (
+            patch("services.knowledge_graph.pipeline.KGExtractor"),
+            patch("services.knowledge_graph.extractor_gemini.GeminiKGExtractor"),
+            patch("services.knowledge_graph.pipeline.CoreferenceResolver"),
+        ):
             pipeline = KGPipeline(config=pipeline_config)
             assert pipeline.config == pipeline_config
 
     def test_init_default_config(self):
         """Test initialization with default config"""
-        with patch("services.knowledge_graph.pipeline.KGExtractor"), \
-             patch("services.knowledge_graph.pipeline.CoreferenceResolver"):
+        with (
+            patch("services.knowledge_graph.pipeline.KGExtractor"),
+            patch("services.knowledge_graph.pipeline.CoreferenceResolver"),
+        ):
             pipeline = KGPipeline()
             assert pipeline.config is not None
 
@@ -100,17 +104,12 @@ class TestKGPipeline:
         chunk_text = "PT PMA requires minimum investment"
         chunk_id = "chunk1"
 
-        with patch.object(kg_pipeline.extractor, 'extract') as mock_extract:
+        with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             mock_entity = ExtractedEntity(
-                id="e1",
-                type=EntityType.ORGANIZATION,
-                name="PT PMA",
-                mention="PT PMA"
+                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
             )
             mock_extract.return_value = ExtractionResult(
-                chunk_id=chunk_id,
-                entities=[mock_entity],
-                relations=[]
+                chunk_id=chunk_id, entities=[mock_entity], relations=[]
             )
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
@@ -130,20 +129,19 @@ class TestKGPipeline:
         chunk_text = "PT PMA requires investment"
         chunk_id = "chunk1"
 
-        with patch.object(kg_pipeline.extractor, 'extract') as mock_extract:
+        with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             # Need entities for relations to be valid
-            mock_entity1 = ExtractedEntity(id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA")
-            mock_entity2 = ExtractedEntity(id="e2", type=EntityType.IZIN_USAHA, name="Investment", mention="investment")
+            mock_entity1 = ExtractedEntity(
+                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+            )
+            mock_entity2 = ExtractedEntity(
+                id="e2", type=EntityType.IZIN_USAHA, name="Investment", mention="investment"
+            )
             mock_relation = ExtractedRelation(
-                source_id="e1",
-                target_id="e2",
-                type=RelationType.REQUIRES,
-                evidence="requires"
+                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires"
             )
             mock_extract.return_value = ExtractionResult(
-                chunk_id=chunk_id,
-                entities=[mock_entity1, mock_entity2],
-                relations=[mock_relation]
+                chunk_id=chunk_id, entities=[mock_entity1, mock_entity2], relations=[mock_relation]
             )
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
@@ -159,6 +157,7 @@ class TestKGPipeline:
         from services.knowledge_graph.ontology import EntityType
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
@@ -168,7 +167,9 @@ class TestKGPipeline:
 
         kg_pipeline._db_pool = mock_db_pool
 
-        entity = ExtractedEntity(id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA")
+        entity = ExtractedEntity(
+            id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+        )
         result = ExtractionResult(chunk_id="chunk1", entities=[entity], relations=[])
 
         await kg_pipeline.persist_results([result])
@@ -181,12 +182,16 @@ class TestKGPipeline:
 
         chunks = [
             {"text": "PT PMA requires investment", "id": "chunk1"},
-            {"text": "Investment minimum is 10B", "id": "chunk2"}
+            {"text": "Investment minimum is 10B", "id": "chunk2"},
         ]
 
-        with patch.object(kg_pipeline, 'process_chunk') as mock_process, \
-             patch.object(kg_pipeline, 'persist_results') as mock_persist:
-            mock_process.return_value = ExtractionResult(chunk_id="chunk1", entities=[], relations=[])
+        with (
+            patch.object(kg_pipeline, "process_chunk") as mock_process,
+            patch.object(kg_pipeline, "persist_results") as mock_persist,
+        ):
+            mock_process.return_value = ExtractionResult(
+                chunk_id="chunk1", entities=[], relations=[]
+            )
             mock_persist.return_value = None
 
             # Process chunks manually (build_graph_from_chunks doesn't exist)
@@ -206,8 +211,10 @@ class TestKGPipeline:
         chunk_text = "New content"
         chunk_id = "new_chunk"
 
-        with patch.object(kg_pipeline.extractor, 'extract') as mock_extract:
-            mock_extract.return_value = ExtractionResult(chunk_id=chunk_id, entities=[], relations=[])
+        with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
+            mock_extract.return_value = ExtractionResult(
+                chunk_id=chunk_id, entities=[], relations=[]
+            )
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
             assert result is not None
@@ -219,8 +226,10 @@ class TestKGPipeline:
 
         chunks = [{"text": f"Chunk {i}", "id": f"chunk{i}"} for i in range(5)]
 
-        with patch.object(kg_pipeline.extractor, 'extract') as mock_extract:
-            mock_extract.return_value = ExtractionResult(chunk_id="chunk1", entities=[], relations=[])
+        with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
+            mock_extract.return_value = ExtractionResult(
+                chunk_id="chunk1", entities=[], relations=[]
+            )
 
             # Process chunks
             for chunk in chunks:
@@ -236,7 +245,7 @@ class TestKGPipeline:
         chunk_text = "test"
         chunk_id = "chunk1"
 
-        with patch.object(kg_pipeline.extractor, 'extract') as mock_extract:
+        with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             mock_extract.side_effect = Exception("Extraction error")
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
@@ -251,8 +260,10 @@ class TestKGPipeline:
 
         chunks = [("chunk1", "PT PMA requires investment"), ("chunk2", "Investment minimum is 10B")]
 
-        with patch.object(kg_pipeline, 'process_chunk') as mock_process:
-            mock_process.return_value = ExtractionResult(chunk_id="chunk1", entities=[], relations=[])
+        with patch.object(kg_pipeline, "process_chunk") as mock_process:
+            mock_process.return_value = ExtractionResult(
+                chunk_id="chunk1", entities=[], relations=[]
+            )
 
             results = await kg_pipeline.process_batch(chunks)
             assert len(results) == len(chunks)
@@ -265,9 +276,13 @@ class TestKGPipeline:
 
         chunks = [("chunk1", "PT PMA requires investment")]
 
-        with patch.object(kg_pipeline, 'process_batch') as mock_batch, \
-             patch.object(kg_pipeline, 'persist_results') as mock_persist:
-            mock_batch.return_value = [ExtractionResult(chunk_id="chunk1", entities=[], relations=[])]
+        with (
+            patch.object(kg_pipeline, "process_batch") as mock_batch,
+            patch.object(kg_pipeline, "persist_results") as mock_persist,
+        ):
+            mock_batch.return_value = [
+                ExtractionResult(chunk_id="chunk1", entities=[], relations=[])
+            ]
 
             stats = await kg_pipeline.run(chunks, persist=True)
             assert stats.chunks_processed == len(chunks)
@@ -280,9 +295,13 @@ class TestKGPipeline:
 
         chunks = [("chunk1", "PT PMA requires investment")]
 
-        with patch.object(kg_pipeline, 'process_batch') as mock_batch, \
-             patch.object(kg_pipeline, 'persist_results') as mock_persist:
-            mock_batch.return_value = [ExtractionResult(chunk_id="chunk1", entities=[], relations=[])]
+        with (
+            patch.object(kg_pipeline, "process_batch") as mock_batch,
+            patch.object(kg_pipeline, "persist_results") as mock_persist,
+        ):
+            mock_batch.return_value = [
+                ExtractionResult(chunk_id="chunk1", entities=[], relations=[])
+            ]
 
             stats = await kg_pipeline.run(chunks, persist=False)
             assert stats.chunks_processed == len(chunks)
@@ -295,10 +314,7 @@ class TestKGPipeline:
         from services.knowledge_graph.ontology import EntityType
 
         entity = ExtractedEntity(
-            id="local_1",
-            type=EntityType.ORGANIZATION,
-            name="PT PMA",
-            mention="PT PMA"
+            id="local_1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
         )
 
         canonical_id = kg_pipeline._get_canonical_id_by_local("local_1", [entity])
@@ -331,6 +347,7 @@ class TestKGPipeline:
         from services.knowledge_graph.ontology import EntityType
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
@@ -341,7 +358,9 @@ class TestKGPipeline:
         kg_pipeline._db_pool = mock_db_pool
 
         # Create two results with same entity
-        entity = ExtractedEntity(id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA")
+        entity = ExtractedEntity(
+            id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+        )
         result1 = ExtractionResult(chunk_id="chunk1", entities=[entity], relations=[])
         result2 = ExtractionResult(chunk_id="chunk2", entities=[entity], relations=[])
 
@@ -358,13 +377,19 @@ class TestKGPipeline:
         chunk_text = "PT PMA requires investment. It needs capital."
         chunk_id = "chunk1"
 
-        with patch.object(kg_pipeline.extractor, 'extract') as mock_extract, \
-             patch.object(kg_pipeline.coreference, 'resolve_all_references') as mock_resolve, \
-             patch.object(kg_pipeline.coreference, 'deduplicate_entities') as mock_dedup, \
-             patch.object(kg_pipeline.coreference, 'cluster_entities') as mock_cluster, \
-             patch.object(kg_pipeline.coreference, 'update_cache'):
-            mock_entity = ExtractedEntity(id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA")
-            mock_extract.return_value = ExtractionResult(chunk_id=chunk_id, entities=[mock_entity], relations=[])
+        with (
+            patch.object(kg_pipeline.extractor, "extract") as mock_extract,
+            patch.object(kg_pipeline.coreference, "resolve_all_references") as mock_resolve,
+            patch.object(kg_pipeline.coreference, "deduplicate_entities") as mock_dedup,
+            patch.object(kg_pipeline.coreference, "cluster_entities") as mock_cluster,
+            patch.object(kg_pipeline.coreference, "update_cache"),
+        ):
+            mock_entity = ExtractedEntity(
+                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA"
+            )
+            mock_extract.return_value = ExtractionResult(
+                chunk_id=chunk_id, entities=[mock_entity], relations=[]
+            )
             mock_resolve.return_value = {}
             mock_dedup.return_value = [mock_entity]
             mock_cluster.return_value = {}
@@ -386,27 +411,48 @@ class TestKGPipeline:
         chunk_text = "PT PMA requires investment"
         chunk_id = "chunk1"
 
-        with patch.object(kg_pipeline.extractor, 'extract') as mock_extract:
+        with patch.object(kg_pipeline.extractor, "extract") as mock_extract:
             # Create entity with low confidence
             low_conf_entity = ExtractedEntity(
-                id="e1", type=EntityType.ORGANIZATION, name="PT PMA", mention="PT PMA", confidence=0.3
+                id="e1",
+                type=EntityType.ORGANIZATION,
+                name="PT PMA",
+                mention="PT PMA",
+                confidence=0.3,
             )
             high_conf_entity = ExtractedEntity(
-                id="e2", type=EntityType.IZIN_USAHA, name="Investment", mention="investment", confidence=0.8
+                id="e2",
+                type=EntityType.IZIN_USAHA,
+                name="Investment",
+                mention="investment",
+                confidence=0.8,
             )
             low_conf_relation = ExtractedRelation(
-                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires", confidence=0.3
+                source_id="e1",
+                target_id="e2",
+                type=RelationType.REQUIRES,
+                evidence="requires",
+                confidence=0.3,
             )
 
             mock_extract.return_value = ExtractionResult(
                 chunk_id=chunk_id,
                 entities=[low_conf_entity, high_conf_entity],
-                relations=[low_conf_relation]
+                relations=[low_conf_relation],
             )
 
             result = await kg_pipeline.process_chunk(chunk_id, chunk_text)
             # Low confidence items should be filtered
-            assert len([e for e in result.entities if e.confidence >= kg_pipeline.config.min_confidence]) >= 0
+            assert (
+                len(
+                    [
+                        e
+                        for e in result.entities
+                        if e.confidence >= kg_pipeline.config.min_confidence
+                    ]
+                )
+                >= 0
+            )
 
 
 class TestPipelineConfig:
@@ -421,11 +467,7 @@ class TestPipelineConfig:
 
     def test_custom_config(self):
         """Test custom configuration"""
-        config = PipelineConfig(
-            extractor_type="gemini",
-            use_coreference=False,
-            min_confidence=0.8
-        )
+        config = PipelineConfig(extractor_type="gemini", use_coreference=False, min_confidence=0.8)
         assert config.extractor_type == "gemini"
         assert config.use_coreference is False
         assert config.min_confidence == 0.8
@@ -454,10 +496,10 @@ class TestPipelineStats:
     def test_stats_with_duration(self):
         """Test stats with start/end time"""
         from datetime import datetime, timedelta
+
         stats = PipelineStats()
         stats.start_time = datetime.now()
         stats.end_time = stats.start_time + timedelta(seconds=10)
 
         result = stats.to_dict()
         assert result["duration_seconds"] == 10
-

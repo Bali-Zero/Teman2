@@ -33,7 +33,7 @@ class TestConflictResolver:
         """Test detecting conflicts when none exist"""
         results_by_collection = {
             "visa_oracle": [{"score": 0.8, "metadata": {}}],
-            "tax_genius": [{"score": 0.7, "metadata": {}}]
+            "tax_genius": [{"score": 0.7, "metadata": {}}],
         }
         conflicts = conflict_resolver.detect_conflicts(results_by_collection)
         assert isinstance(conflicts, list)
@@ -42,7 +42,7 @@ class TestConflictResolver:
         """Test detecting conflicts between collections"""
         results_by_collection = {
             "tax_knowledge": [{"score": 0.8, "metadata": {"timestamp": "2024-01-01"}}],
-            "tax_updates": [{"score": 0.9, "metadata": {"timestamp": "2024-01-02"}}]
+            "tax_updates": [{"score": 0.9, "metadata": {"timestamp": "2024-01-02"}}],
         }
         conflicts = conflict_resolver.detect_conflicts(results_by_collection)
         assert len(conflicts) > 0
@@ -52,7 +52,7 @@ class TestConflictResolver:
         """Test resolving conflicts"""
         results_by_collection = {
             "tax_knowledge": [{"score": 0.8, "metadata": {"timestamp": "2024-01-01"}}],
-            "tax_updates": [{"score": 0.9, "metadata": {"timestamp": "2024-01-02"}}]
+            "tax_updates": [{"score": 0.9, "metadata": {"timestamp": "2024-01-02"}}],
         }
         conflicts = conflict_resolver.detect_conflicts(results_by_collection)
         resolved, flagged = conflict_resolver.resolve_conflicts(results_by_collection, conflicts)
@@ -65,4 +65,3 @@ class TestConflictResolver:
         assert isinstance(stats, dict)
         assert "conflicts_detected" in stats
         assert "conflicts_resolved" in stats
-

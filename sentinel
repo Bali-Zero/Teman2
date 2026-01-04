@@ -17,7 +17,8 @@ echo "📒 Sentinel log: $LOG_FILE"
 
 if command -v semgrep &> /dev/null && command -v codeql &> /dev/null; then
     echo "🚀 Enhanced Sentinel Mode - Deep Analysis Available"
-    CMD=(python3 apps/core/sentinel_enhanced.py "$@")
+    # Fallback to standard sentinel until enhanced script is restored
+    CMD=(python3 apps/core/sentinel.py "$@")
 else
     echo "⚠️ Enhanced tools not found - Running Basic Sentinel"
     echo "Run './scripts/setup-deep-analysis.sh' to enable full security scanning"

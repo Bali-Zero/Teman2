@@ -52,8 +52,8 @@ class TestHealthRouter:
         mock_search_service.embedder = mock_embedder
         app.state.search_service = mock_search_service
 
-        with patch("app.routers.health.get_qdrant_stats") as mock_stats:
-            mock_stats.return_value = AsyncMock(return_value={"collections": 5, "total_documents": 1000})
+        with patch("app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
+            mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
             response = client.get("/health")
             assert response.status_code == 200
@@ -72,19 +72,12 @@ class TestHealthRouter:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.json.return_value = {
-                "result": {
-                    "collections": [
-                        {"name": "collection1"},
-                        {"name": "collection2"}
-                    ]
-                }
+                "result": {"collections": [{"name": "collection1"}, {"name": "collection2"}]}
             }
             mock_response.raise_for_status = MagicMock()
 
             mock_coll_response = MagicMock()
-            mock_coll_response.json.return_value = {
-                "result": {"points_count": 100}
-            }
+            mock_coll_response.json.return_value = {"result": {"points_count": 100}}
             mock_coll_response.raise_for_status = MagicMock()
 
             async def get_side_effect(url):
@@ -115,4 +108,3 @@ class TestHealthRouter:
             result = await get_qdrant_stats()
             assert result["collections"] == 0
             assert "error" in result
-

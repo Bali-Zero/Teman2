@@ -1,4 +1,3 @@
-import os
 from google import genai
 
 locations = ["us-central1", "europe-west1", "asia-southeast1", "us-east4"]

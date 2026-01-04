@@ -39,17 +39,16 @@ class TestMediaRouter:
     def test_generate_image_success(self, mock_service_class, client):
         """Test generating image successfully"""
         mock_service = MagicMock()
-        mock_service.generate_image = AsyncMock(return_value={
-            "success": True,
-            "url": "https://pollinations.ai/image.jpg",
-            "prompt": "test prompt"
-        })
+        mock_service.generate_image = AsyncMock(
+            return_value={
+                "success": True,
+                "url": "https://pollinations.ai/image.jpg",
+                "prompt": "test prompt",
+            }
+        )
         mock_service_class.return_value = mock_service
 
-        response = client.post(
-            "/media/generate-image",
-            json={"prompt": "test prompt"}
-        )
+        response = client.post("/media/generate-image", json={"prompt": "test prompt"})
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -59,32 +58,24 @@ class TestMediaRouter:
     def test_generate_image_error(self, mock_service_class, client):
         """Test generating image with error"""
         mock_service = MagicMock()
-        mock_service.generate_image = AsyncMock(return_value={
-            "success": False,
-            "error": "Invalid prompt"
-        })
+        mock_service.generate_image = AsyncMock(
+            return_value={"success": False, "error": "Invalid prompt"}
+        )
         mock_service_class.return_value = mock_service
 
-        response = client.post(
-            "/media/generate-image",
-            json={"prompt": "test"}
-        )
+        response = client.post("/media/generate-image", json={"prompt": "test"})
         assert response.status_code == 400
 
     @patch("app.routers.media.ImageGenerationService")
     def test_generate_image_not_configured(self, mock_service_class, client):
         """Test generating image when service not configured"""
         mock_service = MagicMock()
-        mock_service.generate_image = AsyncMock(return_value={
-            "success": False,
-            "error": "Service not configured"
-        })
+        mock_service.generate_image = AsyncMock(
+            return_value={"success": False, "error": "Service not configured"}
+        )
         mock_service_class.return_value = mock_service
 
-        response = client.post(
-            "/media/generate-image",
-            json={"prompt": "test"}
-        )
+        response = client.post("/media/generate-image", json={"prompt": "test"})
         assert response.status_code == 503
 
     @patch("app.routers.media.ImageGenerationService")
@@ -94,10 +85,7 @@ class TestMediaRouter:
         mock_service.generate_image = AsyncMock(side_effect=Exception("Service error"))
         mock_service_class.return_value = mock_service
 
-        response = client.post(
-            "/media/generate-image",
-            json={"prompt": "test"}
-        )
+        response = client.post("/media/generate-image", json={"prompt": "test"})
         assert response.status_code == 500
 
     @patch("app.routers.media.Path")
@@ -116,10 +104,7 @@ class TestMediaRouter:
         # Create a test file
         test_file = ("test.txt", "test content", "text/plain")
 
-        response = client.post(
-            "/media/upload",
-            files={"file": test_file}
-        )
+        response = client.post("/media/upload", files={"file": test_file})
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -134,9 +119,5 @@ class TestMediaRouter:
 
         test_file = ("test.txt", "test content", "text/plain")
 
-        response = client.post(
-            "/media/upload",
-            files={"file": test_file}
-        )
+        response = client.post("/media/upload", files={"file": test_file})
         assert response.status_code == 500
-

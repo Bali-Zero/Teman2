@@ -228,6 +228,10 @@ class BM25Vectorizer:
         Returns:
             BM25 TF score
         """
+        # Guard against zero avg_doc_length
+        if self.avg_doc_length == 0:
+            return 0.0
+
         numerator = token_count * (self.k1 + 1)
         denominator = token_count + self.k1 * (
             1 - self.b + self.b * (doc_length / self.avg_doc_length)

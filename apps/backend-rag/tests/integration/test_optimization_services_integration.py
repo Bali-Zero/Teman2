@@ -131,7 +131,7 @@ class TestContextWindowManagerIntegration:
         result = await manager.process_conversation_history(
             conversation_history=messages,
             system_prompt="Test system prompt",
-            current_query="Test query"
+            current_query="Test query",
         )
 
         assert result is not None
@@ -151,7 +151,7 @@ class TestContextWindowManagerIntegration:
         result = await manager.process_conversation_history(
             conversation_history=messages,
             system_prompt="Test system prompt",
-            current_query="Test query"
+            current_query="Test query",
         )
 
         # With 8192 tokens, messages should be processed (may or may not be truncated depending on total size)

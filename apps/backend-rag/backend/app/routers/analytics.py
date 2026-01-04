@@ -22,6 +22,7 @@ FOUNDER_EMAIL = "zero@balizero.com"
 
 class AnalyticsUser(BaseModel):
     """User model for analytics access"""
+
     email: str
     name: str | None = None
 
@@ -43,8 +44,7 @@ def verify_founder_access(user: dict = Depends(get_current_user)) -> dict:
     if user_email != FOUNDER_EMAIL:
         logger.warning(f"Analytics access denied for {user_email}")
         raise HTTPException(
-            status_code=403,
-            detail="Analytics dashboard is restricted to the Founder only"
+            status_code=403, detail="Analytics dashboard is restricted to the Founder only"
         )
     return user
 
@@ -53,8 +53,10 @@ def verify_founder_access(user: dict = Depends(get_current_user)) -> dict:
 # OVERVIEW ENDPOINT
 # ============================================================================
 
+
 class OverviewStats(BaseModel):
     """Overview statistics"""
+
     conversations_today: int = 0
     conversations_week: int = 0
     users_active: int = 0
@@ -67,8 +69,7 @@ class OverviewStats(BaseModel):
 
 @router.get("/overview", response_model=OverviewStats)
 async def get_overview(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> OverviewStats:
     """Get overview statistics for the dashboard"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
@@ -81,8 +82,10 @@ async def get_overview(
 # RAG PIPELINE ENDPOINT
 # ============================================================================
 
+
 class RAGStats(BaseModel):
     """RAG pipeline statistics"""
+
     avg_latency_ms: float = 0.0
     embedding_latency_ms: float = 0.0
     search_latency_ms: float = 0.0
@@ -96,10 +99,7 @@ class RAGStats(BaseModel):
 
 
 @router.get("/rag", response_model=RAGStats)
-async def get_rag_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
-) -> RAGStats:
+async def get_rag_stats(request: Request, user: dict = Depends(verify_founder_access)) -> RAGStats:
     """Get RAG pipeline statistics"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
 
@@ -111,8 +111,10 @@ async def get_rag_stats(
 # CRM ENDPOINT
 # ============================================================================
 
+
 class CRMStats(BaseModel):
     """CRM statistics"""
+
     clients_total: int = 0
     clients_active: int = 0
     clients_by_status: dict[str, int] = {}
@@ -127,10 +129,7 @@ class CRMStats(BaseModel):
 
 
 @router.get("/crm", response_model=CRMStats)
-async def get_crm_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
-) -> CRMStats:
+async def get_crm_stats(request: Request, user: dict = Depends(verify_founder_access)) -> CRMStats:
     """Get CRM statistics"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
 
@@ -142,8 +141,10 @@ async def get_crm_stats(
 # TEAM ENDPOINT
 # ============================================================================
 
+
 class TeamStats(BaseModel):
     """Team productivity statistics"""
+
     hours_today: float = 0.0
     hours_week: float = 0.0
     conversations_by_agent: dict[str, int] = {}
@@ -154,8 +155,7 @@ class TeamStats(BaseModel):
 
 @router.get("/team", response_model=TeamStats)
 async def get_team_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> TeamStats:
     """Get team productivity statistics"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
@@ -168,8 +168,10 @@ async def get_team_stats(
 # SYSTEM HEALTH ENDPOINT
 # ============================================================================
 
+
 class SystemStats(BaseModel):
     """System health statistics"""
+
     cpu_percent: float = 0.0
     memory_mb: float = 0.0
     memory_percent: float = 0.0
@@ -185,8 +187,7 @@ class SystemStats(BaseModel):
 
 @router.get("/system", response_model=SystemStats)
 async def get_system_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> SystemStats:
     """Get system health statistics"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
@@ -199,8 +200,10 @@ async def get_system_stats(
 # QDRANT ENDPOINT
 # ============================================================================
 
+
 class QdrantStats(BaseModel):
     """Qdrant vector database statistics"""
+
     total_documents: int = 0
     collections: list[dict] = []
     search_latency_avg_ms: float = 0.0
@@ -211,8 +214,7 @@ class QdrantStats(BaseModel):
 
 @router.get("/qdrant", response_model=QdrantStats)
 async def get_qdrant_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> QdrantStats:
     """Get Qdrant vector database statistics"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
@@ -225,8 +227,10 @@ async def get_qdrant_stats(
 # FEEDBACK ENDPOINT
 # ============================================================================
 
+
 class FeedbackStats(BaseModel):
     """Feedback and quality statistics"""
+
     avg_rating: float = 0.0
     rating_distribution: dict[str, int] = {}
     total_ratings: int = 0
@@ -237,8 +241,7 @@ class FeedbackStats(BaseModel):
 
 @router.get("/feedback", response_model=FeedbackStats)
 async def get_feedback_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> FeedbackStats:
     """Get feedback and quality statistics"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
@@ -251,8 +254,10 @@ async def get_feedback_stats(
 # LLM TOKEN USAGE ENDPOINT
 # ============================================================================
 
+
 class LLMUsageStats(BaseModel):
     """LLM token usage and cost statistics"""
+
     total_prompt_tokens: int = 0
     total_completion_tokens: int = 0
     total_tokens: int = 0
@@ -265,8 +270,7 @@ class LLMUsageStats(BaseModel):
 
 @router.get("/llm-usage", response_model=LLMUsageStats)
 async def get_llm_usage_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> LLMUsageStats:
     """Get detailed LLM token usage and cost statistics.
 
@@ -301,11 +305,20 @@ async def get_llm_usage_stats(
                         total_prompt += value
 
                         if model not in usage_by_model:
-                            usage_by_model[model] = {"model": model, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+                            usage_by_model[model] = {
+                                "model": model,
+                                "prompt_tokens": 0,
+                                "completion_tokens": 0,
+                                "cost_usd": 0.0,
+                            }
                         usage_by_model[model]["prompt_tokens"] += value
 
                         if endpoint not in usage_by_endpoint:
-                            usage_by_endpoint[endpoint] = {"endpoint": endpoint, "prompt_tokens": 0, "completion_tokens": 0}
+                            usage_by_endpoint[endpoint] = {
+                                "endpoint": endpoint,
+                                "prompt_tokens": 0,
+                                "completion_tokens": 0,
+                            }
                         usage_by_endpoint[endpoint]["prompt_tokens"] += value
 
             # llm_completion_tokens_total
@@ -318,11 +331,20 @@ async def get_llm_usage_stats(
                         total_completion += value
 
                         if model not in usage_by_model:
-                            usage_by_model[model] = {"model": model, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+                            usage_by_model[model] = {
+                                "model": model,
+                                "prompt_tokens": 0,
+                                "completion_tokens": 0,
+                                "cost_usd": 0.0,
+                            }
                         usage_by_model[model]["completion_tokens"] += value
 
                         if endpoint not in usage_by_endpoint:
-                            usage_by_endpoint[endpoint] = {"endpoint": endpoint, "prompt_tokens": 0, "completion_tokens": 0}
+                            usage_by_endpoint[endpoint] = {
+                                "endpoint": endpoint,
+                                "prompt_tokens": 0,
+                                "completion_tokens": 0,
+                            }
                         usage_by_endpoint[endpoint]["completion_tokens"] += value
 
             # llm_cost_usd_total
@@ -334,7 +356,12 @@ async def get_llm_usage_stats(
                         total_cost += value
 
                         if model not in usage_by_model:
-                            usage_by_model[model] = {"model": model, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
+                            usage_by_model[model] = {
+                                "model": model,
+                                "prompt_tokens": 0,
+                                "completion_tokens": 0,
+                                "cost_usd": 0.0,
+                            }
                         usage_by_model[model]["cost_usd"] += value
 
     except Exception as e:
@@ -348,7 +375,7 @@ async def get_llm_usage_stats(
         usage_by_model=list(usage_by_model.values()),
         usage_by_endpoint=list(usage_by_endpoint.values()),
         daily_trend=[],  # Would need time-series DB for this
-        generated_at=datetime.now(timezone.utc).isoformat()
+        generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
 
@@ -356,8 +383,10 @@ async def get_llm_usage_stats(
 # ALERTS ENDPOINT
 # ============================================================================
 
+
 class AlertStats(BaseModel):
     """Alert and error statistics"""
+
     active_alerts: list[dict] = []
     recent_errors: list[dict] = []
     slow_queries: list[dict] = []
@@ -367,8 +396,7 @@ class AlertStats(BaseModel):
 
 @router.get("/alerts", response_model=AlertStats)
 async def get_alert_stats(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> AlertStats:
     """Get alert and error statistics"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
@@ -381,8 +409,10 @@ async def get_alert_stats(
 # ALL-IN-ONE ENDPOINT (for initial load)
 # ============================================================================
 
+
 class AllAnalytics(BaseModel):
     """All analytics combined for initial load"""
+
     overview: OverviewStats
     rag: RAGStats
     crm: CRMStats
@@ -396,8 +426,7 @@ class AllAnalytics(BaseModel):
 
 @router.get("/all", response_model=AllAnalytics)
 async def get_all_analytics(
-    request: Request,
-    user: dict = Depends(verify_founder_access)
+    request: Request, user: dict = Depends(verify_founder_access)
 ) -> AllAnalytics:
     """Get all analytics in one request for initial dashboard load"""
     from services.analytics.analytics_aggregator import AnalyticsAggregator
@@ -427,5 +456,5 @@ async def get_all_analytics(
         qdrant=qdrant,
         feedback=feedback,
         alerts=alerts,
-        generated_at=datetime.now(timezone.utc).isoformat()
+        generated_at=datetime.now(timezone.utc).isoformat(),
     )

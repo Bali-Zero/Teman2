@@ -22,8 +22,10 @@ router = APIRouter(prefix="/api/knowledge/visa", tags=["knowledge-visa"])
 # Pydantic Models
 # =============================================================================
 
+
 class VisaTypeBase(BaseModel):
     """Base visa type model"""
+
     code: str
     name: str
     category: str
@@ -49,6 +51,7 @@ class VisaTypeBase(BaseModel):
 
 class VisaTypeResponse(VisaTypeBase):
     """Response model with ID and timestamps"""
+
     id: int
     last_updated: datetime | None = None
     created_at: datetime | None = None
@@ -59,6 +62,7 @@ class VisaTypeResponse(VisaTypeBase):
 
 class VisaTypeListResponse(BaseModel):
     """List response with pagination info"""
+
     items: list[VisaTypeResponse]
     total: int
     categories: list[str]
@@ -66,6 +70,7 @@ class VisaTypeListResponse(BaseModel):
 
 class VisaTypeCreate(VisaTypeBase):
     """Create model"""
+
     pass
 
 
@@ -73,11 +78,9 @@ class VisaTypeCreate(VisaTypeBase):
 # Endpoints
 # =============================================================================
 
+
 @router.get("/", response_model=VisaTypeListResponse)
-async def list_visa_types(
-    category: str | None = None,
-    pool=Depends(get_db_pool)
-):
+async def list_visa_types(category: str | None = None, pool=Depends(get_db_pool)):
     """
     List all visa types, optionally filtered by category.
 
@@ -142,7 +145,9 @@ async def list_visa_types(
                 benefits=row["benefits"] or [],
                 process_steps=row["process_steps"] or [],
                 tips=row["tips"] or [],
-                foreign_eligible=row["foreign_eligible"] if row["foreign_eligible"] is not None else True,
+                foreign_eligible=row["foreign_eligible"]
+                if row["foreign_eligible"] is not None
+                else True,
                 metadata=row["metadata"],
                 last_updated=row["last_updated"],
                 created_at=row["created_at"],
@@ -150,24 +155,14 @@ async def list_visa_types(
             for row in rows
         ]
 
-        return VisaTypeListResponse(
-            items=items,
-            total=len(items),
-            categories=categories
-        )
+        return VisaTypeListResponse(items=items, total=len(items), categories=categories)
 
 
 @router.get("/{visa_id}", response_model=VisaTypeResponse)
-async def get_visa_type(
-    visa_id: int,
-    pool=Depends(get_db_pool)
-):
+async def get_visa_type(visa_id: int, pool=Depends(get_db_pool)):
     """Get a specific visa type by ID"""
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM visa_types WHERE id = $1",
-            visa_id
-        )
+        row = await conn.fetchrow("SELECT * FROM visa_types WHERE id = $1", visa_id)
 
         if not row:
             raise HTTPException(status_code=404, detail="Visa type not found")
@@ -193,7 +188,9 @@ async def get_visa_type(
             benefits=row["benefits"] or [],
             process_steps=row["process_steps"] or [],
             tips=row["tips"] or [],
-            foreign_eligible=row["foreign_eligible"] if row["foreign_eligible"] is not None else True,
+            foreign_eligible=row["foreign_eligible"]
+            if row["foreign_eligible"] is not None
+            else True,
             metadata=row["metadata"],
             last_updated=row["last_updated"],
             created_at=row["created_at"],
@@ -201,16 +198,10 @@ async def get_visa_type(
 
 
 @router.get("/code/{code}", response_model=VisaTypeResponse)
-async def get_visa_by_code(
-    code: str,
-    pool=Depends(get_db_pool)
-):
+async def get_visa_by_code(code: str, pool=Depends(get_db_pool)):
     """Get a specific visa type by code (e.g., 'C316', 'KITAS-INVESTOR')"""
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM visa_types WHERE UPPER(code) = UPPER($1)",
-            code
-        )
+        row = await conn.fetchrow("SELECT * FROM visa_types WHERE UPPER(code) = UPPER($1)", code)
 
         if not row:
             raise HTTPException(status_code=404, detail=f"Visa type with code '{code}' not found")
@@ -236,7 +227,9 @@ async def get_visa_by_code(
             benefits=row["benefits"] or [],
             process_steps=row["process_steps"] or [],
             tips=row["tips"] or [],
-            foreign_eligible=row["foreign_eligible"] if row["foreign_eligible"] is not None else True,
+            foreign_eligible=row["foreign_eligible"]
+            if row["foreign_eligible"] is not None
+            else True,
             metadata=row["metadata"],
             last_updated=row["last_updated"],
             created_at=row["created_at"],
@@ -245,6 +238,7 @@ async def get_visa_by_code(
 
 class VisaTypeUpdate(BaseModel):
     """Update model - all fields optional"""
+
     name: str | None = None
     category: str | None = None
     duration: str | None = None
@@ -268,18 +262,11 @@ class VisaTypeUpdate(BaseModel):
 
 
 @router.put("/{visa_id}", response_model=VisaTypeResponse)
-async def update_visa_type(
-    visa_id: int,
-    visa: VisaTypeUpdate,
-    pool=Depends(get_db_pool)
-):
+async def update_visa_type(visa_id: int, visa: VisaTypeUpdate, pool=Depends(get_db_pool)):
     """Update a visa type by ID"""
     async with pool.acquire() as conn:
         # Check if exists
-        existing = await conn.fetchrow(
-            "SELECT * FROM visa_types WHERE id = $1",
-            visa_id
-        )
+        existing = await conn.fetchrow("SELECT * FROM visa_types WHERE id = $1", visa_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Visa type not found")
 
@@ -302,7 +289,7 @@ async def update_visa_type(
 
         query = f"""
             UPDATE visa_types
-            SET {', '.join(updates)}
+            SET {", ".join(updates)}
             WHERE id = ${param_idx}
             RETURNING *
         """
@@ -330,7 +317,9 @@ async def update_visa_type(
             benefits=row["benefits"] or [],
             process_steps=row["process_steps"] or [],
             tips=row["tips"] or [],
-            foreign_eligible=row["foreign_eligible"] if row["foreign_eligible"] is not None else True,
+            foreign_eligible=row["foreign_eligible"]
+            if row["foreign_eligible"] is not None
+            else True,
             metadata=row["metadata"],
             last_updated=row["last_updated"],
             created_at=row["created_at"],
@@ -338,19 +327,17 @@ async def update_visa_type(
 
 
 @router.post("/", response_model=VisaTypeResponse)
-async def create_visa_type(
-    visa: VisaTypeCreate,
-    pool=Depends(get_db_pool)
-):
+async def create_visa_type(visa: VisaTypeCreate, pool=Depends(get_db_pool)):
     """Create a new visa type (admin only)"""
     async with pool.acquire() as conn:
         # Check if code already exists
         existing = await conn.fetchval(
-            "SELECT id FROM visa_types WHERE UPPER(code) = UPPER($1)",
-            visa.code
+            "SELECT id FROM visa_types WHERE UPPER(code) = UPPER($1)", visa.code
         )
         if existing:
-            raise HTTPException(status_code=400, detail=f"Visa type with code '{visa.code}' already exists")
+            raise HTTPException(
+                status_code=400, detail=f"Visa type with code '{visa.code}' already exists"
+            )
 
         row = await conn.fetchrow(
             """
@@ -366,13 +353,27 @@ async def create_visa_type(
             )
             RETURNING *
             """,
-            visa.code, visa.name, visa.category, visa.duration, visa.extensions,
-            visa.total_stay, visa.renewable, visa.processing_time_normal,
-            visa.processing_time_express, visa.processing_timeline,
-            visa.cost_visa, visa.cost_extension, visa.cost_details,
-            visa.requirements, visa.restrictions, visa.allowed_activities,
-            visa.benefits, visa.process_steps, visa.tips,
-            visa.foreign_eligible, visa.metadata
+            visa.code,
+            visa.name,
+            visa.category,
+            visa.duration,
+            visa.extensions,
+            visa.total_stay,
+            visa.renewable,
+            visa.processing_time_normal,
+            visa.processing_time_express,
+            visa.processing_timeline,
+            visa.cost_visa,
+            visa.cost_extension,
+            visa.cost_details,
+            visa.requirements,
+            visa.restrictions,
+            visa.allowed_activities,
+            visa.benefits,
+            visa.process_steps,
+            visa.tips,
+            visa.foreign_eligible,
+            visa.metadata,
         )
 
         return VisaTypeResponse(
@@ -396,7 +397,9 @@ async def create_visa_type(
             benefits=row["benefits"] or [],
             process_steps=row["process_steps"] or [],
             tips=row["tips"] or [],
-            foreign_eligible=row["foreign_eligible"] if row["foreign_eligible"] is not None else True,
+            foreign_eligible=row["foreign_eligible"]
+            if row["foreign_eligible"] is not None
+            else True,
             metadata=row["metadata"],
             last_updated=row["last_updated"],
             created_at=row["created_at"],

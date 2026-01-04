@@ -30,9 +30,10 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.reasoning import ReasoningEngine, calculate_evidence_score
-from services.tools.definitions import AgentState, ToolCall
 from services.llm_clients.pricing import TokenUsage
+from services.rag.agentic.reasoning import ReasoningEngine
+from services.tools.definitions import AgentState, ToolCall
+
 
 def mock_token_usage():
     return TokenUsage(prompt_tokens=10, completion_tokens=20)
@@ -49,10 +50,8 @@ class TestReasoningToolExecution:
         # Create a proper mock tool that implements BaseTool interface
         mock_tool = MagicMock()
         mock_tool.execute = AsyncMock(return_value="Found relevant documents about KITAS")
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -61,13 +60,25 @@ class TestReasoningToolExecution:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Thought: I need to search for KITAS information. Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Thought: I need to search for KITAS information. Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
-                return ("Answer: KITAS is a temporary residence permit", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Answer: KITAS is a temporary residence permit",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -78,6 +89,7 @@ class TestReasoningToolExecution:
         )
 
         parse_call_count = 0
+
         def mock_parse_fn(*args, **kwargs):
             nonlocal parse_call_count
             parse_call_count += 1
@@ -89,7 +101,11 @@ class TestReasoningToolExecution:
         tool_execution_counter = {"count": 0}
         # Mock tracing properly using contextlib.nullcontext
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_fn):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -106,7 +122,7 @@ class TestReasoningToolExecution:
         # Verify tool was executed
         assert "vector_search" in tool_map
         mock_tool.execute.assert_called()
-        
+
         # Verify context was gathered
         assert len(result_state.context_gathered) > 0
 
@@ -118,7 +134,7 @@ class TestReasoningToolExecution:
         mock_vector_search.execute = AsyncMock(return_value="Document 1 about KITAS")
         mock_calculator = MagicMock()
         mock_calculator.execute = AsyncMock(return_value="42")
-        
+
         tool_map = {
             "vector_search": mock_vector_search,
             "calculator": mock_calculator,
@@ -131,16 +147,27 @@ class TestReasoningToolExecution:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             elif call_count == 2:
                 return ("Action: calculator('6*7')", "gemini-2.0-flash", None, mock_token_usage())
             else:
-                return ("Answer: KITAS is a permit and 6*7=42", "gemini-2.0-flash", None, mock_token_usage())
-        
+                return (
+                    "Answer: KITAS is a permit and 6*7=42",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -151,6 +178,7 @@ class TestReasoningToolExecution:
             None,  # Final answer
         ]
         call_idx = 0
+
         def mock_parse_tool_call(*args, **kwargs):
             nonlocal call_idx
             if call_idx < len(tool_calls):
@@ -162,8 +190,14 @@ class TestReasoningToolExecution:
         tool_execution_counter = {"count": 0}
         # Mock tracing properly using contextlib.nullcontext
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -186,10 +220,8 @@ class TestReasoningToolExecution:
         # Create mock tool that raises exception
         mock_tool = MagicMock()
         mock_tool.execute = AsyncMock(side_effect=Exception("Tool execution failed"))
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -198,13 +230,25 @@ class TestReasoningToolExecution:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
-                return ("Answer: I encountered an error", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Answer: I encountered an error",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -214,6 +258,7 @@ class TestReasoningToolExecution:
         )
 
         parse_call_count = 0
+
         def mock_parse_fn(*args, **kwargs):
             nonlocal parse_call_count
             parse_call_count += 1
@@ -225,7 +270,11 @@ class TestReasoningToolExecution:
         tool_execution_counter = {"count": 0}
         # Mock tracing properly using contextlib.nullcontext
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_fn):
                 # Tool execution errors should be raised (not silently caught)
                 with pytest.raises(Exception, match="Tool execution failed"):
@@ -250,10 +299,8 @@ class TestReasoningToolExecution:
         # Create proper mock tool
         mock_tool = MagicMock()
         mock_tool.execute = AsyncMock(return_value="Found documents")
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -278,12 +325,18 @@ class TestReasoningToolExecution:
         tool_execution_counter = {"count": 0}
         # Mock tracing properly using contextlib.nullcontext
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 llm_gateway.send_message = AsyncMock(
                     return_value=("Answer", "gemini-2.0-flash", mock_response, mock_token_usage())
                 )
-                
+
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -317,7 +370,12 @@ class TestReasoningStreamingMode:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Final Answer: KITAS is a permit",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -348,10 +406,8 @@ class TestReasoningStreamingMode:
         # Create proper mock tool
         mock_tool = MagicMock()
         mock_tool.execute = AsyncMock(return_value="Found documents about KITAS")
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -360,14 +416,20 @@ class TestReasoningStreamingMode:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
-        
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -408,6 +470,7 @@ class TestReasoningStreamingMode:
 
         llm_gateway = AsyncMock()
         from google.api_core.exceptions import ResourceExhausted
+
         llm_gateway.send_message = AsyncMock(side_effect=ResourceExhausted("Rate limit exceeded"))
         chat = MagicMock()
 
@@ -466,12 +529,15 @@ class TestReasoningStreamingMode:
         # Should have evidence_score event
         evidence_events = [e for e in events if e.get("type") == "evidence_score"]
         assert len(evidence_events) > 0
-        
+
         # Final answer should be abstain message
         final_events = [e for e in events if e.get("type") == "final_answer"]
         if final_events:
             final_answer = final_events[0].get("data", "")
-            assert "non ho trovato informazioni" in final_answer.lower() or "dispiace" in final_answer.lower()
+            assert (
+                "non ho trovato informazioni" in final_answer.lower()
+                or "dispiace" in final_answer.lower()
+            )
 
     @pytest.mark.asyncio
     async def test_streaming_mode_warning_policy(self):
@@ -521,7 +587,12 @@ class TestReasoningStreamingMode:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Still thinking...", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Thought: Still thinking...",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -581,7 +652,10 @@ class TestReasoningPolicyEnforcement:
             )
 
         # Weak evidence should override existing answer
-        assert "non ho trovato informazioni" in result_state.final_answer.lower() or "dispiace" in result_state.final_answer.lower()
+        assert (
+            "non ho trovato informazioni" in result_state.final_answer.lower()
+            or "dispiace" in result_state.final_answer.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_policy_final_answer_generation_with_strong_evidence(self):
@@ -591,11 +665,21 @@ class TestReasoningPolicyEnforcement:
 
         state = AgentState(query="What is KITAS?", max_steps=1)
         state.context_gathered = ["KITAS visa requirements " * 30]  # Strong context
-        state.sources = [{"id": 1, "score": 0.9}, {"id": 2, "score": 0.85}, {"id": 3, "score": 0.8}, {"id": 4, "score": 0.75}]
+        state.sources = [
+            {"id": 1, "score": 0.9},
+            {"id": 2, "score": 0.85},
+            {"id": 3, "score": 0.8},
+            {"id": 4, "score": 0.75},
+        ]
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("KITAS is a temporary residence permit for Indonesia", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "KITAS is a temporary residence permit for Indonesia",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -616,4 +700,3 @@ class TestReasoningPolicyEnforcement:
         assert result_state.final_answer
         assert "non ho trovato informazioni" not in result_state.final_answer.lower()
         assert result_state.evidence_score >= 0.6
-

@@ -22,10 +22,7 @@ class TestResultFormatter:
             "ids": ["1", "2"],
             "documents": ["Test document 1", "Test document 2"],
             "distances": [0.1, 0.2],
-            "metadatas": [
-                {"tier": "S", "source": "test"},
-                {"tier": "A", "source": "test"}
-            ]
+            "metadatas": [{"tier": "S", "source": "test"}, {"tier": "A", "source": "test"}],
         }
         formatted = format_search_results(raw_results, "test_collection")
         assert isinstance(formatted, list)
@@ -33,12 +30,7 @@ class TestResultFormatter:
 
     def test_format_search_results_empty(self):
         """Test formatting empty search results"""
-        raw_results = {
-            "ids": [],
-            "documents": [],
-            "distances": [],
-            "metadatas": []
-        }
+        raw_results = {"ids": [], "documents": [], "distances": [], "metadatas": []}
         formatted = format_search_results(raw_results, "test_collection")
         assert isinstance(formatted, list)
         assert len(formatted) == 0
@@ -49,12 +41,10 @@ class TestResultFormatter:
             "ids": ["1"],
             "documents": ["Test document"],
             "distances": [0.1],
-            "metadatas": [{"tier": "S", "source": "test"}]
+            "metadatas": [{"tier": "S", "source": "test"}],
         }
         formatted = format_search_results(
-            raw_results,
-            "test_collection",
-            primary_collection="test_collection"
+            raw_results, "test_collection", primary_collection="test_collection"
         )
         assert isinstance(formatted, list)
         assert len(formatted) == 1
@@ -66,12 +56,9 @@ class TestResultFormatter:
             "ids": ["1"],
             "documents": ["Test document"],
             "distances": [0.1],
-            "metadatas": [{"tier": "S", "source": "test"}]
+            "metadatas": [{"tier": "S", "source": "test"}],
         }
-        formatted = format_search_results(
-            raw_results,
-            "bali_zero_pricing"
-        )
+        formatted = format_search_results(raw_results, "bali_zero_pricing")
         assert isinstance(formatted, list)
         assert len(formatted) == 1
         assert formatted[0]["score"] > 0
@@ -83,12 +70,9 @@ class TestResultFormatter:
             "ids": ["1"],
             "documents": ["Test document"],
             "distances": [0.1],
-            "metadatas": [{"tier": "S", "source": "test"}]
+            "metadatas": [{"tier": "S", "source": "test"}],
         }
-        formatted = format_search_results(
-            raw_results,
-            "bali_zero_team"
-        )
+        formatted = format_search_results(raw_results, "bali_zero_team")
         assert isinstance(formatted, list)
         assert len(formatted) == 1
         assert formatted[0]["score"] > 0
@@ -99,7 +83,7 @@ class TestResultFormatter:
             "ids": ["1"],
             "documents": ["Test document"],
             "distances": [-0.1],
-            "metadatas": [{"tier": "S"}]
+            "metadatas": [{"tier": "S"}],
         }
         formatted = format_search_results(raw_results, "test_collection")
         assert len(formatted) == 1
@@ -110,7 +94,7 @@ class TestResultFormatter:
         raw_results = {
             "ids": ["1"],
             "documents": ["Test document"],
-            "distances": [0.1]
+            "distances": [0.1],
             # Missing metadatas
         }
         formatted = format_search_results(raw_results, "test_collection")
@@ -123,7 +107,7 @@ class TestResultFormatter:
             "ids": ["1", "2"],
             "documents": ["Test document"],
             "distances": [0.1],
-            "metadatas": [{"tier": "S"}]
+            "metadatas": [{"tier": "S"}],
         }
         formatted = format_search_results(raw_results, "test_collection")
         assert len(formatted) == 1  # Should only format available data
@@ -134,17 +118,12 @@ class TestResultFormatter:
             "ids": ["1"],
             "documents": ["Test document"],
             "distances": [0.1],
-            "metadatas": [{"tier": "S"}]
+            "metadatas": [{"tier": "S"}],
         }
         formatted_with_boost = format_search_results(
-            raw_results,
-            "primary_collection",
-            primary_collection="primary_collection"
+            raw_results, "primary_collection", primary_collection="primary_collection"
         )
-        formatted_without_boost = format_search_results(
-            raw_results,
-            "primary_collection"
-        )
+        formatted_without_boost = format_search_results(raw_results, "primary_collection")
         assert formatted_with_boost[0]["score"] > formatted_without_boost[0]["score"]
         assert formatted_with_boost[0]["metadata"]["is_primary"] is True
 
@@ -154,12 +133,10 @@ class TestResultFormatter:
             "ids": ["1"],
             "documents": ["Test document"],
             "distances": [0.1],
-            "metadatas": [{"tier": "S"}]
+            "metadatas": [{"tier": "S"}],
         }
         formatted = format_search_results(
-            raw_results,
-            "other_collection",
-            primary_collection="primary_collection"
+            raw_results, "other_collection", primary_collection="primary_collection"
         )
         assert formatted[0]["metadata"]["is_primary"] is False
         assert formatted[0]["metadata"]["source_collection"] == "other_collection"

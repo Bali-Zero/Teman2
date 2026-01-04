@@ -90,4 +90,3 @@ class TestCollectionManager:
             assert isinstance(name, str)
             assert isinstance(definition, dict)
             assert "priority" in definition or "doc_count" in definition
-

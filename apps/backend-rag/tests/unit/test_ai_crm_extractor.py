@@ -61,7 +61,9 @@ def test_init_without_client():
 
 def test_init_exception():
     """Test initialization with exception"""
-    with patch("services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")):
+    with patch(
+        "services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")
+    ):
         with pytest.raises(Exception):
             AICRMExtractor()
 
@@ -413,6 +415,8 @@ def test_get_extractor_singleton(mock_ai_client):
 def test_get_extractor_exception():
     """Test get_extractor with exception"""
     with patch("services.crm.ai_crm_extractor._extractor_instance", None):
-        with patch("services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")):
+        with patch(
+            "services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")
+        ):
             with pytest.raises(Exception):
                 get_extractor()

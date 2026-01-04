@@ -33,7 +33,9 @@ class TestTierClassifier:
 
     def test_classify_tier_s_consciousness(self, classifier):
         """Test classifying Tier S - consciousness"""
-        result = classifier.classify_book_tier("The Nature of Consciousness and Awareness", "Author")
+        result = classifier.classify_book_tier(
+            "The Nature of Consciousness and Awareness", "Author"
+        )
         assert result == TierLevel.S
 
     def test_classify_tier_a_philosophy(self, classifier):
@@ -68,4 +70,3 @@ class TestTierClassifier:
         assert classifier.get_min_access_level(TierLevel.B) == 2
         assert classifier.get_min_access_level(TierLevel.C) == 2
         assert classifier.get_min_access_level(TierLevel.D) == 3
-

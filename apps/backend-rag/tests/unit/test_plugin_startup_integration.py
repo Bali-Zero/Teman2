@@ -102,4 +102,3 @@ async def test_initialize_plugins_finds_plugins_directory():
         assert call_args is not None
         # Should be called with plugins directory and package prefix
         assert "plugins" in str(call_args)
-

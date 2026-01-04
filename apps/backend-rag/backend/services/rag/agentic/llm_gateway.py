@@ -117,10 +117,12 @@ class LLMGateway:
                 self._genai_client = get_genai_client()
                 self._available = self._genai_client.is_available
                 if self._available:
-                    auth_method = getattr(self._genai_client, '_auth_method', 'unknown')
+                    auth_method = getattr(self._genai_client, "_auth_method", "unknown")
                     logger.info(f"✅ LLMGateway: GenAI client initialized (auth: {auth_method})")
                 else:
-                    logger.warning("⚠️ LLMGateway: GenAI client not available - will use OpenRouter fallback")
+                    logger.warning(
+                        "⚠️ LLMGateway: GenAI client not available - will use OpenRouter fallback"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to initialize GenAI client: {e}")
 
@@ -129,7 +131,9 @@ class LLMGateway:
         self.model_name_flash = "gemini-3-flash-preview"  # Primary: fast, cost-effective
         self.model_name_fallback = "gemini-2.0-flash"  # Fallback: stable, reliable
 
-        logger.info("✅ LLMGateway: Model configuration ready (3-flash-preview primary, 2.0-flash fallback)")
+        logger.info(
+            "✅ LLMGateway: Model configuration ready (3-flash-preview primary, 2.0-flash fallback)"
+        )
 
         # Lazy-loaded OpenRouter client (fallback)
         self._openrouter_client: OpenRouterClient | None = None
@@ -184,7 +188,8 @@ class LLMGateway:
         tier: int = TIER_FLASH,
         enable_function_calling: bool = True,
         conversation_messages: list[dict] | None = None,
-        images: list[dict] | None = None,  # Vision: [{"base64": "data:image/...", "name": "file.jpg"}]
+        images: list[dict]
+        | None = None,  # Vision: [{"base64": "data:image/...", "name": "file.jpg"}]
     ) -> tuple[str, str, Any, TokenUsage]:
         """Send message to LLM with tier-based routing and automatic fallback.
 
@@ -242,10 +247,11 @@ class LLMGateway:
                     "tier": tier,
                     "fallback_depth": query_cost_tracker["depth"],
                     "total_cost": query_cost_tracker["cost"],
-                }
+                },
             )
             try:
                 from app.metrics import llm_all_models_failed_total
+
                 llm_all_models_failed_total.inc()
             except ImportError:
                 pass
@@ -283,18 +289,15 @@ class LLMGateway:
 
         # Log with structured context
         error_context = get_error_context(error, model=model_name)
-        logger.warning(
-            f"LLM call failed for {model_name}",
-            extra=error_context
-        )
+        logger.warning(f"LLM call failed for {model_name}", extra=error_context)
 
         # Record metrics if circuit opened
         if circuit.is_open():
             try:
                 from app.metrics import llm_circuit_breaker_opened_total
+
                 llm_circuit_breaker_opened_total.labels(
-                    model=model_name,
-                    error_type=error_type
+                    model=model_name, error_type=error_type
                 ).inc()
             except ImportError:
                 pass
@@ -389,12 +392,12 @@ class LLMGateway:
                             properties={
                                 k: types.Schema(
                                     type=v.get("type", "STRING"),
-                                    description=v.get("description", "")
+                                    description=v.get("description", ""),
                                 )
                                 for k, v in params.get("properties", {}).items()
                             },
-                            required=params.get("required", [])
-                        )
+                            required=params.get("required", []),
+                        ),
                     )
                     function_declarations.append(func_decl)
 
@@ -410,7 +413,9 @@ class LLMGateway:
                     config_kwargs["tool_config"] = types.ToolConfig(
                         function_calling_config=types.FunctionCallingConfig(mode="AUTO")
                     )
-                    logger.debug(f"🔧 [LLMGateway] Tool config set with {len(function_declarations)} functions")
+                    logger.debug(
+                        f"🔧 [LLMGateway] Tool config set with {len(function_declarations)} functions"
+                    )
                 except (AttributeError, TypeError) as e:
                     logger.warning(f"⚠️ [LLMGateway] Could not set tool_config: {e}")
 
@@ -444,13 +449,17 @@ class LLMGateway:
                         b64_content = base64_data
                         mime_type = "image/jpeg"
 
-                    parts.append({
-                        "inline_data": {
-                            "mime_type": mime_type,
-                            "data": b64_content,
+                    parts.append(
+                        {
+                            "inline_data": {
+                                "mime_type": mime_type,
+                                "data": b64_content,
+                            }
                         }
-                    })
-                    logger.debug(f"🖼️ Added image to content: {img.get('name', 'unknown')} ({mime_type})")
+                    )
+                    logger.debug(
+                        f"🖼️ Added image to content: {img.get('name', 'unknown')} ({mime_type})"
+                    )
                 except Exception as img_err:
                     logger.warning(f"⚠️ Failed to process image: {img_err}")
 
@@ -461,7 +470,9 @@ class LLMGateway:
             return [{"parts": parts}]
 
         # Helper to call model
-        async def _call_model(model_name: str, with_tools: bool = False) -> tuple[str, Any, TokenUsage]:
+        async def _call_model(
+            model_name: str, with_tools: bool = False
+        ) -> tuple[str, Any, TokenUsage]:
             """Call a specific model and return (text, response, token_usage)."""
             if not self._genai_client or not self._genai_client.is_available:
                 raise RuntimeError("GenAI client not available")
@@ -471,13 +482,16 @@ class LLMGateway:
             has_images = images is not None and len(images) > 0
 
             # 🔍 TRACING: Span for LLM call
-            with trace_span("llm.call", {
-                "model": model_name,
-                "with_tools": with_tools,
-                "message_length": len(message),
-                "has_images": has_images,
-                "image_count": len(images) if images else 0,
-            }):
+            with trace_span(
+                "llm.call",
+                {
+                    "model": model_name,
+                    "with_tools": with_tools,
+                    "message_length": len(message),
+                    "has_images": has_images,
+                    "image_count": len(images) if images else 0,
+                },
+            ):
                 config = _build_config(with_tools)
 
                 if has_images:
@@ -494,7 +508,9 @@ class LLMGateway:
                 completion_tokens = 0
                 if hasattr(response, "usage_metadata") and response.usage_metadata:
                     prompt_tokens = getattr(response.usage_metadata, "prompt_token_count", 0) or 0
-                    completion_tokens = getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                    completion_tokens = (
+                        getattr(response.usage_metadata, "candidates_token_count", 0) or 0
+                    )
 
                 token_usage = create_token_usage(
                     prompt_tokens=prompt_tokens,
@@ -539,6 +555,7 @@ class LLMGateway:
                 logger.debug(f"Circuit breaker OPEN for {model_name}, skipping")
                 try:
                     from app.metrics import llm_circuit_breaker_open_total
+
                     llm_circuit_breaker_open_total.labels(model=model_name).inc()
                 except ImportError:
                     pass
@@ -552,6 +569,7 @@ class LLMGateway:
                 )
                 try:
                     from app.metrics import llm_cost_limit_reached_total
+
                     llm_cost_limit_reached_total.inc()
                 except ImportError:
                     pass
@@ -560,11 +578,11 @@ class LLMGateway:
             # Check fallback depth
             if query_cost_tracker["depth"] >= self._max_fallback_depth:
                 logger.warning(
-                    f"Max fallback depth reached ({query_cost_tracker['depth']}), "
-                    f"stopping cascade"
+                    f"Max fallback depth reached ({query_cost_tracker['depth']}), stopping cascade"
                 )
                 try:
                     from app.metrics import llm_max_depth_reached_total
+
                     llm_max_depth_reached_total.inc()
                 except ImportError:
                     pass
@@ -588,6 +606,7 @@ class LLMGateway:
 
                 try:
                     from app.metrics import llm_fallback_depth, llm_query_cost_usd
+
                     llm_fallback_depth.observe(query_cost_tracker["depth"])
                     llm_query_cost_usd.observe(query_cost_tracker["cost"])
                 except ImportError:
@@ -602,6 +621,7 @@ class LLMGateway:
                 logger.warning(f"Quota exhausted for {model_name}: {e}")
                 try:
                     from app.metrics import llm_quota_exhausted_total
+
                     llm_quota_exhausted_total.labels(model=model_name).inc()
                 except ImportError:
                     pass
@@ -614,6 +634,7 @@ class LLMGateway:
                 logger.warning(f"Service unavailable for {model_name}: {e}")
                 try:
                     from app.metrics import llm_service_unavailable_total
+
                     llm_service_unavailable_total.labels(model=model_name).inc()
                 except ImportError:
                     pass
@@ -627,10 +648,8 @@ class LLMGateway:
                 logger.warning(f"Error with {model_name}: {e}")
                 try:
                     from app.metrics import llm_model_error_total
-                    llm_model_error_total.labels(
-                        model=model_name,
-                        error_type=error_type
-                    ).inc()
+
+                    llm_model_error_total.labels(model=model_name, error_type=error_type).inc()
                 except ImportError:
                     pass
                 metrics_collector.record_llm_fallback(model_name, "next_model")

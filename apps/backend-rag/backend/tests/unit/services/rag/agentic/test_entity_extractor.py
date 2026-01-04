@@ -120,4 +120,3 @@ class TestEntityExtractionService:
         assert "nationality" in result
         assert result["visa_type"] == "KITAS"
         assert result["nationality"] == "Italy"
-

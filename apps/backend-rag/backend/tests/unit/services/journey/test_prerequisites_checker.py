@@ -39,7 +39,7 @@ def mock_journey():
             prerequisites=[],
             required_documents=[],
             estimated_duration_days=5,
-            status=StepStatus.COMPLETED
+            status=StepStatus.COMPLETED,
         ),
         JourneyStep(
             step_id="step2",
@@ -49,7 +49,7 @@ def mock_journey():
             prerequisites=["step1"],
             required_documents=[],
             estimated_duration_days=3,
-            status=StepStatus.PENDING
+            status=StepStatus.PENDING,
         ),
         JourneyStep(
             step_id="step3",
@@ -59,8 +59,8 @@ def mock_journey():
             prerequisites=["step1", "step2"],
             required_documents=[],
             estimated_duration_days=2,
-            status=StepStatus.PENDING
-        )
+            status=StepStatus.PENDING,
+        ),
     ]
     journey = ClientJourney(
         journey_id="journey1",
@@ -69,7 +69,7 @@ def mock_journey():
         title="Test Journey",
         description="Test Description",
         steps=steps,
-        status=JourneyStatus.IN_PROGRESS
+        status=JourneyStatus.IN_PROGRESS,
     )
     return journey
 
@@ -136,7 +136,7 @@ class TestPrerequisitesCheckerService:
                 prerequisites=["nonexistent_prereq"],
                 required_documents=[],
                 estimated_duration_days=5,
-                status=StepStatus.PENDING
+                status=StepStatus.PENDING,
             )
         ]
         journey = ClientJourney(
@@ -146,9 +146,8 @@ class TestPrerequisitesCheckerService:
             title="Test Journey",
             description="Test Description",
             steps=steps,
-            status=JourneyStatus.NOT_STARTED
+            status=JourneyStatus.NOT_STARTED,
         )
         met, missing = prerequisites_checker.check_prerequisites(journey, "step1")
         assert met is False
         assert len(missing) > 0
-

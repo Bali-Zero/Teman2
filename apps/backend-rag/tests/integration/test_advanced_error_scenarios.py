@@ -324,6 +324,3 @@ class TestAdvancedErrorScenarios:
 
             # Cleanup
             await conn.execute("DELETE FROM error_propagation WHERE error_id = $1", error_id)
-
-
-

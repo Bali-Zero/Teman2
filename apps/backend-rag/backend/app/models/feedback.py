@@ -27,7 +27,9 @@ class ConversationRating(SQLModel, table=True):
     rating: int = Field(nullable=False, ge=1, le=5)
 
     # Feedback qualitative
-    feedback_type: str | None = Field(default=None, max_length=20)  # 'positive', 'negative', 'issue'
+    feedback_type: str | None = Field(
+        default=None, max_length=20
+    )  # 'positive', 'negative', 'issue'
     feedback_text: str | None = Field(default=None, sa_column=Column(Text))
 
     # Metadata
@@ -75,5 +77,3 @@ class ReviewQueue(SQLModel, table=True):
 
     # Relationships
     source_feedback: ConversationRating = Relationship(back_populates="review_queue_entries")
-
-

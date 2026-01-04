@@ -81,6 +81,7 @@ class TestRootEndpoints:
         app.state.db_pool = mock_pool
 
         from fastapi.testclient import TestClient
+
         client = TestClient(app)
 
         response = client.get("/api/dashboard/stats")
@@ -97,6 +98,7 @@ class TestRootEndpoints:
         app.state.db_pool = None
 
         from fastapi.testclient import TestClient
+
         client = TestClient(app)
 
         response = client.get("/api/dashboard/stats")
@@ -121,6 +123,7 @@ class TestRootEndpoints:
         app.state.db_pool = mock_pool
 
         from fastapi.testclient import TestClient
+
         client = TestClient(app)
 
         response = client.get("/api/dashboard/stats")
@@ -128,7 +131,3 @@ class TestRootEndpoints:
         data = response.json()
         assert data["system_health"] == "error"
         assert "error" in data
-
-
-
-

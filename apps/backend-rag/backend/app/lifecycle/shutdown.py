@@ -75,11 +75,25 @@ def register_shutdown_handlers(app: FastAPI) -> None:
             await daily_notifier.stop()
             logger.info("✅ Daily Check-in Notifier stopped")
 
+        # Shutdown Weekly Email Reporter
+        weekly_reporter = getattr(app.state, "weekly_reporter", None)
+        if weekly_reporter:
+            await weekly_reporter.stop()
+            logger.info("✅ Weekly Email Reporter stopped")
+
         # Shutdown Team Timesheet Service (auto-logout monitor)
         ts_service = getattr(app.state, "ts_service", None)
         if ts_service:
             await ts_service.stop_auto_logout_monitor()
             logger.info("✅ Team Timesheet Service stopped")
+
+        # Shutdown Database Health Check Loop
+        db_health_check_task = getattr(app.state, "db_health_check_task", None)
+        if db_health_check_task:
+            db_health_check_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await db_health_check_task
+            logger.info("✅ Database Health Check Loop stopped")
 
         # Plugin System shutdown not needed
 

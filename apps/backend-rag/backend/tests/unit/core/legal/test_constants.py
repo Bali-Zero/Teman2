@@ -125,7 +125,3 @@ class TestLegalConstants:
         """Test whitespace fixes patterns"""
         assert len(WHITESPACE_FIXES) > 0
         assert all(isinstance(fix, tuple) and len(fix) == 2 for fix in WHITESPACE_FIXES)
-
-
-
-

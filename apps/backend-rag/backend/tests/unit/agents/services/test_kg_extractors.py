@@ -20,7 +20,9 @@ from agents.services.kg_extractors import EntityExtractor, RelationshipExtractor
 def mock_ai_client():
     """Mock AI client"""
     client = MagicMock()
-    client.generate_text = AsyncMock(return_value='[{"type": "law", "name": "UU No. 1", "canonical_name": "UU No. 1 Tahun 2020", "context": "test"}]')
+    client.generate_text = AsyncMock(
+        return_value='[{"type": "law", "name": "UU No. 1", "canonical_name": "UU No. 1 Tahun 2020", "context": "test"}]'
+    )
     return client
 
 
@@ -80,13 +82,14 @@ class TestEntityExtractor:
         # Should truncate to MAX_TEXT_LENGTH
         call_args = mock_ai_client.generate_text.call_args
         if call_args:
-            prompt = call_args[0][0] if call_args[0] else call_args.kwargs.get('prompt', '')
+            prompt = call_args[0][0] if call_args[0] else call_args.kwargs.get("prompt", "")
             assert len(prompt) <= 4000 or "A" * 4000 in prompt
 
     @pytest.mark.asyncio
     async def test_extract_entities_timeout(self, entity_extractor, mock_ai_client):
         """Test extracting entities with timeout"""
         import asyncio
+
         mock_ai_client.generate_text = AsyncMock(side_effect=asyncio.TimeoutError())
 
         result = await entity_extractor.extract_entities("Test text", timeout=0.1)
@@ -128,11 +131,13 @@ class TestRelationshipExtractor:
         """Test extracting relationships"""
         entities = [
             {"type": "law", "name": "UU No. 1", "canonical_name": "UU No. 1 Tahun 2020"},
-            {"type": "topic", "name": "Ketenagakerjaan", "canonical_name": "Ketenagakerjaan"}
+            {"type": "topic", "name": "Ketenagakerjaan", "canonical_name": "Ketenagakerjaan"},
         ]
         text = "UU No. 1 Tahun 2020 tentang Ketenagakerjaan"
 
-        mock_ai_client.generate_text = AsyncMock(return_value='[{"source": "UU No. 1", "target": "Ketenagakerjaan", "relationship": "regulates", "strength": 0.9}]')
+        mock_ai_client.generate_text = AsyncMock(
+            return_value='[{"source": "UU No. 1", "target": "Ketenagakerjaan", "relationship": "regulates", "strength": 0.9}]'
+        )
 
         result = await relationship_extractor.extract_relationships(entities, text)
         assert isinstance(result, list)
@@ -149,17 +154,22 @@ class TestRelationshipExtractor:
         """Test extracting relationships without AI client"""
         with patch("agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
             extractor = RelationshipExtractor()
-            result = await extractor.extract_relationships([{"type": "law", "name": "Test"}], "Test text")
+            result = await extractor.extract_relationships(
+                [{"type": "law", "name": "Test"}], "Test text"
+            )
             assert result == []
 
     @pytest.mark.asyncio
     async def test_extract_relationships_timeout(self, relationship_extractor, mock_ai_client):
         """Test extracting relationships with timeout"""
         import asyncio
+
         mock_ai_client.generate_text = AsyncMock(side_effect=asyncio.TimeoutError())
 
         entities = [{"type": "law", "name": "Test"}]
-        result = await relationship_extractor.extract_relationships(entities, "Test text", timeout=0.1)
+        result = await relationship_extractor.extract_relationships(
+            entities, "Test text", timeout=0.1
+        )
         assert result == []
 
     @pytest.mark.asyncio
@@ -179,4 +189,3 @@ class TestRelationshipExtractor:
         entities = [{"type": "law", "name": "Test"}]
         result = await relationship_extractor.extract_relationships(entities, "Test text")
         assert result == []
-

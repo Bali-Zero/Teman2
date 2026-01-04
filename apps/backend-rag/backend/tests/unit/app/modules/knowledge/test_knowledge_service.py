@@ -21,12 +21,14 @@ from app.modules.knowledge.service import KnowledgeService
 def mock_qdrant_client():
     """Mock QdrantClient"""
     client = MagicMock()
-    client.search = AsyncMock(return_value={
-        "documents": [["test doc"]],
-        "ids": ["doc1"],
-        "distances": [0.1],
-        "metadatas": [{}]
-    })
+    client.search = AsyncMock(
+        return_value={
+            "documents": [["test doc"]],
+            "ids": ["doc1"],
+            "distances": [0.1],
+            "metadatas": [{}],
+        }
+    )
     return client
 
 
@@ -41,13 +43,15 @@ def mock_router():
 @pytest.fixture
 def knowledge_service(mock_qdrant_client, mock_router):
     """Create KnowledgeService instance with mocked dependencies"""
-    with patch('app.modules.knowledge.service.QdrantClient', return_value=mock_qdrant_client):
-        with patch('core.embeddings.create_embeddings_generator') as mock_embedder:
-            with patch('app.modules.knowledge.service.QueryRouter', return_value=mock_router):
+    with patch("app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client):
+        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
+            with patch("app.modules.knowledge.service.QueryRouter", return_value=mock_router):
                 mock_embedder_instance = MagicMock()
                 mock_embedder_instance.provider = "test"
                 mock_embedder_instance.dimensions = 384
-                mock_embedder_instance.generate_query_embedding = MagicMock(return_value=[0.1] * 384)
+                mock_embedder_instance.generate_query_embedding = MagicMock(
+                    return_value=[0.1] * 384
+                )
                 mock_embedder.return_value = mock_embedder_instance
                 service = KnowledgeService()
                 # Replace all collections with mocked client
@@ -76,10 +80,7 @@ class TestKnowledgeService:
     async def test_search(self, knowledge_service, mock_qdrant_client):
         """Test search functionality"""
         result = await knowledge_service.search(
-            query="test query",
-            user_level=1,
-            limit=5,
-            collection_override="visa_oracle"
+            query="test query", user_level=1, limit=5, collection_override="visa_oracle"
         )
         assert isinstance(result, dict)
         assert "results" in result
@@ -93,7 +94,7 @@ class TestKnowledgeService:
             user_level=2,
             limit=5,
             tier_filter=[TierLevel.S, TierLevel.A],
-            collection_override="zantara_books"
+            collection_override="zantara_books",
         )
         assert isinstance(result, dict)
 
@@ -101,9 +102,7 @@ class TestKnowledgeService:
     async def test_search_pricing_query(self, knowledge_service, mock_qdrant_client):
         """Test search with pricing query detection"""
         result = await knowledge_service.search(
-            query="how much does it cost",
-            user_level=1,
-            limit=5
+            query="how much does it cost", user_level=1, limit=5
         )
         assert isinstance(result, dict)
         # Should route to bali_zero_pricing collection
@@ -113,10 +112,7 @@ class TestKnowledgeService:
     async def test_search_collection_not_found(self, knowledge_service, mock_qdrant_client):
         """Test search with non-existent collection override"""
         result = await knowledge_service.search(
-            query="test query",
-            user_level=1,
-            limit=5,
-            collection_override="nonexistent"
+            query="test query", user_level=1, limit=5, collection_override="nonexistent"
         )
         # Should default to visa_oracle
         assert isinstance(result, dict)
@@ -125,19 +121,16 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_with_reranking(self, knowledge_service, mock_qdrant_client):
         """Test search with reranking"""
-        with patch.object(knowledge_service, '_init_reranker') as mock_init:
+        with patch.object(knowledge_service, "_init_reranker") as mock_init:
             mock_reranker = MagicMock()
             mock_reranker.enabled = True
-            mock_reranker.rerank = AsyncMock(return_value=[
-                {"id": "doc1", "text": "test", "score": 0.9, "metadata": {}}
-            ])
+            mock_reranker.rerank = AsyncMock(
+                return_value=[{"id": "doc1", "text": "test", "score": 0.9, "metadata": {}}]
+            )
             knowledge_service.reranker = mock_reranker
-            
+
             result = await knowledge_service.search_with_reranking(
-                query="test query",
-                user_level=1,
-                limit=5,
-                collection_override="visa_oracle"
+                query="test query", user_level=1, limit=5, collection_override="visa_oracle"
             )
             assert isinstance(result, dict)
             assert result.get("reranked") is True
@@ -145,16 +138,13 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_with_reranking_disabled(self, knowledge_service, mock_qdrant_client):
         """Test search with reranking disabled"""
-        with patch.object(knowledge_service, '_init_reranker') as mock_init:
+        with patch.object(knowledge_service, "_init_reranker") as mock_init:
             mock_reranker = MagicMock()
             mock_reranker.enabled = False
             knowledge_service.reranker = mock_reranker
-            
+
             result = await knowledge_service.search_with_reranking(
-                query="test query",
-                user_level=1,
-                limit=5,
-                collection_override="visa_oracle"
+                query="test query", user_level=1, limit=5, collection_override="visa_oracle"
             )
             assert isinstance(result, dict)
             assert result.get("reranked") is False
@@ -180,20 +170,24 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_multiple_results(self, knowledge_service, mock_qdrant_client):
         """Test search with multiple results"""
+        import uuid
+
         # Create a separate mock client for this test
         multi_client = MagicMock()
-        multi_client.search = AsyncMock(return_value={
-            "documents": [["doc1"], ["doc2"], ["doc3"]],
-            "ids": ["id1", "id2", "id3"],
-            "distances": [0.1, 0.2, 0.3],
-            "metadatas": [{}, {}, {}]
-        })
+        # Documents should be flat list of strings, not nested lists
+        multi_client.search = AsyncMock(
+            return_value={
+                "documents": ["doc1", "doc2", "doc3"],
+                "ids": ["id1", "id2", "id3"],
+                "distances": [0.1, 0.2, 0.3],
+                "metadatas": [{}, {}, {}],
+            }
+        )
         knowledge_service.collections["visa_oracle"] = multi_client
+        # Use unique query to avoid cache hits from other tests
+        unique_query = f"test query multiple results {uuid.uuid4()}"
         result = await knowledge_service.search(
-            query="test query",
-            user_level=1,
-            limit=5,
-            collection_override="visa_oracle"
+            query=unique_query, user_level=1, limit=5, collection_override="visa_oracle"
         )
         assert len(result["results"]) == 3
         assert result["results"][0]["id"] == "id1"
@@ -203,17 +197,15 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_bali_zero_pricing_score_bias(self, knowledge_service, mock_qdrant_client):
         """Test search with bali_zero_pricing collection adds score bias"""
-        mock_qdrant_client.search = AsyncMock(return_value={
-            "documents": [["pricing doc"]],
-            "ids": ["pricing1"],
-            "distances": [0.1],
-            "metadatas": [{}]
-        })
-        result = await knowledge_service.search(
-            query="how much",
-            user_level=1,
-            limit=5
+        mock_qdrant_client.search = AsyncMock(
+            return_value={
+                "documents": [["pricing doc"]],
+                "ids": ["pricing1"],
+                "distances": [0.1],
+                "metadatas": [{}],
+            }
         )
+        result = await knowledge_service.search(query="how much", user_level=1, limit=5)
         assert result["collection_used"] == "bali_zero_pricing"
         assert result["results"][0]["metadata"].get("pricing_priority") == "high"
         # Score should be biased (original score + 0.15, capped at 1.0)
@@ -223,10 +215,7 @@ class TestKnowledgeService:
     async def test_search_zantara_books_with_tiers(self, knowledge_service, mock_qdrant_client):
         """Test search with zantara_books collection and tier filtering"""
         result = await knowledge_service.search(
-            query="test query",
-            user_level=2,
-            limit=5,
-            collection_override="zantara_books"
+            query="test query", user_level=2, limit=5, collection_override="zantara_books"
         )
         assert result["collection_used"] == "zantara_books"
         assert len(result["allowed_tiers"]) > 0
@@ -243,17 +232,16 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_user_level_0(self, knowledge_service, mock_qdrant_client):
         """Test search with user level 0 (only Tier S)"""
-        mock_qdrant_client.search = AsyncMock(return_value={
-            "documents": [["doc1"]],
-            "ids": ["id1"],
-            "distances": [0.1],
-            "metadatas": [{"tier": "S"}]
-        })
+        mock_qdrant_client.search = AsyncMock(
+            return_value={
+                "documents": [["doc1"]],
+                "ids": ["id1"],
+                "distances": [0.1],
+                "metadatas": [{"tier": "S"}],
+            }
+        )
         result = await knowledge_service.search(
-            query="test query",
-            user_level=0,
-            limit=5,
-            collection_override="zantara_books"
+            query="test query", user_level=0, limit=5, collection_override="zantara_books"
         )
         assert TierLevel.S in result["allowed_tiers"]
         assert len(result["allowed_tiers"]) == 1
@@ -261,17 +249,16 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_user_level_1(self, knowledge_service, mock_qdrant_client):
         """Test search with user level 1 (Tier S and A)"""
-        mock_qdrant_client.search = AsyncMock(return_value={
-            "documents": [["doc1"]],
-            "ids": ["id1"],
-            "distances": [0.1],
-            "metadatas": [{"tier": "A"}]
-        })
+        mock_qdrant_client.search = AsyncMock(
+            return_value={
+                "documents": [["doc1"]],
+                "ids": ["id1"],
+                "distances": [0.1],
+                "metadatas": [{"tier": "A"}],
+            }
+        )
         result = await knowledge_service.search(
-            query="test query",
-            user_level=1,
-            limit=5,
-            collection_override="zantara_books"
+            query="test query", user_level=1, limit=5, collection_override="zantara_books"
         )
         assert TierLevel.S in result["allowed_tiers"]
         assert TierLevel.A in result["allowed_tiers"]
@@ -280,18 +267,20 @@ class TestKnowledgeService:
     @pytest.mark.asyncio
     async def test_search_tier_filter_restriction(self, knowledge_service, mock_qdrant_client):
         """Test search with tier filter restricts allowed tiers"""
-        mock_qdrant_client.search = AsyncMock(return_value={
-            "documents": [["doc1"]],
-            "ids": ["id1"],
-            "distances": [0.1],
-            "metadatas": [{"tier": "S"}]
-        })
+        mock_qdrant_client.search = AsyncMock(
+            return_value={
+                "documents": [["doc1"]],
+                "ids": ["id1"],
+                "distances": [0.1],
+                "metadatas": [{"tier": "S"}],
+            }
+        )
         result = await knowledge_service.search(
             query="test query",
             user_level=3,  # Would normally allow S, A, B, C, D
             limit=5,
             tier_filter=[TierLevel.S, TierLevel.A],  # But filter restricts to S, A
-            collection_override="zantara_books"
+            collection_override="zantara_books",
         )
         assert TierLevel.S in result["allowed_tiers"]
         assert TierLevel.A in result["allowed_tiers"]
@@ -305,7 +294,7 @@ class TestKnowledgeService:
     def test_init_reranker(self, knowledge_service):
         """Test _init_reranker lazy loading"""
         assert not hasattr(knowledge_service, "reranker")
-        with patch('core.reranker.ReRanker') as mock_reranker_class:
+        with patch("core.reranker.ReRanker") as mock_reranker_class:
             mock_reranker_instance = MagicMock()
             mock_reranker_class.return_value = mock_reranker_instance
             knowledge_service._init_reranker()
@@ -316,7 +305,7 @@ class TestKnowledgeService:
         """Test _init_reranker doesn't recreate if already exists"""
         existing_reranker = MagicMock()
         knowledge_service.reranker = existing_reranker
-        with patch('core.reranker.ReRanker') as mock_reranker_class:
+        with patch("core.reranker.ReRanker") as mock_reranker_class:
             knowledge_service._init_reranker()
             # Should not create new reranker
             assert knowledge_service.reranker == existing_reranker
@@ -337,19 +326,16 @@ class TestKnowledgeService:
             "tarif",
             "payment",
             "expensive",
-            "cheap"
+            "cheap",
         ]
         for query in pricing_queries:
-            mock_qdrant_client.search = AsyncMock(return_value={
-                "documents": [["doc"]],
-                "ids": ["id1"],
-                "distances": [0.1],
-                "metadatas": [{}]
-            })
-            result = await knowledge_service.search(
-                query=query,
-                user_level=1,
-                limit=5
+            mock_qdrant_client.search = AsyncMock(
+                return_value={
+                    "documents": [["doc"]],
+                    "ids": ["id1"],
+                    "distances": [0.1],
+                    "metadatas": [{}],
+                }
             )
+            result = await knowledge_service.search(query=query, user_level=1, limit=5)
             assert result["collection_used"] == "bali_zero_pricing"
-

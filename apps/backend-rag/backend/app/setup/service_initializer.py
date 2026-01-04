@@ -316,9 +316,9 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
 
             db_pool = await asyncpg.create_pool(
                 dsn=settings.database_url,
-                min_size=getattr(settings, 'db_pool_min_size', None) or 5,
-                max_size=getattr(settings, 'db_pool_max_size', None) or 20,
-                command_timeout=getattr(settings, 'db_command_timeout', None) or 60,
+                min_size=getattr(settings, "db_pool_min_size", None) or 5,
+                max_size=getattr(settings, "db_pool_max_size", None) or 20,
+                command_timeout=getattr(settings, "db_command_timeout", None) or 60,
                 init=init_db_connection,
             )
 
@@ -328,8 +328,9 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 if result != 1:
                     raise ValueError("Pool validation failed")
 
-            from services.analytics.team_timesheet_service import init_timesheet_service
             from services.analytics.daily_checkin_notifier import init_daily_notifier
+            from services.analytics.team_timesheet_service import init_timesheet_service
+            from services.analytics.weekly_email_reporter import init_weekly_reporter
 
             ts_service = init_timesheet_service(db_pool)
             app.state.ts_service = ts_service
@@ -339,9 +340,14 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             daily_notifier = init_daily_notifier(db_pool)
             app.state.daily_notifier = daily_notifier
 
+            # Initialize weekly email activity reporter (emails Sundays at 16:00 Bali time)
+            weekly_reporter = init_weekly_reporter(db_pool)
+            app.state.weekly_reporter = weekly_reporter
+
             # Start background tasks
             await ts_service.start_auto_logout_monitor()
             await daily_notifier.start()
+            await weekly_reporter.start()
 
             # Start health check task
             app.state.db_health_check_task = asyncio.create_task(
@@ -352,6 +358,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
             logger.info("✅ Database services initialized successfully")
             try:
                 from app.metrics import database_init_success_total
+
                 database_init_success_total.inc()
             except ImportError:
                 pass
@@ -368,21 +375,21 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                     "attempt": attempt + 1,
                     "error_type": error_type,
                     "is_transient": is_transient,
-                }
+                },
             )
 
             try:
                 from app.metrics import database_init_failed_total
+
                 database_init_failed_total.labels(
-                    error_type=error_type,
-                    is_transient=str(is_transient)
+                    error_type=error_type, is_transient=str(is_transient)
                 ).inc()
             except ImportError:
                 pass
 
             if attempt < max_retries - 1 and is_transient:
                 # Exponential backoff with jitter
-                delay = base_delay * (2 ** attempt) + (random.random() * 0.5)
+                delay = base_delay * (2**attempt) + (random.random() * 0.5)
                 logger.info(f"Retrying in {delay:.2f}s...")
                 await asyncio.sleep(delay)
             else:
@@ -396,6 +403,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 logger.error(f"❌ Database initialization failed permanently: {e}")
                 try:
                     from app.metrics import database_init_permanent_failure_total
+
                     database_init_permanent_failure_total.inc()
                 except ImportError:
                     pass
@@ -414,20 +422,20 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                     "attempt": attempt + 1,
                     "error_type": error_type,
                     "is_transient": is_transient,
-                }
+                },
             )
 
             try:
                 from app.metrics import database_init_failed_total
+
                 database_init_failed_total.labels(
-                    error_type=error_type,
-                    is_transient=str(is_transient)
+                    error_type=error_type, is_transient=str(is_transient)
                 ).inc()
             except ImportError:
                 pass
 
             if attempt < max_retries - 1 and is_transient:
-                delay = base_delay * (2 ** attempt) + (random.random() * 0.5)
+                delay = base_delay * (2**attempt) + (random.random() * 0.5)
                 logger.info(f"Retrying in {delay:.2f}s...")
                 await asyncio.sleep(delay)
             else:
@@ -464,18 +472,8 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
     check_interval = 30  # seconds
     from app.core.service_health import ServiceStatus, service_registry
 
-    # #region agent log
-    import json
-    with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:467","message":"Database health check loop entered","data":{"check_interval":check_interval},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-    # #endregion
-
     while True:
         try:
-            # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:472","message":"Before sleep in database health check loop","data":{}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-            # #endregion
             await asyncio.sleep(check_interval)
 
             # Check pool health
@@ -487,6 +485,7 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                 service_registry.register("database", ServiceStatus.HEALTHY)
                 try:
                     from app.metrics import database_health_check_success_total
+
                     database_health_check_success_total.inc()
                 except ImportError:
                     pass
@@ -500,6 +499,7 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                 )
                 try:
                     from app.metrics import database_health_check_failed_total
+
                     database_health_check_failed_total.inc()
                 except ImportError:
                     pass
@@ -510,17 +510,9 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool):
                     # Recovery logic could be added here
 
         except asyncio.CancelledError:
-            # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:503","message":"Database health check loop cancelled","data":{}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-            # #endregion
             logger.info("Database health check loop cancelled")
             break
         except Exception as e:
-            # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"service_initializer.py:508","message":"Exception in database health check loop","data":{"error":str(e)}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-            # #endregion
             logger.exception(f"Error in database health check loop: {e}")
 
 
@@ -553,6 +545,7 @@ async def initialize_crm_and_memory_services(
         # Initialize Memory Service (Postgres)
         # MemoryServicePostgres expects database_url string, not Pool object
         from app.core.config import settings
+
         app.state.memory_service = MemoryServicePostgres(settings.database_url)
         await app.state.memory_service.connect()
 

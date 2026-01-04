@@ -6,11 +6,10 @@ Targets remaining missing lines: 52-59, 63, 141, 169-170, 199-201
 import os
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
-import asyncpg
 from fastapi import HTTPException, Request
 
 # Set environment variables before imports
@@ -22,7 +21,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.feedback import submit_feedback, get_feedback_stats, get_conversation_rating
+from app.routers.feedback import get_conversation_rating, get_feedback_stats, submit_feedback
 from app.schemas.feedback import RateConversationRequest
 
 
@@ -38,7 +37,7 @@ def mock_db_pool():
     acquire_cm.__aenter__ = AsyncMock(return_value=conn)
     acquire_cm.__aexit__ = AsyncMock(return_value=False)
     pool.acquire = MagicMock(return_value=acquire_cm)
-    
+
     # Mock transaction() to return an async context manager
     transaction_cm = MagicMock()
     transaction_cm.__aenter__ = AsyncMock(return_value=transaction)
@@ -124,9 +123,7 @@ class TestFeedbackRemainingCoverage:
         mock_request.state.user_profile = None
 
         request_data = RateConversationRequest(
-            session_id=session_id,
-            rating=5,
-            feedback_type="positive"
+            session_id=session_id, rating=5, feedback_type="positive"
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -189,4 +186,3 @@ class TestFeedbackRemainingCoverage:
             await get_feedback_stats(pool)
         assert exc_info.value.status_code == 500
         assert "Internal server error" in exc_info.value.detail
-

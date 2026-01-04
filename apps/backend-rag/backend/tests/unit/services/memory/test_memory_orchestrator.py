@@ -48,7 +48,9 @@ class TestMemoryOrchestrator:
         with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class:
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
-            mock_service.get_memory = AsyncMock(return_value=MagicMock())  # Return a mock memory object
+            mock_service.get_memory = AsyncMock(
+                return_value=MagicMock()
+            )  # Return a mock memory object
             mock_service_class.return_value = mock_service
 
             await memory_orchestrator.initialize()
@@ -81,8 +83,10 @@ class TestMemoryOrchestrator:
     async def test_process_conversation(self, memory_orchestrator):
         """Test processing conversation"""
         # Mock initialization
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -96,9 +100,7 @@ class TestMemoryOrchestrator:
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result is not None
 
@@ -106,8 +108,10 @@ class TestMemoryOrchestrator:
     async def test_extract_facts(self, memory_orchestrator):
         """Test fact extraction"""
         # Mock initialization
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -116,9 +120,11 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "User interested in KITAS", "type": "general", "confidence": 0.8}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[
+                    {"content": "User interested in KITAS", "type": "general", "confidence": 0.8}
+                ]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
@@ -127,7 +133,7 @@ class TestMemoryOrchestrator:
             result = await memory_orchestrator.process_conversation(
                 user_email="test@example.com",
                 user_message="I am interested in KITAS",
-                ai_response="KITAS is a work permit"
+                ai_response="KITAS is a work permit",
             )
             assert result is not None
             assert result.facts_extracted > 0
@@ -158,9 +164,17 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_initialize_degraded_mode(self, memory_orchestrator):
         """Test initialization in degraded mode"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor", side_effect=Exception("Non-critical")), \
-             patch("services.memory.orchestrator.CollectiveMemoryService", side_effect=Exception("Non-critical")):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.MemoryFactExtractor",
+                side_effect=Exception("Non-critical"),
+            ),
+            patch(
+                "services.memory.orchestrator.CollectiveMemoryService",
+                side_effect=Exception("Non-critical"),
+            ),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -187,10 +201,12 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_get_user_context_with_query(self, memory_orchestrator):
         """Test getting context with query for collective memory"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class, \
-             patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+            patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class,
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = ["fact1"]
             mock_memory.summary = "summary"
@@ -216,14 +232,21 @@ class TestMemoryOrchestrator:
 
             await memory_orchestrator.initialize()
 
-            context = await memory_orchestrator.get_user_context("test@example.com", query="test query")
+            context = await memory_orchestrator.get_user_context(
+                "test@example.com", query="test query"
+            )
             assert context.has_data is True
 
     @pytest.mark.asyncio
     async def test_get_user_context_degraded_mode(self, memory_orchestrator):
         """Test getting context in degraded mode"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor", side_effect=Exception("Non-critical")):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.MemoryFactExtractor",
+                side_effect=Exception("Non-critical"),
+            ),
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = []
             mock_memory.summary = ""
@@ -257,9 +280,11 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_process_conversation_with_facts(self, memory_orchestrator):
         """Test processing conversation with extracted facts"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -268,21 +293,21 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             mock_episodic = MagicMock()
-            mock_episodic.extract_and_save_event = AsyncMock(return_value={"status": "created", "title": "Event"})
+            mock_episodic.extract_and_save_event = AsyncMock(
+                return_value={"status": "created", "title": "Event"}
+            )
             mock_episodic_class.return_value = mock_episodic
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
 
@@ -290,17 +315,20 @@ class TestMemoryOrchestrator:
     async def test_process_conversation_empty_email(self, memory_orchestrator):
         """Test processing conversation with empty email"""
         result = await memory_orchestrator.process_conversation(
-            user_email="",
-            user_message="test",
-            ai_response="response"
+            user_email="", user_message="test", ai_response="response"
         )
         assert result.facts_extracted == 0
 
     @pytest.mark.asyncio
     async def test_process_conversation_no_extractor(self, memory_orchestrator):
         """Test processing conversation without extractor"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor", side_effect=Exception("No extractor")):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.MemoryFactExtractor",
+                side_effect=Exception("No extractor"),
+            ),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -309,9 +337,7 @@ class TestMemoryOrchestrator:
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted == 0
 
@@ -332,9 +358,7 @@ class TestMemoryOrchestrator:
 
             try:
                 result = await memory_orchestrator.process_conversation(
-                    user_email="test@example.com",
-                    user_message="test",
-                    ai_response="response"
+                    user_email="test@example.com", user_message="test", ai_response="response"
                 )
                 # Should handle timeout gracefully
                 assert result is not None
@@ -344,23 +368,25 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_process_conversation_error(self, memory_orchestrator):
         """Test error handling in process_conversation"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(side_effect=Exception("Error"))
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                side_effect=Exception("Error")
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.error is not None
 
@@ -371,11 +397,9 @@ class TestMemoryOrchestrator:
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
-            mock_service.get_stats = AsyncMock(return_value={
-                "total_users": 10,
-                "total_facts": 100,
-                "total_conversations": 50
-            })
+            mock_service.get_stats = AsyncMock(
+                return_value={"total_users": 10, "total_facts": 100, "total_conversations": 50}
+            )
             mock_service_class.return_value = mock_service
 
             await memory_orchestrator.initialize()
@@ -410,7 +434,9 @@ class TestMemoryOrchestrator:
 
             await memory_orchestrator.initialize()
 
-            facts = await memory_orchestrator.get_relevant_facts_for_query("test@example.com", "query")
+            facts = await memory_orchestrator.get_relevant_facts_for_query(
+                "test@example.com", "query"
+            )
             assert len(facts) > 0
 
     @pytest.mark.asyncio
@@ -483,11 +509,13 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_initialize_all_services_healthy(self, memory_orchestrator):
         """Test initialization with all services working (HEALTHY status)"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class, \
-             patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class, \
-             patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+            patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+            patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -505,8 +533,13 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_initialize_episodic_memory_failure(self, memory_orchestrator):
         """Test initialization when episodic memory fails"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService", side_effect=Exception("Episodic error")):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.EpisodicMemoryService",
+                side_effect=Exception("Episodic error"),
+            ),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -519,8 +552,13 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_initialize_kg_repository_failure(self, memory_orchestrator):
         """Test initialization when KG repository fails"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.KnowledgeGraphRepository", side_effect=Exception("KG error")):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.KnowledgeGraphRepository",
+                side_effect=Exception("KG error"),
+            ),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -564,8 +602,10 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_get_user_context_collective_context_no_query(self, memory_orchestrator):
         """Test get_user_context calls get_collective_context when no query"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class,
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = []
             mock_memory.summary = ""
@@ -590,8 +630,10 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_get_user_context_episodic_memory_failure(self, memory_orchestrator):
         """Test get_user_context when episodic memory fails"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = []
             mock_memory.summary = ""
@@ -615,8 +657,10 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_get_user_context_kg_failure(self, memory_orchestrator):
         """Test get_user_context when KG repository fails"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class,
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = []
             mock_memory.summary = ""
@@ -682,8 +726,10 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_get_user_context_kg_no_query(self, memory_orchestrator):
         """Test get_user_context when KG repository exists but no query"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class,
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = []
             mock_memory.summary = ""
@@ -707,8 +753,10 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_process_conversation_add_fact_failure(self, memory_orchestrator):
         """Test process_conversation when add_fact fails"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -717,17 +765,15 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
             assert result.facts_saved == 0
@@ -735,8 +781,10 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_process_conversation_add_fact_returns_false(self, memory_orchestrator):
         """Test process_conversation when add_fact returns False"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -745,17 +793,15 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
             assert result.facts_saved == 0
@@ -763,8 +809,10 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_process_conversation_increment_counter_failure(self, memory_orchestrator):
         """Test process_conversation when increment_counter fails"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -773,25 +821,25 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
 
     @pytest.mark.asyncio
     async def test_process_conversation_episodic_memory_none(self, memory_orchestrator):
         """Test process_conversation when episodic memory is None"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -800,27 +848,27 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
             memory_orchestrator._episodic_memory = None  # Set to None
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
 
     @pytest.mark.asyncio
     async def test_process_conversation_episodic_memory_failure(self, memory_orchestrator):
         """Test process_conversation when episodic memory fails"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -829,30 +877,32 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             mock_episodic = MagicMock()
-            mock_episodic.extract_and_save_event = AsyncMock(side_effect=Exception("Episodic error"))
+            mock_episodic.extract_and_save_event = AsyncMock(
+                side_effect=Exception("Episodic error")
+            )
             mock_episodic_class.return_value = mock_episodic
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
 
     @pytest.mark.asyncio
     async def test_process_conversation_episodic_event_not_created(self, memory_orchestrator):
         """Test process_conversation when episodic event status is not 'created'"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -861,29 +911,31 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             mock_episodic = MagicMock()
-            mock_episodic.extract_and_save_event = AsyncMock(return_value={"status": "skipped"})  # Not "created"
+            mock_episodic.extract_and_save_event = AsyncMock(
+                return_value={"status": "skipped"}
+            )  # Not "created"
             mock_episodic_class.return_value = mock_episodic
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
 
     @pytest.mark.asyncio
     async def test_process_conversation_fact_type_value_error(self, memory_orchestrator):
         """Test process_conversation when fact_type raises ValueError"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -892,17 +944,17 @@ class TestMemoryOrchestrator:
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "invalid_type", "confidence": 0.9}  # Invalid type
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[
+                    {"content": "Fact 1", "type": "invalid_type", "confidence": 0.9}  # Invalid type
+                ]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
 
@@ -978,7 +1030,9 @@ class TestMemoryOrchestrator:
 
             await memory_orchestrator.initialize()
 
-            facts = await memory_orchestrator.get_relevant_facts_for_query("test@example.com", "query")
+            facts = await memory_orchestrator.get_relevant_facts_for_query(
+                "test@example.com", "query"
+            )
             assert len(facts) == 0
 
     @pytest.mark.asyncio
@@ -993,7 +1047,9 @@ class TestMemoryOrchestrator:
             await memory_orchestrator.initialize()
             memory_orchestrator._memory_service = None
 
-            facts = await memory_orchestrator.get_relevant_facts_for_query("test@example.com", "query")
+            facts = await memory_orchestrator.get_relevant_facts_for_query(
+                "test@example.com", "query"
+            )
             assert len(facts) == 0
 
     @pytest.mark.asyncio
@@ -1056,25 +1112,25 @@ class TestMemoryOrchestrator:
     @pytest.mark.asyncio
     async def test_process_conversation_no_memory_service_pool(self, memory_orchestrator):
         """Test process_conversation when memory_service.pool is None"""
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class:
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+        ):
             mock_service = MagicMock()
             mock_service.pool = None  # Pool is None
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
             mock_service_class.return_value = mock_service
 
             mock_extractor = MagicMock()
-            mock_extractor.extract_facts_from_conversation = MagicMock(return_value=[
-                {"content": "Fact 1", "type": "general", "confidence": 0.9}
-            ])
+            mock_extractor.extract_facts_from_conversation = MagicMock(
+                return_value=[{"content": "Fact 1", "type": "general", "confidence": 0.9}]
+            )
             mock_extractor_class.return_value = mock_extractor
 
             await memory_orchestrator.initialize()
 
             result = await memory_orchestrator.process_conversation(
-                user_email="test@example.com",
-                user_message="test",
-                ai_response="response"
+                user_email="test@example.com", user_message="test", ai_response="response"
             )
             assert result.facts_extracted > 0
             assert result.facts_saved == 0  # Should not save when pool is None
@@ -1086,8 +1142,13 @@ class TestMemoryOrchestrator:
         mock_metric = MagicMock()
         mock_metric.inc = MagicMock()
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch.dict("sys.modules", {"app.metrics": MagicMock(memory_orchestrator_unavailable_total=mock_metric)}):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch.dict(
+                "sys.modules",
+                {"app.metrics": MagicMock(memory_orchestrator_unavailable_total=mock_metric)},
+            ),
+        ):
             mock_service_class.side_effect = Exception("Critical error")
 
             with pytest.raises(RuntimeError):
@@ -1100,9 +1161,17 @@ class TestMemoryOrchestrator:
         mock_metric = MagicMock()
         mock_metric.inc = MagicMock()
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor", side_effect=Exception("Non-critical")), \
-             patch.dict("sys.modules", {"app.metrics": MagicMock(memory_orchestrator_degraded_total=mock_metric)}):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.MemoryFactExtractor",
+                side_effect=Exception("Non-critical"),
+            ),
+            patch.dict(
+                "sys.modules",
+                {"app.metrics": MagicMock(memory_orchestrator_degraded_total=mock_metric)},
+            ),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -1119,12 +1188,17 @@ class TestMemoryOrchestrator:
         mock_metric = MagicMock()
         mock_metric.inc = MagicMock()
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class, \
-             patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class, \
-             patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class, \
-             patch.dict("sys.modules", {"app.metrics": MagicMock(memory_orchestrator_healthy_total=mock_metric)}):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+            patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+            patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class,
+            patch.dict(
+                "sys.modules",
+                {"app.metrics": MagicMock(memory_orchestrator_healthy_total=mock_metric)},
+            ),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -1146,9 +1220,16 @@ class TestMemoryOrchestrator:
         mock_metric = MagicMock()
         mock_metric.inc = MagicMock()
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor", side_effect=Exception("Non-critical")), \
-             patch.dict("sys.modules", {"app.metrics": MagicMock(memory_context_degraded_total=mock_metric)}):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.MemoryFactExtractor",
+                side_effect=Exception("Non-critical"),
+            ),
+            patch.dict(
+                "sys.modules", {"app.metrics": MagicMock(memory_context_degraded_total=mock_metric)}
+            ),
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = []
             mock_memory.summary = ""
@@ -1173,8 +1254,12 @@ class TestMemoryOrchestrator:
         mock_metric = MagicMock()
         mock_metric.inc = MagicMock()
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch.dict("sys.modules", {"app.metrics": MagicMock(memory_context_failed_total=mock_metric)}):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch.dict(
+                "sys.modules", {"app.metrics": MagicMock(memory_context_failed_total=mock_metric)}
+            ),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             # First call succeeds (for initialization), second fails
@@ -1198,8 +1283,10 @@ class TestMemoryOrchestrator:
                 raise ImportError("Metrics module not available")
             return original_import(name, *args, **kwargs)
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("builtins.__import__", side_effect=mock_import):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("builtins.__import__", side_effect=mock_import),
+        ):
             mock_service_class.side_effect = Exception("Critical error")
 
             with pytest.raises(RuntimeError):
@@ -1216,9 +1303,14 @@ class TestMemoryOrchestrator:
                 raise ImportError("Metrics module not available")
             return original_import(name, *args, **kwargs)
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor", side_effect=Exception("Non-critical")), \
-             patch("builtins.__import__", side_effect=mock_import):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.MemoryFactExtractor",
+                side_effect=Exception("Non-critical"),
+            ),
+            patch("builtins.__import__", side_effect=mock_import),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -1238,12 +1330,14 @@ class TestMemoryOrchestrator:
                 raise ImportError("Metrics module not available")
             return original_import(name, *args, **kwargs)
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class, \
-             patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class, \
-             patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class, \
-             patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class, \
-             patch("builtins.__import__", side_effect=mock_import):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("services.memory.orchestrator.MemoryFactExtractor") as mock_extractor_class,
+            patch("services.memory.orchestrator.CollectiveMemoryService") as mock_collective_class,
+            patch("services.memory.orchestrator.EpisodicMemoryService") as mock_episodic_class,
+            patch("services.memory.orchestrator.KnowledgeGraphRepository") as mock_kg_class,
+            patch("builtins.__import__", side_effect=mock_import),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             mock_service.get_memory = AsyncMock(return_value=MagicMock())
@@ -1268,9 +1362,14 @@ class TestMemoryOrchestrator:
                 raise ImportError("Metrics module not available")
             return original_import(name, *args, **kwargs)
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("services.memory.orchestrator.MemoryFactExtractor", side_effect=Exception("Non-critical")), \
-             patch("builtins.__import__", side_effect=mock_import):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch(
+                "services.memory.orchestrator.MemoryFactExtractor",
+                side_effect=Exception("Non-critical"),
+            ),
+            patch("builtins.__import__", side_effect=mock_import),
+        ):
             mock_memory = MagicMock()
             mock_memory.profile_facts = []
             mock_memory.summary = ""
@@ -1298,8 +1397,10 @@ class TestMemoryOrchestrator:
                 raise ImportError("Metrics module not available")
             return original_import(name, *args, **kwargs)
 
-        with patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class, \
-             patch("builtins.__import__", side_effect=mock_import):
+        with (
+            patch("services.memory.orchestrator.MemoryServicePostgres") as mock_service_class,
+            patch("builtins.__import__", side_effect=mock_import),
+        ):
             mock_service = MagicMock()
             mock_service.pool = memory_orchestrator._db_pool
             # First call succeeds (for initialization), second fails
@@ -1310,4 +1411,3 @@ class TestMemoryOrchestrator:
 
             context = await memory_orchestrator.get_user_context("test@example.com")
             assert context.has_data is False
-

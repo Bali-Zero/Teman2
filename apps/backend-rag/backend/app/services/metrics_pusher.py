@@ -75,18 +75,18 @@ class MetricsPusher:
         metrics = []
         current_time_ms = int(time.time() * 1000)
 
-        for line in text.split('\n'):
+        for line in text.split("\n"):
             line = line.strip()
 
             # Skip comments and empty lines
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             try:
                 # Parse metric line: name{labels} value [timestamp]
                 # Handle metrics with and without labels
-                if '{' in line:
-                    match = re.match(r'([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]*)\}\s+([0-9.eE+-]+)', line)
+                if "{" in line:
+                    match = re.match(r"([a-zA-Z_:][a-zA-Z0-9_:]*)\{([^}]*)\}\s+([0-9.eE+-]+)", line)
                     if match:
                         name = match.group(1)
                         labels_str = match.group(2)
@@ -95,15 +95,19 @@ class MetricsPusher:
                         # Parse labels
                         labels = {"__name__": name, "service": self.service_name}
                         if labels_str:
-                            for label in re.findall(r'([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"', labels_str):
+                            for label in re.findall(
+                                r'([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"', labels_str
+                            ):
                                 labels[label[0]] = label[1]
 
-                        metrics.append({
-                            "name": name,
-                            "labels": labels,
-                            "value": value,
-                            "timestamp": current_time_ms,
-                        })
+                        metrics.append(
+                            {
+                                "name": name,
+                                "labels": labels,
+                                "value": value,
+                                "timestamp": current_time_ms,
+                            }
+                        )
                 else:
                     # Metric without labels
                     parts = line.split()
@@ -111,12 +115,14 @@ class MetricsPusher:
                         name = parts[0]
                         value = float(parts[1])
 
-                        metrics.append({
-                            "name": name,
-                            "labels": {"__name__": name, "service": self.service_name},
-                            "value": value,
-                            "timestamp": current_time_ms,
-                        })
+                        metrics.append(
+                            {
+                                "name": name,
+                                "labels": {"__name__": name, "service": self.service_name},
+                                "value": value,
+                                "timestamp": current_time_ms,
+                            }
+                        )
             except (ValueError, IndexError) as e:
                 logger.debug(f"Failed to parse metric line: {line} - {e}")
                 continue
@@ -135,7 +141,7 @@ class MetricsPusher:
     def _encode_string(self, field_number: int, value: str) -> bytes:
         """Encode a string field in protobuf format."""
         tag = (field_number << 3) | 2  # Wire type 2 = length-delimited
-        encoded_value = value.encode('utf-8')
+        encoded_value = value.encode("utf-8")
         return self._encode_varint(tag) + self._encode_varint(len(encoded_value)) + encoded_value
 
     def _encode_label(self, name: str, value: str) -> bytes:
@@ -146,22 +152,30 @@ class MetricsPusher:
     def _encode_sample(self, value: float, timestamp: int) -> bytes:
         """Encode a Sample message (value=1, timestamp=2)."""
         # value is double (wire type 1), timestamp is int64 (wire type 0)
-        value_bytes = (1 << 3 | 1).to_bytes(1, 'little') + struct.pack('<d', value)
+        value_bytes = (1 << 3 | 1).to_bytes(1, "little") + struct.pack("<d", value)
         timestamp_bytes = self._encode_varint((2 << 3) | 0) + self._encode_varint(timestamp)
         return value_bytes + timestamp_bytes
 
     def _encode_timeseries(self, metric: dict) -> bytes:
         """Encode a TimeSeries message."""
-        content = b''
+        content = b""
 
         # Encode labels (field 1, repeated)
         for label_name, label_value in metric["labels"].items():
             label_content = self._encode_label(label_name, str(label_value))
-            content += self._encode_varint((1 << 3) | 2) + self._encode_varint(len(label_content)) + label_content
+            content += (
+                self._encode_varint((1 << 3) | 2)
+                + self._encode_varint(len(label_content))
+                + label_content
+            )
 
         # Encode sample (field 2)
         sample_content = self._encode_sample(metric["value"], metric["timestamp"])
-        content += self._encode_varint((2 << 3) | 2) + self._encode_varint(len(sample_content)) + sample_content
+        content += (
+            self._encode_varint((2 << 3) | 2)
+            + self._encode_varint(len(sample_content))
+            + sample_content
+        )
 
         return content
 
@@ -172,12 +186,16 @@ class MetricsPusher:
         Note: This is a simplified encoder. For production, consider using
         the official protobuf definitions.
         """
-        content = b''
+        content = b""
 
         for metric in metrics:
             ts_content = self._encode_timeseries(metric)
             # timeseries is field 1
-            content += self._encode_varint((1 << 3) | 2) + self._encode_varint(len(ts_content)) + ts_content
+            content += (
+                self._encode_varint((1 << 3) | 2)
+                + self._encode_varint(len(ts_content))
+                + ts_content
+            )
 
         return content
 
@@ -188,6 +206,7 @@ class MetricsPusher:
         """
         try:
             import snappy
+
             return snappy.compress(data)
         except ImportError:
             logger.warning("snappy not installed, sending uncompressed metrics")
@@ -196,8 +215,9 @@ class MetricsPusher:
     async def _collect_metrics(self) -> str:
         """Collect current metrics from prometheus_client."""
         try:
-            from prometheus_client import generate_latest, REGISTRY
-            return generate_latest(REGISTRY).decode('utf-8')
+            from prometheus_client import REGISTRY, generate_latest
+
+            return generate_latest(REGISTRY).decode("utf-8")
         except Exception as e:
             logger.error(f"Failed to collect metrics: {e}")
             return ""
@@ -257,23 +277,18 @@ class MetricsPusher:
     async def _run_loop(self):
         """Background loop that pushes metrics periodically."""
         logger.info(f"Starting metrics push loop (interval: {self.push_interval}s)")
-        # #region agent log
-        import json
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"metrics_pusher.py:261","message":"MetricsPusher loop entered","data":{"running":self._running,"push_interval":self.push_interval}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-        # #endregion
 
         while self._running:
-            # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"metrics_pusher.py:262","message":"MetricsPusher loop iteration","data":{"running":self._running}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-            # #endregion
             try:
                 await self._push_metrics()
             except Exception as e:
                 logger.error(f"Error in metrics push loop: {e}")
 
-            await asyncio.sleep(self.push_interval)
+            try:
+                await asyncio.sleep(self.push_interval)
+            except asyncio.CancelledError:
+                logger.info("🛑 Metrics pusher loop cancelled")
+                break
 
         logger.info("Metrics push loop stopped")
 
@@ -289,11 +304,6 @@ class MetricsPusher:
 
     async def stop(self):
         """Stop the background metrics push task."""
-        # #region agent log
-        import json
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"metrics_pusher.py:290","message":"MetricsPusher stop called","data":{"running_before":self._running,"has_task":self._task is not None}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-        # #endregion
         if not self._running:
             return
 
@@ -304,10 +314,6 @@ class MetricsPusher:
                 await self._task
             except asyncio.CancelledError:
                 pass
-        # #region agent log
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"metrics_pusher.py:303","message":"MetricsPusher stop completed","data":{"running_after":self._running}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-        # #endregion
 
         logger.info("MetricsPusher stopped")
 

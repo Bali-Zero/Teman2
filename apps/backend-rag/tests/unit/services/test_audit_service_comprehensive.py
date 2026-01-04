@@ -55,7 +55,9 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect_error(self, audit_service):
         """Test connect error"""
-        with patch("services.monitoring.audit_service.asyncpg.create_pool", side_effect=Exception("Error")):
+        with patch(
+            "services.monitoring.audit_service.asyncpg.create_pool", side_effect=Exception("Error")
+        ):
             await audit_service.connect()
             assert audit_service.enabled is False
 

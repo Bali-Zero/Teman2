@@ -230,8 +230,8 @@ class TestMemoryPersistenceRoundTrip:
         """Test saving facts and retrieving them"""
         from datetime import datetime
 
-        from services.memory.orchestrator import MemoryOrchestrator
         from services.memory.memory_service_postgres import UserMemory
+        from services.memory.orchestrator import MemoryOrchestrator
 
         # Create mock storage
         storage = {}

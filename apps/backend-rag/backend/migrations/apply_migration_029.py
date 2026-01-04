@@ -1,6 +1,7 @@
 """
 Apply Migration 029: Knowledge Graph Source Chunks
 """
+
 import asyncio
 import os
 import sys
@@ -34,6 +35,7 @@ async def main():
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

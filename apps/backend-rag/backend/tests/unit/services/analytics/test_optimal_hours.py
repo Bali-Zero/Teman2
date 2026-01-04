@@ -62,7 +62,9 @@ class TestOptimalHoursService:
         assert "recommendation" in result
 
     @pytest.mark.asyncio
-    async def test_identify_optimal_hours_with_user_email(self, optimal_hours_service, mock_db_pool):
+    async def test_identify_optimal_hours_with_user_email(
+        self, optimal_hours_service, mock_db_pool
+    ):
         """Test identifying optimal hours for specific user"""
         mock_db_pool.fetch = AsyncMock(return_value=[])
         result = await optimal_hours_service.identify_optimal_hours(user_email="test@example.com")
@@ -80,11 +82,13 @@ class TestOptimalHoursService:
         assert isinstance(result, dict)
 
     @pytest.mark.asyncio
-    async def test_identify_optimal_hours_productivity_calculation(self, optimal_hours_service, mock_db_pool):
+    async def test_identify_optimal_hours_productivity_calculation(
+        self, optimal_hours_service, mock_db_pool
+    ):
         """Test productivity calculation"""
         sessions = [
             {"hour": 9, "duration_minutes": 120, "conversations_count": 10},  # 5 conv/hour
-            {"hour": 10, "duration_minutes": 60, "conversations_count": 2},   # 2 conv/hour
+            {"hour": 10, "duration_minutes": 60, "conversations_count": 2},  # 2 conv/hour
         ]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
         result = await optimal_hours_service.identify_optimal_hours()
@@ -102,4 +106,3 @@ class TestOptimalHoursService:
         result = await optimal_hours_service.identify_optimal_hours()
         # Should filter out zero duration sessions
         assert isinstance(result, dict)
-

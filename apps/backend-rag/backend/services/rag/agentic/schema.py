@@ -50,4 +50,3 @@ class CoreResult(BaseModel):
     entities: dict[str, Any] = Field(default_factory=dict)
     timings: dict[str, float] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
-

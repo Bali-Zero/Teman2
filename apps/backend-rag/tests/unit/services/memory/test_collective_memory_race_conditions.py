@@ -7,7 +7,7 @@ Tests concurrent fact contributions to ensure atomic promotion.
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import asyncpg
 import pytest
@@ -85,9 +85,7 @@ async def test_concurrent_contribution_same_fact(test_db_pool):
     conn.transaction = AsyncMock(return_value=transaction.__aenter__())
 
     # Mock SELECT FOR UPDATE to return existing fact
-    conn.fetchrow = AsyncMock(
-        return_value={"id": 1, "source_count": 2, "is_promoted": False}
-    )
+    conn.fetchrow = AsyncMock(return_value={"id": 1, "source_count": 2, "is_promoted": False})
     conn.fetchval = AsyncMock(return_value=None)  # No existing source
     conn.execute = AsyncMock()
 
@@ -111,8 +109,3 @@ async def test_concurrent_contribution_same_fact(test_db_pool):
     # - SELECT FOR UPDATE prevented race conditions
     # - All sources added atomically
     # - Promotion happened exactly once
-
-
-
-
-

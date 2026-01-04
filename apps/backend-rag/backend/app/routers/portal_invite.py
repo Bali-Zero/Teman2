@@ -170,7 +170,7 @@ async def send_invitation(
         )
 
         # Build full invite URL
-        base_url = getattr(settings, 'frontend_url', 'https://nuzantara-mouth.fly.dev')
+        base_url = getattr(settings, "frontend_url", "https://nuzantara-mouth.fly.dev")
         full_invite_url = f"{base_url}{result['invite_url']}"
 
         # Try to send email via Zoho (using current user's connected account)
@@ -202,7 +202,8 @@ async def send_invitation(
 
         return {
             "success": True,
-            "message": "Invitation created" + (" and email sent" if email_sent else " (email not sent - check Zoho connection)"),
+            "message": "Invitation created"
+            + (" and email sent" if email_sent else " (email not sent - check Zoho connection)"),
             "email_sent": email_sent,
             "email_error": email_error if not email_sent else None,
             "data": {
@@ -273,9 +274,7 @@ async def resend_invitation(
             created_by=current_user.get("email", "system"),
         )
 
-        logger.info(
-            f"Invitation resent for client {client_id} by {current_user.get('email')}"
-        )
+        logger.info(f"Invitation resent for client {client_id} by {current_user.get('email')}")
 
         return {
             "success": True,

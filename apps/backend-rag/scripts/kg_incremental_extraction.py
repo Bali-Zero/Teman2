@@ -26,15 +26,15 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime
 from functools import wraps
 
 # Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
 
 def retry_qdrant(max_retries=3, delay=2):
     """Decorator for retrying Qdrant operations."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -45,21 +45,23 @@ def retry_qdrant(max_retries=3, delay=2):
                 except Exception as e:
                     last_error = e
                     if attempt < max_retries - 1:
-                        wait_time = delay * (2 ** attempt)  # Exponential backoff
-                        logging.warning(f"Qdrant error (attempt {attempt+1}/{max_retries}): {e}. Retrying in {wait_time}s...")
+                        wait_time = delay * (2**attempt)  # Exponential backoff
+                        logging.warning(
+                            f"Qdrant error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time}s..."
+                        )
                         time.sleep(wait_time)
             raise last_error
+
         return wrapper
+
     return decorator
+
 
 import asyncpg
 import httpx
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Gemini extraction prompt
@@ -127,9 +129,11 @@ OUTPUT (valid JSON only, no markdown):
 class KGIncrementalExtractor:
     """Extracts KG entities from unprocessed Qdrant chunks."""
 
-    def __init__(self, db_pool: asyncpg.Pool, qdrant_url: str, qdrant_api_key: str, gemini_client=None):
+    def __init__(
+        self, db_pool: asyncpg.Pool, qdrant_url: str, qdrant_api_key: str, gemini_client=None
+    ):
         self.db_pool = db_pool
-        self.qdrant_url = qdrant_url.rstrip('/')
+        self.qdrant_url = qdrant_url.rstrip("/")
         self.qdrant_api_key = qdrant_api_key
         self.gemini = gemini_client
         self.stats = {
@@ -156,8 +160,10 @@ class KGIncrementalExtractor:
                     return resp.json()
             except Exception as e:
                 if attempt < 4:
-                    wait_time = 3 * (2 ** attempt)
-                    logger.warning(f"Qdrant request failed (attempt {attempt+1}/5): {e}. Retrying in {wait_time}s...")
+                    wait_time = 3 * (2**attempt)
+                    logger.warning(
+                        f"Qdrant request failed (attempt {attempt + 1}/5): {e}. Retrying in {wait_time}s..."
+                    )
                     time.sleep(wait_time)
                 else:
                     raise
@@ -166,14 +172,16 @@ class KGIncrementalExtractor:
         """Get all chunk IDs already in KG."""
         query = "SELECT DISTINCT unnest(source_chunk_ids) as chunk_id FROM kg_nodes WHERE source_chunk_ids IS NOT NULL"
         rows = await self.db_pool.fetch(query)
-        return set(r['chunk_id'] for r in rows if r['chunk_id'])
+        return set(r["chunk_id"] for r in rows if r["chunk_id"])
 
     def get_qdrant_collections(self) -> list:
         """Get list of Qdrant collections."""
         result = self._qdrant_request("GET", "/collections")
         return [c["name"] for c in result.get("result", {}).get("collections", [])]
 
-    def get_collection_chunks(self, collection_name: str, limit: int = None, offset: int = 0) -> list:
+    def get_collection_chunks(
+        self, collection_name: str, limit: int = None, offset: int = 0
+    ) -> list:
         """Get chunks from a Qdrant collection using scroll API with pagination."""
         chunks = []
         batch_size = 100  # Qdrant scroll batch size
@@ -181,15 +189,13 @@ class KGIncrementalExtractor:
 
         while True:
             # Build scroll request
-            scroll_data = {
-                "limit": batch_size,
-                "with_payload": True,
-                "with_vector": False
-            }
+            scroll_data = {"limit": batch_size, "with_payload": True, "with_vector": False}
             if next_offset is not None:
                 scroll_data["offset"] = next_offset
 
-            result = self._qdrant_request("POST", f"/collections/{collection_name}/points/scroll", scroll_data)
+            result = self._qdrant_request(
+                "POST", f"/collections/{collection_name}/points/scroll", scroll_data
+            )
 
             points = result.get("result", {}).get("points", [])
             next_offset = result.get("result", {}).get("next_page_offset")
@@ -202,12 +208,14 @@ class KGIncrementalExtractor:
                 payload = point.get("payload", {})
                 text = payload.get("text", "") or payload.get("content", "")
                 if text:
-                    chunks.append({
-                        "id": chunk_id,
-                        "text": text,
-                        "collection": collection_name,
-                        "metadata": payload
-                    })
+                    chunks.append(
+                        {
+                            "id": chunk_id,
+                            "text": text,
+                            "collection": collection_name,
+                            "metadata": payload,
+                        }
+                    )
 
                 if limit and len(chunks) >= limit:
                     return chunks[:limit]
@@ -233,7 +241,7 @@ class KGIncrementalExtractor:
             # Use the new google-genai API
             response = self.gemini.models.generate_content(
                 model="gemini-2.0-flash",  # 2.0 Flash - try without -exp suffix
-                contents=prompt
+                contents=prompt,
             )
             response_text = response.text.strip()
 
@@ -252,7 +260,7 @@ class KGIncrementalExtractor:
 
     async def save_entity(self, entity: dict, chunk_id: str, collection: str):
         """Save entity to PostgreSQL."""
-        entity_id = entity.get('id', '').lower().replace(' ', '_')
+        entity_id = entity.get("id", "").lower().replace(" ", "_")
         if not entity_id:
             return
 
@@ -274,20 +282,22 @@ class KGIncrementalExtractor:
         await self.db_pool.execute(
             query,
             entity_id,
-            entity.get('type', 'unknown').lower(),
-            entity.get('name', entity_id),
-            entity.get('description', ''),
+            entity.get("type", "unknown").lower(),
+            entity.get("name", entity_id),
+            entity.get("description", ""),
             json.dumps({}),
             0.9,  # High confidence for LLM extraction
             collection,
-            [chunk_id]
+            [chunk_id],
         )
 
-    async def save_relationship(self, rel: dict, chunk_id: str, collection: str, new_entity_ids: set = None):
+    async def save_relationship(
+        self, rel: dict, chunk_id: str, collection: str, new_entity_ids: set = None
+    ):
         """Save relationship to PostgreSQL."""
-        source_id = rel.get('source', '').lower().replace(' ', '_')
-        target_id = rel.get('target', '').lower().replace(' ', '_')
-        rel_type = rel.get('type', 'RELATED_TO').upper()
+        source_id = rel.get("source", "").lower().replace(" ", "_")
+        target_id = rel.get("target", "").lower().replace(" ", "_")
+        rel_type = rel.get("type", "RELATED_TO").upper()
 
         if not source_id or not target_id:
             return False
@@ -317,7 +327,7 @@ class KGIncrementalExtractor:
                 json.dumps({}),
                 0.9,
                 collection,
-                [chunk_id]
+                [chunk_id],
             )
             return True
         except Exception as e:
@@ -328,22 +338,22 @@ class KGIncrementalExtractor:
 
     async def process_chunk(self, chunk: dict) -> int:
         """Process a single chunk and extract entities."""
-        text = chunk['text']
-        chunk_id = chunk['id']
-        collection = chunk['collection']
+        text = chunk["text"]
+        chunk_id = chunk["id"]
+        collection = chunk["collection"]
 
         # Extract with Gemini
         result = await self.extract_with_gemini(text)
 
-        entities = result.get('entities', [])
-        relationships = result.get('relationships', [])
+        entities = result.get("entities", [])
+        relationships = result.get("relationships", [])
 
         # Collect valid entity IDs as we save them
         valid_entity_ids = set()
 
         # Save entities first
         for entity in entities:
-            entity_id = entity.get('id', '').lower().replace(' ', '_')
+            entity_id = entity.get("id", "").lower().replace(" ", "_")
             if entity_id:
                 await self.save_entity(entity, chunk_id, collection)
                 valid_entity_ids.add(entity_id)
@@ -383,9 +393,11 @@ class KGIncrementalExtractor:
                 all_chunks = self.get_collection_chunks(collection, limit=limit)
 
                 # Filter unprocessed
-                unprocessed = [c for c in all_chunks if c['id'] not in processed_ids]
+                unprocessed = [c for c in all_chunks if c["id"] not in processed_ids]
 
-                logger.info(f"  {collection}: {len(unprocessed):,} unprocessed / {len(all_chunks):,} total")
+                logger.info(
+                    f"  {collection}: {len(unprocessed):,} unprocessed / {len(all_chunks):,} total"
+                )
                 total_unprocessed += len(unprocessed)
                 chunks_to_process.extend(unprocessed)
 
@@ -403,12 +415,12 @@ class KGIncrementalExtractor:
             return self.stats
 
         # Process chunks in parallel batches
-        logger.info(f"\nStarting extraction (parallel workers: 5)...")
+        logger.info("\nStarting extraction (parallel workers: 5)...")
 
         batch_size = 5  # Process 5 chunks in parallel (gemini-1.5-flash: 60+ RPM)
 
         for i in range(0, len(chunks_to_process), batch_size):
-            batch = chunks_to_process[i:i + batch_size]
+            batch = chunks_to_process[i : i + batch_size]
 
             try:
                 # Process batch in parallel
@@ -433,25 +445,25 @@ class KGIncrementalExtractor:
 
         # Final stats
         elapsed = time.time() - self.stats["start_time"]
-        logger.info(f"\n=== EXTRACTION COMPLETE ===")
+        logger.info("\n=== EXTRACTION COMPLETE ===")
         logger.info(f"Chunks processed: {self.stats['chunks_processed']:,}")
         logger.info(f"Entities extracted: {self.stats['entities_extracted']:,}")
         logger.info(f"Relationships extracted: {self.stats['relationships_extracted']:,}")
         logger.info(f"Errors: {self.stats['errors']}")
-        logger.info(f"Time: {elapsed/60:.1f} minutes")
+        logger.info(f"Time: {elapsed / 60:.1f} minutes")
 
         return self.stats
 
 
 async def main():
-    parser = argparse.ArgumentParser(description='KG Incremental Extraction')
-    parser.add_argument('--collection', type=str, help='Specific collection to process')
-    parser.add_argument('--limit', type=int, help='Limit chunks per collection')
-    parser.add_argument('--dry-run', action='store_true', help='Just show what would be processed')
+    parser = argparse.ArgumentParser(description="KG Incremental Extraction")
+    parser.add_argument("--collection", type=str, help="Specific collection to process")
+    parser.add_argument("--limit", type=int, help="Limit chunks per collection")
+    parser.add_argument("--dry-run", action="store_true", help="Just show what would be processed")
     args = parser.parse_args()
 
     # Database connection
-    database_url = os.environ.get('DATABASE_URL')
+    database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         logger.error("DATABASE_URL not set")
         return
@@ -460,8 +472,8 @@ async def main():
 
     # Qdrant connection - use environment variable or Qdrant Cloud
     # Flycast is unstable for long-running connections, use external URL
-    qdrant_url = os.environ.get('QDRANT_URL')
-    qdrant_api_key = os.environ.get('QDRANT_API_KEY')
+    qdrant_url = os.environ.get("QDRANT_URL")
+    qdrant_api_key = os.environ.get("QDRANT_API_KEY")
 
     if not qdrant_url:
         logger.error("QDRANT_URL not set")
@@ -473,30 +485,26 @@ async def main():
     gemini = None
     if not args.dry_run:
         try:
-            from google import genai
-            from google.oauth2 import service_account
             import tempfile
 
+            from google import genai
+
             # Get credentials from env var (JSON string)
-            creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-            project_id = os.environ.get('GOOGLE_PROJECT_ID', 'gen-lang-client-0498009027')
-            location = os.environ.get('GOOGLE_LOCATION', 'us-central1')
+            creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+            project_id = os.environ.get("GOOGLE_PROJECT_ID", "gen-lang-client-0498009027")
+            location = os.environ.get("GOOGLE_LOCATION", "us-central1")
 
             if creds_json:
                 # Write to temp file for auth
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
                     f.write(creds_json)
                     creds_path = f.name
 
                 # Set for ADC
-                os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_path
-                logger.info(f"Set GOOGLE_APPLICATION_CREDENTIALS from secret")
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
+                logger.info("Set GOOGLE_APPLICATION_CREDENTIALS from secret")
 
-            client = genai.Client(
-                vertexai=True,
-                project=project_id,
-                location=location
-            )
+            client = genai.Client(vertexai=True, project=project_id, location=location)
             gemini = client
             logger.info(f"Gemini client initialized (project: {project_id})")
         except Exception as e:
@@ -507,14 +515,10 @@ async def main():
 
     collections = [args.collection] if args.collection else None
 
-    await extractor.run(
-        collections=collections,
-        limit=args.limit,
-        dry_run=args.dry_run
-    )
+    await extractor.run(collections=collections, limit=args.limit, dry_run=args.dry_run)
 
     await db_pool.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

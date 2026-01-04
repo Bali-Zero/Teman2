@@ -38,9 +38,11 @@ class AutoFixer:
             in_imports = True
 
             for line in lines:
-                if line.strip().startswith(("import ", "from ")):
-                    imports.append(line)
-                elif line.strip() == "" and in_imports:
+                if (
+                    line.strip().startswith(("import ", "from "))
+                    or line.strip() == ""
+                    and in_imports
+                ):
                     imports.append(line)
                 else:
                     in_imports = False

@@ -7,7 +7,7 @@ Tests all public methods with success, failure, and edge cases.
 
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -17,17 +17,9 @@ sys.path.insert(0, str(backend_dir))
 
 from services.classification.intent_classifier import (
     BUSINESS_KEYWORDS,
-    CASUAL_PATTERNS,
-    COMPLEX_INDICATORS,
-    DEEP_THINK_KEYWORDS,
     DEVAI_KEYWORDS,
-    EMOTIONAL_PATTERNS,
     IDENTITY_KEYWORDS,
-    PRO_KEYWORDS,
-    SESSION_PATTERNS,
     SIMPLE_GREETINGS,
-    SIMPLE_PATTERNS,
-    TEAM_QUERY_KEYWORDS,
     IntentClassifier,
 )
 
@@ -409,7 +401,9 @@ class TestIntentClassifier:
     @pytest.mark.asyncio
     async def test_classify_fallback_long_no_business(self, classifier):
         """Test: Long messages without business keywords fallback to business_simple"""
-        query = "This is a longer message that doesn't contain any specific business keywords at all"
+        query = (
+            "This is a longer message that doesn't contain any specific business keywords at all"
+        )
         result = await classifier.classify_intent(query)
         assert result["category"] == "business_simple"
         # Confidence is 0.8 for business_simple default (not 0.7 which is pure fallback)

@@ -90,6 +90,14 @@ export class ApiClientBase implements IApiClient {
     return this.userProfile?.role === 'admin';
   }
 
+  /**
+   * Check if user is on the Board (can see all folders and manage permissions)
+   */
+  isBoard(): boolean {
+    const role = this.userProfile?.role?.toLowerCase();
+    return role === 'board' || role === 'admin' || role === 'founder' || role === 'owner';
+  }
+
   getAdminHeaders(): Record<string, string> {
     if (!this.userProfile || this.userProfile.role !== 'admin') {
       throw new Error('Admin access required');

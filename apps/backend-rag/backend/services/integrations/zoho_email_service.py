@@ -16,12 +16,14 @@ Features:
 """
 
 import logging
+import time
 from typing import Any
 
 import asyncpg
 import httpx
 
 from app.core.config import settings
+from app.metrics import metrics_collector
 from services.integrations.zoho_oauth_service import ZohoOAuthService
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,61 @@ class ZohoEmailService:
         self.db_pool = db_pool
         self.oauth_service = ZohoOAuthService(db_pool)
         self.api_domain = settings.zoho_api_domain
+
+    async def _log_activity(
+        self,
+        user_id: str,
+        operation: str,
+        email_subject: str | None = None,
+        recipient_email: str | None = None,
+        has_attachments: bool = False,
+        attachment_count: int = 0,
+    ) -> None:
+        """
+        Log email activity for weekly reporting.
+
+        Args:
+            user_id: User ID
+            operation: Operation type (sent, received, read, deleted, replied, forwarded)
+            email_subject: Email subject (optional)
+            recipient_email: Recipient email for sent emails (optional)
+            has_attachments: Whether email has attachments
+            attachment_count: Number of attachments
+        """
+        try:
+            # Get user email from oauth tokens or team_members
+            async with self.db_pool.acquire() as conn:
+                user_email = await conn.fetchval(
+                    """
+                    SELECT COALESCE(z.email_address, t.email)
+                    FROM team_members t
+                    LEFT JOIN zoho_email_tokens z ON z.user_id = t.id
+                    WHERE t.id = $1
+                    """,
+                    user_id,
+                )
+
+                if not user_email:
+                    user_email = user_id  # Fallback to user_id
+
+                await conn.execute(
+                    """
+                    INSERT INTO email_activity_log
+                    (user_id, user_email, operation, email_subject, recipient_email, has_attachments, attachment_count)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    """,
+                    user_id,
+                    user_email,
+                    operation,
+                    email_subject[:255] if email_subject else None,
+                    recipient_email,
+                    has_attachments,
+                    attachment_count,
+                )
+                logger.debug(f"[Email Activity] Logged {operation} for user={user_id}")
+        except Exception as e:
+            # Don't fail the main operation if logging fails
+            logger.warning(f"[Email Activity] Failed to log activity: {e}")
 
     async def _get_headers(self, user_id: str) -> dict[str, str]:
         """
@@ -96,6 +153,8 @@ class ZohoEmailService:
         headers = await self._get_headers(user_id)
         url = f"{self.api_domain}/api/accounts/{account_id}{endpoint}"
 
+        logger.debug(f"[Email API] {method} {endpoint} for user={user_id}")
+
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.request(
                 method=method,
@@ -107,9 +166,15 @@ class ZohoEmailService:
 
             if response.status_code >= 400:
                 error_data = response.json() if response.content else {}
-                logger.error(f"Zoho API error: {response.status_code} - {error_data}")
-                raise ValueError(f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}")
+                logger.error(
+                    f"[Email API] Error: {method} {endpoint} user={user_id} "
+                    f"status={response.status_code} error={error_data}"
+                )
+                raise ValueError(
+                    f"API error: {error_data.get('data', {}).get('errorCode', 'unknown')}"
+                )
 
+            logger.debug(f"[Email API] Success: {method} {endpoint} status={response.status_code}")
             return response.json()
 
     # ═══════════════════════════════════════════
@@ -126,8 +191,10 @@ class ZohoEmailService:
         Returns:
             List of folder objects
         """
+        logger.info(f"[Email] Listing folders for user={user_id}")
         response = await self._request(user_id, "GET", "/folders")
         folders = response.get("data", [])
+        logger.debug(f"[Email] Found {len(folders)} folders for user={user_id}")
 
         # Transform to format matching frontend EmailFolder
         return [
@@ -181,6 +248,10 @@ class ZohoEmailService:
         Returns:
             Dict with emails, total count, and has_more flag
         """
+        logger.info(
+            f"[Email] Listing emails user={user_id} folder={folder_id} "
+            f"limit={limit} start={start} search={search_key}"
+        )
         params: dict[str, Any] = {
             "folderId": folder_id,
             "limit": min(limit, 200),
@@ -201,29 +272,36 @@ class ZohoEmailService:
         # Transform to consistent format matching frontend EmailSummary
         transformed_emails = []
         for email in emails:
-            transformed_emails.append({
-                "message_id": email.get("messageId"),
-                "folder_id": email.get("folderId"),
-                "thread_id": email.get("threadId"),
-                "subject": email.get("subject", "(No subject)"),
-                "from": {
-                    "address": email.get("fromAddress", ""),
-                    "name": email.get("sender", ""),
-                },
-                "to": self._parse_recipients_to_objects(email.get("toAddress", "")),
-                "cc": self._parse_recipients_to_objects(email.get("ccAddress", "")),
-                "snippet": email.get("summary", ""),
-                "has_attachments": email.get("hasAttachment", False),
-                "is_read": email.get("isRead", True),
-                "is_flagged": email.get("isFlagged", False),
-                "date": email.get("receivedTime") or email.get("sentDateInGMT"),
-            })
+            transformed_emails.append(
+                {
+                    "message_id": email.get("messageId"),
+                    "folder_id": email.get("folderId"),
+                    "thread_id": email.get("threadId"),
+                    "subject": email.get("subject", "(No subject)"),
+                    "from": {
+                        "address": email.get("fromAddress", ""),
+                        "name": email.get("sender", ""),
+                    },
+                    "to": self._parse_recipients_to_objects(email.get("toAddress", "")),
+                    "cc": self._parse_recipients_to_objects(email.get("ccAddress", "")),
+                    "snippet": email.get("summary", ""),
+                    "has_attachments": email.get("hasAttachment", False),
+                    "is_read": email.get("isRead", True),
+                    "is_flagged": email.get("isFlagged", False),
+                    "date": email.get("receivedTime") or email.get("sentDateInGMT"),
+                }
+            )
 
-        return {
+        result = {
             "emails": transformed_emails,
             "total": paging.get("totalCount", len(emails)),
             "has_more": paging.get("hasMoreData", False),
         }
+        logger.debug(
+            f"[Email] Listed {len(transformed_emails)} emails, total={result['total']}, "
+            f"has_more={result['has_more']}"
+        )
+        return result
 
     def _parse_recipients(self, recipients_str: str) -> list[str]:
         """Parse comma-separated recipient string to list."""
@@ -241,15 +319,17 @@ class ZohoEmailService:
             if r:
                 # Handle format like "Name <email>" or just "email"
                 if "<" in r and ">" in r:
-                    name = r[:r.index("<")].strip().strip('"')
-                    address = r[r.index("<") + 1:r.index(">")].strip()
+                    name = r[: r.index("<")].strip().strip('"')
+                    address = r[r.index("<") + 1 : r.index(">")].strip()
                 else:
                     name = ""
                     address = r
                 result.append({"address": address, "name": name})
         return result
 
-    async def get_email(self, user_id: str, message_id: str, folder_id: str | None = None) -> dict[str, Any]:
+    async def get_email(
+        self, user_id: str, message_id: str, folder_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Get full email content.
 
@@ -266,10 +346,7 @@ class ZohoEmailService:
 
         # Step 1: Get metadata from list endpoint (Zoho doesn't have single message metadata endpoint)
         list_response = await self._request(
-            user_id,
-            "GET",
-            "/messages/view",
-            params={"folderId": folder_id, "limit": "50"}
+            user_id, "GET", "/messages/view", params={"folderId": folder_id, "limit": "50"}
         )
         emails_list = list_response.get("data", [])
 
@@ -401,31 +478,61 @@ class ZohoEmailService:
         Returns:
             Send result with message ID
         """
-        # Get sender email from account
-        status = await self.oauth_service.get_connection_status(user_id)
-        from_address = status.get("email", "")
+        start_time = time.time()
+        logger.info(
+            f"[Email] Sending email user={user_id} to={to} subject='{subject[:50]}...' "
+            f"cc={cc} bcc={bcc} attachments={len(attachments or [])}"
+        )
+        try:
+            # Get sender email from account
+            status = await self.oauth_service.get_connection_status(user_id)
+            from_address = status.get("email", "")
 
-        payload: dict[str, Any] = {
-            "fromAddress": from_address,
-            "toAddress": ",".join(to),
-            "subject": subject,
-            "content": content,
-            "mailFormat": "html" if is_html else "plaintext",
-        }
+            payload: dict[str, Any] = {
+                "fromAddress": from_address,
+                "toAddress": ",".join(to),
+                "subject": subject,
+                "content": content,
+                "mailFormat": "html" if is_html else "plaintext",
+            }
 
-        if cc:
-            payload["ccAddress"] = ",".join(cc)
-        if bcc:
-            payload["bccAddress"] = ",".join(bcc)
-        if attachments:
-            payload["attachments"] = attachments
+            if cc:
+                payload["ccAddress"] = ",".join(cc)
+            if bcc:
+                payload["bccAddress"] = ",".join(bcc)
+            if attachments:
+                payload["attachments"] = attachments
 
-        response = await self._request(user_id, "POST", "/messages", json_data=payload)
+            response = await self._request(user_id, "POST", "/messages", json_data=payload)
 
-        return {
-            "success": True,
-            "message_id": response.get("data", {}).get("messageId"),
-        }
+            message_id = response.get("data", {}).get("messageId")
+            duration = time.time() - start_time
+            logger.info(f"[Email] Email sent successfully user={user_id} message_id={message_id}")
+            metrics_collector.record_email_operation(
+                operation="send", user_id=user_id, status="success", duration_seconds=duration
+            )
+
+            # Log activity for weekly report
+            await self._log_activity(
+                user_id=user_id,
+                operation="sent",
+                email_subject=subject,
+                recipient_email=to[0] if to else None,
+                has_attachments=bool(attachments),
+                attachment_count=len(attachments) if attachments else 0,
+            )
+
+            return {
+                "success": True,
+                "message_id": message_id,
+            }
+        except Exception:
+            duration = time.time() - start_time
+            metrics_collector.record_email_operation(
+                operation="send", user_id=user_id, status="error", duration_seconds=duration
+            )
+            metrics_collector.record_email_error(error_type="api_error", operation="send")
+            raise
 
     async def reply_email(
         self,
@@ -447,6 +554,9 @@ class ZohoEmailService:
             Send result
         """
         action = "replyall" if reply_all else "reply"
+        logger.info(
+            f"[Email] Replying to email user={user_id} message_id={message_id} reply_all={reply_all}"
+        )
 
         response = await self._request(
             user_id,
@@ -455,9 +565,20 @@ class ZohoEmailService:
             json_data={"content": content, "mailFormat": "html"},
         )
 
+        reply_message_id = response.get("data", {}).get("messageId")
+        logger.info(
+            f"[Email] Reply sent successfully user={user_id} reply_message_id={reply_message_id}"
+        )
+
+        # Log activity for weekly report
+        await self._log_activity(
+            user_id=user_id,
+            operation="replied",
+        )
+
         return {
             "success": True,
-            "message_id": response.get("data", {}).get("messageId"),
+            "message_id": reply_message_id,
         }
 
     async def forward_email(
@@ -479,6 +600,7 @@ class ZohoEmailService:
         Returns:
             Send result
         """
+        logger.info(f"[Email] Forwarding email user={user_id} message_id={message_id} to={to}")
         payload: dict[str, Any] = {
             "toAddress": ",".join(to),
         }
@@ -493,9 +615,21 @@ class ZohoEmailService:
             json_data=payload,
         )
 
+        fwd_message_id = response.get("data", {}).get("messageId")
+        logger.info(
+            f"[Email] Email forwarded successfully user={user_id} fwd_message_id={fwd_message_id}"
+        )
+
+        # Log activity for weekly report
+        await self._log_activity(
+            user_id=user_id,
+            operation="forwarded",
+            recipient_email=to[0] if to else None,
+        )
+
         return {
             "success": True,
-            "message_id": response.get("data", {}).get("messageId"),
+            "message_id": fwd_message_id,
         }
 
     # ═══════════════════════════════════════════
@@ -520,6 +654,7 @@ class ZohoEmailService:
             Success status
         """
         mode = "markAsRead" if is_read else "markAsUnread"
+        logger.info(f"[Email] Marking {len(message_ids)} emails as {mode} user={user_id}")
 
         await self._request(
             user_id,
@@ -547,6 +682,9 @@ class ZohoEmailService:
         Returns:
             Success status
         """
+        logger.info(
+            f"[Email] Toggling flag user={user_id} message_id={message_id} flagged={is_flagged}"
+        )
         await self._request(
             user_id,
             "PUT",
@@ -573,6 +711,9 @@ class ZohoEmailService:
         Returns:
             Success status
         """
+        logger.info(
+            f"[Email] Moving {len(message_ids)} emails to folder={folder_id} user={user_id}"
+        )
         await self._request(
             user_id,
             "PUT",
@@ -597,14 +738,36 @@ class ZohoEmailService:
         Returns:
             Success status
         """
-        await self._request(
-            user_id,
-            "PUT",
-            "/messages",
-            json_data={"messageId": message_ids, "mode": "moveToTrash"},
+        start_time = time.time()
+        logger.info(
+            f"[Email] Deleting {len(message_ids)} emails user={user_id} message_ids={message_ids}"
         )
+        try:
+            await self._request(
+                user_id,
+                "PUT",
+                "/messages",
+                json_data={"messageId": message_ids, "mode": "moveToTrash"},
+            )
+            duration = time.time() - start_time
+            metrics_collector.record_email_operation(
+                operation="delete", user_id=user_id, status="success", duration_seconds=duration
+            )
 
-        return True
+            # Log activity for weekly report (one entry per delete operation)
+            await self._log_activity(
+                user_id=user_id,
+                operation="deleted",
+            )
+
+            return True
+        except Exception:
+            duration = time.time() - start_time
+            metrics_collector.record_email_operation(
+                operation="delete", user_id=user_id, status="error", duration_seconds=duration
+            )
+            metrics_collector.record_email_error(error_type="api_error", operation="delete")
+            raise
 
     # ═══════════════════════════════════════════
     # ATTACHMENT OPERATIONS
@@ -627,6 +790,10 @@ class ZohoEmailService:
         Returns:
             Attachment content as bytes
         """
+        logger.info(
+            f"[Email] Downloading attachment user={user_id} "
+            f"message_id={message_id} attachment_id={attachment_id}"
+        )
         account_id = await self._get_account_id(user_id)
         headers = await self._get_headers(user_id)
         del headers["Content-Type"]  # Not needed for download
@@ -637,8 +804,14 @@ class ZohoEmailService:
             response = await client.get(url, headers=headers)
 
             if response.status_code != 200:
+                logger.error(
+                    f"[Email] Failed to download attachment: status={response.status_code}"
+                )
                 raise ValueError(f"Failed to download attachment: {response.status_code}")
 
+            logger.debug(
+                f"[Email] Attachment downloaded successfully size={len(response.content)} bytes"
+            )
             return response.content
 
     async def upload_attachment(
@@ -660,6 +833,10 @@ class ZohoEmailService:
         Returns:
             Attachment ID
         """
+        logger.info(
+            f"[Email] Uploading attachment user={user_id} "
+            f"filename={filename} size={len(content)} type={content_type}"
+        )
         account_id = await self._get_account_id(user_id)
         token = await self.oauth_service.get_valid_token(user_id)
 
@@ -673,10 +850,13 @@ class ZohoEmailService:
             )
 
             if response.status_code != 200:
+                logger.error(f"[Email] Failed to upload attachment: status={response.status_code}")
                 raise ValueError(f"Failed to upload attachment: {response.status_code}")
 
             data = response.json()
-            return data.get("data", {}).get("attachmentId", "")
+            attachment_id = data.get("data", {}).get("attachmentId", "")
+            logger.info(f"[Email] Attachment uploaded successfully attachment_id={attachment_id}")
+            return attachment_id
 
     # ═══════════════════════════════════════════
     # DRAFT OPERATIONS

@@ -57,16 +57,11 @@ class TestQueryRouterIntegration:
     def test_route_query_with_override(self, query_router_integration):
         """Test routing query with collection override"""
         result = query_router_integration.route_query(
-            "test query",
-            collection_override="visa_oracle"
+            "test query", collection_override="visa_oracle"
         )
         assert isinstance(result, dict)
 
     def test_route_query_with_fallbacks(self, query_router_integration):
         """Test routing query with fallbacks enabled"""
-        result = query_router_integration.route_query(
-            "test query",
-            enable_fallbacks=True
-        )
+        result = query_router_integration.route_query("test query", enable_fallbacks=True)
         assert isinstance(result, dict)
-

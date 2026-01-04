@@ -24,11 +24,16 @@ class TestContentOrchestrator:
         self, mock_content_repository, mock_ai_engine, mock_image_service
     ):
         """Mock all dependencies."""
-        with patch(
-            "app.services.content_orchestrator.content_repository",
-            mock_content_repository,
-        ), patch("app.services.content_orchestrator.ai_engine", mock_ai_engine), patch(
-            "app.services.content_orchestrator.google_ai_service", mock_image_service
+        with (
+            patch(
+                "app.services.content_orchestrator.content_repository",
+                mock_content_repository,
+            ),
+            patch("app.services.content_orchestrator.ai_engine", mock_ai_engine),
+            patch(
+                "app.services.content_orchestrator.google_ai_service",
+                mock_image_service,
+            ),
         ):
             yield {
                 "repository": mock_content_repository,
@@ -167,7 +172,7 @@ Applicants must demonstrate stable remote income and health insurance coverage.
             signal = {
                 **mock_intel_signal,
                 "id": str(uuid4()),  # Valid UUID string
-                "title": f"Signal {i+1}",
+                "title": f"Signal {i + 1}",
             }
             signals.append(signal)
 

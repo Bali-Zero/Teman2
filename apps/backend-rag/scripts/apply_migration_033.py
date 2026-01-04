@@ -73,7 +73,7 @@ async def run_migration():
     for idx in indexes:
         try:
             await conn.execute(idx)
-            print(f"   ✅ Index created")
+            print("   ✅ Index created")
         except Exception as e:
             print(f"   ⚠️  Index: {e}")
 
@@ -104,7 +104,7 @@ async def run_migration():
     for idx in doc_indexes:
         try:
             await conn.execute(idx)
-            print(f"   ✅ Document index created")
+            print("   ✅ Document index created")
         except Exception as e:
             print(f"   ⚠️  Document index: {e}")
 

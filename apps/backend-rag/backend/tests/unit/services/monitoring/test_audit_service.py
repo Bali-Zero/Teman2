@@ -19,7 +19,7 @@ from services.monitoring.audit_service import AuditService
 @pytest.fixture
 def audit_service():
     """Create AuditService instance"""
-    with patch('services.monitoring.audit_service.settings') as mock_settings:
+    with patch("services.monitoring.audit_service.settings") as mock_settings:
         mock_settings.database_url = "postgresql://test"
         service = AuditService()
         return service
@@ -30,7 +30,7 @@ class TestAuditService:
 
     def test_init(self):
         """Test initialization"""
-        with patch('services.monitoring.audit_service.settings') as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             service = AuditService()
             assert service.enabled is True
@@ -39,7 +39,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect(self, audit_service):
         """Test connecting to database"""
-        with patch('asyncpg.create_pool', new_callable=AsyncMock) as mock_create_pool:
+        with patch("asyncpg.create_pool", new_callable=AsyncMock) as mock_create_pool:
             mock_pool = AsyncMock()
             mock_create_pool.return_value = mock_pool
             await audit_service.connect()
@@ -49,7 +49,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect_disabled(self):
         """Test connecting when disabled"""
-        with patch('services.monitoring.audit_service.settings') as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
             await service.connect()
@@ -72,25 +72,17 @@ class TestAuditService:
         mock_pool.acquire = AsyncMock(return_value=mock_conn)
         audit_service.pool = mock_pool
         audit_service.enabled = True
-        await audit_service.log_auth_event(
-            email="test@example.com",
-            action="login",
-            success=True
-        )
+        await audit_service.log_auth_event(email="test@example.com", action="login", success=True)
         # execute is called inside acquire context manager
         assert mock_pool.acquire.called
 
     @pytest.mark.asyncio
     async def test_log_auth_event_disabled(self):
         """Test logging auth event when disabled"""
-        with patch('services.monitoring.audit_service.settings') as mock_settings:
+        with patch("services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
-            await service.log_auth_event(
-                email="test@example.com",
-                action="login",
-                success=True
-            )
+            await service.log_auth_event(email="test@example.com", action="login", success=True)
             # Should not raise error
 
     @pytest.mark.asyncio
@@ -102,10 +94,6 @@ class TestAuditService:
         mock_pool.acquire = AsyncMock(return_value=mock_conn)
         audit_service.pool = mock_pool
         audit_service.enabled = True
-        await audit_service.log_system_event(
-            event_type="test",
-            action="test_action"
-        )
+        await audit_service.log_system_event(event_type="test", action="test_action")
         # execute is called inside acquire context manager
         assert mock_pool.acquire.called
-

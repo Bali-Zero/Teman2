@@ -110,4 +110,3 @@ class VertexAIService:
         except Exception as e:
             logger.error(f"Vertex AI extraction failed: {e}")
             return {}
-

@@ -54,6 +54,7 @@ except ImportError as e:
     # Try legacy SDK as fallback
     try:
         import google.generativeai as legacy_genai
+
         logger.warning("⚠️ Using deprecated google-generativeai as fallback")
     except ImportError:
         logger.error("❌ No Google AI SDK available")
@@ -71,9 +72,9 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
         Tuple of (success, project_id)
     """
     creds_json = (
-        getattr(settings, 'google_credentials_json', None)
-        or os.environ.get('GOOGLE_CREDENTIALS_JSON')
-        or os.environ.get('GEMINI_SA_TOKEN')  # Support GEMINI_SA_TOKEN alias
+        getattr(settings, "google_credentials_json", None)
+        or os.environ.get("GOOGLE_CREDENTIALS_JSON")
+        or os.environ.get("GEMINI_SA_TOKEN")  # Support GEMINI_SA_TOKEN alias
     )
 
     if not creds_json:
@@ -87,24 +88,26 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
             creds_dict = creds_json
 
         # Extract project_id for Vertex AI
-        project_id = creds_dict.get('project_id')
+        project_id = creds_dict.get("project_id")
 
         # Validate private key format
-        private_key = creds_dict.get('private_key', '')
+        private_key = creds_dict.get("private_key", "")
         if not private_key:
             logger.warning("⚠️ Service Account credentials missing private_key")
             return False, None
 
         # Fix escaped newlines from environment variables (literal \n -> actual newline)
-        if '\\n' in private_key:
-            private_key = private_key.replace('\\n', '\n')
-            creds_dict['private_key'] = private_key
+        if "\\n" in private_key:
+            private_key = private_key.replace("\\n", "\n")
+            creds_dict["private_key"] = private_key
             logger.info("✅ Fixed escaped newlines in private key")
 
         # Check that newlines are properly formatted (not merged with header)
-        lines = private_key.split('\n')
+        lines = private_key.split("\n")
         if len(lines) < 10:
-            logger.warning(f"⚠️ Service Account private key has too few lines ({len(lines)}), likely corrupted")
+            logger.warning(
+                f"⚠️ Service Account private key has too few lines ({len(lines)}), likely corrupted"
+            )
             return False, None
 
         # Header should be exactly "-----BEGIN PRIVATE KEY-----"
@@ -114,14 +117,16 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
             return False, None
 
         # Write to temp file
-        creds_file = '/tmp/google_credentials.json'
-        with open(creds_file, 'w') as f:
+        creds_file = "/tmp/google_credentials.json"
+        with open(creds_file, "w") as f:
             json.dump(creds_dict, f)
 
         # Set environment variable for ADC
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = creds_file
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_file
 
-        logger.info(f"✅ Service Account credentials configured: {creds_dict.get('client_email', 'unknown')} (project: {project_id})")
+        logger.info(
+            f"✅ Service Account credentials configured: {creds_dict.get('client_email', 'unknown')} (project: {project_id})"
+        )
         return True, project_id
 
     except (OSError, json.JSONDecodeError, KeyError) as e:
@@ -203,11 +208,13 @@ class GenAIClient:
                 self._client = genai.Client(
                     vertexai=True,
                     project=_sa_project_id,
-                    location="global"  # Required for Gemini 3 preview models
+                    location="global",  # Required for Gemini 3 preview models
                 )
                 self._available = True
                 self._auth_method = "service_account_vertexai"
-                logger.info(f"✅ GenAI client initialized with Vertex AI (project: {_sa_project_id})")
+                logger.info(
+                    f"✅ GenAI client initialized with Vertex AI (project: {_sa_project_id})"
+                )
                 return
             except Exception as e:
                 logger.warning(f"⚠️ Vertex AI Service Account auth failed: {e}")

@@ -68,7 +68,7 @@ LLM_PRICING: dict[str, dict[str, float]] = {
     },
     "gemini-2.0-flash-lite": {
         "input": 0.0375,  # $0.0375 per 1M input tokens
-        "output": 0.15,   # $0.15 per 1M output tokens
+        "output": 0.15,  # $0.15 per 1M output tokens
     },
     "gemini-1.5-flash": {
         "input": 0.075,
@@ -82,7 +82,6 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "input": 0.0,  # Experimental - free
         "output": 0.0,
     },
-
     # OpenAI Models (per 1M tokens)
     "gpt-4o": {
         "input": 2.50,
@@ -104,7 +103,6 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "input": 0.13,
         "output": 0.0,
     },
-
     # OpenRouter Models (via OpenRouter, includes markup)
     "anthropic/claude-3.5-sonnet": {
         "input": 3.00,
@@ -122,7 +120,6 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "input": 0.075,
         "output": 0.30,
     },
-
     # Deepseek Models
     "deepseek-chat": {
         "input": 0.14,
@@ -132,7 +129,6 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "input": 0.14,
         "output": 0.28,
     },
-
     # Default fallback (conservative estimate)
     "unknown": {
         "input": 1.00,

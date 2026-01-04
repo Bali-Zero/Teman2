@@ -124,7 +124,7 @@ class TestVectorSearchTool:
         mock_retriever.search_with_reranking.return_value = {
             "results": [
                 {"text": "test content", "score": 0.9, "metadata": {"title": "Test"}},
-                {"text": "test content", "score": 0.8, "metadata": {"title": "Test2"}}
+                {"text": "test content", "score": 0.8, "metadata": {"title": "Test2"}},
             ]
         }
 
@@ -221,7 +221,9 @@ class TestPricingTool:
     @pytest.mark.asyncio
     async def test_execute_with_category(self, mock_pricing_service):
         """Test execute with category"""
-        with patch("services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service):
+        with patch(
+            "services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service
+        ):
             tool = PricingTool()
             # get_pricing is not async, it's a regular method
             mock_pricing_service.get_pricing.return_value = {
@@ -234,7 +236,9 @@ class TestPricingTool:
     @pytest.mark.asyncio
     async def test_execute_without_category(self, mock_pricing_service):
         """Test execute without category"""
-        with patch("services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service):
+        with patch(
+            "services.rag.agentic.tools.get_pricing_service", return_value=mock_pricing_service
+        ):
             tool = PricingTool()
             mock_pricing_service.get_pricing.return_value = {"items": []}
 
@@ -260,9 +264,11 @@ class TestTeamKnowledgeTool:
         """Test search query"""
         tool = TeamKnowledgeTool()
         # Mock the _load_team_data method to return test data
-        with patch.object(tool, '_load_team_data', return_value=[
-            {"name": "Test", "email": "test@example.com", "role": "developer"}
-        ]):
+        with patch.object(
+            tool,
+            "_load_team_data",
+            return_value=[{"name": "Test", "email": "test@example.com", "role": "developer"}],
+        ):
             result = await tool.execute(query_type="search_by_name", search_term="test")
             assert "test" in result.lower()
 
@@ -271,9 +277,9 @@ class TestTeamKnowledgeTool:
         """Test list query"""
         tool = TeamKnowledgeTool()
         # Mock the _load_team_data method to return test data
-        with patch.object(tool, '_load_team_data', return_value=[
-            {"name": "Test", "email": "test@example.com"}
-        ]):
+        with patch.object(
+            tool, "_load_team_data", return_value=[{"name": "Test", "email": "test@example.com"}]
+        ):
             result = await tool.execute(query_type="list_all")
             assert result is not None
 
@@ -294,11 +300,13 @@ class TestVisionTool:
     @pytest.mark.asyncio
     async def test_execute_with_url(self, mock_vision_service):
         """Test execute with file path"""
-        with patch.object(VisionTool, '__init__', lambda self: None):
+        with patch.object(VisionTool, "__init__", lambda self: None):
             tool = VisionTool()
             tool.vision_service = mock_vision_service
             mock_vision_service.process_pdf = AsyncMock(return_value={"doc": "test"})
-            mock_vision_service.query_with_vision = AsyncMock(return_value={"answer": "test analysis"})
+            mock_vision_service.query_with_vision = AsyncMock(
+                return_value={"answer": "test analysis"}
+            )
 
             result = await tool.execute(file_path="/path/to/file.pdf", query="test query")
             assert "test" in result.lower()
@@ -306,11 +314,10 @@ class TestVisionTool:
     @pytest.mark.asyncio
     async def test_execute_error_handling(self, mock_vision_service):
         """Test error handling"""
-        with patch.object(VisionTool, '__init__', lambda self: None):
+        with patch.object(VisionTool, "__init__", lambda self: None):
             tool = VisionTool()
             tool.vision_service = mock_vision_service
             mock_vision_service.process_pdf = AsyncMock(side_effect=Exception("Vision error"))
 
             result = await tool.execute(file_path="invalid", query="test")
             assert "error" in result.lower()
-

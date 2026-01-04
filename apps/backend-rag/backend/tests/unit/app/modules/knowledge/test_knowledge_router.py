@@ -85,47 +85,49 @@ class TestGetSearchService:
         service = get_search_service(mock_request)
         assert service == mock_search_service
 
-    def test_get_search_service_fallback_to_knowledge_service(self, mock_request):
-        """Test that get_search_service falls back to KnowledgeService if SearchService not in app.state"""
+    def test_get_search_service_fallback_creates_singleton(self, mock_request):
+        """Test that get_search_service creates singleton on fallback"""
+        # Access module-level variable through sys.modules
+        import sys
+
+        router_mod = sys.modules.get("app.modules.knowledge.router")
+        if router_mod is None:
+            import app.modules.knowledge.router as router_mod
+
+        # Reset singleton for clean test
+        original_fallback = getattr(router_mod, "_knowledge_service_fallback", None)
+        router_mod._knowledge_service_fallback = None
+
         # Remove search_service from app.state
-        delattr(mock_request.app.state, "search_service")
         mock_request.app.state.search_service = None
 
-        with patch("app.modules.knowledge.router.KnowledgeService") as mock_knowledge_class:
-            mock_knowledge_instance = MagicMock()
-            mock_knowledge_class.return_value = mock_knowledge_instance
-
-            service = get_search_service(mock_request)
-            assert service == mock_knowledge_instance
-            mock_knowledge_class.assert_called_once()
-
-    def test_get_search_service_fallback_singleton(self, mock_request):
-        """Test that get_search_service uses singleton for fallback"""
-        delattr(mock_request.app.state, "search_service")
-        mock_request.app.state.search_service = None
-
-        with patch("app.modules.knowledge.router.KnowledgeService") as mock_knowledge_class:
-            mock_knowledge_instance = MagicMock()
-            mock_knowledge_class.return_value = mock_knowledge_instance
-
+        try:
             # First call creates singleton
             service1 = get_search_service(mock_request)
+            assert service1 is not None
+
             # Second call should reuse singleton
             service2 = get_search_service(mock_request)
-            assert service1 == service2
-            # Should only be called once (singleton pattern)
-            assert mock_knowledge_class.call_count == 1
+            assert service1 is service2
+
+        finally:
+            # Cleanup
+            router_mod._knowledge_service_fallback = original_fallback
 
 
 class TestSemanticSearch:
     """Tests for semantic_search endpoint"""
 
     @pytest.mark.asyncio
-    async def test_semantic_search_success(self, mock_search_service, mock_search_query, mock_request):
+    async def test_semantic_search_success(
+        self, mock_search_service, mock_search_query, mock_request
+    ):
         """Test successful semantic search using SearchService"""
         mock_request.app.state.search_service = mock_search_service
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(mock_search_query, mock_request)
 
             assert response.query == "test query"
@@ -137,25 +139,21 @@ class TestSemanticSearch:
             call_args = mock_search_service.search.call_args
             assert call_args[1]["apply_filters"] is True
 
-    @pytest.mark.asyncio
-    async def test_semantic_search_invalid_level_negative(self, mock_search_service, mock_request):
-        """Test semantic search with invalid negative level"""
-        query = SearchQuery(query="test", level=-1, limit=5)
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
-            with pytest.raises(HTTPException) as exc_info:
-                await semantic_search(query, mock_request)
-            assert exc_info.value.status_code == 400
-            assert "Invalid access level" in exc_info.value.detail
+    def test_search_query_validation_level_negative(self):
+        """Test that SearchQuery model rejects negative level at validation time"""
+        from pydantic import ValidationError
 
-    @pytest.mark.asyncio
-    async def test_semantic_search_invalid_level_too_high(self, mock_search_service, mock_request):
-        """Test semantic search with invalid level > 3"""
-        query = SearchQuery(query="test", level=4, limit=5)
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
-            with pytest.raises(HTTPException) as exc_info:
-                await semantic_search(query, mock_request)
-            assert exc_info.value.status_code == 400
-            assert "Invalid access level" in exc_info.value.detail
+        with pytest.raises(ValidationError) as exc_info:
+            SearchQuery(query="test", level=-1, limit=5)
+        assert "greater_than_equal" in str(exc_info.value) or "level" in str(exc_info.value)
+
+    def test_search_query_validation_level_too_high(self):
+        """Test that SearchQuery model rejects level > 3 at validation time"""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError) as exc_info:
+            SearchQuery(query="test", level=4, limit=5)
+        assert "less_than_equal" in str(exc_info.value) or "level" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_semantic_search_with_tier_filter(self, mock_search_service, mock_request):
@@ -163,7 +161,9 @@ class TestSemanticSearch:
         mock_request.app.state.search_service = mock_search_service
         query = SearchQuery(query="test", level=2, limit=5, tier_filter=[TierLevel.C])
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(query, mock_request)
 
             assert response is not None
@@ -172,12 +172,16 @@ class TestSemanticSearch:
             assert call_args[1]["apply_filters"] is True
 
     @pytest.mark.asyncio
-    async def test_semantic_search_with_collection_override(self, mock_search_service, mock_request):
+    async def test_semantic_search_with_collection_override(
+        self, mock_search_service, mock_request
+    ):
         """Test semantic search with collection override"""
         mock_request.app.state.search_service = mock_search_service
         query = SearchQuery(query="test", level=0, limit=5, collection="kb_indonesian")
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(query, mock_request)
 
             assert response is not None
@@ -199,7 +203,9 @@ class TestSemanticSearch:
 
         query = SearchQuery(query="test", level=0, limit=5)
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(query, mock_request)
 
             assert response.total_found == 0
@@ -232,7 +238,9 @@ class TestSemanticSearch:
 
         query = SearchQuery(query="test", level=0, limit=5)
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(query, mock_request)
 
             assert response.total_found == 2
@@ -248,7 +256,9 @@ class TestSemanticSearch:
 
         query = SearchQuery(query="test", level=0, limit=5)
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await semantic_search(query, mock_request)
 
@@ -256,14 +266,20 @@ class TestSemanticSearch:
             assert "Search failed" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_semantic_search_http_exception_passthrough(self, mock_search_service, mock_request):
+    async def test_semantic_search_http_exception_passthrough(
+        self, mock_search_service, mock_request
+    ):
         """Test that HTTPException is passed through without modification"""
         mock_request.app.state.search_service = mock_search_service
-        mock_search_service.search.side_effect = HTTPException(status_code=400, detail="Bad request")
+        mock_search_service.search.side_effect = HTTPException(
+            status_code=400, detail="Bad request"
+        )
 
         query = SearchQuery(query="test", level=0, limit=5)
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await semantic_search(query, mock_request)
 
@@ -291,7 +307,9 @@ class TestSemanticSearch:
 
         query = SearchQuery(query="test", level=0, limit=5)
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(query, mock_request)
 
             assert response.results[0].metadata.tier == TierLevel.S
@@ -317,7 +335,9 @@ class TestSemanticSearch:
 
         query = SearchQuery(query="test", level=0, limit=5)
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(query, mock_request)
 
             assert response.results[0].metadata.tier == TierLevel.C
@@ -343,7 +363,9 @@ class TestSemanticSearch:
 
         query = SearchQuery(query="test", level=0, limit=5)
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await semantic_search(query, mock_request)
 
             assert response.results[0].metadata.book_title == "Unknown"
@@ -359,7 +381,9 @@ class TestSearchHealth:
         """Test search health check success"""
         mock_request.app.state.search_service = mock_search_service
 
-        with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+        with patch(
+            "app.modules.knowledge.router.get_search_service", return_value=mock_search_service
+        ):
             response = await search_health(mock_request)
 
             assert response["status"] == "operational"
@@ -390,7 +414,8 @@ class TestSearchHealth:
     async def test_search_health_service_unavailable(self, mock_request):
         """Test search health check when service unavailable"""
         with patch(
-            "app.modules.knowledge.router.get_search_service", side_effect=Exception("Service error")
+            "app.modules.knowledge.router.get_search_service",
+            side_effect=Exception("Service error"),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await search_health(mock_request)
@@ -407,4 +432,3 @@ class TestSearchOptions:
         """Test OPTIONS endpoint for CORS preflight"""
         response = await search_options()
         assert response == {"status": "ok"}
-

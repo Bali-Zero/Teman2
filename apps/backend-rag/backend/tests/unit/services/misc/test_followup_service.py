@@ -28,7 +28,9 @@ def followup_service():
 @pytest.fixture
 def followup_service_no_ai():
     """Create FollowupService instance without AI"""
-    with patch("services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")):
+    with patch(
+        "services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
+    ):
         return FollowupService()
 
 
@@ -45,7 +47,9 @@ class TestFollowupService:
 
     def test_init_no_ai(self):
         """Test initialization without AI"""
-        with patch("services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")):
+        with patch(
+            "services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
+        ):
             service = FollowupService()
             assert service.zantara_client is None
 
@@ -56,46 +60,40 @@ class TestFollowupService:
         )
 
         result = followup_service.generate_followups(
-            query="Test query",
-            response="Test response",
-            topic="business"
+            query="Test query", response="Test response", topic="business"
         )
         assert isinstance(result, list)
         assert len(result) > 0
 
     def test_generate_followups_with_ai_coroutine(self, followup_service):
         """Test generating followups with AI coroutine"""
+
         async def mock_coroutine():
             return "Question 1\nQuestion 2\nQuestion 3"
 
         followup_service.zantara_client.generate_response = mock_coroutine()
 
         result = followup_service.generate_followups(
-            query="Test query",
-            response="Test response",
-            topic="business"
+            query="Test query", response="Test response", topic="business"
         )
         assert isinstance(result, list)
 
     def test_generate_followups_fallback(self, followup_service_no_ai):
         """Test generating followups with fallback"""
         result = followup_service_no_ai.generate_followups(
-            query="Test query",
-            response="Test response",
-            topic="business",
-            language="en"
+            query="Test query", response="Test response", topic="business", language="en"
         )
         assert isinstance(result, list)
         assert len(result) > 0
 
     def test_generate_followups_ai_error(self, followup_service):
         """Test generating followups with AI error"""
-        followup_service.zantara_client.generate_response = MagicMock(side_effect=Exception("AI error"))
+        followup_service.zantara_client.generate_response = MagicMock(
+            side_effect=Exception("AI error")
+        )
 
         result = followup_service.generate_followups(
-            query="Test query",
-            response="Test response",
-            topic="business"
+            query="Test query", response="Test response", topic="business"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -103,10 +101,7 @@ class TestFollowupService:
     def test_get_topic_based_followups_business_en(self, followup_service):
         """Test getting topic-based followups for business in English"""
         result = followup_service.get_topic_based_followups(
-            _query="Test query",
-            _response="Test response",
-            topic="business",
-            language="en"
+            _query="Test query", _response="Test response", topic="business", language="en"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -114,10 +109,7 @@ class TestFollowupService:
     def test_get_topic_based_followups_business_it(self, followup_service):
         """Test getting topic-based followups for business in Italian"""
         result = followup_service.get_topic_based_followups(
-            _query="Test query",
-            _response="Test response",
-            topic="business",
-            language="it"
+            _query="Test query", _response="Test response", topic="business", language="it"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -125,10 +117,7 @@ class TestFollowupService:
     def test_get_topic_based_followups_immigration(self, followup_service):
         """Test getting topic-based followups for immigration"""
         result = followup_service.get_topic_based_followups(
-            _query="Test query",
-            _response="Test response",
-            topic="immigration",
-            language="en"
+            _query="Test query", _response="Test response", topic="immigration", language="en"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -136,10 +125,7 @@ class TestFollowupService:
     def test_get_topic_based_followups_tax(self, followup_service):
         """Test getting topic-based followups for tax"""
         result = followup_service.get_topic_based_followups(
-            _query="Test query",
-            _response="Test response",
-            topic="tax",
-            language="en"
+            _query="Test query", _response="Test response", topic="tax", language="en"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -147,10 +133,7 @@ class TestFollowupService:
     def test_get_topic_based_followups_casual(self, followup_service):
         """Test getting topic-based followups for casual"""
         result = followup_service.get_topic_based_followups(
-            _query="Test query",
-            _response="Test response",
-            topic="casual",
-            language="en"
+            _query="Test query", _response="Test response", topic="casual", language="en"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -158,10 +141,7 @@ class TestFollowupService:
     def test_get_topic_based_followups_technical(self, followup_service):
         """Test getting topic-based followups for technical"""
         result = followup_service.get_topic_based_followups(
-            _query="Test query",
-            _response="Test response",
-            topic="technical",
-            language="en"
+            _query="Test query", _response="Test response", topic="technical", language="en"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -223,14 +203,12 @@ class TestFollowupService:
     @pytest.mark.asyncio
     async def test_get_followups_with_ai(self, followup_service):
         """Test getting followups with AI"""
-        followup_service.zantara_client.chat_async = AsyncMock(return_value={
-            "text": "1. First question?\n2. Second question?\n3. Third question?"
-        })
+        followup_service.zantara_client.chat_async = AsyncMock(
+            return_value={"text": "1. First question?\n2. Second question?\n3. Third question?"}
+        )
 
         result = await followup_service.get_followups(
-            query="Test query",
-            response="Test response",
-            use_ai=True
+            query="Test query", response="Test response", use_ai=True
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -239,9 +217,7 @@ class TestFollowupService:
     async def test_get_followups_without_ai(self, followup_service_no_ai):
         """Test getting followups without AI"""
         result = await followup_service_no_ai.get_followups(
-            query="Test query",
-            response="Test response",
-            use_ai=False
+            query="Test query", response="Test response", use_ai=False
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -249,14 +225,12 @@ class TestFollowupService:
     @pytest.mark.asyncio
     async def test_generate_dynamic_followups_success(self, followup_service):
         """Test successful dynamic followup generation"""
-        followup_service.zantara_client.chat_async = AsyncMock(return_value={
-            "text": "1. First?\n2. Second?\n3. Third?"
-        })
+        followup_service.zantara_client.chat_async = AsyncMock(
+            return_value={"text": "1. First?\n2. Second?\n3. Third?"}
+        )
 
         result = await followup_service.generate_dynamic_followups(
-            query="Test query",
-            response="Test response",
-            language="en"
+            query="Test query", response="Test response", language="en"
         )
         assert isinstance(result, list)
         assert len(result) <= 4
@@ -265,9 +239,7 @@ class TestFollowupService:
     async def test_generate_dynamic_followups_no_ai(self, followup_service_no_ai):
         """Test dynamic followups fallback when AI not available"""
         result = await followup_service_no_ai.generate_dynamic_followups(
-            query="Test query",
-            response="Test response",
-            language="en"
+            query="Test query", response="Test response", language="en"
         )
         assert isinstance(result, list)
         assert len(result) > 0
@@ -275,14 +247,12 @@ class TestFollowupService:
     @pytest.mark.asyncio
     async def test_generate_dynamic_followups_parse_error(self, followup_service):
         """Test handling parse error in dynamic followups"""
-        followup_service.zantara_client.chat_async = AsyncMock(return_value={
-            "text": "Invalid format without numbers"
-        })
+        followup_service.zantara_client.chat_async = AsyncMock(
+            return_value={"text": "Invalid format without numbers"}
+        )
 
         result = await followup_service.generate_dynamic_followups(
-            query="Test query",
-            response="Test response",
-            language="en"
+            query="Test query", response="Test response", language="en"
         )
         # Should fallback to topic-based
         assert isinstance(result, list)
@@ -314,7 +284,7 @@ class TestFollowupService:
             query="Test query",
             response="Test response",
             conversation_context="Previous context",
-            language="en"
+            language="en",
         )
         assert "Test query" in prompt
         assert "Test response" in prompt

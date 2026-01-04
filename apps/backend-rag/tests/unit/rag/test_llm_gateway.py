@@ -25,9 +25,9 @@ import pytest
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from services.rag.agentic.llm_gateway import (
+    TIER_FALLBACK,
     TIER_FLASH,
     TIER_LITE,
-    TIER_FALLBACK,
     TIER_PRO,
     LLMGateway,
 )
@@ -82,7 +82,10 @@ def mock_genai_client():
 @pytest.fixture(autouse=True)
 def mock_trace_span():
     """Mock trace_span to use nullcontext to avoid generator issues."""
-    with patch("services.rag.agentic.llm_gateway.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+    with patch(
+        "services.rag.agentic.llm_gateway.trace_span",
+        side_effect=lambda *args, **kwargs: nullcontext(),
+    ):
         yield
 
 
@@ -91,7 +94,9 @@ def llm_gateway(mock_settings, mock_genai_client):
     """Create LLMGateway instance with mocked dependencies."""
     with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
         # Patch get_genai_client which is called by LLMGateway.__init__
-        with patch("services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client):
+        with patch(
+            "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+        ):
             gateway = LLMGateway(gemini_tools=[])
             return gateway
 
@@ -196,17 +201,17 @@ class TestLLMGatewaySendMessage:
     async def test_function_calling_enabled(self, llm_gateway, mock_genai_client):
         """Test that function calling is enabled when tools are provided."""
         # Tool must have name, description, and parameters (matching GenAI SDK format)
-        llm_gateway.gemini_tools = [{
-            "name": "test_tool",
-            "description": "A test tool for testing",
-            "parameters": {
-                "type": "OBJECT",
-                "properties": {
-                    "arg1": {"type": "STRING", "description": "First argument"}
+        llm_gateway.gemini_tools = [
+            {
+                "name": "test_tool",
+                "description": "A test tool for testing",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {"arg1": {"type": "STRING", "description": "First argument"}},
+                    "required": ["arg1"],
                 },
-                "required": ["arg1"]
             }
-        }]
+        ]
 
         mock_response = create_mock_response("Response with tool call")
         mock_genai_client._client.aio.models.generate_content = AsyncMock(
@@ -300,7 +305,9 @@ class TestLLMGatewayFallbackCascade:
             )
 
     @pytest.mark.asyncio
-    async def test_complete_cascade_flash_raises_when_all_fail(self, llm_gateway, mock_genai_client):
+    async def test_complete_cascade_flash_raises_when_all_fail(
+        self, llm_gateway, mock_genai_client
+    ):
         """Test complete cascade: Flash → Fallback → RuntimeError (no OpenRouter)."""
 
         async def mock_generate_content(model, contents, config=None):
@@ -744,7 +751,9 @@ class TestLLMGatewayCoverageImprovements:
         """Test ValueError when accessing response.text (function call, lines 376-380)."""
         mock_response = MagicMock()
         # Simulate function call where .text raises ValueError
-        type(mock_response).text = property(lambda self: (_ for _ in ()).throw(ValueError("No text")))
+        type(mock_response).text = property(
+            lambda self: (_ for _ in ()).throw(ValueError("No text"))
+        )
         mock_usage = MagicMock()
         mock_usage.prompt_token_count = 10
         mock_usage.candidates_token_count = 20

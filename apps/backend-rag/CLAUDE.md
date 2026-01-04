@@ -1,5 +1,459 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-04 21:00-21:30 UTC)
+
+### Telegram Article Approval - Majority Voting System - COMPLETED
+
+**Obiettivo:** Implementare sistema di votazione 2/3 per approvazione articoli via Telegram.
+
+**Team:** Zero, Dea, Damar (3 persone)
+
+---
+
+### 1. Problema Originale
+
+Il sistema precedente era "first wins" - la prima persona che cliccava decideva tutto. Serviva un sistema democratico.
+
+---
+
+### 2. Sistema Implementato
+
+**Logica Majority Voting:**
+- Servono **2 voti su 3** per approvare o rifiutare
+- Ogni persona può votare **una sola volta**
+- Il messaggio si aggiorna in tempo reale con il conteggio
+- Protezioni: "Hai già votato!", "Votazione già chiusa"
+
+**Storage:** `/tmp/pending_articles/{article_id}.json`
+
+```json
+{
+  "article_id": "xyz",
+  "status": "voting",
+  "votes": {
+    "approve": [{"user_id": 123, "user_name": "Zero", "voted_at": "..."}],
+    "reject": []
+  },
+  "feedback": []
+}
+```
+
+---
+
+### 3. Flow Visuale
+
+```
+┌─────────────────────────────────────────┐
+│ 📊 VOTAZIONE IN CORSO                   │
+│                                          │
+│ [Titolo articolo...]                    │
+│ ━━━━━━━━━━━━━━━━━━━━━━                  │
+│ Voti: ✅ 1/2 | ❌ 0/2                    │
+│                                          │
+│ Chi ha votato:                           │
+│   Zero ✅                                │
+│ ━━━━━━━━━━━━━━━━━━━━━━                  │
+│ Servono 2 voti per decidere             │
+│                                          │
+│ [✅ APPROVE] [❌ REJECT]                 │
+│ [✏️ REQUEST CHANGES]                    │
+└─────────────────────────────────────────┘
+        │
+        │ Seconda persona clicca APPROVE
+        ▼
+┌─────────────────────────────────────────┐
+│ ✅ APPROVATO (2/3)                      │
+│                                          │
+│ Articolo {id}                           │
+│                                          │
+│ Approvato da: Zero, Dea                 │
+│                                          │
+│ L'articolo sarà pubblicato a breve.    │
+└─────────────────────────────────────────┘
+```
+
+---
+
+### 4. Fix Precedenti (stessa sessione)
+
+**Problema:** Buttons non funzionavano - 403 "Invalid secret token"
+
+**Root Cause:** Due router Telegram con stesso prefix:
+- `telegram.py` (originale - con validazione secret)
+- `telegram_webhook.py` (duplicato - senza validazione)
+
+**Soluzione:**
+1. Rimosso `telegram_webhook.py`
+2. Aggiunto callback_query handling a `telegram.py`
+3. Re-set webhook con `allowed_updates=["message", "edited_message", "callback_query"]`
+
+---
+
+### 5. Files Modificati
+
+| File | Tipo | Descrizione |
+|------|------|-------------|
+| `backend/app/routers/telegram.py` | MODIFIED | Majority voting + callback handling |
+| `backend/services/integrations/telegram_bot_service.py` | MODIFIED | answer_callback_query, edit_message_text |
+| `backend/app/setup/app_factory.py` | MODIFIED | Rimosso import duplicato |
+| `backend/app/routers/telegram_webhook.py` | DELETED | Router duplicato rimosso |
+
+---
+
+### 6. Configurazione
+
+```python
+REQUIRED_VOTES = 2  # Cambiare per modificare soglia
+```
+
+**Fly.io Secrets necessari:**
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+
+---
+
+## Session Update (2026-01-04 19:00-20:30 UTC)
+
+### Google Drive OAuth 2.0 Implementation - COMPLETED
+
+**Obiettivo:** Sostituire il Service Account (15GB quota) con OAuth user `antonellosiano@gmail.com` (30TB Google One) per evitare errori `storageQuotaExceeded`.
+
+---
+
+### 1. Problema Originale
+
+Il Service Account aveva solo 15GB di quota, causando errori quando il team caricava documenti su Google Drive:
+```
+Error: storageQuotaExceeded - The user's Drive storage quota has been exceeded
+```
+
+**Soluzione:** Usare OAuth 2.0 con l'account `antonellosiano@gmail.com` che ha Google One 30TB.
+
+---
+
+### 2. Router OAuth Creato
+
+**File:** `backend/app/routers/google_drive.py`
+
+**Endpoints implementati:**
+| Endpoint | Metodo | Descrizione |
+|----------|--------|-------------|
+| `/api/integrations/google-drive/status` | GET | Status connessione utente |
+| `/api/integrations/google-drive/auth/url` | GET | Ottieni URL OAuth per utente |
+| `/api/integrations/google-drive/callback` | GET | Callback OAuth (riceve code) |
+| `/api/integrations/google-drive/disconnect` | POST | Disconnetti utente |
+| `/api/integrations/google-drive/system/status` | GET | Status OAuth SYSTEM (pubblico) |
+| `/api/integrations/google-drive/system/authorize` | GET | URL OAuth SYSTEM (solo admin) |
+| `/api/integrations/google-drive/system/disconnect` | POST | Disconnetti SYSTEM (solo admin) |
+
+**Admin emails autorizzati:**
+```python
+ADMIN_EMAILS = ["zero@balizero.com", "antonellosiano@gmail.com"]
+```
+
+---
+
+### 3. Fix Router Prefix
+
+**Problema:** Il router aveva prefix `/integrations/google-drive` ma l'auth middleware funziona solo con `/api/` prefix.
+
+**Fix applicato:**
+```python
+# Prima
+router = APIRouter(prefix="/integrations/google-drive", tags=["Google Drive"])
+
+# Dopo
+router = APIRouter(prefix="/api/integrations/google-drive", tags=["Google Drive"])
+```
+
+**File modificati:**
+- `backend/app/routers/google_drive.py` - router prefix
+- `backend/app/core/config.py` - redirect_uri
+- `backend/middleware/hybrid_auth.py` - public endpoints
+
+---
+
+### 4. Configurazione Google Cloud Console
+
+**Redirect URI aggiunto:**
+```
+https://nuzantara-rag.fly.dev/api/integrations/google-drive/callback
+```
+
+**Test User aggiunto (app in Testing mode):**
+```
+antonellosiano@gmail.com
+```
+
+**Posizione:** Google Cloud Console → APIs & Services → OAuth consent screen → Audience → Test users
+
+---
+
+### 5. OAuth Flow Completato
+
+**Passaggi eseguiti:**
+1. Login a Zantara come `zero@balizero.com` (admin)
+2. Chiamata API `/system/authorize` per ottenere OAuth URL
+3. Redirect a Google → Account chooser
+4. Selezionato `antonellosiano@gmail.com`
+5. Accettato warning "Google hasn't verified this app"
+6. Autorizzato scope `https://www.googleapis.com/auth/drive` (full access)
+7. Callback ricevuto → Token salvato in `google_drive_tokens` con `user_id = 'SYSTEM'`
+
+---
+
+### 6. Verifica Finale
+
+```bash
+curl -s "https://nuzantara-rag.fly.dev/api/integrations/google-drive/system/status" | jq
+```
+
+**Risposta:**
+```json
+{
+  "oauth_connected": true,
+  "configured": true,
+  "connected_as": "antonellosiano@gmail.com",
+  "root_folder_id": "1hkOeV03YM5-sHbQhswYz809jsrnwC0At"
+}
+```
+
+---
+
+### 7. Architettura Token SYSTEM
+
+Il token OAuth è condiviso da tutto il team usando `user_id = 'SYSTEM'`:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    google_drive_tokens                       │
+├──────────────┬──────────────────────┬───────────────────────┤
+│ user_id      │ access_token         │ refresh_token         │
+├──────────────┼──────────────────────┼───────────────────────┤
+│ SYSTEM       │ ya29.xxxxx           │ 1//0gxxxxx            │
+└──────────────┴──────────────────────┴───────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ GoogleDriveService.get_valid_token("SYSTEM")                │
+│ → Tutti i team members usano questo token                   │
+│ → Quota 30TB di antonellosiano@gmail.com                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 8. Files Modificati
+
+| File | Tipo | Descrizione |
+|------|------|-------------|
+| `backend/app/routers/google_drive.py` | MODIFIED | Prefix `/api` aggiunto |
+| `backend/app/core/config.py` | MODIFIED | redirect_uri con `/api` |
+| `backend/middleware/hybrid_auth.py` | MODIFIED | Public endpoints aggiornati |
+
+---
+
+### 9. Secrets Fly.io (già configurati)
+
+```
+GOOGLE_DRIVE_CLIENT_ID=930328104463-d39fpretk5t0lucunkovu7o0g6id5eu2.apps.googleusercontent.com
+GOOGLE_DRIVE_CLIENT_SECRET=GOCSPX-xxxxx
+GOOGLE_DRIVE_ROOT_FOLDER_ID=1hkOeV03YM5-sHbQhswYz809jsrnwC0At
+```
+
+---
+
+### 10. Come Ri-autorizzare (se necessario)
+
+1. Login a Zantara come admin (`zero@balizero.com` o `antonellosiano@gmail.com`)
+2. Vai su `/settings/integrations` (o chiamata diretta API)
+3. Chiama `GET /api/integrations/google-drive/system/authorize` con JWT token
+4. Segui OAuth flow con `antonellosiano@gmail.com`
+5. Verifica con `GET /api/integrations/google-drive/system/status`
+
+---
+
+## Session Update (2026-01-04 15:20-18:50 UTC)
+
+### Complete Session: Tax Article + News Page Redesign - COMPLETED
+
+---
+
+### 1. New Article: Indonesia 0% Tax on Foreign Income (PMK 18/2021)
+
+**Obiettivo:** Creare articolo in stile Bali Zero sul sistema fiscale territoriale indonesiano.
+
+**Articolo Creato:** `apps/mouth/src/content/articles/tax/indonesia-zero-tax-foreign-income-2026.mdx`
+
+**Contenuto:**
+- Spiegazione PMK 18/2021 e UU HPP 2021 (territorial tax system)
+- Tabella income sources: quali sono tassati e quali no
+- Chi qualifica (183+ giorni, NPWP, income foreign-sourced)
+- Esempio pratico: Marco, freelancer italiano a Ubud
+- Step-by-step: come strutturare correttamente
+- Fine print: 3-year holding period per remittance
+- Componenti interattivi: `<InfoCard>`, `<AskZantara>`
+
+**Frontmatter:**
+```yaml
+title: "Indonesia's 0% Tax on Foreign Income: The Expat Advantage Most Don't Know"
+slug: "indonesia-zero-tax-foreign-income-2026"
+category: "tax-legal"
+tags: [territorial tax, PMK 18/2021, foreign income, expat tax]
+publishedAt: "2026-01-04"
+trending: true
+readingTime: 6
+difficulty: "intermediate"
+```
+
+---
+
+### 2. News Page Integration
+
+**Aggiunto articolo come Main News 3** (`apps/mouth/src/app/(blog)/news/page.tsx`):
+
+```tsx
+// Added to MOCK_ARTICLES array
+{
+  id: '19',
+  slug: 'indonesia-zero-tax-foreign-income-2026',
+  title: "Indonesia's 0% Tax on Foreign Income: The Expat Advantage Most Don't Know",
+  excerpt: "Living in Indonesia while earning abroad? Under PMK 18/2021, your foreign income may be taxed at 0%.",
+  coverImage: '/images/news/indonesia-zero-tax-expat.jpg',
+  category: 'tax-legal',
+  ...
+}
+
+// Updated mainNews3 reference
+const mainNews3 = articles.find(a => a.slug === 'indonesia-zero-tax-foreign-income-2026');
+```
+
+---
+
+### 3. Cover Image Generation (Gemini AI)
+
+**Prompt usato:**
+```
+Digital nomad paradise, sleek MacBook on bamboo desk overlooking
+Bali rice terraces at golden hour. Professional expat working remotely,
+Indonesian tax documents visible on screen. Warm tropical lighting,
+palm trees, infinity pool in background. Photorealistic, editorial style.
+```
+
+**Output:** `/apps/mouth/public/images/news/indonesia-zero-tax-expat.jpg`
+
+---
+
+### 4. Headline Styling Changes
+
+**Modifiche richieste:**
+- "Thrive" in colore rosso
+- Rimuovere punto finale
+
+**Prima:**
+```tsx
+<h1>Decode Indonesia. <span className="text-[#e85c41]">Thrive</span> here.</h1>
+```
+
+**Dopo:**
+```tsx
+<h1>Decode Indonesia. <span className="text-red-500">Thrive</span> here</h1>
+```
+
+---
+
+### 5. Indonesian Flag Drape (Multiple Iterations)
+
+**Richiesta:** Drappeggio trasparente bandiera indonesiana dietro headline.
+
+**Iterazione 1 - CSS Gradient (REJECTED):**
+- Gradient rosso→bianco con opacity 8%
+- User: "non si vede"
+
+**Iterazione 2 - Increased Opacity:**
+- Opacity aumentata a 20%, poi 50%
+- User: "ma cosa è? io ho chiesto il drappeggio di bandiera indonesiana"
+
+**Iterazione 3 - SVG con Wave Filter (REJECTED):**
+```tsx
+<svg>
+  <filter id="wave">
+    <feTurbulence type="fractalNoise" baseFrequency="0.015"/>
+    <feDisplacementMap scale="25"/>
+  </filter>
+  <rect fill="url(#flagGradient)" filter="url(#wave)"/>
+</svg>
+```
+- Effetto fabric non convincente
+
+**Iterazione 4 - Gemini Image Generation (ACCEPTED):**
+
+**Prompt:**
+```
+Indonesian flag (red and white bicolor) draped elegantly like silk fabric
+flowing diagonally from top-left to bottom-right. Soft fabric folds and waves
+creating depth. Against pure black background (#000000). Photorealistic silk
+texture with subtle shadows. 16:9 landscape format. No text, no other elements.
+```
+
+**Implementazione finale:**
+```tsx
+{/* Indonesian Flag Drape - Actual Image */}
+<div className="absolute inset-0 pointer-events-none overflow-hidden">
+  <Image
+    src="/images/indonesian-flag-drape.jpg"
+    alt=""
+    fill
+    className="object-cover opacity-30"
+    style={{
+      mixBlendMode: 'screen',
+      transform: 'scale(1.3) rotate(-5deg)',
+      transformOrigin: 'center center'
+    }}
+    priority
+  />
+</div>
+```
+
+**File:** `/apps/mouth/public/images/indonesian-flag-drape.jpg`
+
+---
+
+### 6. News Cards Spacing
+
+**Problema:** Cards troppo vicine (`gap-1` = 4px)
+
+**Soluzione:** Aumentato a `gap-3` (12px)
+
+**Modifiche:**
+- Main grid: `gap-1` → `gap-3`
+- Left/Middle/Right columns: `gap-1` → `gap-3`
+
+---
+
+### Files Modified (Summary)
+
+| File | Tipo | Descrizione |
+|------|------|-------------|
+| `apps/mouth/src/content/articles/tax/indonesia-zero-tax-foreign-income-2026.mdx` | NEW | Articolo PMK 18/2021 |
+| `apps/mouth/src/app/(blog)/news/page.tsx` | MODIFIED | Main News 3, headline, flag drape, spacing |
+| `apps/mouth/public/images/news/indonesia-zero-tax-expat.jpg` | NEW | Cover image articolo |
+| `apps/mouth/public/images/indonesian-flag-drape.jpg` | NEW | Flag drape background |
+
+---
+
+### Deploys
+
+1. **Deploy 1:** Articolo + cover image + Main News 3 integration
+2. **Deploy 2:** Headline rosso "Thrive" + punto rimosso
+3. **Deploy 3:** SVG flag drape attempt
+4. **Deploy 4:** Gemini-generated flag image
+5. **Deploy 5:** Increased spacing (gap-3)
+
+**Final URL:** https://nuzantara-mouth.fly.dev/news
+
+---
+
 ## Session Update (2026-01-02 20:20 UTC)
 
 ### Greeting & Closing Repetition Fix - COMPLETED

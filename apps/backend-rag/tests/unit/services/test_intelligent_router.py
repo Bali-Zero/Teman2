@@ -243,15 +243,11 @@ class TestIntelligentRouterRouteChat:
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @patch("services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
-    async def test_route_chat_logs_routing(
-        self, mock_logger, mock_create_agentic_rag
-    ):
+    async def test_route_chat_logs_routing(self, mock_logger, mock_create_agentic_rag):
         """Test that route_chat logs routing information."""
         # Arrange
         mock_orchestrator = MagicMock()
-        mock_orchestrator.process_query = AsyncMock(
-            return_value={"answer": "Test", "sources": []}
-        )
+        mock_orchestrator.process_query = AsyncMock(return_value={"answer": "Test", "sources": []})
         mock_create_agentic_rag.return_value = mock_orchestrator
 
         router = IntelligentRouter(search_service=MagicMock(), db_pool=MagicMock())
@@ -284,9 +280,7 @@ class TestIntelligentRouterRouteChat:
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @patch("services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
-    async def test_route_chat_logs_error(
-        self, mock_logger, mock_create_agentic_rag
-    ):
+    async def test_route_chat_logs_error(self, mock_logger, mock_create_agentic_rag):
         """Test that route_chat logs errors."""
         # Arrange
         mock_orchestrator = MagicMock()
@@ -386,6 +380,7 @@ class TestIntelligentRouterStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_success(self, mock_create_agentic_rag):
         """Test successful stream_chat."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "metadata", "data": {"status": "started"}}
@@ -418,6 +413,7 @@ class TestIntelligentRouterStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_minimal_params(self, mock_create_agentic_rag):
         """Test stream_chat with minimal parameters."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "token", "data": "Response"}
@@ -441,6 +437,7 @@ class TestIntelligentRouterStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_all_params(self, mock_create_agentic_rag):
         """Test stream_chat with all parameters."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "token", "data": "Test"}
@@ -472,10 +469,9 @@ class TestIntelligentRouterStreamChat:
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @patch("services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
-    async def test_stream_chat_logs_start(
-        self, mock_logger, mock_create_agentic_rag
-    ):
+    async def test_stream_chat_logs_start(self, mock_logger, mock_create_agentic_rag):
         """Test that stream_chat logs start message."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "token", "data": "Test"}
@@ -498,10 +494,9 @@ class TestIntelligentRouterStreamChat:
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @patch("services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
-    async def test_stream_chat_logs_completion(
-        self, mock_logger, mock_create_agentic_rag
-    ):
+    async def test_stream_chat_logs_completion(self, mock_logger, mock_create_agentic_rag):
         """Test that stream_chat logs completion message."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "token", "data": "Done"}
@@ -523,6 +518,7 @@ class TestIntelligentRouterStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_orchestrator_exception(self, mock_create_agentic_rag):
         """Test stream_chat when orchestrator raises an exception."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "token", "data": "Start"}
@@ -542,10 +538,9 @@ class TestIntelligentRouterStreamChat:
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @patch("services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
-    async def test_stream_chat_logs_error(
-        self, mock_logger, mock_create_agentic_rag
-    ):
+    async def test_stream_chat_logs_error(self, mock_logger, mock_create_agentic_rag):
         """Test that stream_chat logs errors."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             raise RuntimeError("Streaming failed")
@@ -569,6 +564,7 @@ class TestIntelligentRouterStreamChat:
     @pytest.mark.asyncio
     async def test_stream_chat_empty_stream(self, mock_create_agentic_rag):
         """Test stream_chat with empty stream."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             return
@@ -590,10 +586,9 @@ class TestIntelligentRouterStreamChat:
 
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
-    async def test_stream_chat_passes_through_all_chunk_types(
-        self, mock_create_agentic_rag
-    ):
+    async def test_stream_chat_passes_through_all_chunk_types(self, mock_create_agentic_rag):
         """Test that stream_chat passes through all chunk types correctly."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "metadata", "data": {"status": "started", "model": "gemini"}}
@@ -633,10 +628,9 @@ class TestIntelligentRouterStreamChat:
 
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
-    async def test_stream_chat_none_conversation_history(
-        self, mock_create_agentic_rag
-    ):
+    async def test_stream_chat_none_conversation_history(self, mock_create_agentic_rag):
         """Test stream_chat with None conversation_history."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "token", "data": "Response"}
@@ -788,9 +782,7 @@ class TestIntelligentRouterEdgeCases:
         router = IntelligentRouter(search_service=MagicMock(), db_pool=MagicMock())
 
         # Act
-        result = await router.route_chat(
-            message=message_with_special_chars, user_id="user123"
-        )
+        result = await router.route_chat(message=message_with_special_chars, user_id="user123")
 
         # Assert
         assert result["response"] == "Safe response"
@@ -821,6 +813,7 @@ class TestIntelligentRouterEdgeCases:
     @pytest.mark.asyncio
     async def test_stream_chat_with_none_memory(self, mock_create_agentic_rag):
         """Test stream_chat with None memory."""
+
         # Arrange
         async def mock_stream(query, user_id, conversation_history=None, session_id=None):
             yield {"type": "token", "data": "Test"}
@@ -833,9 +826,7 @@ class TestIntelligentRouterEdgeCases:
 
         # Act
         chunks = []
-        async for chunk in router.stream_chat(
-            message="Test", user_id="user123", memory=None
-        ):
+        async for chunk in router.stream_chat(message="Test", user_id="user123", memory=None):
             chunks.append(chunk)
 
         # Assert
@@ -861,15 +852,11 @@ class TestIntelligentRouterEdgeCases:
 
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
-    async def test_route_chat_orchestrator_returns_none_answer(
-        self, mock_create_agentic_rag
-    ):
+    async def test_route_chat_orchestrator_returns_none_answer(self, mock_create_agentic_rag):
         """Test route_chat when orchestrator returns None as answer."""
         # Arrange
         mock_orchestrator = MagicMock()
-        mock_orchestrator.process_query = AsyncMock(
-            return_value={"answer": None, "sources": []}
-        )
+        mock_orchestrator.process_query = AsyncMock(return_value={"answer": None, "sources": []})
         mock_create_agentic_rag.return_value = mock_orchestrator
 
         router = IntelligentRouter(search_service=MagicMock(), db_pool=MagicMock())
@@ -882,15 +869,11 @@ class TestIntelligentRouterEdgeCases:
 
     @patch("services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
-    async def test_route_chat_orchestrator_missing_sources_key(
-        self, mock_create_agentic_rag
-    ):
+    async def test_route_chat_orchestrator_missing_sources_key(self, mock_create_agentic_rag):
         """Test route_chat when orchestrator result doesn't have sources key."""
         # Arrange
         mock_orchestrator = MagicMock()
-        mock_orchestrator.process_query = AsyncMock(
-            side_effect=KeyError("sources")
-        )
+        mock_orchestrator.process_query = AsyncMock(side_effect=KeyError("sources"))
         mock_create_agentic_rag.return_value = mock_orchestrator
 
         router = IntelligentRouter(search_service=MagicMock(), db_pool=MagicMock())

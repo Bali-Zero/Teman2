@@ -81,7 +81,8 @@ class TestMetrics:
 
     def test_metrics_observe_histogram(self):
         """Test observing a histogram metric"""
-        metrics.request_duration.observe(0.5)
+        # request_duration requires labels (method, endpoint)
+        metrics.request_duration.labels(method="GET", endpoint="/test").observe(0.5)
         # Should not raise exception
 
     def test_metrics_labels(self):
@@ -91,7 +92,9 @@ class TestMetrics:
 
     def test_rag_queries_total(self):
         """Test RAG queries counter"""
-        metrics.rag_queries_total.labels(collection="test", route_used="fast", status="success").inc()
+        metrics.rag_queries_total.labels(
+            collection="test", route_used="fast", status="success"
+        ).inc()
         # Should not raise exception
 
     def test_rag_tool_calls_total(self):

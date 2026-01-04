@@ -9,7 +9,6 @@ Tests the evidence score calculation and policy enforcement:
 - Override existing answer when evidence is weak
 """
 
-import json
 import os
 import sys
 from pathlib import Path
@@ -30,12 +29,14 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.reasoning import ReasoningEngine, calculate_evidence_score
-from services.tools.definitions import AgentState, ToolCall
 from services.llm_clients.pricing import TokenUsage
+from services.rag.agentic.reasoning import ReasoningEngine, calculate_evidence_score
+from services.tools.definitions import AgentState
+
 
 def mock_token_usage():
     return TokenUsage(prompt_tokens=10, completion_tokens=20)
+
 
 # ============================================================================
 # Test Evidence Score Calculation
@@ -62,9 +63,7 @@ class TestEvidenceScoreCalculation:
 
     def test_evidence_score_with_multiple_sources(self):
         """Test score calculation with > 3 sources"""
-        sources = [
-            {"id": i, "title": f"Source {i}", "score": 0.7} for i in range(5)
-        ]
+        sources = [{"id": i, "title": f"Source {i}", "score": 0.7} for i in range(5)]
         context = ["Context from multiple sources"]
         query = "What is KITAS?"
 
@@ -135,9 +134,7 @@ class TestEvidenceScoreCalculation:
 
     def test_evidence_score_caps_at_one(self):
         """Test that score is capped at 1.0"""
-        sources = [
-            {"id": i, "title": f"Source {i}", "score": 0.9} for i in range(10)
-        ]
+        sources = [{"id": i, "title": f"Source {i}", "score": 0.9} for i in range(10)]
         context = [
             "KITAS visa requirements " * 20  # Long context with keywords
         ]
@@ -210,7 +207,10 @@ class TestAbstainPolicy:
             )
 
         # Should have ABSTAIN message
-        assert "Mi dispiace, non ho trovato informazioni verificate sufficienti" in result_state.final_answer
+        assert (
+            "Mi dispiace, non ho trovato informazioni verificate sufficienti"
+            in result_state.final_answer
+        )
         assert hasattr(result_state, "evidence_score")
         assert result_state.evidence_score < 0.3
 
@@ -244,7 +244,10 @@ class TestAbstainPolicy:
             )
 
         # Should have ABSTAIN message
-        assert "Mi dispiace, non ho trovato informazioni verificate sufficienti" in result_state.final_answer
+        assert (
+            "Mi dispiace, non ho trovato informazioni verificate sufficienti"
+            in result_state.final_answer
+        )
         assert result_state.evidence_score < 0.3
 
     @pytest.mark.asyncio
@@ -259,7 +262,12 @@ class TestAbstainPolicy:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: Existing answer", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Final Answer: Existing answer",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -277,7 +285,10 @@ class TestAbstainPolicy:
             )
 
         # Should have overridden with ABSTAIN message
-        assert "Mi dispiace, non ho trovato informazioni verificate sufficienti" in result_state.final_answer
+        assert (
+            "Mi dispiace, non ho trovato informazioni verificate sufficienti"
+            in result_state.final_answer
+        )
         assert "This is an existing answer" not in result_state.final_answer
 
     @pytest.mark.asyncio
@@ -309,7 +320,10 @@ class TestAbstainPolicy:
             )
 
         # Should have ABSTAIN message without calling LLM for final answer
-        assert "Mi dispiace, non ho trovato informazioni verificate sufficienti" in result_state.final_answer
+        assert (
+            "Mi dispiace, non ho trovato informazioni verificate sufficienti"
+            in result_state.final_answer
+        )
         # Verify LLM was not called for final answer generation
         # (only called once for the initial thought)
         assert llm_gateway.send_message.call_count == 1
@@ -372,7 +386,10 @@ class TestWarningPolicy:
                 assert "Do NOT be definitive" in final_prompt
         else:
             # If score < 0.3, ABSTAIN should be triggered
-            assert "Mi dispiace, non ho trovato informazioni verificate sufficienti" in result_state.final_answer
+            assert (
+                "Mi dispiace, non ho trovato informazioni verificate sufficienti"
+                in result_state.final_answer
+            )
 
     @pytest.mark.asyncio
     async def test_no_warning_for_strong_evidence(self):
@@ -525,7 +542,9 @@ class TestUncertaintyStreaming:
         assert evidence_events[0]["data"]["score"] < 0.3
 
         # Should have ABSTAIN message in final answer
-        assert "Mi dispiace, non ho trovato informazioni verificate sufficienti" in state.final_answer
+        assert (
+            "Mi dispiace, non ho trovato informazioni verificate sufficienti" in state.final_answer
+        )
 
     @pytest.mark.asyncio
     async def test_stream_warning_for_weak_evidence(self):
@@ -576,7 +595,10 @@ class TestUncertaintyStreaming:
             assert "WARNING: Evidence is weak" in final_prompt
         elif state.evidence_score < 0.3:
             # If score is too low, ABSTAIN should be triggered
-            assert "Mi dispiace, non ho trovato informazioni verificate sufficienti" in state.final_answer
+            assert (
+                "Mi dispiace, non ho trovato informazioni verificate sufficienti"
+                in state.final_answer
+            )
 
 
 # ============================================================================
@@ -695,4 +717,3 @@ class TestUncertaintyEdgeCases:
         # Should calculate score based on context keywords
         assert hasattr(result_state, "evidence_score")
         assert result_state.evidence_score >= 0.0
-

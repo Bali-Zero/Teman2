@@ -78,10 +78,7 @@ class VectorSearchTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The search query in natural language"
-                },
+                "query": {"type": "string", "description": "The search query in natural language"},
                 "collection": {
                     "type": "string",
                     "enum": AVAILABLE_COLLECTIONS,
@@ -102,11 +99,14 @@ class VectorSearchTool(BaseTool):
         If collection is specified: search only that collection.
         If collection is None: federated search across ALL collections.
         """
-        with trace_span("tool.vector_search", {
-            "query_length": len(query),
-            "requested_collection": collection or "federated_all",
-            "top_k": top_k,
-        }):
+        with trace_span(
+            "tool.vector_search",
+            {
+                "query_length": len(query),
+                "requested_collection": collection or "federated_all",
+                "top_k": top_k,
+            },
+        ):
             top_k = int(top_k) if top_k else 8
 
             # Determine which collections to search
@@ -117,7 +117,9 @@ class VectorSearchTool(BaseTool):
             else:
                 # No collection specified - search ALL (federated)
                 target_collections = AVAILABLE_COLLECTIONS.copy()
-                logger.info(f"🌐 [Federated Search] Searching all {len(target_collections)} collections")
+                logger.info(
+                    f"🌐 [Federated Search] Searching all {len(target_collections)} collections"
+                )
 
             set_span_attribute("collections_searched", str(target_collections))
 
@@ -132,18 +134,22 @@ class VectorSearchTool(BaseTool):
                             query=query,
                             user_level=1,
                             limit=5 if len(target_collections) > 1 else top_k,
-                            collection_override=target_col
+                            collection_override=target_col,
                         )
                     else:
                         res = await self.retriever.search(
                             query=query,
                             user_level=1,
                             limit=5 if len(target_collections) > 1 else top_k,
-                            collection_override=target_col
+                            collection_override=target_col,
                         )
 
                     for chunk in res.get("results", []):
-                        text = chunk.get("text", "") if isinstance(chunk, dict) else getattr(chunk, "text", "")
+                        text = (
+                            chunk.get("text", "")
+                            if isinstance(chunk, dict)
+                            else getattr(chunk, "text", "")
+                        )
                         # Deduplicate by first 100 chars
                         if text[:100] not in seen_content:
                             seen_content.add(text[:100])
@@ -155,7 +161,9 @@ class VectorSearchTool(BaseTool):
                     logger.warning(f"Search failed for {target_col}: {e}")
 
             # Sort by score and take top results
-            all_chunks.sort(key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True)
+            all_chunks.sort(
+                key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True
+            )
             chunks = all_chunks[:top_k]
 
             if not chunks:
@@ -167,25 +175,33 @@ class VectorSearchTool(BaseTool):
             sources_metadata = []
 
             for i, chunk in enumerate(chunks):
-                text = chunk.get("text", "") if isinstance(chunk, dict) else getattr(chunk, "text", str(chunk))
+                text = (
+                    chunk.get("text", "")
+                    if isinstance(chunk, dict)
+                    else getattr(chunk, "text", str(chunk))
+                )
                 metadata = chunk.get("metadata", {}) if isinstance(chunk, dict) else {}
                 title = metadata.get("title") or "Document"
 
                 source_col = chunk.get("_source_collection", "unknown")
-                doc_id = metadata.get("chapter_id") or metadata.get("document_id") or metadata.get("id", "")
-
-                formatted_texts.append(
-                    f"[{i + 1}] Source: {source_col} | Title: {title}\n{text}"
+                doc_id = (
+                    metadata.get("chapter_id")
+                    or metadata.get("document_id")
+                    or metadata.get("id", "")
                 )
 
-                sources_metadata.append({
-                    "id": i + 1,
-                    "title": title,
-                    "url": metadata.get("url", ""),
-                    "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
-                    "collection": source_col,
-                    "doc_id": doc_id,
-                })
+                formatted_texts.append(f"[{i + 1}] Source: {source_col} | Title: {title}\n{text}")
+
+                sources_metadata.append(
+                    {
+                        "id": i + 1,
+                        "title": title,
+                        "url": metadata.get("url", ""),
+                        "score": chunk.get("score", 0.0) if isinstance(chunk, dict) else 0.0,
+                        "collection": source_col,
+                        "doc_id": doc_id,
+                    }
+                )
 
             content_str = "\n\n".join(formatted_texts)
             set_span_status("ok")
@@ -210,10 +226,10 @@ class CalculatorTool(BaseTool):
             "properties": {
                 "expression": {
                     "type": "string",
-                    "description": "Math expression (e.g. '1000 * 0.22' or '15000000 / 15500')"
+                    "description": "Math expression (e.g. '1000 * 0.22' or '15000000 / 15500')",
                 },
             },
-            "required": ["expression"]
+            "required": ["expression"],
         }
 
     async def execute(self, expression: str, **kwargs) -> str:
@@ -239,8 +255,7 @@ class CalculatorTool(BaseTool):
                     if type(node.op) not in allowed_operators:
                         raise ValueError(f"Operator not allowed: {type(node.op)}")
                     return allowed_operators[type(node.op)](
-                        safe_eval(node.left),
-                        safe_eval(node.right)
+                        safe_eval(node.left), safe_eval(node.right)
                     )
                 elif isinstance(node, ast.UnaryOp):
                     if isinstance(node.op, ast.USub):
@@ -260,7 +275,9 @@ class CalculatorTool(BaseTool):
                 else:
                     result = round(result, 2)
 
-            return f"Result: {result:,}" if isinstance(result, (int, float)) else f"Result: {result}"
+            return (
+                f"Result: {result:,}" if isinstance(result, (int, float)) else f"Result: {result}"
+            )
 
         except Exception as e:
             return f"Calculation error: {e}"
@@ -286,9 +303,9 @@ class VisionTool(BaseTool):
             "type": "object",
             "properties": {
                 "file_path": {"type": "string", "description": "Path to the file to analyze"},
-                "query": {"type": "string", "description": "What to look for in the document"}
+                "query": {"type": "string", "description": "What to look for in the document"},
             },
-            "required": ["file_path", "query"]
+            "required": ["file_path", "query"],
         }
 
     async def execute(self, file_path: str, query: str, **kwargs) -> str:
@@ -359,6 +376,7 @@ class TeamKnowledgeTool(BaseTool):
     def _get_data_file_path(self):
         if self._data_file is None:
             from pathlib import Path
+
             possible_paths = [
                 Path(__file__).parent.parent.parent.parent / "data" / "team_members.json",
                 Path("/app/backend/data/team_members.json"),
@@ -414,7 +432,9 @@ class TeamKnowledgeTool(BaseTool):
             search_term = search_term.lower().strip() if search_term else ""
 
             if query_type == "list_all":
-                return json.dumps([{"name": m.get("name"), "role": m.get("role")} for m in team_data])
+                return json.dumps(
+                    [{"name": m.get("name"), "role": m.get("role")} for m in team_data]
+                )
 
             # Search logic
             matches = [m for m in team_data if search_term in json.dumps(m).lower()]
@@ -450,12 +470,12 @@ class ImageGenerationTool(BaseTool):
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "Detailed text description of the image to generate"
+                    "description": "Detailed text description of the image to generate",
                 },
                 "aspect_ratio": {
                     "type": "string",
                     "enum": ["1:1", "16:9", "9:16", "4:3", "3:4"],
-                    "description": "Aspect ratio of the image (default: 1:1)"
+                    "description": "Aspect ratio of the image (default: 1:1)",
                 },
             },
             "required": ["prompt"],
@@ -477,10 +497,9 @@ class ImageGenerationTool(BaseTool):
                 )
 
                 if not api_key:
-                    return json.dumps({
-                        "success": False,
-                        "error": "Image generation not configured"
-                    })
+                    return json.dumps(
+                        {"success": False, "error": "Image generation not configured"}
+                    )
 
                 url = "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict"
                 headers = {
@@ -504,14 +523,18 @@ class ImageGenerationTool(BaseTool):
                     if response.status_code == 403:
                         # Fallback to pollinations.ai
                         logger.warning("⚠️ [ImageGen] Imagen API not available, using fallback")
-                        fallback_url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
+                        fallback_url = (
+                            f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
+                        )
                         set_span_attribute("fallback", "pollinations")
-                        return json.dumps({
-                            "success": True,
-                            "image_url": fallback_url,
-                            "service": "pollinations_fallback",
-                            "message": f"Generated image for: {prompt}"
-                        })
+                        return json.dumps(
+                            {
+                                "success": True,
+                                "image_url": fallback_url,
+                                "service": "pollinations_fallback",
+                                "message": f"Generated image for: {prompt}",
+                            }
+                        )
 
                     response.raise_for_status()
                     result = response.json()
@@ -522,12 +545,14 @@ class ImageGenerationTool(BaseTool):
                         if img_data:
                             image_data_url = f"data:image/png;base64,{img_data}"
                             set_span_attribute("success", True)
-                            return json.dumps({
-                                "success": True,
-                                "image_data": image_data_url,
-                                "service": "google_imagen",
-                                "message": f"Generated image for: {prompt}"
-                            })
+                            return json.dumps(
+                                {
+                                    "success": True,
+                                    "image_data": image_data_url,
+                                    "service": "google_imagen",
+                                    "message": f"Generated image for: {prompt}",
+                                }
+                            )
 
                     return json.dumps({"success": False, "error": "No image generated"})
 
@@ -536,12 +561,14 @@ class ImageGenerationTool(BaseTool):
                 set_span_status("error", str(e))
                 # Fallback to pollinations
                 fallback_url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
-                return json.dumps({
-                    "success": True,
-                    "image_url": fallback_url,
-                    "service": "pollinations_fallback",
-                    "message": f"Generated image for: {prompt}"
-                })
+                return json.dumps(
+                    {
+                        "success": True,
+                        "image_url": fallback_url,
+                        "service": "pollinations_fallback",
+                        "message": f"Generated image for: {prompt}",
+                    }
+                )
 
 
 class WebSearchTool(BaseTool):
@@ -577,6 +604,7 @@ class WebSearchTool(BaseTool):
         """Lazy load API keys from settings."""
         if self._tavily_key is None and self._brave_key is None:
             from app.core.config import settings
+
             self._tavily_key = settings.tavily_api_key
             self._brave_key = settings.brave_api_key
         return self._tavily_key, self._brave_key
@@ -604,13 +632,10 @@ class WebSearchTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "The search query in natural language"
-                },
+                "query": {"type": "string", "description": "The search query in natural language"},
                 "num_results": {
                     "type": "integer",
-                    "description": "Number of results to return (default: 5, max: 10)"
+                    "description": "Number of results to return (default: 5, max: 10)",
                 },
             },
             "required": ["query"],
@@ -667,19 +692,26 @@ class WebSearchTool(BaseTool):
         """
         import httpx
 
-        with trace_span("tool.web_search", {
-            "query_length": len(query),
-            "num_results": num_results,
-        }):
+        with trace_span(
+            "tool.web_search",
+            {
+                "query_length": len(query),
+                "num_results": num_results,
+            },
+        ):
             tavily_key, brave_key = self._get_keys()
 
             if not tavily_key and not brave_key:
-                logger.warning("⚠️ [WebSearch] No API keys configured (TAVILY_API_KEY or BRAVE_API_KEY)")
-                return json.dumps({
-                    "success": False,
-                    "error": "Web search not configured. Please contact support.",
-                    "disclaimer": self.WEB_DISCLAIMER
-                })
+                logger.warning(
+                    "⚠️ [WebSearch] No API keys configured (TAVILY_API_KEY or BRAVE_API_KEY)"
+                )
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": "Web search not configured. Please contact support.",
+                        "disclaimer": self.WEB_DISCLAIMER,
+                    }
+                )
 
             # Clamp num_results
             num_results = min(max(1, int(num_results) if num_results else 5), 10)
@@ -713,12 +745,14 @@ class WebSearchTool(BaseTool):
 
                 if not results:
                     set_span_status("ok")
-                    return json.dumps({
-                        "success": True,
-                        "content": "No relevant web results found for this query.",
-                        "sources": [],
-                        "disclaimer": self.WEB_DISCLAIMER
-                    })
+                    return json.dumps(
+                        {
+                            "success": True,
+                            "content": "No relevant web results found for this query.",
+                            "sources": [],
+                            "disclaimer": self.WEB_DISCLAIMER,
+                        }
+                    )
 
                 # Format results based on provider
                 formatted_results = []
@@ -740,18 +774,18 @@ class WebSearchTool(BaseTool):
                         url = result.get("url", "")
 
                     formatted_results.append(
-                        f"[{i + 1}] **{title}**\n"
-                        f"   {content[:300]}...\n"
-                        f"   Source: {url}"
+                        f"[{i + 1}] **{title}**\n   {content[:300]}...\n   Source: {url}"
                     )
 
-                    sources.append({
-                        "id": i + 1,
-                        "title": title,
-                        "url": url,
-                        "content": content[:200],
-                        "verified": False,
-                    })
+                    sources.append(
+                        {
+                            "id": i + 1,
+                            "title": title,
+                            "url": url,
+                            "content": content[:200],
+                            "verified": False,
+                        }
+                    )
 
                 content = "\n\n".join(formatted_results)
                 content_with_disclaimer = content + self.WEB_DISCLAIMER
@@ -759,29 +793,35 @@ class WebSearchTool(BaseTool):
                 logger.info(f"✅ [WebSearch] Found {len(sources)} results via {provider}")
                 set_span_status("ok")
 
-                return json.dumps({
-                    "success": True,
-                    "content": content_with_disclaimer,
-                    "sources": sources,
-                    "source_type": "web_search",
-                    "provider": provider,
-                    "disclaimer": self.WEB_DISCLAIMER,
-                    "query": query,
-                })
+                return json.dumps(
+                    {
+                        "success": True,
+                        "content": content_with_disclaimer,
+                        "sources": sources,
+                        "source_type": "web_search",
+                        "provider": provider,
+                        "disclaimer": self.WEB_DISCLAIMER,
+                        "query": query,
+                    }
+                )
 
             except httpx.HTTPStatusError as e:
                 logger.error(f"❌ [WebSearch] HTTP error: {e.response.status_code}")
                 set_span_status("error", str(e))
-                return json.dumps({
-                    "success": False,
-                    "error": f"Web search failed: HTTP {e.response.status_code}",
-                    "disclaimer": self.WEB_DISCLAIMER
-                })
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": f"Web search failed: HTTP {e.response.status_code}",
+                        "disclaimer": self.WEB_DISCLAIMER,
+                    }
+                )
             except Exception as e:
                 logger.error(f"❌ [WebSearch] Error: {e}")
                 set_span_status("error", str(e))
-                return json.dumps({
-                    "success": False,
-                    "error": f"Web search error: {str(e)}",
-                    "disclaimer": self.WEB_DISCLAIMER
-                })
+                return json.dumps(
+                    {
+                        "success": False,
+                        "error": f"Web search error: {str(e)}",
+                        "disclaimer": self.WEB_DISCLAIMER,
+                    }
+                )

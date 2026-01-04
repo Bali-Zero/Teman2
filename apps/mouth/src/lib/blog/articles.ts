@@ -143,6 +143,8 @@ export async function getArticleBySlug(
     readingTime: frontmatter.readingTime || Math.ceil(content.split(/\s+/).length / 200),
     viewCount: frontmatter.viewCount || 0,
     shareCount: frontmatter.shareCount || 0,
+    likeCount: frontmatter.likeCount || 0,
+    commentCount: frontmatter.commentCount || 0,
     aiGenerated: frontmatter.aiGenerated || false,
     aiConfidenceScore: frontmatter.aiConfidenceScore,
     relatedArticleIds: frontmatter.relatedArticles || [],

@@ -43,7 +43,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           email: storedProfile.email,
           role: storedProfile.role || 'Member',
           team: storedProfile.team || 'Team',
-          avatar: undefined,
+          avatar: storedProfile.avatar,
           isOnline: true,
           hoursToday: undefined,
         });
@@ -56,7 +56,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         email: profile.email,
         role: profile.role || 'Member',
         team: profile.team || 'Team',
-        avatar: undefined,
+        avatar: profile.avatar,
         isOnline: true,
         hoursToday: undefined,
       });

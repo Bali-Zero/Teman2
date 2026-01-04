@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 
 class MemoryServiceStatus(Enum):
     """Status of memory service."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNAVAILABLE = "unavailable"
@@ -147,7 +148,7 @@ class MemoryOrchestrator:
             critical_failures.append(("memory_service", str(e)))
             logger.error(
                 f"❌ CRITICAL: Memory service initialization failed: {e}",
-                extra={"error_type": type(e).__name__}
+                extra={"error_type": type(e).__name__},
             )
 
         try:
@@ -186,6 +187,7 @@ class MemoryOrchestrator:
             # Import metrics
             try:
                 from app.metrics import memory_orchestrator_unavailable_total
+
                 memory_orchestrator_unavailable_total.inc()
             except ImportError:
                 pass
@@ -193,9 +195,7 @@ class MemoryOrchestrator:
             # Alert on critical failure
             await self._alert_critical_failure(critical_failures)
 
-            raise RuntimeError(
-                f"MemoryOrchestrator initialization failed: {critical_failures}"
-            )
+            raise RuntimeError(f"MemoryOrchestrator initialization failed: {critical_failures}")
         elif non_critical_failures:
             self._status = MemoryServiceStatus.DEGRADED
             self._is_initialized = True
@@ -206,12 +206,13 @@ class MemoryOrchestrator:
                 extra={
                     "non_critical_failures": non_critical_failures,
                     "degraded_features": [f[0] for f in non_critical_failures],
-                }
+                },
             )
 
             # Import metrics
             try:
                 from app.metrics import memory_orchestrator_degraded_total
+
                 memory_orchestrator_degraded_total.inc()
             except ImportError:
                 pass
@@ -226,6 +227,7 @@ class MemoryOrchestrator:
             # Import metrics
             try:
                 from app.metrics import memory_orchestrator_healthy_total
+
                 memory_orchestrator_healthy_total.inc()
             except ImportError:
                 pass
@@ -234,10 +236,7 @@ class MemoryOrchestrator:
         """Alert on critical initialization failure."""
         logger.error(
             "🚨 CRITICAL: MemoryOrchestrator initialization failed completely",
-            extra={
-                "failures": failures,
-                "action": "system_unavailable"
-            }
+            extra={"failures": failures, "action": "system_unavailable"},
         )
         # TODO: Integrate with alerting system when available
 
@@ -248,8 +247,8 @@ class MemoryOrchestrator:
             extra={
                 "failures": failures,
                 "degraded_features": [f[0] for f in failures],
-                "action": "monitor_degraded_features"
-            }
+                "action": "monitor_degraded_features",
+            },
         )
         # TODO: Integrate with alerting system when available
 
@@ -307,6 +306,7 @@ class MemoryOrchestrator:
             logger.debug(f"Returning degraded context for {user_email}")
             try:
                 from app.metrics import memory_context_degraded_total
+
                 memory_context_degraded_total.inc()
             except ImportError:
                 pass
@@ -403,12 +403,10 @@ class MemoryOrchestrator:
                 return context
 
         except Exception:
-            logger.exception(
-                "Failed to get user context",
-                extra={"user_email": user_email}
-            )
+            logger.exception("Failed to get user context", extra={"user_email": user_email})
             try:
                 from app.metrics import memory_context_failed_total
+
                 memory_context_failed_total.inc()
             except ImportError:
                 pass

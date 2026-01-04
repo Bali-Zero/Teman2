@@ -25,6 +25,7 @@ const INTERNAL_ROUTES = [
   '/agents',
   '/portal',
   '/analytics',
+  '/intelligence',
 ];
 
 // Public routes for balizero.com
@@ -60,12 +61,11 @@ export function middleware(request: NextRequest) {
   const isPublicDomain = hostname.includes(PUBLIC_DOMAIN) && !hostname.includes('zantara');
   const isAppDomain = hostname.includes(APP_DOMAIN) || hostname.includes('zantara');
 
-  // Development: treat localhost as app domain by default
+  // Development and Fly.dev: allow all routes (public-facing)
   const isDevelopment = hostname.includes('localhost') || hostname.includes('127.0.0.1');
+  const isFlyDev = hostname.includes('fly.dev');
 
-  if (isDevelopment) {
-    // In development, allow all routes
-    // You can test public domain by setting Host header or using /public prefix
+  if (isDevelopment || isFlyDev) {
     return NextResponse.next();
   }
 

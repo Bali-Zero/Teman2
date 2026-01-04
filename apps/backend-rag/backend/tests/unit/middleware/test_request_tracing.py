@@ -231,7 +231,3 @@ class TestRequestTracingMiddleware:
         assert result is not None
         assert isinstance(result, str)
         assert len(result) > 0
-
-
-
-

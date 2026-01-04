@@ -115,7 +115,9 @@ class TestOpenRouterClient:
         with patch("services.llm_clients.openrouter_client.settings") as mock_settings:
             mock_settings.openrouter_api_key = None
             with patch.dict("os.environ", {"OPENROUTER_API_KEY": "env-key"}):
-                with patch("services.llm_clients.openrouter_client.os.getenv", return_value="env-key"):
+                with patch(
+                    "services.llm_clients.openrouter_client.os.getenv", return_value="env-key"
+                ):
                     client = OpenRouterClient()
                     assert client.api_key == "env-key"
 
@@ -132,7 +134,11 @@ class TestOpenRouterClient:
 
     def test_get_fallback_chain_default(self, mock_settings):
         """Test get_fallback_chain with default tier"""
-        from services.llm_clients.openrouter_client import FALLBACK_CHAINS, ModelTier, OpenRouterClient
+        from services.llm_clients.openrouter_client import (
+            FALLBACK_CHAINS,
+            ModelTier,
+            OpenRouterClient,
+        )
 
         client = OpenRouterClient(default_tier=ModelTier.BALANCED)
         chain = client.get_fallback_chain()
@@ -141,7 +147,11 @@ class TestOpenRouterClient:
 
     def test_get_fallback_chain_explicit(self, mock_settings):
         """Test get_fallback_chain with explicit tier"""
-        from services.llm_clients.openrouter_client import FALLBACK_CHAINS, ModelTier, OpenRouterClient
+        from services.llm_clients.openrouter_client import (
+            FALLBACK_CHAINS,
+            ModelTier,
+            OpenRouterClient,
+        )
 
         client = OpenRouterClient()
         chain = client.get_fallback_chain(ModelTier.FAST)
@@ -546,7 +556,11 @@ class TestSingleton:
 
     def test_singleton_exists(self):
         """Test openrouter_client singleton is created"""
-        from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient, openrouter_client
+        from services.llm_clients.openrouter_client import (
+            ModelTier,
+            OpenRouterClient,
+            openrouter_client,
+        )
 
         assert isinstance(openrouter_client, OpenRouterClient)
         assert openrouter_client.default_tier == ModelTier.RAG

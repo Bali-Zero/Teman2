@@ -34,27 +34,73 @@ def detect_language(text: str) -> Literal["it", "en", "id", "uk", "ru"]:
 
     # Italian markers
     italian_markers = [
-        "ciao", "come", "cosa", "sono", "voglio", "posso", "grazie", "quando", "dove", "perché"
+        "ciao",
+        "come",
+        "cosa",
+        "sono",
+        "voglio",
+        "posso",
+        "grazie",
+        "quando",
+        "dove",
+        "perché",
     ]
 
     # English markers
     english_markers = [
-        "hello", "what", "how", "can", "want", "need", "please", "is", "you", "your", "why"
+        "hello",
+        "what",
+        "how",
+        "can",
+        "want",
+        "need",
+        "please",
+        "is",
+        "you",
+        "your",
+        "why",
     ]
 
     # Indonesian markers
     indonesian_markers = [
-        "apa", "bagaimana", "siapa", "dimana", "kapan", "mengapa", "saya", "kamu", "bisa", "mau"
+        "apa",
+        "bagaimana",
+        "siapa",
+        "dimana",
+        "kapan",
+        "mengapa",
+        "saya",
+        "kamu",
+        "bisa",
+        "mau",
     ]
 
     # Ukrainian markers (Cyrillic)
     ukrainian_markers = [
-        "привіт", "як", "справи", "добре", "дякую", "будь ласка", "допоможіть", "це", "що", "чому"
+        "привіт",
+        "як",
+        "справи",
+        "добре",
+        "дякую",
+        "будь ласка",
+        "допоможіть",
+        "це",
+        "що",
+        "чому",
     ]
 
     # Russian markers (Cyrillic)
     russian_markers = [
-        "привет", "как", "дела", "хорошо", "спасибо", "пожалуйста", "помогите", "это", "что", "почему"
+        "привет",
+        "как",
+        "дела",
+        "хорошо",
+        "спасибо",
+        "пожалуйста",
+        "помогите",
+        "это",
+        "что",
+        "почему",
     ]
 
     def count_matches(markers, text, use_word_boundary=True):

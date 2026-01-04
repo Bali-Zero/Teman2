@@ -27,7 +27,9 @@ def ingestion_service():
     """Create IngestionService instance"""
     with (
         patch("services.ingestion.ingestion_service.TextChunker"),
-        patch("services.ingestion.ingestion_service.create_embeddings_generator") as mock_create_embedder,
+        patch(
+            "services.ingestion.ingestion_service.create_embeddings_generator"
+        ) as mock_create_embedder,
         patch("services.ingestion.ingestion_service.QdrantClient"),
         patch("services.ingestion.ingestion_service.TierClassifier"),
         patch("services.ingestion.ingestion_service.logger"),
@@ -121,7 +123,8 @@ async def test_ingest_book_with_tier_override(ingestion_service):
 async def test_ingest_book_exception(ingestion_service):
     """Test ingesting book with exception"""
     with patch(
-        "services.ingestion.ingestion_service.get_document_info", side_effect=Exception("Parse error")
+        "services.ingestion.ingestion_service.get_document_info",
+        side_effect=Exception("Parse error"),
     ):
         result = await ingestion_service.ingest_book(file_path="/path/to/book.pdf")
 

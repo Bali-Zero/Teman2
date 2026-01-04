@@ -39,15 +39,15 @@ from ..response.validator import ZantaraResponseValidator
 # Services
 from ..search.citation_service import CitationService
 from ..search.search_service import SearchService
-from . import (
-    DocumentRetrievalService,
-    LanguageDetectionService,
-    OracleAnalyticsService,
-    ReasoningEngineService,
-    UserContextService,
-)
+
+# Import directly from submodules to avoid circular import with __init__.py
+from .analytics import OracleAnalyticsService
+from .document_retrieval import DocumentRetrievalService
+from .language_detector import LanguageDetectionService
 from .oracle_config import oracle_config as config
 from .oracle_database import db_manager
+from .reasoning_engine import ReasoningEngineService
+from .user_context import UserContextService
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ class OracleService:
         self.intent_classifier = IntentClassifier()
 
         # Load communication modes
-        config_path = Path(__file__).parent.parent / "config" / "communication_modes.yaml"
+        config_path = Path(__file__).parent.parent.parent / "config" / "communication_modes.yaml"
         try:
             import yaml
 
@@ -197,8 +197,8 @@ class OracleService:
             self._orchestrator = create_agentic_rag(
                 retriever=search_service,
                 db_pool=pool,
-                semantic_cache=None, # Oracle specific cache logic if needed
-                clarification_service=self.clarification_service
+                semantic_cache=None,  # Oracle specific cache logic if needed
+                clarification_service=self.clarification_service,
             )
             # Inject pre-initialized entity extractor if needed, or rely on factory
             # Factory creates new one. We can inject our shared one if we modify factory or set it after.
@@ -392,7 +392,7 @@ class OracleService:
                 query=request_query,
                 user_id=request_user_email or "anonymous",
                 conversation_history=conv_history_dicts,
-                session_id=request_session_id
+                session_id=request_session_id,
             )
 
             # --- MAP RESULT TO LEGACY FORMAT ---
@@ -402,7 +402,7 @@ class OracleService:
             execution_time = rag_result.timings.get("total", 0) * 1000
 
             # Extract internal metrics for analytics (approximate mapping)
-            search_time = 0 # Not explicit in CoreResult yet, could add to timings
+            search_time = 0  # Not explicit in CoreResult yet, could add to timings
             reasoning_time = 0
 
             # Handle Clarification / Abstain / Identity
@@ -450,8 +450,8 @@ class OracleService:
                 "execution_time_ms": execution_time,
                 "search_time_ms": search_time,
                 "reasoning_time_ms": reasoning_time,
-                "followup_questions": [], # Orchestrator could provide these if asked
-                "citations": rag_result.sources, # Use RAG sources as citations
+                "followup_questions": [],  # Orchestrator could provide these if asked
+                "citations": rag_result.sources,  # Use RAG sources as citations
                 "clarification_needed": clarification_needed,
                 "clarification_question": clarification_question,
                 "personality_used": personality_used,

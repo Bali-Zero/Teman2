@@ -1,5 +1,1 @@
 """Tests for Knowledge Graph"""
-
-
-
-

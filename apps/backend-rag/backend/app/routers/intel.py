@@ -2,8 +2,11 @@
 Intel News API - Search and manage Bali intelligence news
 """
 
+import json
 import logging
+import shutil
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from core.embeddings import create_embeddings_generator
 from core.qdrant_db import QdrantClient
@@ -15,8 +18,19 @@ logger = logging.getLogger(__name__)
 
 embedder = create_embeddings_generator()
 
+# Staging Directories
+BASE_STAGING_DIR = Path("data/staging")
+VISA_STAGING_DIR = BASE_STAGING_DIR / "visa"
+NEWS_STAGING_DIR = BASE_STAGING_DIR / "news"
+
+# Ensure directories exist
+VISA_STAGING_DIR.mkdir(parents=True, exist_ok=True)
+NEWS_STAGING_DIR.mkdir(parents=True, exist_ok=True)
+
 # Qdrant collections for intel
 INTEL_COLLECTIONS = {
+    "visa": "visa_oracle",
+    "news": "bali_intel_bali_news",
     "immigration": "bali_intel_immigration",
     "bkpm_tax": "bali_intel_bkpm_tax",
     "realestate": "bali_intel_realestate",
@@ -26,6 +40,138 @@ INTEL_COLLECTIONS = {
     "bali_news": "bali_intel_bali_news",
     "roundup": "bali_intel_roundup",
 }
+
+# --- STAGING ENDPOINTS ---
+
+
+@router.get("/api/intel/staging/pending")
+async def list_pending_items(type: str = "all"):
+    """List items pending approval in staging area"""
+    items = []
+
+    dirs_to_check = []
+    if type in ["all", "visa"]:
+        dirs_to_check.append(("visa", VISA_STAGING_DIR))
+    if type in ["all", "news"]:
+        dirs_to_check.append(("news", NEWS_STAGING_DIR))
+
+    for category, directory in dirs_to_check:
+        if not directory.exists():
+            continue
+
+        for file_path in directory.glob("*.json"):
+            try:
+                with open(file_path) as f:
+                    data = json.load(f)
+                    # Add metadata useful for list view
+                    items.append(
+                        {
+                            "id": file_path.stem,
+                            "type": category,
+                            "title": data.get("title", "Untitled"),
+                            "status": data.get("status", "pending"),
+                            "detected_at": data.get("detected_at"),
+                            "source": data.get("url", ""),
+                            "detection_type": data.get("detection_type", "NEW"),
+                        }
+                    )
+            except Exception as e:
+                logger.error(f"Error reading staging file {file_path}: {e}")
+
+    # Sort by date (newest first)
+    items.sort(key=lambda x: x.get("detected_at", ""), reverse=True)
+    return {"items": items, "count": len(items)}
+
+
+@router.get("/api/intel/staging/preview/{type}/{item_id}")
+async def preview_staging_item(type: str, item_id: str):
+    """Get full content of a staging item"""
+    directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
+    file_path = directory / f"{item_id}.json"
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    try:
+        with open(file_path) as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
+
+
+@router.post("/api/intel/staging/approve/{type}/{item_id}")
+async def approve_staging_item(type: str, item_id: str):
+    """Approve item and ingest into Qdrant"""
+    directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
+    file_path = directory / f"{item_id}.json"
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    try:
+        with open(file_path) as f:
+            data = json.load(f)
+
+        # 1. Generate Embedding
+        content = data.get("content", "")
+        if not content:
+            raise ValueError("No content to ingest")
+
+        # Generate embedding for the full content (or chunk it here if needed)
+        # For simplicity, we assume content is chunk-able or small enough
+        # Ideally, we should use the SemanticChunker here
+        embedding = embedder.generate_single_embedding(content[:8000])  # Limit for embedding model
+
+        # 2. Ingest to Qdrant
+        target_collection = "visa_oracle" if type == "visa" else "bali_intel_bali_news"
+        client = QdrantClient(collection_name=target_collection)
+
+        metadata = {
+            "title": data.get("title"),
+            "url": data.get("url"),
+            "source": "intelligent_agent",
+            "ingested_at": datetime.now().isoformat(),
+            "approved_by": "admin",  # TODO: Get from auth context
+            "original_id": item_id,
+        }
+
+        await client.upsert_documents(
+            chunks=[content],
+            embeddings=[embedding],
+            metadatas=[metadata],
+            ids=[item_id],  # Use same ID for consistency
+        )
+
+        # 3. Archive file
+        archive_dir = directory / "archived" / "approved"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(file_path), str(archive_dir / file_path.name))
+
+        return {"success": True, "message": "Item approved and ingested", "id": item_id}
+
+    except Exception as e:
+        logger.error(f"Approval failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/intel/staging/reject/{type}/{item_id}")
+async def reject_staging_item(type: str, item_id: str):
+    """Reject item and move to archive"""
+    directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
+    file_path = directory / f"{item_id}.json"
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    try:
+        # Move to rejected archive
+        archive_dir = directory / "archived" / "rejected"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(file_path), str(archive_dir / file_path.name))
+
+        return {"success": True, "message": "Item rejected and archived", "id": item_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class IntelSearchRequest(BaseModel):

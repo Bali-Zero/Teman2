@@ -35,9 +35,7 @@ class TestMemoryFactExtractor:
         """Test extracting facts from conversation"""
         user_message = "I am John, I prefer Italian language"
         ai_response = "I'll remember that you prefer Italian"
-        facts = fact_extractor.extract_facts_from_conversation(
-            user_message, ai_response, "user1"
-        )
+        facts = fact_extractor.extract_facts_from_conversation(user_message, ai_response, "user1")
         assert isinstance(facts, list)
 
     def test_extract_facts_preference(self, fact_extractor):
@@ -59,7 +57,10 @@ class TestMemoryFactExtractor:
         text = "My name is John, I am Italian, I live in Bali"
         facts = fact_extractor._extract_from_text(text, source="user")
         assert len(facts) > 0
-        assert any(f["type"] == "identity" or f["type"] == "nationality" or f["type"] == "location" for f in facts)
+        assert any(
+            f["type"] == "identity" or f["type"] == "nationality" or f["type"] == "location"
+            for f in facts
+        )
 
     def test_extract_facts_timeline(self, fact_extractor):
         """Test extracting timeline facts"""
@@ -77,4 +78,3 @@ class TestMemoryFactExtractor:
         deduplicated = fact_extractor._deduplicate_facts(facts)
         assert len(deduplicated) == 1
         assert deduplicated[0]["confidence"] == 0.9  # Higher confidence kept
-

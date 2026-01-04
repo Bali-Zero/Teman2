@@ -120,7 +120,8 @@ async def test_connect_success():
             return mock_pool
 
         with patch(
-            "services.memory.memory_service_postgres.asyncpg.create_pool", side_effect=mock_create_pool
+            "services.memory.memory_service_postgres.asyncpg.create_pool",
+            side_effect=mock_create_pool,
         ):
             await service.connect()
 

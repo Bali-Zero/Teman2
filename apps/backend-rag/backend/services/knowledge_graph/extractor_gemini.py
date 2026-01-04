@@ -53,9 +53,7 @@ class GeminiKGExtractor:
 
         # Get API key from env or parameter
         api_key = (
-            api_key
-            or os.environ.get("GOOGLE_API_KEY")
-            or os.environ.get("GOOGLE_IMAGEN_API_KEY")
+            api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_IMAGEN_API_KEY")
         )
 
         if not api_key:
@@ -160,6 +158,7 @@ Extract entities and relations now:"""
         try:
             # Generate content with JSON mode
             import asyncio
+
             response = await asyncio.to_thread(
                 self.client.models.generate_content,
                 model=self.model_name,
@@ -220,14 +219,16 @@ Extract entities and relations now:"""
                     logger.debug(f"Unknown entity type: {type_str}")
                     continue
 
-                entities.append(ExtractedEntity(
-                    id=e.get("id", f"e{len(entities)+1}"),
-                    type=entity_type,
-                    name=e.get("name", ""),
-                    mention=e.get("mention", e.get("name", "")),
-                    attributes=e.get("attributes", {}),
-                    confidence=float(e.get("confidence", 0.8)),
-                ))
+                entities.append(
+                    ExtractedEntity(
+                        id=e.get("id", f"e{len(entities) + 1}"),
+                        type=entity_type,
+                        name=e.get("name", ""),
+                        mention=e.get("mention", e.get("name", "")),
+                        attributes=e.get("attributes", {}),
+                        confidence=float(e.get("confidence", 0.8)),
+                    )
+                )
             except Exception as ex:
                 logger.debug(f"Failed to parse entity: {ex}")
 
@@ -249,14 +250,16 @@ Extract entities and relations now:"""
                     logger.debug(f"Unknown relation type: {type_str}")
                     continue
 
-                relations.append(ExtractedRelation(
-                    source_id=r.get("source_id", ""),
-                    target_id=r.get("target_id", ""),
-                    type=rel_type,
-                    evidence=r.get("evidence", ""),
-                    confidence=float(r.get("confidence", 0.7)),
-                    attributes=r.get("attributes", {}),
-                ))
+                relations.append(
+                    ExtractedRelation(
+                        source_id=r.get("source_id", ""),
+                        target_id=r.get("target_id", ""),
+                        type=rel_type,
+                        evidence=r.get("evidence", ""),
+                        confidence=float(r.get("confidence", 0.7)),
+                        attributes=r.get("attributes", {}),
+                    )
+                )
             except Exception as ex:
                 logger.debug(f"Failed to parse relation: {ex}")
 

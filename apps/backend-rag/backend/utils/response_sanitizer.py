@@ -247,6 +247,7 @@ def classify_query_type(message: str) -> str:
         "dimmi",
         "trova",
         "pratiche",
+        "visto",
         "visti",
         "licenze",
         "tasse",

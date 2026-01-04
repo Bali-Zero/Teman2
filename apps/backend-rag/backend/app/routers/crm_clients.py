@@ -43,6 +43,7 @@ class ClientCreate(BaseModel):
     passport_number: str | None = None
     client_type: str = "individual"  # 'individual' or 'company'
     assigned_to: str | None = None  # team member email
+    avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
     tags: list[str] = []
@@ -78,6 +79,7 @@ class ClientUpdate(BaseModel):
     status: str | None = None  # 'active', 'inactive', 'prospect'
     client_type: str | None = None
     assigned_to: str | None = None
+    avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
     tags: list[str] | None = None
@@ -124,8 +126,11 @@ class ClientResponse(BaseModel):
     status: str
     client_type: str
     assigned_to: str | None
+    avatar_url: str | None
     first_contact_date: datetime | None
     last_interaction_date: datetime | None
+    last_sentiment: str | None = None
+    last_interaction_summary: str | None = None
     tags: list[str] = []  # Default to empty list if None
     created_at: datetime
     updated_at: datetime
@@ -169,6 +174,7 @@ async def create_client(
     - **nationality**: Client's nationality
     - **passport_number**: Passport number
     - **assigned_to**: Team member email to assign client to
+    - **avatar_url**: URL to client avatar image
     - **tags**: Array of tags (e.g., ['vip', 'urgent'])
     """
     try:
@@ -177,10 +183,10 @@ async def create_client(
                 """
                 INSERT INTO clients (
                     full_name, email, phone, whatsapp, nationality, passport_number,
-                    client_type, assigned_to, address, notes, tags, custom_fields,
+                    client_type, assigned_to, avatar_url, address, notes, tags, custom_fields,
                     first_contact_date, created_by, status
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
                 )
                 RETURNING *
                 """,
@@ -192,6 +198,7 @@ async def create_client(
                 client.passport_number,
                 client.client_type,
                 client.assigned_to,
+                client.avatar_url,
                 client.address,
                 client.notes,
                 client.tags,
@@ -252,54 +259,97 @@ async def list_clients(
         # Get current user from authentication middleware
         current_user = getattr(request.state, "user", None)
         current_user_email = current_user.get("email", "") if current_user else ""
+        current_user_name = current_user_email.lower().split("@")[0] if current_user_email else ""
 
-        # Admin email that can see all clients
-        ADMIN_EMAIL = "zero@balizero.com"
-        is_admin = current_user_email.lower() == ADMIN_EMAIL.lower()
+        # ============================================
+        # ACCESS CONTROL RULES
+        # ============================================
+        # ZERO: can see ALL contacts
+        # RUSLANA: can see own + Anton, Rina, Dea's contacts + unassigned
+        # OTHER MEMBERS: can only see their OWN contacts
+        # ============================================
+        SUPER_ADMINS = ["zero"]
+        RUSLANA_CAN_SEE = ["ruslana", "anton", "rina", "dea"]
+
+        is_super_admin = current_user_name in SUPER_ADMINS
+        is_ruslana = current_user_name == "ruslana"
 
         logger.info(
-            f"📋 [CRM Clients] User {current_user_email} requesting clients list "
-            f"(admin={is_admin}, assigned_to_filter={assigned_to})"
+            f"📋 [CRM Clients] User {current_user_email} ({current_user_name}) requesting clients list "
+            f"(super_admin={is_super_admin}, ruslana={is_ruslana}, assigned_to_filter={assigned_to})"
         )
 
         async with db_pool.acquire() as conn:
-            # Build query dynamically with explicit columns
+            # Build query dynamically with explicit columns + sentiment/summary from interactions
             query_parts = [
-                """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
-                   client_type, assigned_to, first_contact_date, last_interaction_date,
-                   tags, created_at, updated_at FROM clients WHERE 1=1"""
+                """
+                SELECT 
+                    c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
+                    c.client_type, c.assigned_to, c.avatar_url, c.first_contact_date, c.last_interaction_date,
+                    c.tags, c.created_at, c.updated_at,
+                    i.sentiment as last_sentiment,
+                    i.summary as last_interaction_summary
+                FROM clients c
+                LEFT JOIN LATERAL (
+                    SELECT sentiment, summary
+                    FROM interactions
+                    WHERE client_id = c.id
+                    ORDER BY interaction_date DESC
+                    LIMIT 1
+                ) i ON true
+                WHERE 1=1
+                """
             ]
             params: list[Any] = []
             param_index = 1
 
             if status:
-                query_parts.append(f" AND status = ${param_index}")
+                query_parts.append(f" AND c.status = ${param_index}")
                 params.append(status)
                 param_index += 1
 
-            # Access control: Non-admin users can only see their own clients
-            if not is_admin:
-                # Force filter to current user's email, ignore any assigned_to parameter
-                query_parts.append(f" AND assigned_to = ${param_index}")
+            # Access control based on user role
+            if is_super_admin:
+                # Zero can see all clients
+                if assigned_to:
+                    # Admin can optionally filter by assigned_to
+                    query_parts.append(f" AND c.assigned_to = ${param_index}")
+                    params.append(assigned_to)
+                    param_index += 1
+                logger.info("🔓 [CRM Clients] Super admin - no filter applied")
+            elif is_ruslana:
+                # Ruslana sees her own + Anton, Rina, Dea + unassigned
+                ruslana_emails = [f"{name}@balizero.com" for name in RUSLANA_CAN_SEE]
+                placeholders = ", ".join(
+                    [f"${param_index + i}" for i in range(len(ruslana_emails))]
+                )
+                query_parts.append(
+                    f" AND (c.assigned_to IN ({placeholders}) OR c.assigned_to IS NULL)"
+                )
+                params.extend(ruslana_emails)
+                param_index += len(ruslana_emails)
+                logger.info(
+                    f"🔒 [CRM Clients] Ruslana access - can see: {RUSLANA_CAN_SEE} + unassigned"
+                )
+            else:
+                # Other members can only see their own clients
+                query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(current_user_email)
                 param_index += 1
-                logger.info(f"🔒 [CRM Clients] Filtered to assigned_to={current_user_email}")
-            elif assigned_to:
-                # Admin can filter by any assigned_to value
-                query_parts.append(f" AND assigned_to = ${param_index}")
-                params.append(assigned_to)
-                param_index += 1
+                logger.info(
+                    f"🔒 [CRM Clients] Member access - filtered to assigned_to={current_user_email}"
+                )
 
             if search:
                 search_pattern = f"%{search}%"
                 query_parts.append(
-                    f" AND (full_name ILIKE ${param_index} OR email ILIKE ${param_index + 1} OR phone ILIKE ${param_index + 2})"
+                    f" AND (c.full_name ILIKE ${param_index} OR c.email ILIKE ${param_index + 1} OR c.phone ILIKE ${param_index + 2})"
                 )
                 params.extend([search_pattern, search_pattern, search_pattern])
                 param_index += 3
 
             query_parts.append(
-                f" ORDER BY created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
+                f" ORDER BY c.created_at DESC LIMIT ${param_index} OFFSET ${param_index + 1}"
             )
             params.extend([limit, offset])
 
@@ -307,7 +357,9 @@ async def list_clients(
             rows = await conn.fetch(query, *params)
 
             clients = [ClientResponse(**dict(row)) for row in rows]
-            logger.info(f"📋 [CRM Clients] Returning {len(clients)} clients for {current_user_email}")
+            logger.info(
+                f"📋 [CRM Clients] Returning {len(clients)} clients for {current_user_email}"
+            )
             return clients
 
     except HTTPException:
@@ -327,7 +379,7 @@ async def get_client(
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
-                   client_type, assigned_to, first_contact_date, last_interaction_date,
+                   client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
                    tags, created_at, updated_at FROM clients WHERE id = $1""",
                 client_id,
             )
@@ -354,7 +406,7 @@ async def get_client_by_email(
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
-                   client_type, assigned_to, first_contact_date, last_interaction_date,
+                   client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
                    tags, created_at, updated_at FROM clients WHERE email = $1""",
                 email,
             )
@@ -401,6 +453,7 @@ async def update_client(
                 "status": "status",
                 "client_type": "client_type",
                 "assigned_to": "assigned_to",
+                "avatar_url": "avatar_url",
                 "address": "address",
                 "notes": "notes",
                 "tags": "tags",
@@ -542,7 +595,7 @@ async def get_client_summary(
             # Get client basic info
             client_row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
-                   client_type, assigned_to, first_contact_date, last_interaction_date,
+                   client_type, assigned_to, avatar_url, first_contact_date, last_interaction_date,
                    tags, created_at, updated_at FROM clients WHERE id = $1""",
                 client_id,
             )

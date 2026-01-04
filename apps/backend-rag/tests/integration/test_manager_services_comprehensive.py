@@ -247,7 +247,7 @@ class TestContextWindowManager:
         result = await manager.process_conversation_history(
             conversation_history=messages,
             system_prompt="Test system prompt",
-            current_query="Test query"
+            current_query="Test query",
         )
 
         assert len(result["messages"]) <= len(messages)
@@ -271,7 +271,7 @@ class TestContextWindowManager:
         result = await manager.process_conversation_history(
             conversation_history=messages,
             system_prompt="Test system prompt",
-            current_query="Test query"
+            current_query="Test query",
         )
 
         # Messages should be processed

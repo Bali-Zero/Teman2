@@ -6,11 +6,10 @@ These tests are designed to hit exact lines that are not covered
 import os
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
-import asyncpg
 from fastapi import HTTPException, Request
 
 # Set environment variables before imports
@@ -38,7 +37,7 @@ def mock_db_pool():
     acquire_cm.__aenter__ = AsyncMock(return_value=conn)
     acquire_cm.__aexit__ = AsyncMock(return_value=False)
     pool.acquire = MagicMock(return_value=acquire_cm)
-    
+
     # Mock transaction() to return an async context manager
     transaction_cm = MagicMock()
     transaction_cm.__aenter__ = AsyncMock(return_value=transaction)
@@ -167,7 +166,7 @@ class TestFeedbackExactCoverage:
         request_data = RateConversationRequest.model_construct(
             session_id=session_id,
             rating=5,
-            feedback_type="invalid_type"  # Invalid type (line 63)
+            feedback_type="invalid_type",  # Invalid type (line 63)
         )
         # Manually set the attribute to bypass Pydantic validation
         request_data.feedback_type = "invalid_type"
@@ -175,7 +174,10 @@ class TestFeedbackExactCoverage:
         with pytest.raises(HTTPException) as exc_info:
             await submit_feedback(request_data, mock_request, pool)
         assert exc_info.value.status_code == 400
-        assert "Invalid feedback_type" in exc_info.value.detail or "feedback_type" in exc_info.value.detail.lower()
+        assert (
+            "Invalid feedback_type" in exc_info.value.detail
+            or "feedback_type" in exc_info.value.detail.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_exception_handling_generic_exact_line_141(self, mock_db_pool):
@@ -196,4 +198,3 @@ class TestFeedbackExactCoverage:
             await submit_feedback(request_data, mock_request, pool)
         assert exc_info.value.status_code == 500
         assert "Internal server error" in exc_info.value.detail
-

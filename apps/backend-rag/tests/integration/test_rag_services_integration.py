@@ -40,9 +40,7 @@ class TestRAGServicesIntegration:
         retriever = MagicMock()
         orchestrator = create_agentic_rag(retriever=retriever, db_pool=db_pool)
 
-        result = await orchestrator.process_query(
-            query="hello", user_id="test_user_rag_1"
-        )
+        result = await orchestrator.process_query(query="hello", user_id="test_user_rag_1")
 
         assert result is not None
         assert hasattr(result, "answer")

@@ -81,4 +81,3 @@ class TestStandardTemplates:
         template = get_company_setup_template("id")
         assert "[TIPE_PERUSAHAAN]" in template
         assert "Pendirian Perusahaan" in template
-

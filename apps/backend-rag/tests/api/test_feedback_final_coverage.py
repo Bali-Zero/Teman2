@@ -6,11 +6,11 @@ Targets remaining missing lines: 52-59, 63, 75, 141, 145-147, 169-170, 199-201
 import os
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-import pytest
 import asyncpg
+import pytest
 from fastapi import HTTPException, Request
 
 # Set environment variables before imports
@@ -22,7 +22,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.feedback import submit_feedback, get_feedback_stats
+from app.routers.feedback import get_feedback_stats, submit_feedback
 from app.schemas.feedback import RateConversationRequest
 
 
@@ -38,7 +38,7 @@ def mock_db_pool():
     acquire_cm.__aenter__ = AsyncMock(return_value=conn)
     acquire_cm.__aexit__ = AsyncMock(return_value=False)
     pool.acquire = MagicMock(return_value=acquire_cm)
-    
+
     # Mock transaction() to return an async context manager
     transaction_cm = MagicMock()
     transaction_cm.__aenter__ = AsyncMock(return_value=transaction)
@@ -149,9 +149,7 @@ class TestFeedbackFinalCoverage:
         mock_request.state.user_profile = None
 
         request_data = RateConversationRequest(
-            session_id=session_id,
-            rating=2,
-            feedback_type="negative"
+            session_id=session_id, rating=2, feedback_type="negative"
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -172,9 +170,7 @@ class TestFeedbackFinalCoverage:
         mock_request.state.user_profile = None
 
         request_data = RateConversationRequest(
-            session_id=session_id,
-            rating=1,
-            feedback_type="issue"
+            session_id=session_id, rating=1, feedback_type="issue"
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -199,7 +195,7 @@ class TestFeedbackFinalCoverage:
             session_id=session_id,
             rating=2,
             feedback_text="Original feedback",
-            correction_text="Correction text"
+            correction_text="Correction text",
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -225,10 +221,7 @@ class TestFeedbackFinalCoverage:
         mock_request.state.user_profile = None
 
         request_data = RateConversationRequest(
-            session_id=session_id,
-            rating=5,
-            feedback_text=None,
-            correction_text="Only correction"
+            session_id=session_id, rating=5, feedback_text=None, correction_text="Only correction"
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -256,7 +249,7 @@ class TestFeedbackFinalCoverage:
         request_data = RateConversationRequest(
             session_id=session_id,
             rating=4,  # High rating but with correction
-            correction_text="Correction"
+            correction_text="Correction",
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -268,12 +261,14 @@ class TestFeedbackFinalCoverage:
     async def test_get_feedback_stats_with_zero_values(self, mock_db_pool):
         """Test stats endpoint with zero values (lines 199-201)"""
         pool, conn = mock_db_pool
-        conn.fetchrow = AsyncMock(return_value={
-            "total_pending": 0,
-            "total_resolved": 0,
-            "total_ignored": 0,
-            "total_reviews": 0,
-        })
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "total_pending": 0,
+                "total_resolved": 0,
+                "total_ignored": 0,
+                "total_reviews": 0,
+            }
+        )
         conn.fetchval = AsyncMock(side_effect=[0, 0])  # low_ratings_count, corrections_count
 
         response = await get_feedback_stats(pool)
@@ -299,15 +294,16 @@ class TestFeedbackFinalCoverage:
     async def test_get_feedback_stats_database_error_fetchval(self, mock_db_pool):
         """Test stats endpoint database error in fetchval (lines 169-170)"""
         pool, conn = mock_db_pool
-        conn.fetchrow = AsyncMock(return_value={
-            "total_pending": 5,
-            "total_resolved": 10,
-            "total_ignored": 2,
-            "total_reviews": 17,
-        })
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "total_pending": 5,
+                "total_resolved": 10,
+                "total_ignored": 2,
+                "total_reviews": 17,
+            }
+        )
         conn.fetchval = AsyncMock(side_effect=asyncpg.PostgresError("Database error"))
 
         with pytest.raises(HTTPException) as exc_info:
             await get_feedback_stats(pool)
         assert exc_info.value.status_code == 500
-

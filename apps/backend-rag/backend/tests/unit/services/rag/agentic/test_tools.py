@@ -252,5 +252,8 @@ class TestWebSearchTool:
         # WebSearchTool might use fallback or return success with disclaimer
         assert isinstance(result, str)
         # Check if it's a JSON response or error message
-        assert "success" in result.lower() or "not configured" in result.lower() or "error" in result.lower()
-
+        assert (
+            "success" in result.lower()
+            or "not configured" in result.lower()
+            or "error" in result.lower()
+        )

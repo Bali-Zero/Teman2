@@ -299,6 +299,3 @@ async def get_auto_crm_stats(
     except Exception as e:
         logger.error(f"Failed to get AUTO CRM stats: {e}", exc_info=True)
         raise handle_database_error(e)
-
-
-

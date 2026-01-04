@@ -65,4 +65,3 @@ class TestResponseSanitizer:
         # The sanitizer may or may not remove markdown headers depending on implementation
         assert isinstance(result, str)
         assert len(result) > 0
-

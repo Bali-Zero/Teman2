@@ -20,9 +20,11 @@ from llm.genai_client import GenAIClient, get_genai_client
 @pytest.fixture
 def genai_client():
     """Create GenAI client instance"""
-    with patch("llm.genai_client.genai") as mock_genai, \
-         patch("llm.genai_client.types") as mock_types, \
-         patch("llm.genai_client.GENAI_AVAILABLE", True):
+    with (
+        patch("llm.genai_client.genai") as mock_genai,
+        patch("llm.genai_client.types") as mock_types,
+        patch("llm.genai_client.GENAI_AVAILABLE", True),
+    ):
         mock_client = MagicMock()
         mock_genai.Client.return_value = mock_client
         client = GenAIClient(api_key="test-key")
@@ -36,8 +38,10 @@ class TestGenAIClient:
 
     def test_init(self):
         """Test initialization"""
-        with patch("llm.genai_client.genai") as mock_genai, \
-             patch("llm.genai_client.GENAI_AVAILABLE", True):
+        with (
+            patch("llm.genai_client.genai") as mock_genai,
+            patch("llm.genai_client.GENAI_AVAILABLE", True),
+        ):
             mock_client = MagicMock()
             mock_genai.Client.return_value = mock_client
             client = GenAIClient(api_key="test-key")
@@ -84,17 +88,19 @@ class TestGenAIClient:
 
     def test_get_genai_client_singleton(self):
         """Test singleton pattern"""
-        with patch("llm.genai_client.genai") as mock_genai, \
-             patch("llm.genai_client.GENAI_AVAILABLE", True):
+        with (
+            patch("llm.genai_client.genai") as mock_genai,
+            patch("llm.genai_client.GENAI_AVAILABLE", True),
+        ):
             mock_client = MagicMock()
             mock_genai.Client.return_value = mock_client
 
             # Reset singleton
             import llm.genai_client
+
             llm.genai_client._client_instance = None
 
             client1 = get_genai_client()
             client2 = get_genai_client()
             # Should return same instance
             assert client1 is client2
-

@@ -34,15 +34,17 @@ class TestQdrantClientSearch:
                 {
                     "id": "1",
                     "score": 0.9,
-                    "payload": {"text": "test text", "metadata": {"key": "value"}}
+                    "payload": {"text": "test text", "metadata": {"key": "value"}},
                 }
             ]
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
 
             async def retry_func():
                 mock_http_client = await mock_get_client()
@@ -54,7 +56,7 @@ class TestQdrantClientSearch:
                 "documents": ["test text"],
                 "metadatas": [{"key": "value"}],
                 "distances": [0.1],
-                "total_found": 1
+                "total_found": 1,
             }
 
             result = await client.search([0.1] * 1536, limit=10)
@@ -70,23 +72,20 @@ class TestQdrantClientSearch:
         mock_response.json.return_value = {"result": []}
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             mock_retry.return_value = {
                 "ids": [],
                 "documents": [],
                 "metadatas": [],
                 "distances": [],
-                "total_found": 0
+                "total_found": 0,
             }
 
-            result = await client.search(
-                [0.1] * 1536,
-                filter={"tier": "S"},
-                limit=10
-            )
+            result = await client.search([0.1] * 1536, filter={"tier": "S"}, limit=10)
 
             assert result is not None
 
@@ -97,23 +96,20 @@ class TestQdrantClientSearch:
         mock_response.json.return_value = {"result": []}
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             mock_retry.return_value = {
                 "ids": [],
                 "documents": [],
                 "metadatas": [],
                 "distances": [],
-                "total_found": 0
+                "total_found": 0,
             }
 
-            result = await client.search(
-                [0.1] * 1536,
-                limit=10,
-                vector_name="dense"
-            )
+            result = await client.search([0.1] * 1536, limit=10, vector_name="dense")
 
             assert result is not None
 
@@ -134,10 +130,11 @@ class TestQdrantClientSearch:
         """Test search with timeout"""
         timeout_error = httpx.TimeoutException("Request timeout")
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             mock_retry.side_effect = timeout_error
 
             result = await client.search([0.1] * 1536, limit=10)
@@ -154,17 +151,18 @@ class TestQdrantClientSearch:
         mock_response.text = "Server error"
         error = httpx.HTTPStatusError("Server error", request=MagicMock(), response=mock_response)
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             # Simulate retryable error that eventually succeeds
             mock_retry.return_value = {
                 "ids": ["1"],
                 "documents": ["test"],
                 "metadatas": [{}],
                 "distances": [0.1],
-                "total_found": 1
+                "total_found": 1,
             }
 
             result = await client.search([0.1] * 1536, limit=10)
@@ -179,10 +177,11 @@ class TestQdrantClientSearch:
         mock_response.text = "Bad request"
         error = httpx.HTTPStatusError("Bad request", request=MagicMock(), response=mock_response)
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             # Client errors should return empty results
             async def retry_func():
                 raise error
@@ -208,12 +207,14 @@ class TestQdrantClientSearch:
         }
         mock_response_success.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             # First attempt fails, then retries with named vector
             call_count = 0
+
             async def retry_func():
                 nonlocal call_count
                 call_count += 1
@@ -226,7 +227,7 @@ class TestQdrantClientSearch:
                     "documents": ["test"],
                     "metadatas": [{}],
                     "distances": [0.1],
-                    "total_found": 1
+                    "total_found": 1,
                 }
 
             mock_retry.side_effect = retry_func
@@ -242,10 +243,11 @@ class TestQdrantClientSearch:
         """Test search with connection error"""
         connection_error = httpx.ConnectError("Connection failed")
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             mock_retry.side_effect = connection_error
 
             result = await client.search([0.1] * 1536, limit=10)
@@ -270,14 +272,7 @@ class TestQdrantClientGetStats:
         mock_response.json.return_value = {
             "result": {
                 "points_count": 100,
-                "config": {
-                    "params": {
-                        "vectors": {
-                            "size": 1536,
-                            "distance": "Cosine"
-                        }
-                    }
-                }
+                "config": {"params": {"vectors": {"size": 1536, "distance": "Cosine"}}},
             }
         }
         mock_response.raise_for_status = MagicMock()
@@ -306,9 +301,6 @@ class TestQdrantClientGetStats:
 
             stats = await client.get_stats()
 
+            # On error, get_stats returns collection_name and error only
             assert stats["collection_name"] == "test"
-            assert stats["total_documents"] == 0
-
-
-
-
+            assert "error" in stats

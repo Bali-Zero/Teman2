@@ -132,7 +132,7 @@ class IntelligentRouter:
                     suggestions = await self.context_suggestion_service.get_suggestions(
                         query=message,
                         user_id=user_id,
-                        response=answer, # Use the extracted answer
+                        response=answer,  # Use the extracted answer
                         conversation_history=conversation_history,
                     )
 
@@ -182,13 +182,13 @@ class IntelligentRouter:
             # Need to extract session_id from somewhere or generate one if strictly needed,
             # but usually router statelessness relies on client passing history.
             # Orchestrator stream_query accepts session_id and conversation_history.
-            session_id = None # Logic to get session id if available
+            session_id = None  # Logic to get session id if available
 
             async for chunk in self.orchestrator.stream_query(
                 query=message,
                 user_id=user_id,
                 conversation_history=conversation_history,
-                session_id=session_id
+                session_id=session_id,
             ):
                 # Pass through chunks directly as they are already formatted for frontend
                 yield chunk

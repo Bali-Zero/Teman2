@@ -19,10 +19,7 @@ MIGRATION_NAME = "drop_legacy_kg_tables"
 
 async def check_if_applied(conn: asyncpg.Connection) -> bool:
     """Check if migration was already applied"""
-    result = await conn.fetchval(
-        "SELECT 1 FROM schema_migrations WHERE version = $1",
-        MIGRATION_ID
-    )
+    result = await conn.fetchval("SELECT 1 FROM schema_migrations WHERE version = $1", MIGRATION_ID)
     return result is not None
 
 
@@ -69,10 +66,12 @@ async def run(conn: asyncpg.Connection) -> bool:
             ON CONFLICT (version) DO NOTHING
             """,
             MIGRATION_ID,
-            MIGRATION_NAME
+            MIGRATION_NAME,
         )
 
-        logger.info(f"✅ Migration {MIGRATION_ID} completed: dropped kg_entities, kg_relationships, kg_entity_mentions")
+        logger.info(
+            f"✅ Migration {MIGRATION_ID} completed: dropped kg_entities, kg_relationships, kg_entity_mentions"
+        )
         return True
 
     except Exception as e:

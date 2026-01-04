@@ -18,18 +18,23 @@ def __getattr__(name: str):
     """
     if name == "PromptManager":
         from .prompt_manager import PromptManager
+
         return PromptManager
     if name == "RetryHandler":
         from .retry_handler import RetryHandler
+
         return RetryHandler
     if name == "TokenEstimator":
         from .token_estimator import TokenEstimator
+
         return TokenEstimator
     if name == "ZantaraAIClient":
         from .zantara_ai_client import ZantaraAIClient
+
         return ZantaraAIClient
     if name == "ZantaraAIClientConstants":
         from .zantara_ai_client import ZantaraAIClientConstants
+
         return ZantaraAIClientConstants
     raise AttributeError(f"module 'llm' has no attribute '{name}'")
 

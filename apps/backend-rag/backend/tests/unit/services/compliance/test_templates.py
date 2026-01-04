@@ -77,4 +77,3 @@ class TestComplianceTemplatesService:
         assert "description" in template
         assert "compliance_type" in template
         assert template["compliance_type"] == ComplianceType.TAX_FILING
-

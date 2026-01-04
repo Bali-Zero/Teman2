@@ -182,6 +182,7 @@ class HealthMonitor:
                 # client might be async or sync depending on implementation
                 res = search_service.client.list_collections()
                 import inspect
+
                 if inspect.isawaitable(res):
                     await res
                 return True

@@ -31,13 +31,13 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from services.llm_clients.pricing import TokenUsage
 from services.rag.agentic.reasoning import (
     ReasoningEngine,
-    is_valid_tool_call,
     calculate_evidence_score,
+    is_valid_tool_call,
 )
 from services.tools.definitions import AgentState, ToolCall
-from services.llm_clients.pricing import TokenUsage
 
 
 def mock_token_usage() -> TokenUsage:
@@ -48,6 +48,7 @@ def mock_token_usage() -> TokenUsage:
 # =============================================================================
 # Test is_valid_tool_call helper function (Edge Case 2)
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestIsValidToolCall:
@@ -117,6 +118,7 @@ class TestIsValidToolCall:
 # Test Edge Case 1: candidate.content None check
 # =============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 class TestEdgeCase1CandidateContentNone:
@@ -143,12 +145,20 @@ class TestEdgeCase1CandidateContentNone:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: Test answer", "gemini-2.0-flash", mock_response, mock_token_usage())
+            return_value=(
+                "Final Answer: Test answer",
+                "gemini-2.0-flash",
+                mock_response,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result = await engine.execute_react_loop(
                     state=state,
@@ -195,7 +205,10 @@ class TestEdgeCase1CandidateContentNone:
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result = await engine.execute_react_loop(
                     state=state,
@@ -240,7 +253,10 @@ class TestEdgeCase1CandidateContentNone:
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result = await engine.execute_react_loop(
                     state=state,
@@ -261,6 +277,7 @@ class TestEdgeCase1CandidateContentNone:
 # =============================================================================
 # Test Edge Case 2: Partial tool call validation in ReAct loop
 # =============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.asyncio
@@ -294,7 +311,12 @@ class TestEdgeCase2PartialToolCallValidation:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("ACTION: vector_search(query='KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "ACTION: vector_search(query='KITAS')",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -310,8 +332,13 @@ class TestEdgeCase2PartialToolCallValidation:
             else:
                 return valid_tool_call  # Return valid on regex fallback
 
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+            ):
                 result = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -347,15 +374,25 @@ class TestEdgeCase2PartialToolCallValidation:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Final Answer: KITAS is a permit",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
 
         # Both parsers return invalid tool call
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=invalid_tool_call):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=invalid_tool_call
+            ):
                 result = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -378,6 +415,7 @@ class TestEdgeCase2PartialToolCallValidation:
 # Test Edge Case 3: Empty content handling in vector_search
 # =============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 class TestEdgeCase3EmptyContent:
@@ -391,10 +429,12 @@ class TestEdgeCase3EmptyContent:
         mock_tool = MagicMock()
         # Return JSON with empty content but valid sources
         mock_tool.execute = AsyncMock(
-            return_value=json.dumps({
-                "content": "",  # Empty content!
-                "sources": [{"id": "doc1", "score": 0.9}]
-            })
+            return_value=json.dumps(
+                {
+                    "content": "",  # Empty content!
+                    "sources": [{"id": "doc1", "score": 0.9}],
+                }
+            )
         )
         tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
@@ -417,8 +457,13 @@ class TestEdgeCase3EmptyContent:
 
         tool_execution_counter = {"count": 0}
 
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 # Handle both return signatures (with and without TokenUsage)
                 result = await engine.execute_react_loop(
                     state=state,
@@ -445,10 +490,12 @@ class TestEdgeCase3EmptyContent:
         mock_tool = MagicMock()
         # Return JSON with very short content
         mock_tool.execute = AsyncMock(
-            return_value=json.dumps({
-                "content": "abc",  # Too short (<10 chars)
-                "sources": [{"id": "doc1", "score": 0.9}]
-            })
+            return_value=json.dumps(
+                {
+                    "content": "abc",  # Too short (<10 chars)
+                    "sources": [{"id": "doc1", "score": 0.9}],
+                }
+            )
         )
         tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
@@ -471,8 +518,13 @@ class TestEdgeCase3EmptyContent:
 
         tool_execution_counter = {"count": 0}
 
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 # Handle both return signatures (with and without TokenUsage)
                 result = await engine.execute_react_loop(
                     state=state,
@@ -498,10 +550,13 @@ class TestEdgeCase3EmptyContent:
         mock_tool = MagicMock()
         # Return JSON with meaningful content
         mock_tool.execute = AsyncMock(
-            return_value=json.dumps({
-                "content": "KITAS is a temporary stay permit for foreigners in Indonesia. " * 10,
-                "sources": [{"id": "doc1", "score": 0.9}]
-            })
+            return_value=json.dumps(
+                {
+                    "content": "KITAS is a temporary stay permit for foreigners in Indonesia. "
+                    * 10,
+                    "sources": [{"id": "doc1", "score": 0.9}],
+                }
+            )
         )
         tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
@@ -523,8 +578,13 @@ class TestEdgeCase3EmptyContent:
 
         tool_execution_counter = {"count": 0}
 
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -569,8 +629,13 @@ class TestEdgeCase3EmptyContent:
 
         tool_execution_counter = {"count": 0}
 
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -592,6 +657,7 @@ class TestEdgeCase3EmptyContent:
 # Test Streaming Version Edge Cases
 # =============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 class TestStreamingEdgeCases:
@@ -603,10 +669,7 @@ class TestStreamingEdgeCases:
         """
         mock_tool = MagicMock()
         mock_tool.execute = AsyncMock(
-            return_value=json.dumps({
-                "content": "",
-                "sources": [{"id": "doc1", "score": 0.9}]
-            })
+            return_value=json.dumps({"content": "", "sources": [{"id": "doc1", "score": 0.9}]})
         )
         tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
@@ -668,14 +731,21 @@ class TestStreamingEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: KITAS is a permit", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Final Answer: KITAS is a permit",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         events = []
 
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=invalid_tool_call):
+        with patch(
+            "services.rag.agentic.reasoning.parse_tool_call", return_value=invalid_tool_call
+        ):
             async for event in engine.execute_react_loop_stream(
                 state=state,
                 llm_gateway=llm_gateway,
@@ -743,6 +813,7 @@ class TestStreamingEdgeCases:
 # =============================================================================
 # Additional Coverage Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestCalculateEvidenceScoreCoverage:

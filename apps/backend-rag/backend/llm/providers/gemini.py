@@ -37,9 +37,12 @@ class GeminiProvider(LLMProvider):
         """Lazy initialize the underlying service."""
         try:
             from services.llm_clients.gemini_service import GeminiJakselService
+
             self._service = GeminiJakselService(model_name=self._model_name)
-            self._available = getattr(self._service, '_available', True)
-            logger.info(f"GeminiProvider initialized: model={self._model_name}, available={self._available}")
+            self._available = getattr(self._service, "_available", True)
+            logger.info(
+                f"GeminiProvider initialized: model={self._model_name}, available={self._available}"
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize GeminiProvider: {e}")
             self._available = False
@@ -53,11 +56,7 @@ class GeminiProvider(LLMProvider):
         return self._available and self._service is not None
 
     async def generate(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        max_tokens: int = 4096,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
     ) -> LLMResponse:
         """Generate response using Gemini."""
         if not self.is_available:
@@ -78,23 +77,15 @@ class GeminiProvider(LLMProvider):
 
         # Call underlying service
         content = await self._service.generate_response(
-            message=user_message,
-            history=history if history else None,
-            context=context
+            message=user_message, history=history if history else None, context=context
         )
 
         return LLMResponse(
-            content=content,
-            model=self._model_name,
-            provider=self.name,
-            finish_reason="stop"
+            content=content, model=self._model_name, provider=self.name, finish_reason="stop"
         )
 
     async def stream(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
     ) -> AsyncIterator[str]:
         """Stream response using Gemini."""
         if not self.is_available:
@@ -114,8 +105,6 @@ class GeminiProvider(LLMProvider):
                 history.append({"role": msg.role, "content": msg.content})
 
         async for chunk in self._service.generate_response_stream(
-            message=user_message,
-            history=history if history else None,
-            context=context
+            message=user_message, history=history if history else None, context=context
         ):
             yield chunk

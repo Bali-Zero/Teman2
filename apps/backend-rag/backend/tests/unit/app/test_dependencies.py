@@ -143,11 +143,7 @@ class TestDependencies:
 
     def test_get_current_user_from_middleware(self, mock_request):
         """Test getting current user from middleware"""
-        mock_request.state.user = {
-            "email": "test@example.com",
-            "id": "123",
-            "role": "admin"
-        }
+        mock_request.state.user = {"email": "test@example.com", "id": "123", "role": "admin"}
 
         user = get_current_user(mock_request, credentials=None)
         assert user["email"] == "test@example.com"
@@ -164,7 +160,7 @@ class TestDependencies:
             mock_decode.return_value = {
                 "email": "test@example.com",
                 "user_id": "123",
-                "role": "user"
+                "role": "user",
             }
 
             user = get_current_user(mock_request, credentials=mock_credentials)
@@ -187,6 +183,7 @@ class TestDependencies:
 
         with patch("app.dependencies.jwt.decode") as mock_decode:
             from jose import JWTError
+
             mock_decode.side_effect = JWTError("Invalid token")
 
             with pytest.raises(HTTPException) as exc_info:
@@ -225,4 +222,3 @@ class TestDependencies:
             cache = get_cache(mock_request)
             assert cache is not None
             mock_get_cache.assert_called_once()
-

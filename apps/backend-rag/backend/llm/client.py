@@ -55,11 +55,7 @@ class UnifiedLLMClient:
         return [p.name for p in self.providers if p.is_available]
 
     async def generate(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        max_tokens: int = 4096,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
     ) -> LLMResponse:
         """
         Generate a response, trying providers in order until one succeeds.
@@ -86,10 +82,7 @@ class UnifiedLLMClient:
             try:
                 logger.info(f"Trying provider: {provider.name}")
                 response = await provider.generate(
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs
+                    messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
                 )
                 logger.info(f"Success with provider: {provider.name}")
                 return response
@@ -105,10 +98,7 @@ class UnifiedLLMClient:
         raise RuntimeError(error_msg) from last_error
 
     async def stream(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
     ) -> AsyncIterator[str]:
         """
         Stream a response, trying providers in order until one succeeds.
@@ -134,9 +124,7 @@ class UnifiedLLMClient:
             try:
                 logger.info(f"Trying streaming with provider: {provider.name}")
                 async for chunk in provider.stream(
-                    messages=messages,
-                    temperature=temperature,
-                    **kwargs
+                    messages=messages, temperature=temperature, **kwargs
                 ):
                     yield chunk
                 logger.info(f"Streaming success with provider: {provider.name}")
@@ -167,8 +155,10 @@ def create_default_client() -> UnifiedLLMClient:
     """
     from llm.providers import DeepSeekProvider, GeminiProvider, OpenRouterProvider
 
-    return UnifiedLLMClient([
-        GeminiProvider(),
-        OpenRouterProvider(tier="rag"),
-        DeepSeekProvider(),
-    ])
+    return UnifiedLLMClient(
+        [
+            GeminiProvider(),
+            OpenRouterProvider(tier="rag"),
+            DeepSeekProvider(),
+        ]
+    )

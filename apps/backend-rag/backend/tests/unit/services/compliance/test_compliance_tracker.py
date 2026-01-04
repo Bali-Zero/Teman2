@@ -38,7 +38,7 @@ class TestComplianceTrackerService:
             compliance_type="visa_renewal",
             title="Visa Renewal",
             deadline="2025-12-31",
-            description="Renew visa before expiration"
+            description="Renew visa before expiration",
         )
         assert item.client_id == "client1"
         assert item.compliance_type == "visa_renewal"
@@ -51,7 +51,7 @@ class TestComplianceTrackerService:
             compliance_type="visa_renewal",
             title="Visa Renewal",
             deadline="2025-12-31",
-            estimated_cost=5000000.0
+            estimated_cost=5000000.0,
         )
         assert item.estimated_cost == 5000000.0
 
@@ -62,7 +62,7 @@ class TestComplianceTrackerService:
             compliance_type="visa_renewal",
             title="Visa Renewal",
             deadline="2025-12-31",
-            required_documents=["passport", "visa"]
+            required_documents=["passport", "visa"],
         )
         assert len(item.required_documents) == 2
 
@@ -72,7 +72,7 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         items = compliance_tracker.get_all_items(client_id="client1")
         assert len(items) == 1
@@ -89,13 +89,13 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         compliance_tracker.add_compliance_item(
             client_id="client2",
             compliance_type="tax_filing",
             title="Tax Filing",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         all_items = compliance_tracker.get_all_items()
         assert len(all_items) == 2
@@ -106,7 +106,7 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         stats = compliance_tracker.get_stats()
         assert stats["total_items_tracked"] == 1
@@ -119,7 +119,7 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         assert compliance_tracker.tracker_stats["total_items_tracked"] == initial_total + 1
         assert compliance_tracker.tracker_stats["compliance_type_distribution"]["visa_renewal"] == 1
@@ -130,7 +130,7 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         retrieved = compliance_tracker.get_compliance_item(item.item_id)
         assert retrieved == item
@@ -150,7 +150,7 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline=future_date
+            deadline=future_date,
         )
 
         upcoming = compliance_tracker.get_upcoming_deadlines(days_ahead=90)
@@ -165,13 +165,13 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline=future_date
+            deadline=future_date,
         )
         compliance_tracker.add_compliance_item(
             client_id="client2",
             compliance_type="tax_filing",
             title="Tax Filing",
-            deadline=future_date
+            deadline=future_date,
         )
 
         upcoming = compliance_tracker.get_upcoming_deadlines(client_id="client1", days_ahead=90)
@@ -183,7 +183,7 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         initial_active = compliance_tracker.tracker_stats["active_items"]
 
@@ -203,13 +203,13 @@ class TestComplianceTrackerService:
             client_id="client1",
             compliance_type="visa_renewal",
             title="Visa Renewal",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
         compliance_tracker.add_compliance_item(
             client_id="client2",
             compliance_type="tax_filing",
             title="Tax Filing",
-            deadline="2025-12-31"
+            deadline="2025-12-31",
         )
 
         client1_items = compliance_tracker.get_all_items(client_id="client1")
@@ -229,7 +229,7 @@ class TestComplianceItem:
             title="Visa Renewal",
             description="Renew visa",
             deadline="2025-12-31",
-            requirement_details="Details"
+            requirement_details="Details",
         )
         assert item.item_id == "item1"
         assert item.client_id == "client1"
@@ -245,7 +245,6 @@ class TestComplianceItem:
             description="Renew visa",
             deadline="2025-12-31",
             requirement_details="Details",
-            metadata={"priority": "high"}
+            metadata={"priority": "high"},
         )
         assert item.metadata["priority"] == "high"
-

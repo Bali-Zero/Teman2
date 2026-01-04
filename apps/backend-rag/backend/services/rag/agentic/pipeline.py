@@ -161,8 +161,7 @@ class PostProcessingStage(PipelineStage):
             data["response"] = cleaned
 
             logger.info(
-                f"[{self.name}] Post-processing complete: "
-                f"{original_length} -> {len(cleaned)} chars"
+                f"[{self.name}] Post-processing complete: {original_length} -> {len(cleaned)} chars"
             )
 
         except (ValueError, RuntimeError) as e:

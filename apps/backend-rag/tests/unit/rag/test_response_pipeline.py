@@ -29,9 +29,10 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from services.llm_clients.pricing import TokenUsage
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState
-from services.llm_clients.pricing import TokenUsage
+
 
 def mock_token_usage():
     return TokenUsage(prompt_tokens=10, completion_tokens=20)
@@ -46,16 +47,16 @@ class TestResponsePipeline:
     async def test_response_pipeline_processing(self):
         """Test that response pipeline processes final answer"""
         tool_map = {}
-        
+
         # Mock response pipeline
         mock_pipeline = MagicMock()
         mock_pipeline.process = AsyncMock(
             return_value={
                 "response": "Processed answer about KITAS",
-                "citations": [{"id": "doc1", "score": 0.9}]
+                "citations": [{"id": "doc1", "score": 0.9}],
             }
         )
-        
+
         engine = ReasoningEngine(tool_map=tool_map, response_pipeline=mock_pipeline)
 
         state = AgentState(query="What is KITAS?", max_steps=1)
@@ -92,11 +93,11 @@ class TestResponsePipeline:
     async def test_response_pipeline_error_handling(self):
         """Test that pipeline errors are handled gracefully"""
         tool_map = {}
-        
+
         # Mock response pipeline that raises error
         mock_pipeline = MagicMock()
         mock_pipeline.process = AsyncMock(side_effect=ValueError("Pipeline error"))
-        
+
         engine = ReasoningEngine(tool_map=tool_map, response_pipeline=mock_pipeline)
 
         state = AgentState(query="What is KITAS?", max_steps=1)
@@ -131,16 +132,16 @@ class TestResponsePipeline:
     async def test_response_pipeline_citation_update(self):
         """Test that pipeline can update citations"""
         tool_map = {}
-        
+
         # Mock response pipeline that updates citations
         mock_pipeline = MagicMock()
         mock_pipeline.process = AsyncMock(
             return_value={
                 "response": "Processed answer",
-                "citations": [{"id": "new_doc", "score": 0.95}]
+                "citations": [{"id": "new_doc", "score": 0.95}],
             }
         )
-        
+
         engine = ReasoningEngine(tool_map=tool_map, response_pipeline=mock_pipeline)
 
         state = AgentState(query="What is KITAS?", max_steps=1)
@@ -177,16 +178,13 @@ class TestResponsePipeline:
     async def test_response_pipeline_streaming_mode(self):
         """Test response pipeline in streaming mode"""
         tool_map = {}
-        
+
         # Mock response pipeline
         mock_pipeline = MagicMock()
         mock_pipeline.process = AsyncMock(
-            return_value={
-                "response": "Streamed processed answer",
-                "citations": []
-            }
+            return_value={"response": "Streamed processed answer", "citations": []}
         )
-        
+
         engine = ReasoningEngine(tool_map=tool_map, response_pipeline=mock_pipeline)
 
         state = AgentState(query="What is KITAS?", max_steps=1)
@@ -221,5 +219,3 @@ class TestResponsePipeline:
         # Verify token events were yielded
         token_events = [e for e in events if e.get("type") == "token"]
         assert len(token_events) > 0
-
-

@@ -244,7 +244,7 @@ def ingest_kbli(
                 break
             content = format_kbli_content(code, info)
             meta = extract_metadata(code, info)
-            print(f"\n--- Sample {i+1}: KBLI {code} ---")
+            print(f"\n--- Sample {i + 1}: KBLI {code} ---")
             print(f"Content length: {len(content)} chars")
             print(
                 f"Metadata: {json.dumps(meta, indent=2, ensure_ascii=False)[:500]}..."

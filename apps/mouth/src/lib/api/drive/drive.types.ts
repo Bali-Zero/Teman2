@@ -101,3 +101,25 @@ export interface UploadFile {
   parentId: string;
   onProgress?: (progress: UploadProgress) => void;
 }
+
+// ============== Permission Types (Board only) ==============
+
+export type PermissionRole = 'owner' | 'writer' | 'commenter' | 'reader';
+
+export interface PermissionItem {
+  id: string;
+  email: string;
+  name: string;
+  role: PermissionRole;
+  type: 'user' | 'group' | 'domain' | 'anyone';
+}
+
+export interface AddPermissionRequest {
+  email: string;
+  role: PermissionRole;
+  send_notification?: boolean;
+}
+
+export interface UpdatePermissionRequest {
+  role: PermissionRole;
+}

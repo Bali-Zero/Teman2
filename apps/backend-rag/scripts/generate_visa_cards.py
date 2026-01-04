@@ -4,17 +4,18 @@ Generate Professional Visa Cards for Bali Zero
 Creates PDF cards and updates database via API
 """
 
-import os
-import json
 import shutil
-import requests
 from pathlib import Path
-from weasyprint import HTML, CSS
+
+import requests
+from weasyprint import CSS, HTML
 
 # Paths
 DESKTOP = Path("/Users/antonellosiano/Desktop")
 PUBLIC_FILES = Path("/Users/antonellosiano/Desktop/nuzantara/apps/mouth/public/files/visa")
-LOGO_PATH = Path("/Users/antonellosiano/Desktop/nuzantara/apps/mouth/public/images/balizero-logo.png")
+LOGO_PATH = Path(
+    "/Users/antonellosiano/Desktop/nuzantara/apps/mouth/public/images/balizero-logo.png"
+)
 API_BASE = "https://nuzantara-rag.fly.dev/api/knowledge/visa"
 
 # Ensure directories exist
@@ -34,36 +35,36 @@ def generate_html(visa_data: dict) -> str:
     if visa_data.get("cost_details"):
         details = visa_data["cost_details"]
         if details.get("offshore"):
-            prices_html += f'''
+            prices_html += f"""
                 <div class="price-card featured">
                     <div class="price-type">Offshore</div>
                     <div class="price-amount">{int(details["offshore"]):,} <span>IDR</span></div>
-                </div>'''
+                </div>"""
         if details.get("onshore"):
-            prices_html += f'''
+            prices_html += f"""
                 <div class="price-card">
                     <div class="price-type">Onshore</div>
                     <div class="price-amount">{int(details["onshore"]):,} <span>IDR</span></div>
-                </div>'''
+                </div>"""
         if details.get("extension"):
-            prices_html += f'''
+            prices_html += f"""
                 <div class="price-card">
                     <div class="price-type">Extension</div>
                     <div class="price-amount">{int(details["extension"]):,} <span>IDR</span></div>
-                </div>'''
+                </div>"""
         # For single price visas
         if details.get("price_1y"):
-            prices_html += f'''
+            prices_html += f"""
                 <div class="price-card featured">
                     <div class="price-type">1 Year</div>
                     <div class="price-amount">{int(details["price_1y"]):,} <span>IDR</span></div>
-                </div>'''
+                </div>"""
         if details.get("price_2y"):
-            prices_html += f'''
+            prices_html += f"""
                 <div class="price-card">
                     <div class="price-type">2 Years</div>
                     <div class="price-amount">{int(details["price_2y"]):,} <span>IDR</span></div>
-                </div>'''
+                </div>"""
 
     # Requirements list
     requirements_html = ""
@@ -80,23 +81,23 @@ def generate_html(visa_data: dict) -> str:
     for i, step in enumerate(visa_data.get("process_steps", []), 1):
         step_name = step.split("(")[0].strip() if "(" in step else step
         step_time = step.split("(")[1].replace(")", "") if "(" in step else ""
-        steps_html += f'''
+        steps_html += f"""
             <div class="step">
                 <div class="step-number">{i}</div>
                 <div class="step-label">{step_name}</div>
                 <div class="step-time">{step_time}</div>
-            </div>'''
+            </div>"""
 
     # Dependent note
     dependent_note = ""
     if visa_data.get("metadata", {}).get("dependent_note"):
         note = visa_data["metadata"]["dependent_note"]
-        dependent_note = f'''
+        dependent_note = f"""
             <div class="dependent-note">
                 <strong>Note:</strong> {note}
-            </div>'''
+            </div>"""
 
-    html = f'''<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -300,7 +301,7 @@ def generate_html(visa_data: dict) -> str:
         </div>
     </div>
 </body>
-</html>'''
+</html>"""
     return html
 
 
@@ -316,8 +317,7 @@ def create_pdf(visa_data: dict, filename: str):
     # Generate PDF
     pdf_path = DESKTOP / f"{filename}.pdf"
     HTML(string=html_content, base_url=str(DESKTOP)).write_pdf(
-        str(pdf_path),
-        stylesheets=[CSS(string='@page { size: A4; margin: 1.5cm; }')]
+        str(pdf_path), stylesheets=[CSS(string="@page { size: A4; margin: 1.5cm; }")]
     )
 
     # Copy to public folder
@@ -358,11 +358,7 @@ VISAS = [
         "renewable": True,
         "cost_visa": "IDR 13,000,000 (offshore) / IDR 14,000,000 (onshore)",
         "cost_extension": "IDR 10,000,000",
-        "cost_details": {
-            "offshore": "13000000",
-            "onshore": "14000000",
-            "extension": "10000000"
-        },
+        "cost_details": {"offshore": "13000000", "onshore": "14000000", "extension": "10000000"},
         "requirements": [
             "Passport valid min 18 months",
             "Photo 4x6 red background",
@@ -370,40 +366,40 @@ VISAS = [
             "Proof of income min USD 5,000/month (USD 60,000/year)",
             "Bank statement 3 months",
             "Travel/health insurance",
-            "CV / Resume"
+            "CV / Resume",
         ],
         "benefits": [
             "Work remotely for foreign companies",
             "Multiple entry/exit Indonesia",
             "No IMTA/RPTKA work permit needed",
             "No Indonesian sponsor required",
-            "Path to KITAP after 4-5 years"
+            "Path to KITAP after 4-5 years",
         ],
         "allowed_activities": [
             "Remote work for foreign employers",
             "Attend online meetings",
             "Work from cafes, coworking, home",
-            "Travel around Indonesia"
+            "Travel around Indonesia",
         ],
         "restrictions": [
             "Cannot work for Indonesian companies",
             "Cannot receive salary from Indonesian sources",
-            "Cannot open office/recruit local staff"
+            "Cannot open office/recruit local staff",
         ],
         "process_steps": [
             "Document Submission (Day 1-5)",
             "Evisa Processing (Day 6-14)",
-            "KITAS Delivery (Day 15-21)"
+            "KITAS Delivery (Day 15-21)",
         ],
         "tips": [
             "Maintain income proof of USD 5,000+/month (USD 60,000/year)",
             "SKTT reporting every 3 months required",
-            "Keep insurance active throughout stay"
+            "Keep insurance active throughout stay",
         ],
         "metadata": {
             "dependent_note": "No tax obligation if income from abroad + transferred to foreign account",
-            "income_requirement": "USD 5,000/month (USD 60,000/year)"
-        }
+            "income_requirement": "USD 5,000/month (USD 60,000/year)",
+        },
     },
     {
         "id": 20,  # D1 in database
@@ -415,10 +411,7 @@ VISAS = [
         "processing_time_normal": "~5-10 days",
         "renewable": False,
         "cost_visa": "IDR 5,000,000 - 7,000,000",
-        "cost_details": {
-            "government_fee": "USD 100",
-            "total_estimate": "5000000-7000000"
-        },
+        "cost_details": {"government_fee": "USD 100", "total_estimate": "5000000-7000000"},
         "requirements": [
             "Passport valid min 18 months",
             "Photo 4x6 red background",
@@ -426,40 +419,38 @@ VISAS = [
             "Bank statement 3 months (min USD 5,000)",
             "Round trip flight booking",
             "Hotel reservation",
-            "Brief itinerary"
+            "Brief itinerary",
         ],
         "benefits": [
             "5-year validity",
             "Multiple entry unlimited",
             "All international entry points",
             "No need to reapply each trip",
-            "Perfect for frequent travelers"
+            "Perfect for frequent travelers",
         ],
         "allowed_activities": [
             "Tourism and holidays",
             "Family visits",
             "Attend events",
-            "Travel around Indonesia"
+            "Travel around Indonesia",
         ],
         "restrictions": [
             "60 days max per entry (no extension)",
             "Cannot work in Indonesia",
             "Must exit and re-enter for new 60 days",
-            "Apply offshore only"
+            "Apply offshore only",
         ],
         "process_steps": [
             "Document Preparation (Day 1-3)",
             "Evisa Submission (Day 4-7)",
-            "Approval & Collection (Day 8-10)"
+            "Approval & Collection (Day 8-10)",
         ],
         "tips": [
             "Cannot extend stay - must exit after 60 days",
             "Apply 1-2 months before travel",
-            "Any currency acceptable for bank proof"
+            "Any currency acceptable for bank proof",
         ],
-        "metadata": {
-            "dependent_note": "Exit to Singapore 1 day to reset 60-day counter"
-        }
+        "metadata": {"dependent_note": "Exit to Singapore 1 day to reset 60-day counter"},
     },
     {
         "id": 21,  # D12 in database
@@ -471,51 +462,48 @@ VISAS = [
         "processing_time_normal": "~2-3 weeks",
         "renewable": False,
         "cost_visa": "IDR 7,500,000 (1Y) / IDR 10,000,000 (2Y)",
-        "cost_details": {
-            "price_1y": "7500000",
-            "price_2y": "10000000"
-        },
+        "cost_details": {"price_1y": "7500000", "price_2y": "10000000"},
         "requirements": [
             "Passport valid min 18 months",
             "Photo 4x6 red background",
             "CV / Resume (business focus)",
             "Bank statement (min USD 2,000)",
             "Cover letter explaining visit purpose",
-            "Sponsor/guarantor letter"
+            "Sponsor/guarantor letter",
         ],
         "benefits": [
             "180 days per entry (not 60!)",
             "Multiple entry for 1-2 years",
             "Market research allowed",
             "Site visits and meetings",
-            "Path to PT PMA setup"
+            "Path to PT PMA setup",
         ],
         "allowed_activities": [
             "Meet potential partners/suppliers",
             "Visit locations for future offices",
             "Attend trade fairs/business events",
             "Consult lawyers, notaries, accountants",
-            "Open bank account (some banks)"
+            "Open bank account (some banks)",
         ],
         "restrictions": [
             "Cannot work or earn income",
             "Cannot sign contracts as employee",
             "Cannot manage company operations",
-            "Apply offshore only"
+            "Apply offshore only",
         ],
         "process_steps": [
             "Document Preparation (Day 1-5)",
             "Sponsor Coordination (Day 6-10)",
-            "Immigration Approval (Day 11-21)"
+            "Immigration Approval (Day 11-21)",
         ],
         "tips": [
             "Bali Zero can sponsor your D12",
             "Extendable +60 days (max 240/entry)",
-            "Typical path: D12 -> PT PMA -> E28A"
+            "Typical path: D12 -> PT PMA -> E28A",
         ],
         "metadata": {
             "dependent_note": "For pre-investment market research and feasibility studies"
-        }
+        },
     },
     {
         "id": 25,  # E33E Retirement KITAS (55+, 5 years)
@@ -531,7 +519,7 @@ VISAS = [
         "cost_extension": "IDR 12,000,000",
         "cost_details": {
             "total_5_years": "18000000",
-            "includes": "e-ITAS + Re-Entry Permit 5 years"
+            "includes": "e-ITAS + Re-Entry Permit 5 years",
         },
         "requirements": [
             "Age 55+ years old",
@@ -541,44 +529,44 @@ VISAS = [
             "Proof of monthly income USD 3,000+",
             "Health insurance valid in Indonesia",
             "No criminal record",
-            "Medical fitness certificate"
+            "Medical fitness certificate",
         ],
         "benefits": [
             "5 years without annual renewals",
             "No local sponsor required",
             "Multiple entry/exit",
             "Path to KITAP (permanent residence)",
-            "Lower total cost vs annual renewals"
+            "Lower total cost vs annual renewals",
         ],
         "allowed_activities": [
             "Retire and live in Indonesia",
             "Travel freely in/out of Indonesia",
-            "Enjoy Indonesian lifestyle"
+            "Enjoy Indonesian lifestyle",
         ],
         "restrictions": [
             "Cannot work in Indonesia (formal or informal)",
             "Cannot conduct business activities",
-            "Cannot receive Indonesian income"
+            "Cannot receive Indonesian income",
         ],
         "process_steps": [
             "Document preparation (Day 1-3)",
             "Bank deposit at BNI/BRI/Mandiri/BTN (Day 4-7)",
             "Immigration review (Day 8-14)",
-            "KITAS card delivery (Day 15-21)"
+            "KITAS card delivery (Day 15-21)",
         ],
         "tips": [
             "USD 50,000 must be deposited in BNI, BRI, Mandiri, or BTN",
             "Income proof: pension statements, investment returns, rental income",
             "No annual renewal hassle - valid 5 full years",
-            "Apply directly without Indonesian sponsor"
+            "Apply directly without Indonesian sponsor",
         ],
         "metadata": {
             "age_requirement": 55,
             "financial_requirement": 50000,
             "monthly_income": 3000,
             "sponsor_required": False,
-            "dependent_note": "Spouse (55+) can apply separately with same requirements"
-        }
+            "dependent_note": "Spouse (55+) can apply separately with same requirements",
+        },
     },
     {
         "id": 31,  # E33F Retirement KITAS (Pension 55+) in database
@@ -595,7 +583,7 @@ VISAS = [
         "cost_details": {
             "first_year": "14000000",
             "renewal": "11000000",
-            "government_fee": "2700000"
+            "government_fee": "2700000",
         },
         "requirements": [
             "Age 55+ years old",
@@ -605,37 +593,37 @@ VISAS = [
             "Local sponsor required (visa agent)",
             "Health insurance valid in Indonesia",
             "No criminal record",
-            "Medical fitness certificate"
+            "Medical fitness certificate",
         ],
         "benefits": [
             "No large upfront deposit required",
             "Lower financial threshold (USD 1,500 vs USD 3,000)",
             "Multiple entry/exit",
             "Path to KITAP after 5 consecutive years",
-            "Sponsor handles all paperwork"
+            "Sponsor handles all paperwork",
         ],
         "allowed_activities": [
             "Retire and live in Indonesia",
             "Travel freely in/out of Indonesia",
-            "Enjoy Indonesian lifestyle"
+            "Enjoy Indonesian lifestyle",
         ],
         "restrictions": [
             "Cannot work in Indonesia (formal or informal)",
             "Cannot conduct business activities",
             "Cannot receive Indonesian income",
-            "Must renew annually"
+            "Must renew annually",
         ],
         "process_steps": [
             "Document preparation (Day 1-3)",
             "Sponsor submission to Immigration (Day 4-7)",
             "Immigration review (Day 8-14)",
-            "KITAS card delivery (Day 15-21)"
+            "KITAS card delivery (Day 15-21)",
         ],
         "tips": [
             "Must have Indonesian sponsor (visa agent)",
             "Income proof: pension statements, investment returns, bank interest",
             "Renew 1-2 months before expiry to avoid gaps",
-            "After 5 consecutive years, apply for KITAP"
+            "After 5 consecutive years, apply for KITAP",
         ],
         "metadata": {
             "age_requirement": 55,
@@ -644,8 +632,8 @@ VISAS = [
             "popularity": "high",
             "difficulty": "low",
             "bali_zero_recommended": True,
-            "dependent_note": "Spouse eligible for Dependent KITAS at separate cost"
-        }
+            "dependent_note": "Spouse eligible for Dependent KITAS at separate cost",
+        },
     },
     {
         "id": None,  # Will create new - Working KITAS
@@ -658,11 +646,7 @@ VISAS = [
         "renewable": True,
         "cost_visa": "IDR 34,500,000 (offshore) / IDR 36,000,000 (onshore)",
         "cost_extension": "IDR 31,500,000",
-        "cost_details": {
-            "offshore": "34500000",
-            "onshore": "36000000",
-            "extension": "31500000"
-        },
+        "cost_details": {"offshore": "34500000", "onshore": "36000000", "extension": "31500000"},
         "requirements": [
             "Passport valid min 18 months",
             "Photo 4x6 red background",
@@ -671,40 +655,38 @@ VISAS = [
             "Employment contract",
             "Sponsor company (PT) in Indonesia",
             "RPTKA approval from Ministry",
-            "Company NIB and OSS"
+            "Company NIB and OSS",
         ],
         "benefits": [
             "Legal employment in Indonesia",
             "Work for Indonesian company",
             "IMTA work permit included",
             "Path to KITAP after 4 years",
-            "Bring family on Dependent KITAS"
+            "Bring family on Dependent KITAS",
         ],
         "allowed_activities": [
             "Work for sponsoring company",
             "Attend business meetings",
             "Sign contracts as employee",
-            "Receive Indonesian salary"
+            "Receive Indonesian salary",
         ],
         "restrictions": [
             "Must work for sponsor only",
             "1:10 expat to local ratio",
             "Job must match RPTKA",
-            "Cannot change employer easily"
+            "Cannot change employer easily",
         ],
         "process_steps": [
             "RPTKA Application (Day 1-14)",
             "IMTA Processing (Day 15-28)",
-            "KITAS Issuance (Day 29-42)"
+            "KITAS Issuance (Day 29-42)",
         ],
         "tips": [
             "Requires Indonesian company sponsor",
             "RPTKA must be approved first",
-            "Most complex visa type"
+            "Most complex visa type",
         ],
-        "metadata": {
-            "dependent_note": "Family can apply Dependent KITAS 1Y at IDR 11M offshore"
-        }
+        "metadata": {"dependent_note": "Family can apply Dependent KITAS 1Y at IDR 11M offshore"},
     },
     {
         "id": None,  # Will create new - Spouse KITAS
@@ -722,7 +704,7 @@ VISAS = [
             "onshore": "13500000",
             "extension": "9000000",
             "offshore_2y": "15000000",
-            "onshore_2y": "18000000"
+            "onshore_2y": "18000000",
         },
         "requirements": [
             "Marriage certificate (legalized)",
@@ -730,39 +712,37 @@ VISAS = [
             "Passport valid min 18 months",
             "Photo 4x6 red background",
             "Sponsor letter from Indonesian spouse",
-            "Proof of residence"
+            "Proof of residence",
         ],
         "benefits": [
             "Live with Indonesian spouse",
             "Multiple entry/exit",
             "Path to KITAP after 2 years",
             "Can apply for work permit separately",
-            "Children eligible for Dependent KITAS"
+            "Children eligible for Dependent KITAS",
         ],
         "allowed_activities": [
             "Reside in Indonesia",
             "Travel freely",
             "Can apply for separate work permit",
-            "Open bank account"
+            "Open bank account",
         ],
         "restrictions": [
             "Cannot work without IMTA",
             "Must maintain valid marriage",
-            "Report to immigration quarterly"
+            "Report to immigration quarterly",
         ],
         "process_steps": [
             "Document Preparation (Day 1-5)",
             "Marriage Verification (Day 6-14)",
-            "KITAS Issuance (Day 15-28)"
+            "KITAS Issuance (Day 15-28)",
         ],
         "tips": [
             "KITAP eligible after 2 years",
             "Marriage must be registered in Indonesia",
-            "Faster path to permanent residency"
+            "Faster path to permanent residency",
         ],
-        "metadata": {
-            "dependent_note": "For foreigners married to Indonesian citizens"
-        }
+        "metadata": {"dependent_note": "For foreigners married to Indonesian citizens"},
     },
     {
         "id": None,  # Will create - Dependent KITAS
@@ -780,7 +760,7 @@ VISAS = [
             "onshore": "13500000",
             "extension": "9000000",
             "offshore_2y": "15000000",
-            "onshore_2y": "18000000"
+            "onshore_2y": "18000000",
         },
         "requirements": [
             "Passport valid min 18 months",
@@ -788,40 +768,40 @@ VISAS = [
             "Marriage cert (spouse) or Birth cert (children)",
             "Sponsor's KITAS copy",
             "Sponsor letter",
-            "Family relationship proof"
+            "Family relationship proof",
         ],
         "benefits": [
             "Live with KITAS holder family member",
             "Multiple entry/exit",
             "Validity matches sponsor",
             "Children can attend school",
-            "Path to KITAP with sponsor"
+            "Path to KITAP with sponsor",
         ],
         "allowed_activities": [
             "Reside with sponsor",
             "Travel within Indonesia",
             "Children: attend school",
-            "Open bank account"
+            "Open bank account",
         ],
         "restrictions": [
             "Cannot work without separate permit",
             "Validity tied to sponsor",
-            "Must exit if sponsor's KITAS cancelled"
+            "Must exit if sponsor's KITAS cancelled",
         ],
         "process_steps": [
             "Document Preparation (Day 1-3)",
             "Sponsor Verification (Day 4-10)",
-            "KITAS Issuance (Day 11-21)"
+            "KITAS Issuance (Day 11-21)",
         ],
         "tips": [
             "Apply together with main KITAS holder",
             "Children under 18 automatically eligible",
-            "Spouse must prove marriage"
+            "Spouse must prove marriage",
         ],
         "metadata": {
             "dependent_note": "For spouse and children of KITAS holders (not Indonesian spouse)"
-        }
-    }
+        },
+    },
 ]
 
 

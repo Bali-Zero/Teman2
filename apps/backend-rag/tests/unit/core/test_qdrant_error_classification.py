@@ -7,9 +7,10 @@ Tests the new error handling features:
 - HTTP status code handling
 """
 
-import pytest
 from unittest.mock import MagicMock
+
 import httpx
+import pytest
 
 from backend.core.qdrant_db import QdrantErrorClassifier, QdrantErrorType
 
@@ -24,7 +25,7 @@ def test_classify_timeout_error(classifier):
     """Test that timeout errors are classified correctly."""
     error = httpx.TimeoutException("Timeout")
     error_type, retryable = classifier.classify(error)
-    
+
     assert error_type == QdrantErrorType.TIMEOUT
     assert retryable == True
 
@@ -33,7 +34,7 @@ def test_classify_connection_error(classifier):
     """Test that connection errors are classified correctly."""
     error = httpx.ConnectError("Connection failed")
     error_type, retryable = classifier.classify(error)
-    
+
     assert error_type == QdrantErrorType.CONNECTION
     assert retryable == True
 
@@ -44,7 +45,7 @@ def test_classify_client_error(classifier):
     response.status_code = 400
     error = httpx.HTTPStatusError("Bad request", request=MagicMock(), response=response)
     error_type, retryable = classifier.classify(error)
-    
+
     assert error_type == QdrantErrorType.CLIENT_ERROR
     assert retryable == False
 
@@ -55,7 +56,7 @@ def test_classify_server_error_retryable(classifier):
     response.status_code = 500
     error = httpx.HTTPStatusError("Server error", request=MagicMock(), response=response)
     error_type, retryable = classifier.classify(error)
-    
+
     assert error_type == QdrantErrorType.SERVER_ERROR
     assert retryable == True
 
@@ -66,7 +67,7 @@ def test_classify_502_error_retryable(classifier):
     response.status_code = 502
     error = httpx.HTTPStatusError("Bad gateway", request=MagicMock(), response=response)
     error_type, retryable = classifier.classify(error)
-    
+
     assert error_type == QdrantErrorType.SERVER_ERROR
     assert retryable == True
 
@@ -77,7 +78,7 @@ def test_classify_404_error_non_retryable(classifier):
     response.status_code = 404
     error = httpx.HTTPStatusError("Not found", request=MagicMock(), response=response)
     error_type, retryable = classifier.classify(error)
-    
+
     assert error_type == QdrantErrorType.CLIENT_ERROR
     assert retryable == False
 
@@ -86,11 +87,6 @@ def test_classify_unknown_error_non_retryable(classifier):
     """Test that unknown errors are non-retryable by default."""
     error = ValueError("Unknown error")
     error_type, retryable = classifier.classify(error)
-    
+
     assert error_type == QdrantErrorType.NON_RETRYABLE
     assert retryable == False
-
-
-
-
-

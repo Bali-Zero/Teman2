@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   File,
   Search,
@@ -25,6 +25,9 @@ import {
   Check,
   Folder,
   Presentation,
+  Sparkles,
+  FileUp,
+  FolderPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -36,10 +39,52 @@ import {
   FileModal,
   CreateMenu,
   MoveDialog,
+  PermissionDialog,
 } from '@/components/documents';
 
 type ViewMode = 'grid' | 'list';
 type ModalMode = 'folder' | 'document' | 'spreadsheet' | 'presentation' | 'rename' | null;
+
+// Skeleton component for loading state
+const Skeleton = ({ className = '' }: { className?: string }) => (
+  <div className={`animate-pulse rounded bg-[var(--foreground)]/10 ${className}`} />
+);
+
+// File skeleton for grid view
+const FileGridSkeleton = () => (
+  <div className="flex flex-col items-center rounded-xl p-3">
+    <Skeleton className="mb-2 h-14 w-16" />
+    <Skeleton className="h-5 w-20" />
+    <Skeleton className="mt-1 h-3 w-12" />
+  </div>
+);
+
+// File skeleton for list view
+const FileListSkeleton = () => (
+  <tr className="animate-pulse">
+    <td className="px-4 py-3"><Skeleton className="h-5 w-5" /></td>
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-5 w-5" />
+        <Skeleton className="h-4 w-48" />
+      </div>
+    </td>
+    <td className="hidden px-4 py-3 md:table-cell"><Skeleton className="h-4 w-24" /></td>
+    <td className="hidden px-4 py-3 md:table-cell"><Skeleton className="h-4 w-16" /></td>
+    <td className="px-4 py-3"><Skeleton className="h-4 w-4" /></td>
+  </tr>
+);
+
+// Tooltip wrapper component
+const Tooltip = ({ children, text }: { children: React.ReactNode; text: string }) => (
+  <div className="group relative inline-flex">
+    {children}
+    <div className="pointer-events-none absolute -top-10 left-1/2 z-50 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[var(--foreground)] px-2.5 py-1.5 text-xs font-medium text-[var(--background)] opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100">
+      {text}
+      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[var(--foreground)]" />
+    </div>
+  </div>
+);
 
 interface UploadItem {
   id: string;
@@ -79,9 +124,13 @@ export default function DocumentsPage() {
   const [filesToMove, setFilesToMove] = useState<FileItem[]>([]);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [operationLoading, setOperationLoading] = useState(false);
+  const [permissionFile, setPermissionFile] = useState<FileItem | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastSelectedIndex = useRef<number>(-1);
+
+  // Check if user is Board member
+  const isBoard = api.isBoard();
 
   // Check connection status
   const checkStatus = useCallback(async () => {
@@ -194,7 +243,7 @@ export default function DocumentsPage() {
     e.stopPropagation();
 
     if (e.metaKey || e.ctrlKey) {
-      // Toggle selection
+      // Cmd/Ctrl+Click = Toggle selection (multi-select)
       setSelectedFiles((prev) => {
         const next = new Set(prev);
         if (next.has(file.id)) {
@@ -206,7 +255,7 @@ export default function DocumentsPage() {
       });
       lastSelectedIndex.current = index;
     } else if (e.shiftKey && lastSelectedIndex.current !== -1) {
-      // Range selection
+      // Shift+Click = Range selection
       const start = Math.min(lastSelectedIndex.current, index);
       const end = Math.max(lastSelectedIndex.current, index);
       const newSelection = new Set<string>();
@@ -215,16 +264,16 @@ export default function DocumentsPage() {
       }
       setSelectedFiles(newSelection);
     } else {
-      // Single selection or deselect
-      if (selectedFiles.size === 1 && selectedFiles.has(file.id)) {
-        setSelectedFiles(new Set());
-      } else {
-        setSelectedFiles(new Set([file.id]));
+      // Single click = Open folder/file directly (like Finder)
+      if (file.is_folder) {
+        openFolder(file);
+      } else if (file.web_view_link) {
+        window.open(file.web_view_link, '_blank');
       }
-      lastSelectedIndex.current = index;
     }
   };
 
+  // Keep for backwards compatibility but not used in main UI
   const handleFileDoubleClick = (file: FileItem) => {
     if (file.is_folder) {
       openFolder(file);
@@ -528,10 +577,58 @@ export default function DocumentsPage() {
     ) {
       return { from: '#FB7185', to: '#F43F5E', shadow: 'rgba(244, 63, 94, 0.4)' };
     }
-    if (name.includes('bali zero') || name.includes('balizero')) {
-      return { from: '#38BDF8', to: '#0EA5E9', shadow: 'rgba(14, 165, 233, 0.4)' };
-    }
+    // Default blue
     return { from: '#38BDF8', to: '#0EA5E9', shadow: 'rgba(14, 165, 233, 0.4)' };
+  };
+
+  // Branded Bali Zero folder - black folder with logo
+  const BaliZeroFolder = ({ large = false }: { large?: boolean }) => {
+    const size = large ? { w: 180, h: 140 } : { w: 64, h: 56 };
+    const logoSize = large ? 'h-16 w-16' : 'h-7 w-7';
+
+    return (
+      <div
+        className="relative transition-transform group-hover:scale-105"
+        style={{
+          width: size.w,
+          height: size.h,
+          filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5))'
+        }}
+      >
+        {/* Black folder shape */}
+        <svg
+          viewBox="0 0 64 56"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-full w-full"
+        >
+          {/* Folder tab */}
+          <path
+            d="M2 8C2 5.79086 3.79086 4 6 4H22L28 12H58C60.2091 12 62 13.7909 62 16V48C62 50.2091 60.2091 52 58 52H6C3.79086 52 2 50.2091 2 48V8Z"
+            fill="#000000"
+          />
+          {/* Folder front */}
+          <path
+            d="M2 20C2 17.7909 3.79086 16 6 16H58C60.2091 16 62 17.7909 62 20V48C62 50.2091 60.2091 52 58 52H6C3.79086 52 2 50.2091 2 48V20Z"
+            fill="#000000"
+          />
+          {/* Subtle highlight */}
+          <path
+            d="M4 20C4 18.8954 4.89543 18 6 18H58C59.1046 18 60 18.8954 60 20V21H4V20Z"
+            fill="#151515"
+          />
+        </svg>
+        {/* Logo centered on folder */}
+        <div className="absolute inset-0 flex items-center justify-center" style={{ paddingTop: large ? '35px' : '12px' }}>
+          <img
+            src="/images/balizero-logo-clean.png"
+            alt="Bali Zero"
+            className={`${logoSize} object-contain rounded-full`}
+            style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
+          />
+        </div>
+      </div>
+    );
   };
 
   const MacOSFolder = ({ name }: { name: string }) => {
@@ -642,6 +739,12 @@ export default function DocumentsPage() {
     });
   };
 
+  // ============== Computed Values ==============
+
+  // Display all files returned by backend
+  // Backend already filters by root_folder_id and user permissions
+  const displayFiles = files;
+
   // ============== Effects ==============
 
   useEffect(() => {
@@ -716,58 +819,73 @@ export default function DocumentsPage() {
             </h1>
             <p className="text-sm text-[var(--foreground-muted)]">Google Drive del team Bali Zero</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => loadFiles(currentFolderId)}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-1">
+            <Tooltip text="Aggiorna">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => loadFiles(currentFolderId)}
+                disabled={loading}
+                className="transition-transform hover:scale-105 active:scale-95"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </Tooltip>
+            <div className="mx-1 h-6 w-px bg-[var(--border)]" />
+            <Tooltip text="Vista griglia">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="transition-transform hover:scale-105 active:scale-95"
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+            <Tooltip text="Vista lista">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="transition-transform hover:scale-105 active:scale-95"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </Tooltip>
           </div>
         </div>
 
         {/* Toolbar */}
         <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-2">
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700"
-              onClick={(e) => {
-                e.stopPropagation();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setCreateMenuPosition({ x: rect.left, y: rect.bottom + 4 });
-              }}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Nuovo
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-            >
-              <Upload className="mr-1 h-4 w-4" />
-              Carica
-            </Button>
+            <Tooltip text="Crea cartella o documento">
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 transition-all hover:scale-105 active:scale-95 hover:shadow-lg hover:shadow-emerald-500/25"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setCreateMenuPosition({ x: rect.left, y: rect.bottom + 4 });
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                Nuovo
+              </Button>
+            </Tooltip>
+            <Tooltip text="Carica file dal computer">
+              <Button
+                size="sm"
+                variant="outline"
+                className="transition-all hover:scale-105 active:scale-95 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+              >
+                <Upload className="mr-1 h-4 w-4" />
+                Carica
+              </Button>
+            </Tooltip>
             <input
               ref={fileInputRef}
               type="file"
@@ -814,21 +932,31 @@ export default function DocumentsPage() {
 
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-muted)]" />
+          <div className="group relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--foreground-muted)] transition-colors group-focus-within:text-blue-500" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cerca documenti..."
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] py-2 pl-10 pr-4 text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] py-2.5 pl-10 pr-4 text-[var(--foreground)] transition-all duration-200 placeholder:text-[var(--foreground-muted)] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:shadow-lg focus:shadow-blue-500/10"
             />
           </div>
-          <Button type="submit" disabled={!searchQuery.trim()}>
+          <Button
+            type="submit"
+            disabled={!searchQuery.trim()}
+            className="transition-all duration-200 hover:scale-105 active:scale-95 disabled:hover:scale-100"
+          >
+            <Search className="mr-1.5 h-4 w-4" />
             Cerca
           </Button>
           {isSearching && (
-            <Button type="button" variant="ghost" onClick={clearSearch}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={clearSearch}
+              className="transition-all duration-200 hover:scale-105 active:scale-95"
+            >
               Cancella
             </Button>
           )}
@@ -839,17 +967,21 @@ export default function DocumentsPage() {
           <nav className="flex items-center gap-1 overflow-x-auto pb-2 text-sm">
             <button
               onClick={() => navigateToBreadcrumb(-1)}
-              className="flex items-center gap-1 rounded px-2 py-1 text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)] hover:text-[var(--foreground)]"
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[var(--foreground-muted)] transition-all duration-200 hover:bg-[var(--background-secondary)] hover:text-[var(--foreground)] hover:shadow-sm active:scale-95"
             >
               <Home className="h-4 w-4" />
               Home
             </button>
             {breadcrumb.map((item, index) => (
               <React.Fragment key={item.id}>
-                <ChevronRight className="h-4 w-4 text-[var(--foreground-muted)]" />
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-[var(--foreground-muted)] transition-transform" />
                 <button
                   onClick={() => navigateToBreadcrumb(index)}
-                  className="max-w-[150px] truncate rounded px-2 py-1 text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)] hover:text-[var(--foreground)]"
+                  className={`max-w-[150px] truncate rounded-lg px-2.5 py-1.5 transition-all duration-200 hover:bg-[var(--background-secondary)] hover:shadow-sm active:scale-95 ${
+                    index === breadcrumb.length - 1
+                      ? 'font-medium text-[var(--foreground)]'
+                      : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                  }`}
                 >
                   {item.name}
                 </button>
@@ -859,92 +991,145 @@ export default function DocumentsPage() {
         )}
 
         {/* Files */}
-        {loading && files.length === 0 ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-          </div>
-        ) : files.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-[var(--foreground-muted)]">
-            <FolderOpen className="mb-4 h-16 w-16 opacity-50" />
-            <p>{isSearching ? 'Nessun risultato trovato' : 'Questa cartella è vuota'}</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Carica file
-            </Button>
+        {loading && displayFiles.length === 0 ? (
+          /* Skeleton Loading State */
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-3 gap-4 p-4 md:grid-cols-5 lg:grid-cols-7">
+              {Array.from({ length: 14 }).map((_, i) => (
+                <FileGridSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+              <table className="w-full">
+                <thead className="bg-[var(--background-secondary)]">
+                  <tr>
+                    <th className="w-10 px-4 py-3"></th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-[var(--foreground-muted)]">Nome</th>
+                    <th className="hidden px-4 py-3 text-left text-sm font-medium text-[var(--foreground-muted)] md:table-cell">Modificato</th>
+                    <th className="hidden px-4 py-3 text-left text-sm font-medium text-[var(--foreground-muted)] md:table-cell">Dimensione</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <FileListSkeleton key={i} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : displayFiles.length === 0 ? (
+          /* Empty State */
+          <div className="flex flex-col items-center justify-center py-16 text-[var(--foreground-muted)]">
+            <div className="relative mb-6">
+              <div className="absolute -inset-4 rounded-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 blur-xl" />
+              <div className="relative rounded-full bg-[var(--background-secondary)] p-6">
+                {isSearching ? (
+                  <Search className="h-12 w-12 opacity-50" />
+                ) : (
+                  <FolderOpen className="h-12 w-12 text-amber-500/70" />
+                )}
+              </div>
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-[var(--foreground)]">
+              {isSearching ? 'Nessun risultato trovato' : 'Questa cartella è vuota'}
+            </h3>
+            <p className="mb-6 max-w-sm text-center text-sm">
+              {isSearching
+                ? 'Prova a cercare con termini diversi o controlla l\'ortografia'
+                : 'Inizia caricando un file o creando una nuova cartella'}
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="transition-all hover:scale-105 active:scale-95"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileUp className="mr-2 h-4 w-4" />
+                Carica file
+              </Button>
+              {!isSearching && (
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700 transition-all hover:scale-105 active:scale-95"
+                  onClick={() => setModalMode('folder')}
+                >
+                  <FolderPlus className="mr-2 h-4 w-4" />
+                  Nuova cartella
+                </Button>
+              )}
+            </div>
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-3 gap-4 p-4 md:grid-cols-5 lg:grid-cols-7">
-            {files.map((file, index) => {
-              const isSelected = selectedFiles.has(file.id);
-              return (
-                <div
-                  key={file.id}
-                  onClick={(e) => handleFileClick(file, index, e)}
-                  onDoubleClick={() => handleFileDoubleClick(file)}
-                  onContextMenu={(e) => handleContextMenu(file, e)}
-                  className={`group relative flex cursor-pointer flex-col items-center rounded-xl p-3 text-center transition-all ${
-                    isSelected
-                      ? 'bg-emerald-100 ring-2 ring-emerald-500 dark:bg-emerald-900/30'
-                      : 'hover:bg-white/5'
-                  }`}
-                >
-                  {/* Selection checkbox */}
-                  <div
-                    className={`absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded border transition-opacity ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-500 opacity-100'
-                        : 'border-gray-300 bg-white opacity-0 group-hover:opacity-100 dark:border-gray-600 dark:bg-gray-700'
-                    }`}
-                  >
-                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                  </div>
-
-                  {/* Icon */}
-                  <div className="mb-2">
-                    {file.is_folder ? (
-                      <MacOSFolder name={file.name} />
-                    ) : file.thumbnail_link ? (
-                      <img
-                        src={file.thumbnail_link}
-                        alt={file.name}
-                        className="h-14 w-14 rounded-lg object-cover shadow-md"
-                      />
-                    ) : (
-                      getFileIcon(file)
-                    )}
-                  </div>
-
-                  {/* Name */}
-                  <div className="w-full">
-                    <span className="inline-block max-w-full truncate rounded-md bg-[var(--foreground)]/10 px-2 py-0.5 text-sm font-medium text-[var(--foreground)] backdrop-blur-sm">
-                      {file.name}
-                    </span>
-                  </div>
-
-                  {/* Size */}
-                  <p className="mt-1 text-xs text-[var(--foreground-muted)]">
-                    {file.is_folder ? '' : formatSize(file.size)}
-                  </p>
-
-                  {/* External link */}
-                  {file.web_view_link && !file.is_folder && (
-                    <a
-                      href={file.web_view_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute right-2 top-2 rounded-lg bg-black/40 p-1.5 opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/60 group-hover:opacity-100"
-                      onClick={(e) => e.stopPropagation()}
+                {displayFiles.map((file, index) => {
+                  const isSelected = selectedFiles.has(file.id);
+                  const isBaliZero = file.is_folder && file.name.toLowerCase().includes('bali');
+                  return (
+                    <div
+                      key={file.id}
+                      onClick={(e) => handleFileClick(file, index, e)}
+                      onDoubleClick={() => handleFileDoubleClick(file)}
+                      onContextMenu={(e) => handleContextMenu(file, e)}
+                      style={{
+                        animationDelay: `${index * 30}ms`,
+                        animationFillMode: 'backwards'
+                      }}
+                      className={`group relative flex cursor-pointer flex-col items-center rounded-xl p-3 text-center transition-all duration-200 animate-in fade-in-0 slide-in-from-bottom-2 ${
+                        isSelected
+                          ? 'bg-emerald-100 ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/20 dark:bg-emerald-900/30'
+                          : file.is_folder ? 'hover:-translate-y-0.5' : 'hover:bg-[var(--background-secondary)] hover:shadow-md hover:-translate-y-0.5'
+                      }`}
                     >
-                      <ExternalLink className="h-3.5 w-3.5 text-white" />
-                    </a>
-                  )}
-                </div>
-              );
-            })}
+                      {/* Selection indicator - only visible when selected */}
+                      {isSelected && (
+                        <div className="absolute left-2 top-2 flex h-5 w-5 items-center justify-center rounded border border-emerald-500 bg-emerald-500">
+                          <Check className="h-3 w-3 text-white" />
+                        </div>
+                      )}
+
+                      {/* Icon */}
+                      <div className="mb-2">
+                        {file.is_folder ? (
+                          isBaliZero ? <BaliZeroFolder /> : <MacOSFolder name={file.name} />
+                        ) : file.thumbnail_link ? (
+                          <img
+                            src={file.thumbnail_link}
+                            alt={file.name}
+                            className="h-14 w-14 rounded-lg object-cover shadow-md"
+                          />
+                        ) : (
+                          getFileIcon(file)
+                        )}
+                      </div>
+
+                      {/* Name */}
+                      <div className="w-full">
+                        <span className="inline-block max-w-full truncate rounded-md bg-[var(--foreground)]/10 px-2 py-0.5 text-sm font-medium text-[var(--foreground)] backdrop-blur-sm">
+                          {file.name}
+                        </span>
+                      </div>
+
+                      {/* Size */}
+                      <p className="mt-1 text-xs text-[var(--foreground-muted)]">
+                        {file.is_folder ? '' : formatSize(file.size)}
+                      </p>
+
+                      {/* External link */}
+                      {file.web_view_link && !file.is_folder && (
+                        <a
+                          href={file.web_view_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="absolute right-2 top-2 rounded-lg bg-black/40 p-1.5 opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/60 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 text-white" />
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
           </div>
         ) : (
           <div className="overflow-hidden rounded-lg border border-[var(--border)]">
@@ -965,7 +1150,7 @@ export default function DocumentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border)]">
-                {files.map((file, index) => {
+                {displayFiles.map((file, index) => {
                   const isSelected = selectedFiles.has(file.id);
                   return (
                     <tr
@@ -973,10 +1158,14 @@ export default function DocumentsPage() {
                       onClick={(e) => handleFileClick(file, index, e)}
                       onDoubleClick={() => handleFileDoubleClick(file)}
                       onContextMenu={(e) => handleContextMenu(file, e)}
-                      className={`cursor-pointer transition-colors ${
+                      style={{
+                        animationDelay: `${index * 20}ms`,
+                        animationFillMode: 'backwards'
+                      }}
+                      className={`cursor-pointer transition-all duration-200 animate-in fade-in-0 slide-in-from-left-1 ${
                         isSelected
-                          ? 'bg-emerald-50 dark:bg-emerald-900/20'
-                          : 'bg-[var(--background-elevated)] hover:bg-[var(--background-secondary)]'
+                          ? 'bg-emerald-50 shadow-sm dark:bg-emerald-900/20'
+                          : 'bg-[var(--background-elevated)] hover:bg-[var(--background-secondary)] hover:shadow-sm'
                       }`}
                     >
                       <td className="px-4 py-3">
@@ -1054,6 +1243,8 @@ export default function DocumentsPage() {
           }}
           onCopy={(file) => handleCopy(file)}
           onDownload={(file) => handleDownload(file)}
+          onManageAccess={(file) => setPermissionFile(file)}
+          isBoard={isBoard}
         />
       )}
 
@@ -1104,6 +1295,15 @@ export default function DocumentsPage() {
 
       {/* Upload Progress */}
       <UploadProgress uploads={uploads} onCancel={cancelUpload} onDismiss={dismissUpload} />
+
+      {/* Permission Dialog (Board only) */}
+      {isBoard && (
+        <PermissionDialog
+          isOpen={permissionFile !== null}
+          file={permissionFile}
+          onClose={() => setPermissionFile(null)}
+        />
+      )}
     </DropZone>
   );
 }

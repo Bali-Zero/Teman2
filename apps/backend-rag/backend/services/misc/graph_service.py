@@ -70,7 +70,9 @@ class GraphService:
         props["strength"] = relation.strength
 
         # Generate relationship_id (TEXT PK) from source, type, target
-        relationship_id = f"{relation.source_id}__{relation.type.lower().replace(' ', '_')}__{relation.target_id}"
+        relationship_id = (
+            f"{relation.source_id}__{relation.type.lower().replace(' ', '_')}__{relation.target_id}"
+        )
 
         query = """
             INSERT INTO kg_edges (relationship_id, source_entity_id, target_entity_id, relationship_type, properties, source_chunk_ids, created_at)
@@ -89,9 +91,7 @@ class GraphService:
                 json.dumps(props),
             )
 
-    async def get_neighbors(
-        self, entity_id: str, relation_type: str | None = None
-    ) -> list[dict]:
+    async def get_neighbors(self, entity_id: str, relation_type: str | None = None) -> list[dict]:
         """Get outgoing edges and target entities for a node (kg_edges + kg_nodes)."""
         query = """
             SELECT
@@ -184,7 +184,9 @@ class GraphService:
                         "source": current_id,
                         "target": target_id,
                         "type": row["relationship_type"],
-                        "strength": row["properties"].get("strength", 1.0) if row["properties"] else 1.0,
+                        "strength": row["properties"].get("strength", 1.0)
+                        if row["properties"]
+                        else 1.0,
                     }
                     edges.append(edge)
 

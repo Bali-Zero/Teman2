@@ -189,7 +189,9 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS client_invitations CASCADE;")
 
     # Drop trigger and function
-    await conn.execute("DROP TRIGGER IF EXISTS trigger_client_preferences_updated ON client_preferences;")
+    await conn.execute(
+        "DROP TRIGGER IF EXISTS trigger_client_preferences_updated ON client_preferences;"
+    )
     await conn.execute("DROP FUNCTION IF EXISTS update_client_preferences_timestamp();")
 
     # Remove columns from team_members

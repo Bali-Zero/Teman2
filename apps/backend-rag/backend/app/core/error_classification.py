@@ -92,7 +92,9 @@ class ErrorClassifier:
         if isinstance(error, asyncpg.PostgresError):
             if isinstance(error, (asyncpg.ConnectionDoesNotExistError, asyncpg.InterfaceError)):
                 return (ErrorCategory.TRANSIENT, ErrorSeverity.HIGH)
-            elif isinstance(error, (asyncpg.UniqueViolationError, asyncpg.ForeignKeyViolationError)):
+            elif isinstance(
+                error, (asyncpg.UniqueViolationError, asyncpg.ForeignKeyViolationError)
+            ):
                 return (ErrorCategory.PERMANENT, ErrorSeverity.MEDIUM)
             else:
                 return (ErrorCategory.TRANSIENT, ErrorSeverity.MEDIUM)
@@ -177,4 +179,3 @@ def get_error_context(error: Exception, **kwargs: Any) -> dict[str, Any]:
     context.update(kwargs)
 
     return context
-

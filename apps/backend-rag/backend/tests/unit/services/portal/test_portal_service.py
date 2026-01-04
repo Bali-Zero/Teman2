@@ -22,7 +22,11 @@ def mock_db_pool():
     pool = AsyncMock()
     conn = AsyncMock()
     mock_client = MagicMock()
-    mock_client.__getitem__ = lambda self, key: {"id": 1, "full_name": "Test Client", "email": "test@example.com"}.get(key)
+    mock_client.__getitem__ = lambda self, key: {
+        "id": 1,
+        "full_name": "Test Client",
+        "email": "test@example.com",
+    }.get(key)
     conn.fetchrow = AsyncMock(return_value=mock_client)
     conn.fetch = AsyncMock(return_value=[])
     conn.__aenter__ = AsyncMock(return_value=conn)
@@ -49,7 +53,11 @@ class TestPortalService:
         """Test getting dashboard"""
         mock_conn = AsyncMock()
         mock_client = MagicMock()
-        mock_client.__getitem__ = lambda self, key: {"id": 1, "full_name": "Test Client", "email": "test@example.com"}.get(key)
+        mock_client.__getitem__ = lambda self, key: {
+            "id": 1,
+            "full_name": "Test Client",
+            "email": "test@example.com",
+        }.get(key)
         mock_conn.fetchrow = AsyncMock(return_value=mock_client)
         mock_conn.fetch = AsyncMock(return_value=[])
         mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -70,7 +78,3 @@ class TestPortalService:
         mock_db_pool.acquire = MagicMock(return_value=mock_conn)
         with pytest.raises(ValueError):
             await portal_service.get_dashboard(999)
-
-
-
-

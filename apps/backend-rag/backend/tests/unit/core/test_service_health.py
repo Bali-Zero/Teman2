@@ -19,10 +19,7 @@ class TestServiceHealth:
 
     def test_init(self):
         """Test initialization"""
-        health = ServiceHealth(
-            name="test_service",
-            status=ServiceStatus.HEALTHY
-        )
+        health = ServiceHealth(name="test_service", status=ServiceStatus.HEALTHY)
         assert health.name == "test_service"
         assert health.status == ServiceStatus.HEALTHY
         assert health.error is None
@@ -37,7 +34,7 @@ class TestServiceHealth:
             error="Test error",
             is_critical=True,
             initialized_at=now,
-            last_check=now
+            last_check=now,
         )
         assert health.name == "test_service"
         assert health.status == ServiceStatus.DEGRADED
@@ -49,10 +46,7 @@ class TestServiceHealth:
         """Test converting to dictionary"""
         now = datetime.now(timezone.utc)
         health = ServiceHealth(
-            name="test_service",
-            status=ServiceStatus.HEALTHY,
-            initialized_at=now,
-            last_check=now
+            name="test_service", status=ServiceStatus.HEALTHY, initialized_at=now, last_check=now
         )
         result = health.to_dict()
         assert result["name"] == "test_service"
@@ -63,9 +57,7 @@ class TestServiceHealth:
     def test_to_dict_with_error(self):
         """Test converting to dictionary with error"""
         health = ServiceHealth(
-            name="test_service",
-            status=ServiceStatus.UNAVAILABLE,
-            error="Service error"
+            name="test_service", status=ServiceStatus.UNAVAILABLE, error="Service error"
         )
         result = health.to_dict()
         assert result["error"] == "Service error"
@@ -236,7 +228,3 @@ class TestServiceRegistry:
         """Test that service_registry is a singleton"""
         assert service_registry is not None
         assert isinstance(service_registry, ServiceRegistry)
-
-
-
-

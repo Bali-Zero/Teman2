@@ -20,6 +20,7 @@ from app.routers.crm_interactions import (
     create_interaction,
     get_interaction,
     list_interactions,
+    sync_gmail_interactions,
 )
 
 # ============================================================================

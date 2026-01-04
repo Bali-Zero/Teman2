@@ -106,9 +106,18 @@ class TestEmotionAnalyzer:
     def test_has_emotional_content_all_italian_words(self):
         """Test all Italian emotional words"""
         italian_words = [
-            "disperato", "disperata", "frustrato", "frustrata",
-            "arrabbiato", "arrabbiata", "felice", "preoccupato",
-            "ansioso", "triste", "spaventato", "speranza"
+            "disperato",
+            "disperata",
+            "frustrato",
+            "frustrata",
+            "arrabbiato",
+            "arrabbiata",
+            "felice",
+            "preoccupato",
+            "ansioso",
+            "triste",
+            "spaventato",
+            "speranza",
         ]
         for word in italian_words:
             assert has_emotional_content(f"Sono {word}") is True
@@ -116,8 +125,15 @@ class TestEmotionAnalyzer:
     def test_has_emotional_content_all_english_words(self):
         """Test all English emotional words"""
         english_words = [
-            "desperate", "frustrated", "angry", "happy",
-            "worried", "stressed", "sad", "afraid", "hopeful"
+            "desperate",
+            "frustrated",
+            "angry",
+            "happy",
+            "worried",
+            "stressed",
+            "sad",
+            "afraid",
+            "hopeful",
         ]
         for word in english_words:
             assert has_emotional_content(f"I'm {word}") is True
@@ -125,8 +141,15 @@ class TestEmotionAnalyzer:
     def test_has_emotional_content_all_indonesian_words(self):
         """Test all Indonesian emotional words"""
         indonesian_words = [
-            "putus asa", "frustrasi", "marah", "bahagia",
-            "khawatir", "stres", "sedih", "takut", "harapan"
+            "putus asa",
+            "frustrasi",
+            "marah",
+            "bahagia",
+            "khawatir",
+            "stres",
+            "sedih",
+            "takut",
+            "harapan",
         ]
         for phrase in indonesian_words:
             assert has_emotional_content(f"Saya {phrase}") is True

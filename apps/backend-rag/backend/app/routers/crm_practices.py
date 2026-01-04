@@ -473,8 +473,12 @@ async def get_practice(
             if not user_is_admin:
                 client_lead = (row.get("client_lead") or "").lower()
                 if client_lead != user_email:
-                    logger.warning(f"RBAC: User {user_email} denied access to practice {practice_id}")
-                    raise HTTPException(status_code=403, detail="You don't have access to this practice")
+                    logger.warning(
+                        f"RBAC: User {user_email} denied access to practice {practice_id}"
+                    )
+                    raise HTTPException(
+                        status_code=403, detail="You don't have access to this practice"
+                    )
 
             return dict(row)
 
@@ -532,8 +536,12 @@ async def update_practice(
 
                 client_lead = (check_row.get("client_lead") or "").lower()
                 if client_lead != user_email:
-                    logger.warning(f"RBAC: User {user_email} denied update to practice {practice_id}")
-                    raise HTTPException(status_code=403, detail="You don't have access to update this practice")
+                    logger.warning(
+                        f"RBAC: User {user_email} denied update to practice {practice_id}"
+                    )
+                    raise HTTPException(
+                        status_code=403, detail="You don't have access to update this practice"
+                    )
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []
@@ -681,8 +689,12 @@ async def delete_practice(
 
                 client_lead = (check_row.get("client_lead") or "").lower()
                 if client_lead != user_email:
-                    logger.warning(f"RBAC: User {user_email} denied delete of practice {practice_id}")
-                    raise HTTPException(status_code=403, detail="You don't have access to delete this practice")
+                    logger.warning(
+                        f"RBAC: User {user_email} denied delete of practice {practice_id}"
+                    )
+                    raise HTTPException(
+                        status_code=403, detail="You don't have access to delete this practice"
+                    )
 
             # Soft delete - mark as cancelled
             row = await conn.fetchrow(

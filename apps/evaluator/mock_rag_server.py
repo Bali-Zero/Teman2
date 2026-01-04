@@ -109,14 +109,20 @@ class MockRAGHandler(BaseHTTPRequestHandler):
             return response
 
         # Tax-related queries
-        if any(kw in query_lower for kw in ["pph", "tasse", "fiscal", "aliquote", "dipendenti"]):
+        if any(
+            kw in query_lower
+            for kw in ["pph", "tasse", "fiscal", "aliquote", "dipendenti"]
+        ):
             response["answer"] = random.choice(self.RESPONSES["tax_info"])
             response["evidence_score"] = 0.85
             response["sources"] = [{"content": "Tax regulation document", "score": 0.9}]
             return response
 
         # Visa/KITAS queries
-        if any(kw in query_lower for kw in ["kitas", "visa", "visto", "permesso", "immigrazione"]):
+        if any(
+            kw in query_lower
+            for kw in ["kitas", "visa", "visto", "permesso", "immigrazione"]
+        ):
             response["answer"] = random.choice(self.RESPONSES["visa_info"])
             response["evidence_score"] = 0.9
             response["sources"] = [{"content": "Immigration document", "score": 0.92}]

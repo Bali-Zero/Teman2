@@ -3,7 +3,7 @@ Unit tests for services.analytics.analytics_aggregator module
 """
 
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -26,17 +26,17 @@ def mock_db_pool():
     """Create a mock database connection pool"""
     pool = MagicMock()
     conn = MagicMock()
-    
+
     # Mock connection context manager properly
     conn.__aenter__ = AsyncMock(return_value=conn)
     conn.__aexit__ = AsyncMock(return_value=None)
-    
+
     # Make acquire() return an async context manager
     acquire_cm = MagicMock()
     acquire_cm.__aenter__ = AsyncMock(return_value=conn)
     acquire_cm.__aexit__ = AsyncMock(return_value=None)
     pool.acquire = MagicMock(return_value=acquire_cm)
-    
+
     return pool, conn
 
 
@@ -74,7 +74,9 @@ class TestGetDbPool:
         assert result == pool
 
     @pytest.mark.asyncio
-    async def test_returns_pool_from_memory_service_when_db_pool_missing(self, mock_app_state, mock_db_pool):
+    async def test_returns_pool_from_memory_service_when_db_pool_missing(
+        self, mock_app_state, mock_db_pool
+    ):
         """Test that _get_db_pool returns pool from memory_service when db_pool is missing"""
         pool, _ = mock_db_pool
         memory_service = MagicMock()
@@ -103,13 +105,15 @@ class TestGetOverviewStats:
         """Test that get_overview_stats returns stats with database data"""
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         # Mock database queries
-        conn.fetchval = AsyncMock(side_effect=[10, 50, 5, 1000.0])  # conversations_today, week, users_active, revenue
-        
+        conn.fetchval = AsyncMock(
+            side_effect=[10, 50, 5, 1000.0]
+        )  # conversations_today, week, users_active, revenue
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_overview_stats()
-        
+
         assert stats.conversations_today == 10
         assert stats.conversations_week == 50
         assert stats.users_active == 5
@@ -122,7 +126,7 @@ class TestGetOverviewStats:
         mock_app_state.db_pool = None
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_overview_stats()
-        
+
         assert stats.conversations_today == 0
         assert stats.conversations_week == 0
         assert stats.users_active == 0
@@ -135,7 +139,7 @@ class TestGetOverviewStats:
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
         conn.fetchval = AsyncMock(return_value=0)
-        
+
         health_monitor = MagicMock()
         health_monitor._service_states = {
             "service1": {"healthy": True},
@@ -143,10 +147,10 @@ class TestGetOverviewStats:
             "service3": {"healthy": True},
         }
         mock_app_state.health_monitor = health_monitor
-        
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_overview_stats()
-        
+
         assert stats.services_total == 3
         assert stats.services_healthy == 2
 
@@ -155,20 +159,20 @@ class TestGetOverviewStats:
         """Test that get_overview_stats handles database errors gracefully"""
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         # Make fetchval raise an exception (after acquire succeeds)
         conn.fetchval = AsyncMock(side_effect=Exception("DB Error"))
-        
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_overview_stats()
-        
+
         # Should still return stats object with defaults
         assert stats is not None
         # Even if database fails, stats object should be returned
         # uptime_seconds is set inside try block after pool check, so may be 0 if error occurs early
         # But the important thing is that the function doesn't crash
-        assert hasattr(stats, 'conversations_today')
-        assert hasattr(stats, 'uptime_seconds')
+        assert hasattr(stats, "conversations_today")
+        assert hasattr(stats, "uptime_seconds")
 
 
 class TestGetRagStats:
@@ -179,7 +183,7 @@ class TestGetRagStats:
         """Test that get_rag_stats returns stats with database data"""
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         # Mock fetchrow for query analytics
         mock_row = MagicMock()
         mock_row.__getitem__ = lambda self, key: {
@@ -190,15 +194,13 @@ class TestGetRagStats:
             "avg_rerank": 0.05,
             "avg_llm": 0.3,
         }.get(key, 0)
-        
+
         conn.fetchrow = AsyncMock(return_value=mock_row)
-        conn.fetch = AsyncMock(return_value=[
-            {"query_text": "test query", "count": 5}
-        ])
-        
+        conn.fetch = AsyncMock(return_value=[{"query_text": "test query", "count": 5}])
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_rag_stats()
-        
+
         assert stats.queries_today == 100
         assert stats.avg_latency_ms == 500.0
         assert stats.embedding_latency_ms == 100.0  # 0.1 * 1000
@@ -211,7 +213,7 @@ class TestGetRagStats:
         mock_app_state.db_pool = None
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_rag_stats()
-        
+
         assert stats.queries_today == 0
         assert stats.avg_latency_ms == 0.0
         assert stats.top_queries == []
@@ -225,13 +227,18 @@ class TestGetCrmStats:
         """Test that get_crm_stats returns stats with database data"""
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         # Mock client rows
-        conn.fetch = AsyncMock(side_effect=[
-            [{"status": "active", "count": 10}, {"status": "inactive", "count": 5}],  # clients
-            [{"status": "pending", "count": 3}, {"status": "completed", "count": 7}],  # practices
-        ])
-        
+        conn.fetch = AsyncMock(
+            side_effect=[
+                [{"status": "active", "count": 10}, {"status": "inactive", "count": 5}],  # clients
+                [
+                    {"status": "pending", "count": 3},
+                    {"status": "completed", "count": 7},
+                ],  # practices
+            ]
+        )
+
         # Mock revenue row
         revenue_row = MagicMock()
         revenue_row.__getitem__ = lambda self, key: {
@@ -239,12 +246,12 @@ class TestGetCrmStats:
             "paid": 3000.0,
         }.get(key, 0)
         conn.fetchrow = AsyncMock(return_value=revenue_row)
-        
+
         conn.fetchval = AsyncMock(side_effect=[2, 3, 4, 1])  # renewals and documents
-        
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_crm_stats()
-        
+
         assert stats.clients_total == 15
         assert stats.clients_active == 10
         assert stats.practices_total == 10
@@ -262,17 +269,21 @@ class TestGetTeamStats:
         """Test that get_team_stats returns stats with database data"""
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         # Note: SQL query divides by 60.0, so fetchval returns hours directly
-        conn.fetchval = AsyncMock(side_effect=[8.0, 40.0, 5, 2])  # hours (today, week), active_sessions, action_items
-        conn.fetch = AsyncMock(return_value=[
-            {"team_member": "Alice", "count": 10},
-            {"team_member": "Bob", "count": 5},
-        ])
-        
+        conn.fetchval = AsyncMock(
+            side_effect=[8.0, 40.0, 5, 2]
+        )  # hours (today, week), active_sessions, action_items
+        conn.fetch = AsyncMock(
+            return_value=[
+                {"team_member": "Alice", "count": 10},
+                {"team_member": "Bob", "count": 5},
+            ]
+        )
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_team_stats()
-        
+
         assert stats.hours_today == 8.0
         assert stats.hours_week == 40.0
         assert stats.active_sessions == 5
@@ -289,21 +300,21 @@ class TestGetSystemStats:
         """Test that get_system_stats returns system statistics"""
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         # Mock pool methods
         pool.get_size = MagicMock(return_value=20)
         pool.get_idle_size = MagicMock(return_value=5)
-        
+
         health_monitor = MagicMock()
         health_monitor._service_states = {
             "service1": {"healthy": True, "last_check": "2024-01-01", "error": ""},
             "service2": {"healthy": False, "last_check": "2024-01-01", "error": "Error"},
         }
         mock_app_state.health_monitor = health_monitor
-        
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_system_stats()
-        
+
         assert stats.cpu_percent >= 0
         assert stats.memory_mb > 0
         assert stats.memory_percent >= 0
@@ -317,7 +328,7 @@ class TestGetSystemStats:
         mock_app_state.db_pool = None
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_system_stats()
-        
+
         assert stats.cpu_percent >= 0
         assert stats.memory_mb > 0
 
@@ -329,20 +340,29 @@ class TestGetFeedbackStats:
     async def test_returns_feedback_stats_with_db_data(self, mock_app_state, mock_db_pool):
         """Test that get_feedback_stats returns stats with database data"""
         from datetime import datetime
-        
+
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         conn.fetchval = AsyncMock(side_effect=[4.5, 3])  # avg_rating, negative_feedback_count
-        conn.fetch = AsyncMock(side_effect=[
-            [{"rating": 5, "count": 10}, {"rating": 4, "count": 5}],  # rating_distribution
-            [{"session_id": "123", "rating": 2, "feedback_text": "Bad", "created_at": datetime.now()}],  # negative feedback
-            [{"date": datetime.now().date(), "avg": 4.5}],  # quality_trend
-        ])
-        
+        conn.fetch = AsyncMock(
+            side_effect=[
+                [{"rating": 5, "count": 10}, {"rating": 4, "count": 5}],  # rating_distribution
+                [
+                    {
+                        "session_id": "123",
+                        "rating": 2,
+                        "feedback_text": "Bad",
+                        "created_at": datetime.now(),
+                    }
+                ],  # negative feedback
+                [{"date": datetime.now().date(), "avg": 4.5}],  # quality_trend
+            ]
+        )
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_feedback_stats()
-        
+
         assert stats.avg_rating == 4.5
         assert stats.total_ratings == 15
         assert stats.negative_feedback_count == 3
@@ -358,22 +378,28 @@ class TestGetAlertStats:
         """Test that get_alert_stats returns stats with database data"""
         pool, conn = mock_db_pool
         mock_app_state.db_pool = pool
-        
+
         conn.fetchval = AsyncMock(return_value=5)  # auth_failures_today
-        conn.fetch = AsyncMock(return_value=[
-            {"action": "login", "email": "test@test.com", "failure_reason": "Invalid", "created_at": None}
-        ])
-        
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "action": "login",
+                    "email": "test@test.com",
+                    "failure_reason": "Invalid",
+                    "created_at": None,
+                }
+            ]
+        )
+
         health_monitor = MagicMock()
         health_monitor._active_alerts = [
             {"service": "service1", "message": "Error", "severity": "high"}
         ]
         mock_app_state.health_monitor = health_monitor
-        
+
         aggregator = AnalyticsAggregator(mock_app_state)
         stats = await aggregator.get_alert_stats()
-        
+
         assert stats.auth_failures_today == 5
         assert len(stats.recent_errors) == 1
         assert len(stats.active_alerts) == 1
-

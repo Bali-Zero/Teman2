@@ -33,7 +33,7 @@ if GENAI_AVAILABLE:
     try:
         _genai_client = get_genai_client()
         if _genai_client.is_available:
-            auth_method = getattr(_genai_client, '_auth_method', 'unknown')
+            auth_method = getattr(_genai_client, "_auth_method", "unknown")
             logger.info(f"✅ Smart Oracle GenAI client initialized (auth: {auth_method})")
     except Exception as e:
         logger.warning(f"Failed to initialize Smart Oracle GenAI client: {e}")
@@ -174,8 +174,15 @@ async def smart_oracle(query, best_filename_from_qdrant):
                 # Generate content using uploaded file
                 result = await _genai_client.generate_content(
                     contents=[
-                        {"text": "You are an expert consultant. Answer the user query based ONLY on the provided document."},
-                        {"file_data": {"file_uri": gemini_file.uri, "mime_type": gemini_file.mime_type}},
+                        {
+                            "text": "You are an expert consultant. Answer the user query based ONLY on the provided document."
+                        },
+                        {
+                            "file_data": {
+                                "file_uri": gemini_file.uri,
+                                "mime_type": gemini_file.mime_type,
+                            }
+                        },
                         {"text": f"User Query: {query}"},
                     ],
                     model="gemini-3-flash-preview",

@@ -152,7 +152,7 @@ async def verify_scheduler():
             task = status["tasks"]["conversation_trainer"]
             print("✅ Conversation Trainer registrato nello scheduler")
             print(
-                f"   - Intervallo: {task['interval_seconds']}s ({task['interval_seconds']/3600:.1f}h)"
+                f"   - Intervallo: {task['interval_seconds']}s ({task['interval_seconds'] / 3600:.1f}h)"
             )
             print(f"   - Abilitato: {task['enabled']}")
             print(f"   - Esecuzioni: {task['run_count']}")

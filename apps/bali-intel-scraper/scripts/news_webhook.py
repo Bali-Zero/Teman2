@@ -10,10 +10,8 @@ Usage:
 
 import httpx
 import asyncio
-import json
 from pathlib import Path
 from typing import List, Dict, Optional
-from datetime import datetime
 from loguru import logger
 import re
 import os
@@ -120,7 +118,7 @@ class BaliZeroNewsWebhook:
 
         # Truncate if too long
         if len(summary) > max_length:
-            summary = summary[:max_length - 3] + "..."
+            summary = summary[: max_length - 3] + "..."
 
         return summary
 
@@ -160,7 +158,8 @@ class BaliZeroNewsWebhook:
                 "sourceUrl": metadata.get("url", ""),
                 "category": self._map_category(metadata.get("category", "business")),
                 "priority": self._map_priority(metadata.get("tier", "T2")),
-                "publishedAt": metadata.get("published_at") or metadata.get("scraped_at"),
+                "publishedAt": metadata.get("published_at")
+                or metadata.get("scraped_at"),
             }
 
             return news_item
@@ -190,7 +189,7 @@ class BaliZeroNewsWebhook:
                 response = await client.post(
                     self.news_endpoint,
                     json=item,
-                    headers={"Content-Type": "application/json"}
+                    headers={"Content-Type": "application/json"},
                 )
 
                 if response.status_code == 200:
@@ -214,7 +213,7 @@ class BaliZeroNewsWebhook:
         raw_dir: Path = Path("data/raw"),
         categories: Optional[List[str]] = None,
         limit: int = 50,
-        dry_run: bool = False
+        dry_run: bool = False,
     ) -> Dict:
         """
         Send all raw scraped items to BaliZero.
@@ -286,14 +285,19 @@ class BaliZeroNewsWebhook:
 # CLI INTERFACE
 # ============================================================================
 
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Send scraped news to BaliZero")
-    parser.add_argument("--send-raw", action="store_true", help="Send raw scraped items")
+    parser.add_argument(
+        "--send-raw", action="store_true", help="Send raw scraped items"
+    )
     parser.add_argument("--categories", nargs="+", help="Specific categories to send")
     parser.add_argument("--limit", type=int, default=50, help="Max items to send")
-    parser.add_argument("--dry-run", action="store_true", help="Preview without sending")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview without sending"
+    )
     parser.add_argument("--api-url", help="BaliZero API base URL")
 
     args = parser.parse_args()
@@ -301,11 +305,11 @@ def main():
     webhook = BaliZeroNewsWebhook(api_base_url=args.api_url)
 
     if args.send_raw:
-        asyncio.run(webhook.send_all_raw(
-            categories=args.categories,
-            limit=args.limit,
-            dry_run=args.dry_run
-        ))
+        asyncio.run(
+            webhook.send_all_raw(
+                categories=args.categories, limit=args.limit, dry_run=args.dry_run
+            )
+        )
     else:
         parser.print_help()
 

@@ -125,7 +125,8 @@ class BaseMigration:
                 executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 checksum VARCHAR(64) NOT NULL,
                 description TEXT,
-                execution_time_ms INTEGER
+                execution_time_ms INTEGER,
+                rollback_sql TEXT
             )
         """
         )

@@ -143,7 +143,9 @@ class TestVertexAIService:
         mock_vertex = MagicMock()
 
         with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
-            with patch("services.llm_clients.vertex_ai_service.GenerativeModel") as mock_model_class:
+            with patch(
+                "services.llm_clients.vertex_ai_service.GenerativeModel"
+            ) as mock_model_class:
                 with patch("services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_model_class.return_value = mock_model
 
@@ -170,7 +172,9 @@ class TestVertexAIService:
         mock_vertex = MagicMock()
 
         with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
-            with patch("services.llm_clients.vertex_ai_service.GenerativeModel") as mock_model_class:
+            with patch(
+                "services.llm_clients.vertex_ai_service.GenerativeModel"
+            ) as mock_model_class:
                 with patch("services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_model_class.return_value = mock_model
 
@@ -191,7 +195,9 @@ class TestVertexAIService:
         mock_vertex = MagicMock()
 
         with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
-            with patch("services.llm_clients.vertex_ai_service.GenerativeModel") as mock_model_class:
+            with patch(
+                "services.llm_clients.vertex_ai_service.GenerativeModel"
+            ) as mock_model_class:
                 with patch("services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_model_class.return_value = mock_model
 
@@ -202,6 +208,7 @@ class TestVertexAIService:
                     result = await service.extract_metadata("Test text")
 
                     assert result == {}
+
 
 class TestVertexAIServiceImportError:
     """Test VertexAI service when module is not available"""

@@ -35,7 +35,9 @@ def mock_genai_client():
 def mock_genai(mock_genai_client):
     """Mock GenAIClient as genai replacement"""
     with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
-        with patch("services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client):
+        with patch(
+            "services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client
+        ):
             yield mock_genai_client
 
 
@@ -92,7 +94,10 @@ class TestGeminiJakselService:
 
         # Mock get_genai_client to raise exception
         with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
-            with patch("services.llm_clients.gemini_service.get_genai_client", side_effect=Exception("Model init failed")):
+            with patch(
+                "services.llm_clients.gemini_service.get_genai_client",
+                side_effect=Exception("Model init failed"),
+            ):
                 with patch("services.llm_clients.gemini_service.settings") as mock_s:
                     mock_s.google_api_key = "test-key"
                     service = GeminiJakselService()
@@ -129,7 +134,9 @@ class TestGeminiJakselService:
 
             # OpenRouterClient is imported inside _get_openrouter_client from .openrouter_client
             with patch.object(service, "_openrouter_client", None):
-                with patch("services.llm_clients.openrouter_client.OpenRouterClient") as mock_client:
+                with patch(
+                    "services.llm_clients.openrouter_client.OpenRouterClient"
+                ) as mock_client:
                     mock_client.return_value = MagicMock()
                     client = service._get_openrouter_client()
 

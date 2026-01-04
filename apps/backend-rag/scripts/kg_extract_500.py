@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Extract KG entities from 500 chunks - runs on Fly.io"""
-import re
+
 import json
 import os
+import re
+
 from qdrant_client import QdrantClient
 
 ENTITY_PATTERNS = {
@@ -63,10 +65,7 @@ qdrant = QdrantClient(url=qdrant_url, timeout=120)
 
 print("Fetching 500 chunks from legal_unified_hybrid...")
 chunks = qdrant.scroll(
-    collection_name="legal_unified_hybrid",
-    limit=500,
-    with_payload=True,
-    with_vectors=False
+    collection_name="legal_unified_hybrid", limit=500, with_payload=True, with_vectors=False
 )[0]
 print(f"Retrieved {len(chunks)} chunks\n")
 
@@ -93,7 +92,7 @@ for chunk in chunks:
                         "type": entity_type,
                         "name": name,
                         "mentions": 0,
-                        "source_chunks": []
+                        "source_chunks": [],
                     }
                 all_entities[eid]["mentions"] += 1
                 if chunk_id not in all_entities[eid]["source_chunks"]:
@@ -105,16 +104,18 @@ for chunk in chunks:
         for rel_pattern, rel_type in RELATIONSHIP_PATTERNS:
             if re.search(rel_pattern, text, re.IGNORECASE):
                 for i, e1 in enumerate(chunk_entities):
-                    for e2 in chunk_entities[i+1:]:
+                    for e2 in chunk_entities[i + 1 :]:
                         rel_id = f"{e1}_{rel_type}_{e2}"
                         if rel_id not in [r["id"] for r in all_relationships]:
-                            all_relationships.append({
-                                "id": rel_id,
-                                "source": e1,
-                                "target": e2,
-                                "type": rel_type,
-                                "chunk": chunk_id
-                            })
+                            all_relationships.append(
+                                {
+                                    "id": rel_id,
+                                    "source": e1,
+                                    "target": e2,
+                                    "type": rel_type,
+                                    "chunk": chunk_id,
+                                }
+                            )
 
 # Results
 sorted_e = sorted(all_entities.values(), key=lambda x: x["mentions"], reverse=True)
@@ -134,21 +135,21 @@ for t, entities in sorted(by_type.items()):
     for e in entities[:8]:
         print(f"  {e['name']:30} ({e['mentions']:3} mentions, {len(e['source_chunks']):3} chunks)")
     if len(entities) > 8:
-        print(f"  ... and {len(entities)-8} more")
+        print(f"  ... and {len(entities) - 8} more")
 
 # Relationship sample
-print(f"\n[RELATIONSHIPS SAMPLE]")
+print("\n[RELATIONSHIPS SAMPLE]")
 for r in all_relationships[:15]:
     src = all_entities.get(r["source"], {}).get("name", r["source"])
     tgt = all_entities.get(r["target"], {}).get("name", r["target"])
     print(f"  {src} --[{r['type']}]--> {tgt}")
 if len(all_relationships) > 15:
-    print(f"  ... and {len(all_relationships)-15} more")
+    print(f"  ... and {len(all_relationships) - 15} more")
 
 # Summary
-print(f"\n{'='*60}")
+print(f"\n{'=' * 60}")
 print("SUMMARY")
-print("="*60)
+print("=" * 60)
 for t, entities in sorted(by_type.items()):
     total_mentions = sum(e["mentions"] for e in entities)
     print(f"  {t:15}: {len(entities):4} entities, {total_mentions:6} total mentions")
@@ -161,9 +162,9 @@ output = {
     "stats": {
         "total_entities": len(sorted_e),
         "total_relationships": len(all_relationships),
-        "by_type": {t: len(e) for t, e in by_type.items()}
-    }
+        "by_type": {t: len(e) for t, e in by_type.items()},
+    },
 }
 with open("/tmp/kg_extraction_500.json", "w") as f:
     json.dump(output, f, indent=2)
-print(f"\nSaved to /tmp/kg_extraction_500.json")
+print("\nSaved to /tmp/kg_extraction_500.json")

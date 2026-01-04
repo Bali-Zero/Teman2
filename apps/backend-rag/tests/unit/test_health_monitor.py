@@ -15,7 +15,11 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from services.monitoring.alert_service import AlertLevel, AlertService
-from services.monitoring.health_monitor import HealthMonitor, get_health_monitor, init_health_monitor
+from services.monitoring.health_monitor import (
+    HealthMonitor,
+    get_health_monitor,
+    init_health_monitor,
+)
 
 
 @pytest.mark.unit

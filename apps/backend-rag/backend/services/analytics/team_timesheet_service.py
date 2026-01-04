@@ -66,7 +66,11 @@ class TeamTimesheetService:
                 logger.error(f"❌ Auto-logout check failed: {e}")
 
             # Check every 5 minutes
-            await asyncio.sleep(300)
+            try:
+                await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                logger.info("🛑 Auto-logout loop cancelled")
+                break
 
     async def _process_auto_logout(self):
         """Process auto-logout for sessions past 18:30 Bali time"""

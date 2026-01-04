@@ -33,7 +33,9 @@ async def generate_image(request: ImagePrompt):
         # Generate image
         result = await service.generate_image(request.prompt)
 
-        logger.info(f"🎨 Service result: success={result['success']}, url={result.get('url', 'N/A')[:100]}")
+        logger.info(
+            f"🎨 Service result: success={result['success']}, url={result.get('url', 'N/A')[:100]}"
+        )
 
         if result["success"]:
             response = {

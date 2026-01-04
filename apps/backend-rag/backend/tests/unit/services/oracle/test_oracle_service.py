@@ -26,12 +26,14 @@ def mock_db_pool():
 @pytest.fixture
 def oracle_service():
     """Create oracle service instance"""
-    with patch("services.oracle.oracle_service.ZantaraPromptBuilder"), \
-         patch("services.oracle.oracle_service.GeminiAdapter"), \
-         patch("services.oracle.oracle_service.IntentClassifier"), \
-         patch("pathlib.Path.exists", return_value=True), \
-         patch("builtins.open", create=True), \
-         patch("yaml.safe_load", return_value={}):
+    with (
+        patch("services.oracle.oracle_service.ZantaraPromptBuilder"),
+        patch("services.oracle.oracle_service.GeminiAdapter"),
+        patch("services.oracle.oracle_service.IntentClassifier"),
+        patch("pathlib.Path.exists", return_value=True),
+        patch("builtins.open", create=True),
+        patch("yaml.safe_load", return_value={}),
+    ):
         return OracleService()
 
 
@@ -40,49 +42,47 @@ class TestOracleService:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.oracle.oracle_service.ZantaraPromptBuilder"), \
-             patch("services.oracle.oracle_service.GeminiAdapter"), \
-             patch("services.oracle.oracle_service.IntentClassifier"), \
-             patch("pathlib.Path.exists", return_value=True), \
-             patch("builtins.open", create=True), \
-             patch("yaml.safe_load", return_value={}):
+        with (
+            patch("services.oracle.oracle_service.ZantaraPromptBuilder"),
+            patch("services.oracle.oracle_service.GeminiAdapter"),
+            patch("services.oracle.oracle_service.IntentClassifier"),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", create=True),
+            patch("yaml.safe_load", return_value={}),
+        ):
             service = OracleService()
             assert service is not None
 
     @pytest.mark.asyncio
     async def test_query(self, oracle_service):
         """Test query processing"""
-        with patch.object(oracle_service, 'process_query') as mock_process, \
-             patch.object(oracle_service, '_get_db_pool') as mock_get_pool, \
-             patch.object(oracle_service, '_get_orchestrator') as mock_get_orch:
-            mock_process.return_value = {
-                "answer": "test answer",
-                "sources": []
-            }
+        with (
+            patch.object(oracle_service, "process_query") as mock_process,
+            patch.object(oracle_service, "_get_db_pool") as mock_get_pool,
+            patch.object(oracle_service, "_get_orchestrator") as mock_get_orch,
+        ):
+            mock_process.return_value = {"answer": "test answer", "sources": []}
             mock_get_pool.return_value = AsyncMock()
             mock_get_orch.return_value = AsyncMock()
 
-            result = await oracle_service.process_query(
-                query="test",
-                user_email="test@example.com"
-            )
+            result = await oracle_service.process_query(query="test", user_email="test@example.com")
 
             assert result["answer"] == "test answer"
 
     @pytest.mark.asyncio
     async def test_query_with_context(self, oracle_service):
         """Test query with context"""
-        with patch.object(oracle_service, 'process_query') as mock_process, \
-             patch.object(oracle_service, '_get_db_pool') as mock_get_pool, \
-             patch.object(oracle_service, '_get_orchestrator') as mock_get_orch:
+        with (
+            patch.object(oracle_service, "process_query") as mock_process,
+            patch.object(oracle_service, "_get_db_pool") as mock_get_pool,
+            patch.object(oracle_service, "_get_orchestrator") as mock_get_orch,
+        ):
             mock_process.return_value = {"answer": "test"}
             mock_get_pool.return_value = AsyncMock()
             mock_get_orch.return_value = AsyncMock()
 
             result = await oracle_service.process_query(
-                query="test",
-                user_email="test@example.com",
-                context={"client_id": 123}
+                query="test", user_email="test@example.com", context={"client_id": 123}
             )
 
             assert result is not None
@@ -92,27 +92,31 @@ class TestOracleService:
         """Test full process_query flow"""
         mock_search_service = MagicMock()
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_query = AsyncMock(return_value=MagicMock(
-            answer="answer",
-            sources=[],
-            document_count=5,
-            timings={"total": 1.0},
-            model_used="gemini-3-flash",
-            collection_used="legal_unified",
-            is_ambiguous=False,
-            clarification_question=None
-        ))
+        mock_orchestrator.process_query = AsyncMock(
+            return_value=MagicMock(
+                answer="answer",
+                sources=[],
+                document_count=5,
+                timings={"total": 1.0},
+                model_used="gemini-3-flash",
+                collection_used="legal_unified",
+                is_ambiguous=False,
+                clarification_question=None,
+            )
+        )
 
-        with patch.object(oracle_service, '_get_orchestrator', return_value=mock_orchestrator), \
-             patch.object(oracle_service.user_context, 'get_full_user_context') as mock_context, \
-             patch.object(oracle_service.analytics, 'build_analytics_data') as mock_analytics_build, \
-             patch.object(oracle_service.analytics, 'store_query_analytics') as mock_analytics_store:
+        with (
+            patch.object(oracle_service, "_get_orchestrator", return_value=mock_orchestrator),
+            patch.object(oracle_service.user_context, "get_full_user_context") as mock_context,
+            patch.object(oracle_service.analytics, "build_analytics_data") as mock_analytics_build,
+            patch.object(oracle_service.analytics, "store_query_analytics") as mock_analytics_store,
+        ):
             mock_context.return_value = {
                 "profile": {"name": "Test"},
                 "personality": {"personality_type": "professional"},
                 "memory_facts": [],
                 "user_name": "Test User",
-                "user_role": "user"
+                "user_role": "user",
             }
             mock_analytics_build.return_value = {}
 
@@ -125,7 +129,7 @@ class TestOracleService:
                 request_use_ai=True,
                 request_language_override=None,
                 request_conversation_history=None,
-                search_service=mock_search_service
+                search_service=mock_search_service,
             )
 
             assert result["success"] is True
@@ -136,15 +140,17 @@ class TestOracleService:
         """Test process_query error handling"""
         mock_search_service = MagicMock()
 
-        with patch.object(oracle_service.user_context, 'get_full_user_context') as mock_context, \
-             patch.object(oracle_service, '_get_orchestrator') as mock_get_orch, \
-             patch.object(oracle_service.analytics, 'store_query_analytics') as mock_store:
+        with (
+            patch.object(oracle_service.user_context, "get_full_user_context") as mock_context,
+            patch.object(oracle_service, "_get_orchestrator") as mock_get_orch,
+            patch.object(oracle_service.analytics, "store_query_analytics") as mock_store,
+        ):
             mock_context.return_value = {
                 "profile": {},
                 "personality": {"personality_type": "professional"},
                 "memory_facts": [],
                 "user_name": "Test",
-                "user_role": "user"
+                "user_role": "user",
             }
 
             # Make orchestrator.process_query raise a catchable exception (RuntimeError is in the except list)
@@ -161,7 +167,7 @@ class TestOracleService:
                 request_use_ai=True,
                 request_language_override=None,
                 request_conversation_history=None,
-                search_service=mock_search_service
+                search_service=mock_search_service,
             )
 
             assert result["success"] is False
@@ -174,27 +180,31 @@ class TestOracleService:
 
         mock_search_service = MagicMock()
         mock_orchestrator = AsyncMock()
-        mock_orchestrator.process_query = AsyncMock(return_value=MagicMock(
-            answer="answer",
-            sources=[],
-            document_count=5,
-            timings={"total": 1.0},
-            model_used="gemini-3-flash",
-            collection_used="legal_unified",
-            is_ambiguous=False,
-            clarification_question=None
-        ))
+        mock_orchestrator.process_query = AsyncMock(
+            return_value=MagicMock(
+                answer="answer",
+                sources=[],
+                document_count=5,
+                timings={"total": 1.0},
+                model_used="gemini-3-flash",
+                collection_used="legal_unified",
+                is_ambiguous=False,
+                clarification_question=None,
+            )
+        )
 
-        with patch.object(oracle_service, '_get_orchestrator', return_value=mock_orchestrator), \
-             patch.object(oracle_service.user_context, 'get_full_user_context') as mock_context, \
-             patch.object(oracle_service.analytics, 'build_analytics_data') as mock_analytics_build, \
-             patch.object(oracle_service.analytics, 'store_query_analytics') as mock_analytics_store:
+        with (
+            patch.object(oracle_service, "_get_orchestrator", return_value=mock_orchestrator),
+            patch.object(oracle_service.user_context, "get_full_user_context") as mock_context,
+            patch.object(oracle_service.analytics, "build_analytics_data") as mock_analytics_build,
+            patch.object(oracle_service.analytics, "store_query_analytics") as mock_analytics_store,
+        ):
             mock_context.return_value = {
                 "profile": {},
                 "personality": {"personality_type": "professional"},
                 "memory_facts": [],
                 "user_name": "Test",
-                "user_role": "user"
+                "user_role": "user",
             }
             mock_analytics_build.return_value = {}
 
@@ -207,8 +217,10 @@ class TestOracleService:
                 request_include_sources=False,
                 request_use_ai=True,
                 request_language_override=None,
-                request_conversation_history=[ConversationMessageInput(role="user", content="previous")],
-                search_service=mock_search_service
+                request_conversation_history=[
+                    ConversationMessageInput(role="user", content="previous")
+                ],
+                search_service=mock_search_service,
             )
 
             assert result["success"] is True
@@ -216,6 +228,7 @@ class TestOracleService:
     @pytest.mark.asyncio
     async def test_get_db_pool(self, oracle_service):
         """Test _get_db_pool"""
+
         # Mock create_pool to return a coroutine
         async def mock_create_pool(*args, **kwargs):
             return AsyncMock()
@@ -236,8 +249,10 @@ class TestOracleService:
         """Test _get_orchestrator"""
         mock_search_service = MagicMock()
 
-        with patch.object(oracle_service, '_get_db_pool', return_value=AsyncMock()), \
-             patch("services.oracle.oracle_service.create_agentic_rag") as mock_create:
+        with (
+            patch.object(oracle_service, "_get_db_pool", return_value=AsyncMock()),
+            patch("services.oracle.oracle_service.create_agentic_rag") as mock_create,
+        ):
             mock_create.return_value = AsyncMock()
             orchestrator = await oracle_service._get_orchestrator(mock_search_service)
             assert orchestrator is not None
@@ -265,16 +280,19 @@ class TestOracleService:
         with patch("services.oracle.oracle_service.db_manager") as mock_db:
             mock_db.store_feedback = AsyncMock(return_value={"success": True})
 
-            result = await oracle_service.submit_feedback({"user_email": "test@example.com", "rating": 5})
+            result = await oracle_service.submit_feedback(
+                {"user_email": "test@example.com", "rating": 5}
+            )
             assert result is not None
 
     def test_init_with_missing_config(self):
         """Test initialization with missing config file"""
-        with patch("services.oracle.oracle_service.ZantaraPromptBuilder"), \
-             patch("services.oracle.oracle_service.GeminiAdapter"), \
-             patch("services.oracle.oracle_service.IntentClassifier"), \
-             patch("pathlib.Path.exists", return_value=False):
+        with (
+            patch("services.oracle.oracle_service.ZantaraPromptBuilder"),
+            patch("services.oracle.oracle_service.GeminiAdapter"),
+            patch("services.oracle.oracle_service.IntentClassifier"),
+            patch("pathlib.Path.exists", return_value=False),
+        ):
             service = OracleService()
             assert service is not None
             assert service.response_validator is not None
-

@@ -39,7 +39,7 @@ class KnowledgeGraphTool(BaseTool):
             "properties": {
                 "entity": {
                     "type": "string",
-                    "description": "The name of the entity to search for (e.g., 'PT PMA', 'Investor KITAS', 'KBLI 56101')."
+                    "description": "The name of the entity to search for (e.g., 'PT PMA', 'Investor KITAS', 'KBLI 56101').",
                 },
                 "depth": {
                     "type": "integer",
@@ -53,7 +53,9 @@ class KnowledgeGraphTool(BaseTool):
             "required": ["entity"],
         }
 
-    async def execute(self, entity: str, depth: int = 1, relationship_type: str = None, **kwargs) -> str:
+    async def execute(
+        self, entity: str, depth: int = 1, relationship_type: str = None, **kwargs
+    ) -> str:
         """
         Execute the graph search.
         """
@@ -69,12 +71,14 @@ class KnowledgeGraphTool(BaseTool):
         entities_count = result["total_entities"]
         relationships_count = result["total_relationships"]
 
-        output = [f"Found subgraph for '{result['query']}' ({entities_count} nodes, {relationships_count} edges):"]
+        output = [
+            f"Found subgraph for '{result['query']}' ({entities_count} nodes, {relationships_count} edges):"
+        ]
 
         # Start Entity details
         start_node = result["start_entity"]
         output.append(f"\n[FOCUS] {start_node['name']} ({start_node['entity_type']})")
-        if start_node.get('description'):
+        if start_node.get("description"):
             output.append(f"  Description: {start_node['description']}")
 
         # Relationships
@@ -82,7 +86,7 @@ class KnowledgeGraphTool(BaseTool):
         rels = result.get("relationships", [])
 
         # Build lookup for node names
-        node_map = {n['entity_id']: n['name'] for n in result.get("entities", [])}
+        node_map = {n["entity_id"]: n["name"] for n in result.get("entities", [])}
 
         if not rels:
             output.append("  (No direct relationships found)")
@@ -90,24 +94,29 @@ class KnowledgeGraphTool(BaseTool):
         count = 0
         for rel in rels:
             # Filter by type if requested
-            if relationship_type and relationship_type.lower() not in rel['relationship_type'].lower():
+            if (
+                relationship_type
+                and relationship_type.lower() not in rel["relationship_type"].lower()
+            ):
                 continue
 
-            source_name = node_map.get(rel['source_entity_id'], "Unknown")
-            target_name = node_map.get(rel['target_entity_id'], "Unknown")
-            rel_name = rel['relationship_type'].upper()
+            source_name = node_map.get(rel["source_entity_id"], "Unknown")
+            target_name = node_map.get(rel["target_entity_id"], "Unknown")
+            rel_name = rel["relationship_type"].upper()
 
             # Formatting direction
-            if rel['source_entity_id'] == start_node['entity_id']:
+            if rel["source_entity_id"] == start_node["entity_id"]:
                 line = f"  - [This] --{rel_name}--> {target_name}"
-            elif rel['target_entity_id'] == start_node['entity_id']:
+            elif rel["target_entity_id"] == start_node["entity_id"]:
                 line = f"  - {source_name} --{rel_name}--> [This]"
             else:
                 line = f"  - {source_name} --{rel_name}--> {target_name}"
 
             # Add properties if relevant
-            props = rel.get('properties', {})
-            relevant_props = [f"{k}={v}" for k, v in props.items() if k not in ['source', 'confidence']]
+            props = rel.get("properties", {})
+            relevant_props = [
+                f"{k}={v}" for k, v in props.items() if k not in ["source", "confidence"]
+            ]
             if relevant_props:
                 line += f" ({', '.join(relevant_props)})"
 

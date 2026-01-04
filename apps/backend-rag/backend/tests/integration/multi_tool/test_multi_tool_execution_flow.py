@@ -34,12 +34,12 @@ from services.rag.agentic.tools import (
 def mock_search_service():
     """Mock SearchService"""
     service = MagicMock()
-    service.search = AsyncMock(return_value={
-        "results": [
-            {"id": "doc1", "text": "E33G costs Rp 17-19 million", "score": 0.9}
-        ],
-        "total": 1
-    })
+    service.search = AsyncMock(
+        return_value={
+            "results": [{"id": "doc1", "text": "E33G costs Rp 17-19 million", "score": 0.9}],
+            "total": 1,
+        }
+    )
     return service
 
 
@@ -57,7 +57,7 @@ def tool_map(mock_search_service, mock_db_pool):
         "vector_search": VectorSearchTool(mock_search_service),
         "get_pricing": PricingTool(),
         "calculator": CalculatorTool(),
-        "team_knowledge": TeamKnowledgeTool(mock_db_pool)
+        "team_knowledge": TeamKnowledgeTool(mock_db_pool),
     }
 
 
@@ -65,16 +65,14 @@ class TestMultiToolExecutionFlow:
     """Multi-Tool Execution Flow Tests"""
 
     @pytest.mark.asyncio
-    async def test_sequential_tool_execution(
-        self, tool_map, mock_search_service
-    ):
+    async def test_sequential_tool_execution(self, tool_map, mock_search_service):
         """Test sequential execution of multiple tools"""
         # Tool 1: Search for visa info
         tool1_result, _ = await execute_tool(
             tool_map=tool_map,
             tool_name="vector_search",
             arguments={"query": "E33G KITAS cost", "collection": "visa_oracle"},
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
 
         # Tool 2: Get pricing
@@ -82,7 +80,7 @@ class TestMultiToolExecutionFlow:
             tool_map=tool_map,
             tool_name="get_pricing",
             arguments={"service_type": "visa", "query": "E33G"},
-            tool_execution_counter={"count": 1}
+            tool_execution_counter={"count": 1},
         )
 
         # Tool 3: Calculate total
@@ -90,7 +88,7 @@ class TestMultiToolExecutionFlow:
             tool_map=tool_map,
             tool_name="calculator",
             arguments={"expression": "17 + 2"},
-            tool_execution_counter={"count": 2}
+            tool_execution_counter={"count": 2},
         )
 
         # Verify all tools executed
@@ -102,16 +100,14 @@ class TestMultiToolExecutionFlow:
         mock_search_service.search.assert_called()
 
     @pytest.mark.asyncio
-    async def test_tool_chaining(
-        self, tool_map, mock_search_service
-    ):
+    async def test_tool_chaining(self, tool_map, mock_search_service):
         """Test tool chaining where output of one tool feeds into another"""
         # Step 1: Search for visa requirements
         search_result, _ = await execute_tool(
             tool_map=tool_map,
             tool_name="vector_search",
             arguments={"query": "E33G requirements", "collection": "visa_oracle"},
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
 
         # Extract cost from search result
@@ -123,7 +119,7 @@ class TestMultiToolExecutionFlow:
             tool_map=tool_map,
             tool_name="get_pricing",
             arguments={"service_type": "visa", "query": "E33G"},
-            tool_execution_counter={"count": 1}
+            tool_execution_counter={"count": 1},
         )
 
         # Step 3: Calculate difference if needed
@@ -134,9 +130,7 @@ class TestMultiToolExecutionFlow:
         assert pricing_result is not None
 
     @pytest.mark.asyncio
-    async def test_rate_limiting_enforcement(
-        self, tool_map
-    ):
+    async def test_rate_limiting_enforcement(self, tool_map):
         """Test that rate limiting prevents excessive tool calls"""
         tool_execution_counter = {"count": 0}
 
@@ -147,7 +141,7 @@ class TestMultiToolExecutionFlow:
                     tool_map=tool_map,
                     tool_name="calculator",
                     arguments={"expression": f"{i} + 1"},
-                    tool_execution_counter=tool_execution_counter
+                    tool_execution_counter=tool_execution_counter,
                 )
                 assert result is not None
             except RuntimeError as e:
@@ -159,9 +153,7 @@ class TestMultiToolExecutionFlow:
         assert tool_execution_counter["count"] >= 10
 
     @pytest.mark.asyncio
-    async def test_tool_error_handling(
-        self, tool_map, mock_search_service
-    ):
+    async def test_tool_error_handling(self, tool_map, mock_search_service):
         """Test error handling when tool execution fails"""
         # Mock tool error
         mock_search_service.search = AsyncMock(side_effect=Exception("Search error"))
@@ -172,7 +164,7 @@ class TestMultiToolExecutionFlow:
                 tool_map=tool_map,
                 tool_name="vector_search",
                 arguments={"query": "test", "collection": "visa_oracle"},
-                tool_execution_counter={"count": 0}
+                tool_execution_counter={"count": 0},
             )
             # Should return error message
             assert "Error" in result or "error" in result.lower()
@@ -181,25 +173,21 @@ class TestMultiToolExecutionFlow:
             assert "error" in str(e).lower()
 
     @pytest.mark.asyncio
-    async def test_unknown_tool_handling(
-        self, tool_map
-    ):
+    async def test_unknown_tool_handling(self, tool_map):
         """Test handling of unknown tool names"""
         # Execute unknown tool
         result, duration = await execute_tool(
             tool_map=tool_map,
             tool_name="unknown_tool",
             arguments={},
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
 
         # Verify error message
         assert "Error" in result or "Unknown tool" in result
 
     @pytest.mark.asyncio
-    async def test_tool_result_aggregation(
-        self, tool_map, mock_search_service
-    ):
+    async def test_tool_result_aggregation(self, tool_map, mock_search_service):
         """Test aggregation of results from multiple tools"""
         # Execute multiple tools
         results = []
@@ -209,7 +197,7 @@ class TestMultiToolExecutionFlow:
             tool_map=tool_map,
             tool_name="vector_search",
             arguments={"query": "E33G", "collection": "visa_oracle"},
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
         results.append({"tool": "vector_search", "result": result1})
 
@@ -218,7 +206,7 @@ class TestMultiToolExecutionFlow:
             tool_map=tool_map,
             tool_name="get_pricing",
             arguments={"service_type": "visa", "query": "E33G"},
-            tool_execution_counter={"count": 1}
+            tool_execution_counter={"count": 1},
         )
         results.append({"tool": "get_pricing", "result": result2})
 
@@ -226,7 +214,7 @@ class TestMultiToolExecutionFlow:
         aggregated = {
             "search_results": results[0]["result"],
             "pricing": results[1]["result"],
-            "total_tools": len(results)
+            "total_tools": len(results),
         }
 
         # Verify aggregation
@@ -234,16 +222,14 @@ class TestMultiToolExecutionFlow:
         assert aggregated["total_tools"] == 2
 
     @pytest.mark.asyncio
-    async def test_conditional_tool_execution(
-        self, tool_map, mock_search_service
-    ):
+    async def test_conditional_tool_execution(self, tool_map, mock_search_service):
         """Test conditional tool execution based on previous results"""
         # Step 1: Search for information
         search_result, _ = await execute_tool(
             tool_map=tool_map,
             tool_name="vector_search",
             arguments={"query": "E33G cost", "collection": "visa_oracle"},
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
 
         # Step 2: Conditionally get pricing if search doesn't have cost
@@ -252,10 +238,9 @@ class TestMultiToolExecutionFlow:
                 tool_map=tool_map,
                 tool_name="get_pricing",
                 arguments={"service_type": "visa", "query": "E33G"},
-                tool_execution_counter={"count": 1}
+                tool_execution_counter={"count": 1},
             )
             assert pricing_result is not None
         else:
             # Search already has cost info
             assert search_result is not None
-

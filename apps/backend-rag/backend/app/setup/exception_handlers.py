@@ -87,7 +87,9 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     )
 
 
-async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+async def starlette_http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+) -> JSONResponse:
     """
     Global handler for Starlette HTTPException (used by FastAPI internally).
 
@@ -114,6 +116,42 @@ async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPE
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": sanitized_detail, "correlation_id": correlation_id},
+        headers={"X-Correlation-ID": correlation_id},
+    )
+
+
+async def validation_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Handler for RequestValidationError (Pydantic validation errors).
+
+    Args:
+        request: FastAPI request
+        exc: RequestValidationError instance
+
+    Returns:
+        JSONResponse with validation error details
+    """
+
+    correlation_id = (
+        getattr(request.state, "correlation_id", None)
+        or getattr(request.state, "request_id", None)
+        or "unknown"
+    )
+
+    # Get validation errors
+    errors = exc.errors() if hasattr(exc, "errors") else []
+
+    logger.warning(
+        f"[{correlation_id}] ValidationError: {len(errors)} validation errors - "
+        f"{request.method} {request.url.path}"
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": errors,
+            "correlation_id": correlation_id,
+        },
         headers={"X-Correlation-ID": correlation_id},
     )
 
@@ -166,4 +204,3 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
         },
         headers={"X-Correlation-ID": correlation_id},
     )
-

@@ -122,16 +122,7 @@ class BackendSelfHealingAgent:
 
     async def monitoring_loop(self):
         """Main monitoring loop"""
-        # #region agent log
-        import json
-        with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"backend_agent.py:125","message":"BackendSelfHealingAgent monitoring loop entered","data":{"check_interval":self.check_interval,"auto_fix_enabled":self.auto_fix_enabled}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-        # #endregion
         while True:
-            # #region agent log
-            with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"backend_agent.py:126","message":"BackendSelfHealingAgent loop iteration","data":{}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-            # #endregion
             try:
                 # Perform health check
                 await self.perform_health_check()
@@ -147,10 +138,6 @@ class BackendSelfHealingAgent:
                 await asyncio.sleep(self.check_interval)
 
             except asyncio.CancelledError:
-                # #region agent log
-                with open('/Users/antonellosiano/Desktop/nuzantara/.cursor/debug.log', 'a') as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"backend_agent.py:144","message":"BackendSelfHealingAgent loop cancelled","data":{}},"timestamp":int(__import__('time').time()*1000)}) + '\n')
-                # #endregion
                 break
             except Exception as e:
                 logger.error(f"Error in monitoring loop: {e}")

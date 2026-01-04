@@ -8,7 +8,6 @@ Tests the new error handling features:
 """
 
 import pytest
-from unittest.mock import MagicMock
 
 from backend.services.rag.agentic.reasoning import ReasoningEngine, _validate_context_quality
 
@@ -45,7 +44,7 @@ def test_validate_context_quality_keyword_matching(reasoning_engine):
     context_with_keywords = [
         "Indonesia visa requirements are complex",
         "You need a visa for Indonesia",
-        "Requirements for Indonesia visa"
+        "Requirements for Indonesia visa",
     ]
     score = reasoning_engine._validate_context_quality(query, context_with_keywords)
     assert score > 0.3
@@ -56,26 +55,21 @@ def test_validate_context_quality_item_count_penalty(reasoning_engine):
     query = "test"
     single_item = ["test result"]
     multiple_items = ["test result", "test answer", "test info", "test data", "test details"]
-    
+
     single_score = reasoning_engine._validate_context_quality(query, single_item)
     multiple_score = reasoning_engine._validate_context_quality(query, multiple_items)
-    
+
     # More items should generally improve score (up to a point)
     assert multiple_score >= single_score
 
 
 def test_reasoning_engine_has_min_context_quality_score(reasoning_engine):
     """Test that ReasoningEngine has min_context_quality_score attribute."""
-    assert hasattr(reasoning_engine, '_min_context_quality_score')
+    assert hasattr(reasoning_engine, "_min_context_quality_score")
     assert reasoning_engine._min_context_quality_score == 0.3
 
 
 def test_reasoning_engine_has_min_context_items(reasoning_engine):
     """Test that ReasoningEngine has min_context_items attribute."""
-    assert hasattr(reasoning_engine, '_min_context_items')
+    assert hasattr(reasoning_engine, "_min_context_items")
     assert reasoning_engine._min_context_items == 1
-
-
-
-
-

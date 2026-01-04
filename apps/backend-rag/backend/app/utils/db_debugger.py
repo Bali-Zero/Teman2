@@ -226,8 +226,7 @@ class QueryTraceContext:
         if self.trace.duration_ms and self.trace.duration_ms > self.slow_threshold:
             _slow_queries.append(query_dict)
             logger.warning(
-                f"🐌 Slow query detected: {self.trace.duration_ms:.2f}ms - "
-                f"{self.trace.query[:100]}"
+                f"🐌 Slow query detected: {self.trace.duration_ms:.2f}ms - {self.trace.query[:100]}"
             )
 
         # Limit log size

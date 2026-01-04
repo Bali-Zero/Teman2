@@ -22,6 +22,9 @@ export { TableOfContents, FloatingToc, ReadingProgress, extractHeadings } from '
 // MDX Content renderer
 export { MDXContent, mdxComponents } from './MDXContent';
 
+// Article Engagement (likes, comments, shares)
+export { ArticleEngagement, FloatingEngagementBar } from './ArticleEngagement';
+
 // Interactive components (Evergreen Blog Formats)
 export {
   DecisionTree,

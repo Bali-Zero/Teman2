@@ -295,35 +295,35 @@ function TaxCard({ service, onClick }: TaxCardProps) {
     <div
       onClick={onClick}
       className={`
-        group relative overflow-hidden rounded-2xl border cursor-pointer
+        group relative overflow-hidden rounded-xl border cursor-pointer
         bg-gradient-to-br ${getCategoryColor(service.category)}
-        hover:scale-[1.02] hover:shadow-xl hover:shadow-[var(--accent)]/10
+        hover:scale-[1.02] hover:shadow-lg hover:shadow-[var(--accent)]/10
         transition-all duration-300 ease-out
       `}
     >
-      {/* Mandatory Badge */}
+      {/* Mandatory Badge - 50% smaller */}
       {service.mandatory && (
-        <div className="absolute top-4 right-4 z-10">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs font-semibold shadow-lg">
-            <AlertTriangle className="w-3.5 h-3.5" />
+        <div className="absolute top-1.5 right-1.5 z-10">
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white text-[8px] font-semibold shadow-sm">
+            <AlertTriangle className="w-2 h-2" />
             Mandatory
           </div>
         </div>
       )}
 
-      {/* Card Content */}
-      <div className="p-6">
+      {/* Card Content - 50% smaller */}
+      <div className="p-2 pt-6">
         {/* Code and Icon */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-[var(--background)]/60 flex items-center justify-center">
-            <IconComponent className="w-6 h-6 text-[var(--accent)]" />
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="w-6 h-6 rounded bg-[var(--background)]/60 flex items-center justify-center">
+            <IconComponent className="w-3 h-3 text-[var(--accent)]" />
           </div>
           <div>
-            <span className="text-2xl font-black text-[var(--foreground)] tracking-tight">
+            <span className="text-sm font-black text-[var(--foreground)] tracking-tight">
               {service.code}
             </span>
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${getCategoryBadgeColor(service.category)}`}>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className={`px-1 py-0 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(service.category)}`}>
                 {service.category}
               </span>
             </div>
@@ -331,59 +331,59 @@ function TaxCard({ service, onClick }: TaxCardProps) {
         </div>
 
         {/* Title */}
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-1 group-hover:text-[var(--accent)] transition-colors">
+        <div className="mb-1.5">
+          <h3 className="text-xs font-semibold text-[var(--foreground)] mb-0 group-hover:text-[var(--accent)] transition-colors line-clamp-1">
             {service.title}
           </h3>
-          <p className="text-sm text-[var(--foreground-muted)]">{service.title_id}</p>
+          <p className="text-[10px] text-[var(--foreground-muted)] line-clamp-1">{service.title_id}</p>
         </div>
 
         {/* Price and Time */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
-            <DollarSign className="w-4 h-4 text-emerald-400" />
+        <div className="grid grid-cols-2 gap-1.5 mb-1.5">
+          <div className="flex items-center gap-1 p-1 rounded bg-[var(--background)]/50">
+            <DollarSign className="w-2.5 h-2.5 text-emerald-400" />
             <div>
-              <p className="text-xs text-[var(--foreground-muted)]">
+              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">
                 {service.price_note || 'Price'}
               </p>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{service.price}</p>
+              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight">{service.price}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-lg bg-[var(--background)]/50">
-            <Clock className="w-4 h-4 text-blue-400" />
+          <div className="flex items-center gap-1 p-1 rounded bg-[var(--background)]/50">
+            <Clock className="w-2.5 h-2.5 text-blue-400" />
             <div>
-              <p className="text-xs text-[var(--foreground-muted)]">Frequency</p>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{service.frequency}</p>
+              <p className="text-[8px] text-[var(--foreground-muted)] leading-tight">Frequency</p>
+              <p className="text-[10px] font-semibold text-[var(--foreground)] leading-tight line-clamp-1">{service.frequency}</p>
             </div>
           </div>
         </div>
 
         {/* Key Points */}
-        <div className="space-y-1.5 mb-4">
-          {service.key_points.slice(0, 3).map((point, idx) => (
-            <div key={idx} className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <span className="text-sm text-[var(--foreground-secondary)] line-clamp-1">{point}</span>
+        <div className="space-y-0.5 mb-1.5">
+          {service.key_points.slice(0, 2).map((point, idx) => (
+            <div key={idx} className="flex items-start gap-1">
+              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <span className="text-[10px] text-[var(--foreground-secondary)] line-clamp-1">{point}</span>
             </div>
           ))}
         </div>
 
         {/* Warning if exists */}
         {service.warning && (
-          <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 mb-4">
-            <p className="text-xs text-red-400 flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5" />
+          <div className="p-1 rounded bg-red-500/10 border border-red-500/20 mb-1.5">
+            <p className="text-[8px] text-red-400 flex items-center gap-1 line-clamp-1">
+              <AlertTriangle className="w-2 h-2 flex-shrink-0" />
               {service.warning}
             </p>
           </div>
         )}
 
         {/* CTA */}
-        <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
-          <span className="text-xs text-[var(--foreground-muted)]">{service.processing_time}</span>
-          <div className="flex items-center gap-1 text-[var(--accent)] font-medium text-sm group-hover:gap-2 transition-all">
-            <span>Learn More</span>
-            <ChevronRight className="w-4 h-4" />
+        <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border)]">
+          <span className="text-[8px] text-[var(--foreground-muted)]">{service.processing_time}</span>
+          <div className="flex items-center gap-0.5 text-[var(--accent)] font-medium text-[10px] group-hover:gap-1 transition-all">
+            <span>More</span>
+            <ChevronRight className="w-2.5 h-2.5" />
           </div>
         </div>
       </div>
@@ -546,8 +546,8 @@ export default function TaxPage() {
         </div>
       </div>
 
-      {/* Service Cards */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Service Cards - 4 columns compact */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {filteredServices.map((service) => (
           <TaxCard key={service.id} service={service} onClick={() => handleCardClick(service)} />
         ))}

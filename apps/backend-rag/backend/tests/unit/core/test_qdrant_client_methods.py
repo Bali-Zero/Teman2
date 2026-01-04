@@ -34,7 +34,7 @@ class TestQdrantClientGet:
                 {
                     "id": "1",
                     "vector": [0.1, 0.2, 0.3],
-                    "payload": {"text": "test text", "metadata": {"key": "value"}}
+                    "payload": {"text": "test text", "metadata": {"key": "value"}},
                 }
             ]
         }
@@ -159,14 +159,7 @@ class TestQdrantClientPeek:
         """Test successful peek operation"""
         mock_response = MagicMock()
         mock_response.json.return_value = {
-            "result": {
-                "points": [
-                    {
-                        "id": "1",
-                        "payload": {"text": "test", "metadata": {}}
-                    }
-                ]
-            }
+            "result": {"points": [{"id": "1", "payload": {"text": "test", "metadata": {}}}]}
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -222,10 +215,7 @@ class TestQdrantClientHybridSearch:
         with patch.object(client, "search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = {"ids": ["1"], "documents": ["test"]}
 
-            result = await client.hybrid_search(
-                query_embedding=[0.1] * 1536,
-                query_sparse=None
-            )
+            result = await client.hybrid_search(query_embedding=[0.1] * 1536, query_sparse=None)
 
             mock_search.assert_called_once()
             assert result["ids"] == ["1"]
@@ -236,10 +226,7 @@ class TestQdrantClientHybridSearch:
         with patch.object(client, "search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = {"ids": ["1"], "documents": ["test"]}
 
-            result = await client.hybrid_search(
-                query_embedding=[0.1] * 1536,
-                query_sparse={}
-            )
+            result = await client.hybrid_search(query_embedding=[0.1] * 1536, query_sparse={})
 
             mock_search.assert_called_once()
 
@@ -249,20 +236,16 @@ class TestQdrantClientHybridSearch:
         mock_response = MagicMock()
         mock_response.json.return_value = {
             "result": {
-                "points": [
-                    {
-                        "id": "1",
-                        "score": 0.9,
-                        "payload": {"text": "test", "metadata": {}}
-                    }
-                ]
+                "points": [{"id": "1", "score": 0.9, "payload": {"text": "test", "metadata": {}}}]
             }
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
 
             async def retry_func():
                 mock_http_client = await mock_get_client()
@@ -276,13 +259,13 @@ class TestQdrantClientHybridSearch:
                 "distances": [0.1],
                 "scores": [0.9],
                 "total_found": 1,
-                "search_type": "hybrid_rrf"
+                "search_type": "hybrid_rrf",
             }
 
             result = await client.hybrid_search(
                 query_embedding=[0.1] * 1536,
                 query_sparse={"indices": [1, 2, 3], "values": [0.5, 0.6, 0.7]},
-                limit=10
+                limit=10,
             )
 
             assert "ids" in result or result is not None
@@ -290,10 +273,11 @@ class TestQdrantClientHybridSearch:
     @pytest.mark.asyncio
     async def test_hybrid_search_fallback_on_error(self, client):
         """Test hybrid_search falls back to dense search on error"""
-        with patch.object(client, "search", new_callable=AsyncMock) as mock_search, \
-             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry:
-
+        with (
+            patch.object(client, "search", new_callable=AsyncMock) as mock_search,
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+        ):
             mock_search.return_value = {"ids": ["1"], "documents": ["test"]}
 
             # Simulate error in hybrid search
@@ -306,7 +290,7 @@ class TestQdrantClientHybridSearch:
             result = await client.hybrid_search(
                 query_embedding=[0.1] * 1536,
                 query_sparse={"indices": [1], "values": [0.5]},
-                limit=10
+                limit=10,
             )
 
             # Should fall back to dense search
@@ -327,18 +311,22 @@ class TestQdrantClientUpsertDocumentsWithSparse:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
             result = await client.upsert_documents_with_sparse(
                 chunks=["chunk1", "chunk2"],
                 embeddings=[[0.1] * 1536, [0.2] * 1536],
-                sparse_vectors=[{"indices": [1, 2], "values": [0.5, 0.6]}, {"indices": [3, 4], "values": [0.7, 0.8]}],
+                sparse_vectors=[
+                    {"indices": [1, 2], "values": [0.5, 0.6]},
+                    {"indices": [3, 4], "values": [0.7, 0.8]},
+                ],
                 metadatas=[{"key": "value1"}, {"key": "value2"}],
-                ids=["id1", "id2"]
+                ids=["id1", "id2"],
             )
 
             assert result["success"] is True
@@ -351,10 +339,11 @@ class TestQdrantClientUpsertDocumentsWithSparse:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("uuid.uuid4", side_effect=lambda: MagicMock(hex="test-uuid")):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("uuid.uuid4", side_effect=lambda: MagicMock(hex="test-uuid")),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
@@ -363,7 +352,7 @@ class TestQdrantClientUpsertDocumentsWithSparse:
                 embeddings=[[0.1] * 1536],
                 sparse_vectors=[{"indices": [1], "values": [0.5]}],
                 metadatas=[{"key": "value"}],
-                ids=None
+                ids=None,
             )
 
             assert result["success"] is True
@@ -377,7 +366,7 @@ class TestQdrantClientUpsertDocumentsWithSparse:
                 embeddings=[[0.1] * 1536, [0.2] * 1536],  # Different length
                 sparse_vectors=[{"indices": [1], "values": [0.5]}],
                 metadatas=[{"key": "value"}],
-                ids=["id1"]
+                ids=["id1"],
             )
 
     @pytest.mark.asyncio
@@ -388,9 +377,10 @@ class TestQdrantClientUpsertDocumentsWithSparse:
         mock_response.text = "Server error"
         error = httpx.HTTPStatusError("Error", request=MagicMock(), response=mock_response)
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(side_effect=error)
 
@@ -399,12 +389,8 @@ class TestQdrantClientUpsertDocumentsWithSparse:
                 embeddings=[[0.1] * 1536],
                 sparse_vectors=[{"indices": [1], "values": [0.5]}],
                 metadatas=[{"key": "value"}],
-                ids=["id1"]
+                ids=["id1"],
             )
 
             assert result["success"] is False
             assert "error" in result
-
-
-
-

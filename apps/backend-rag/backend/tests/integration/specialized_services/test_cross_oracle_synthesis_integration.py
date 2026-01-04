@@ -30,10 +30,9 @@ if str(backend_path) not in sys.path:
 def mock_search_service():
     """Mock SearchService"""
     service = MagicMock()
-    service.search = AsyncMock(return_value={
-        "results": [{"id": "doc1", "text": "Test result", "score": 0.9}],
-        "total": 1
-    })
+    service.search = AsyncMock(
+        return_value={"results": [{"id": "doc1", "text": "Test result", "score": 0.9}], "total": 1}
+    )
     return service
 
 
@@ -49,12 +48,14 @@ def cross_oracle_service(mock_search_service, mock_db_pool):
     """Create CrossOracleSynthesisService with mocked dependencies"""
     # Mock the service instead of importing it directly
     service = MagicMock()
-    service.synthesize = AsyncMock(return_value={
-        "success": True,
-        "plan": {},
-        "timeline": "60-90 days",
-        "cost_estimate": "Rp 50-100 million"
-    })
+    service.synthesize = AsyncMock(
+        return_value={
+            "success": True,
+            "plan": {},
+            "timeline": "60-90 days",
+            "cost_estimate": "Rp 50-100 million",
+        }
+    )
     return service
 
 
@@ -70,29 +71,28 @@ class TestCrossOracleSynthesisIntegration:
 
         # Mock multi-oracle search
         oracles = ["visa_oracle", "tax_genius", "kbli_unified", "legal_unified"]
-        mock_search_service.search = AsyncMock(side_effect=[
-            {"results": [{"id": f"doc{i}", "text": f"Oracle {i} result"}], "total": 1}
-            for i in range(len(oracles))
-        ])
+        mock_search_service.search = AsyncMock(
+            side_effect=[
+                {"results": [{"id": f"doc{i}", "text": f"Oracle {i} result"}], "total": 1}
+                for i in range(len(oracles))
+            ]
+        )
 
         # Execute synthesis
-        with patch.object(cross_oracle_service, 'synthesize') as mock_synthesize:
+        with patch.object(cross_oracle_service, "synthesize") as mock_synthesize:
             mock_synthesize.return_value = {
                 "success": True,
                 "plan": {
                     "visa": "E33G or E28A required",
                     "tax": "PPh 23 and PPn obligations",
                     "business": "KBLI 56101 for restaurant",
-                    "legal": "PT PMA or PT Lokal structure"
+                    "legal": "PT PMA or PT Lokal structure",
                 },
                 "timeline": "60-90 days",
-                "cost_estimate": "Rp 50-100 million"
+                "cost_estimate": "Rp 50-100 million",
             }
 
-            result = await cross_oracle_service.synthesize(
-                query=query,
-                oracles=oracles
-            )
+            result = await cross_oracle_service.synthesize(query=query, oracles=oracles)
 
             # Verify synthesis
             assert result["success"] is True
@@ -101,14 +101,14 @@ class TestCrossOracleSynthesisIntegration:
             assert "cost_estimate" in result
 
     @pytest.mark.asyncio
-    async def test_cross_oracle_routing(
-        self, mock_search_service, mock_db_pool
-    ):
+    async def test_cross_oracle_routing(self, mock_search_service, mock_db_pool):
         """Test that business planning queries route to Cross-Oracle"""
         query = "Piano completo per aprire business a Bali"
 
         # Mock specialized router
-        with patch('services.routing.specialized_service_router.SpecializedServiceRouter') as mock_router:
+        with patch(
+            "services.routing.specialized_service_router.SpecializedServiceRouter"
+        ) as mock_router:
             mock_router_instance = MagicMock()
             mock_router_instance.should_route_to_cross_oracle = MagicMock(return_value=True)
             mock_router.return_value = mock_router_instance
@@ -133,26 +133,25 @@ class TestCrossOracleSynthesisIntegration:
             "visa_oracle": {"results": [{"text": "Visa requirements"}]},
             "tax_genius": {"results": [{"text": "Tax obligations"}]},
             "kbli_unified": {"results": [{"text": "Business structure"}]},
-            "legal_unified": {"results": [{"text": "Legal requirements"}]}
+            "legal_unified": {"results": [{"text": "Legal requirements"}]},
         }
 
         # Execute synthesis
-        with patch.object(cross_oracle_service, 'synthesize') as mock_synthesize:
+        with patch.object(cross_oracle_service, "synthesize") as mock_synthesize:
             mock_synthesize.return_value = {
                 "success": True,
                 "analysis": {
                     "comparison": "PT PMA vs PT Lokal",
                     "pros_cons": {
                         "PT_PMA": ["Foreign investment", "Higher capital"],
-                        "PT_Lokal": ["Local investors", "Lower capital"]
+                        "PT_Lokal": ["Local investors", "Lower capital"],
                     },
-                    "recommendation": "PT PMA for foreign investors"
-                }
+                    "recommendation": "PT PMA for foreign investors",
+                },
             }
 
             result = await cross_oracle_service.synthesize(
-                query=query,
-                results=comprehensive_results
+                query=query, results=comprehensive_results
             )
 
             # Verify comprehensive analysis
@@ -173,30 +172,25 @@ class TestCrossOracleSynthesisIntegration:
         user_context = {
             "profile": {"name": "Marco Verdi", "role": "Entrepreneur"},
             "facts": ["Marco wants restaurant", "Budget: $50k"],
-            "entities": {"business_type": "restaurant", "budget": "$50k"}
+            "entities": {"business_type": "restaurant", "budget": "$50k"},
         }
 
         # Execute synthesis with context
-        with patch.object(cross_oracle_service, 'synthesize') as mock_synthesize:
+        with patch.object(cross_oracle_service, "synthesize") as mock_synthesize:
             mock_synthesize.return_value = {
                 "success": True,
                 "plan": "Personalized plan for Marco's restaurant",
-                "personalized": True
+                "personalized": True,
             }
 
-            result = await cross_oracle_service.synthesize(
-                query=query,
-                user_context=user_context
-            )
+            result = await cross_oracle_service.synthesize(query=query, user_context=user_context)
 
             # Verify personalized synthesis
             assert result["success"] is True
             assert result.get("personalized") is True
 
     @pytest.mark.asyncio
-    async def test_synthesis_error_handling(
-        self, cross_oracle_service, mock_search_service
-    ):
+    async def test_synthesis_error_handling(self, cross_oracle_service, mock_search_service):
         """Test error handling when synthesis fails"""
         query = "Test query"
 
@@ -207,8 +201,9 @@ class TestCrossOracleSynthesisIntegration:
         try:
             result = await cross_oracle_service.synthesize(query=query)
             # Should either return error response or None
-            assert result is None or "error" in str(result).lower() or not result.get("success", True)
+            assert (
+                result is None or "error" in str(result).lower() or not result.get("success", True)
+            )
         except Exception as e:
             # If exception is raised, verify it's handled appropriately
             assert "error" in str(e).lower() or "synthesis" in str(e).lower()
-

@@ -13,7 +13,9 @@ from .pipeline import KGPipeline, PipelineConfig
 def get_gemini_extractor():
     """Get GeminiKGExtractor (lazy import)"""
     from .extractor_gemini import GeminiKGExtractor
+
     return GeminiKGExtractor
+
 
 __all__ = [
     "EntityType",

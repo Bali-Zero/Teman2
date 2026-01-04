@@ -74,11 +74,13 @@ def mock_db_pool():
 @pytest.fixture
 def client_journey_orchestrator():
     """Create ClientJourneyOrchestrator instance"""
-    with patch('services.misc.client_journey_orchestrator.JourneyTemplatesService'), \
-         patch('services.misc.client_journey_orchestrator.JourneyBuilderService'), \
-         patch('services.misc.client_journey_orchestrator.PrerequisitesCheckerService'), \
-         patch('services.misc.client_journey_orchestrator.StepManagerService'), \
-         patch('services.misc.client_journey_orchestrator.ProgressTrackerService'):
+    with (
+        patch("services.misc.client_journey_orchestrator.JourneyTemplatesService"),
+        patch("services.misc.client_journey_orchestrator.JourneyBuilderService"),
+        patch("services.misc.client_journey_orchestrator.PrerequisitesCheckerService"),
+        patch("services.misc.client_journey_orchestrator.StepManagerService"),
+        patch("services.misc.client_journey_orchestrator.ProgressTrackerService"),
+    ):
         return ClientJourneyOrchestrator()
 
 
@@ -92,15 +94,18 @@ class TestClientJourneyOrchestrator:
 
     def test_create_journey(self, client_journey_orchestrator):
         """Test creating journey"""
-        with patch.object(client_journey_orchestrator.builder_service, 'build_journey_from_template', return_value=MagicMock()) as mock_build:
+        with patch.object(
+            client_journey_orchestrator.builder_service,
+            "build_journey_from_template",
+            return_value=MagicMock(),
+        ) as mock_build:
             mock_journey = MagicMock()
             mock_journey.journey_id = "journey1"
             mock_journey.journey_type = "pt_pma_setup"
             mock_journey.steps = []
             mock_build.return_value = mock_journey
             result = client_journey_orchestrator.create_journey(
-                client_id="client1",
-                journey_type="pt_pma_setup"
+                client_id="client1", journey_type="pt_pma_setup"
             )
             assert result is not None
 
@@ -111,9 +116,19 @@ class TestClientJourneyOrchestrator:
         mock_journey.status = "in_progress"
         mock_journey.started_at = None
         mock_journey.estimated_completion = None
-        with patch.object(client_journey_orchestrator, 'get_journey', return_value=mock_journey):
-            with patch.object(client_journey_orchestrator.progress_tracker, 'get_progress', return_value={"progress_percent": 0, "completed": 0, "in_progress": 0, "blocked": 0, "total_steps": 5}):
-                with patch.object(client_journey_orchestrator, 'get_next_steps', return_value=[]):
+        with patch.object(client_journey_orchestrator, "get_journey", return_value=mock_journey):
+            with patch.object(
+                client_journey_orchestrator.progress_tracker,
+                "get_progress",
+                return_value={
+                    "progress_percent": 0,
+                    "completed": 0,
+                    "in_progress": 0,
+                    "blocked": 0,
+                    "total_steps": 5,
+                },
+            ):
+                with patch.object(client_journey_orchestrator, "get_next_steps", return_value=[]):
                     progress = client_journey_orchestrator.get_progress("journey1")
                     assert isinstance(progress, dict)
 
@@ -121,9 +136,13 @@ class TestClientJourneyOrchestrator:
         """Test starting a step"""
         mock_journey = MagicMock()
         mock_journey.steps = []
-        with patch.object(client_journey_orchestrator, 'get_journey', return_value=mock_journey):
-            with patch.object(client_journey_orchestrator, 'check_prerequisites', return_value=(True, [])):
-                with patch.object(client_journey_orchestrator.step_manager, 'start_step', return_value=True):
+        with patch.object(client_journey_orchestrator, "get_journey", return_value=mock_journey):
+            with patch.object(
+                client_journey_orchestrator, "check_prerequisites", return_value=(True, [])
+            ):
+                with patch.object(
+                    client_journey_orchestrator.step_manager, "start_step", return_value=True
+                ):
                     result = client_journey_orchestrator.start_step("journey1", "step1")
                     assert result is True
 
@@ -132,8 +151,11 @@ class TestClientJourneyOrchestrator:
         mock_journey = MagicMock()
         mock_journey.steps = []
         mock_journey.started_at = None
-        with patch.object(client_journey_orchestrator, 'get_journey', return_value=mock_journey):
-            with patch.object(client_journey_orchestrator.step_manager, 'complete_step', return_value=True):
-                result = client_journey_orchestrator.complete_step("journey1", "step1", notes="Done")
+        with patch.object(client_journey_orchestrator, "get_journey", return_value=mock_journey):
+            with patch.object(
+                client_journey_orchestrator.step_manager, "complete_step", return_value=True
+            ):
+                result = client_journey_orchestrator.complete_step(
+                    "journey1", "step1", notes="Done"
+                )
                 assert result is True
-

@@ -2,6 +2,7 @@
 Comprehensive tests for AICRMExtractor
 Target: >95% coverage
 """
+
 import json
 import sys
 from pathlib import Path
@@ -20,35 +21,39 @@ from services.crm.ai_crm_extractor import AICRMExtractor, get_extractor
 def mock_ai_client():
     """Mock AI client"""
     client = AsyncMock()
-    client.conversational = AsyncMock(return_value={
-        "text": json.dumps({
-            "client": {
-                "full_name": "John Doe",
-                "email": "john@example.com",
-                "phone": "+1234567890",
-                "whatsapp": "+1234567890",
-                "nationality": "US",
-                "confidence": 0.9,
-            },
-            "practice_intent": {
-                "detected": True,
-                "practice_type_code": "KITAS",
-                "confidence": 0.8,
-                "details": "Work permit application",
-            },
-            "sentiment": "positive",
-            "urgency": "normal",
-            "summary": "Client interested in KITAS",
-            "action_items": ["Submit documents", "Schedule appointment"],
-            "topics_discussed": ["visa", "work permit"],
-            "extracted_entities": {
-                "dates": ["2025-01-01"],
-                "amounts": ["$1000"],
-                "locations": ["Bali"],
-                "documents_mentioned": ["passport"],
-            },
-        })
-    })
+    client.conversational = AsyncMock(
+        return_value={
+            "text": json.dumps(
+                {
+                    "client": {
+                        "full_name": "John Doe",
+                        "email": "john@example.com",
+                        "phone": "+1234567890",
+                        "whatsapp": "+1234567890",
+                        "nationality": "US",
+                        "confidence": 0.9,
+                    },
+                    "practice_intent": {
+                        "detected": True,
+                        "practice_type_code": "KITAS",
+                        "confidence": 0.8,
+                        "details": "Work permit application",
+                    },
+                    "sentiment": "positive",
+                    "urgency": "normal",
+                    "summary": "Client interested in KITAS",
+                    "action_items": ["Submit documents", "Schedule appointment"],
+                    "topics_discussed": ["visa", "work permit"],
+                    "extracted_entities": {
+                        "dates": ["2025-01-01"],
+                        "amounts": ["$1000"],
+                        "locations": ["Bali"],
+                        "documents_mentioned": ["passport"],
+                    },
+                }
+            )
+        }
+    )
     return client
 
 
@@ -77,9 +82,13 @@ class TestAICRMExtractor:
 
     def test_init_error(self):
         """Test initialization error handling"""
-        with patch("services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")):
-            with pytest.raises(Exception):
-                AICRMExtractor()
+        with (
+            patch(
+                "services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")
+            ),
+            pytest.raises(Exception),
+        ):
+            AICRMExtractor()
 
     @pytest.mark.asyncio
     async def test_extract_from_conversation_success(self, extractor, mock_ai_client):
@@ -118,9 +127,7 @@ class TestAICRMExtractor:
     @pytest.mark.asyncio
     async def test_extract_from_conversation_json_error(self, extractor, mock_ai_client):
         """Test handling JSON decode error"""
-        mock_ai_client.conversational = AsyncMock(return_value={
-            "text": "Invalid JSON response"
-        })
+        mock_ai_client.conversational = AsyncMock(return_value={"text": "Invalid JSON response"})
 
         messages = [{"role": "user", "content": "Test"}]
         result = await extractor.extract_from_conversation(messages)
@@ -131,12 +138,18 @@ class TestAICRMExtractor:
     @pytest.mark.asyncio
     async def test_extract_from_conversation_markdown_wrapped(self, extractor, mock_ai_client):
         """Test extraction with markdown code blocks"""
-        mock_ai_client.conversational = AsyncMock(return_value={
-            "text": "```json\n" + json.dumps({
-                "client": {"full_name": "Test", "confidence": 0.5},
-                "practice_intent": {"detected": False},
-            }) + "\n```"
-        })
+        mock_ai_client.conversational = AsyncMock(
+            return_value={
+                "text": "```json\n"
+                + json.dumps(
+                    {
+                        "client": {"full_name": "Test", "confidence": 0.5},
+                        "practice_intent": {"detected": False},
+                    }
+                )
+                + "\n```"
+            }
+        )
 
         messages = [{"role": "user", "content": "Test"}]
         result = await extractor.extract_from_conversation(messages)
@@ -321,6 +334,7 @@ class TestGetExtractor:
         """Test first call creates instance"""
         # Reset singleton
         import services.crm.ai_crm_extractor as module
+
         module._extractor_instance = None
 
         with patch("services.crm.ai_crm_extractor.AICRMExtractor") as mock_extractor_class:
@@ -346,6 +360,7 @@ class TestGetExtractor:
     def test_get_extractor_with_client(self):
         """Test get_extractor with provided client"""
         import services.crm.ai_crm_extractor as module
+
         module._extractor_instance = None
 
         mock_client = MagicMock()
@@ -362,12 +377,13 @@ class TestGetExtractor:
     def test_get_extractor_init_error(self):
         """Test get_extractor handles initialization error"""
         import services.crm.ai_crm_extractor as module
+
         module._extractor_instance = None
 
-        with patch("services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")):
-            with pytest.raises(Exception):
-                get_extractor()
-
-
-
-
+        with (
+            patch(
+                "services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")
+            ),
+            pytest.raises(Exception),
+        ):
+            get_extractor()

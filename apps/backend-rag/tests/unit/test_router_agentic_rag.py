@@ -32,8 +32,8 @@ def client(mock_orchestrator):
     """Create FastAPI test client with mocked orchestrator and authentication"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
     from app.dependencies import get_current_user
+    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)
@@ -251,8 +251,8 @@ def client_minimal(mock_orchestrator_minimal):
     """Create FastAPI test client with minimal mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
     from app.dependencies import get_current_user
+    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)
@@ -327,8 +327,8 @@ def client_error(mock_orchestrator_error):
     """Create FastAPI test client with error mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
     from app.dependencies import get_current_user
+    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)
@@ -368,8 +368,8 @@ def client_keyerror(mock_orchestrator_keyerror):
     """Create FastAPI test client with keyerror mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import get_orchestrator, get_optional_database_pool
     from app.dependencies import get_current_user
+    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)

@@ -33,7 +33,9 @@ class TestFollowupServiceInit:
 
     def test_init_without_ai_client(self):
         """Test initialization when AI client fails"""
-        with patch("services.misc.followup_service.ZantaraAIClient", side_effect=Exception("AI error")):
+        with patch(
+            "services.misc.followup_service.ZantaraAIClient", side_effect=Exception("AI error")
+        ):
             service = FollowupService()
 
             assert service.zantara_client is None

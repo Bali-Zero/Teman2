@@ -2,6 +2,7 @@
 """
 Download file from Google Drive by File ID
 """
+
 import json
 import os
 import sys
@@ -43,7 +44,7 @@ def download_file_from_drive(file_id: str, output_path: Path):
         file_size = int(file_metadata.get("size", 0))
 
         print(f"📁 File: {file_name}")
-        print(f"📊 Size: {file_size / (1024*1024):.2f} MB")
+        print(f"📊 Size: {file_size / (1024 * 1024):.2f} MB")
         print(f"💾 Downloading to: {output_path}")
 
         # Download file
@@ -89,7 +90,9 @@ if __name__ == "__main__":
     output_path = (
         Path(sys.argv[2])
         if len(sys.argv) > 2
-        else Path(f"/Users/antonellosiano/Desktop/kb/raw_laws_local/drive_file_{file_id}.zip")
+        else Path(
+            f"/Users/antonellosiano/Desktop/kb/raw_laws_local/drive_file_{file_id}.zip"
+        )
     )
 
     print("🚀 Downloading file from Google Drive...")

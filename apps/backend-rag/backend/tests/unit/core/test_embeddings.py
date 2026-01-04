@@ -40,10 +40,7 @@ class TestEmbeddingsGenerator:
         mock_client = MagicMock()
         mock_openai_class.return_value = mock_client
 
-        generator = EmbeddingsGenerator(
-            provider="openai",
-            api_key="test-key"
-        )
+        generator = EmbeddingsGenerator(provider="openai", api_key="test-key")
         assert generator.provider == "openai"
         assert generator.model == "text-embedding-3-small"
         assert generator.dimensions == 1536
@@ -90,6 +87,7 @@ class TestEmbeddingsGenerator:
     def test_generate_embeddings_sentence_transformers(self, mock_st):
         """Test generating embeddings with sentence-transformers"""
         import numpy as np
+
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384, [0.2] * 384])
@@ -137,7 +135,7 @@ class TestEmbeddingsGenerator:
         # Mock to return different responses for each batch
         mock_client.embeddings.create.side_effect = [
             create_batch_response(2048),  # First batch
-            create_batch_response(952),   # Second batch (3000 - 2048)
+            create_batch_response(952),  # Second batch (3000 - 2048)
         ]
         mock_openai_class.return_value = mock_client
 
@@ -151,6 +149,7 @@ class TestEmbeddingsGenerator:
     def test_generate_single_embedding(self, mock_st):
         """Test generating single embedding"""
         import numpy as np
+
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
@@ -164,6 +163,7 @@ class TestEmbeddingsGenerator:
     def test_generate_query_embedding(self, mock_st):
         """Test generating query embedding"""
         import numpy as np
+
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
@@ -177,6 +177,7 @@ class TestEmbeddingsGenerator:
     def test_generate_batch_embeddings(self, mock_st):
         """Test generate_batch_embeddings alias"""
         import numpy as np
+
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
@@ -225,12 +226,15 @@ class TestEmbeddingsGenerator:
     def test_generate_embeddings_function(self, mock_st):
         """Test convenience function"""
         import numpy as np
+
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.return_value = np.array([[0.1] * 384])
         mock_st.return_value = mock_transformer
 
-        result = generate_embeddings(["test"], api_key=None)  # Use None to force sentence-transformers
+        result = generate_embeddings(
+            ["test"], api_key=None
+        )  # Use None to force sentence-transformers
         assert len(result) == 1
         # May be 384 (sentence-transformers) or 1536 (OpenAI fallback)
         assert len(result[0]) in [384, 1536]
@@ -246,4 +250,3 @@ class TestEmbeddingsGenerator:
         generator = EmbeddingsGenerator(provider="sentence-transformers")
         with pytest.raises(Exception):
             generator.generate_embeddings(["test"])
-

@@ -37,9 +37,7 @@ def mock_intelligent_router():
     router = AsyncMock()
     router.stream_response = AsyncMock()
     router.stream_response.return_value = AsyncMock()
-    router.stream_response.return_value.__aiter__.return_value = [
-        {"type": "text", "data": "test"}
-    ]
+    router.stream_response.return_value.__aiter__.return_value = [{"type": "text", "data": "test"}]
     return router
 
 
@@ -77,9 +75,7 @@ class TestStreamingRouter:
 
         with patch("app.streaming.validate_auth_mixed", return_value={"email": "test@example.com"}):
             response = await bali_zero_chat_stream(
-                request=mock_request,
-                query="test query",
-                background_tasks=MagicMock()
+                request=mock_request, query="test query", background_tasks=MagicMock()
             )
 
             assert response is not None
@@ -89,9 +85,7 @@ class TestStreamingRouter:
         """Test empty query"""
         with pytest.raises(Exception):  # Should raise HTTPException
             await bali_zero_chat_stream(
-                request=mock_request,
-                query="",
-                background_tasks=MagicMock()
+                request=mock_request, query="", background_tasks=MagicMock()
             )
 
     @pytest.mark.asyncio
@@ -102,9 +96,7 @@ class TestStreamingRouter:
         with patch("app.streaming.validate_auth_mixed", return_value=None):
             with pytest.raises(Exception):  # Should raise HTTPException
                 await bali_zero_chat_stream(
-                    request=mock_request,
-                    query="test",
-                    background_tasks=MagicMock()
+                    request=mock_request, query="test", background_tasks=MagicMock()
                 )
 
     @pytest.mark.asyncio
@@ -114,9 +106,7 @@ class TestStreamingRouter:
 
         with pytest.raises(Exception):  # Should raise HTTPException
             await bali_zero_chat_stream(
-                request=mock_request,
-                query="test",
-                background_tasks=MagicMock()
+                request=mock_request, query="test", background_tasks=MagicMock()
             )
 
 
@@ -132,19 +122,11 @@ class TestChatStreamRequest:
     def test_request_with_history(self):
         """Test request with history"""
         request = ChatStreamRequest(
-            message="test",
-            conversation_history=[{"role": "user", "content": "previous"}]
+            message="test", conversation_history=[{"role": "user", "content": "previous"}]
         )
         assert len(request.conversation_history) == 1
 
     def test_request_with_metadata(self):
         """Test request with metadata"""
-        request = ChatStreamRequest(
-            message="test",
-            metadata={"key": "value"}
-        )
+        request = ChatStreamRequest(message="test", metadata={"key": "value"})
         assert request.metadata["key"] == "value"
-
-
-
-

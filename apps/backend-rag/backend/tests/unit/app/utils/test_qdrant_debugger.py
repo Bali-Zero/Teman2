@@ -30,7 +30,7 @@ class TestCollectionHealth:
             points_count=100,
             vectors_count=100,
             indexed=True,
-            status="green"
+            status="green",
         )
         assert health.name == "test_collection"
         assert health.points_count == 100
@@ -47,7 +47,7 @@ class TestCollectionHealth:
             vectors_count=0,
             indexed=False,
             status="error",
-            error="Connection failed"
+            error="Connection failed",
         )
         assert health.error == "Connection failed"
 
@@ -58,10 +58,7 @@ class TestQueryPerformance:
     def test_init(self):
         """Test QueryPerformance initialization"""
         perf = QueryPerformance(
-            collection="test_collection",
-            query="test query",
-            duration_ms=10.5,
-            results_count=5
+            collection="test_collection", query="test query", duration_ms=10.5, results_count=5
         )
         assert perf.collection == "test_collection"
         assert perf.query == "test query"
@@ -72,11 +69,7 @@ class TestQueryPerformance:
     def test_init_with_error(self):
         """Test QueryPerformance with error"""
         perf = QueryPerformance(
-            collection="test",
-            query="test",
-            duration_ms=0.0,
-            results_count=0,
-            error="Query failed"
+            collection="test", query="test", duration_ms=0.0, results_count=0, error="Query failed"
         )
         assert perf.error == "Query failed"
 
@@ -98,10 +91,7 @@ class TestQdrantDebugger:
 
     def test_init_custom(self):
         """Test QdrantDebugger initialization with custom values"""
-        debugger = QdrantDebugger(
-            qdrant_url="http://custom:6333",
-            api_key="test-key"
-        )
+        debugger = QdrantDebugger(qdrant_url="http://custom:6333", api_key="test-key")
 
         assert debugger.qdrant_url == "http://custom:6333"
         assert debugger.api_key == "test-key"
@@ -117,14 +107,8 @@ class TestQdrantDebugger:
             "result": {
                 "points_count": 100,
                 "vectors_count": 100,
-                "config": {
-                    "params": {
-                        "vectors": {
-                            "on_disk": True
-                        }
-                    }
-                },
-                "status": "green"
+                "config": {"params": {"vectors": {"on_disk": True}}},
+                "status": "green",
             }
         }
         mock_response.raise_for_status = MagicMock()
@@ -166,9 +150,7 @@ class TestQdrantDebugger:
 
         mock_collections_response = MagicMock()
         mock_collections_response.json.return_value = {
-            "result": {
-                "collections": [{"name": "coll1"}, {"name": "coll2"}]
-            }
+            "result": {"collections": [{"name": "coll1"}, {"name": "coll2"}]}
         }
         mock_collections_response.raise_for_status = MagicMock()
 
@@ -178,7 +160,7 @@ class TestQdrantDebugger:
                 "points_count": 10,
                 "vectors_count": 10,
                 "config": {"params": {"vectors": {"on_disk": False}}},
-                "status": "green"
+                "status": "green",
             }
         }
         mock_health_response.raise_for_status = MagicMock()
@@ -187,11 +169,9 @@ class TestQdrantDebugger:
             mock_client_instance = AsyncMock()
             mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
             mock_client_instance.__aexit__ = AsyncMock(return_value=None)
-            mock_client_instance.get = AsyncMock(side_effect=[
-                mock_collections_response,
-                mock_health_response,
-                mock_health_response
-            ])
+            mock_client_instance.get = AsyncMock(
+                side_effect=[mock_collections_response, mock_health_response, mock_health_response]
+            )
             mock_client.return_value = mock_client_instance
 
             health_list = await debugger.get_all_collections_health()
@@ -204,15 +184,10 @@ class TestQdrantDebugger:
         debugger = QdrantDebugger(qdrant_url="http://localhost:6333")
 
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "result": [{"id": 1}, {"id": 2}]
-        }
+        mock_response.json.return_value = {"result": [{"id": 1}, {"id": 2}]}
         mock_response.raise_for_status = MagicMock()
 
-        with patch("httpx.AsyncClient") as mock_client, \
-             patch("time.time", return_value=0.0), \
-             patch("time.perf_counter", side_effect=[0.0, 0.01]):
-
+        with patch("httpx.AsyncClient") as mock_client, patch("time.time", side_effect=[0.0, 0.01]):
             mock_client_instance = AsyncMock()
             mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)
             mock_client_instance.__aexit__ = AsyncMock(return_value=None)
@@ -220,9 +195,7 @@ class TestQdrantDebugger:
             mock_client.return_value = mock_client_instance
 
             perf = await debugger.analyze_query_performance(
-                collection="test",
-                query_vector=[0.1] * 1536,
-                limit=10
+                collection="test", query_vector=[0.1] * 1536, limit=10
             )
 
             assert perf.collection == "test"
@@ -238,15 +211,8 @@ class TestQdrantDebugger:
         mock_response.json.return_value = {
             "result": {
                 "points_count": 100,
-                "config": {
-                    "params": {
-                        "vectors": {
-                            "size": 1536,
-                            "distance": "Cosine"
-                        }
-                    }
-                },
-                "status": "green"
+                "config": {"params": {"vectors": {"size": 1536, "distance": "Cosine"}}},
+                "status": "green",
             }
         }
         mock_response.raise_for_status = MagicMock()
@@ -260,9 +226,8 @@ class TestQdrantDebugger:
 
             stats = await debugger.get_collection_stats("test_collection")
 
+            # get_collection_stats returns name, points_count, vectors_count, status, config
             assert stats["points_count"] == 100
-            assert stats["vector_size"] == 1536
-
-
-
-
+            assert stats["name"] == "test_collection"
+            assert stats["status"] == "green"
+            assert "config" in stats

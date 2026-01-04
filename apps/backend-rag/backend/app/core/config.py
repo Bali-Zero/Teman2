@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     def resolve_google_credentials(cls, v):
         """Resolve Google credentials from multiple env vars."""
         import os
+
         if v:
             return v
         # Check GEMINI_SA_TOKEN as fallback
@@ -52,6 +53,7 @@ class Settings(BaseSettings):
         if gemini_token:
             return gemini_token
         return None
+
     google_imagen_api_key: str | None = (
         None  # Set via GOOGLE_IMAGEN_API_KEY env var (for Imagen image generation)
     )
@@ -61,7 +63,9 @@ class Settings(BaseSettings):
     imagineart_api_key: str | None = None  # Set via IMAGINEART_API_KEY env var (for ImagineArt)
     stability_api_key: str | None = None  # Set via STABILITY_API_KEY env var (for Stability AI)
     brave_api_key: str | None = None  # Set via BRAVE_API_KEY env var (for Brave Web Search)
-    tavily_api_key: str | None = None  # Set via TAVILY_API_KEY env var (for Tavily AI Search - preferred)
+    tavily_api_key: str | None = (
+        None  # Set via TAVILY_API_KEY env var (for Tavily AI Search - preferred)
+    )
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536  # Matches migrated collections
 
@@ -528,6 +532,18 @@ class Settings(BaseSettings):
     whatsapp_business_account_id: str | None = None  # Set via WHATSAPP_BUSINESS_ACCOUNT_ID env var
 
     # ========================================
+    # TELEGRAM BOT CONFIGURATION
+    # ========================================
+    telegram_bot_token: str | None = Field(
+        default=None,
+        description="Telegram Bot token from @BotFather. Set via TELEGRAM_BOT_TOKEN env var.",
+    )
+    telegram_webhook_secret: str | None = Field(
+        default=None,
+        description="Secret token for webhook verification. Set via TELEGRAM_WEBHOOK_SECRET env var.",
+    )
+
+    # ========================================
     # META INSTAGRAM CONFIGURATION
     # ========================================
     instagram_verify_token: str = Field(
@@ -625,8 +641,12 @@ class Settings(BaseSettings):
     # ========================================
     google_drive_client_id: str | None = None  # Set via GOOGLE_DRIVE_CLIENT_ID env var
     google_drive_client_secret: str | None = None  # Set via GOOGLE_DRIVE_CLIENT_SECRET env var
-    google_drive_redirect_uri: str = "https://nuzantara-rag.fly.dev/integrations/google-drive/callback"
-    google_drive_root_folder_id: str | None = None  # Set via GOOGLE_DRIVE_ROOT_FOLDER_ID env var (team root folder)
+    google_drive_redirect_uri: str = (
+        "https://nuzantara-rag.fly.dev/api/integrations/google-drive/callback"
+    )
+    google_drive_root_folder_id: str | None = (
+        None  # Set via GOOGLE_DRIVE_ROOT_FOLDER_ID env var (team root folder)
+    )
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 
     # ========================================

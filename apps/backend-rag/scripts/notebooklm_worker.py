@@ -1,31 +1,29 @@
-import os
 import time
+
 from playwright.sync_api import sync_playwright
 
 USER_DATA_DIR = "apps/backend-rag/data/chrome_profile"
 KBLI_PDF = "/Users/antonellosiano/.gemini/tmp/a32742657b5c469b4c3e20d6a3d93248a1911d083c937abaf61b5ea1712563f1/KBLI_55110_Star_Hotel_BaliZero.pdf"
 
+
 def run_automation():
-    print(f"🤖 NotebookLM Worker v2 - Interactive Mode")
-    
+    print("🤖 NotebookLM Worker v2 - Interactive Mode")
+
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
-            user_data_dir=USER_DATA_DIR,
-            headless=False,
-            channel="chrome",
-            args=["--no-sandbox"]
+            user_data_dir=USER_DATA_DIR, headless=False, channel="chrome", args=["--no-sandbox"]
         )
-        
+
         page = browser.new_page()
         page.goto("https://notebooklm.google.com/")
-        
+
         print("⏳ Waiting for page load...")
         page.wait_for_load_state("domcontentloaded")
         time.sleep(3)
-        
+
         title = page.title()
         print(f"📍 Current Page Title: '{title}'")
-        
+
         if "Sign in" in title or "Google Accounts" in title:
             print("🚨 DETECTED LOGIN PAGE! Please log in manually now.")
             # Wait until title changes (user logged in)
@@ -49,7 +47,7 @@ def run_automation():
         except Exception as e:
             print(f"⚠️ Auto-click failed: {e}")
             print("👉 PLEASE CLICK 'NEW NOTEBOOK' MANUALLY NOW!")
-            
+
             # Wait until URL contains 'notebook' (indicating we are inside one)
             while "notebook/" not in page.url:
                 time.sleep(1)
@@ -58,25 +56,25 @@ def run_automation():
         # Now inside the notebook - Upload PDF
         print("📂 Ready to upload. Locating input...")
         time.sleep(2)
-        
+
         try:
             # Add Source button is usually visible
             # But the input[type=file] is hidden. We need to trigger it.
             # Strategy: Click "PDF" or "Source" button, then handle file chooser
-            
+
             # Click "Add source" if distinct from sidebar
-            # page.locator("text=Add source").click() 
-            
+            # page.locator("text=Add source").click()
+
             # This is generic for many Google apps
             with page.expect_file_chooser(timeout=30000) as fc_info:
                 # Try clicking the "PDF" text often found in the source source area
                 # Or try force showing the input
                 page.locator("text=PDF").first.click()
-                
+
             file_chooser = fc_info.value
             file_chooser.set_files(KBLI_PDF)
             print("✅ File sent to uploader!")
-            
+
         except Exception as e:
             print(f"❌ Upload Automation Failed: {e}")
             print("👉 Please upload the PDF manually to test the result.")
@@ -85,10 +83,11 @@ def run_automation():
         # Wait for processing
         print("⏳ Waiting for NotebookLM to process (20s)...")
         time.sleep(20)
-        
+
         print("🎉 Script finished. Leaving browser open for inspection.")
-        time.sleep(300) # Keep open for 5 mins
+        time.sleep(300)  # Keep open for 5 mins
         browser.close()
+
 
 if __name__ == "__main__":
     run_automation()

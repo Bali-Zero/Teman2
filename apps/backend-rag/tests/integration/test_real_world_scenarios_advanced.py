@@ -366,6 +366,3 @@ class TestRealWorldAdvancedScenarios:
             # Cleanup
             await conn.execute("DELETE FROM research_results WHERE session_id = $1", session_id)
             await conn.execute("DELETE FROM research_sessions WHERE id = $1", session_id)
-
-
-

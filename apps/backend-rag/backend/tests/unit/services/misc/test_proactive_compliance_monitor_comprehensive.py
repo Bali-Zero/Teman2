@@ -22,8 +22,7 @@ def compliance_monitor():
     mock_search = MagicMock()
     mock_notification = MagicMock()
     return ProactiveComplianceMonitor(
-        search_service=mock_search,
-        notification_service=mock_notification
+        search_service=mock_search, notification_service=mock_notification
     )
 
 
@@ -42,8 +41,7 @@ class TestProactiveComplianceMonitor:
         mock_search = MagicMock()
         mock_notification = MagicMock()
         monitor = ProactiveComplianceMonitor(
-            search_service=mock_search,
-            notification_service=mock_notification
+            search_service=mock_search, notification_service=mock_notification
         )
         assert monitor.search == mock_search
         assert monitor.notification_service == mock_notification
@@ -68,7 +66,7 @@ class TestProactiveComplianceMonitor:
             compliance_type="visa_expiry",
             title="KITAS Expiry",
             deadline="2024-12-31",
-            description="KITAS expiry"
+            description="KITAS expiry",
         )
         assert item is not None
 
@@ -81,4 +79,3 @@ class TestProactiveComplianceMonitor:
         """Test getting monitor statistics"""
         stats = compliance_monitor.get_monitor_stats()
         assert isinstance(stats, dict)
-

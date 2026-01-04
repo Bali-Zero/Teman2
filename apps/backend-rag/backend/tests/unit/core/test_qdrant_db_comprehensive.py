@@ -29,9 +29,7 @@ def qdrant_client():
     """Create QdrantClient instance"""
     with patch("httpx.AsyncClient"):
         return QdrantClient(
-            qdrant_url="http://localhost:6333",
-            collection_name="test_collection",
-            api_key=None
+            qdrant_url="http://localhost:6333", collection_name="test_collection", api_key=None
         )
 
 
@@ -97,8 +95,7 @@ class TestQdrantClient:
         """Test initialization"""
         with patch("httpx.AsyncClient"):
             client = QdrantClient(
-                qdrant_url="http://localhost:6333",
-                collection_name="test_collection"
+                qdrant_url="http://localhost:6333", collection_name="test_collection"
             )
             assert client.qdrant_url == "http://localhost:6333"
             assert client.collection_name == "test_collection"
@@ -110,7 +107,7 @@ class TestQdrantClient:
             client = QdrantClient(
                 qdrant_url="http://localhost:6333",
                 collection_name="test_collection",
-                api_key="test-key"
+                api_key="test-key",
             )
             assert client.api_key == "test-key"
 
@@ -118,9 +115,7 @@ class TestQdrantClient:
         """Test initialization with custom timeout"""
         with patch("httpx.AsyncClient"):
             client = QdrantClient(
-                qdrant_url="http://localhost:6333",
-                collection_name="test_collection",
-                timeout=60.0
+                qdrant_url="http://localhost:6333", collection_name="test_collection", timeout=60.0
             )
             assert client.timeout == 60.0
 
@@ -128,8 +123,7 @@ class TestQdrantClient:
         """Test initialization removes trailing slash"""
         with patch("httpx.AsyncClient"):
             client = QdrantClient(
-                qdrant_url="http://localhost:6333/",
-                collection_name="test_collection"
+                qdrant_url="http://localhost:6333/", collection_name="test_collection"
             )
             assert client.qdrant_url == "http://localhost:6333"
 
@@ -173,8 +167,7 @@ class TestQdrantClient:
             mock_client_class.return_value = mock_client
 
             async with QdrantClient(
-                qdrant_url="http://localhost:6333",
-                collection_name="test_collection"
+                qdrant_url="http://localhost:6333", collection_name="test_collection"
             ) as client:
                 assert client is not None
 
@@ -186,7 +179,7 @@ class TestQdrantClient:
             client = QdrantClient(
                 qdrant_url="http://localhost:6333",
                 collection_name="test_collection",
-                api_key="test-key"
+                api_key="test-key",
             )
             headers = client._get_headers()
             assert headers["api-key"] == "test-key"
@@ -196,9 +189,7 @@ class TestQdrantClient:
         with patch("httpx.AsyncClient"):
             # Create client with explicit api_key=None to override any settings
             client = QdrantClient(
-                qdrant_url="http://localhost:6333",
-                collection_name="test_collection",
-                api_key=None
+                qdrant_url="http://localhost:6333", collection_name="test_collection", api_key=None
             )
             # Ensure api_key is None
             client.api_key = None
@@ -236,21 +227,18 @@ class TestQdrantClient:
         """Test search operation success"""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = MagicMock(return_value={
-            "result": [
-                {"id": "1", "score": 0.9, "payload": {"text": "test", "metadata": {}}}
-            ]
-        })
+        mock_response.json = MagicMock(
+            return_value={
+                "result": [{"id": "1", "score": 0.9, "payload": {"text": "test", "metadata": {}}}]
+            }
+        )
         mock_response.raise_for_status = MagicMock()
 
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
-            result = await qdrant_client.search(
-                query_embedding=[0.1] * 1536,
-                limit=5
-            )
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
+            result = await qdrant_client.search(query_embedding=[0.1] * 1536, limit=5)
             assert result is not None
             assert "ids" in result
             assert "documents" in result
@@ -267,11 +255,9 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.search(
-                query_embedding=[0.1] * 1536,
-                limit=5,
-                filter={"tier": "S"}
+                query_embedding=[0.1] * 1536, limit=5, filter={"tier": "S"}
             )
             assert result is not None
 
@@ -281,11 +267,8 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection failed"))
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
-            result = await qdrant_client.search(
-                query_embedding=[0.1] * 1536,
-                limit=5
-            )
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
+            result = await qdrant_client.search(query_embedding=[0.1] * 1536, limit=5)
             assert result["total_found"] == 0
 
     @pytest.mark.asyncio
@@ -298,7 +281,7 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.create_collection(vector_size=1536)
             assert result is True
 
@@ -312,11 +295,8 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
-            result = await qdrant_client.create_collection(
-                vector_size=1536,
-                enable_sparse=True
-            )
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
+            result = await qdrant_client.create_collection(vector_size=1536, enable_sparse=True)
             assert result is True
 
     @pytest.mark.asyncio
@@ -331,7 +311,7 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.create_collection(vector_size=1536)
             assert result is False
 
@@ -345,11 +325,9 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.upsert_documents(
-                chunks=["test chunk"],
-                embeddings=[[0.1] * 1536],
-                metadatas=[{"test": "metadata"}]
+                chunks=["test chunk"], embeddings=[[0.1] * 1536], metadatas=[{"test": "metadata"}]
             )
             assert result is not None
             assert "documents_added" in result or "success" in result
@@ -364,12 +342,12 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.upsert_documents(
                 chunks=["test chunk"],
                 embeddings=[[0.1] * 1536],
                 metadatas=[{"test": "metadata"}],
-                ids=["custom-id"]
+                ids=["custom-id"],
             )
             assert result is not None
 
@@ -380,7 +358,7 @@ class TestQdrantClient:
             await qdrant_client.upsert_documents(
                 chunks=["chunk1", "chunk2"],
                 embeddings=[[0.1] * 1536],
-                metadatas=[{"test": "metadata"}]
+                metadatas=[{"test": "metadata"}],
             )
 
     @pytest.mark.asyncio
@@ -388,21 +366,19 @@ class TestQdrantClient:
         """Test get operation success"""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = MagicMock(return_value={
-            "result": [
-                {
-                    "id": "1",
-                    "vector": [0.1] * 1536,
-                    "payload": {"text": "test", "metadata": {}}
-                }
-            ]
-        })
+        mock_response.json = MagicMock(
+            return_value={
+                "result": [
+                    {"id": "1", "vector": [0.1] * 1536, "payload": {"text": "test", "metadata": {}}}
+                ]
+            }
+        )
         mock_response.raise_for_status = MagicMock()
 
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.get(ids=["1"])
             assert result is not None
             assert "ids" in result
@@ -419,7 +395,7 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.get(ids=["1"], include=["embeddings"])
             assert result is not None
 
@@ -429,7 +405,7 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection failed"))
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.get(ids=["1"])
             assert result["ids"] == []
 
@@ -443,7 +419,7 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.delete(ids=["1", "2"])
             assert result["success"] is True
             assert result["deleted_count"] == 2
@@ -460,7 +436,7 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.delete(ids=["1"])
             assert result["success"] is False
 
@@ -469,19 +445,15 @@ class TestQdrantClient:
         """Test peek operation"""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json = AsyncMock(return_value={
-            "result": {
-                "points": [
-                    {"id": "1", "payload": {"text": "test"}}
-                ]
-            }
-        })
+        mock_response.json = AsyncMock(
+            return_value={"result": {"points": [{"id": "1", "payload": {"text": "test"}}]}}
+        )
         mock_response.raise_for_status = MagicMock()
 
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.peek(limit=5)
             assert result is not None
 
@@ -489,18 +461,18 @@ class TestQdrantClient:
     async def test_hybrid_search(self, qdrant_client):
         """Test hybrid search"""
         # Mock search method since hybrid_search falls back to search when no sparse vector
-        with patch.object(qdrant_client, 'search', new_callable=AsyncMock) as mock_search:
+        with patch.object(qdrant_client, "search", new_callable=AsyncMock) as mock_search:
             mock_search.return_value = {
                 "ids": [],
                 "documents": [],
                 "metadatas": [],
                 "distances": [],
-                "total_found": 0
+                "total_found": 0,
             }
             result = await qdrant_client.hybrid_search(
                 query_embedding=[0.1] * 1536,
                 query_sparse=None,  # No sparse vector, will fall back to search
-                limit=5
+                limit=5,
             )
             assert result is not None
 
@@ -520,12 +492,12 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.upsert_documents_with_sparse(
                 chunks=["test chunk"],
                 embeddings=[[0.1] * 1536],
                 sparse_vectors=[{"indices": [1, 2], "values": [0.5, 0.3]}],
-                metadatas=[{"test": "metadata"}]
+                metadatas=[{"test": "metadata"}],
             )
             assert result is not None
             assert result["success"] is True
@@ -541,13 +513,13 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.upsert_documents_with_sparse(
                 chunks=["test chunk"],
                 embeddings=[[0.1] * 1536],
                 sparse_vectors=[{"indices": [1, 2], "values": [0.5, 0.3]}],
                 metadatas=[{"test": "metadata"}],
-                ids=["custom-id"]
+                ids=["custom-id"],
             )
             assert result is not None
             assert result["success"] is True
@@ -560,7 +532,7 @@ class TestQdrantClient:
                 chunks=["chunk1", "chunk2"],
                 embeddings=[[0.1] * 1536],
                 sparse_vectors=[{"indices": [1], "values": [0.5]}],
-                metadatas=[{"test": "metadata"}]
+                metadatas=[{"test": "metadata"}],
             )
 
     @pytest.mark.asyncio
@@ -575,12 +547,12 @@ class TestQdrantClient:
         mock_client = AsyncMock()
         mock_client.put = AsyncMock(return_value=mock_response)
 
-        with patch.object(qdrant_client, '_get_client', return_value=mock_client):
+        with patch.object(qdrant_client, "_get_client", return_value=mock_client):
             result = await qdrant_client.upsert_documents_with_sparse(
                 chunks=["test chunk"],
                 embeddings=[[0.1] * 1536],
                 sparse_vectors=[{"indices": [1, 2], "values": [0.5, 0.3]}],
-                metadatas=[{"test": "metadata"}]
+                metadatas=[{"test": "metadata"}],
             )
             assert result is not None
             assert result["success"] is False
@@ -594,16 +566,19 @@ class TestQdrantMetrics:
         """Test getting metrics when no operations"""
         # Reset metrics to ensure clean state
         from core.qdrant_db import _qdrant_metrics
+
         original_metrics = _qdrant_metrics.copy()
-        _qdrant_metrics.update({
-            "search_calls": 0,
-            "search_total_time": 0.0,
-            "upsert_calls": 0,
-            "upsert_total_time": 0.0,
-            "upsert_documents_total": 0,
-            "retry_count": 0,
-            "errors": 0,
-        })
+        _qdrant_metrics.update(
+            {
+                "search_calls": 0,
+                "search_total_time": 0.0,
+                "upsert_calls": 0,
+                "upsert_total_time": 0.0,
+                "upsert_documents_total": 0,
+                "retry_count": 0,
+                "errors": 0,
+            }
+        )
 
         try:
             metrics = get_qdrant_metrics()
@@ -619,16 +594,19 @@ class TestQdrantMetrics:
     def test_get_qdrant_metrics_with_data(self):
         """Test getting metrics with operation data"""
         from core.qdrant_db import _qdrant_metrics
+
         original_metrics = _qdrant_metrics.copy()
-        _qdrant_metrics.update({
-            "search_calls": 10,
-            "search_total_time": 5.0,  # 5 seconds total
-            "upsert_calls": 5,
-            "upsert_total_time": 2.5,  # 2.5 seconds total
-            "upsert_documents_total": 50,  # 50 documents total
-            "retry_count": 2,
-            "errors": 1,
-        })
+        _qdrant_metrics.update(
+            {
+                "search_calls": 10,
+                "search_total_time": 5.0,  # 5 seconds total
+                "upsert_calls": 5,
+                "upsert_total_time": 2.5,  # 2.5 seconds total
+                "upsert_documents_total": 50,  # 50 documents total
+                "retry_count": 2,
+                "errors": 1,
+            }
+        )
 
         try:
             metrics = get_qdrant_metrics()
@@ -646,16 +624,19 @@ class TestQdrantMetrics:
     def test_get_qdrant_metrics_search_only(self):
         """Test getting metrics with only search operations"""
         from core.qdrant_db import _qdrant_metrics
+
         original_metrics = _qdrant_metrics.copy()
-        _qdrant_metrics.update({
-            "search_calls": 3,
-            "search_total_time": 1.5,
-            "upsert_calls": 0,
-            "upsert_total_time": 0.0,
-            "upsert_documents_total": 0,
-            "retry_count": 0,
-            "errors": 0,
-        })
+        _qdrant_metrics.update(
+            {
+                "search_calls": 3,
+                "search_total_time": 1.5,
+                "upsert_calls": 0,
+                "upsert_total_time": 0.0,
+                "upsert_documents_total": 0,
+                "retry_count": 0,
+                "errors": 0,
+            }
+        )
 
         try:
             metrics = get_qdrant_metrics()
@@ -668,16 +649,19 @@ class TestQdrantMetrics:
     def test_get_qdrant_metrics_upsert_only(self):
         """Test getting metrics with only upsert operations"""
         from core.qdrant_db import _qdrant_metrics
+
         original_metrics = _qdrant_metrics.copy()
-        _qdrant_metrics.update({
-            "search_calls": 0,
-            "search_total_time": 0.0,
-            "upsert_calls": 4,
-            "upsert_total_time": 2.0,
-            "upsert_documents_total": 20,
-            "retry_count": 0,
-            "errors": 0,
-        })
+        _qdrant_metrics.update(
+            {
+                "search_calls": 0,
+                "search_total_time": 0.0,
+                "upsert_calls": 4,
+                "upsert_total_time": 2.0,
+                "upsert_documents_total": 20,
+                "retry_count": 0,
+                "errors": 0,
+            }
+        )
 
         try:
             metrics = get_qdrant_metrics()
@@ -798,4 +782,3 @@ class TestRetryWithBackoff:
         delay2 = timestamps[2] - timestamps[1]
         # delay2 should be approximately 2x delay1 (exponential backoff)
         assert delay2 >= delay1 * 1.5  # Allow some tolerance
-

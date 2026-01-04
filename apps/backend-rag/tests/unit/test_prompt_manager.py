@@ -84,6 +84,3 @@ def test_get_embedded_fallback_prompt():
     assert "Core Identity" in prompt
     assert isinstance(prompt, str)
     assert len(prompt) > 0
-
-
-

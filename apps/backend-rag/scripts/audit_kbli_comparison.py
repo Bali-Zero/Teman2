@@ -1,14 +1,16 @@
-import os
 import asyncio
+import os
+
+from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
-from dotenv import load_dotenv
 
 # Load env directly
 load_dotenv("apps/backend-rag/.env")
 
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
 
 async def audit_kbli_96121():
     print(f"Connecting to Qdrant: {QDRANT_URL}...")
@@ -17,7 +19,7 @@ async def audit_kbli_96121():
         return
 
     client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-    
+
     # Search in kbli_unified
     print("\n--- SEARCHING KBLI_UNIFIED ---")
     try:
@@ -26,15 +28,14 @@ async def audit_kbli_96121():
             scroll_filter=models.Filter(
                 must=[
                     models.FieldCondition(
-                        key="metadata.code",
-                        match=models.MatchValue(value="96121")
+                        key="metadata.code", match=models.MatchValue(value="96121")
                     )
                 ]
             ),
             limit=5,
-            with_payload=True
+            with_payload=True,
         )
-        
+
         points, _ = results
         if not points:
             print("❌ No direct match for code '96121' found in metadata.")
@@ -46,6 +47,7 @@ async def audit_kbli_96121():
 
     except Exception as e:
         print(f"Error querying Qdrant: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(audit_kbli_96121())

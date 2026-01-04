@@ -184,8 +184,9 @@ async def test_classify_intent_devai_keywords(intent_classifier):
     for query in devai_queries:
         result = await intent_classifier.classify_intent(query)
         # DevAI keywords should classify as devai_code with devai suggested_ai
-        assert result["category"] == "devai_code" or result["suggested_ai"] == "devai", \
+        assert result["category"] == "devai_code" or result["suggested_ai"] == "devai", (
             f"Query '{query}' classified as {result['category']} with suggested_ai={result['suggested_ai']}"
+        )
 
 
 @pytest.mark.asyncio

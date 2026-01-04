@@ -7,10 +7,11 @@ Tests the new error handling features:
 - Health check loop
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import asyncpg
+import pytest
 
 from backend.app.setup.service_initializer import _init_database_services, _is_transient_error
 
@@ -54,10 +55,11 @@ async def test_is_transient_error_permanent():
 @pytest.mark.asyncio
 async def test_database_init_retries_on_transient_error(mock_app):
     """Test that database init retries on transient errors."""
-    with patch('backend.app.setup.service_initializer.settings') as mock_settings:
+    with patch("backend.app.setup.service_initializer.settings") as mock_settings:
         mock_settings.database_url = "postgresql://test"
 
         call_count = 0
+
         def mock_create_pool(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -77,14 +79,21 @@ async def test_database_init_retries_on_transient_error(mock_app):
 
             return mock_pool
 
-        with patch('asyncpg.create_pool', side_effect=mock_create_pool):
-            with patch('backend.app.setup.service_initializer.asyncio.sleep', new_callable=AsyncMock) as mock_sleep:
-                with patch('backend.app.setup.service_initializer.init_timesheet_service', create=True) as mock_init:
+        with patch("asyncpg.create_pool", side_effect=mock_create_pool):
+            with patch(
+                "backend.app.setup.service_initializer.asyncio.sleep", new_callable=AsyncMock
+            ) as mock_sleep:
+                with patch(
+                    "backend.app.setup.service_initializer.init_timesheet_service", create=True
+                ) as mock_init:
                     mock_service = MagicMock()
                     mock_service.start_auto_logout_monitor = AsyncMock()
                     mock_init.return_value = mock_service
 
-                    with patch('backend.app.setup.service_initializer._database_health_check_loop', new_callable=AsyncMock):
+                    with patch(
+                        "backend.app.setup.service_initializer._database_health_check_loop",
+                        new_callable=AsyncMock,
+                    ):
                         pool = await _init_database_services(mock_app)
 
                     # Should have retried (with sleep being called for backoff)
@@ -95,12 +104,12 @@ async def test_database_init_retries_on_transient_error(mock_app):
 @pytest.mark.asyncio
 async def test_database_init_fails_on_permanent_error(mock_app):
     """Test that database init fails immediately on permanent errors."""
-    with patch('backend.app.setup.service_initializer.settings') as mock_settings:
+    with patch("backend.app.setup.service_initializer.settings") as mock_settings:
         mock_settings.database_url = "postgresql://test"
-        
-        with patch('asyncpg.create_pool', side_effect=ValueError("Invalid configuration")):
+
+        with patch("asyncpg.create_pool", side_effect=ValueError("Invalid configuration")):
             pool = await _init_database_services(mock_app)
-            
+
             # Should not retry permanent errors
             assert pool is None
 
@@ -124,6 +133,7 @@ async def test_database_health_check_loop():
     # Health check loop: sleep -> acquire -> check -> loop
     # We need at least 1 sleep to pass, then acquire happens, then cancel on 2nd sleep
     sleep_count = 0
+
     async def mock_sleep(seconds):
         nonlocal sleep_count
         sleep_count += 1
@@ -131,8 +141,8 @@ async def test_database_health_check_loop():
             raise asyncio.CancelledError()  # Stop after first full iteration
         # First sleep passes through to allow acquire to be called
 
-    with patch('backend.app.setup.service_initializer.asyncio.sleep', side_effect=mock_sleep):
-        with patch('backend.app.setup.service_initializer.service_registry'):
+    with patch("backend.app.setup.service_initializer.asyncio.sleep", side_effect=mock_sleep):
+        with patch("backend.app.setup.service_initializer.service_registry"):
             task = asyncio.create_task(_database_health_check_loop(pool))
 
             try:
@@ -142,4 +152,3 @@ async def test_database_health_check_loop():
 
     # Verify pool was checked at least once (after first sleep)
     assert pool.acquire.called
-

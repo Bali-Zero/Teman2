@@ -55,7 +55,7 @@ class TestCulturalRAGService:
         mock_search_service.cultural_insights = None
 
         # Mock CulturalInsightsService initialization
-        with patch('services.misc.cultural_insights_service.CulturalInsightsService') as mock_cis:
+        with patch("services.misc.cultural_insights_service.CulturalInsightsService") as mock_cis:
             mock_instance = MagicMock()
             mock_cis.return_value = mock_instance
             service = CulturalRAGService(search_service=mock_search_service)
@@ -65,7 +65,7 @@ class TestCulturalRAGService:
     def test_init_without_services(self):
         """Test initialization without services"""
         # Mock CulturalInsightsService initialization
-        with patch('services.misc.cultural_insights_service.CulturalInsightsService') as mock_cis:
+        with patch("services.misc.cultural_insights_service.CulturalInsightsService") as mock_cis:
             mock_instance = MagicMock()
             mock_cis.return_value = mock_instance
             service = CulturalRAGService()
@@ -75,18 +75,18 @@ class TestCulturalRAGService:
     @pytest.mark.asyncio
     async def test_get_cultural_context_with_query(self, mock_cultural_insights_service):
         """Test getting cultural context with query"""
-        mock_cultural_insights_service.query_insights = AsyncMock(return_value=[
-            {"content": "Test insight 1", "metadata": {}},
-            {"content": "Test insight 2", "metadata": {}},
-        ])
+        mock_cultural_insights_service.query_insights = AsyncMock(
+            return_value=[
+                {"content": "Test insight 1", "metadata": {}},
+                {"content": "Test insight 2", "metadata": {}},
+            ]
+        )
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        result = await service.get_cultural_context({
-            "query": "Hello",
-            "intent": "greeting",
-            "conversation_stage": "first_contact"
-        })
+        result = await service.get_cultural_context(
+            {"query": "Hello", "intent": "greeting", "conversation_stage": "first_contact"}
+        )
 
         assert len(result) == 2
         assert result[0]["content"] == "Test insight 1"
@@ -99,11 +99,9 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        await service.get_cultural_context({
-            "query": "Hello",
-            "intent": "greeting",
-            "conversation_stage": "ongoing"
-        })
+        await service.get_cultural_context(
+            {"query": "Hello", "intent": "greeting", "conversation_stage": "ongoing"}
+        )
 
         # Should map greeting to "first_contact" when_to_use
         call_args = mock_cultural_insights_service.query_insights.call_args
@@ -116,11 +114,9 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        await service.get_cultural_context({
-            "query": "How are you?",
-            "intent": "casual",
-            "conversation_stage": "ongoing"
-        })
+        await service.get_cultural_context(
+            {"query": "How are you?", "intent": "casual", "conversation_stage": "ongoing"}
+        )
 
         call_args = mock_cultural_insights_service.query_insights.call_args
         assert call_args[1]["when_to_use"] == "casual_chat"
@@ -132,11 +128,13 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        await service.get_cultural_context({
-            "query": "What is the visa process?",
-            "intent": "business_simple",
-            "conversation_stage": "ongoing"
-        })
+        await service.get_cultural_context(
+            {
+                "query": "What is the visa process?",
+                "intent": "business_simple",
+                "conversation_stage": "ongoing",
+            }
+        )
 
         # Business intents should have None when_to_use (semantic match only)
         call_args = mock_cultural_insights_service.query_insights.call_args
@@ -149,11 +147,9 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        await service.get_cultural_context({
-            "query": "Hello",
-            "intent": "casual",
-            "conversation_stage": "first_contact"
-        })
+        await service.get_cultural_context(
+            {"query": "Hello", "intent": "casual", "conversation_stage": "first_contact"}
+        )
 
         # First contact stage should override intent mapping
         call_args = mock_cultural_insights_service.query_insights.call_args
@@ -166,11 +162,13 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        await service.get_cultural_context({
-            "query": "I'm feeling stressed",
-            "intent": "emotional_support",
-            "conversation_stage": "ongoing"
-        })
+        await service.get_cultural_context(
+            {
+                "query": "I'm feeling stressed",
+                "intent": "emotional_support",
+                "conversation_stage": "ongoing",
+            }
+        )
 
         call_args = mock_cultural_insights_service.query_insights.call_args
         assert call_args[1]["when_to_use"] == "casual_chat"
@@ -182,11 +180,9 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        await service.get_cultural_context({
-            "query": "Hello",
-            "intent": "greeting",
-            "conversation_stage": "first_contact"
-        }, limit=5)
+        await service.get_cultural_context(
+            {"query": "Hello", "intent": "greeting", "conversation_stage": "first_contact"}, limit=5
+        )
 
         call_args = mock_cultural_insights_service.query_insights.call_args
         assert call_args[1]["limit"] == 5
@@ -198,9 +194,7 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        await service.get_cultural_context({
-            "query": "Test"
-        })
+        await service.get_cultural_context({"query": "Test"})
 
         call_args = mock_cultural_insights_service.query_insights.call_args
         assert call_args[1]["query"] == "Test"
@@ -214,10 +208,7 @@ class TestCulturalRAGService:
 
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
-        result = await service.get_cultural_context({
-            "query": "Test",
-            "intent": "casual"
-        })
+        result = await service.get_cultural_context({"query": "Test", "intent": "casual"})
 
         # Should return empty list on error
         assert result == []
@@ -231,7 +222,9 @@ class TestCulturalRAGService:
         assert result == ""
 
     @pytest.mark.asyncio
-    async def test_build_cultural_prompt_injection_with_chunks(self, mock_cultural_insights_service):
+    async def test_build_cultural_prompt_injection_with_chunks(
+        self, mock_cultural_insights_service
+    ):
         """Test building cultural prompt injection with chunks"""
         service = CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 
@@ -239,13 +232,13 @@ class TestCulturalRAGService:
             {
                 "content": "Test insight 1",
                 "metadata": {"topic": "indonesian_greetings"},
-                "score": 0.8
+                "score": 0.8,
             },
             {
                 "content": "Test insight 2",
                 "metadata": {"topic": "bureaucracy_patience"},
-                "score": 0.2  # Below threshold, should be filtered
-            }
+                "score": 0.2,  # Below threshold, should be filtered
+            },
         ]
 
         result = service.build_cultural_prompt_injection(chunks)

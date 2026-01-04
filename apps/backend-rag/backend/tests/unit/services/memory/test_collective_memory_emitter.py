@@ -44,7 +44,7 @@ class TestCollectiveMemoryEmitter:
             category="fact",
             content="Test content",
             members=["member1"],
-            importance=0.8
+            importance=0.8,
         )
         emitter._send_sse_event.assert_called_once()
 
@@ -56,7 +56,7 @@ class TestCollectiveMemoryEmitter:
             member="member1",
             preference="Italian language",
             category="language",
-            context="conversation"
+            context="conversation",
         )
         emitter._send_sse_event.assert_called_once()
 
@@ -69,7 +69,7 @@ class TestCollectiveMemoryEmitter:
             milestone_type="deadline",
             date="2024-12-31",
             message="Project deadline",
-            recurring=False
+            recurring=False,
         )
         emitter._send_sse_event.assert_called_once()
 
@@ -82,7 +82,6 @@ class TestCollectiveMemoryEmitter:
             member_b="member2",
             relationship_type="collaboration",
             strength=0.7,
-            context="project"
+            context="project",
         )
         emitter._send_sse_event.assert_called_once()
-

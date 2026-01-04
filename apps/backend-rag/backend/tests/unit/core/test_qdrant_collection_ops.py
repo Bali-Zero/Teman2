@@ -50,9 +50,7 @@ class TestQdrantClientCreateCollection:
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
             result = await client.create_collection(
-                vector_size=1536,
-                distance="Cosine",
-                enable_sparse=True
+                vector_size=1536, distance="Cosine", enable_sparse=True
             )
 
             assert result is True
@@ -68,9 +66,7 @@ class TestQdrantClientCreateCollection:
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
             result = await client.create_collection(
-                vector_size=1536,
-                distance="Cosine",
-                on_disk_payload=True
+                vector_size=1536, distance="Cosine", on_disk_payload=True
             )
 
             assert result is True
@@ -117,9 +113,10 @@ class TestQdrantClientUpsertDocuments:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
@@ -127,7 +124,7 @@ class TestQdrantClientUpsertDocuments:
                 chunks=["chunk1", "chunk2"],
                 embeddings=[[0.1] * 1536, [0.2] * 1536],
                 metadatas=[{"key": "value1"}, {"key": "value2"}],
-                ids=["id1", "id2"]
+                ids=["id1", "id2"],
             )
 
             assert result["success"] is True
@@ -139,18 +136,16 @@ class TestQdrantClientUpsertDocuments:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0), \
-             patch("uuid.uuid4", side_effect=lambda: MagicMock(hex="test-uuid")):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+            patch("uuid.uuid4", side_effect=lambda: MagicMock(hex="test-uuid")),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
             result = await client.upsert_documents(
-                chunks=["chunk1"],
-                embeddings=[[0.1] * 1536],
-                metadatas=[{"key": "value"}],
-                ids=None
+                chunks=["chunk1"], embeddings=[[0.1] * 1536], metadatas=[{"key": "value"}], ids=None
             )
 
             assert result["success"] is True
@@ -163,7 +158,7 @@ class TestQdrantClientUpsertDocuments:
                 chunks=["chunk1"],
                 embeddings=[[0.1] * 1536, [0.2] * 1536],  # Different length
                 metadatas=[{"key": "value"}],
-                ids=["id1"]
+                ids=["id1"],
             )
 
     @pytest.mark.asyncio
@@ -172,9 +167,10 @@ class TestQdrantClientUpsertDocuments:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(return_value=mock_response)
 
@@ -184,10 +180,7 @@ class TestQdrantClientUpsertDocuments:
             metadatas = [{"key": f"value{i}"} for i in range(1000)]
 
             result = await client.upsert_documents(
-                chunks=chunks,
-                embeddings=embeddings,
-                metadatas=metadatas,
-                batch_size=500
+                chunks=chunks, embeddings=embeddings, metadatas=metadatas, batch_size=500
             )
 
             assert result["success"] is True
@@ -203,9 +196,10 @@ class TestQdrantClientUpsertDocuments:
         mock_response.text = "Server error"
         error = httpx.HTTPStatusError("Error", request=MagicMock(), response=mock_response)
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(side_effect=error)
 
@@ -213,7 +207,7 @@ class TestQdrantClientUpsertDocuments:
                 chunks=["chunk1"],
                 embeddings=[[0.1] * 1536],
                 metadatas=[{"key": "value"}],
-                ids=["id1"]
+                ids=["id1"],
             )
 
             assert result["success"] is False
@@ -230,9 +224,10 @@ class TestQdrantClientUpsertDocuments:
         mock_response_error.text = "Server error"
         error = httpx.HTTPStatusError("Error", request=MagicMock(), response=mock_response_error)
 
-        with patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client, \
-             patch("time.time", return_value=0.0):
-
+        with (
+            patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
+            patch("time.time", return_value=0.0),
+        ):
             mock_http_client = await mock_get_client()
             mock_http_client.put = AsyncMock(side_effect=[mock_response_success, error])
 
@@ -241,12 +236,8 @@ class TestQdrantClientUpsertDocuments:
                 embeddings=[[0.1] * 1536, [0.2] * 1536],
                 metadatas=[{"key": "value1"}, {"key": "value2"}],
                 ids=["id1", "id2"],
-                batch_size=1  # Each chunk is a batch
+                batch_size=1,  # Each chunk is a batch
             )
 
             assert result["success"] is False
             assert result["documents_added"] == 1  # One batch succeeded
-
-
-
-

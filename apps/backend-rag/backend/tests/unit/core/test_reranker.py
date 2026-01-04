@@ -61,10 +61,7 @@ class TestReRanker:
             mock_settings.zerank_api_url = "http://api.example.com"
 
             reranker = ReRanker()
-            documents = [
-                {"text": "doc1", "score": 0.9},
-                {"text": "doc2", "score": 0.8}
-            ]
+            documents = [{"text": "doc1", "score": 0.9}, {"text": "doc2", "score": 0.8}]
 
             result = await reranker.rerank("query", documents, top_k=2)
 
@@ -88,17 +85,19 @@ class TestReRanker:
     async def test_rerank_success(self):
         """Test successful rerank"""
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "results": [
-                {"index": 1, "score": 0.95},
-                {"index": 0, "score": 0.85}
+                {"index": 1, "relevance_score": 0.95},
+                {"index": 0, "relevance_score": 0.85},
             ]
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch("core.reranker.settings") as mock_settings, \
-             patch("httpx.AsyncClient") as mock_client:
-
+        with (
+            patch("core.reranker.settings") as mock_settings,
+            patch("core.reranker.httpx.AsyncClient") as mock_client,
+        ):
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -110,10 +109,7 @@ class TestReRanker:
             mock_client_instance.post = AsyncMock(return_value=mock_response)
             mock_client.return_value = mock_client_instance
 
-            documents = [
-                {"text": "doc1", "score": 0.8},
-                {"text": "doc2", "score": 0.9}
-            ]
+            documents = [{"text": "doc1", "score": 0.8}, {"text": "doc2", "score": 0.9}]
 
             result = await reranker.rerank("query", documents, top_k=2)
 
@@ -124,16 +120,14 @@ class TestReRanker:
     async def test_rerank_with_content_key(self):
         """Test rerank with 'content' key instead of 'text'"""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "results": [
-                {"index": 0, "score": 0.9}
-            ]
-        }
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": [{"index": 0, "relevance_score": 0.9}]}
         mock_response.raise_for_status = MagicMock()
 
-        with patch("core.reranker.settings") as mock_settings, \
-             patch("httpx.AsyncClient") as mock_client:
-
+        with (
+            patch("core.reranker.settings") as mock_settings,
+            patch("core.reranker.httpx.AsyncClient") as mock_client,
+        ):
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -145,9 +139,7 @@ class TestReRanker:
             mock_client_instance.post = AsyncMock(return_value=mock_response)
             mock_client.return_value = mock_client_instance
 
-            documents = [
-                {"content": "doc1", "score": 0.8}
-            ]
+            documents = [{"content": "doc1", "score": 0.8}]
 
             result = await reranker.rerank("query", documents, top_k=1)
 
@@ -163,7 +155,7 @@ class TestReRanker:
             reranker = ReRanker()
             documents = [
                 {"score": 0.8},  # No text or content
-                {"metadata": "data"}  # No text or content
+                {"metadata": "data"},  # No text or content
             ]
 
             result = await reranker.rerank("query", documents, top_k=2)
@@ -179,9 +171,10 @@ class TestReRanker:
         mock_response.text = "Server error"
         error = httpx.HTTPStatusError("Error", request=MagicMock(), response=mock_response)
 
-        with patch("core.reranker.settings") as mock_settings, \
-             patch("httpx.AsyncClient") as mock_client:
-
+        with (
+            patch("core.reranker.settings") as mock_settings,
+            patch("httpx.AsyncClient") as mock_client,
+        ):
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -193,9 +186,7 @@ class TestReRanker:
             mock_client_instance.post = AsyncMock(side_effect=error)
             mock_client.return_value = mock_client_instance
 
-            documents = [
-                {"text": "doc1", "score": 0.8}
-            ]
+            documents = [{"text": "doc1", "score": 0.8}]
 
             # Should return original documents on error
             result = await reranker.rerank("query", documents, top_k=1)
@@ -207,9 +198,10 @@ class TestReRanker:
         """Test rerank with timeout"""
         timeout_error = httpx.TimeoutException("Request timeout")
 
-        with patch("core.reranker.settings") as mock_settings, \
-             patch("httpx.AsyncClient") as mock_client:
-
+        with (
+            patch("core.reranker.settings") as mock_settings,
+            patch("httpx.AsyncClient") as mock_client,
+        ):
             mock_settings.zerank_api_key = "test-key"
             mock_settings.zerank_api_url = "http://api.example.com"
 
@@ -221,15 +213,9 @@ class TestReRanker:
             mock_client_instance.post = AsyncMock(side_effect=timeout_error)
             mock_client.return_value = mock_client_instance
 
-            documents = [
-                {"text": "doc1", "score": 0.8}
-            ]
+            documents = [{"text": "doc1", "score": 0.8}]
 
             # Should return original documents on timeout
             result = await reranker.rerank("query", documents, top_k=1)
 
             assert len(result) == 1
-
-
-
-

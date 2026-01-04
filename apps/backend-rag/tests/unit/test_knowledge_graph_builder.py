@@ -41,7 +41,10 @@ class TestKnowledgeGraphBuilder:
 
     def test_create_relationship(self):
         """Test creating relationship"""
-        from backend.services.autonomous_agents.knowledge_graph_builder import Relationship, RelationType
+        from backend.services.autonomous_agents.knowledge_graph_builder import (
+            Relationship,
+            RelationType,
+        )
 
         relationship = Relationship(
             relationship_id="rel1",

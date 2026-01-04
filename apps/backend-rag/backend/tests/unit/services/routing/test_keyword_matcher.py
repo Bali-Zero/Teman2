@@ -80,4 +80,3 @@ class TestKeywordMatcherService:
         """Test getting matched keywords with no match"""
         matches = keyword_matcher.get_matched_keywords("random query", "visa")
         assert isinstance(matches, list)
-

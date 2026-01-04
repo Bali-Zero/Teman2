@@ -1,13 +1,19 @@
 """
 Test Knowledge Graph Export functionality
 """
-import sys
+
 import os
+import sys
 
 # Add parent directory to path to import backend modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from backend.services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder, Entity, Relationship
+from backend.services.autonomous_agents.knowledge_graph_builder import (
+    Entity,
+    KnowledgeGraphBuilder,
+    Relationship,
+)
+
 
 def test_export():
     print("🏗️  Initializing Knowledge Graph Builder...")
@@ -21,7 +27,7 @@ def test_export():
         name="Restaurant KBLI",
         description="Restaurants and mobile food service activities",
         confidence=0.9,
-        properties={"risk_level": "medium", "min_capital": 1000000000}
+        properties={"risk_level": "medium", "min_capital": 1000000000},
     )
     kg.add_entity(e1)
 
@@ -30,7 +36,7 @@ def test_export():
         entity_type="permit",
         name="NIB",
         description="Nomor Induk Berusaha (Business ID Number)",
-        confidence=0.95
+        confidence=0.95,
     )
     kg.add_entity(e2)
 
@@ -42,13 +48,13 @@ def test_export():
         target_entity_id="permit_nib",
         relationship_type="requires",
         confidence=0.8,
-        properties={"mandatory": True}
+        properties={"mandatory": True},
     )
     kg.add_relationship(r1)
 
     # Test Exports
     print("\n📦 Testing Exports:")
-    
+
     # 1. JSON
     json_out = kg.export_graph("json")
     print(f"\n✅ JSON Export ({len(json_out)} chars):")
@@ -60,13 +66,14 @@ def test_export():
     print("-" * 40)
     print(cypher_out)
     print("-" * 40)
-    
+
     # 3. GraphML
     graphml_out = kg.export_graph("graphml")
     print(f"\n✅ GraphML Export ({len(graphml_out)} chars):")
     print("-" * 40)
     print(graphml_out)
     print("-" * 40)
+
 
 if __name__ == "__main__":
     test_export()

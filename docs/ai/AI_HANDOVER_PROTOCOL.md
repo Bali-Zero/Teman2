@@ -233,6 +233,34 @@ Mostra vista completa del cliente:
 2. Generare tutti i PDF Basic in batch
 3. Ingestire PDF NotebookLM in Qdrant come `kbli_premium_guides`
 
+#### 6.10 Intel Scraper Pipeline (BaliZero News) - NEW 2026-01-04
+
+**Path:** `apps/bali-intel-scraper/scripts/`
+
+7-step news processing pipeline:
+1. **RSS Fetcher** (`rss_fetcher.py`) - Fetch from 12 sources
+2. **LLAMA Scorer** (`professional_scorer.py`) - Keyword scoring 0-100
+3. **Claude Validator** (`claude_validator.py`) - AI gate for 40-75 range
+4. **Claude Enricher** (`article_deep_enricher.py`) - Full article rewrite
+5. **Gemini Image** (`gemini_image_generator.py`) - Cover image generation
+5.5. **SEO/AEO Optimizer** (`seo_aeo_optimizer.py`) - NEW: Schema.org, meta tags, FAQ, entities
+6. **Telegram Approval** (`telegram_approval.py`) - NEW: @zantara_bot notifications
+
+**Cost per article:** ~$0.06
+
+**Telegram Approval System:**
+- Bot: `@zantara_bot`
+- Approvers: Zero (8290313965), Dea (6217157548), Damar (1813875994)
+- Buttons: ✅ Approve | ❌ Reject | ✏️ Request Changes
+- HTML preview: Article-style layout, light background, cover image
+
+**Configuration (Fly.io):**
+```bash
+fly secrets set TELEGRAM_APPROVAL_CHAT_ID=8290313965 -a nuzantara-rag
+```
+
+**Documentation:** `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md`
+
 ---
 
 **YOUR MISSION:**
@@ -250,5 +278,8 @@ Maintain code quality. If you see legacy code violating these rules, **refactor 
 | **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Per debugging e monitoring |
 | Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
 | Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
+| **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | Per scraper news + SEO/AEO + Telegram |
 
 ---
+
+**Last Updated:** 2026-01-04

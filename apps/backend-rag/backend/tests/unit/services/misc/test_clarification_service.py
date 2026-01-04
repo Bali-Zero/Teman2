@@ -49,7 +49,10 @@ class TestClarificationService:
         result = clarification_service.detect_ambiguity("How much does it cost?")
         # May detect as incomplete or multiple depending on implementation
         assert result["is_ambiguous"] is True
-        assert result["ambiguity_type"] in [AmbiguityType.INCOMPLETE.value, AmbiguityType.MULTIPLE_INTERPRETATIONS.value]
+        assert result["ambiguity_type"] in [
+            AmbiguityType.INCOMPLETE.value,
+            AmbiguityType.MULTIPLE_INTERPRETATIONS.value,
+        ]
 
     def test_detect_ambiguity_multiple_interpretations(self, clarification_service):
         """Test detecting multiple interpretations"""
@@ -79,7 +82,7 @@ class TestClarificationService:
         """Test detecting ambiguity with conversation history"""
         history = [
             {"role": "user", "content": "Tell me about visas"},
-            {"role": "assistant", "content": "There are several types..."}
+            {"role": "assistant", "content": "There are several types..."},
         ]
         result = clarification_service.detect_ambiguity("What about it?", history)
         assert isinstance(result, dict)
@@ -89,9 +92,7 @@ class TestClarificationService:
         """Test generating clarification request"""
         ambiguity_info = clarification_service.detect_ambiguity("Tell me about visas")
         result = clarification_service.generate_clarification_request(
-            query="Tell me about visas",
-            ambiguity_info=ambiguity_info,
-            language="en"
+            query="Tell me about visas", ambiguity_info=ambiguity_info, language="en"
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -100,9 +101,7 @@ class TestClarificationService:
         """Test generating clarification request in Italian"""
         ambiguity_info = clarification_service.detect_ambiguity("Dimmi dei visti")
         result = clarification_service.generate_clarification_request(
-            query="Dimmi dei visti",
-            ambiguity_info=ambiguity_info,
-            language="it"
+            query="Dimmi dei visti", ambiguity_info=ambiguity_info, language="it"
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -111,9 +110,7 @@ class TestClarificationService:
         """Test generating clarification request in Indonesian"""
         ambiguity_info = clarification_service.detect_ambiguity("Ceritakan tentang visa")
         result = clarification_service.generate_clarification_request(
-            query="Ceritakan tentang visa",
-            ambiguity_info=ambiguity_info,
-            language="id"
+            query="Ceritakan tentang visa", ambiguity_info=ambiguity_info, language="id"
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -124,16 +121,14 @@ class TestClarificationService:
         result = clarification_service.should_request_clarification(
             query="Tell me about it",
             conversation_history=None,
-            force_threshold=0.5  # Lower threshold to ensure it triggers
+            force_threshold=0.5,  # Lower threshold to ensure it triggers
         )
         assert isinstance(result, bool)  # May be True or False depending on detection
 
     def test_should_request_clarification_false(self, clarification_service):
         """Test should not request clarification when not ambiguous"""
         result = clarification_service.should_request_clarification(
-            query="How do I apply for a KITAS visa?",
-            conversation_history=None,
-            force_threshold=0.7
+            query="How do I apply for a KITAS visa?", conversation_history=None, force_threshold=0.7
         )
         assert result is False
 
@@ -141,12 +136,10 @@ class TestClarificationService:
         """Test should request clarification with conversation history"""
         history = [
             {"role": "user", "content": "Tell me about visas"},
-            {"role": "assistant", "content": "There are several types..."}
+            {"role": "assistant", "content": "There are several types..."},
         ]
         result = clarification_service.should_request_clarification(
-            query="What about it?",
-            conversation_history=history,
-            force_threshold=0.7
+            query="What about it?", conversation_history=history, force_threshold=0.7
         )
         assert isinstance(result, bool)
 

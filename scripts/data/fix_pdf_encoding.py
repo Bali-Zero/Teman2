@@ -83,14 +83,14 @@ def fix_pdf_encoding():
             continue
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("📊 SUMMARY:")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  ✅ Successi:     {success_count}/{len(pdf_files)}")
     print(f"  ❌ Errori:       {error_count}/{len(pdf_files)}")
     print(f"  📝 Totale testo: {total_chars:,} caratteri")
     print(f"  📁 Output dir:   {kb_dir}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     if success_count > 0:
         print("✅ PDF processati con successo!")

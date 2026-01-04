@@ -57,6 +57,8 @@ export interface Article {
   readingTime: number;                // minutes
   viewCount: number;
   shareCount: number;
+  likeCount: number;
+  commentCount: number;
 
   // AI
   aiGenerated: boolean;

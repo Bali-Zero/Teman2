@@ -19,12 +19,12 @@ class TestEntityType:
 
     def test_entity_types_exist(self):
         """Test that entity types are defined"""
-        assert hasattr(EntityType, 'PERSON')
-        assert hasattr(EntityType, 'ORGANIZATION')
-        assert hasattr(EntityType, 'LOCATION')
-        assert hasattr(EntityType, 'DOKUMEN')  # Document in Indonesian
-        assert hasattr(EntityType, 'UNDANG_UNDANG')  # Law
-        assert hasattr(EntityType, 'KITAS')  # Work permit
+        assert hasattr(EntityType, "PERSON")
+        assert hasattr(EntityType, "ORGANIZATION")
+        assert hasattr(EntityType, "LOCATION")
+        assert hasattr(EntityType, "DOKUMEN")  # Document in Indonesian
+        assert hasattr(EntityType, "UNDANG_UNDANG")  # Law
+        assert hasattr(EntityType, "KITAS")  # Work permit
 
     def test_entity_type_values(self):
         """Test entity type values"""
@@ -40,11 +40,11 @@ class TestRelationType:
 
     def test_relation_types_exist(self):
         """Test that relation types are defined"""
-        assert hasattr(RelationType, 'LOCATED_IN')
-        assert hasattr(RelationType, 'REQUIRES')
-        assert hasattr(RelationType, 'PART_OF')
-        assert hasattr(RelationType, 'ISSUED_BY')
-        assert hasattr(RelationType, 'HAS_REQUIREMENT')
+        assert hasattr(RelationType, "LOCATED_IN")
+        assert hasattr(RelationType, "REQUIRES")
+        assert hasattr(RelationType, "PART_OF")
+        assert hasattr(RelationType, "ISSUED_BY")
+        assert hasattr(RelationType, "HAS_REQUIREMENT")
 
     def test_relation_type_values(self):
         """Test relation type values"""
@@ -52,4 +52,3 @@ class TestRelationType:
         assert RelationType.REQUIRES.value == "REQUIRES"
         assert RelationType.PART_OF.value == "PART_OF"
         assert RelationType.ISSUED_BY.value == "ISSUED_BY"
-

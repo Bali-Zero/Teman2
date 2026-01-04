@@ -36,7 +36,7 @@ class TestDebugContext:
             request_id="test-123",
             enable_verbose_logging=False,
             capture_api_calls=False,
-            save_state_snapshot=True
+            save_state_snapshot=True,
         )
         assert ctx.request_id == "test-123"
         assert ctx.enable_verbose_logging is False
@@ -128,14 +128,8 @@ class TestDebugContext:
     def test_debug_mode_custom_params(self):
         """Test debug_mode with custom parameters"""
         with debug_mode(
-            request_id="test-abc",
-            enable_verbose_logging=False,
-            capture_api_calls=False
+            request_id="test-abc", enable_verbose_logging=False, capture_api_calls=False
         ) as ctx:
             assert ctx.request_id == "test-abc"
             assert ctx.enable_verbose_logging is False
             assert ctx.capture_api_calls is False
-
-
-
-

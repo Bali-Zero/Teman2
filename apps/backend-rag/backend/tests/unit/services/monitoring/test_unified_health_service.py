@@ -34,8 +34,8 @@ class TestUnifiedHealthService:
     @pytest.mark.asyncio
     async def test_initialize(self, unified_health_service):
         """Test initializing HTTP and Redis clients"""
-        with patch('httpx.AsyncClient') as mock_client:
-            with patch('services.monitoring.unified_health_service.settings') as mock_settings:
+        with patch("httpx.AsyncClient") as mock_client:
+            with patch("services.monitoring.unified_health_service.settings") as mock_settings:
                 mock_settings.redis_url = None
                 await unified_health_service.initialize()
                 assert unified_health_service.http_client is not None
@@ -51,7 +51,7 @@ class TestUnifiedHealthService:
     @pytest.mark.asyncio
     async def test_check_database_no_url(self, unified_health_service):
         """Test checking database when URL not set"""
-        with patch('services.monitoring.unified_health_service.settings') as mock_settings:
+        with patch("services.monitoring.unified_health_service.settings") as mock_settings:
             mock_settings.database_url = None
             result = await unified_health_service.check_database()
             assert result.status == "skipped"
@@ -59,9 +59,9 @@ class TestUnifiedHealthService:
     @pytest.mark.asyncio
     async def test_check_database_success(self, unified_health_service):
         """Test checking database successfully"""
-        with patch('services.monitoring.unified_health_service.settings') as mock_settings:
+        with patch("services.monitoring.unified_health_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
-            with patch('asyncpg.connect') as mock_connect:
+            with patch("asyncpg.connect") as mock_connect:
                 mock_conn = AsyncMock()
                 mock_conn.fetchval = AsyncMock(return_value=1)
                 mock_conn.close = AsyncMock()
@@ -72,12 +72,12 @@ class TestUnifiedHealthService:
     @pytest.mark.asyncio
     async def test_get_system_metrics(self, unified_health_service):
         """Test getting system metrics"""
-        with patch('psutil.cpu_percent', return_value=50.0):
-            with patch('psutil.virtual_memory') as mock_mem:
+        with patch("psutil.cpu_percent", return_value=50.0):
+            with patch("psutil.virtual_memory") as mock_mem:
                 mock_mem_obj = MagicMock()
                 mock_mem_obj.percent = 60.0
                 mock_mem.return_value = mock_mem_obj
-                with patch('psutil.disk_usage') as mock_disk:
+                with patch("psutil.disk_usage") as mock_disk:
                     mock_disk_obj = MagicMock()
                     mock_disk_obj.percent = 40.0
                     mock_disk.return_value = mock_disk_obj
@@ -89,12 +89,9 @@ class TestUnifiedHealthService:
     @pytest.mark.asyncio
     async def test_run_all_checks(self, unified_health_service):
         """Test running all health checks"""
-        unified_health_service.check_database = AsyncMock(return_value=HealthCheckResult(
-            name="database",
-            status="ok",
-            message="OK"
-        ))
+        unified_health_service.check_database = AsyncMock(
+            return_value=HealthCheckResult(name="database", status="ok", message="OK")
+        )
         results = await unified_health_service.run_all_checks()
         assert isinstance(results, dict)
         assert "checks" in results or "overall_status" in results
-

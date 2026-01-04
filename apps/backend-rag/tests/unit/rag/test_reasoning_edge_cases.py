@@ -31,9 +31,10 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from services.llm_clients.pricing import TokenUsage
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
-from services.llm_clients.pricing import TokenUsage
+
 
 def mock_token_usage():
     return TokenUsage(prompt_tokens=10, completion_tokens=20)
@@ -51,10 +52,8 @@ class TestReasoningEdgeCases:
         mock_tool = MagicMock()
         rich_content = "This is a very detailed answer about KITAS. " * 20  # > 500 chars
         mock_tool.execute = AsyncMock(return_value=rich_content)
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=5)
@@ -63,7 +62,12 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Action: vector_search('KITAS')",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -74,8 +78,14 @@ class TestReasoningEdgeCases:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -97,10 +107,8 @@ class TestReasoningEdgeCases:
         """Test early exit NOT triggered when result contains 'No relevant documents'"""
         mock_tool = MagicMock()
         mock_tool.execute = AsyncMock(return_value="No relevant documents found for this query")
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is XYZ?", max_steps=3)
@@ -109,13 +117,25 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('XYZ')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('XYZ')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
-                return ("Answer: I couldn't find information", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Answer: I couldn't find information",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -126,8 +146,14 @@ class TestReasoningEdgeCases:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -156,13 +182,22 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: The answer is 4", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Final Answer: The answer is 4",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -192,12 +227,17 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         from google.api_core.exceptions import ResourceExhausted
+
         llm_gateway.send_message = AsyncMock(side_effect=ResourceExhausted("Rate limit exceeded"))
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -218,13 +258,9 @@ class TestReasoningEdgeCases:
     async def test_citation_parsing_with_missing_sources_key(self):
         """Test citation parsing when JSON has content but no sources key"""
         mock_tool = MagicMock()
-        mock_tool.execute = AsyncMock(
-            return_value='{"content": "KITAS information"}'
-        )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+        mock_tool.execute = AsyncMock(return_value='{"content": "KITAS information"}')
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -233,13 +269,20 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -250,8 +293,14 @@ class TestReasoningEdgeCases:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -290,7 +339,11 @@ class TestReasoningEdgeCases:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -326,7 +379,11 @@ class TestReasoningEdgeCases:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -363,7 +420,11 @@ class TestReasoningEdgeCases:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -402,7 +463,11 @@ class TestReasoningEdgeCases:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -441,7 +506,11 @@ class TestReasoningEdgeCases:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -467,10 +536,8 @@ class TestReasoningEdgeCases:
         mock_tool = MagicMock()
         rich_content = "Detailed KITAS information " * 30  # > 500 chars
         mock_tool.execute = AsyncMock(return_value=rich_content)
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=5)
@@ -479,7 +546,12 @@ class TestReasoningEdgeCases:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Action: vector_search('KITAS')",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -491,8 +563,14 @@ class TestReasoningEdgeCases:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -508,4 +586,3 @@ class TestReasoningEdgeCases:
 
         # Should exit early
         assert len(events) > 0
-

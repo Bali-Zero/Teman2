@@ -91,4 +91,3 @@ if __name__ == "__main__":
         if len(data["test_files"]) > 3:
             test_files += f" ... (+{len(data['test_files']) - 3} more)"
         print(f"  {status} {router_name}: {test_files if data['has_tests'] else 'No tests'}")
-

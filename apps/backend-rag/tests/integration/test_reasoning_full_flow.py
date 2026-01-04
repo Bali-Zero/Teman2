@@ -47,10 +47,8 @@ class TestReasoningFullFlow:
         mock_vector_search.execute = AsyncMock(
             return_value='{"content": "KITAS is a temporary residence permit for Indonesia", "sources": [{"id": "doc1", "score": 0.9}]}'
         )
-        
-        tool_map = {
-            "vector_search": mock_vector_search
-        }
+
+        tool_map = {"vector_search": mock_vector_search}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=5)
@@ -59,14 +57,23 @@ class TestReasoningFullFlow:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Thought: I need to search for KITAS. Action: vector_search('KITAS')", "gemini-2.0-flash", None)
+                return (
+                    "Thought: I need to search for KITAS. Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                )
             else:
-                return ("Final Answer: KITAS is a temporary residence permit for Indonesia", "gemini-2.0-flash", None)
-        
+                return (
+                    "Final Answer: KITAS is a temporary residence permit for Indonesia",
+                    "gemini-2.0-flash",
+                    None,
+                )
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -78,8 +85,14 @@ class TestReasoningFullFlow:
         tool_execution_counter = {"count": 0}
         # Mock tracing properly using contextlib.nullcontext
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, model_used, messages = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -111,7 +124,11 @@ class TestReasoningFullFlow:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: I don't have information about XYZ123", "gemini-2.0-flash", None)
+            return_value=(
+                "Thought: I don't have information about XYZ123",
+                "gemini-2.0-flash",
+                None,
+            )
         )
         chat = MagicMock()
 
@@ -131,7 +148,10 @@ class TestReasoningFullFlow:
 
         # Should trigger ABSTAIN
         assert result_state.final_answer is not None
-        assert "non ho trovato informazioni" in result_state.final_answer.lower() or "dispiace" in result_state.final_answer.lower()
+        assert (
+            "non ho trovato informazioni" in result_state.final_answer.lower()
+            or "dispiace" in result_state.final_answer.lower()
+        )
         assert result_state.evidence_score < 0.3
 
     @pytest.mark.asyncio
@@ -175,4 +195,3 @@ class TestReasoningFullFlow:
             assert llm_gateway.send_message.call_count >= 2
             final_prompt = llm_gateway.send_message.call_args_list[-1][0][0]
             assert "WARNING: Evidence is weak" in final_prompt
-

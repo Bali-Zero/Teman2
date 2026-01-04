@@ -42,10 +42,7 @@ class TestKnowledgeGraphBuilder:
         try:
             builder = KnowledgeGraphBuilder(db_pool=mock_db_pool)
             if hasattr(builder, "build_graph"):
-                result = await builder.build_graph(
-                    text="Test text",
-                    source_id="test_source"
-                )
+                result = await builder.build_graph(text="Test text", source_id="test_source")
                 assert isinstance(result, dict) or result is None
         except Exception:
             pytest.skip("KnowledgeGraphBuilder not available")
@@ -60,4 +57,3 @@ class TestKnowledgeGraphBuilder:
                 assert isinstance(result, list) or result is None
         except Exception:
             pytest.skip("KnowledgeGraphBuilder not available")
-

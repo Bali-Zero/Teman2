@@ -14,11 +14,11 @@ Missing lines to cover:
 import os
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-import pytest
 import asyncpg
+import pytest
 from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 
@@ -32,7 +32,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from app.main_cloud import app
-from app.routers.feedback import submit_feedback, get_feedback_stats
+from app.routers.feedback import get_feedback_stats, submit_feedback
 from app.schemas.feedback import RateConversationRequest
 
 
@@ -50,15 +50,15 @@ def mock_db_pool():
     # Create proper async context manager mocks
     async def acquire_context():
         return conn
-    
+
     async def transaction_context():
         return transaction
-    
+
     # Mock acquire as async context manager
     pool.acquire = MagicMock()
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
     pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-    
+
     # Mock transaction as async context manager
     conn.transaction = MagicMock()
     conn.transaction.return_value.__aenter__ = AsyncMock(return_value=transaction)
@@ -128,7 +128,7 @@ class TestFeedback90Coverage:
         request_data = RateConversationRequest(
             session_id=session_id,
             rating=5,
-            correction_text="   \n\t  "  # Only whitespace
+            correction_text="   \n\t  ",  # Only whitespace
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -150,10 +150,7 @@ class TestFeedback90Coverage:
         mock_request.state.user_profile = None
 
         request_data = RateConversationRequest(
-            session_id=session_id,
-            rating=5,
-            feedback_text=None,
-            correction_text="Valid correction"
+            session_id=session_id, rating=5, feedback_text=None, correction_text="Valid correction"
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -165,12 +162,14 @@ class TestFeedback90Coverage:
     async def test_get_feedback_stats_with_none_values(self, mock_db_pool):
         """Test stats endpoint with None values (lines 199-201)"""
         pool, conn = mock_db_pool
-        conn.fetchrow = AsyncMock(return_value={
-            "total_pending": None,
-            "total_resolved": None,
-            "total_ignored": None,
-            "total_reviews": None,
-        })
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "total_pending": None,
+                "total_resolved": None,
+                "total_ignored": None,
+                "total_reviews": None,
+            }
+        )
         conn.fetchval = AsyncMock(side_effect=[None, None])  # low_ratings_count, corrections_count
 
         response = await get_feedback_stats(pool)
@@ -260,7 +259,7 @@ class TestFeedback90Coverage:
         request_data = RateConversationRequest(
             session_id=session_id,
             rating=5,  # High rating but with correction
-            correction_text="This is a correction"
+            correction_text="This is a correction",
         )
 
         response = await submit_feedback(request_data, mock_request, pool)
@@ -315,4 +314,3 @@ class TestFeedback90Coverage:
         assert response.success is True
         assert response.review_queue_id is None
         assert "review queue" not in response.message.lower()
-

@@ -61,7 +61,7 @@ class TestKnowledgeGraphRepositoryAdditional:
                 name="Test Law",
                 canonical_name="test_law",
                 metadata={"key": "value"},
-                conn=conn
+                conn=conn,
             )
             assert isinstance(entity_id, str)
 
@@ -76,7 +76,7 @@ class TestKnowledgeGraphRepositoryAdditional:
                 strength=0.8,
                 evidence="Test evidence",
                 source_ref={"source": "test"},
-                conn=conn
+                conn=conn,
             )
             # Should not raise exception
             assert True
@@ -89,7 +89,7 @@ class TestKnowledgeGraphRepositoryAdditional:
             mock_entity.__getitem__ = lambda self, key: {
                 "entity_id": "test_entity",
                 "entity_type": "law",
-                "name": "Test Entity"
+                "name": "Test Entity",
             }.get(key)
 
             @asynccontextmanager
@@ -112,11 +112,7 @@ class TestKnowledgeGraphRepositoryAdditional:
         """Test getting entity relationships"""
         if hasattr(kg_repository, "get_entity_relationships"):
             mock_relationships = [
-                {
-                    "target_entity_id": "target_1",
-                    "relationship_type": "requires",
-                    "confidence": 0.8
-                }
+                {"target_entity_id": "target_1", "relationship_type": "requires", "confidence": 0.8}
             ]
 
             @asynccontextmanager
@@ -131,4 +127,3 @@ class TestKnowledgeGraphRepositoryAdditional:
             assert isinstance(result, list)
         else:
             pytest.skip("Method not available")
-

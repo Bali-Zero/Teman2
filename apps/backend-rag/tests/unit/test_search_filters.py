@@ -4,7 +4,6 @@ Unit tests for search_filters module.
 Tests the build_search_filter function extracted from SearchService.
 """
 
-
 from services.search.search_filters import build_search_filter
 
 

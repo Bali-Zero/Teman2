@@ -582,6 +582,7 @@ async def get_bab_full_text(
 
 @router.post("/profile")
 async def run_performance_profiling(
+    request: Request,
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
@@ -617,7 +618,11 @@ async def run_performance_profiling(
         # Run profiling - use hostname from request or settings
         # PRODUCTION: Use actual hostname instead of hardcoded localhost
         hostname = getattr(request.app.state, "hostname", None) or settings.hostname or "localhost"
-        base_url = f"http://{hostname}:{settings.port}" if hostname != "localhost" else f"http://localhost:{settings.port}"
+        base_url = (
+            f"http://{hostname}:{settings.port}"
+            if hostname != "localhost"
+            else f"http://localhost:{settings.port}"
+        )
         profiler = PerformanceProfiler(base_url=base_url)
         results = await profiler.run_profiling()
 

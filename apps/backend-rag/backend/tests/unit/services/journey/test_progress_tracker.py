@@ -41,7 +41,7 @@ def mock_journey():
             prerequisites=[],
             required_documents=[],
             estimated_duration_days=5,
-            status=StepStatus.COMPLETED
+            status=StepStatus.COMPLETED,
         ),
         JourneyStep(
             step_id="step2",
@@ -51,7 +51,7 @@ def mock_journey():
             prerequisites=["step1"],
             required_documents=[],
             estimated_duration_days=3,
-            status=StepStatus.IN_PROGRESS
+            status=StepStatus.IN_PROGRESS,
         ),
         JourneyStep(
             step_id="step3",
@@ -61,7 +61,7 @@ def mock_journey():
             prerequisites=["step2"],
             required_documents=[],
             estimated_duration_days=2,
-            status=StepStatus.PENDING
+            status=StepStatus.PENDING,
         ),
         JourneyStep(
             step_id="step4",
@@ -71,7 +71,7 @@ def mock_journey():
             prerequisites=["step3"],
             required_documents=[],
             estimated_duration_days=1,
-            status=StepStatus.BLOCKED
+            status=StepStatus.BLOCKED,
         ),
         JourneyStep(
             step_id="step5",
@@ -81,8 +81,8 @@ def mock_journey():
             prerequisites=["step4"],
             required_documents=[],
             estimated_duration_days=1,
-            status=StepStatus.PENDING
-        )
+            status=StepStatus.PENDING,
+        ),
     ]
     journey = ClientJourney(
         journey_id="journey1",
@@ -91,7 +91,7 @@ def mock_journey():
         title="Test Journey",
         description="Test Description",
         steps=steps,
-        status=JourneyStatus.IN_PROGRESS
+        status=JourneyStatus.IN_PROGRESS,
     )
     return journey
 
@@ -125,7 +125,7 @@ class TestProgressTrackerService:
             title="Empty Journey",
             description="No steps",
             steps=[],
-            status=JourneyStatus.NOT_STARTED
+            status=JourneyStatus.NOT_STARTED,
         )
         progress = progress_tracker.get_progress(journey)
         assert progress["total_steps"] == 0
@@ -144,7 +144,7 @@ class TestProgressTrackerService:
                 prerequisites=[],
                 required_documents=[],
                 estimated_duration_days=5,
-                status=StepStatus.COMPLETED
+                status=StepStatus.COMPLETED,
             ),
             JourneyStep(
                 step_id="step2",
@@ -154,8 +154,8 @@ class TestProgressTrackerService:
                 prerequisites=["step1"],
                 required_documents=[],
                 estimated_duration_days=3,
-                status=StepStatus.COMPLETED
-            )
+                status=StepStatus.COMPLETED,
+            ),
         ]
         journey = ClientJourney(
             journey_id="journey1",
@@ -164,7 +164,7 @@ class TestProgressTrackerService:
             title="Completed Journey",
             description="All done",
             steps=steps,
-            status=JourneyStatus.COMPLETED
+            status=JourneyStatus.COMPLETED,
         )
         progress = progress_tracker.get_progress(journey)
         assert progress["completed"] == 2
@@ -173,7 +173,9 @@ class TestProgressTrackerService:
     @pytest.mark.asyncio
     async def test_get_next_steps(self, progress_tracker, mock_journey):
         """Test getting next steps"""
-        with patch("services.journey.prerequisites_checker.PrerequisitesCheckerService") as mock_checker_class:
+        with patch(
+            "services.journey.prerequisites_checker.PrerequisitesCheckerService"
+        ) as mock_checker_class:
             mock_checker = MagicMock()
             mock_checker_class.return_value = mock_checker
 
@@ -201,7 +203,7 @@ class TestProgressTrackerService:
                 prerequisites=[],
                 required_documents=[],
                 estimated_duration_days=5,
-                status=StepStatus.COMPLETED
+                status=StepStatus.COMPLETED,
             ),
             JourneyStep(
                 step_id="step2",
@@ -211,8 +213,8 @@ class TestProgressTrackerService:
                 prerequisites=["step1"],
                 required_documents=[],
                 estimated_duration_days=3,
-                status=StepStatus.BLOCKED
-            )
+                status=StepStatus.BLOCKED,
+            ),
         ]
         journey = ClientJourney(
             journey_id="journey1",
@@ -221,10 +223,12 @@ class TestProgressTrackerService:
             title="Blocked Journey",
             description="No next steps",
             steps=steps,
-            status=JourneyStatus.BLOCKED
+            status=JourneyStatus.BLOCKED,
         )
 
-        with patch("services.journey.prerequisites_checker.PrerequisitesCheckerService") as mock_checker_class:
+        with patch(
+            "services.journey.prerequisites_checker.PrerequisitesCheckerService"
+        ) as mock_checker_class:
             mock_checker = MagicMock()
             mock_checker_class.return_value = mock_checker
             mock_checker.check_prerequisites.return_value = (False, ["step1"])
@@ -232,4 +236,3 @@ class TestProgressTrackerService:
             next_steps = progress_tracker.get_next_steps(journey)
             # No steps should be returned (all completed/blocked or prerequisites not met)
             assert isinstance(next_steps, list)
-

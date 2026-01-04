@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 load_dotenv("apps/backend-rag/.env")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+
 async def apply():
     conn = await asyncpg.connect(DATABASE_URL)
     try:
@@ -27,6 +28,7 @@ async def apply():
         print("✅ Table kbli_blueprints created.")
     finally:
         await conn.close()
+
 
 if __name__ == "__main__":
     asyncio.run(apply())

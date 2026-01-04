@@ -17,6 +17,92 @@ import type {
   EmailDetail,
 } from '@/lib/api/email/email.types';
 
+// Helper function to convert HTML to plain text (handles Zoho email HTML with embedded styles)
+function htmlToPlainText(html: string): string {
+  if (!html) return '';
+
+  // Pre-process: Remove CSS blocks that might not be in proper style tags
+  // Zoho emails often have CSS with unique selectors like div.zm_xxxxx
+  let cleanedHtml = html
+    // Remove inline style blocks with Zoho patterns
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    // Remove any text that looks like CSS rules (Zoho specific patterns)
+    .replace(/div\.zm_[\w]+_parse_[\w]+[^{]*\{[^}]*\}/g, '')
+    // Remove CSS rule declarations that leaked as text
+    .replace(/[\w.-]+\s*\{[^}]*\}/g, '');
+
+  // Create a temporary element to parse HTML
+  const temp = document.createElement('div');
+  temp.innerHTML = cleanedHtml;
+
+  // Remove style tags (prevents CSS rules from appearing in text)
+  const styleTags = temp.querySelectorAll('style');
+  styleTags.forEach(tag => tag.remove());
+
+  // Remove script tags (safety)
+  const scriptTags = temp.querySelectorAll('script');
+  scriptTags.forEach(tag => tag.remove());
+
+  // Remove head tag if present
+  const headTags = temp.querySelectorAll('head');
+  headTags.forEach(tag => tag.remove());
+
+  // Convert <br> to newlines before extracting text
+  const brTags = temp.querySelectorAll('br');
+  brTags.forEach(tag => tag.replaceWith('\n'));
+
+  // Convert block elements to ensure newlines
+  const blockElements = temp.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li, tr');
+  blockElements.forEach(el => {
+    if (el.textContent?.trim()) {
+      el.insertAdjacentText('afterend', '\n');
+    }
+  });
+
+  // Get text content
+  let text = temp.textContent || temp.innerText || '';
+
+  // Post-process: Remove any remaining CSS-like patterns that leaked through
+  text = text
+    // Remove Zoho CSS selector patterns (div.zm_xxx, span.zm_xxx, etc.)
+    .replace(/(?:div|span|td|tr|a|p|html|body)\.zm_[\w]+[\w\s,.-]*(?:\{[^}]*\})?/gi, '')
+    // Remove CSS property declarations that leaked (property: value !important; patterns)
+    .replace(/[\w-]+:\s*[^;{}\n]+\s*!?important?\s*;?/gi, (match) => {
+      // Only remove if it looks like CSS (has common CSS properties)
+      const cssProps = ['border', 'margin', 'padding', 'color', 'font', 'text', 'display', 'background', 'width', 'height', 'outline'];
+      if (cssProps.some(prop => match.toLowerCase().startsWith(prop))) {
+        return '';
+      }
+      return match;
+    })
+    // Remove standalone CSS-like class selectors
+    .replace(/^[>\s]*[.#]?[\w-]+\s*,?\s*$/gm, '');
+
+  // Clean up whitespace
+  text = text
+    .replace(/\t/g, ' ')                    // Replace tabs with spaces
+    .replace(/ {2,}/g, ' ')                 // Collapse multiple spaces
+    .replace(/\n{3,}/g, '\n\n')             // Normalize multiple newlines
+    .replace(/^\s+|\s+$/gm, '')             // Trim each line
+    .split('\n')
+    .filter((line, i, arr) => line.trim() || (arr[i-1]?.trim() && arr[i+1]?.trim())) // Remove consecutive empty lines
+    .join('\n');
+
+  return text.trim();
+}
+
+// Helper function to format date safely
+function formatDateSafe(dateStr: string | undefined): string {
+  if (!dateStr) return 'Unknown date';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Unknown date';
+    return date.toLocaleString();
+  } catch {
+    return 'Unknown date';
+  }
+}
+
 export default function EmailPage() {
   // Connection state
   const [connectionStatus, setConnectionStatus] = useState<ZohoConnectionStatus | null>(null);
@@ -255,14 +341,17 @@ export default function EmailPage() {
   const handleReply = () => {
     if (!selectedEmail) return;
     setComposeMode('reply');
+
+    // Convert HTML to plain text for the textarea
+    const originalContent = htmlToPlainText(selectedEmail.html_content || selectedEmail.text_content || '');
+    const quotedContent = originalContent.split('\n').map(line => `> ${line}`).join('\n');
+
     setComposeInitialData({
       to: [selectedEmail.from.address],
       subject: `Re: ${selectedEmail.subject}`,
-      htmlContent: `<br/><br/>On ${new Date(selectedEmail.date).toLocaleString()}, ${
+      htmlContent: `\n\nOn ${formatDateSafe(selectedEmail.date)}, ${
         selectedEmail.from.name || selectedEmail.from.address
-      } wrote:<br/><blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 10px;">${
-        selectedEmail.html_content || selectedEmail.text_content
-      }</blockquote>`,
+      } wrote:\n\n${quotedContent}`,
     });
     setIsComposeOpen(true);
   };
@@ -278,15 +367,17 @@ export default function EmailPage() {
     // Remove duplicates
     const uniqueRecipients = [...new Set(allRecipients)];
 
+    // Convert HTML to plain text for the textarea
+    const originalContent = htmlToPlainText(selectedEmail.html_content || selectedEmail.text_content || '');
+    const quotedContent = originalContent.split('\n').map(line => `> ${line}`).join('\n');
+
     setComposeMode('replyAll');
     setComposeInitialData({
       to: uniqueRecipients,
       subject: `Re: ${selectedEmail.subject}`,
-      htmlContent: `<br/><br/>On ${new Date(selectedEmail.date).toLocaleString()}, ${
+      htmlContent: `\n\nOn ${formatDateSafe(selectedEmail.date)}, ${
         selectedEmail.from.name || selectedEmail.from.address
-      } wrote:<br/><blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 10px;">${
-        selectedEmail.html_content || selectedEmail.text_content
-      }</blockquote>`,
+      } wrote:\n\n${quotedContent}`,
     });
     setIsComposeOpen(true);
   };
@@ -295,16 +386,20 @@ export default function EmailPage() {
   const handleForward = () => {
     if (!selectedEmail) return;
     setComposeMode('forward');
+
+    // Convert HTML to plain text for the textarea
+    const originalContent = htmlToPlainText(selectedEmail.html_content || selectedEmail.text_content || '');
+
     setComposeInitialData({
       to: [],
       subject: `Fwd: ${selectedEmail.subject}`,
-      htmlContent: `<br/><br/>---------- Forwarded message ----------<br/>From: ${
-        selectedEmail.from.name || selectedEmail.from.address
-      } &lt;${selectedEmail.from.address}&gt;<br/>Date: ${new Date(
-        selectedEmail.date
-      ).toLocaleString()}<br/>Subject: ${selectedEmail.subject}<br/>To: ${selectedEmail.to
-        .map((t) => `${t.name || ''} <${t.address}>`)
-        .join(', ')}<br/><br/>${selectedEmail.html_content || selectedEmail.text_content}`,
+      htmlContent: `\n\n---------- Forwarded message ----------
+From: ${selectedEmail.from.name || selectedEmail.from.address} <${selectedEmail.from.address}>
+Date: ${formatDateSafe(selectedEmail.date)}
+Subject: ${selectedEmail.subject}
+To: ${selectedEmail.to.map((t) => `${t.name || ''} <${t.address}>`).join(', ')}
+
+${originalContent}`,
     });
     setIsComposeOpen(true);
   };

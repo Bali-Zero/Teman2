@@ -5,7 +5,7 @@ import sys
 from dotenv import load_dotenv
 
 # Add backend directory to path
-sys.path.append(os.path.join(os.getcwd(), '..'))
+sys.path.append(os.path.join(os.getcwd(), ".."))
 sys.path.append(os.getcwd())
 
 # Load Env
@@ -36,15 +36,15 @@ async def audit_kb():
     # Collections to audit
     collections = ["legal_unified", "visa_oracle", "bali_zero_pricing", "kbli_unified"]
 
-    print("\n🧠 DEEP AUDIT FOR DATA EXISTENCE\n" + "="*50)
+    print("\n🧠 DEEP AUDIT FOR DATA EXISTENCE\n" + "=" * 50)
 
     # Check if collections exist
     try:
         existing_collections = client.get_collections().collections
         existing_names = [c.name for c in existing_collections]
     except Exception as e:
-         print(f"💥 Connection Failed: {e}")
-         return
+        print(f"💥 Connection Failed: {e}")
+        return
 
     for col_name in collections:
         if col_name not in existing_names:
@@ -55,10 +55,7 @@ async def audit_kb():
         try:
             # Use SCROLL which is safer
             scroll_res, _ = client.scroll(
-                collection_name=col_name,
-                limit=3,
-                with_payload=True,
-                with_vectors=False
+                collection_name=col_name, limit=3, with_payload=True, with_vectors=False
             )
 
             if not scroll_res:
@@ -68,9 +65,9 @@ async def audit_kb():
                 for idx, res in enumerate(scroll_res):
                     payload = res.payload
                     # Print relevant fields
-                    text = payload.get('text', str(payload))[:200].replace('\n', ' ')
-                    source = payload.get('source', 'unknown')
-                    print(f"   [{idx+1}] Source: {source} | Text: {text}...")
+                    text = payload.get("text", str(payload))[:200].replace("\n", " ")
+                    source = payload.get("source", "unknown")
+                    print(f"   [{idx + 1}] Source: {source} | Text: {text}...")
 
         except Exception as e:
             print(f"   💥 ERROR AUDITING COLLECTION: {e}")

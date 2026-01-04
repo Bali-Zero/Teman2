@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PipelineConfig:
     """Configuration for KG Pipeline"""
+
     # Model settings
     model: str = "claude-sonnet-4-20250514"
     api_key: str | None = None
@@ -52,6 +53,7 @@ class PipelineConfig:
 @dataclass
 class PipelineStats:
     """Statistics from pipeline run"""
+
     chunks_processed: int = 0
     entities_extracted: int = 0
     relations_extracted: int = 0
@@ -73,7 +75,8 @@ class PipelineStats:
             "errors": self.errors,
             "duration_seconds": (
                 (self.end_time - self.start_time).total_seconds()
-                if self.start_time and self.end_time else 0
+                if self.start_time and self.end_time
+                else 0
             ),
         }
 
@@ -101,6 +104,7 @@ class KGPipeline:
         # Initialize extractor based on type
         if self.config.extractor_type == "gemini":
             from .extractor_gemini import GeminiKGExtractor
+
             self.extractor = GeminiKGExtractor(
                 model=self.config.model,
             )
@@ -135,6 +139,7 @@ class KGPipeline:
         """Get or create database connection pool"""
         if self._db_pool is None:
             import os
+
             db_url = self.config.database_url or os.environ.get("DATABASE_URL")
             if not db_url:
                 raise ValueError("DATABASE_URL not configured")
@@ -188,9 +193,7 @@ class KGPipeline:
             # Stage 2: Coreference resolution and deduplication
             if self.config.use_coreference and result.entities:
                 # Resolve references
-                resolutions = await self.coreference.resolve_all_references(
-                    text, result.entities
-                )
+                resolutions = await self.coreference.resolve_all_references(text, result.entities)
 
                 # Deduplicate entities
                 original_count = len(result.entities)
@@ -203,12 +206,10 @@ class KGPipeline:
 
             # Stage 3: Filter by confidence
             result.entities = [
-                e for e in result.entities
-                if e.confidence >= self.config.min_confidence
+                e for e in result.entities if e.confidence >= self.config.min_confidence
             ]
             result.relations = [
-                r for r in result.relations
-                if r.confidence >= self.config.min_confidence
+                r for r in result.relations if r.confidence >= self.config.min_confidence
             ]
 
             # Get set of valid entity canonical IDs after filtering
@@ -216,7 +217,8 @@ class KGPipeline:
 
             # Filter out relations that reference non-existent entities
             result.relations = [
-                r for r in result.relations
+                r
+                for r in result.relations
                 if r.source_id in valid_entity_ids and r.target_id in valid_entity_ids
             ]
 
@@ -239,9 +241,7 @@ class KGPipeline:
         name_normalized = entity.name.upper().strip().replace(" ", "_")
         return f"{entity.type.value}_{name_normalized.lower()}"
 
-    def _get_canonical_id_by_local(
-        self, local_id: str, entities: list[ExtractedEntity]
-    ) -> str:
+    def _get_canonical_id_by_local(self, local_id: str, entities: list[ExtractedEntity]) -> str:
         """Map local entity ID to canonical ID"""
         for entity in entities:
             if entity.id == local_id:
@@ -365,10 +365,7 @@ class KGPipeline:
             async with semaphore:
                 return await self.process_chunk(chunk_id, text)
 
-        tasks = [
-            process_with_semaphore(chunk_id, text)
-            for chunk_id, text in chunks
-        ]
+        tasks = [process_with_semaphore(chunk_id, text) for chunk_id, text in chunks]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -407,7 +404,7 @@ class KGPipeline:
 
         # Process in batches
         for i in range(0, total, self.config.batch_size):
-            batch = chunks[i:i + self.config.batch_size]
+            batch = chunks[i : i + self.config.batch_size]
 
             # Process batch
             results = await self.process_batch(batch)
@@ -501,15 +498,14 @@ class KGPipeline:
                 chunks = []
                 for point in points:
                     chunk_id = str(point.get("id", ""))
-                    text = (
-                        point.get("payload", {}).get("text", "") or
-                        point.get("payload", {}).get("content", "")
+                    text = point.get("payload", {}).get("text", "") or point.get("payload", {}).get(
+                        "content", ""
                     )
                     if text and len(text.strip()) > 20:
                         chunks.append((chunk_id, text))
 
                     if limit and processed + len(chunks) >= limit:
-                        chunks = chunks[:limit - processed]
+                        chunks = chunks[: limit - processed]
                         break
 
                 # Process batch

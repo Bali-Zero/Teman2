@@ -145,11 +145,19 @@ export default function ChatPage() {
       const storedProfile = api.getUserProfile();
       if (storedProfile && isMountedRef.current) {
         setUserName(storedProfile.name || storedProfile.email.split('@')[0]);
+        // Load avatar from profile if available
+        if (storedProfile.avatar) {
+          setUserAvatar(storedProfile.avatar);
+        }
         return;
       }
       const profile = await api.getProfile();
       if (isMountedRef.current) {
         setUserName(profile.name || profile.email.split('@')[0]);
+        // Load avatar from profile if available
+        if (profile.avatar) {
+          setUserAvatar(profile.avatar);
+        }
       }
     } catch (error) {
       if (isMountedRef.current) {

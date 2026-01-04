@@ -20,14 +20,16 @@ from services.routing.specialized_service_router import SpecializedServiceRouter
 def mock_autonomous_research():
     """Mock autonomous research service"""
     service = AsyncMock()
-    service.research = AsyncMock(return_value=MagicMock(
-        final_answer="Research result",
-        total_steps=3,
-        collections_explored=["collection1"],
-        confidence=0.9,
-        sources_consulted=5,
-        duration_ms=1000
-    ))
+    service.research = AsyncMock(
+        return_value=MagicMock(
+            final_answer="Research result",
+            total_steps=3,
+            collections_explored=["collection1"],
+            confidence=0.9,
+            sources_consulted=5,
+            duration_ms=1000,
+        )
+    )
     return service
 
 
@@ -35,16 +37,18 @@ def mock_autonomous_research():
 def mock_cross_oracle():
     """Mock cross-oracle synthesis service"""
     service = AsyncMock()
-    service.synthesize = AsyncMock(return_value=MagicMock(
-        synthesis="Synthesis result",
-        scenario_type="business_setup",
-        oracles_consulted=["oracle1"],
-        confidence=0.9,
-        timeline="6 months",
-        investment="$10000",
-        key_requirements=["req1"],
-        risks=["risk1"]
-    ))
+    service.synthesize = AsyncMock(
+        return_value=MagicMock(
+            synthesis="Synthesis result",
+            scenario_type="business_setup",
+            oracles_consulted=["oracle1"],
+            confidence=0.9,
+            timeline="6 months",
+            investment="$10000",
+            key_requirements=["req1"],
+            risks=["risk1"],
+        )
+    )
     return service
 
 
@@ -71,7 +75,7 @@ def router(mock_autonomous_research, mock_cross_oracle, mock_client_journey):
     return SpecializedServiceRouter(
         autonomous_research_service=mock_autonomous_research,
         cross_oracle_synthesis_service=mock_cross_oracle,
-        client_journey_orchestrator=mock_client_journey
+        client_journey_orchestrator=mock_client_journey,
     )
 
 
@@ -242,7 +246,3 @@ class TestSpecializedServiceRouter:
         router.client_journey.create_journey.side_effect = Exception("Error")
         result = await router.route_client_journey("start process pt pma", "user123")
         assert result is None
-
-
-
-

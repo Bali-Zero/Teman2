@@ -19,7 +19,7 @@ from services.misc.session_service import SessionService
 @pytest.fixture
 def session_service():
     """Create SessionService instance"""
-    with patch('redis.asyncio.from_url') as mock_redis:
+    with patch("redis.asyncio.from_url") as mock_redis:
         mock_redis_client = AsyncMock()
         mock_redis.return_value = mock_redis_client
         service = SessionService(redis_url="redis://localhost:6379")
@@ -32,7 +32,7 @@ class TestSessionService:
 
     def test_init(self):
         """Test initialization"""
-        with patch('redis.asyncio.from_url') as mock_redis:
+        with patch("redis.asyncio.from_url") as mock_redis:
             mock_redis_client = AsyncMock()
             mock_redis.return_value = mock_redis_client
             service = SessionService(redis_url="redis://localhost:6379")
@@ -57,7 +57,10 @@ class TestSessionService:
     async def test_get_history(self, session_service):
         """Test getting session history"""
         import json
-        session_service.redis.get = AsyncMock(return_value=json.dumps([{"role": "user", "content": "test"}]))
+
+        session_service.redis.get = AsyncMock(
+            return_value=json.dumps([{"role": "user", "content": "test"}])
+        )
         result = await session_service.get_history("test_session_id")
         assert isinstance(result, list)
 
@@ -159,8 +162,11 @@ class TestSessionService:
     async def test_get_session_info(self, session_service):
         """Test getting session info"""
         import json
+
         session_service.redis.ttl = AsyncMock(return_value=3600)
-        session_service.redis.get = AsyncMock(return_value=json.dumps([{"role": "user", "content": "test"}]))
+        session_service.redis.get = AsyncMock(
+            return_value=json.dumps([{"role": "user", "content": "test"}])
+        )
         result = await session_service.get_session_info("test_session")
         assert result is not None
         assert result["message_count"] == 1
@@ -189,6 +195,7 @@ class TestSessionService:
     @pytest.mark.asyncio
     async def test_get_analytics_empty(self, session_service):
         """Test getting analytics with no sessions"""
+
         async def mock_scan_iter(pattern):
             return
             yield  # Make it async generator
@@ -207,10 +214,12 @@ class TestSessionService:
             yield "session:session2"
 
         session_service.redis.scan_iter = mock_scan_iter
-        session_service.redis.get = AsyncMock(side_effect=[
-            json.dumps([{"role": "user", "content": "test"}] * 5),
-            json.dumps([{"role": "user", "content": "test"}] * 15),
-        ])
+        session_service.redis.get = AsyncMock(
+            side_effect=[
+                json.dumps([{"role": "user", "content": "test"}] * 5),
+                json.dumps([{"role": "user", "content": "test"}] * 15),
+            ]
+        )
 
         result = await session_service.get_analytics()
         assert result["total_sessions"] == 2
@@ -228,13 +237,17 @@ class TestSessionService:
         """Test updating history with custom TTL"""
         session_service.redis.setex = AsyncMock()
         history = [{"role": "user", "content": "test"}]
-        result = await session_service.update_history_with_ttl("test_session", history, ttl_hours=48)
+        result = await session_service.update_history_with_ttl(
+            "test_session", history, ttl_hours=48
+        )
         assert result is True
 
     @pytest.mark.asyncio
     async def test_update_history_with_ttl_invalid_format(self, session_service):
         """Test updating history with TTL and invalid format"""
-        result = await session_service.update_history_with_ttl("test_session", "not a list", ttl_hours=48)
+        result = await session_service.update_history_with_ttl(
+            "test_session", "not a list", ttl_hours=48
+        )
         assert result is False
 
     @pytest.mark.asyncio
@@ -255,7 +268,10 @@ class TestSessionService:
     async def test_export_session_json(self, session_service):
         """Test exporting session as JSON"""
         import json
-        session_service.redis.get = AsyncMock(return_value=json.dumps([{"role": "user", "content": "test"}]))
+
+        session_service.redis.get = AsyncMock(
+            return_value=json.dumps([{"role": "user", "content": "test"}])
+        )
         result = await session_service.export_session("test_session", format="json")
         assert result is not None
         assert "session_id" in result
@@ -264,7 +280,10 @@ class TestSessionService:
     async def test_export_session_markdown(self, session_service):
         """Test exporting session as Markdown"""
         import json
-        session_service.redis.get = AsyncMock(return_value=json.dumps([{"role": "user", "content": "test"}]))
+
+        session_service.redis.get = AsyncMock(
+            return_value=json.dumps([{"role": "user", "content": "test"}])
+        )
         result = await session_service.export_session("test_session", format="markdown")
         assert result is not None
         assert "# Conversation Export" in result
@@ -292,7 +311,7 @@ class TestSessionService:
 
     def test_init_custom_ttl(self):
         """Test initialization with custom TTL"""
-        with patch('redis.asyncio.from_url') as mock_redis:
+        with patch("redis.asyncio.from_url") as mock_redis:
             mock_redis_client = AsyncMock()
             mock_redis.return_value = mock_redis_client
             service = SessionService(redis_url="redis://localhost:6379", ttl_hours=48)
@@ -300,7 +319,6 @@ class TestSessionService:
 
     def test_init_exception(self):
         """Test initialization with exception"""
-        with patch('redis.asyncio.from_url', side_effect=Exception("Connection failed")):
+        with patch("redis.asyncio.from_url", side_effect=Exception("Connection failed")):
             with pytest.raises(Exception):
                 SessionService(redis_url="redis://invalid:6379")
-

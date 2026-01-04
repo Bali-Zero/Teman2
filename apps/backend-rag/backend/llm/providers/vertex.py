@@ -40,10 +40,8 @@ class VertexProvider(LLMProvider):
         """Lazy initialize the underlying service."""
         try:
             from services.llm_clients.vertex_ai_service import VertexAIService
-            self._service = VertexAIService(
-                project_id=self._project_id,
-                location=self._location
-            )
+
+            self._service = VertexAIService(project_id=self._project_id, location=self._location)
             # Vertex AI availability depends on credentials
             self._available = True
             logger.info(f"VertexProvider initialized: project={self._project_id}")
@@ -63,11 +61,7 @@ class VertexProvider(LLMProvider):
         return self._available and self._service is not None
 
     async def generate(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        max_tokens: int = 4096,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, max_tokens: int = 4096, **kwargs
     ) -> LLMResponse:
         """
         Generate response using Vertex AI.
@@ -100,20 +94,14 @@ class VertexProvider(LLMProvider):
             content = await asyncio.get_event_loop().run_in_executor(None, _generate)
 
             return LLMResponse(
-                content=content,
-                model="gemini-pro",
-                provider=self.name,
-                finish_reason="stop"
+                content=content, model="gemini-pro", provider=self.name, finish_reason="stop"
             )
         except Exception as e:
             logger.error(f"Vertex AI generation failed: {e}")
             raise
 
     async def stream(
-        self,
-        messages: list[LLMMessage],
-        temperature: float = 0.7,
-        **kwargs
+        self, messages: list[LLMMessage], temperature: float = 0.7, **kwargs
     ) -> AsyncIterator[str]:
         """
         Stream response using Vertex AI.

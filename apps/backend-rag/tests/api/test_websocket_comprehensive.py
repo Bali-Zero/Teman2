@@ -111,6 +111,3 @@ class TestWebSocketDisconnection:
         response = authenticated_client.get("/ws")
 
         assert response.status_code in [200, 426, 500, 503]
-
-
-

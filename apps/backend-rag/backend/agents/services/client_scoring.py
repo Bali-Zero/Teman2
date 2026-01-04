@@ -194,6 +194,3 @@ class ClientScoringService:
             "total_conversations": row["conversation_count"] or 0,
             "practice_statuses": row["practice_statuses"] or [],
         }
-
-
-

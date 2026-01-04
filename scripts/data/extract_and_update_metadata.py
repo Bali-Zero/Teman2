@@ -151,9 +151,9 @@ class MetadataExtractor:
         # Duration
         duration_match = self.patterns["duration"].search(text)
         if duration_match:
-            metadata[
-                "duration"
-            ] = f"{duration_match.group(1)} {duration_match.group(2)}"
+            metadata["duration"] = (
+                f"{duration_match.group(1)} {duration_match.group(2)}"
+            )
 
         # Fee USD
         fee_usd_match = self.patterns["fee_usd"].search(text)

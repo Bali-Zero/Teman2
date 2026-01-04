@@ -38,16 +38,18 @@ def mock_request():
 def mock_orchestrator():
     """Mock orchestrator"""
     orchestrator = AsyncMock()
-    orchestrator.process_query = AsyncMock(return_value=MagicMock(
-        answer="test answer",
-        sources=[],
-        document_count=5,
-        timings={"total": 1.0},
-        route_used="flash",
-        tools_called=["tool1"],
-        model_used="gemini-3-flash",
-        cache_hit=False
-    ))
+    orchestrator.process_query = AsyncMock(
+        return_value=MagicMock(
+            answer="test answer",
+            sources=[],
+            document_count=5,
+            timings={"total": 1.0},
+            route_used="flash",
+            tools_called=["tool1"],
+            model_used="gemini-3-flash",
+            cache_hit=False,
+        )
+    )
     return orchestrator
 
 
@@ -102,43 +104,47 @@ class TestAgenticRagRouter:
         """Test successful query endpoint"""
         request_data = AgenticQueryRequest(query="What is KITAS?")
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator), \
-             patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+        ):
             from app.routers.agentic_rag import query_agentic_rag
 
             result = await query_agentic_rag(
                 request=request_data,
                 current_user=mock_current_user,
                 orchestrator=mock_orchestrator,
-                db_pool=None
+                db_pool=None,
             )
 
             assert isinstance(result, AgenticQueryResponse)
             assert result.answer == "test answer"
 
     @pytest.mark.asyncio
-    async def test_query_endpoint_with_conversation_history(self, mock_orchestrator, mock_current_user):
+    async def test_query_endpoint_with_conversation_history(
+        self, mock_orchestrator, mock_current_user
+    ):
         """Test query with conversation history"""
         request_data = AgenticQueryRequest(
             query="Tell me more",
             conversation_history=[
                 {"role": "user", "content": "What is KITAS?"},
-                {"role": "assistant", "content": "KITAS is a work permit"}
-            ]
+                {"role": "assistant", "content": "KITAS is a work permit"},
+            ],
         )
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+        ):
             from app.routers.agentic_rag import query_agentic_rag
 
             result = await query_agentic_rag(
                 request=request_data,
                 current_user=mock_current_user,
                 orchestrator=mock_orchestrator,
-                db_pool=None
+                db_pool=None,
             )
 
             assert result is not None
@@ -149,9 +155,10 @@ class TestAgenticRagRouter:
         request_data = AgenticQueryRequest(query="test")
         mock_orchestrator.process_query.side_effect = Exception("Error")
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+        ):
             from fastapi import HTTPException
 
             from app.routers.agentic_rag import query_agentic_rag
@@ -161,7 +168,7 @@ class TestAgenticRagRouter:
                     request=request_data,
                     current_user=mock_current_user,
                     orchestrator=mock_orchestrator,
-                    db_pool=None
+                    db_pool=None,
                 )
 
     @pytest.mark.asyncio
@@ -173,9 +180,8 @@ class TestAgenticRagRouter:
         mock_conn = AsyncMock()
 
         # Mock fetchrow to return messages - use dict-like object
-        messages = [
-            {"role": "user", "content": "test", "created_at": "2024-01-01"}
-        ]
+        messages = [{"role": "user", "content": "test", "created_at": "2024-01-01"}]
+
         # Create a dict-like object that supports both .get() and [] access
         class MockRow(dict):
             def __init__(self, messages):
@@ -193,10 +199,7 @@ class TestAgenticRagRouter:
         mock_db.acquire = acquire
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=123,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=mock_db
+            conversation_id=123, session_id=None, user_id="test@example.com", db_pool=mock_db
         )
 
         assert len(result) > 0
@@ -214,7 +217,7 @@ class TestAgenticRagRouter:
             conversation_id=None,
             session_id="session-123",
             user_id="test@example.com",
-            db_pool=mock_db
+            db_pool=mock_db,
         )
 
         assert isinstance(result, list)
@@ -223,10 +226,7 @@ class TestAgenticRagRouter:
     async def test_get_conversation_history_for_agentic_no_db(self):
         """Test getting history without DB"""
         result = await get_conversation_history_for_agentic(
-            conversation_id=None,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=None
+            conversation_id=None, session_id=None, user_id="test@example.com", db_pool=None
         )
 
         assert result == []
@@ -244,8 +244,7 @@ class TestAgenticQueryRequest:
     def test_request_with_images(self):
         """Test request with images"""
         request = AgenticQueryRequest(
-            query="test",
-            images=[{"base64": "data:image/png;base64,...", "name": "test.png"}]
+            query="test", images=[{"base64": "data:image/png;base64,...", "name": "test.png"}]
         )
         assert len(request.images) == 1
 
@@ -256,11 +255,7 @@ class TestAgenticQueryResponse:
     def test_response_creation(self):
         """Test response creation"""
         response = AgenticQueryResponse(
-            answer="test",
-            sources=[],
-            context_length=5,
-            execution_time=1.0,
-            route_used="flash"
+            answer="test", sources=[], context_length=5, execution_time=1.0, route_used="flash"
         )
         assert response.answer == "test"
         assert response.tools_called == 0
@@ -277,10 +272,12 @@ class TestAgenticQueryResponse:
         # Mock email lookup
         mock_email_row = MagicMock()
         mock_email_row.get.return_value = "found@example.com"
-        mock_conn.fetchrow = AsyncMock(side_effect=[
-            mock_email_row,  # Email lookup
-            None  # No conversation found
-        ])
+        mock_conn.fetchrow = AsyncMock(
+            side_effect=[
+                mock_email_row,  # Email lookup
+                None,  # No conversation found
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -292,7 +289,7 @@ class TestAgenticQueryResponse:
             conversation_id=None,
             session_id=None,
             user_id="user123",  # Not an email
-            db_pool=mock_db
+            db_pool=mock_db,
         )
 
         assert isinstance(result, list)
@@ -306,6 +303,7 @@ class TestAgenticQueryResponse:
         mock_conn = AsyncMock()
 
         messages = [{"role": "user", "content": "test"}]
+
         # Create a proper dict-like object
         class MockRow(dict):
             def __init__(self, messages):
@@ -322,10 +320,7 @@ class TestAgenticQueryResponse:
         mock_db.acquire = acquire
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=None,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=mock_db
+            conversation_id=None, session_id=None, user_id="test@example.com", db_pool=mock_db
         )
 
         assert len(result) > 0
@@ -340,6 +335,7 @@ class TestAgenticQueryResponse:
         mock_conn = AsyncMock()
 
         messages = [{"role": "user", "content": "test"}]
+
         # Create a proper dict-like object with JSON string
         class MockRow(dict):
             def __init__(self, messages_json):
@@ -356,10 +352,7 @@ class TestAgenticQueryResponse:
         mock_db.acquire = acquire
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=123,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=mock_db
+            conversation_id=123, session_id=None, user_id="test@example.com", db_pool=mock_db
         )
 
         assert len(result) > 0
@@ -380,10 +373,7 @@ class TestAgenticQueryResponse:
         mock_db.acquire = acquire
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=123,
-            session_id=None,
-            user_id="test@example.com",
-            db_pool=mock_db
+            conversation_id=123, session_id=None, user_id="test@example.com", db_pool=mock_db
         )
 
         assert result == []
@@ -405,22 +395,20 @@ class TestAgenticQueryResponse:
 
         mock_db.acquire = acquire
 
-        request_data = AgenticQueryRequest(
-            query="Tell me more",
-            conversation_id=123
-        )
+        request_data = AgenticQueryRequest(query="Tell me more", conversation_id=123)
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator), \
-             patch("app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch("app.routers.agentic_rag.get_optional_database_pool", return_value=mock_db),
+        ):
             from app.routers.agentic_rag import query_agentic_rag
 
             result = await query_agentic_rag(
                 request=request_data,
                 current_user=mock_current_user,
                 orchestrator=mock_orchestrator,
-                db_pool=mock_db
+                db_pool=mock_db,
             )
 
             assert result is not None
@@ -444,10 +432,11 @@ class TestAgenticQueryResponse:
 
         mock_orchestrator.stream_query = AsyncMock(return_value=mock_stream())
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator), \
-             patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+        ):
             from app.routers.agentic_rag import stream_agentic_rag
 
             response = await stream_agentic_rag(
@@ -455,7 +444,7 @@ class TestAgenticQueryResponse:
                 http_request=mock_request,
                 current_user=mock_current_user,
                 orchestrator=mock_orchestrator,
-                db_pool=None
+                db_pool=None,
             )
 
             assert response is not None
@@ -480,10 +469,12 @@ class TestAgenticQueryResponse:
         def mock_trace_span(*args, **kwargs):
             yield MagicMock()
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator), \
-             patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None), \
-             patch("app.routers.agentic_rag.trace_span", side_effect=mock_trace_span):
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+            patch("app.routers.agentic_rag.trace_span", side_effect=mock_trace_span),
+        ):
             from fastapi import HTTPException
 
             from app.routers.agentic_rag import stream_agentic_rag
@@ -495,7 +486,7 @@ class TestAgenticQueryResponse:
                     http_request=mock_request,
                     current_user=mock_current_user,
                     orchestrator=mock_orchestrator,
-                    db_pool=None
+                    db_pool=None,
                 )
             assert exc_info.value.status_code == 400
 
@@ -512,7 +503,7 @@ class TestAgenticQueryResponse:
         request_data = AgenticQueryRequest(
             query="test",
             enable_vision=True,
-            images=[{"base64": "data:image/png;base64,test", "name": "test.png"}]
+            images=[{"base64": "data:image/png;base64,test", "name": "test.png"}],
         )
 
         async def mock_stream():
@@ -521,10 +512,11 @@ class TestAgenticQueryResponse:
 
         mock_orchestrator.stream_query = AsyncMock(return_value=mock_stream())
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator), \
-             patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+        ):
             from app.routers.agentic_rag import stream_agentic_rag
 
             response = await stream_agentic_rag(
@@ -532,7 +524,7 @@ class TestAgenticQueryResponse:
                 http_request=mock_request,
                 current_user=mock_current_user,
                 orchestrator=mock_orchestrator,
-                db_pool=None
+                db_pool=None,
             )
 
             assert response is not None
@@ -549,10 +541,11 @@ class TestAgenticQueryResponse:
 
         request_data = AgenticQueryRequest(query="test")
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator), \
-             patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+        ):
             from app.routers.agentic_rag import stream_agentic_rag
 
             response = await stream_agentic_rag(
@@ -560,7 +553,7 @@ class TestAgenticQueryResponse:
                 http_request=mock_request,
                 current_user=mock_current_user,
                 orchestrator=mock_orchestrator,
-                db_pool=None
+                db_pool=None,
             )
 
             assert response is not None
@@ -580,10 +573,11 @@ class TestAgenticQueryResponse:
         # Mock stream_query to raise exception
         mock_orchestrator.stream_query = AsyncMock(side_effect=Exception("Stream error"))
 
-        with patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user), \
-             patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator), \
-             patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None):
-
+        with (
+            patch("app.routers.agentic_rag.get_current_user", return_value=mock_current_user),
+            patch("app.routers.agentic_rag.get_orchestrator", return_value=mock_orchestrator),
+            patch("app.routers.agentic_rag.get_optional_database_pool", return_value=None),
+        ):
             from app.routers.agentic_rag import stream_agentic_rag
 
             response = await stream_agentic_rag(
@@ -591,7 +585,7 @@ class TestAgenticQueryResponse:
                 http_request=mock_request,
                 current_user=mock_current_user,
                 orchestrator=mock_orchestrator,
-                db_pool=None
+                db_pool=None,
             )
 
             assert response is not None
@@ -608,8 +602,11 @@ class TestAgenticQueryResponse:
 
         mock_request = MagicMock()
 
-        with patch("app.routers.agentic_rag.get_database_pool", side_effect=HTTPException(status_code=503)):
+        with patch(
+            "app.routers.agentic_rag.get_database_pool", side_effect=HTTPException(status_code=503)
+        ):
             from app.routers.agentic_rag import get_optional_database_pool
+
             result = get_optional_database_pool(mock_request)
             assert result is None
 
@@ -619,9 +616,10 @@ class TestAgenticQueryResponse:
 
         mock_request = MagicMock()
 
-        with patch("app.routers.agentic_rag.get_database_pool", side_effect=HTTPException(status_code=500)):
+        with patch(
+            "app.routers.agentic_rag.get_database_pool", side_effect=HTTPException(status_code=500)
+        ):
             from app.routers.agentic_rag import get_optional_database_pool
 
             with pytest.raises(HTTPException):
                 get_optional_database_pool(mock_request)
-

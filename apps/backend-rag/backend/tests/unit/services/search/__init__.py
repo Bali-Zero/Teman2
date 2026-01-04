@@ -1,5 +1,1 @@
 """Tests for Search Services"""
-
-
-
-

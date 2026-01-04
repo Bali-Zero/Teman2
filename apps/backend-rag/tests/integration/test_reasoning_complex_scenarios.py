@@ -46,10 +46,10 @@ class TestReasoningComplexScenarios:
         mock_vector_search.execute = AsyncMock(
             return_value='{"content": "KITAS visa information", "sources": [{"id": "doc1", "score": 0.9}]}'
         )
-        
+
         mock_calculator = MagicMock()
         mock_calculator.execute = AsyncMock(return_value="42")
-        
+
         tool_map = {
             "vector_search": mock_vector_search,
             "calculator": mock_calculator,
@@ -62,6 +62,7 @@ class TestReasoningComplexScenarios:
 
         llm_gateway = AsyncMock()
         call_idx = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_idx
             call_idx += 1
@@ -71,7 +72,7 @@ class TestReasoningComplexScenarios:
                 return ("Action: calculator('6*7')", "gemini-2.0-flash", None)
             else:
                 return ("Final Answer: KITAS is a permit and 6*7=42", "gemini-2.0-flash", None)
-        
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -81,6 +82,7 @@ class TestReasoningComplexScenarios:
             None,
         ]
         call_idx_parse = 0
+
         def mock_parse_tool_call(*args, **kwargs):
             nonlocal call_idx_parse
             if call_idx_parse < len(tool_calls):
@@ -91,8 +93,14 @@ class TestReasoningComplexScenarios:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+            ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -116,6 +124,7 @@ class TestReasoningComplexScenarios:
         """Test aggregation of citations from multiple vector_search calls"""
         mock_tool = MagicMock()
         call_count = 0
+
         def mock_execute(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -123,12 +132,10 @@ class TestReasoningComplexScenarios:
                 return '{"content": "KITAS info part 1", "sources": [{"id": "doc1", "score": 0.9}]}'
             else:
                 return '{"content": "KITAS info part 2", "sources": [{"id": "doc2", "score": 0.85}, {"id": "doc3", "score": 0.8}]}'
-        
+
         mock_tool.execute = AsyncMock(side_effect=mock_execute)
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=5)
@@ -137,6 +144,7 @@ class TestReasoningComplexScenarios:
 
         llm_gateway = AsyncMock()
         call_idx = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_idx
             call_idx += 1
@@ -144,7 +152,7 @@ class TestReasoningComplexScenarios:
                 return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
             else:
                 return ("Final Answer: KITAS is a permit", "gemini-2.0-flash", None)
-        
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -155,8 +163,14 @@ class TestReasoningComplexScenarios:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -179,10 +193,10 @@ class TestReasoningComplexScenarios:
         # First tool fails, second succeeds
         mock_tool1 = MagicMock()
         mock_tool1.execute = AsyncMock(side_effect=Exception("Tool 1 failed"))
-        
+
         mock_tool2 = MagicMock()
         mock_tool2.execute = AsyncMock(return_value="Tool 2 succeeded")
-        
+
         tool_map = {
             "tool1": mock_tool1,
             "tool2": mock_tool2,
@@ -195,6 +209,7 @@ class TestReasoningComplexScenarios:
 
         llm_gateway = AsyncMock()
         call_idx = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_idx
             call_idx += 1
@@ -206,7 +221,7 @@ class TestReasoningComplexScenarios:
                 return ("Final Answer: Success", "gemini-2.0-flash", None)
             else:
                 return ("Final Answer: Success", "gemini-2.0-flash", None)
-        
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -216,6 +231,7 @@ class TestReasoningComplexScenarios:
             None,
         ]
         call_idx_parse = 0
+
         def mock_parse_tool_call(*args, **kwargs):
             nonlocal call_idx_parse
             if call_idx_parse < len(tool_calls):
@@ -226,8 +242,14 @@ class TestReasoningComplexScenarios:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+            ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -262,7 +284,11 @@ class TestReasoningComplexScenarios:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -287,10 +313,8 @@ class TestReasoningComplexScenarios:
         mock_tool.execute = AsyncMock(
             return_value='{"content": "KITAS info", "sources": [{"id": "doc1", "score": 0.9}]}'
         )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=5)
@@ -299,6 +323,7 @@ class TestReasoningComplexScenarios:
 
         llm_gateway = AsyncMock()
         call_idx = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_idx
             call_idx += 1
@@ -306,7 +331,7 @@ class TestReasoningComplexScenarios:
                 return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None)
             else:
                 return ("Final Answer: KITAS is a permit", "gemini-2.0-flash", None)
-        
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -318,8 +343,14 @@ class TestReasoningComplexScenarios:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -337,4 +368,3 @@ class TestReasoningComplexScenarios:
         event_types = [e.get("type") for e in events]
         assert "thinking" in event_types or "tool_call" in event_types or "token" in event_types
         assert len(events) > 0
-

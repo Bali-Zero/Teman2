@@ -80,7 +80,11 @@ class DailyCheckinNotifier:
                 logger.error(f"❌ Daily notifier error: {e}")
 
             # Check every minute
-            await asyncio.sleep(60)
+            try:
+                await asyncio.sleep(60)
+            except asyncio.CancelledError:
+                logger.info("🛑 Daily notifier loop cancelled")
+                break
 
     async def _get_checkin_data(self) -> list[dict]:
         """Get today's check-in data from the database."""
@@ -124,7 +128,9 @@ class DailyCheckinNotifier:
                 {
                     "email": row["email"],
                     "online": row["is_online"],
-                    "last_action": row["last_action_bali"].strftime("%H:%M") if row["last_action_bali"] else "-",
+                    "last_action": row["last_action_bali"].strftime("%H:%M")
+                    if row["last_action_bali"]
+                    else "-",
                 }
                 for row in rows
             ]
@@ -145,9 +151,9 @@ class DailyCheckinNotifier:
             status_text = "Online" if s["online"] else "Offline"
             online_rows += f"""
             <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #eee;">{status_icon} {s['email']}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">{status_icon} {s["email"]}</td>
                 <td style="padding: 8px; border-bottom: 1px solid #eee;">{status_text}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #eee;">{s['last_action']}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #eee;">{s["last_action"]}</td>
             </tr>
             """
 
@@ -159,8 +165,8 @@ class DailyCheckinNotifier:
                 action_text = "Check-in" if c["action"] == "clock_in" else "Check-out"
                 checkin_rows += f"""
                 <tr>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">{c['time']}</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #eee;">{c['email']}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">{c["time"]}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">{c["email"]}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #eee;">{action_icon} {action_text}</td>
                 </tr>
                 """
@@ -197,7 +203,7 @@ class DailyCheckinNotifier:
                 </div>
                 <div class="content">
                     <div class="summary">
-                        <h3 style="margin: 0 0 10px 0;">Riepilogo alle {now.strftime('%H:%M')}</h3>
+                        <h3 style="margin: 0 0 10px 0;">Riepilogo alle {now.strftime("%H:%M")}</h3>
                         <p style="margin: 0; font-size: 24px;">
                             <strong>{online_count}</strong> / {total_count} membri online
                         </p>

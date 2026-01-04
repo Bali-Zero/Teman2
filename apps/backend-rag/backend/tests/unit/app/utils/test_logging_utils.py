@@ -97,7 +97,7 @@ class TestLogEndpointCall:
             "GET",
             user_email="user@example.com",
             session_id="session123",
-            duration_ms=150
+            duration_ms=150,
         )
 
         logger.info.assert_called_once()
@@ -285,7 +285,9 @@ class TestLogDatabaseOperation:
         """Test database operation logging with kwargs"""
         logger = MagicMock()
 
-        log_database_operation(logger, "INSERT", "users", record_id=456, user_email="test@example.com")
+        log_database_operation(
+            logger, "INSERT", "users", record_id=456, user_email="test@example.com"
+        )
 
         logger.debug.assert_called_once()
         call_kwargs = logger.debug.call_args[1]

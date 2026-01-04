@@ -11,12 +11,12 @@ Tests cover:
 import pytest
 
 from services.llm_clients.pricing import (
+    LLM_PRICING,
     TokenUsage,
     calculate_cost,
     create_token_usage,
     get_model_pricing,
     list_available_models,
-    LLM_PRICING,
 )
 
 

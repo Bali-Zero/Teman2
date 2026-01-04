@@ -113,7 +113,7 @@ async def get_current_user(
     async with db_pool.acquire() as conn:
         logger.debug(f"Validating user: {user_id}")
         query = """
-            SELECT id::text, email, full_name as name, role, 'active' as status, NULL::jsonb as metadata, language as language_preference
+            SELECT id::text, email, full_name as name, role, 'active' as status, NULL::jsonb as metadata, language as language_preference, avatar
             FROM team_members
             WHERE id::text = $1 AND email = $2 AND active = true
         """
@@ -161,7 +161,7 @@ async def login(
             query = """
                 SELECT id, email, full_name as name, pin_hash as password_hash, role,
                        'active' as status, NULL::jsonb as metadata, language as language_preference,
-                       active, linked_client_id, portal_access
+                       active, linked_client_id, portal_access, avatar
                 FROM team_members
                 WHERE email = $1
             """
@@ -235,6 +235,7 @@ async def login(
                 "name": user["name"],
                 "role": user["role"],
                 "status": user["status"],
+                "avatar": user.get("avatar"),
                 "metadata": user.get("metadata"),
                 "language_preference": user.get("language_preference", "en"),
             }
@@ -367,7 +368,7 @@ async def refresh_token(
             query = """
                 SELECT id, email, full_name as name, role, 'active' as status,
                        NULL::jsonb as metadata, language as language_preference,
-                       linked_client_id, portal_access
+                       linked_client_id, portal_access, avatar
                 FROM team_members
                 WHERE id::text = $1 AND email = $2 AND active = true
             """
@@ -403,6 +404,7 @@ async def refresh_token(
                 "name": user["name"],
                 "role": user["role"],
                 "status": user["status"],
+                "avatar": user.get("avatar"),
                 "metadata": user.get("metadata"),
                 "language_preference": user.get("language_preference", "en"),
             }

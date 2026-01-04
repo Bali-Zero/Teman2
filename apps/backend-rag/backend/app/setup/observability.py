@@ -113,9 +113,7 @@ def setup_observability(app: FastAPI) -> None:
                     endpoint=settings.otel_exporter_endpoint,
                     insecure=True,  # Required for local Jaeger without TLS
                 )
-                trace.get_tracer_provider().add_span_processor(
-                    BatchSpanProcessor(otlp_exporter)
-                )
+                trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_exporter))
                 # Skip FastAPIInstrumentor to avoid conflicts with @app.on_event handlers
                 # The instrumentation can cause infinite loops when combined with event handlers
                 # Tracing will still work for manual spans, but automatic FastAPI instrumentation is disabled

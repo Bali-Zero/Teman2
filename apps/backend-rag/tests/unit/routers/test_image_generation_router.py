@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from fastapi import FastAPI, status
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # Ensure backend is in path
@@ -111,7 +111,9 @@ def mock_imagen_success_response():
     """Mock successful Imagen API response"""
     return {
         "generatedImages": [
-            {"bytesBase64Encoded": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="}
+            {
+                "bytesBase64Encoded": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+            }
         ]
     }
 
@@ -168,8 +170,9 @@ class TestImageGenerationRequest:
 
     def test_request_model_validation_missing_prompt(self):
         """Test request model validation with missing prompt"""
-        from app.routers.image_generation import ImageGenerationRequest
         from pydantic import ValidationError
+
+        from app.routers.image_generation import ImageGenerationRequest
 
         with pytest.raises(ValidationError):
             ImageGenerationRequest()
@@ -235,7 +238,11 @@ class TestGenerateImageSuccess:
 
     @pytest.mark.asyncio
     async def test_generate_image_success_with_imagen_key(
-        self, client, valid_image_request, mock_settings_with_imagen_key, mock_imagen_success_response
+        self,
+        client,
+        valid_image_request,
+        mock_settings_with_imagen_key,
+        mock_imagen_success_response,
     ):
         """Test successful image generation with google_imagen_api_key"""
         mock_response = MagicMock()
@@ -260,7 +267,11 @@ class TestGenerateImageSuccess:
 
     @pytest.mark.asyncio
     async def test_generate_image_success_with_google_api_key_fallback(
-        self, client, valid_image_request, mock_settings_with_google_key, mock_imagen_success_response
+        self,
+        client,
+        valid_image_request,
+        mock_settings_with_google_key,
+        mock_imagen_success_response,
     ):
         """Test successful image generation with google_api_key fallback"""
         mock_response = MagicMock()
@@ -335,7 +346,11 @@ class TestGenerateImageSuccess:
 
     @pytest.mark.asyncio
     async def test_generate_image_correct_api_url(
-        self, client, valid_image_request, mock_settings_with_imagen_key, mock_imagen_success_response
+        self,
+        client,
+        valid_image_request,
+        mock_settings_with_imagen_key,
+        mock_imagen_success_response,
     ):
         """Test that correct Imagen API URL is used"""
         mock_response = MagicMock()
@@ -482,7 +497,9 @@ class TestGenerateImageErrors:
             data = response.json()
             assert "Unexpected error during image generation" in data["detail"]
 
-    def test_generate_image_invalid_request_missing_prompt(self, client, mock_settings_with_imagen_key):
+    def test_generate_image_invalid_request_missing_prompt(
+        self, client, mock_settings_with_imagen_key
+    ):
         """Test validation error when prompt is missing"""
         request_data = {
             "number_of_images": 1,
@@ -492,7 +509,9 @@ class TestGenerateImageErrors:
 
         assert response.status_code == 422  # Validation error
 
-    def test_generate_image_invalid_request_invalid_type(self, client, mock_settings_with_imagen_key):
+    def test_generate_image_invalid_request_invalid_type(
+        self, client, mock_settings_with_imagen_key
+    ):
         """Test validation error with invalid data types"""
         request_data = {
             "prompt": "Test prompt",
@@ -639,7 +658,11 @@ class TestGenerateImageEdgeCases:
 
     @pytest.mark.asyncio
     async def test_generate_image_timeout_configuration(
-        self, client, valid_image_request, mock_settings_with_imagen_key, mock_imagen_success_response
+        self,
+        client,
+        valid_image_request,
+        mock_settings_with_imagen_key,
+        mock_imagen_success_response,
     ):
         """Test that AsyncClient is configured with correct timeout"""
         with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
@@ -729,7 +752,11 @@ class TestAPIKeyPriority:
 
     @pytest.mark.asyncio
     async def test_google_key_used_when_imagen_key_none(
-        self, client, valid_image_request, mock_settings_with_google_key, mock_imagen_success_response
+        self,
+        client,
+        valid_image_request,
+        mock_settings_with_google_key,
+        mock_imagen_success_response,
     ):
         """Test that google_api_key is used when imagen_api_key is None"""
         mock_response = MagicMock()
@@ -742,7 +769,9 @@ class TestAPIKeyPriority:
             call_args = mock_client.post.call_args
             assert call_args[1]["headers"]["X-Goog-Api-Key"] == "test-google-api-key"
 
-    def test_both_keys_missing_raises_error(self, client, valid_image_request, mock_settings_no_keys):
+    def test_both_keys_missing_raises_error(
+        self, client, valid_image_request, mock_settings_no_keys
+    ):
         """Test that error is raised when both keys are missing"""
         response = client.post("/api/v1/image/generate", json=valid_image_request)
 

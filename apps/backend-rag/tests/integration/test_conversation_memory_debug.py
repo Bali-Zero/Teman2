@@ -112,9 +112,9 @@ class TestConversationMemoryDebug:
             if isinstance(messages_retrieved, str):
                 messages_retrieved = json.loads(messages_retrieved)
 
-            assert (
-                len(messages_retrieved) == 2
-            ), f"Expected 2 messages, got {len(messages_retrieved)}"
+            assert len(messages_retrieved) == 2, (
+                f"Expected 2 messages, got {len(messages_retrieved)}"
+            )
             assert messages_retrieved[0]["role"] == "user"
             assert "Marco" in messages_retrieved[0]["content"]
             assert "Milano" in messages_retrieved[0]["content"]
@@ -260,9 +260,9 @@ class TestConversationMemoryDebug:
             for i, msg in enumerate(history_by_session):
                 logger.info(f"   - Message {i + 1}: {msg['role']} - {msg['content'][:50]}...")
 
-            assert (
-                len(history_by_session) == 3
-            ), f"Expected 3 messages, got {len(history_by_session)}"
+            assert len(history_by_session) == 3, (
+                f"Expected 3 messages, got {len(history_by_session)}"
+            )
 
             # Verify content
             assert history_by_id[0]["content"] == "Mi chiamo Marco e sono di Milano"
@@ -437,12 +437,12 @@ class TestConversationMemoryDebug:
                 logger.info("=" * 80)
 
                 # Verify conversation history was passed
-                assert (
-                    captured_conversation_history is not None
-                ), "conversation_history was NOT passed to reason_with_gemini!"
-                assert (
-                    len(captured_conversation_history) >= 2
-                ), f"Expected at least 2 messages, got {len(captured_conversation_history)}"
+                assert captured_conversation_history is not None, (
+                    "conversation_history was NOT passed to reason_with_gemini!"
+                )
+                assert len(captured_conversation_history) >= 2, (
+                    f"Expected at least 2 messages, got {len(captured_conversation_history)}"
+                )
 
                 # Verify entities were extracted and added to memory facts
                 memory_facts_str = (

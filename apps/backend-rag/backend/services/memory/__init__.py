@@ -38,6 +38,7 @@ def __getattr__(name: str):
     if name in _LAZY_IMPORTS:
         if name not in _loaded_lazy:
             import importlib
+
             module = importlib.import_module(_LAZY_IMPORTS[name], package=__name__)
             _loaded_lazy[name] = getattr(module, name)
         return _loaded_lazy[name]

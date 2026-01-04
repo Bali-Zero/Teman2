@@ -48,9 +48,9 @@ class LRUCache:
         """
         self.max_size = maxsize if maxsize is not None else max_size
         self.default_ttl = default_ttl
-        self.cache: OrderedDict[
-            str, tuple[Any, float]
-        ] = OrderedDict()  # key -> (value, expire_time)
+        self.cache: OrderedDict[str, tuple[Any, float]] = (
+            OrderedDict()
+        )  # key -> (value, expire_time)
 
     def get(self, key: str) -> Any | None:
         """Get value from cache if not expired."""
@@ -160,14 +160,14 @@ class CacheService:
         # Skip known non-serializable types
         type_name = type(obj).__name__
         non_serializable_types = {
-            'Pool',           # asyncpg.Pool
-            'Connection',     # asyncpg.Connection
-            'Request',        # fastapi.Request
-            'Response',       # fastapi.Response
-            'WebSocket',      # fastapi.WebSocket
-            'BackgroundTasks',# fastapi.BackgroundTasks
-            'State',          # starlette.State
-            'HTTPConnection', # starlette.HTTPConnection
+            "Pool",  # asyncpg.Pool
+            "Connection",  # asyncpg.Connection
+            "Request",  # fastapi.Request
+            "Response",  # fastapi.Response
+            "WebSocket",  # fastapi.WebSocket
+            "BackgroundTasks",  # fastapi.BackgroundTasks
+            "State",  # starlette.State
+            "HTTPConnection",  # starlette.HTTPConnection
         }
         if type_name in non_serializable_types:
             return False
@@ -220,16 +220,13 @@ class CacheService:
             filtered_args.append(arg)
 
         # Filter kwargs: skip non-serializable values
-        filtered_kwargs = {
-            k: v for k, v in kwargs.items()
-            if self._is_serializable(v)
-        }
+        filtered_kwargs = {k: v for k, v in kwargs.items() if self._is_serializable(v)}
 
         # Create deterministic key from filtered arguments
         key_data = json.dumps(
             {"args": filtered_args, "kwargs": filtered_kwargs},
             sort_keys=True,
-            default=str  # Fallback for any remaining non-serializable types
+            default=str,  # Fallback for any remaining non-serializable types
         )
         key_hash = hashlib.md5(key_data.encode()).hexdigest()[:CACHE_KEY_HASH_LENGTH]
         return f"zantara:{prefix}:{key_hash}"

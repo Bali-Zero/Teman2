@@ -11,6 +11,9 @@ import type {
   OperationResponse,
   UploadProgress,
   DocType,
+  PermissionItem,
+  AddPermissionRequest,
+  UpdatePermissionRequest,
 } from './drive.types';
 
 /**
@@ -536,5 +539,53 @@ export class DriveApi {
       presentation: '📽️',
     };
     return icons[docType];
+  }
+
+  // ============== Permission Management (Board only) ==============
+
+  /**
+   * List permissions for a file/folder
+   */
+  async listPermissions(fileId: string): Promise<PermissionItem[]> {
+    return this.client.request<PermissionItem[]>(`/api/drive/files/${fileId}/permissions`);
+  }
+
+  /**
+   * Add permission for a user
+   */
+  async addPermission(fileId: string, request: AddPermissionRequest): Promise<PermissionItem> {
+    return this.client.request<PermissionItem>(`/api/drive/files/${fileId}/permissions`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  /**
+   * Update permission role
+   */
+  async updatePermission(
+    fileId: string,
+    permissionId: string,
+    request: UpdatePermissionRequest
+  ): Promise<PermissionItem> {
+    return this.client.request<PermissionItem>(
+      `/api/drive/files/${fileId}/permissions/${permissionId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(request),
+      }
+    );
+  }
+
+  /**
+   * Remove permission
+   */
+  async removePermission(fileId: string, permissionId: string): Promise<{ success: boolean }> {
+    return this.client.request<{ success: boolean }>(
+      `/api/drive/files/${fileId}/permissions/${permissionId}`,
+      {
+        method: 'DELETE',
+      }
+    );
   }
 }

@@ -53,11 +53,7 @@ class TestGraphService:
 
         graph_service.pool.acquire = acquire
 
-        entity = GraphEntity(
-            id="entity_123",
-            type="Organization",
-            name="PT PMA"
-        )
+        entity = GraphEntity(id="entity_123", type="Organization", name="PT PMA")
 
         result = await graph_service.add_entity(entity)
         assert result == "entity_123"
@@ -77,10 +73,7 @@ class TestGraphService:
         graph_service.pool.acquire = acquire
 
         relation = GraphRelation(
-            source_id="entity1",
-            target_id="entity2",
-            type="REQUIRES",
-            strength=0.9
+            source_id="entity1", target_id="entity2", type="REQUIRES", strength=0.9
         )
 
         result = await graph_service.add_relation(relation)
@@ -92,9 +85,11 @@ class TestGraphService:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"target_id": "entity2", "relationship_type": "REQUIRES", "strength": 0.9}
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"target_id": "entity2", "relationship_type": "REQUIRES", "strength": 0.9}
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -128,21 +123,14 @@ class TestGraphEntity:
 
     def test_entity_creation(self):
         """Test entity creation"""
-        entity = GraphEntity(
-            id="test",
-            type="Organization",
-            name="Test Company"
-        )
+        entity = GraphEntity(id="test", type="Organization", name="Test Company")
         assert entity.id == "test"
         assert entity.type == "Organization"
 
     def test_entity_with_description(self):
         """Test entity with description"""
         entity = GraphEntity(
-            id="test",
-            type="Organization",
-            name="Test",
-            description="Test description"
+            id="test", type="Organization", name="Test", description="Test description"
         )
         assert entity.description == "Test description"
 
@@ -152,11 +140,7 @@ class TestGraphRelation:
 
     def test_relation_creation(self):
         """Test relation creation"""
-        relation = GraphRelation(
-            source_id="entity1",
-            target_id="entity2",
-            type="REQUIRES"
-        )
+        relation = GraphRelation(source_id="entity1", target_id="entity2", type="REQUIRES")
         assert relation.source_id == "entity1"
         assert relation.target_id == "entity2"
         assert relation.strength == 1.0
@@ -167,14 +151,16 @@ class TestGraphRelation:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "entity_id": "entity_123",
-                "entity_type": "Organization",
-                "name": "PT PMA",
-                "properties": {"description": "Test description"}
-            }
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "entity_123",
+                    "entity_type": "Organization",
+                    "name": "PT PMA",
+                    "properties": {"description": "Test description"},
+                }
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -193,24 +179,28 @@ class TestGraphRelation:
 
         mock_conn = AsyncMock()
         # Mock start node
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "id": "entity1",
-            "type": "Organization",
-            "name": "PT PMA",
-            "properties": {"description": "Test"}
-        })
-        # Mock neighbors
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "source_entity_id": "entity1",
-                "target_entity_id": "entity2",
-                "relationship_type": "REQUIRES",
-                "properties": {"strength": 0.9},
-                "target_type": "IZIN_USAHA",
-                "target_name": "Investment",
-                "target_desc": "Investment requirement"
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": "entity1",
+                "type": "Organization",
+                "name": "PT PMA",
+                "properties": {"description": "Test"},
             }
-        ])
+        )
+        # Mock neighbors
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "source_entity_id": "entity1",
+                    "target_entity_id": "entity2",
+                    "relationship_type": "REQUIRES",
+                    "properties": {"strength": 0.9},
+                    "target_type": "IZIN_USAHA",
+                    "target_name": "Investment",
+                    "target_desc": "Investment requirement",
+                }
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -249,23 +239,27 @@ class TestGraphRelation:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "id": "entity1",
-            "type": "Organization",
-            "name": "PT PMA",
-            "properties": {}
-        })
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "source_entity_id": "entity1",
-                "target_entity_id": "entity2",
-                "relationship_type": "REQUIRES",
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": "entity1",
+                "type": "Organization",
+                "name": "PT PMA",
                 "properties": {},
-                "target_type": "IZIN_USAHA",
-                "target_name": "Investment",
-                "target_desc": None
             }
-        ])
+        )
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "source_entity_id": "entity1",
+                    "target_entity_id": "entity2",
+                    "relationship_type": "REQUIRES",
+                    "properties": {},
+                    "target_type": "IZIN_USAHA",
+                    "target_name": "Investment",
+                    "target_desc": None,
+                }
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -292,10 +286,7 @@ class TestGraphRelation:
         graph_service.pool.acquire = acquire
 
         entity = GraphEntity(
-            id="entity_123",
-            type="Organization",
-            name="PT PMA",
-            description="Test description"
+            id="entity_123", type="Organization", name="PT PMA", description="Test description"
         )
 
         result = await graph_service.add_entity(entity)
@@ -320,9 +311,8 @@ class TestGraphRelation:
             target_id="entity2",
             type="REQUIRES",
             strength=0.8,
-            properties={"evidence": "document X"}
+            properties={"evidence": "document X"},
         )
 
         result = await graph_service.add_relation(relation)
         assert result is not None
-

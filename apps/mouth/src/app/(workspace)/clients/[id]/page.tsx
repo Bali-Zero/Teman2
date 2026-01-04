@@ -28,8 +28,12 @@ import {
   Edit2,
   AlertCircle,
   Send,
+  X,
+  Save,
+  Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import type {
   ClientProfile,
@@ -38,6 +42,12 @@ import type {
   ExpiryAlert,
   Practice,
   Interaction,
+  Client,
+  DocumentCategory,
+} from '@/lib/api/crm/crm.types';
+import {
+  COMMON_NATIONALITIES,
+  CLIENT_STATUSES,
 } from '@/lib/api/crm/crm.types';
 
 // Status badge colors
@@ -79,43 +89,60 @@ const INTERACTION_ICONS: Record<string, React.ReactNode> = {
 };
 
 type TabType = 'overview' | 'family' | 'documents' | 'cases' | 'timeline';
+type ModalType = 'none' | 'edit_client' | 'add_family' | 'add_document';
 
 export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const toast = useToast();
   const clientId = Number(params.id);
 
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [docCategories, setDocCategories] = useState<DocumentCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeModal, setActiveModal] = useState<ModalType>('none');
+
+  const loadData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [profileData, interactionsData, categoriesData] = await Promise.all([
+        api.crm.getClientProfile(clientId),
+        api.crm.getClientTimeline(clientId, 20),
+        api.crm.getDocumentCategories().catch(() => []),
+      ]);
+      setProfile(profileData);
+      setInteractions(interactionsData);
+      setDocCategories(categoriesData);
+    } catch (err) {
+      console.error('Failed to load client data:', err);
+      setError('Failed to load client data');
+      toast.error('Error', 'Failed to load client data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const profileData = await api.crm.getClientProfile(clientId);
+      setProfile(profileData);
+    } catch (err) {
+      console.error('Failed to refresh client data:', err);
+    }
+  };
 
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [profileData, interactionsData] = await Promise.all([
-          api.crm.getClientProfile(clientId),
-          api.crm.getClientTimeline(clientId, 20),
-        ]);
-        setProfile(profileData);
-        setInteractions(interactionsData);
-      } catch (err) {
-        console.error('Failed to load client data:', err);
-        setError('Failed to load client data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (clientId) {
       loadData();
     }
   }, [clientId]);
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
@@ -124,6 +151,7 @@ export default function ClientDetailPage() {
   };
 
   const formatTime = (dateStr: string) => {
+    if (!dateStr) return '';
     return new Date(dateStr).toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
@@ -235,7 +263,7 @@ export default function ClientDetailPage() {
                 className="gap-2 text-green-500 border-green-500/30 hover:bg-green-500/10"
                 onClick={() => {
                   const phone = client.phone?.replace(/\D/g, '');
-                  window.open(`https://wa.me/${phone}`, '_blank');
+                  if (phone) window.open(`https://wa.me/${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`, '_blank');
                 }}
               >
                 <MessageCircle className="w-4 h-4" />
@@ -247,7 +275,7 @@ export default function ClientDetailPage() {
                 className="gap-2 text-sky-500 border-sky-500/30 hover:bg-sky-500/10"
                 onClick={() => {
                   const phone = client.phone?.replace(/\D/g, '');
-                  window.open(`https://t.me/+${phone}`, '_blank');
+                  if (phone) window.open(`https://t.me/+${phone.startsWith('0') ? '62' + phone.slice(1) : phone}`, '_blank');
                 }}
               >
                 <Send className="w-4 h-4" />
@@ -270,8 +298,8 @@ export default function ClientDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-[var(--border)] pb-2">
-        {[
+      <div className="flex gap-2 border-b border-[var(--border)] pb-2 overflow-x-auto">
+        {[ 
           { key: 'overview', label: 'Overview', icon: User },
           { key: 'family', label: `Family (${stats.family_count})`, icon: Users },
           { key: 'documents', label: `Documents (${stats.documents_count})`, icon: FileText },
@@ -282,7 +310,7 @@ export default function ClientDetailPage() {
             key={key}
             variant={activeTab === key ? 'default' : 'ghost'}
             size="sm"
-            className="gap-2"
+            className="gap-2 whitespace-nowrap"
             onClick={() => setActiveTab(key as TabType)}
           >
             <Icon className="w-4 h-4" />
@@ -299,9 +327,24 @@ export default function ClientDetailPage() {
           expiry_alerts={expiry_alerts}
           activePractices={activePractices}
           completedPractices={completedPractices}
+          recentInteractions={interactions}
           formatDate={formatDate}
           formatCurrency={formatCurrency}
+          formatTime={formatTime}
           router={router}
+          onEditClick={() => setActiveModal('edit_client')}
+          onAddNote={async (note: string) => {
+            const user = await api.getProfile();
+            await api.crm.createInteraction({
+              client_id: clientId,
+              interaction_type: 'note',
+              summary: note,
+              team_member: user.email,
+            });
+            const interactionsData = await api.crm.getClientTimeline(clientId, 20);
+            setInteractions(interactionsData);
+            toast.success('Note Added');
+          }}
         />
       )}
 
@@ -310,6 +353,8 @@ export default function ClientDetailPage() {
           clientId={clientId}
           familyMembers={family_members}
           formatDate={formatDate}
+          onAddClick={() => setActiveModal('add_family')}
+          onRefresh={refreshProfile}
         />
       )}
 
@@ -318,6 +363,8 @@ export default function ClientDetailPage() {
           clientId={clientId}
           documentsByCategory={documentsByCategory}
           formatDate={formatDate}
+          onAddClick={() => setActiveModal('add_document')}
+          onRefresh={refreshProfile}
         />
       )}
 
@@ -338,32 +385,84 @@ export default function ClientDetailPage() {
           formatTime={formatTime}
         />
       )}
+
+      {/* Modals */}
+      {activeModal === 'edit_client' && profile && (
+        <EditClientModal
+          client={profile.client}
+          onClose={() => setActiveModal('none')}
+          onSave={refreshProfile}
+        />
+      )}
+
+      {activeModal === 'add_family' && (
+        <AddFamilyMemberModal
+          clientId={clientId}
+          onClose={() => setActiveModal('none')}
+          onSave={refreshProfile}
+        />
+      )}
+
+      {activeModal === 'add_document' && (
+        <AddDocumentModal
+          clientId={clientId}
+          categories={docCategories}
+          familyMembers={family_members}
+          onClose={() => setActiveModal('none')}
+          onSave={refreshProfile}
+        />
+      )}
     </div>
   );
 }
 
-// ============================================
+// ============================================ 
 // OVERVIEW TAB
-// ============================================
+// ============================================ 
 function OverviewTab({
   client,
   stats,
   expiry_alerts,
   activePractices,
   completedPractices,
+  recentInteractions,
   formatDate,
   formatCurrency,
+  formatTime,
   router,
+  onEditClick,
+  onAddNote,
 }: {
   client: ClientProfile['client'];
   stats: ClientProfile['stats'];
   expiry_alerts: ExpiryAlert[];
   activePractices: ClientProfile['practices'];
   completedPractices: ClientProfile['practices'];
+  recentInteractions: Interaction[];
   formatDate: (d: string) => string;
   formatCurrency: (n: number) => string;
+  formatTime: (d: string) => string;
   router: ReturnType<typeof useRouter>;
+  onEditClick: () => void;
+  onAddNote: (note: string) => Promise<void>;
 }) {
+  const toast = useToast();
+  const [quickNote, setQuickNote] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
+  const handleAddNote = async () => {
+    if (!quickNote.trim()) return;
+    setIsAddingNote(true);
+    try {
+      await onAddNote(quickNote);
+      setQuickNote('');
+    } catch (err) {
+      toast.error('Failed', (err as Error).message);
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left Column - Client Info */}
@@ -377,10 +476,7 @@ function OverviewTab({
                 variant="ghost"
                 size="sm"
                 className="gap-1 text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                onClick={() => {
-                  // TODO: Open edit modal
-                  alert('Edit client coming soon - use API for now');
-                }}
+                onClick={onEditClick}
               >
                 <Edit2 className="w-4 h-4" />
                 Edit
@@ -394,10 +490,10 @@ function OverviewTab({
                     try {
                       const user = await api.getProfile();
                       await api.crm.deleteClient(client.id, user.email);
-                      alert('Client deleted (marked as inactive)');
+                      toast.success('Client deleted', 'Marked as inactive');
                       router.push('/clients');
                     } catch (err) {
-                      alert('Error deleting client: ' + (err as Error).message);
+                      toast.error('Error deleting client', (err as Error).message);
                     }
                   }
                 }}
@@ -407,12 +503,12 @@ function OverviewTab({
             </div>
           </div>
           <div className="space-y-3">
-            {/* LEAD - Most important field */}
+            {/* Lead - Changed label to Consultant/Advisor */}
             {client.assigned_to && (
               <div className="flex items-center gap-3 text-sm">
                 <User className="w-4 h-4 text-[var(--accent)]" />
                 <span className="text-[var(--foreground)]">
-                  <span className="text-[var(--foreground-muted)]">Lead:</span>{' '}
+                  <span className="text-[var(--foreground-muted)]">Consultant:</span>{' '}
                   <span className="font-medium text-[var(--accent)]">{client.assigned_to.split('@')[0]}</span>
                 </span>
               </div>
@@ -420,7 +516,7 @@ function OverviewTab({
             {client.email && (
               <div className="flex items-center gap-3 text-sm">
                 <Mail className="w-4 h-4 text-[var(--foreground-muted)]" />
-                <span className="text-[var(--foreground)]">{client.email}</span>
+                <a href={`mailto:${client.email}`} className="text-[var(--foreground)] hover:underline">{client.email}</a>
               </div>
             )}
             {client.phone && (
@@ -465,7 +561,7 @@ function OverviewTab({
           {client.notes && (
             <div className="mt-4 pt-4 border-t border-[var(--border)]">
               <p className="text-xs text-[var(--foreground-muted)] mb-1">Notes</p>
-              <p className="text-sm text-[var(--foreground)]">{client.notes}</p>
+              <p className="text-sm text-[var(--foreground)] whitespace-pre-wrap">{client.notes}</p>
             </div>
           )}
         </div>
@@ -499,6 +595,41 @@ function OverviewTab({
               <span className="text-xs text-[var(--foreground-muted)]">Completed</span>
             </div>
             <p className="text-2xl font-bold text-[var(--foreground)]">{completedPractices.length}</p>
+          </div>
+        </div>
+
+        {/* Quick Add Note */}
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4">
+          <h3 className="text-sm font-semibold text-[var(--foreground)] mb-3 flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Quick Note
+          </h3>
+          <div className="space-y-2">
+            <textarea
+              value={quickNote}
+              onChange={(e) => setQuickNote(e.target.value)}
+              placeholder="Add a quick note about this client..."
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 resize-none text-sm"
+            />
+            <Button
+              size="sm"
+              onClick={handleAddNote}
+              disabled={!quickNote.trim() || isAddingNote}
+              className="w-full gap-2"
+            >
+              {isAddingNote ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3 h-3" />
+                  Add Note
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </div>
@@ -537,6 +668,59 @@ function OverviewTab({
             ))}
           </div>
         )}
+
+        {/* Recent Activity */}
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5" />
+            Recent Activity
+          </h3>
+          {recentInteractions.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--background-secondary)]/50 p-6 text-center">
+              <MessageCircle className="w-6 h-6 mx-auto text-[var(--foreground-muted)] mb-2 opacity-50" />
+              <p className="text-sm text-[var(--foreground-muted)]">No recent activity</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {recentInteractions.slice(0, 5).map((interaction) => (
+                <div
+                  key={interaction.id}
+                  className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`w-6 h-6 rounded-full flex items-center justify-center ${ 
+                        interaction.interaction_type === 'whatsapp'
+                          ? 'bg-green-500/20 text-green-500'
+                          : interaction.interaction_type === 'email'
+                          ? 'bg-blue-500/20 text-blue-500'
+                          : interaction.interaction_type === 'call'
+                          ? 'bg-purple-500/20 text-purple-500'
+                          : interaction.interaction_type === 'note'
+                          ? 'bg-yellow-500/20 text-yellow-500'
+                          : 'bg-[var(--accent)]/20 text-[var(--accent)]'
+                      }`}
+                    >
+                      {INTERACTION_ICONS[interaction.interaction_type] || <MessageCircle className="w-3 h-3" />}
+                    </span>
+                    <span className="text-xs font-medium text-[var(--foreground)] flex-1">
+                      {interaction.interaction_type.charAt(0).toUpperCase() +
+                        interaction.interaction_type.slice(1)}
+                    </span>
+                    <span className="text-[10px] text-[var(--foreground-muted)]">
+                      {formatDate(interaction.interaction_date)}
+                    </span>
+                  </div>
+                  {interaction.summary && (
+                    <p className="text-xs text-[var(--foreground-muted)] line-clamp-2 ml-8">
+                      {interaction.summary}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right Column - Active Cases */}
@@ -573,7 +757,7 @@ function OverviewTab({
                   </span>
                   <div className="flex items-center gap-1">
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
+                      className={`text-xs px-2 py-0.5 rounded-full ${ 
                         STATUS_COLORS[practice.status] || 'bg-gray-500/20 text-gray-400'
                       }`}
                     >
@@ -593,10 +777,10 @@ function OverviewTab({
                             try {
                               const user = await api.getProfile();
                               await api.crm.deletePractice(practice.id, user.email);
-                              alert('Case deleted');
+                              toast.success('Case deleted');
                               window.location.reload();
                             } catch (err) {
-                              alert('Error: ' + (err as Error).message);
+                              toast.error('Error', (err as Error).message);
                             }
                           }
                         }}
@@ -622,23 +806,41 @@ function OverviewTab({
   );
 }
 
-// ============================================
+// ============================================ 
 // FAMILY TAB
-// ============================================
+// ============================================ 
 function FamilyTab({
   clientId,
   familyMembers,
   formatDate,
+  onAddClick,
+  onRefresh,
 }: {
   clientId: number;
   familyMembers: FamilyMember[];
   formatDate: (d: string) => string;
+  onAddClick: () => void;
+  onRefresh: () => void;
 }) {
+  const toast = useToast();
+
+  const handleDelete = async (id: number, name: string) => {
+    if (confirm(`Remove ${name} from family members?`)) {
+      try {
+        await api.crm.deleteFamilyMember(clientId, id);
+        toast.success('Family member removed');
+        onRefresh();
+      } catch (err) {
+        toast.error('Error', (err as Error).message);
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--foreground)]">Family Members</h3>
-        <Button size="sm" className="gap-2">
+        <Button size="sm" className="gap-2" onClick={onAddClick}>
           <Plus className="w-4 h-4" />
           Add Member
         </Button>
@@ -657,7 +859,7 @@ function FamilyTab({
           {familyMembers.map((member) => (
             <div
               key={member.id}
-              className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4"
+              className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-4 relative group"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
@@ -671,9 +873,11 @@ function FamilyTab({
                     </p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Edit2 className="w-4 h-4" />
-                </Button>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-500/10" onClick={() => handleDelete(member.id, member.full_name)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2 text-sm">
@@ -690,7 +894,7 @@ function FamilyTab({
                       {member.passport_number}
                       {member.passport_expiry && (
                         <span
-                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${ 
                             ALERT_COLORS[member.passport_alert || 'green']
                           }`}
                         >
@@ -707,7 +911,7 @@ function FamilyTab({
                       {member.current_visa_type}
                       {member.visa_expiry && (
                         <span
-                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                          className={`ml-2 px-1.5 py-0.5 rounded text-xs ${ 
                             ALERT_COLORS[member.visa_alert || 'green']
                           }`}
                         >
@@ -726,18 +930,23 @@ function FamilyTab({
   );
 }
 
-// ============================================
+// ============================================ 
 // DOCUMENTS TAB
-// ============================================
+// ============================================ 
 function DocumentsTab({
   clientId,
   documentsByCategory,
   formatDate,
+  onAddClick,
+  onRefresh,
 }: {
   clientId: number;
   documentsByCategory: Record<string, ClientDocument[]>;
   formatDate: (d: string) => string;
+  onAddClick: () => void;
+  onRefresh: () => void;
 }) {
+  const toast = useToast();
   const categoryNames: Record<string, string> = {
     immigration: 'Immigration Documents',
     pma: 'PT PMA Documents',
@@ -748,11 +957,23 @@ function DocumentsTab({
 
   const categoryOrder = ['immigration', 'pma', 'tax', 'personal', 'other'];
 
+  const handleDelete = async (docId: number, fileName: string) => {
+    if (confirm(`Archive document "${fileName || 'Document'}"?`)) {
+      try {
+        await api.crm.deleteDocument(clientId, docId);
+        toast.success('Document archived');
+        onRefresh();
+      } catch (err) {
+        toast.error('Error', (err as Error).message);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--foreground)]">Documents</h3>
-        <Button size="sm" className="gap-2">
+        <Button size="sm" className="gap-2" onClick={onAddClick}>
           <Plus className="w-4 h-4" />
           Add Document
         </Button>
@@ -784,7 +1005,7 @@ function DocumentsTab({
                 {docs.map((doc) => (
                   <div
                     key={doc.id}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3"
+                    className="rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] p-3 group"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-[var(--foreground)]">
@@ -801,21 +1022,26 @@ function DocumentsTab({
                             <ExternalLink className="w-3 h-3" />
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <Trash2 className="w-3 h-3 text-red-400" />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-red-400 hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleDelete(doc.id, doc.file_name || doc.document_type)}
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
 
                     {doc.file_name && (
-                      <p className="text-xs text-[var(--foreground-muted)] truncate mb-1">
+                      <p className="text-xs text-[var(--foreground-muted)] truncate mb-1" title={doc.file_name}>
                         {doc.file_name}
                       </p>
                     )}
 
                     {doc.expiry_date && (
                       <div
-                        className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
+                        className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ 
                           ALERT_COLORS[doc.alert_color || 'green']
                         }`}
                       >
@@ -842,9 +1068,9 @@ function DocumentsTab({
   );
 }
 
-// ============================================
+// ============================================ 
 // CASES TAB
-// ============================================
+// ============================================ 
 function CasesTab({
   clientId,
   practices,
@@ -858,6 +1084,7 @@ function CasesTab({
   formatCurrency: (n: number) => string;
   router: ReturnType<typeof useRouter>;
 }) {
+  const toast = useToast();
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -894,7 +1121,7 @@ function CasesTab({
                 </div>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-xs px-2 py-1 rounded-full ${
+                    className={`text-xs px-2 py-1 rounded-full ${ 
                       STATUS_COLORS[practice.status] || 'bg-gray-500/20 text-gray-400'
                     }`}
                   >
@@ -919,10 +1146,10 @@ function CasesTab({
                           try {
                             const user = await api.getProfile();
                             await api.crm.deletePractice(practice.id, user.email);
-                            alert('Case deleted');
+                            toast.success('Case deleted');
                             window.location.reload();
                           } catch (err) {
-                            alert('Error: ' + (err as Error).message);
+                            toast.error('Error', (err as Error).message);
                           }
                         }
                       }}
@@ -936,7 +1163,7 @@ function CasesTab({
               </div>
               {practice.expiry_date && (
                 <div
-                  className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${
+                  className={`text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded ${ 
                     ALERT_COLORS[practice.alert_color || 'green']
                   }`}
                 >
@@ -952,9 +1179,9 @@ function CasesTab({
   );
 }
 
-// ============================================
+// ============================================ 
 // TIMELINE TAB
-// ============================================
+// ============================================ 
 function TimelineTab({
   interactions,
   formatDate,
@@ -980,7 +1207,7 @@ function TimelineTab({
               {/* Timeline Line */}
               <div className="flex flex-col items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${ 
                     interaction.interaction_type === 'whatsapp'
                       ? 'bg-green-500/20 text-green-500'
                       : interaction.interaction_type === 'email'
@@ -1026,7 +1253,7 @@ function TimelineTab({
                     <span>{interaction.team_member}</span>
                     {interaction.sentiment && (
                       <span
-                        className={`px-1.5 py-0.5 rounded ${
+                        className={`px-1.5 py-0.5 rounded ${ 
                           interaction.sentiment === 'positive'
                             ? 'bg-green-500/20 text-green-400'
                             : interaction.sentiment === 'negative'
@@ -1045,5 +1272,298 @@ function TimelineTab({
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================ 
+// MODAL COMPONENTS
+// ============================================ 
+
+function Modal({
+  title,
+  onClose,
+  children,
+  isSaving,
+  onSave,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  isSaving: boolean;
+  onSave: (e: React.FormEvent) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[var(--background)] border border-[var(--border)] rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+          <h2 className="text-xl font-semibold text-[var(--foreground)]">{title}</h2>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+        <form onSubmit={onSave} className="overflow-y-auto flex-1">
+          <div className="p-6 space-y-6">{children}</div>
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-[var(--border)] bg-[var(--background-secondary)] mt-auto">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSaving} className="gap-2">
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// TEAM MEMBERS - Should fetch from API but hardcoded for now as per NewClientPage
+const TEAM_MEMBERS = [
+  { value: 'ruslana@balizero.com', label: 'Ruslana' },
+  { value: 'krisna@balizero.com', label: 'Krisna' },
+  { value: 'veronika@balizero.com', label: 'Veronika' },
+  { value: 'adit@balizero.com', label: 'Adit' },
+  { value: 'zero@balizero.com', label: 'Antonello' },
+];
+
+function EditClientModal({ client, onClose, onSave }: { client: Client; onClose: () => void; onSave: () => void }) {
+  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+    full_name: client.full_name || '',
+    email: client.email || '',
+    phone: client.phone || '',
+    whatsapp: client.whatsapp || '',
+    company_name: client.company_name || '',
+    nationality: client.nationality || '',
+    passport_number: client.passport_number || '',
+    passport_expiry: client.passport_expiry?.split('T')[0] || '',
+    address: client.address || '',
+    notes: client.notes || '',
+    status: client.status || 'lead',
+    client_type: client.client_type || 'individual',
+    assigned_to: client.assigned_to || '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.full_name.trim()) return alert('Full name is required');
+    setIsSaving(true);
+    try {
+      const user = await api.getProfile();
+      const updates: Record<string, string> = {};
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) updates[key] = value;
+      });
+      await api.crm.updateClient(client.id, updates, user.email);
+      onSave();
+      onClose();
+      toast.success('Client updated');
+    } catch (err) {
+      toast.error('Failed to update', (err as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]';
+
+  return (
+    <Modal title="Edit Client" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Full Name *</label>
+          <input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} className={inputClass} required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Email</label>
+          <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Phone</label>
+          <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Nationality</label>
+          <select value={formData.nationality} onChange={e => setFormData({...formData, nationality: e.target.value})} className={inputClass}>
+            <option value="">Select...</option>
+            {COMMON_NATIONALITIES.map(nat => <option key={nat} value={nat}>{nat}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Assigned To</label>
+          <select value={formData.assigned_to} onChange={e => setFormData({...formData, assigned_to: e.target.value})} className={inputClass}>
+            <option value="">Unassigned</option>
+            {TEAM_MEMBERS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Status</label>
+          <div className="flex gap-2 flex-wrap">
+            {CLIENT_STATUSES.map(({ value, label, color }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFormData({ ...formData, status: value })}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${ 
+                  formData.status === value
+                    ? `border-${color}-500/50`
+                    : 'border-transparent bg-[var(--background-secondary)]'
+                }`}
+                style={{ 
+                  backgroundColor: formData.status === value ? `var(--${color === 'blue' ? 'accent' : color}-500-20, rgba(59, 130, 246, 0.2))` : undefined,
+                  color: formData.status === value ? `var(--${color === 'blue' ? 'accent' : color}-500, #3b82f6)` : 'var(--foreground-muted)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AddFamilyMemberModal({ clientId, onClose, onSave }: { clientId: number; onClose: () => void; onSave: () => void }) {
+  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+    full_name: '',
+    relationship: 'spouse',
+    nationality: '',
+    passport_number: '',
+    passport_expiry: '',
+    current_visa_type: '',
+    visa_expiry: '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.full_name) return;
+    setIsSaving(true);
+    try {
+      await api.crm.createFamilyMember(clientId, formData);
+      toast.success('Family member added');
+      onSave();
+      onClose();
+    } catch (err) {
+      toast.error('Failed to add', (err as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
+
+  return (
+    <Modal title="Add Family Member" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Full Name *</label>
+          <input type="text" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} className={inputClass} required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Relationship</label>
+          <select value={formData.relationship} onChange={e => setFormData({...formData, relationship: e.target.value})} className={inputClass}>
+            <option value="spouse">Spouse</option>
+            <option value="child">Child</option>
+            <option value="parent">Parent</option>
+            <option value="dependent">Dependent</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Nationality</label>
+          <select value={formData.nationality} onChange={e => setFormData({...formData, nationality: e.target.value})} className={inputClass}>
+            <option value="">Select...</option>
+            {COMMON_NATIONALITIES.map(nat => <option key={nat} value={nat}>{nat}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Passport Number</label>
+          <input type="text" value={formData.passport_number} onChange={e => setFormData({...formData, passport_number: e.target.value.toUpperCase()})} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Passport Expiry</label>
+          <input type="date" value={formData.passport_expiry} onChange={e => setFormData({...formData, passport_expiry: e.target.value})} className={inputClass} />
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AddDocumentModal({ clientId, categories, familyMembers, onClose, onSave }: { clientId: number; categories: DocumentCategory[]; familyMembers: FamilyMember[]; onClose: () => void; onSave: () => void }) {
+  const [isSaving, setIsSaving] = useState(false);
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+    file_name: '',
+    document_type: '',
+    document_category: 'other',
+    expiry_date: '',
+    google_drive_file_url: '',
+    family_member_id: '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.file_name) return;
+    setIsSaving(true);
+    try {
+      await api.crm.createDocument(clientId, {
+        ...formData,
+        family_member_id: formData.family_member_id ? Number(formData.family_member_id) : undefined,
+      });
+      toast.success('Document added');
+      onSave();
+      onClose();
+    } catch (err) {
+      toast.error('Failed to add', (err as Error).message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const inputClass = 'w-full px-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50';
+
+  return (
+    <Modal title="Add Document" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Document Name *</label>
+          <input type="text" value={formData.file_name} onChange={e => setFormData({...formData, file_name: e.target.value})} className={inputClass} placeholder="e.g. Passport Scan" required />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Category</label>
+          <select value={formData.document_category} onChange={e => setFormData({...formData, document_category: e.target.value})} className={inputClass}>
+            <option value="immigration">Immigration</option>
+            <option value="pma">Company (PMA)</option>
+            <option value="tax">Tax</option>
+            <option value="personal">Personal</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Type</label>
+          <input type="text" value={formData.document_type} onChange={e => setFormData({...formData, document_type: e.target.value})} className={inputClass} placeholder="passport, kitas, etc" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Expiry Date</label>
+          <input type="date" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} className={inputClass} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Belongs To</label>
+          <select value={formData.family_member_id} onChange={e => setFormData({...formData, family_member_id: e.target.value})} className={inputClass}>
+            <option value="">Main Client</option>
+            {familyMembers.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.relationship})</option>)}
+          </select>
+        </div>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium mb-1.5">Google Drive Link</label>
+          <input type="url" value={formData.google_drive_file_url} onChange={e => setFormData({...formData, google_drive_file_url: e.target.value})} className={inputClass} placeholder="https://drive.google.com/..." />
+        </div>
+      </div>
+    </Modal>
   );
 }

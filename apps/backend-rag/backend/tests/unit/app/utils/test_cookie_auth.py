@@ -94,10 +94,12 @@ class TestCookieAuth:
 
     def test_set_auth_cookies(self, mock_response):
         """Test setting auth cookies"""
-        with patch("app.utils.cookie_auth.get_cookie_domain") as mock_domain, \
-             patch("app.utils.cookie_auth.get_cookie_secure") as mock_secure, \
-             patch("app.utils.cookie_auth.get_samesite_policy") as mock_samesite, \
-             patch("app.utils.cookie_auth.settings") as mock_settings:
+        with (
+            patch("app.utils.cookie_auth.get_cookie_domain") as mock_domain,
+            patch("app.utils.cookie_auth.get_cookie_secure") as mock_secure,
+            patch("app.utils.cookie_auth.get_samesite_policy") as mock_samesite,
+            patch("app.utils.cookie_auth.settings") as mock_settings,
+        ):
             mock_domain.return_value = None
             mock_secure.return_value = False
             mock_samesite.return_value = "lax"
@@ -163,4 +165,3 @@ class TestCookieAuth:
         """Test CSRF exemption for POST request"""
         mock_request.method = "POST"
         assert is_csrf_exempt(mock_request) is False
-

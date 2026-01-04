@@ -51,15 +51,17 @@ class TestConversationTrainer:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "conversation_id": 1,
-                "messages": [{"role": "user", "content": "test"}],
-                "rating": 5,
-                "client_feedback": "Great!",
-                "created_at": "2024-01-01T00:00:00"
-            }
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "conversation_id": 1,
+                    "messages": [{"role": "user", "content": "test"}],
+                    "rating": 5,
+                    "client_feedback": "Great!",
+                    "created_at": "2024-01-01T00:00:00",
+                }
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -79,7 +81,7 @@ class TestConversationTrainer:
                 # Result can be None if analysis fails, but we check it's called
                 assert mock_conn.fetch.called
         else:
-            with patch.object(conversation_trainer.zantara_client, 'generate') as mock_gen:
+            with patch.object(conversation_trainer.zantara_client, "generate") as mock_gen:
                 mock_gen.return_value = "Pattern analysis"
 
                 result = await conversation_trainer.analyze_winning_patterns(days_back=7)
@@ -109,4 +111,3 @@ class TestConversationTrainer:
         result = await conversation_trainer.analyze_winning_patterns(days_back=0)
         # Should use default
         assert result is None or isinstance(result, dict)
-

@@ -239,10 +239,11 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_with_tier_filter(self):
         """Test search with tier filter"""
-        from backend.app.models import TierLevel
         from backend.services.conflict_resolver import ConflictResolver
         from backend.services.cultural_insights_service import CulturalInsightsService
         from backend.services.search_service import SearchService
+
+        from backend.app.models import TierLevel
 
         mock_collection_manager = MagicMock()
         mock_vector_db = MagicMock()

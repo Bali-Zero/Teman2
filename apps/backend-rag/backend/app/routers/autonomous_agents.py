@@ -337,10 +337,22 @@ async def extract_kg_sample(
     # Entity patterns
     ENTITY_PATTERNS = {
         "legal_entity": [
-            r"\b(PT\s+PMA)\b", r"\b(PT\s+PMDN)\b", r"\b(CV)\b",
-            r"\b(Perseroan\s+Terbatas)\b", r"\b(Firma)\b", r"\b(Koperasi)\b", r"\b(Yayasan)\b",
+            r"\b(PT\s+PMA)\b",
+            r"\b(PT\s+PMDN)\b",
+            r"\b(CV)\b",
+            r"\b(Perseroan\s+Terbatas)\b",
+            r"\b(Firma)\b",
+            r"\b(Koperasi)\b",
+            r"\b(Yayasan)\b",
         ],
-        "permit": [r"\b(NIB)\b", r"\b(SIUP)\b", r"\b(TDP)\b", r"\b(NPWP)\b", r"\b(IMTA)\b", r"\b(RPTKA)\b"],
+        "permit": [
+            r"\b(NIB)\b",
+            r"\b(SIUP)\b",
+            r"\b(TDP)\b",
+            r"\b(NPWP)\b",
+            r"\b(IMTA)\b",
+            r"\b(RPTKA)\b",
+        ],
         "visa_type": [r"\b(KITAS)\b", r"\b(KITAP)\b", r"\b(VOA)\b", r"\b(E-Visa)\b"],
         "tax_type": [r"\b(PPh\s*\d+)\b", r"\b(PPN)\b", r"\b(PBB)\b"],
         "kbli": [r"\bKBLI\s+(\d{5})\b"],
@@ -355,10 +367,7 @@ async def extract_kg_sample(
     try:
         # Scroll chunks
         results = qdrant.scroll(
-            collection_name=collection,
-            limit=sample_size,
-            with_payload=True,
-            with_vectors=False
+            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False
         )
         chunks = results[0]
 
@@ -387,7 +396,7 @@ async def extract_kg_sample(
                                 "entity_type": entity_type,
                                 "name": name,
                                 "mentions": 0,
-                                "source_chunks": []
+                                "source_chunks": [],
                             }
                         all_entities[entity_id]["mentions"] += 1
                         if chunk_id not in all_entities[entity_id]["source_chunks"]:
@@ -399,16 +408,18 @@ async def extract_kg_sample(
                 for rel_type, keywords in RELATIONSHIP_KEYWORDS.items():
                     if any(kw.lower() in text.lower() for kw in keywords):
                         for i, e1 in enumerate(chunk_entities):
-                            for e2 in chunk_entities[i+1:]:
+                            for e2 in chunk_entities[i + 1 :]:
                                 rel_id = f"{e1}_{rel_type}_{e2}"
                                 if rel_id not in [r["relationship_id"] for r in all_relationships]:
-                                    all_relationships.append({
-                                        "relationship_id": rel_id,
-                                        "source": e1,
-                                        "target": e2,
-                                        "type": rel_type,
-                                        "confidence": 0.7
-                                    })
+                                    all_relationships.append(
+                                        {
+                                            "relationship_id": rel_id,
+                                            "source": e1,
+                                            "target": e2,
+                                            "type": rel_type,
+                                            "confidence": 0.7,
+                                        }
+                                    )
 
         # Sort by mentions
         sorted_entities = sorted(all_entities.values(), key=lambda x: x["mentions"], reverse=True)
@@ -428,7 +439,7 @@ async def extract_kg_sample(
             "entity_type_distribution": type_dist,
             "top_entities": sorted_entities[:30],
             "sample_relationships": all_relationships[:20],
-            "message": "Review above. Call /knowledge-graph/persist-sample to commit to DB."
+            "message": "Review above. Call /knowledge-graph/persist-sample to commit to DB.",
         }
 
     except Exception as e:
@@ -469,17 +480,31 @@ async def persist_kg_sample(
     # Same extraction logic as above
     ENTITY_PATTERNS = {
         "legal_entity": [
-            r"\b(PT\s+PMA)\b", r"\b(PT\s+PMDN)\b", r"\b(CV)\b",
-            r"\b(Perseroan\s+Terbatas)\b", r"\b(Firma)\b", r"\b(Koperasi)\b", r"\b(Yayasan)\b",
+            r"\b(PT\s+PMA)\b",
+            r"\b(PT\s+PMDN)\b",
+            r"\b(CV)\b",
+            r"\b(Perseroan\s+Terbatas)\b",
+            r"\b(Firma)\b",
+            r"\b(Koperasi)\b",
+            r"\b(Yayasan)\b",
         ],
-        "permit": [r"\b(NIB)\b", r"\b(SIUP)\b", r"\b(TDP)\b", r"\b(NPWP)\b", r"\b(IMTA)\b", r"\b(RPTKA)\b"],
+        "permit": [
+            r"\b(NIB)\b",
+            r"\b(SIUP)\b",
+            r"\b(TDP)\b",
+            r"\b(NPWP)\b",
+            r"\b(IMTA)\b",
+            r"\b(RPTKA)\b",
+        ],
         "visa_type": [r"\b(KITAS)\b", r"\b(KITAP)\b", r"\b(VOA)\b", r"\b(E-Visa)\b"],
         "tax_type": [r"\b(PPh\s*\d+)\b", r"\b(PPN)\b", r"\b(PBB)\b"],
         "kbli": [r"\bKBLI\s+(\d{5})\b"],
     }
 
     try:
-        results = qdrant.scroll(collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False)
+        results = qdrant.scroll(
+            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False
+        )
         chunks = results[0]
 
         entities_added = 0
@@ -506,7 +531,7 @@ async def persist_kg_sample(
                             description=f"Extracted from {collection}",
                             source_collection=collection,
                             confidence=0.9,
-                            source_chunk_ids=[chunk_id]
+                            source_chunk_ids=[chunk_id],
                         )
                         await kg_builder.add_entity(entity)
                         entities_added += 1
@@ -517,7 +542,7 @@ async def persist_kg_sample(
             "chunks_processed": len(chunks),
             "entities_added": entities_added,
             "relationships_added": relationships_added,
-            "message": "Knowledge Graph populated successfully!"
+            "message": "Knowledge Graph populated successfully!",
         }
 
     except Exception as e:
@@ -539,6 +564,7 @@ async def get_autonomous_agents_status():
         Agent capabilities, execution statistics, and recent executions
         Format matches frontend AgentStatus interface
     """
+
     # Helper function to get agent execution stats
     def get_agent_stats(agent_id: str) -> dict[str, Any]:
         """Calculate execution statistics for an agent"""

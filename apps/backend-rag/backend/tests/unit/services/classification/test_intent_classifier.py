@@ -85,7 +85,9 @@ class TestIntentClassifier:
     @pytest.mark.asyncio
     async def test_classify_business_complex(self, intent_classifier):
         """Test classifying complex business question"""
-        result = await intent_classifier.classify_intent("how to setup PT PMA company with investment requirements")
+        result = await intent_classifier.classify_intent(
+            "how to setup PT PMA company with investment requirements"
+        )
         assert result["category"] == "business_complex"
         assert result["suggested_ai"] == "pro"
 
@@ -135,4 +137,3 @@ class TestIntentClassifier:
         """Test deriving mode for risk explainer"""
         result = await intent_classifier.classify_intent("what is the risk of illegal visa")
         assert result["mode"] == "risk_explainer"
-

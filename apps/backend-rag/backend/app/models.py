@@ -135,6 +135,7 @@ class UserProfile(BaseModel):
     name: str
     role: str
     status: str | None = Field(None, description="User status (active, inactive, etc.)")
+    avatar: str | None = Field(None, description="URL path to team member profile photo")
 
     # Language preferences (unified)
     language: str = Field(default="en", description="User's preferred response language")

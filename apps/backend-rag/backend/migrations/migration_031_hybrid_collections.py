@@ -71,9 +71,9 @@ async def migrate_collection(
     target_collection = f"{collection_name}_hybrid"
     legacy_collection = f"{collection_name}_legacy"
 
-    logger.info(f"\n{'='*70}")
+    logger.info(f"\n{'=' * 70}")
     logger.info(f"Migrating: {collection_name}")
-    logger.info(f"{'='*70}")
+    logger.info(f"{'=' * 70}")
 
     source_client = QdrantClient(
         qdrant_url=qdrant_url,
@@ -176,8 +176,7 @@ async def migrate_collection(
                 scroll_payload["offset"] = offset
 
             response = await http_client.post(
-                f"/collections/{collection_name}/points/scroll",
-                json=scroll_payload
+                f"/collections/{collection_name}/points/scroll", json=scroll_payload
             )
             response.raise_for_status()
             data = response.json().get("result", {})
@@ -205,8 +204,9 @@ async def migrate_collection(
 
                 # If metadata is empty, use the whole payload minus text fields
                 if not metadata:
-                    metadata = {k: v for k, v in payload.items()
-                               if k not in ["text", "content", "vector"]}
+                    metadata = {
+                        k: v for k, v in payload.items() if k not in ["text", "content", "vector"]
+                    }
 
                 if not text or not vector:
                     continue
@@ -338,7 +338,9 @@ async def migrate_all(dry_run: bool = False):
             "error": "",
         }.get(r["status"], "")
 
-        logger.info(f"{status_emoji} {r['collection']}: {r['status']} ({r['documents_migrated']} docs)")
+        logger.info(
+            f"{status_emoji} {r['collection']}: {r['status']} ({r['documents_migrated']} docs)"
+        )
         if r.get("error"):
             logger.info(f"   Error: {r['error']}")
 
@@ -363,7 +365,11 @@ async def verify_collections():
     try:
         http_client = await client._get_client()
 
-        collections = COLLECTIONS_TO_MIGRATE + ["visa_oracle", "kbli_unified", "legal_unified_hybrid"]
+        collections = COLLECTIONS_TO_MIGRATE + [
+            "visa_oracle",
+            "kbli_unified",
+            "legal_unified_hybrid",
+        ]
 
         for name in collections:
             response = await http_client.get(f"/collections/{name}")

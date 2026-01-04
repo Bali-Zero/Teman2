@@ -56,7 +56,7 @@ class TestKnowledgeGraphRepository:
             name="PP 32",
             canonical_name="PP Number 32",
             metadata={"year": 2023},
-            conn=mock_conn
+            conn=mock_conn,
         )
 
         assert entity_id is not None
@@ -74,7 +74,7 @@ class TestKnowledgeGraphRepository:
             canonical_name="PP Number 32",
             metadata={},
             conn=mock_conn,
-            source_chunk_id="chunk_123"
+            source_chunk_id="chunk_123",
         )
 
         assert entity_id is not None
@@ -100,7 +100,7 @@ class TestKnowledgeGraphRepository:
             strength=0.9,
             evidence="requires",
             source_ref={},
-            conn=mock_conn
+            conn=mock_conn,
         )
 
         mock_conn.execute.assert_called_once()
@@ -111,18 +111,20 @@ class TestKnowledgeGraphRepository:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "entity_id": "test_id",
-            "entity_type": "law",
-            "name": "Test",
-            "description": None,
-            "properties": {},
-            "confidence": 1.0,
-            "source_collection": None,
-            "source_chunk_ids": [],
-            "created_at": None,
-            "updated_at": None
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "entity_id": "test_id",
+                "entity_type": "law",
+                "name": "Test",
+                "description": None,
+                "properties": {},
+                "confidence": 1.0,
+                "source_collection": None,
+                "source_chunk_ids": [],
+                "created_at": None,
+                "updated_at": None,
+            }
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -139,12 +141,21 @@ class TestKnowledgeGraphRepository:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"relationship_id": "rel1", "relationship_type": "REQUIRES", "confidence": 0.9,
-             "properties": {}, "source_chunk_ids": [], "direction": "outgoing",
-             "connected_entity_id": "entity2", "connected_entity_name": "Entity 2",
-             "connected_entity_type": "Organization"}
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "relationship_id": "rel1",
+                    "relationship_type": "REQUIRES",
+                    "confidence": 0.9,
+                    "properties": {},
+                    "source_chunk_ids": [],
+                    "direction": "outgoing",
+                    "connected_entity_id": "entity2",
+                    "connected_entity_name": "Entity 2",
+                    "connected_entity_type": "Organization",
+                }
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -152,10 +163,6 @@ class TestKnowledgeGraphRepository:
 
         kg_repository.db_pool.acquire = acquire
 
-        neighbors = await kg_repository.get_entity_relationships(
-            entity_id="entity1",
-            limit=20
-        )
+        neighbors = await kg_repository.get_entity_relationships(entity_id="entity1", limit=20)
 
         assert isinstance(neighbors, list)
-

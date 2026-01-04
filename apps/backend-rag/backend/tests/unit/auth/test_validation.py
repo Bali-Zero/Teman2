@@ -45,10 +45,7 @@ class TestAuthValidation:
     async def test_validate_api_key_valid(self):
         """Test validating valid API key"""
         with patch("app.auth.validation._api_key_auth") as mock_auth:
-            mock_auth.validate_api_key.return_value = {
-                "id": "user123",
-                "email": "test@example.com"
-            }
+            mock_auth.validate_api_key.return_value = {"id": "user123", "email": "test@example.com"}
             result = await validate_api_key("valid_key")
             assert result is not None
             assert result["id"] == "user123"
@@ -74,11 +71,7 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_auth_token_valid(self):
         """Test validating valid token"""
-        payload = {
-            "sub": "user123",
-            "email": "test@example.com",
-            "role": "admin"
-        }
+        payload = {"sub": "user123", "email": "test@example.com", "role": "admin"}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
         result = await validate_auth_token(token)
@@ -90,10 +83,7 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_auth_token_with_userid(self):
         """Test validating token with userId instead of sub"""
-        payload = {
-            "userId": "user456",
-            "email": "test2@example.com"
-        }
+        payload = {"userId": "user456", "email": "test2@example.com"}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
         result = await validate_auth_token(token)
@@ -118,10 +108,7 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_auth_mixed_bearer_token(self):
         """Test validating mixed auth with Bearer token"""
-        payload = {
-            "sub": "user123",
-            "email": "test@example.com"
-        }
+        payload = {"sub": "user123", "email": "test@example.com"}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
         result = await validate_auth_mixed(authorization=f"Bearer {token}")
@@ -131,10 +118,7 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_auth_mixed_auth_token(self):
         """Test validating mixed auth with auth_token parameter"""
-        payload = {
-            "sub": "user123",
-            "email": "test@example.com"
-        }
+        payload = {"sub": "user123", "email": "test@example.com"}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
         result = await validate_auth_mixed(auth_token=token)
@@ -145,10 +129,7 @@ class TestAuthValidation:
     async def test_validate_auth_mixed_api_key(self):
         """Test validating mixed auth with API key"""
         with patch("app.auth.validation._api_key_auth") as mock_auth:
-            mock_auth.validate_api_key.return_value = {
-                "id": "user123",
-                "email": "test@example.com"
-            }
+            mock_auth.validate_api_key.return_value = {"id": "user123", "email": "test@example.com"}
             result = await validate_auth_mixed(x_api_key="valid_key")
             assert result is not None
             assert result["id"] == "user123"
@@ -156,24 +137,16 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_auth_mixed_priority(self):
         """Test that Bearer token has priority over API key"""
-        payload = {
-            "sub": "user123",
-            "email": "test@example.com"
-        }
+        payload = {"sub": "user123", "email": "test@example.com"}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
         with patch("app.auth.validation._api_key_auth") as mock_auth:
             mock_auth.validate_api_key.return_value = {
                 "id": "user456",
-                "email": "other@example.com"
+                "email": "other@example.com",
             }
             result = await validate_auth_mixed(
-                authorization=f"Bearer {token}",
-                x_api_key="valid_key"
+                authorization=f"Bearer {token}", x_api_key="valid_key"
             )
             assert result is not None
             assert result["id"] == "user123"  # Bearer token takes priority
-
-
-
-

@@ -71,11 +71,7 @@ class TestClientSegmentationService:
 
     def test_enrich_client_data(self, client_segmentation_service):
         """Test enriching client data"""
-        client_data = {
-            "client_id": "123",
-            "ltv_score": 75.0,
-            "days_since_last_interaction": 20
-        }
+        client_data = {"client_id": "123", "ltv_score": 75.0, "days_since_last_interaction": 20}
 
         enriched = client_segmentation_service.enrich_client_data(client_data)
         assert "segment" in enriched
@@ -88,7 +84,7 @@ class TestClientSegmentationService:
         client_data = {
             "segment": "VIP",
             "risk_level": "LOW_RISK",
-            "days_since_last_interaction": 20
+            "days_since_last_interaction": 20,
         }
 
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
@@ -100,7 +96,7 @@ class TestClientSegmentationService:
         client_data = {
             "segment": "HIGH_VALUE",
             "risk_level": "HIGH_RISK",
-            "days_since_last_interaction": 35
+            "days_since_last_interaction": 35,
         }
 
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
@@ -112,7 +108,7 @@ class TestClientSegmentationService:
         client_data = {
             "segment": "HIGH_VALUE",
             "risk_level": "LOW_RISK",
-            "days_since_last_interaction": 65
+            "days_since_last_interaction": 65,
         }
 
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
@@ -123,12 +119,8 @@ class TestClientSegmentationService:
         client_data = {
             "segment": "LOW_VALUE",
             "risk_level": "LOW_RISK",
-            "days_since_last_interaction": 10
+            "days_since_last_interaction": 10,
         }
 
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
         assert should_nurture is False
-
-
-
-

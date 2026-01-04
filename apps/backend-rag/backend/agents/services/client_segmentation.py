@@ -101,6 +101,3 @@ class ClientSegmentationService:
             return True, "High-value client inactive for 60+ days"
 
         return False, ""
-
-
-

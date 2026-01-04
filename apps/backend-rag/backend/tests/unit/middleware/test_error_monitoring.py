@@ -190,10 +190,12 @@ class TestErrorMonitoringMiddleware:
 
         async def call_next(request):
             import asyncio
+
             await asyncio.sleep(0.1)  # Simulate slow request
             return mock_response
 
-        with patch("middleware.error_monitoring.settings") as mock_settings:
+        # Settings is imported inside the function, so patch at the source
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.latency_alert_threshold_ms = 50  # 50ms threshold
 
             result = await middleware.dispatch(mock_request, call_next)
@@ -288,7 +290,7 @@ class TestErrorMonitoringMiddleware:
 
         mock_response = MagicMock()
         mock_response.status_code = 500
-        mock_response.body = b'invalid json'
+        mock_response.body = b"invalid json"
 
         await middleware._handle_error_response(mock_request, mock_response, "req-123", 100.0)
 
@@ -302,7 +304,3 @@ class TestErrorMonitoringMiddleware:
 
         assert isinstance(middleware, ErrorMonitoringMiddleware)
         assert middleware.alert_service == mock_alert_service
-
-
-
-

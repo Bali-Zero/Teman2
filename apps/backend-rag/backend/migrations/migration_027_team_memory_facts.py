@@ -36,28 +36,32 @@ def generate_facts_for_member(member: dict) -> list[dict]:
     identity = f"{name} è {role} nel team {department} di Bali Zero"
     if member.get("location"):
         identity += f", lavora da {member['location']}"
-    facts.append({
-        "content": identity,
-        "fact_type": "identity",
-        "confidence": 1.0,
-        "source": "team_database"
-    })
+    facts.append(
+        {"content": identity, "fact_type": "identity", "confidence": 1.0, "source": "team_database"}
+    )
 
     # 2. Language preferences
     languages = member.get("languages", [])
     preferred = member.get("preferred_language", "id")
     lang_names = {
-        "it": "italiano", "en": "inglese", "id": "indonesiano",
-        "uk": "ucraino", "jv": "giavanese", "ban": "balinese",
-        "su": "sundanese", "ua": "ucraino"
+        "it": "italiano",
+        "en": "inglese",
+        "id": "indonesiano",
+        "uk": "ucraino",
+        "jv": "giavanese",
+        "ban": "balinese",
+        "su": "sundanese",
+        "ua": "ucraino",
     }
     if preferred and preferred in lang_names:
-        facts.append({
-            "content": f"{name} preferisce comunicare in {lang_names.get(preferred, preferred)}",
-            "fact_type": "preference",
-            "confidence": 1.0,
-            "source": "team_database"
-        })
+        facts.append(
+            {
+                "content": f"{name} preferisce comunicare in {lang_names.get(preferred, preferred)}",
+                "fact_type": "preference",
+                "confidence": 1.0,
+                "source": "team_database",
+            }
+        )
 
     # 3. Emotional preferences / communication style
     emo_prefs = member.get("emotional_preferences", {})
@@ -69,14 +73,14 @@ def generate_facts_for_member(member: dict) -> list[dict]:
         formality_desc = {
             "high": "formale e rispettoso",
             "medium": "bilanciato tra formale e informale",
-            "low": "informale e diretto"
+            "low": "informale e diretto",
         }
         humor_desc = {
             "minimal": "serio e professionale",
             "light": "con un pizzico di leggerezza",
             "witty": "spiritoso e arguto",
             "playful": "giocoso e divertente",
-            "subtle": "con umorismo sottile"
+            "subtle": "con umorismo sottile",
         }
 
         style_parts = []
@@ -86,12 +90,14 @@ def generate_facts_for_member(member: dict) -> list[dict]:
             style_parts.append(humor_desc[humor])
 
         if style_parts:
-            facts.append({
-                "content": f"Con {name}, usa un tono {', '.join(style_parts)}",
-                "fact_type": "communication_style",
-                "confidence": 0.95,
-                "source": "team_database"
-            })
+            facts.append(
+                {
+                    "content": f"Con {name}, usa un tono {', '.join(style_parts)}",
+                    "fact_type": "communication_style",
+                    "confidence": 0.95,
+                    "source": "team_database",
+                }
+            )
 
     # 4. Personal traits
     traits = member.get("traits", [])
@@ -134,28 +140,32 @@ def generate_facts_for_member(member: dict) -> list[dict]:
         "ambitious": "è ambiziosa",
         "multi_tasker": "è brava nel multitasking",
         "quiet": "è piuttosto riservata",
-        "junior": "è ancora junior ma sta imparando"
+        "junior": "è ancora junior ma sta imparando",
     }
 
     relevant_traits = [trait_descriptions[t] for t in traits if t in trait_descriptions]
     if relevant_traits:
-        facts.append({
-            "content": f"{name} {', '.join(relevant_traits[:3])}",  # Max 3 traits
-            "fact_type": "personality",
-            "confidence": 0.9,
-            "source": "team_database"
-        })
+        facts.append(
+            {
+                "content": f"{name} {', '.join(relevant_traits[:3])}",  # Max 3 traits
+                "fact_type": "personality",
+                "confidence": 0.9,
+                "source": "team_database",
+            }
+        )
 
     # 5. Notes / special info
     notes = member.get("notes", "")
     if notes and len(notes) > 10:
         # Extract key info from notes
-        facts.append({
-            "content": f"Info su {name}: {notes}",
-            "fact_type": "background",
-            "confidence": 0.85,
-            "source": "team_database"
-        })
+        facts.append(
+            {
+                "content": f"Info su {name}: {notes}",
+                "fact_type": "background",
+                "confidence": 0.85,
+                "source": "team_database",
+            }
+        )
 
     # 6. Relationships (if any)
     relationships = member.get("relationships", [])
@@ -163,12 +173,14 @@ def generate_facts_for_member(member: dict) -> list[dict]:
         rel_type = rel.get("type", "")
         rel_with = rel.get("with", "")
         if rel_type and rel_with:
-            facts.append({
-                "content": f"{name} ha una relazione di tipo '{rel_type}' con {rel_with}",
-                "fact_type": "relationship",
-                "confidence": 0.8,
-                "source": "team_database"
-            })
+            facts.append(
+                {
+                    "content": f"{name} ha una relazione di tipo '{rel_type}' con {rel_with}",
+                    "fact_type": "relationship",
+                    "confidence": 0.8,
+                    "source": "team_database",
+                }
+            )
 
     # 7. Expertise level
     expertise = member.get("expertise_level", "")
@@ -176,25 +188,29 @@ def generate_facts_for_member(member: dict) -> list[dict]:
         "expert": "è un esperto di alto livello",
         "advanced": "ha competenze avanzate",
         "intermediate": "ha competenze intermedie",
-        "beginner": "sta ancora imparando"
+        "beginner": "sta ancora imparando",
     }
     if expertise in expertise_desc:
-        facts.append({
-            "content": f"{name} {expertise_desc[expertise]} nel suo ruolo",
-            "fact_type": "expertise",
-            "confidence": 0.9,
-            "source": "team_database"
-        })
+        facts.append(
+            {
+                "content": f"{name} {expertise_desc[expertise]} nel suo ruolo",
+                "fact_type": "expertise",
+                "confidence": 0.9,
+                "source": "team_database",
+            }
+        )
 
     # 8. Religion (for cultural awareness)
     religion = member.get("religion", "")
     if religion:
-        facts.append({
-            "content": f"{name} è di religione {religion}",
-            "fact_type": "cultural",
-            "confidence": 0.9,
-            "source": "team_database"
-        })
+        facts.append(
+            {
+                "content": f"{name} è di religione {religion}",
+                "fact_type": "cultural",
+                "confidence": 0.9,
+                "source": "team_database",
+            }
+        )
 
     return facts
 
@@ -241,8 +257,7 @@ async def apply_migration(database_url: str = None):
 
             # Delete existing facts for this user (clean slate)
             await conn.execute(
-                "DELETE FROM memory_facts WHERE user_id = $1 AND source = 'team_database'",
-                email
+                "DELETE FROM memory_facts WHERE user_id = $1 AND source = 'team_database'", email
             )
 
             # Insert new facts
@@ -258,7 +273,7 @@ async def apply_migration(database_url: str = None):
                     fact["confidence"],
                     fact["source"],
                     json.dumps({"member_id": member.get("id", "")}),
-                    datetime.now()
+                    datetime.now(),
                 )
                 total_facts += 1
 
@@ -293,9 +308,7 @@ async def rollback_migration(database_url: str = None):
     try:
         conn = await asyncpg.connect(database_url)
 
-        result = await conn.execute(
-            "DELETE FROM memory_facts WHERE source = 'team_database'"
-        )
+        result = await conn.execute("DELETE FROM memory_facts WHERE source = 'team_database'")
 
         await conn.close()
         logger.info(f"Rollback complete: {result}")

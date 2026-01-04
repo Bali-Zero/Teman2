@@ -19,7 +19,6 @@ import argparse
 import json
 import os
 import re
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -27,6 +26,7 @@ from typing import Optional
 # Try to import required libraries
 try:
     import fitz  # PyMuPDF
+
     PYMUPDF_AVAILABLE = True
 except ImportError:
     PYMUPDF_AVAILABLE = False
@@ -34,6 +34,7 @@ except ImportError:
 
 try:
     import google.generativeai as genai
+
     GENAI_AVAILABLE = True
 except ImportError:
     GENAI_AVAILABLE = False
@@ -116,7 +117,9 @@ class KBLITableExtractor:
                         continue
 
                     # Extract code
-                    raw_code = str(row[code_col_idx]).strip() if row[code_col_idx] else ""
+                    raw_code = (
+                        str(row[code_col_idx]).strip() if row[code_col_idx] else ""
+                    )
                     code = self._clean_kbli_code(raw_code)
 
                     if not code:
@@ -125,7 +128,11 @@ class KBLITableExtractor:
                     # Extract title (usually next column)
                     title = ""
                     if len(row) > code_col_idx + 1:
-                        title = str(row[code_col_idx + 1]).strip() if row[code_col_idx + 1] else ""
+                        title = (
+                            str(row[code_col_idx + 1]).strip()
+                            if row[code_col_idx + 1]
+                            else ""
+                        )
 
                     # Extract other columns as metadata
                     metadata = self._extract_row_metadata(row, code_col_idx)
@@ -213,7 +220,7 @@ class KBLITableExtractor:
                             title,
                             {"tingkat_risiko": item.get("tingkat_risiko", "")},
                             page_num,
-                            "vision"
+                            "vision",
                         )
 
         except Exception as e:
@@ -290,7 +297,7 @@ class KBLITableExtractor:
                 "judul": title,
                 "metadata": metadata,
                 "pages": {page},
-                "sources": {source}
+                "sources": {source},
             }
 
     def to_json(self) -> dict:
@@ -299,9 +306,9 @@ class KBLITableExtractor:
             "metadata": {
                 "extracted_at": datetime.now().isoformat(),
                 "total_codes": len(self.extracted_codes),
-                "errors": self.errors
+                "errors": self.errors,
             },
-            "kbli_codes": {}
+            "kbli_codes": {},
         }
 
         for code, data in sorted(self.extracted_codes.items()):
@@ -311,7 +318,7 @@ class KBLITableExtractor:
                 "tingkat_risiko": data["metadata"].get("tingkat_risiko", ""),
                 "sektor": data["metadata"].get("sektor", ""),
                 "extraction_sources": list(data["sources"]),
-                "found_on_pages": sorted(data["pages"])
+                "found_on_pages": sorted(data["pages"]),
             }
 
         return result
@@ -321,7 +328,11 @@ def main():
     parser = argparse.ArgumentParser(description="Extract KBLI codes from PDF tables")
     parser.add_argument("--pdf", required=True, help="Path to PDF file")
     parser.add_argument("--output", help="Output JSON file")
-    parser.add_argument("--use-vision", action="store_true", help="Use Gemini Vision for complex layouts")
+    parser.add_argument(
+        "--use-vision",
+        action="store_true",
+        help="Use Gemini Vision for complex layouts",
+    )
 
     args = parser.parse_args()
 

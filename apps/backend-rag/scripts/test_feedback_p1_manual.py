@@ -5,7 +5,6 @@ Tests the new /api/v2/feedback endpoint with curl-like requests
 """
 
 import asyncio
-import json
 import os
 from uuid import uuid4
 
@@ -49,7 +48,9 @@ async def test_feedback_endpoint():
             data = response.json()
             print(f"   Success: {data.get('success')}")
             print(f"   Review Queue ID: {data.get('review_queue_id')}")
-            assert data.get("review_queue_id") is None, "Should NOT create review_queue for rating 5"
+            assert data.get("review_queue_id") is None, (
+                "Should NOT create review_queue for rating 5"
+            )
             print("   ✅ PASS: No review_queue created")
         else:
             print(f"   Response: {response.text}")
@@ -72,7 +73,9 @@ async def test_feedback_endpoint():
             data = response.json()
             print(f"   Success: {data.get('success')}")
             print(f"   Review Queue ID: {data.get('review_queue_id')}")
-            assert data.get("review_queue_id") is not None, "Should create review_queue for rating 2"
+            assert data.get("review_queue_id") is not None, (
+                "Should create review_queue for rating 2"
+            )
             print("   ✅ PASS: Review_queue created")
         else:
             print(f"   Response: {response.text}")
@@ -95,7 +98,9 @@ async def test_feedback_endpoint():
             data = response.json()
             print(f"   Success: {data.get('success')}")
             print(f"   Review Queue ID: {data.get('review_queue_id')}")
-            assert data.get("review_queue_id") is not None, "Should create review_queue for rating 1"
+            assert data.get("review_queue_id") is not None, (
+                "Should create review_queue for rating 1"
+            )
             print("   ✅ PASS: Review_queue created")
         else:
             print(f"   Response: {response.text}")
@@ -119,7 +124,9 @@ async def test_feedback_endpoint():
             data = response.json()
             print(f"   Success: {data.get('success')}")
             print(f"   Review Queue ID: {data.get('review_queue_id')}")
-            assert data.get("review_queue_id") is not None, "Should create review_queue when correction_text present"
+            assert data.get("review_queue_id") is not None, (
+                "Should create review_queue when correction_text present"
+            )
             print("   ✅ PASS: Review_queue created due to correction_text")
         else:
             print(f"   Response: {response.text}")
@@ -162,5 +169,3 @@ async def test_feedback_endpoint():
 
 if __name__ == "__main__":
     asyncio.run(test_feedback_endpoint())
-
-

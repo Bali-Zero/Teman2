@@ -39,7 +39,7 @@ def mock_journey():
             prerequisites=[],
             required_documents=[],
             estimated_duration_days=5,
-            status=StepStatus.PENDING
+            status=StepStatus.PENDING,
         ),
         JourneyStep(
             step_id="step2",
@@ -49,8 +49,8 @@ def mock_journey():
             prerequisites=["step1"],
             required_documents=[],
             estimated_duration_days=3,
-            status=StepStatus.PENDING
-        )
+            status=StepStatus.PENDING,
+        ),
     ]
     journey = ClientJourney(
         journey_id="journey1",
@@ -59,7 +59,7 @@ def mock_journey():
         title="Test Journey",
         description="Test Description",
         steps=steps,
-        status=JourneyStatus.NOT_STARTED
+        status=JourneyStatus.NOT_STARTED,
     )
     return journey
 
@@ -125,4 +125,3 @@ class TestStepManagerService:
         """Test blocking non-existent step"""
         result = step_manager.block_step(mock_journey, "nonexistent", reason="Test")
         assert result is False
-

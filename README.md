@@ -186,7 +186,49 @@ Il deploy è **manuale e locale** tramite `flyctl deploy` per garantire il contr
 
 ## 📖 Onboarding (Start Here!)
 
-**Per nuovi AI/sviluppatori - leggi questi file in ordine:**
+### 🚨 LETTURA OBBLIGATORIA - Da tenere a mente in OGNI sessione
+
+**Questa scaletta è OBBLIGATORIA per ogni AI/sviluppatore:**
+
+---
+
+#### 1️⃣ Il Punto di Partenza (OBBLIGATORIO)
+
+| File | Descrizione |
+|------|-------------|
+| [`docs/AI_ONBOARDING.md`](docs/AI_ONBOARDING.md) | Manuale operativo completo, Golden Rules, struttura |
+| [`docs/ai/AI_HANDOVER_PROTOCOL.md`](docs/ai/AI_HANDOVER_PROTOCOL.md) | System prompt, fix critici, regole di handover |
+
+---
+
+#### 2️⃣ Per Capire l'Architettura
+
+| File | Descrizione |
+|------|-------------|
+| [`docs/SYSTEM_MAP_4D.md`](docs/SYSTEM_MAP_4D.md) | Mappa 4D del sistema (Space, Time, Logic, Scale) |
+| [`docs/LIVING_ARCHITECTURE.md`](docs/LIVING_ARCHITECTURE.md) | Documentazione API auto-generata, moduli, endpoints |
+
+---
+
+#### 3️⃣ Per le Operazioni (DevOps/Deploy)
+
+| File | Descrizione |
+|------|-------------|
+| [`docs/DEPLOYMENT_QUICKSTART.md`](docs/DEPLOYMENT_QUICKSTART.md) | Guida rapida al deployment |
+| [`docs/operations/ALERTS_RUNBOOK.md`](docs/operations/ALERTS_RUNBOOK.md) | Runbook per allarmi e incidenti |
+
+---
+
+#### 4️⃣ Per lo Sviluppo Specifico
+
+| File | Descrizione |
+|------|-------------|
+| [`apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md`](apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md) | Pipeline Intel Scraper (RSS → Enrichment → Telegram → Publish) |
+| [`apps/backend-rag/CLAUDE.md`](apps/backend-rag/CLAUDE.md) | Istruzioni specifiche per backend RAG |
+
+---
+
+### 📋 Quick Reference (per sessioni rapide)
 
 | # | File | Tempo | Cosa Impari |
 |---|------|-------|-------------|

@@ -17,7 +17,7 @@ def debug_pdf(pdf_path):
         # Check first 3 pages
         for p_idx in range(min(3, len(reader.pages))):
             page = reader.pages[p_idx]
-            print(f"\n--- Page {p_idx+1} ---")
+            print(f"\n--- Page {p_idx + 1} ---")
             text = page.extract_text()
             if text:
                 print("First 500 chars:")

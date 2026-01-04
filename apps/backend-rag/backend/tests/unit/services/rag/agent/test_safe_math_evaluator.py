@@ -166,4 +166,3 @@ class TestSafeMathEvaluator:
         result = evaluator.evaluate("0.1 + 0.2")
         # Floating point precision
         assert abs(result - 0.3) < 0.0001
-

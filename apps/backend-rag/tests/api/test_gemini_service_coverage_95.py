@@ -236,9 +236,8 @@ class TestGeminiJakselService:
     @pytest.mark.asyncio
     async def test_generate_response_stream_fallback(self):
         """Test generate_response_stream with fallback to OpenRouter"""
-        from google.api_core.exceptions import ResourceExhausted
-
         from backend.services.gemini_service import GeminiJakselService
+        from google.api_core.exceptions import ResourceExhausted
 
         service = GeminiJakselService()
 
@@ -283,9 +282,8 @@ class TestGeminiJakselService:
     @pytest.mark.asyncio
     async def test_generate_response_fallback(self):
         """Test generate_response with fallback"""
-        from google.api_core.exceptions import ResourceExhausted
-
         from backend.services.gemini_service import GeminiJakselService
+        from google.api_core.exceptions import ResourceExhausted
 
         service = GeminiJakselService()
 

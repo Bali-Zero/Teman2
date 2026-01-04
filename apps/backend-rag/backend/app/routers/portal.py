@@ -405,7 +405,7 @@ async def upload_document(
     if file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail=f"File type not allowed. Allowed types: {', '.join(allowed_extensions)}"
+            detail=f"File type not allowed. Allowed types: {', '.join(allowed_extensions)}",
         )
 
     try:

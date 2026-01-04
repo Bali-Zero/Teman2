@@ -52,11 +52,7 @@ class TestReasoningHelpers:
 
     def test_calculate_evidence_score_no_sources(self):
         """Test calculating evidence score with no sources"""
-        score = calculate_evidence_score(
-            sources=None,
-            context_gathered=[],
-            query="test query"
-        )
+        score = calculate_evidence_score(sources=None, context_gathered=[], query="test query")
         assert 0.0 <= score <= 1.0
 
     def test_calculate_evidence_score_with_sources(self):
@@ -66,65 +62,39 @@ class TestReasoningHelpers:
             {"score": 0.6, "text": "Source 2"},
             {"score": 0.4, "text": "Source 3"},
             {"score": 0.5, "text": "Source 4"},
-            {"score": 0.3, "text": "Source 5"}
+            {"score": 0.3, "text": "Source 5"},
         ]
-        score = calculate_evidence_score(
-            sources=sources,
-            context_gathered=[],
-            query="test query"
-        )
+        score = calculate_evidence_score(sources=sources, context_gathered=[], query="test query")
         assert 0.0 <= score <= 1.0
 
     def test_calculate_evidence_score_high_quality(self):
         """Test calculating evidence score with high quality sources"""
-        sources = [
-            {"score": 0.9, "text": "Source 1"},
-            {"score": 0.8, "text": "Source 2"}
-        ]
-        score = calculate_evidence_score(
-            sources=sources,
-            context_gathered=[],
-            query="test query"
-        )
+        sources = [{"score": 0.9, "text": "Source 1"}, {"score": 0.8, "text": "Source 2"}]
+        score = calculate_evidence_score(sources=sources, context_gathered=[], query="test query")
         assert score >= 0.5  # Should have base score from high quality sources
 
     def test_calculate_evidence_score_with_context(self):
         """Test calculating evidence score with context"""
         context = ["This is a test context with relevant information"]
-        score = calculate_evidence_score(
-            sources=None,
-            context_gathered=context,
-            query="test query"
-        )
+        score = calculate_evidence_score(sources=None, context_gathered=context, query="test query")
         assert 0.0 <= score <= 1.0
 
     def test_calculate_evidence_score_keyword_match(self):
         """Test calculating evidence score with keyword match"""
         context = ["This is a test context with relevant information about the query"]
         score = calculate_evidence_score(
-            sources=None,
-            context_gathered=context,
-            query="relevant information"
+            sources=None, context_gathered=context, query="relevant information"
         )
         assert 0.0 <= score <= 1.0
 
     def test_validate_context_quality(self):
         """Test validating context quality"""
         score = _validate_context_quality(
-            query="test query",
-            context_items=["This is test context"]
+            query="test query", context_items=["This is test context"]
         )
         assert 0.0 <= score <= 1.0
 
     def test_validate_context_quality_empty(self):
         """Test validating empty context quality"""
-        score = _validate_context_quality(
-            query="test query",
-            context_items=[]
-        )
+        score = _validate_context_quality(query="test query", context_items=[])
         assert 0.0 <= score <= 1.0
-
-
-
-
-

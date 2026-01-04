@@ -154,4 +154,3 @@ class TestErrorClassifier:
 
         assert "error_type" in context
         assert "error_message" in context
-

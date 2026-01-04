@@ -56,7 +56,7 @@ async def check_user_facts():
             ORDER BY created_at DESC
             LIMIT 10
             """,
-            user_id
+            user_id,
         )
 
         if rows:

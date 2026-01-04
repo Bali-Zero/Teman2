@@ -44,7 +44,7 @@ def mock_alert():
         message="Test message",
         deadline="2025-12-31",
         days_until_deadline=15,
-        action_required="Take action"
+        action_required="Take action",
     )
 
 
@@ -60,10 +60,7 @@ class TestComplianceNotificationService:
     async def test_send_alert(self, notification_service, mock_notification_service):
         """Test sending alert"""
         result = await notification_service.send_alert(
-            alert_id="alert1",
-            client_id="client1",
-            message="Test message",
-            via="whatsapp"
+            alert_id="alert1", client_id="client1", message="Test message", via="whatsapp"
         )
         assert result is True
         mock_notification_service.send.assert_called_once()
@@ -72,10 +69,7 @@ class TestComplianceNotificationService:
     async def test_send_alert_email(self, notification_service, mock_notification_service):
         """Test sending alert via email"""
         result = await notification_service.send_alert(
-            alert_id="alert1",
-            client_id="client1",
-            message="Test message",
-            via="email"
+            alert_id="alert1", client_id="client1", message="Test message", via="email"
         )
         assert result is True
 
@@ -84,8 +78,6 @@ class TestComplianceNotificationService:
         """Test sending alert without notification service"""
         service = ComplianceNotificationService()
         result = await service.send_alert(
-            alert_id="alert1",
-            client_id="client1",
-            message="Test message"
+            alert_id="alert1", client_id="client1", message="Test message"
         )
         assert result is True  # Should log only

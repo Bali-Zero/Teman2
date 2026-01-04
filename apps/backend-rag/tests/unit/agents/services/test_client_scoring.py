@@ -15,7 +15,7 @@ Missing lines: 71-72 (debug logging when client not found)
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
@@ -395,9 +395,7 @@ class TestClientScoringService:
     async def test_calculate_scores_batch_postgres_error(self, service, mock_db_pool):
         """Test batch calculation with PostgreSQL error"""
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(
-            side_effect=asyncpg.PostgresError("Connection timeout")
-        )
+        mock_conn.fetch = AsyncMock(side_effect=asyncpg.PostgresError("Connection timeout"))
         mock_db_pool.acquire.return_value = create_async_cm_mock(mock_conn)
 
         result = await service.calculate_scores_batch(["123", "456"])

@@ -17,7 +17,7 @@ from services.integrations.google_drive_service import GoogleDriveService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/integrations/google-drive", tags=["Google Drive"])
+router = APIRouter(prefix="/api/integrations/google-drive", tags=["Google Drive"])
 
 
 # =========================================================================
@@ -31,6 +31,19 @@ class ConnectionStatus(BaseModel):
     connected: bool
     configured: bool
     root_folder_id: str | None = None
+
+
+class SystemConnectionStatus(BaseModel):
+    """System-wide Google Drive connection status."""
+
+    oauth_connected: bool
+    configured: bool
+    connected_as: str | None = None  # Email of connected account
+    root_folder_id: str | None = None
+
+
+# Admin emails allowed to connect SYSTEM OAuth
+ADMIN_EMAILS = ["zero@balizero.com", "antonellosiano@gmail.com"]
 
 
 class FileItem(BaseModel):
@@ -166,6 +179,114 @@ async def disconnect(
     service = GoogleDriveService(db_pool)
     success = await service.disconnect(current_user["id"])
     return {"success": success}
+
+
+# =========================================================================
+# SYSTEM-WIDE OAUTH (for admin to connect antonellosiano@gmail.com 30TB)
+# =========================================================================
+
+
+@router.get("/system/status")
+async def get_system_status(
+    db_pool=Depends(get_database_pool),
+) -> SystemConnectionStatus:
+    """
+    Check if system-wide Google Drive OAuth is connected.
+    This token is used by all team members for file operations.
+    """
+    service = GoogleDriveService(db_pool)
+
+    # Check if SYSTEM token exists
+    token = await service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
+    is_connected = token is not None
+
+    # Get connected account email if available
+    connected_as = None
+    if is_connected:
+        try:
+            # Make a test API call to get user info
+            import httpx
+
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://www.googleapis.com/drive/v3/about",
+                    params={"fields": "user(emailAddress,displayName)"},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    connected_as = data.get("user", {}).get("emailAddress")
+        except Exception as e:
+            logger.warning(f"[GDRIVE] Could not get connected account info: {e}")
+
+    return SystemConnectionStatus(
+        oauth_connected=is_connected,
+        configured=service.is_configured(),
+        connected_as=connected_as,
+        root_folder_id=service.root_folder_id,
+    )
+
+
+@router.get("/system/authorize")
+async def get_system_auth_url(
+    current_user: dict = Depends(get_current_user),
+    db_pool=Depends(get_database_pool),
+) -> dict[str, str]:
+    """
+    Get OAuth authorization URL for connecting SYSTEM Google Drive.
+
+    ADMIN ONLY: Only zero@balizero.com and antonellosiano@gmail.com can authorize.
+    This connects antonellosiano@gmail.com's 30TB account for all team members.
+    """
+    user_email = current_user.get("email", "")
+
+    # Check admin permission
+    if user_email not in ADMIN_EMAILS:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Solo gli admin ({', '.join(ADMIN_EMAILS)}) possono connettere il Drive di sistema",
+        )
+
+    service = GoogleDriveService(db_pool)
+
+    if not service.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Google Drive OAuth non configurato. Imposta GOOGLE_DRIVE_CLIENT_ID e GOOGLE_DRIVE_CLIENT_SECRET.",
+        )
+
+    # Create state token with SYSTEM marker
+    state = f"{GoogleDriveService.SYSTEM_USER_ID}:{secrets.token_urlsafe(32)}"
+    auth_url = service.get_authorization_url(state)
+
+    logger.info(f"[GDRIVE] Admin {user_email} requested SYSTEM OAuth URL")
+    return {"auth_url": auth_url}
+
+
+@router.post("/system/disconnect")
+async def disconnect_system(
+    current_user: dict = Depends(get_current_user),
+    db_pool=Depends(get_database_pool),
+) -> dict[str, Any]:
+    """
+    Disconnect system-wide Google Drive OAuth.
+
+    ADMIN ONLY: Only admin emails can disconnect the SYSTEM account.
+    """
+    user_email = current_user.get("email", "")
+
+    # Check admin permission
+    if user_email not in ADMIN_EMAILS:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Solo gli admin ({', '.join(ADMIN_EMAILS)}) possono disconnettere il Drive di sistema",
+        )
+
+    service = GoogleDriveService(db_pool)
+    success = await service.disconnect(GoogleDriveService.SYSTEM_USER_ID)
+
+    logger.info(f"[GDRIVE] Admin {user_email} disconnected SYSTEM OAuth")
+    return {"success": success, "message": "Sistema Google Drive disconnesso"}
 
 
 # =========================================================================

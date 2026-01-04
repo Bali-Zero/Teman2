@@ -204,6 +204,8 @@ The Golden Visa program positions Indonesia, and particularly Bali, as a premier
       coverImageAlt: 'Golden Visa Indonesia program',
       createdAt: new Date('2024-12-20'),
       shareCount: 234,
+      likeCount: 89,
+      commentCount: 12,
       locale: 'en',
     },
     'business/oss-2-complete-guide': {
@@ -301,6 +303,8 @@ Under OSS-RBA, businesses are classified by risk level:
       coverImageAlt: 'OSS 2.0 Business Licensing Indonesia',
       createdAt: new Date('2024-12-18'),
       shareCount: 156,
+      likeCount: 67,
+      commentCount: 8,
       locale: 'en',
     },
     'tax-legal/tax-deadlines-2026': {
@@ -376,6 +380,8 @@ Stay compliant with Indonesia's tax requirements. The new **Coretax** system is 
       coverImageAlt: 'Indonesia Tax Calendar 2026',
       createdAt: new Date('2025-12-28'),
       shareCount: 89,
+      likeCount: 45,
+      commentCount: 5,
       locale: 'en',
     },
   };

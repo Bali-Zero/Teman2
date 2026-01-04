@@ -141,6 +141,7 @@ class SearchService:
         if settings.enable_bm25:
             try:
                 from core.bm25_vectorizer import BM25Vectorizer
+
                 self._bm25_vectorizer = BM25Vectorizer(
                     vocab_size=settings.bm25_vocab_size,
                     k1=settings.bm25_k1,
@@ -233,7 +234,7 @@ class SearchService:
                         "attempt": attempt + 1,
                         "max_attempts": self._max_bm25_init_attempts,
                         "error_type": "import_error",
-                    }
+                    },
                 )
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
@@ -250,7 +251,7 @@ class SearchService:
                         "attempt": attempt + 1,
                         "max_attempts": self._max_bm25_init_attempts,
                         "error_type": type(e).__name__,
-                    }
+                    },
                 )
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
@@ -259,7 +260,7 @@ class SearchService:
 
                 if attempt < self._max_bm25_init_attempts - 1:
                     # Exponential backoff
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                 else:
                     logger.error(
                         f"❌ BM25Vectorizer initialization failed after {self._max_bm25_init_attempts} attempts. "
@@ -267,7 +268,7 @@ class SearchService:
                         extra={
                             "final_error": str(e),
                             "error_type": type(e).__name__,
-                        }
+                        },
                     )
                     # Alert on persistent failure
                     await self._alert_bm25_failure(e)
@@ -286,7 +287,7 @@ class SearchService:
                 extra={
                     "error": str(error),
                     "error_type": type(error).__name__,
-                }
+                },
             )
         except Exception as alert_error:
             logger.error(f"Failed to send BM25 failure alert: {alert_error}")
@@ -456,7 +457,7 @@ class SearchService:
                             "query": query[:100],
                             "collection": collection_name,
                             "error": str(e),
-                        }
+                        },
                     )
                     if metrics_collector:
                         metrics_collector.search_hybrid_failed_total.inc()
@@ -464,7 +465,9 @@ class SearchService:
                     # CRITICAL: Hybrid collections require named vector "dense"
                     use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                     raw_results = await vector_db.search(
-                        query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                        query_embedding=query_embedding,
+                        filter=chroma_filter,
+                        limit=limit,
                         vector_name=use_vector_name,
                     )
                     if metrics_collector:
@@ -474,7 +477,9 @@ class SearchService:
                 # CRITICAL: Hybrid collections require named vector "dense"
                 use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                 raw_results = await vector_db.search(
-                    query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                    query_embedding=query_embedding,
+                    filter=chroma_filter,
+                    limit=limit,
                     vector_name=use_vector_name,
                 )
                 if metrics_collector:
@@ -513,7 +518,7 @@ class SearchService:
                     "query": query[:100],
                     "user_level": user_level,
                     "collection_override": collection_override,
-                }
+                },
             )
             if metrics_collector:
                 metrics_collector.search_failed_total.inc()
@@ -679,7 +684,9 @@ class SearchService:
                 # CRITICAL: Hybrid collections require named vector "dense"
                 use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                 raw_results = await vector_db.search(
-                    query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                    query_embedding=query_embedding,
+                    filter=chroma_filter,
+                    limit=limit,
                     vector_name=use_vector_name,
                 )
                 search_type = "dense_only"
@@ -880,7 +887,9 @@ class SearchService:
             confidence = routing_info["confidence"]
 
             if routing_info["is_pricing"]:
-                logger.info("💰 PRICING QUERY → Routing to Fallback (legal_unified_hybrid + visa_oracle)")
+                logger.info(
+                    "💰 PRICING QUERY → Routing to Fallback (legal_unified_hybrid + visa_oracle)"
+                )
             else:
                 logger.info(
                     f"🎯 [Conflict Resolution] Primary: {primary_collection} "
@@ -921,7 +930,9 @@ class SearchService:
                 use_vector_name = "dense" if collection_name.endswith("_hybrid") else None
                 search_start = time.time() if METRICS_AVAILABLE else None
                 raw_results = await vector_db.search(
-                    query_embedding=query_embedding, filter=chroma_filter, limit=limit,
+                    query_embedding=query_embedding,
+                    filter=chroma_filter,
+                    limit=limit,
                     vector_name=use_vector_name,
                 )
                 if METRICS_AVAILABLE and search_start:

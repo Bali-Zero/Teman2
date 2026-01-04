@@ -102,8 +102,8 @@ class TestMemoryOrchestratorInit:
     @pytest.mark.asyncio
     async def test_initialize_with_pool(self):
         """Test initialization with existing connection pool"""
-        from services.memory.orchestrator import MemoryOrchestrator
         from services.memory.memory_service_postgres import UserMemory
+        from services.memory.orchestrator import MemoryOrchestrator
 
         mock_pool = MagicMock()
         mock_pool.close = AsyncMock()
@@ -113,13 +113,15 @@ class TestMemoryOrchestratorInit:
             mock_service = MagicMock()
             mock_service.pool = mock_pool
             mock_service.use_postgres = True
-            mock_service.get_memory = AsyncMock(return_value=UserMemory(
-                user_id="__test__",
-                profile_facts=[],
-                summary="",
-                counters={"conversations": 0, "searches": 0, "tasks": 0},
-                updated_at=datetime.now(),
-            ))
+            mock_service.get_memory = AsyncMock(
+                return_value=UserMemory(
+                    user_id="__test__",
+                    profile_facts=[],
+                    summary="",
+                    counters={"conversations": 0, "searches": 0, "tasks": 0},
+                    updated_at=datetime.now(),
+                )
+            )
             mock_service.close = AsyncMock()
             MockMemoryService.return_value = mock_service
 
@@ -132,8 +134,8 @@ class TestMemoryOrchestratorInit:
     @pytest.mark.asyncio
     async def test_initialize_creates_pool_if_needed(self):
         """Test that initialize creates pool if not provided"""
-        from services.memory.orchestrator import MemoryOrchestrator
         from services.memory.memory_service_postgres import UserMemory
+        from services.memory.orchestrator import MemoryOrchestrator
 
         mock_pool = MagicMock()
         mock_pool.close = AsyncMock()
@@ -144,13 +146,15 @@ class TestMemoryOrchestratorInit:
             mock_service.pool = mock_pool
             mock_service.use_postgres = True
             mock_service.connect = AsyncMock()
-            mock_service.get_memory = AsyncMock(return_value=UserMemory(
-                user_id="__test__",
-                profile_facts=[],
-                summary="",
-                counters={"conversations": 0, "searches": 0, "tasks": 0},
-                updated_at=datetime.now(),
-            ))
+            mock_service.get_memory = AsyncMock(
+                return_value=UserMemory(
+                    user_id="__test__",
+                    profile_facts=[],
+                    summary="",
+                    counters={"conversations": 0, "searches": 0, "tasks": 0},
+                    updated_at=datetime.now(),
+                )
+            )
             mock_service.close = AsyncMock()
             MockMemoryService.return_value = mock_service
 
@@ -165,8 +169,8 @@ class TestMemoryOrchestratorInit:
     @pytest.mark.asyncio
     async def test_close_cleans_up_resources(self):
         """Test that close properly cleans up"""
-        from services.memory.orchestrator import MemoryOrchestrator
         from services.memory.memory_service_postgres import UserMemory
+        from services.memory.orchestrator import MemoryOrchestrator
 
         mock_pool = MagicMock()
         mock_pool.close = AsyncMock()
@@ -176,13 +180,15 @@ class TestMemoryOrchestratorInit:
             mock_service = MagicMock()
             mock_service.pool = mock_pool
             mock_service.use_postgres = True
-            mock_service.get_memory = AsyncMock(return_value=UserMemory(
-                user_id="__test__",
-                profile_facts=[],
-                summary="",
-                counters={"conversations": 0, "searches": 0, "tasks": 0},
-                updated_at=datetime.now(),
-            ))
+            mock_service.get_memory = AsyncMock(
+                return_value=UserMemory(
+                    user_id="__test__",
+                    profile_facts=[],
+                    summary="",
+                    counters={"conversations": 0, "searches": 0, "tasks": 0},
+                    updated_at=datetime.now(),
+                )
+            )
             mock_service.close = AsyncMock()
             MockMemoryService.return_value = mock_service
 
@@ -458,8 +464,8 @@ class TestMemoryOrchestratorIntegration:
     @pytest.mark.asyncio
     async def test_full_memory_lifecycle(self):
         """Test complete memory lifecycle: init -> save -> retrieve -> close"""
-        from services.memory.orchestrator import MemoryOrchestrator
         from services.memory.memory_service_postgres import UserMemory
+        from services.memory.orchestrator import MemoryOrchestrator
 
         # Create orchestrator with mocked pool
         mock_pool = MagicMock()
@@ -577,8 +583,8 @@ class TestMemoryOrchestratorEdgeCases:
         """Test concurrent access to orchestrator"""
         import asyncio
 
-        from services.memory.orchestrator import MemoryOrchestrator
         from services.memory.memory_service_postgres import UserMemory
+        from services.memory.orchestrator import MemoryOrchestrator
 
         mock_pool = MagicMock()
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)

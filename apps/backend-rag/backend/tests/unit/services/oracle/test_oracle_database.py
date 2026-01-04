@@ -43,9 +43,10 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_user_profile_from_team_members(self, database_manager):
         """Test getting user profile from team_members"""
-        with patch("data.team_members.TEAM_MEMBERS", [
-            {"email": "test@example.com", "name": "Test", "role": "Dev", "id": "123"}
-        ]):
+        with patch(
+            "data.team_members.TEAM_MEMBERS",
+            [{"email": "test@example.com", "name": "Test", "role": "Dev", "id": "123"}],
+        ):
             profile = await database_manager.get_user_profile("test@example.com")
             assert profile is not None
             assert profile["email"] == "test@example.com"
@@ -57,7 +58,7 @@ class TestDatabaseManager:
         mock_result.mappings.return_value.fetchone.return_value = {
             "id": "123",
             "email": "test@example.com",
-            "name": "Test User"
+            "name": "Test User",
         }
 
         mock_conn = MagicMock()
@@ -81,13 +82,14 @@ class TestDatabaseManager:
         database_manager._engine = mock_engine
 
         # store_feedback returns None (void)
-        await database_manager.store_feedback({
-            "user_id": "test@example.com",
-            "user_rating": 5,
-            "query_text": "test",
-            "original_answer": "answer"
-        })
+        await database_manager.store_feedback(
+            {
+                "user_id": "test@example.com",
+                "user_rating": 5,
+                "query_text": "test",
+                "original_answer": "answer",
+            }
+        )
 
         # Verify execute was called
         mock_conn.execute.assert_called_once()
-

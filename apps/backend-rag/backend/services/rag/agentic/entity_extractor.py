@@ -70,4 +70,3 @@ class EntityExtractionService:
             entities["budget"] = budget
 
         return entities
-

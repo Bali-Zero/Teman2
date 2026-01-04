@@ -176,7 +176,7 @@ async def run_migration():
                     rate = total_migrated / elapsed if elapsed > 0 else 0
                     logger.info(
                         f"  Migrated {total_migrated}/{total_docs} documents "
-                        f"({total_migrated/total_docs*100:.1f}%) - {rate:.1f} docs/sec"
+                        f"({total_migrated / total_docs * 100:.1f}%) - {rate:.1f} docs/sec"
                     )
                 else:
                     logger.error(f"  Batch upsert failed: {result.get('error')}")
@@ -277,7 +277,7 @@ async def test_hybrid_search():
             )
             elapsed = time.time() - start
 
-            logger.info(f"   Time: {elapsed*1000:.0f}ms | Results: {results['total_found']}")
+            logger.info(f"   Time: {elapsed * 1000:.0f}ms | Results: {results['total_found']}")
             for i, (doc_id, score) in enumerate(
                 zip(results.get("ids", [])[:3], results.get("scores", [])[:3]), 1
             ):

@@ -26,17 +26,17 @@ COLLECTIONS = [
     "kbli_unified",
     "legal_unified",
     "bali_zero_team",
-    "global_context"
+    "global_context",
 ]
+
 
 def get_client():
     print(f"DEBUG: Qdrant URL: {settings.qdrant_url}")
     print(f"DEBUG: API Key Set: {'Yes' if settings.qdrant_api_key else 'No'}")
     return QdrantClient(
-        url=settings.qdrant_url,
-        api_key=settings.qdrant_api_key,
-        timeout=60
+        url=settings.qdrant_url, api_key=settings.qdrant_api_key, timeout=60
     )
+
 
 async def audit_collection(client: QdrantClient, collection_name: str):
     print(f"\n--- Auditing Collection: {collection_name} ---")
@@ -44,7 +44,7 @@ async def audit_collection(client: QdrantClient, collection_name: str):
         # Get count
         count = client.count(collection_name).count
         print(f"Total Vectors: {count}")
-        
+
         if count == 0:
             return
 
@@ -54,21 +54,26 @@ async def audit_collection(client: QdrantClient, collection_name: str):
             collection_name=collection_name,
             limit=1000,
             with_payload=True,
-            with_vectors=False
+            with_vectors=False,
         )
-        
+
         filenames = {}
         for point in points:
             payload = point.payload or {}
             # Try various keys for filename
-            fname = payload.get("source") or payload.get("filename") or payload.get("file_name") or "unknown"
+            fname = (
+                payload.get("source")
+                or payload.get("filename")
+                or payload.get("file_name")
+                or "unknown"
+            )
             filenames[fname] = filenames.get(fname, 0) + 1
-            
+
         print("Top Files (by chunk count in sample):")
         sorted_files = sorted(filenames.items(), key=lambda x: x[1], reverse=True)
         for fname, chunk_count in sorted_files[:10]:
             print(f"  - {fname}: {chunk_count} chunks")
-            
+
         # Check for junk
         found_junk = []
         for junk in JUNK_FILES:
@@ -81,12 +86,13 @@ async def audit_collection(client: QdrantClient, collection_name: str):
     except Exception as e:
         print(f"Error auditing {collection_name}: {e}")
 
+
 async def clean_junk(client: QdrantClient):
     print("\n=== STARTING CLEANUP ===")
     for collection_name in COLLECTIONS:
         for junk in JUNK_FILES:
             print(f"Checking {collection_name} for '{junk}'...")
-            
+
             # Construct filter
             # match "source" or "filename"
             try:
@@ -97,22 +103,30 @@ async def clean_junk(client: QdrantClient):
                         filter=models.Filter(
                             must=[
                                 models.FieldCondition(
-                                    key="source",
-                                    match=models.MatchValue(value=junk)
+                                    key="source", match=models.MatchValue(value=junk)
                                 )
                             ]
                         )
-                    )
+                    ),
                 )
-                # Also try fuzzy filename match if strict failed? 
+                # Also try fuzzy filename match if strict failed?
                 # Strict is safer. Let's stick to strict or simple logic.
             except Exception as e:
                 print(f"  Error cleaning {junk} from {collection_name}: {e}")
 
-SEGUI IL TUO DEPLOY COSTNATEMENTE
 
+async def main():
+    client = get_client()
+
+    # Audit phase
+    for collection in COLLECTIONS:
+        await audit_collection(client, collection)
+
+    # Cleanup phase (optional, uncomment to enable auto-cleanup)
+    # await clean_junk(client)
 
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

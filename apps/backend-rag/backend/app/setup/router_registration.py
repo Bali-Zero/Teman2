@@ -14,6 +14,7 @@ from app.routers import (
     audio,
     auth,
     autonomous_agents,
+    blog_ask,
     collective_memory,
     conversations,
     crm_auto,
@@ -34,6 +35,7 @@ from app.routers import (
     knowledge_visa,
     legal_ingest,
     media,
+    news,
     newsletter,
     nusantara_health,
     oracle_ingest,
@@ -45,6 +47,7 @@ from app.routers import (
     team_activity,
     team_analytics,
     team_drive,
+    telegram,
     voice,
     websocket,
     zoho_email,
@@ -114,6 +117,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Communication routers (notifications/whatsapp/instagram removed - will be MCP)
     api.include_router(websocket.router)
+    api.include_router(telegram.router)  # Telegram bot integration
 
     # Integrations routers
     api.include_router(zoho_email.router)
@@ -122,6 +126,10 @@ def include_routers(api: FastAPI) -> None:
 
     # Blog routers
     api.include_router(newsletter.router)
+    api.include_router(blog_ask.router)  # AskZantara widget on public blog articles
+
+    # News/Intel Feed routers
+    api.include_router(news.router)
 
     # Performance router (productivity removed - will be MCP)
     api.include_router(performance.router)

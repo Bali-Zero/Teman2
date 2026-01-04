@@ -143,17 +143,14 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-60 flex flex-col bg-[#242424] border-r border-white/5">
       {/* Logo Section */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-[rgba(255,255,255,0.04)]">
-        <div className="relative w-10 h-10">
+      <div className="flex items-center justify-center px-4 py-5 border-b border-[rgba(255,255,255,0.04)]">
+        <div className="relative w-12 h-12 rounded-full overflow-hidden">
           <Image
-            src="/images/logo_zan.png"
-            alt="Zerosphere"
+            src="/images/balizero-logo-clean.png"
+            alt="Bali Zero"
             fill
-            className="object-contain"
+            className="object-cover scale-110"
           />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold text-[#E6E7EB] tracking-wide">ZANTARA</h1>
         </div>
       </div>
 

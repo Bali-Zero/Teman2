@@ -14,6 +14,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from app.routers.health import (
+    debug_config,
     detailed_health,
     health_check,
     liveness_check,

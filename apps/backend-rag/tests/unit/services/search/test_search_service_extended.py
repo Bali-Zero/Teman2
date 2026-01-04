@@ -98,7 +98,9 @@ def search_service(mock_collection_manager, mock_query_router, mock_embedder):
 class TestSearchServiceInit:
     """Tests for SearchService initialization"""
 
-    def test_init_with_all_dependencies(self, mock_collection_manager, mock_query_router, mock_embedder):
+    def test_init_with_all_dependencies(
+        self, mock_collection_manager, mock_query_router, mock_embedder
+    ):
         """Test initialization with all dependencies provided"""
         mock_manager, _ = mock_collection_manager
         with patch("core.embeddings.create_embeddings_generator") as mock_create:
@@ -139,12 +141,14 @@ class TestPrepareSearchContext:
 
     def test_prepare_search_context_success(self, search_service):
         """Test successful preparation of search context"""
-        embedding, collection, vector_db, chroma_filter, tier_values = search_service._prepare_search_context(
-            query="test query",
-            user_level=1,
-            tier_filter=None,
-            collection_override=None,
-            apply_filters=None,
+        embedding, collection, vector_db, chroma_filter, tier_values = (
+            search_service._prepare_search_context(
+                query="test query",
+                user_level=1,
+                tier_filter=None,
+                collection_override=None,
+                apply_filters=None,
+            )
         )
         assert embedding == [0.1] * 384
         assert collection == "visa_oracle"
@@ -174,12 +178,14 @@ class TestPrepareSearchContext:
 
     def test_prepare_search_context_with_tier_filter(self, search_service):
         """Test _prepare_search_context with tier filter"""
-        embedding, collection, vector_db, chroma_filter, tier_values = search_service._prepare_search_context(
-            query="test query",
-            user_level=2,
-            tier_filter=[TierLevel.S, TierLevel.A],
-            collection_override=None,
-            apply_filters=None,
+        embedding, collection, vector_db, chroma_filter, tier_values = (
+            search_service._prepare_search_context(
+                query="test query",
+                user_level=2,
+                tier_filter=[TierLevel.S, TierLevel.A],
+                collection_override=None,
+                apply_filters=None,
+            )
         )
         assert len(tier_values) >= 0  # May be empty if not zantara_books
 
@@ -188,23 +194,27 @@ class TestPrepareSearchContext:
         search_service.query_router.route_query = MagicMock(
             return_value={"collection_name": "custom_collection", "confidence": 0.9}
         )
-        embedding, collection, vector_db, chroma_filter, tier_values = search_service._prepare_search_context(
-            query="test query",
-            user_level=1,
-            tier_filter=None,
-            collection_override="custom_collection",
-            apply_filters=None,
+        embedding, collection, vector_db, chroma_filter, tier_values = (
+            search_service._prepare_search_context(
+                query="test query",
+                user_level=1,
+                tier_filter=None,
+                collection_override="custom_collection",
+                apply_filters=None,
+            )
         )
         assert collection == "custom_collection"
 
     def test_prepare_search_context_apply_filters_false(self, search_service):
         """Test _prepare_search_context with apply_filters=False"""
-        embedding, collection, vector_db, chroma_filter, tier_values = search_service._prepare_search_context(
-            query="test query",
-            user_level=1,
-            tier_filter=None,
-            collection_override=None,
-            apply_filters=False,
+        embedding, collection, vector_db, chroma_filter, tier_values = (
+            search_service._prepare_search_context(
+                query="test query",
+                user_level=1,
+                tier_filter=None,
+                collection_override=None,
+                apply_filters=False,
+            )
         )
         assert chroma_filter is None
 
@@ -252,13 +262,13 @@ class TestSearchWithReranking:
     async def test_search_with_reranking_success(self, search_service, mock_reranker):
         """Test successful search with reranking"""
         search_service._init_reranker = MagicMock(return_value=mock_reranker)
-        
+
         results = await search_service.search_with_reranking(
             query="test query",
             user_level=1,
             limit=5,
         )
-        
+
         assert "results" in results
         assert "reranked" in results
         assert results["reranked"] is True
@@ -267,22 +277,22 @@ class TestSearchWithReranking:
     async def test_search_with_reranking_early_exit(self, search_service, mock_reranker):
         """Test search_with_reranking early exit for high confidence"""
         search_service._init_reranker = MagicMock(return_value=mock_reranker)
-        
+
         # Mock search to return high confidence result
         async def mock_search(*args, **kwargs):
             return {
                 "results": [{"text": "Doc", "score": 0.95, "metadata": {}}],
                 "collection": "test",
             }
-        
+
         search_service.search = AsyncMock(side_effect=mock_search)
-        
+
         results = await search_service.search_with_reranking(
             query="test query",
             user_level=1,
             limit=5,
         )
-        
+
         assert results.get("early_exit") is True
         assert results.get("reranked") is False
 
@@ -292,21 +302,21 @@ class TestSearchWithReranking:
         mock_reranker_disabled = MagicMock()
         mock_reranker_disabled.enabled = False
         search_service._init_reranker = MagicMock(return_value=mock_reranker_disabled)
-        
+
         async def mock_search(*args, **kwargs):
             return {
                 "results": [{"text": "Doc", "score": 0.8, "metadata": {}}],
                 "collection": "test",
             }
-        
+
         search_service.search = AsyncMock(side_effect=mock_search)
-        
+
         results = await search_service.search_with_reranking(
             query="test query",
             user_level=1,
             limit=5,
         )
-        
+
         assert results.get("reranked") is False
         assert results.get("early_exit") is False
 
@@ -318,13 +328,13 @@ class TestHybridSearch:
     async def test_hybrid_search_success(self, search_service, mock_bm25_vectorizer):
         """Test successful hybrid search"""
         search_service._bm25_vectorizer = mock_bm25_vectorizer
-        
+
         results = await search_service.hybrid_search(
             query="test query",
             user_level=1,
             limit=5,
         )
-        
+
         assert "results" in results
         assert "search_type" in results
         assert results["bm25_enabled"] is True
@@ -333,13 +343,13 @@ class TestHybridSearch:
     async def test_hybrid_search_without_bm25(self, search_service):
         """Test hybrid search without BM25 vectorizer"""
         search_service._bm25_vectorizer = None
-        
+
         results = await search_service.hybrid_search(
             query="test query",
             user_level=1,
             limit=5,
         )
-        
+
         assert "results" in results
         assert results["bm25_enabled"] is False
 
@@ -350,22 +360,22 @@ class TestHybridSearch:
         search_service._bm25_vectorizer.generate_query_sparse_vector = MagicMock(
             side_effect=Exception("BM25 error")
         )
-        
+
         # Mock regular search to succeed
         async def mock_search(*args, **kwargs):
             return {
                 "results": [{"text": "Doc", "score": 0.8, "metadata": {}}],
                 "collection": "test",
             }
-        
+
         search_service.search = AsyncMock(side_effect=mock_search)
-        
+
         results = await search_service.hybrid_search(
             query="test query",
             user_level=1,
             limit=5,
         )
-        
+
         # Should have called regular search as fallback
         assert search_service.search.called
 
@@ -381,7 +391,7 @@ class TestSearchCollection:
             collection_name="visa_oracle",
             limit=5,
         )
-        
+
         assert "results" in results
         assert results["collection"] == "visa_oracle"
 
@@ -389,18 +399,20 @@ class TestSearchCollection:
     async def test_search_collection_not_found(self, search_service):
         """Test search_collection when collection not found"""
         search_service.collection_manager.get_collection = MagicMock(return_value=None)
-        
+
         # Mock QdrantClient creation (imported inside the method)
         with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
-            mock_client.search = AsyncMock(return_value={
-                "documents": [],
-                "metadatas": [],
-                "distances": [],
-                "ids": [],
-            })
+            mock_client.search = AsyncMock(
+                return_value={
+                    "documents": [],
+                    "metadatas": [],
+                    "distances": [],
+                    "ids": [],
+                }
+            )
             mock_qdrant.return_value = mock_client
-            
+
             # Should create client and return results
             results = await search_service.search_collection(
                 query="test query",
@@ -418,4 +430,3 @@ class TestLevelToTiers:
         assert TierLevel.S in search_service.LEVEL_TO_TIERS[1]
         assert TierLevel.A in search_service.LEVEL_TO_TIERS[1]
         assert len(search_service.LEVEL_TO_TIERS[3]) == 5  # S, A, B, C, D
-

@@ -26,6 +26,7 @@ import {
   ReadingProgress,
   ArticleCard,
   NewsletterSidebar,
+  ArticleEngagement,
 } from '@/components/blog';
 import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/seo';
 import { cn } from '@/lib/utils';
@@ -378,27 +379,15 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
                 </div>
               </div>
 
-              {/* Mobile share buttons */}
-              <div className="lg:hidden mt-8 flex items-center justify-center gap-4">
-                <button
-                  onClick={shareOnTwitter}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                  <Twitter className="w-4 h-4" />
-                  Share
-                </button>
-                <button
-                  onClick={copyLink}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors',
-                    copied
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-white/5 text-white/70 hover:text-white hover:bg-white/10'
-                  )}
-                >
-                  <Link2 className="w-4 h-4" />
-                  {copied ? 'Copied!' : 'Copy link'}
-                </button>
+              {/* Engagement Section - Likes, Comments, Shares */}
+              <div className="mt-12 pt-8 border-t border-white/10">
+                <ArticleEngagement
+                  articleId={article.id}
+                  articleTitle={article.title}
+                  articleUrl={typeof window !== 'undefined' ? window.location.href : `https://balizero.com/${article.category}/${article.slug}`}
+                  initialLikes={article.likeCount || 0}
+                  initialComments={[]}
+                />
               </div>
             </article>
 

@@ -22,17 +22,24 @@ from app.routers.feedback import router
 
 @pytest.fixture
 def mock_db_pool():
-    """Mock database pool"""
+    """Mock database pool with proper async context managers"""
     pool = MagicMock()
-    conn = MagicMock()
+    conn = AsyncMock()
     conn.fetchval = AsyncMock(return_value=uuid4())
     conn.fetchrow = AsyncMock(return_value=None)
-    conn.transaction = MagicMock()
-    conn.transaction.__aenter__ = AsyncMock(return_value=None)
-    conn.transaction.__aexit__ = AsyncMock(return_value=False)
-    pool.acquire = MagicMock()
-    pool.acquire.__aenter__ = AsyncMock(return_value=conn)
-    pool.acquire.__aexit__ = AsyncMock(return_value=False)
+
+    # Create async context manager for transaction
+    transaction_cm = AsyncMock()
+    transaction_cm.__aenter__ = AsyncMock(return_value=None)
+    transaction_cm.__aexit__ = AsyncMock(return_value=False)
+    conn.transaction = MagicMock(return_value=transaction_cm)
+
+    # Create async context manager for acquire
+    acquire_cm = AsyncMock()
+    acquire_cm.__aenter__ = AsyncMock(return_value=conn)
+    acquire_cm.__aexit__ = AsyncMock(return_value=False)
+    pool.acquire = MagicMock(return_value=acquire_cm)
+
     return pool
 
 
@@ -59,11 +66,7 @@ class TestFeedbackRouter:
 
         response = client.post(
             "/api/v2/feedback/",
-            json={
-                "session_id": str(uuid4()),
-                "rating": 5,
-                "feedback_type": "positive"
-            }
+            json={"session_id": str(uuid4()), "rating": 5, "feedback_type": "positive"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -71,16 +74,14 @@ class TestFeedbackRouter:
 
     def test_submit_feedback_low_rating(self, app, client, mock_db_pool):
         """Test submitting feedback with low rating (creates review queue)"""
-        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        # Get the conn mock from the acquire context manager
+        acquire_cm = mock_db_pool.acquire.return_value
+        conn = acquire_cm.__aenter__.return_value
         conn.fetchval = AsyncMock(side_effect=[uuid4(), uuid4()])  # rating_id, review_queue_id
 
         response = client.post(
             "/api/v2/feedback/",
-            json={
-                "session_id": str(uuid4()),
-                "rating": 1,
-                "feedback_type": "negative"
-            }
+            json={"session_id": str(uuid4()), "rating": 1, "feedback_type": "negative"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -89,7 +90,8 @@ class TestFeedbackRouter:
 
     def test_submit_feedback_with_correction(self, app, client, mock_db_pool):
         """Test submitting feedback with correction text"""
-        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        acquire_cm = mock_db_pool.acquire.return_value
+        conn = acquire_cm.__aenter__.return_value
         conn.fetchval = AsyncMock(side_effect=[uuid4(), uuid4()])
 
         response = client.post(
@@ -97,8 +99,8 @@ class TestFeedbackRouter:
             json={
                 "session_id": str(uuid4()),
                 "rating": 5,
-                "correction_text": "This is a correction"
-            }
+                "correction_text": "This is a correction",
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -109,23 +111,19 @@ class TestFeedbackRouter:
         """Test submitting feedback with invalid feedback_type"""
         response = client.post(
             "/api/v2/feedback/",
-            json={
-                "session_id": str(uuid4()),
-                "rating": 5,
-                "feedback_type": "invalid"
-            }
+            json={"session_id": str(uuid4()), "rating": 5, "feedback_type": "invalid"},
         )
         # FastAPI returns 422 for validation errors
         assert response.status_code in [400, 422]
 
     def test_get_conversation_rating(self, app, client, mock_db_pool):
         """Test getting conversation rating"""
-        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        acquire_cm = mock_db_pool.acquire.return_value
+        conn = acquire_cm.__aenter__.return_value
         rating_id = uuid4()
         session_id = uuid4()
-        mock_rating = MagicMock()
-        # Make it dict-like for dict() conversion
-        mock_rating.__getitem__ = lambda self, key: {
+        # Create a dict-like mock that works with dict() conversion
+        mock_rating = {
             "id": rating_id,
             "session_id": session_id,
             "user_id": None,
@@ -133,18 +131,8 @@ class TestFeedbackRouter:
             "feedback_type": "positive",
             "feedback_text": None,
             "turn_count": None,
-            "created_at": "2025-01-01T00:00:00"
-        }.get(key)
-        mock_rating.get = lambda key, default=None: {
-            "id": rating_id,
-            "session_id": session_id,
-            "user_id": None,
-            "rating": 5,
-            "feedback_type": "positive",
-            "feedback_text": None,
-            "turn_count": None,
-            "created_at": "2025-01-01T00:00:00"
-        }.get(key, default)
+            "created_at": "2025-01-01T00:00:00",
+        }
         conn.fetchrow = AsyncMock(return_value=mock_rating)
 
         response = client.get(f"/api/v2/feedback/ratings/{session_id}")
@@ -152,7 +140,8 @@ class TestFeedbackRouter:
 
     def test_get_conversation_rating_not_found(self, app, client, mock_db_pool):
         """Test getting non-existent conversation rating"""
-        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
+        acquire_cm = mock_db_pool.acquire.return_value
+        conn = acquire_cm.__aenter__.return_value
         conn.fetchrow = AsyncMock(return_value=None)
 
         response = client.get(f"/api/v2/feedback/ratings/{uuid4()}")
@@ -165,14 +154,14 @@ class TestFeedbackRouter:
 
     def test_get_feedback_stats(self, app, client, mock_db_pool):
         """Test getting feedback statistics"""
-        conn = mock_db_pool.acquire.return_value.__aenter__.return_value
-        mock_stats = MagicMock()
-        mock_stats.__getitem__ = lambda self, key: {
+        acquire_cm = mock_db_pool.acquire.return_value
+        conn = acquire_cm.__aenter__.return_value
+        mock_stats = {
             "total_pending": 5,
             "total_resolved": 10,
             "total_ignored": 2,
-            "total_reviews": 17
-        }.get(key, 0)
+            "total_reviews": 17,
+        }
         conn.fetchrow = AsyncMock(return_value=mock_stats)
         conn.fetchval = AsyncMock(return_value=3)
 
@@ -181,4 +170,3 @@ class TestFeedbackRouter:
         data = response.json()
         assert "total_pending" in data
         assert "total_resolved" in data
-

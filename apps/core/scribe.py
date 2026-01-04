@@ -6,7 +6,7 @@ Scans codebase, extracts docstrings and API routes, generates LIVING_ARCHITECTUR
 
 import ast
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple
 from datetime import datetime
 from collections import defaultdict
 import re
@@ -91,7 +91,16 @@ class RouteExtractor(ast.NodeVisitor):
                     # Check if this router is known
                     if router_name in self.router_info:
                         method = decorator.func.attr.upper()  # get -> GET, post -> POST
-                        if method in ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD", "TRACE"]:
+                        if method in [
+                            "GET",
+                            "POST",
+                            "PUT",
+                            "DELETE",
+                            "PATCH",
+                            "OPTIONS",
+                            "HEAD",
+                            "TRACE",
+                        ]:
                             path = ""
                             if decorator.args:
                                 if isinstance(decorator.args[0], ast.Constant):
@@ -178,41 +187,51 @@ class Scribe:
             except Exception as e:
                 print(f"Debug: Error reading test file {file_path}: {e}")
                 pass
-        print(f"Debug: Found test files: {len(test_files)}, Total test cases: {total_test_cases}")
+        print(
+            f"Debug: Found test files: {len(test_files)}, Total test cases: {total_test_cases}"
+        )
         return len(test_files), total_test_cases
 
     def _count_db_tables_and_migrations(self) -> Tuple[int, int]:
         """Counts database tables from migrations and actual migration files."""
         migrations_dir = self.backend_dir / "db" / "migrations"
         table_count = set()
-        migration_files = list(migrations_dir.rglob("*.py")) + list(migrations_dir.rglob("*.sql"))
+        migration_files = list(migrations_dir.rglob("*.py")) + list(
+            migrations_dir.rglob("*.sql")
+        )
 
         for file_path in migration_files:
             try:
                 content = file_path.read_text(encoding="utf-8")
-                found_tables = re.findall(r"CREATE TABLE IF NOT EXISTS (\w+)", content, re.IGNORECASE)
-                found_tables += re.findall(r"CREATE TABLE (\w+)", content, re.IGNORECASE)
+                found_tables = re.findall(
+                    r"CREATE TABLE IF NOT EXISTS (\w+)", content, re.IGNORECASE
+                )
+                found_tables += re.findall(
+                    r"CREATE TABLE (\w+)", content, re.IGNORECASE
+                )
                 # Corrected regex for op.create_table
-                found_tables += re.findall(r"op.create_table\\((?:'([^']+)'|\"([^\"]+)\"))", content)
+                found_tables += re.findall(
+                    r"op.create_table\\((?:'([^']+)'|\"([^\"]+)\"))", content
+                )
                 for table in found_tables:
                     if isinstance(table, tuple):
                         # Extract the non-empty group from the tuple (either single or double quoted)
                         table_name = next((s for s in table if s), None)
                         if table_name:
-                            table_count.add(table_name.strip("\'\""))
+                            table_count.add(table_name.strip("'\""))
                     else:
-                        table_count.add(table.strip("\'\""))
+                        table_count.add(table.strip("'\""))
             except Exception:
                 pass
-        
+
         model_files = list(self.backend_dir.rglob("models.py"))
         for file_path in model_files:
             try:
                 content = file_path.read_text(encoding="utf-8")
                 found_models = re.findall(r"class (\w+)\(Base\)", content)
                 for model in found_models:
-                    s = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', model)
-                    table_name = re.sub(r'([A-Z]+)([A-Z][a-z]+)', r'\1_\2', s).lower()
+                    s = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", model)
+                    table_name = re.sub(r"([A-Z]+)([A-Z][a-z]+)", r"\1_\2", s).lower()
                     table_count.add(table_name)
             except Exception:
                 pass
@@ -235,11 +254,12 @@ class Scribe:
         for file_path in config_files:
             try:
                 content = file_path.read_text(encoding="utf-8")
-                env_vars.update(re.findall(r"os.getenv\\([\"']([A-Z_]+)[\"']\\)", content))
+                env_vars.update(
+                    re.findall(r"os.getenv\\([\"']([A-Z_]+)[\"']\\)", content)
+                )
             except Exception:
                 pass
         return len(env_vars)
-
 
     def scan_codebase(self) -> Tuple[List[Dict], Dict, Dict, Dict, int, set]:
         """Scan all Python files and extract information"""
@@ -259,34 +279,45 @@ class Scribe:
         # Custom logic to count API endpoints and router files
         api_endpoints = 0
         router_files_set = set()
-        
+
         # Directories to scan for router files
         router_search_paths = []
         router_search_paths.append(self.backend_dir / "app" / "routers")
         for module_dir in (self.backend_dir / "app" / "modules").iterdir():
             if module_dir.is_dir():
-                router_search_paths.append(module_dir) # Add module directories to search
-        
-        print(f"Debug: Starting API endpoint count. Initial endpoints: {api_endpoints}, router files: {len(router_files_set)}")
+                router_search_paths.append(
+                    module_dir
+                )  # Add module directories to search
+
+        print(
+            f"Debug: Starting API endpoint count. Initial endpoints: {api_endpoints}, router files: {len(router_files_set)}"
+        )
 
         for search_path in router_search_paths:
             for file_path in search_path.rglob("*.py"):
                 try:
                     content = file_path.read_text(encoding="utf-8")
-                    
+
                     # Count API endpoint decorators
-                    found_endpoints = re.findall(r"@router\.(get|post|put|delete|patch|options|head|trace)\(", content)
+                    found_endpoints = re.findall(
+                        r"@router\.(get|post|put|delete|patch|options|head|trace)\(",
+                        content,
+                    )
                     api_endpoints += len(found_endpoints)
-                    
+
                     # Heuristic for router file: contains "APIRouter" and at least one route decorator
                     if "APIRouter" in content and len(found_endpoints) > 0:
-                        router_files_set.add(str(file_path.relative_to(self.backend_dir)))
+                        router_files_set.add(
+                            str(file_path.relative_to(self.backend_dir))
+                        )
 
                 except Exception as e:
                     print(f"Debug: Error processing {file_path} for routes: {e}")
                     pass
-        
-        print(f"Debug: Finished API endpoint count. Final endpoints: {api_endpoints}, router files: {len(router_files_set)}")
+
+        print(
+            f"Debug: Finished API endpoint count. Final endpoints: {api_endpoints}, router files: {len(router_files_set)}"
+        )
 
         # Original AST parsing for routes, modules, classes, functions
         for file_path in python_files:
@@ -628,9 +659,13 @@ class Scribe:
         return "\n".join(lines)
 
     def generate_system_map_4d(
-        self,outes: List[Dict], modules: Dict, classes: Dict, functions: Dict,
+        self,
+        outes: List[Dict],
+        modules: Dict,
+        classes: Dict,
+        functions: Dict,
         api_endpoints: int,
-        router_files_set: set
+        router_files_set: set,
     ) -> str:
         """Generates the content for SYSTEM_MAP_4D.md."""
         # Gather additional stats needed for the 4D map
@@ -645,9 +680,13 @@ class Scribe:
 
         lines.append("# NUZANTARA 4D SYSTEM CONSCIOUSNESS")
         lines.append("")
-        lines.append(f"**Generated: {datetime.now().strftime('%Y-%m-%d')} | Auto-generated Report**")
+        lines.append(
+            f"**Generated: {datetime.now().strftime('%Y-%m-%d')} | Auto-generated Report**"
+        )
         lines.append("")
-        lines.append("> Questa mappa rappresenta la \"coscienza\" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.")
+        lines.append(
+            '> Questa mappa rappresenta la "coscienza" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.'
+        )
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -656,16 +695,24 @@ class Scribe:
         lines.append("")
         lines.append("| Metrica | Valore | Note |")
         lines.append("|---------|--------|------|")
-        lines.append(f"| **Documenti Qdrant** | **53,757** | 4 collezioni attive |") # Placeholder for now
-        lines.append(f"| **API Endpoints** | **{api_endpoints}** | {len(router_files_set)} file router |")
-        lines.append(f"| **Servizi Python** | **{python_services}** | /backend/services/ |")
+        lines.append(
+            "| **Documenti Qdrant** | **53,757** | 4 collezioni attive |"
+        )  # Placeholder for now
+        lines.append(
+            f"| **API Endpoints** | **{api_endpoints}** | {len(router_files_set)} file router |"
+        )
+        lines.append(
+            f"| **Servizi Python** | **{python_services}** | /backend/services/ |"
+        )
         lines.append(f"| **File Test** | **{test_files}** | unit/api/integration |")
         lines.append(f"| **Test Cases** | **~{test_cases}+** | pytest coverage |")
         lines.append(f"| **Tabelle Database** | **{db_tables}** | PostgreSQL |")
         lines.append(f"| **Migrazioni** | **{migrations}** | Applicate |")
         lines.append(f"| **Variabili Ambiente** | **{env_vars}+** | Across all apps |")
         lines.append(f"| **File Documentazione** | **{doc_files}+** | Markdown |")
-        lines.append(f"| **Fonti Intel** | **630+** | 12 categorie |") # Placeholder for now
+        lines.append(
+            "| **Fonti Intel** | **630+** | 12 categorie |"
+        )  # Placeholder for now
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -677,24 +724,40 @@ class Scribe:
         lines.append("├── apps/")
         lines.append("│   ├── backend-rag/          ← CORE (Python FastAPI)")
         lines.append("│   │   ├── backend/")
-        lines.append(f"│   │   │   ├── app/routers/  ({len(router_files_set)} files, {api_endpoints}+ endpoints)")
+        lines.append(
+            f"│   │   │   ├── app/routers/  ({len(router_files_set)} files, {api_endpoints}+ endpoints)"
+        )
         lines.append(f"│   │   │   ├── services/     ({python_services} Python files)")
         lines.append("│   │   │   ├── core/         (embeddings, chunking, cache)")
         lines.append("│   │   │   ├── middleware/   (auth, rate-limit, tracing)")
         lines.append("│   │   │   ├── llm/          (Gemini, OpenRouter, Jaksel)")
-        lines.append(f"│   │   │   ├── agents/       ({agent_files_count} Tier-1 autonomous)")
-        lines.append(f"│   │   │   └── migrations/   ({migrations} migrations, {db_tables} tables)")
-        lines.append(f"│   │   └── tests/            ({test_files} files, ~{test_cases}+ test cases)")
+        lines.append(
+            f"│   │   │   ├── agents/       ({agent_files_count} Tier-1 autonomous)"
+        )
+        lines.append(
+            f"│   │   │   └── migrations/   ({migrations} migrations, {db_tables} tables)"
+        )
+        lines.append(
+            f"│   │   └── tests/            ({test_files} files, ~{test_cases}+ test cases)"
+        )
         lines.append("│   │")
         lines.append("│   ├── mouth/                ← FRONTEND (Next.js 16 + React 19)")
-        lines.append("│   │   ├── src/app/          (login, chat, dashboard, clienti, pratiche)")
+        lines.append(
+            "│   │   ├── src/app/          (login, chat, dashboard, clienti, pratiche)"
+        )
         lines.append("│   │   ├── src/components/   (shadcn/ui + custom)")
         lines.append("│   │   └── src/lib/          (api clients, store, utils)")
         lines.append("│   │")
-        lines.append("│   ├── bali-intel-scraper/   ← SATELLITE: 630+ sources intel pipeline")
-        lines.append("│   ├── zantara-media/        ← SATELLITE: editorial content system")
+        lines.append(
+            "│   ├── bali-intel-scraper/   ← SATELLITE: 630+ sources intel pipeline"
+        )
+        lines.append(
+            "│   ├── zantara-media/        ← SATELLITE: editorial content system"
+        )
         lines.append("│   ├── evaluator/            ← SATELLITE: RAG quality (RAGAS)")
-        lines.append("│   └── kb/                   ← SATELLITE: legal scraping utilities")
+        lines.append(
+            "│   └── kb/                   ← SATELLITE: legal scraping utilities"
+        )
         lines.append("│")
         lines.append(f"├── docs/                     ({doc_files}+ markdown files)")
         lines.append("├── config/                   (prometheus, alertmanager)")
@@ -707,13 +770,23 @@ class Scribe:
         lines.append("")
         lines.append("| Categoria | File | Funzione |")
         lines.append("|-----------|------|----------|")
-        lines.append("| **RAG** | agentic_rag_orchestrator.py | Orchestrazione query RAG con ReAct |")
-        lines.append("| **Search** | search_service.py | Hybrid search (dense + BM25) |")
-        lines.append("| **Memory** | memory_orchestrator.py | Facts + Episodic + Collective |")
+        lines.append(
+            "| **RAG** | agentic_rag_orchestrator.py | Orchestrazione query RAG con ReAct |"
+        )
+        lines.append(
+            "| **Search** | search_service.py | Hybrid search (dense + BM25) |"
+        )
+        lines.append(
+            "| **Memory** | memory_orchestrator.py | Facts + Episodic + Collective |"
+        )
         lines.append("| **CRM** | auto_crm_service.py | Estrazione automatica entità |")
-        lines.append("| **LLM** | llm_gateway.py | Multi-provider (Gemini, OpenRouter) |")
+        lines.append(
+            "| **LLM** | llm_gateway.py | Multi-provider (Gemini, OpenRouter) |"
+        )
         lines.append("| **Sessions** | session_service.py | Gestione sessioni utente |")
-        lines.append("| **Conversations** | conversation_service.py | Storico conversazioni |")
+        lines.append(
+            "| **Conversations** | conversation_service.py | Storico conversazioni |"
+        )
         lines.append("")
 
         lines.append("### Frontend Pages")
@@ -773,8 +846,10 @@ class Scribe:
         lines.append("┌─────────────────────────────────────────────────────────────┐")
         lines.append("│                     DATA LAYER                               │")
         lines.append("│  ┌───────────┐  ┌───────────┐  ┌───────────┐               │")
-        lines.append(f"│  │ PostgreSQL│  │  Qdrant   │  │   Redis   │               │")
-        lines.append(f"│  │  {db_tables} tables│  │ 53,757 docs│  │   cache   │               │") # Placeholder for now
+        lines.append("│  │ PostgreSQL│  │  Qdrant   │  │   Redis   │               │")
+        lines.append(
+            f"│  │  {db_tables} tables│  │ 53,757 docs│  │   cache   │               │"
+        )  # Placeholder for now
         lines.append("│  └───────────┘  └───────────┘  └───────────┘               │")
         lines.append("└─────────────────────────────────────────────────────────────┘")
         lines.append("```")
@@ -894,14 +969,22 @@ class Scribe:
         lines.append(" VISA       LEGAL       TAX       KBLI     PRICING")
         lines.append("   │          │          │          │          │")
         lines.append("   ▼          ▼          ▼          ▼          ▼")
-        lines.append("visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing")
+        lines.append(
+            "visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing"
+        )
         lines.append("```")
         lines.append("")
         lines.append("**Keyword Routing:**")
-        lines.append("- **visa_oracle**: visa, immigration, imigrasi, passport, KITAS, stay permit")
-        lines.append("- **legal_unified**: company, incorporation, notary, contract, pasal, ayat")
+        lines.append(
+            "- **visa_oracle**: visa, immigration, imigrasi, passport, KITAS, stay permit"
+        )
+        lines.append(
+            "- **legal_unified**: company, incorporation, notary, contract, pasal, ayat"
+        )
         lines.append("- **tax_genius**: tax, pajak, calculation, tarif, PPh, PPN")
-        lines.append("- **kbli_unified**: kbli, business classification, OSS, NIB, negative list")
+        lines.append(
+            "- **kbli_unified**: kbli, business classification, OSS, NIB, negative list"
+        )
         lines.append("- **bali_zero_pricing**: price, cost, harga, biaya, berapa")
         lines.append("")
 
@@ -992,7 +1075,9 @@ class Scribe:
         lines.append("│ bali_zero_team   │       22    │ Team profiles    │")
         lines.append("│ + knowledge_base │   37,272    │ General KB       │")
         lines.append("├──────────────────┼─────────────┼──────────────────┤")
-        lines.append(f"│ TOTAL            │   53,757    │ All vectors      │") # Placeholder for now
+        lines.append(
+            "│ TOTAL            │   53,757    │ All vectors      │"
+        )  # Placeholder for now
         lines.append("└──────────────────┴─────────────┴──────────────────┘")
         lines.append("```")
         lines.append("")
@@ -1013,10 +1098,16 @@ class Scribe:
         lines.append("")
         lines.append("| Categoria | Tabelle |")
         lines.append("|-----------|---------|")
-        lines.append("| **CRM** | clients, practices, interactions, practice_documents |")
-        lines.append("| **Memory** | memory_facts, collective_memories, episodic_memories |")
+        lines.append(
+            "| **CRM** | clients, practices, interactions, practice_documents |"
+        )
+        lines.append(
+            "| **Memory** | memory_facts, collective_memories, episodic_memories |"
+        )
         lines.append("| **Knowledge Graph** | kg_entities, kg_edges |")
-        lines.append("| **Sessions** | sessions, conversations, conversation_messages |")
+        lines.append(
+            "| **Sessions** | sessions, conversations, conversation_messages |"
+        )
         lines.append("| **Auth** | team_members, user_stats |")
         lines.append("| **RAG** | parent_documents, document_chunks, golden_answers |")
         lines.append("| **System** | migrations, query_clusters, cultural_knowledge |")
@@ -1029,27 +1120,37 @@ class Scribe:
         lines.append("│                    TEST PYRAMID                              │")
         lines.append("├─────────────────────────────────────────────────────────────┤")
         lines.append("│                                                             │")
-        lines.append(f"│  UNITTESTS ({int(test_files/3)} files)                                     │") # Heuristic
+        lines.append(
+            f"│  UNITTESTS ({int(test_files / 3)} files)                                     │"
+        )  # Heuristic
         lines.append("│  ├─ Services: RAG, Memory, CRM, Sessions                   │")
         lines.append("│  ├─ Core: Embeddings, Chunking, Cache, Plugins             │")
         lines.append("│  ├─ Middleware: Auth, Rate Limiting                        │")
         lines.append("│  └─ Coverage target: 95%                                   │")
         lines.append("│                                                             │")
-        lines.append(f"│  API TESTS ({int(test_files/3)} files)                                      │") # Heuristic
+        lines.append(
+            f"│  API TESTS ({int(test_files / 3)} files)                                      │"
+        )  # Heuristic
         lines.append("│  ├─ Auth endpoints                                          │")
         lines.append("│  ├─ CRM endpoints                                           │")
         lines.append("│  ├─ Agentic RAG endpoints                                   │")
         lines.append("│  └─ TestClient with mocked services                        │")
         lines.append("│                                                             │")
-        lines.append(f"│  INTEGRATION TESTS ({int(test_files/3)} files)                              │") # Heuristic
+        lines.append(
+            f"│  INTEGRATION TESTS ({int(test_files / 3)} files)                              │"
+        )  # Heuristic
         lines.append("│  ├─ Real PostgreSQL (testcontainers)                       │")
         lines.append("│  ├─ Real Qdrant                                            │")
         lines.append("│  ├─ Real Redis                                             │")
         lines.append("│  └─ End-to-end workflows                                   │")
         lines.append("│                                                             │")
         lines.append("│  Conftest Files: 4 (1,619 lines total)                     │")
-        lines.append(f"│  Total Test Files: {test_files}                                      │")
-        lines.append(f"│  Total Test Cases: ~{test_cases}+                                  │")
+        lines.append(
+            f"│  Total Test Files: {test_files}                                      │"
+        )
+        lines.append(
+            f"│  Total Test Cases: ~{test_cases}+                                  │"
+        )
         lines.append("└─────────────────────────────────────────────────────────────┘")
         lines.append("```")
         lines.append("")
@@ -1058,7 +1159,9 @@ class Scribe:
         lines.append("")
         lines.append("```")
         lines.append("┌──────────────────────────────────────────────────────────────┐")
-        lines.append("│                     FLY.IO SINGAPORE                          │")
+        lines.append(
+            "│                     FLY.IO SINGAPORE                          │"
+        )
         lines.append("├──────────────────────────────────────────────────────────────┤")
         lines.append("│                                                              │")
         lines.append("│  nuzantara-rag (PRIMARY)        nuzantara-mouth (FRONTEND)  │")
@@ -1075,7 +1178,9 @@ class Scribe:
         lines.append("│                                                              │")
         lines.append("│  INFRASTRUCTURE                                              │")
         lines.append("│  ├─ PostgreSQL (Fly managed)                                 │")
-        lines.append(f"│  ├─ Qdrant Cloud (53,757 docs)                              │") # Placeholder for now
+        lines.append(
+            "│  ├─ Qdrant Cloud (53,757 docs)                              │"
+        )  # Placeholder for now
         lines.append("│  └─ Redis (optional cache)                                   │")
         lines.append("└──────────────────────────────────────────────────────────────┘")
         lines.append("```")
@@ -1113,10 +1218,18 @@ class Scribe:
 
         lines.append("## CRITICAL PATHS")
         lines.append("")
-        lines.append("1. **Chat Query**: Frontend → `/api/agentic-rag/stream` → AgenticRagOrchestrator → Qdrant → LLM → SSE")
-        lines.append("2. **CRM Create**: Frontend → `/api/crm/clients` → PostgreSQL → Response")
-        lines.append("3. **Auth Flow**: Login → JWT cookie → Middleware validation → Protected routes")
-        lines.append("4. **Intel Pipeline**: Sources → Scraper → AI Generation → Qdrant → RAG retrieval")
+        lines.append(
+            "1. **Chat Query**: Frontend → `/api/agentic-rag/stream` → AgenticRagOrchestrator → Qdrant → LLM → SSE"
+        )
+        lines.append(
+            "2. **CRM Create**: Frontend → `/api/crm/clients` → PostgreSQL → Response"
+        )
+        lines.append(
+            "3. **Auth Flow**: Login → JWT cookie → Middleware validation → Protected routes"
+        )
+        lines.append(
+            "4. **Intel Pipeline**: Sources → Scraper → AI Generation → Qdrant → RAG retrieval"
+        )
         lines.append("")
         lines.append("---")
         lines.append("")
@@ -1160,9 +1273,11 @@ class Scribe:
         lines.append("")
         lines.append("---")
         lines.append("")
-        lines.append(f"*System Map Complete. {agent_files_count} agents synthesized. 4 dimensions mapped.*")
+        lines.append(
+            f"*System Map Complete. {agent_files_count} agents synthesized. 4 dimensions mapped.*"
+        )
         lines.append(f"*Generated: {datetime.now().strftime('%Y-%m-%d')}*")
-        
+
         return "\n".join(lines)
 
     def run(self):
@@ -1183,7 +1298,9 @@ class Scribe:
         self.docs_dir.mkdir(parents=True, exist_ok=True)
 
         # Scan codebase
-        routes, modules, classes, functions, api_endpoints, router_files_set = self.scan_codebase()
+        routes, modules, classes, functions, api_endpoints, router_files_set = (
+            self.scan_codebase()
+        )
 
         print(f"{Colors.OKGREEN}✔ Found {len(routes)} API routes{Colors.ENDC}")
         print(f"{Colors.OKGREEN}✔ Found {len(modules)} modules{Colors.ENDC}")
@@ -1195,7 +1312,7 @@ class Scribe:
         system_overview_content = self.generate_system_overview(
             routes, modules, classes, functions
         )
-        
+
         # Generate and write SYSTEM_MAP_4D.md
         system_map_4d_content = self.generate_system_map_4d(
             routes, modules, classes, functions, api_endpoints, router_files_set

@@ -34,7 +34,11 @@ class TestEmotionalAttunementService:
         message = "URGENT!!! I need help ASAP!!! PROBLEM!!!"
         result = emotional_service.analyze_message(message)
         # Should detect STRESSED or URGENT due to keywords and caps
-        assert result.detected_state in [EmotionalState.STRESSED, EmotionalState.URGENT, EmotionalState.NEUTRAL]
+        assert result.detected_state in [
+            EmotionalState.STRESSED,
+            EmotionalState.URGENT,
+            EmotionalState.NEUTRAL,
+        ]
         assert result.confidence > 0.0
 
     def test_analyze_message_excited(self, emotional_service):
@@ -78,4 +82,3 @@ class TestEmotionalAttunementService:
         stats = emotional_service.get_stats()
         assert isinstance(stats, dict)
         assert "emotion_patterns" in stats
-

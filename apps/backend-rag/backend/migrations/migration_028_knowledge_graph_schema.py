@@ -47,6 +47,7 @@ async def apply(conn: Any) -> None:
 
     print("✅ Applied migration 028: Knowledge Graph schema created")
 
+
 async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS kg_edges;")
     await conn.execute("DROP TABLE IF EXISTS kg_nodes;")

@@ -150,6 +150,35 @@ class TestHybridOracleQuery:
             assert result.success is False
             assert result.error is not None
 
+    @pytest.mark.asyncio
+    async def test_query_http_exception_re_raise(self):
+        """Test HTTPException is re-raised (lines 168-170)"""
+        from fastapi import HTTPException
+
+        from backend.app.routers.oracle_universal import OracleQueryRequest, hybrid_oracle_query
+
+        request = OracleQueryRequest(
+            query="Test HTTP error",
+            user_email="test@example.com",
+        )
+
+        mock_service = Mock()
+        mock_user = {"email": "test@example.com"}
+
+        with patch("backend.app.routers.oracle_universal.oracle_service") as mock_oracle:
+            mock_oracle.process_query = AsyncMock(
+                side_effect=HTTPException(status_code=404, detail="Not found")
+            )
+
+            with pytest.raises(HTTPException) as exc:
+                await hybrid_oracle_query(request, mock_service, mock_user)
+            assert exc.value.status_code == 404
+
+    # Note: Lines 168-170 (user_profile id conversion) are covered by test_query_success
+    # when user_profile is returned from oracle_service. The conversion happens before
+    # Pydantic validation, so it's tested indirectly. The HTTPException re-raise (line 175)
+    # is explicitly tested above.
+
 
 class TestSubmitFeedback:
     """Test submit_user_feedback endpoint"""

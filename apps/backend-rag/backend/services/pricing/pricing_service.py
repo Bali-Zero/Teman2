@@ -74,7 +74,10 @@ class PricingService:
         if not self.loaded:
             return {
                 "error": "Official prices not loaded",
-                "fallback_contact": {"email": settings.SUPPORT_EMAIL, "whatsapp": settings.SUPPORT_WHATSAPP},
+                "fallback_contact": {
+                    "email": settings.SUPPORT_EMAIL,
+                    "whatsapp": settings.SUPPORT_WHATSAPP,
+                },
             }
 
         # Map service types to specific methods
@@ -99,7 +102,10 @@ class PricingService:
         if not self.loaded:
             return {
                 "error": "Official prices not loaded",
-                "fallback_contact": {"email": settings.SUPPORT_EMAIL, "whatsapp": settings.SUPPORT_WHATSAPP},
+                "fallback_contact": {
+                    "email": settings.SUPPORT_EMAIL,
+                    "whatsapp": settings.SUPPORT_WHATSAPP,
+                },
             }
         return self.prices
 

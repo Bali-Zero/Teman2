@@ -1,6 +1,7 @@
 """
 Apply Migration 031: Client Portal Schema
 """
+
 import asyncio
 import os
 import sys
@@ -34,8 +35,10 @@ async def main():
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

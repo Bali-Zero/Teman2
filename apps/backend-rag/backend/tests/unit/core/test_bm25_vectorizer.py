@@ -30,11 +30,7 @@ class TestBM25Vectorizer:
     def test_init_custom(self):
         """Test BM25Vectorizer initialization with custom parameters"""
         vectorizer = BM25Vectorizer(
-            vocab_size=10000,
-            k1=2.0,
-            b=0.8,
-            min_token_length=3,
-            max_token_length=40
+            vocab_size=10000, k1=2.0, b=0.8, min_token_length=3, max_token_length=40
         )
         assert vectorizer.vocab_size == 10000
         assert vectorizer.k1 == 2.0
@@ -66,7 +62,9 @@ class TestBM25Vectorizer:
         vectorizer = BM25Vectorizer()
         result = vectorizer.tokenize("dan di ke dari yang")
         # Should filter out Indonesian stopwords
-        assert len(result) == 0 or all(token not in ["dan", "di", "ke", "dari", "yang"] for token in result)
+        assert len(result) == 0 or all(
+            token not in ["dan", "di", "ke", "dari", "yang"] for token in result
+        )
 
     def test_tokenize_filters_short_tokens(self):
         """Test that short tokens are filtered"""
@@ -259,7 +257,3 @@ class TestBM25Vectorizer:
         with patch("core.bm25_vectorizer._bm25_vectorizer", None):
             vectorizer = get_bm25_vectorizer()
             assert isinstance(vectorizer, BM25Vectorizer)
-
-
-
-

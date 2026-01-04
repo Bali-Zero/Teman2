@@ -111,7 +111,3 @@ class TestRegisterCorsMiddleware:
             assert kwargs["allow_credentials"] is True
             assert kwargs["allow_methods"] == ["*"]
             assert kwargs["allow_headers"] == ["*"]
-
-
-
-

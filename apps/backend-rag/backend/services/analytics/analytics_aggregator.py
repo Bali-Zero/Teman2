@@ -55,25 +55,37 @@ class AnalyticsAggregator:
             if pool:
                 async with pool.acquire() as conn:
                     # Conversations today
-                    stats.conversations_today = await conn.fetchval(
-                        "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE"
-                    ) or 0
+                    stats.conversations_today = (
+                        await conn.fetchval(
+                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE"
+                        )
+                        or 0
+                    )
 
                     # Conversations this week
-                    stats.conversations_week = await conn.fetchval(
-                        "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'"
-                    ) or 0
+                    stats.conversations_week = (
+                        await conn.fetchval(
+                            "SELECT COUNT(*) FROM conversations WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'"
+                        )
+                        or 0
+                    )
 
                     # Active users (users with activity in last 24h)
-                    stats.users_active = await conn.fetchval(
-                        "SELECT COUNT(DISTINCT user_id) FROM conversations WHERE created_at >= NOW() - INTERVAL '24 hours'"
-                    ) or 0
+                    stats.users_active = (
+                        await conn.fetchval(
+                            "SELECT COUNT(DISTINCT user_id) FROM conversations WHERE created_at >= NOW() - INTERVAL '24 hours'"
+                        )
+                        or 0
+                    )
 
                     # Revenue pipeline (sum of quoted prices for active practices)
-                    stats.revenue_pipeline = float(await conn.fetchval(
-                        """SELECT COALESCE(SUM(quoted_price), 0) FROM practices
+                    stats.revenue_pipeline = float(
+                        await conn.fetchval(
+                            """SELECT COALESCE(SUM(quoted_price), 0) FROM practices
                         WHERE status NOT IN ('completed', 'cancelled')"""
-                    ) or 0)
+                        )
+                        or 0
+                    )
 
             # Uptime
             stats.uptime_seconds = time.time() - self._boot_time
@@ -83,7 +95,9 @@ class AnalyticsAggregator:
             if health_monitor:
                 service_states = getattr(health_monitor, "_service_states", {})
                 stats.services_total = len(service_states)
-                stats.services_healthy = sum(1 for s in service_states.values() if s.get("healthy", False))
+                stats.services_healthy = sum(
+                    1 for s in service_states.values() if s.get("healthy", False)
+                )
 
         except Exception as e:
             logger.error(f"Error fetching overview stats: {e}")
@@ -138,13 +152,13 @@ class AnalyticsAggregator:
                         LIMIT 10
                     """)
                     stats.top_queries = [
-                        {"query": q["query_text"][:100], "count": q["count"]}
-                        for q in top_queries
+                        {"query": q["query_text"][:100], "count": q["count"]} for q in top_queries
                     ]
 
             # Get Prometheus metrics if available
             try:
                 from app.metrics import MetricsCollector
+
                 collector = MetricsCollector()
                 # These would come from actual Prometheus metrics
                 stats.cache_hit_rate = 0.65  # Placeholder
@@ -202,32 +216,44 @@ class AnalyticsAggregator:
                         stats.revenue_paid = float(revenue_row["paid"])
 
                     # Renewals
-                    stats.renewals_30_days = await conn.fetchval("""
+                    stats.renewals_30_days = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM practices
                         WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '30 days'
                         AND next_renewal_date > CURRENT_DATE
                         AND status NOT IN ('completed', 'cancelled')
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
-                    stats.renewals_60_days = await conn.fetchval("""
+                    stats.renewals_60_days = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM practices
                         WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '60 days'
                         AND next_renewal_date > CURRENT_DATE + INTERVAL '30 days'
                         AND status NOT IN ('completed', 'cancelled')
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
-                    stats.renewals_90_days = await conn.fetchval("""
+                    stats.renewals_90_days = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM practices
                         WHERE next_renewal_date <= CURRENT_DATE + INTERVAL '90 days'
                         AND next_renewal_date > CURRENT_DATE + INTERVAL '60 days'
                         AND status NOT IN ('completed', 'cancelled')
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
                     # Pending documents
-                    stats.documents_pending = await conn.fetchval("""
+                    stats.documents_pending = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM documents
                         WHERE status = 'pending'
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
         except Exception as e:
             logger.error(f"Error fetching CRM stats: {e}")
@@ -249,18 +275,24 @@ class AnalyticsAggregator:
             if pool:
                 async with pool.acquire() as conn:
                     # Hours worked today
-                    stats.hours_today = float(await conn.fetchval("""
+                    stats.hours_today = float(
+                        await conn.fetchval("""
                         SELECT COALESCE(SUM(duration_minutes), 0) / 60.0
                         FROM team_work_sessions
                         WHERE session_start >= CURRENT_DATE
-                    """) or 0)
+                    """)
+                        or 0
+                    )
 
                     # Hours worked this week
-                    stats.hours_week = float(await conn.fetchval("""
+                    stats.hours_week = float(
+                        await conn.fetchval("""
                         SELECT COALESCE(SUM(duration_minutes), 0) / 60.0
                         FROM team_work_sessions
                         WHERE session_start >= CURRENT_DATE - INTERVAL '7 days'
-                    """) or 0)
+                    """)
+                        or 0
+                    )
 
                     # Conversations by agent
                     agent_rows = await conn.fetch("""
@@ -271,22 +303,27 @@ class AnalyticsAggregator:
                         GROUP BY team_member
                     """)
                     stats.conversations_by_agent = {
-                        r["team_member"]: r["count"]
-                        for r in agent_rows
+                        r["team_member"]: r["count"] for r in agent_rows
                     }
 
                     # Active sessions
-                    stats.active_sessions = await conn.fetchval("""
+                    stats.active_sessions = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM team_work_sessions
                         WHERE status = 'active'
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
                     # Open action items
-                    stats.action_items_open = await conn.fetchval("""
+                    stats.action_items_open = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM interactions
                         WHERE action_items IS NOT NULL
                         AND action_items != '[]'::jsonb
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
         except Exception as e:
             logger.error(f"Error fetching team stats: {e}")
@@ -322,12 +359,14 @@ class AnalyticsAggregator:
             if health_monitor:
                 service_states = getattr(health_monitor, "_service_states", {})
                 for name, state in service_states.items():
-                    services.append({
-                        "name": name,
-                        "healthy": state.get("healthy", False),
-                        "last_check": state.get("last_check", ""),
-                        "error": state.get("error", "")
-                    })
+                    services.append(
+                        {
+                            "name": name,
+                            "healthy": state.get("healthy", False),
+                            "last_check": state.get("last_check", ""),
+                            "error": state.get("error", ""),
+                        }
+                    )
             stats.services = services
 
         except Exception as e:
@@ -377,18 +416,14 @@ class AnalyticsAggregator:
                             count = coll_info.get("points_count", 0)
                             status = coll_info.get("status", "unknown")
                             total_docs += count
-                            collections.append({
-                                "name": coll_name,
-                                "documents": count,
-                                "status": status
-                            })
+                            collections.append(
+                                {"name": coll_name, "documents": count, "status": status}
+                            )
                         except Exception as e:
                             logger.warning(f"Failed to get info for collection {coll_name}: {e}")
-                            collections.append({
-                                "name": coll_name,
-                                "documents": 0,
-                                "status": "unknown"
-                            })
+                            collections.append(
+                                {"name": coll_name, "documents": 0, "status": "unknown"}
+                            )
 
                 stats.total_documents = total_docs
                 stats.collections = sorted(collections, key=lambda x: x["documents"], reverse=True)
@@ -413,11 +448,14 @@ class AnalyticsAggregator:
             if pool:
                 async with pool.acquire() as conn:
                     # Average rating
-                    stats.avg_rating = float(await conn.fetchval("""
+                    stats.avg_rating = float(
+                        await conn.fetchval("""
                         SELECT COALESCE(AVG(rating), 0)::numeric(3,2)
                         FROM conversation_ratings
                         WHERE created_at >= NOW() - INTERVAL '30 days'
-                    """) or 0)
+                    """)
+                        or 0
+                    )
 
                     # Rating distribution
                     dist_rows = await conn.fetch("""
@@ -426,18 +464,18 @@ class AnalyticsAggregator:
                         WHERE created_at >= NOW() - INTERVAL '30 days'
                         GROUP BY rating
                     """)
-                    stats.rating_distribution = {
-                        str(r["rating"]): r["count"]
-                        for r in dist_rows
-                    }
+                    stats.rating_distribution = {str(r["rating"]): r["count"] for r in dist_rows}
                     stats.total_ratings = sum(stats.rating_distribution.values())
 
                     # Negative feedback
-                    stats.negative_feedback_count = await conn.fetchval("""
+                    stats.negative_feedback_count = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM conversation_ratings
                         WHERE rating <= 2
                         AND created_at >= NOW() - INTERVAL '30 days'
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
                     # Recent negative feedback
                     negative = await conn.fetch("""
@@ -452,7 +490,7 @@ class AnalyticsAggregator:
                             "session_id": str(r["session_id"]),
                             "rating": r["rating"],
                             "feedback": r["feedback_text"][:100] if r["feedback_text"] else "",
-                            "date": r["created_at"].isoformat() if r["created_at"] else ""
+                            "date": r["created_at"].isoformat() if r["created_at"] else "",
                         }
                         for r in negative
                     ]
@@ -466,8 +504,7 @@ class AnalyticsAggregator:
                         ORDER BY date
                     """)
                     stats.quality_trend = [
-                        {"date": r["date"].isoformat(), "rating": float(r["avg"])}
-                        for r in trend
+                        {"date": r["date"].isoformat(), "rating": float(r["avg"])} for r in trend
                     ]
 
         except Exception as e:
@@ -490,11 +527,14 @@ class AnalyticsAggregator:
             if pool:
                 async with pool.acquire() as conn:
                     # Auth failures today
-                    stats.auth_failures_today = await conn.fetchval("""
+                    stats.auth_failures_today = (
+                        await conn.fetchval("""
                         SELECT COUNT(*) FROM auth_audit_log
                         WHERE success = false
                         AND created_at >= CURRENT_DATE
-                    """) or 0
+                    """)
+                        or 0
+                    )
 
                     # Recent errors from audit
                     errors = await conn.fetch("""
@@ -509,7 +549,7 @@ class AnalyticsAggregator:
                             "action": r["action"],
                             "email": r["email"],
                             "reason": r["failure_reason"],
-                            "time": r["created_at"].isoformat() if r["created_at"] else ""
+                            "time": r["created_at"].isoformat() if r["created_at"] else "",
                         }
                         for r in errors
                     ]
@@ -519,7 +559,11 @@ class AnalyticsAggregator:
             if health_monitor:
                 active = getattr(health_monitor, "_active_alerts", [])
                 stats.active_alerts = [
-                    {"service": a.get("service"), "message": a.get("message"), "severity": a.get("severity")}
+                    {
+                        "service": a.get("service"),
+                        "message": a.get("message"),
+                        "severity": a.get("severity"),
+                    }
                     for a in active[:10]
                 ]
 

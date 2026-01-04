@@ -57,7 +57,6 @@ VISA_TYPES = [
         "benefits": ["No visa required", "Government duty activities"],
         "metadata": {"series": "A", "bali_zero_service": False},
     },
-
     # ==========================================================================
     # SERIES B - VISA ON ARRIVAL (VOA)
     # ==========================================================================
@@ -90,7 +89,6 @@ VISA_TYPES = [
         ],
         "metadata": {"series": "B", "bali_zero_service": True, "popularity": "very_high"},
     },
-
     # ==========================================================================
     # SERIES C - VISA KUNJUNGAN (Single Entry Visit Visa)
     # ==========================================================================
@@ -170,7 +168,6 @@ VISA_TYPES = [
         ],
         "metadata": {"series": "C", "bali_zero_service": True},
     },
-
     # ==========================================================================
     # SERIES D - VISA KUNJUNGAN MULTIPLE (Multiple Entry Visit Visa)
     # ==========================================================================
@@ -265,11 +262,9 @@ VISA_TYPES = [
             "bali_zero_price_2y": "IDR 10,000,000",
         },
     },
-
     # ==========================================================================
     # SERIES E - KITAS (Limited Stay Permit)
     # ==========================================================================
-
     # --- E23 - Working KITAS ---
     {
         "code": "E23",
@@ -310,7 +305,6 @@ VISA_TYPES = [
             "processing_note": "4-6 weeks due to RPTKA + IMTA requirements",
         },
     },
-
     # --- E26 - Spouse KITAS ---
     {
         "code": "E26",
@@ -343,7 +337,6 @@ VISA_TYPES = [
             "bali_zero_price_onshore": "IDR 16,000,000",
         },
     },
-
     # --- E28 - Investor KITAS ---
     {
         "code": "E28A",
@@ -436,7 +429,6 @@ VISA_TYPES = [
             "golden_visa": True,
         },
     },
-
     # --- E29 - Research KITAS ---
     {
         "code": "E29",
@@ -460,7 +452,6 @@ VISA_TYPES = [
         ],
         "metadata": {"series": "E", "bali_zero_service": True},
     },
-
     # --- E30 - Student KITAS ---
     {
         "code": "E30A",
@@ -483,7 +474,6 @@ VISA_TYPES = [
         ],
         "metadata": {"series": "E", "bali_zero_service": True},
     },
-
     # --- E31 - Family/Dependent KITAS ---
     {
         "code": "E31",
@@ -514,7 +504,6 @@ VISA_TYPES = [
             "bali_zero_price_onshore": "IDR 18,000,000",
         },
     },
-
     # --- E32 - Ex-Indonesian KITAS ---
     {
         "code": "E32B",
@@ -537,7 +526,6 @@ VISA_TYPES = [
         ],
         "metadata": {"series": "E", "bali_zero_service": True},
     },
-
     # --- E33 - Special Categories ---
     {
         "code": "E33E",
@@ -652,7 +640,6 @@ VISA_TYPES = [
             "tax_note": "No tax obligation if income from abroad + transferred to foreign account",
         },
     },
-
     # --- E35 - Second Home Visa ---
     {
         "code": "E35",
@@ -686,7 +673,6 @@ VISA_TYPES = [
             "golden_visa": True,
         },
     },
-
     # ==========================================================================
     # SERIES F - VISA ON ARRIVAL (Special Countries)
     # ==========================================================================
@@ -710,7 +696,6 @@ VISA_TYPES = [
         ],
         "metadata": {"series": "F", "bali_zero_service": False},
     },
-
     # ==========================================================================
     # KITAP (Permanent Stay Permit)
     # ==========================================================================
@@ -780,7 +765,9 @@ async def seed_visa_types():
                 visa.get("renewable", False),
                 visa.get("processing_time_normal"),
                 visa.get("processing_time_express"),
-                json.dumps(visa.get("processing_timeline")) if visa.get("processing_timeline") else None,
+                json.dumps(visa.get("processing_timeline"))
+                if visa.get("processing_timeline")
+                else None,
                 visa.get("cost_visa"),
                 visa.get("cost_extension"),
                 json.dumps(visa.get("cost_details")) if visa.get("cost_details") else None,

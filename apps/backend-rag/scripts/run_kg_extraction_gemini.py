@@ -13,9 +13,8 @@ Usage:
     fly ssh console -a nuzantara-rag -C "cd /app && python -m scripts.run_kg_extraction_gemini --limit 1000 --clear"
 """
 
-import asyncio
 import argparse
-import json
+import asyncio
 import logging
 import os
 import sys
@@ -111,9 +110,8 @@ async def fetch_chunks_from_qdrant(
 
             for point in points:
                 chunk_id = str(point.get("id", ""))
-                text = (
-                    point.get("payload", {}).get("text", "") or
-                    point.get("payload", {}).get("content", "")
+                text = point.get("payload", {}).get("text", "") or point.get("payload", {}).get(
+                    "content", ""
                 )
                 if text and len(text.strip()) > 20:
                     all_chunks.append((chunk_id, text))
@@ -194,7 +192,7 @@ async def run_extraction(
         logger.info("=" * 60)
         logger.info("EXTRACTION COMPLETE")
         logger.info("=" * 60)
-        logger.info(f"Duration: {duration:.1f}s ({duration/60:.1f} minutes)")
+        logger.info(f"Duration: {duration:.1f}s ({duration / 60:.1f} minutes)")
         logger.info(f"Chunks processed: {stats.chunks_processed}")
         logger.info(f"Entities extracted: {stats.entities_extracted}")
         logger.info(f"Relations extracted: {stats.relations_extracted}")
@@ -229,7 +227,9 @@ async def main():
     parser = argparse.ArgumentParser(description="KG Extraction with Gemini Flash")
     parser.add_argument("--limit", type=int, default=None, help="Limit documents to process")
     parser.add_argument("--clear", action="store_true", help="Clear old KG data first")
-    parser.add_argument("--collection", type=str, default="legal_unified_hybrid", help="Qdrant collection")
+    parser.add_argument(
+        "--collection", type=str, default="legal_unified_hybrid", help="Qdrant collection"
+    )
     parser.add_argument("--batch-size", type=int, default=20, help="Batch size for processing")
     parser.add_argument("--concurrency", type=int, default=10, help="Max concurrent requests")
 

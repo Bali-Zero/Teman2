@@ -69,28 +69,29 @@ export interface DashboardStats {
 
 export interface Client {
   id: number;
-  uuid?: string;
+  uuid: string;
   full_name: string;
   email?: string;
   phone?: string;
   whatsapp?: string;
-  company_name?: string;
   nationality?: string;
   passport_number?: string;
   passport_expiry?: string;
-  date_of_birth?: string;
-  avatar_url?: string;
-  google_drive_folder_id?: string;
-  notes?: string;
-  status?: string;
-  client_type?: string;
-  assigned_to?: string;
-  tags?: string[];
   address?: string;
+  notes?: string;
+  google_drive_folder_id?: string;
+  status: 'lead' | 'active' | 'completed' | 'lost' | 'inactive' | 'prospect';
+  client_type: 'individual' | 'company';
+  assigned_to?: string;
+  avatar_url?: string;
+  company_name?: string;
   first_contact_date?: string;
   last_interaction_date?: string;
+  last_sentiment?: string;
+  last_interaction_summary?: string;
+  tags?: string[];
   created_at: string;
-  updated_at?: string;
+  updated_at: string;
 }
 
 // ============================================
@@ -266,8 +267,57 @@ export interface CreateClientParams {
   company_name?: string;
   nationality?: string;
   passport_number?: string;
+  passport_expiry?: string;
+  date_of_birth?: string;
   notes?: string;
+  status?: 'lead' | 'active' | 'completed' | 'lost' | 'inactive';
+  client_type?: 'individual' | 'company';
+  assigned_to?: string;
+  tags?: string[];
+  address?: string;
+  lead_source?: 'website' | 'whatsapp' | 'referral' | 'social_media' | 'walk_in' | 'other';
+  service_interest?: string[];  // e.g., ['kitas', 'pt_pma', 'tax']
 }
+
+// Common nationalities for dropdown
+export const COMMON_NATIONALITIES = [
+  'Australian', 'American', 'British', 'Canadian', 'Chinese', 'Dutch', 'French',
+  'German', 'Indian', 'Indonesian', 'Italian', 'Japanese', 'Korean', 'Malaysian',
+  'Russian', 'Singaporean', 'Spanish', 'Swedish', 'Swiss', 'Ukrainian'
+] as const;
+
+// Client statuses
+export const CLIENT_STATUSES = [
+  { value: 'lead', label: 'Lead', color: 'blue' },
+  { value: 'active', label: 'Active', color: 'green' },
+  { value: 'completed', label: 'Completed', color: 'purple' },
+  { value: 'lost', label: 'Lost', color: 'red' },
+  { value: 'inactive', label: 'Inactive', color: 'gray' },
+] as const;
+
+// Lead sources
+export const LEAD_SOURCES = [
+  { value: 'website', label: 'Website' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+// Service interests
+export const SERVICE_INTERESTS = [
+  { value: 'kitas_work', label: 'KITAS Work Permit' },
+  { value: 'kitas_investor', label: 'KITAS Investor' },
+  { value: 'kitas_spouse', label: 'KITAS Spouse' },
+  { value: 'kitap', label: 'KITAP Permanent' },
+  { value: 'pt_pma', label: 'PT PMA Setup' },
+  { value: 'tax_consulting', label: 'Tax Consulting' },
+  { value: 'visa_extension', label: 'Visa Extension' },
+  { value: 'retirement_visa', label: 'Retirement Visa' },
+  { value: 'second_home', label: 'Second Home Visa' },
+  { value: 'other', label: 'Other' },
+] as const;
 
 export interface RenewalAlert {
   id: number;

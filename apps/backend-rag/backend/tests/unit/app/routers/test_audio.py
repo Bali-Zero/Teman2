@@ -49,6 +49,7 @@ class TestAudioRouter:
         """Test getting audio service"""
         # Reset global if needed
         import app.services.audio_service as module
+
         module._audio_service = None
 
         with patch("app.services.audio_service.AudioService") as mock_service_class:
@@ -61,10 +62,7 @@ class TestAudioRouter:
         """Test transcribing audio"""
         test_file = ("audio.mp3", b"audio content", "audio/mpeg")
 
-        response = client.post(
-            "/audio/transcribe",
-            files={"file": test_file}
-        )
+        response = client.post("/audio/transcribe", files={"file": test_file})
         assert response.status_code == 200
         data = response.json()
         assert "text" in data
@@ -74,10 +72,7 @@ class TestAudioRouter:
         """Test transcribing audio with language parameter"""
         test_file = ("audio.mp3", b"audio content", "audio/mpeg")
 
-        response = client.post(
-            "/audio/transcribe?language=it",
-            files={"file": test_file}
-        )
+        response = client.post("/audio/transcribe?language=it", files={"file": test_file})
         assert response.status_code == 200
         mock_audio_service.transcribe_audio.assert_called_once()
 
@@ -88,27 +83,20 @@ class TestAudioRouter:
 
         test_file = ("audio.mp3", b"audio content", "audio/mpeg")
 
-        response = client.post(
-            "/audio/transcribe",
-            files={"file": test_file}
-        )
+        response = client.post("/audio/transcribe", files={"file": test_file})
         assert response.status_code == 500
 
     def test_generate_speech(self, client, mock_audio_service):
         """Test generating speech"""
         response = client.post(
-            "/audio/speech",
-            json={"text": "Hello world", "voice": "alloy", "model": "tts-1"}
+            "/audio/speech", json={"text": "Hello world", "voice": "alloy", "model": "tts-1"}
         )
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/mpeg"
 
     def test_generate_speech_default_voice(self, client, mock_audio_service):
         """Test generating speech with default voice"""
-        response = client.post(
-            "/audio/speech",
-            json={"text": "Hello world"}
-        )
+        response = client.post("/audio/speech", json={"text": "Hello world"})
         assert response.status_code == 200
         mock_audio_service.generate_speech.assert_called_once()
 
@@ -117,9 +105,5 @@ class TestAudioRouter:
         mock_audio_service.generate_speech.side_effect = Exception("Speech error")
         app.dependency_overrides[get_audio_service] = lambda: mock_audio_service
 
-        response = client.post(
-            "/audio/speech",
-            json={"text": "Hello world"}
-        )
+        response = client.post("/audio/speech", json={"text": "Hello world"})
         assert response.status_code == 500
-

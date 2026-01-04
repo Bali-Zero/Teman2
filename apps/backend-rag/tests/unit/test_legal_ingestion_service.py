@@ -231,7 +231,8 @@ async def test_ingest_legal_document_success(legal_ingestion_service, sample_leg
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
 
@@ -267,7 +268,8 @@ async def test_ingest_legal_document_with_title(legal_ingestion_service, sample_
         mocks["classifier"].get_min_access_level.return_value = 0
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path, title="Custom Title")
 
@@ -304,7 +306,8 @@ async def test_ingest_legal_document_with_tier_override(legal_ingestion_service,
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path, tier_override=TierLevel.A)
 
@@ -351,7 +354,10 @@ async def test_ingest_legal_document_with_collection_override(
                 "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
                 return_value=sample_legal_text,
             ),
-            patch("services.ingestion.legal_ingestion_service.QdrantClient", return_value=new_vector_db),
+            patch(
+                "services.ingestion.legal_ingestion_service.QdrantClient",
+                return_value=new_vector_db,
+            ),
             patch(
                 "services.ingestion.legal_ingestion_service.HierarchicalIndexer",
                 return_value=mocks["indexer"],
@@ -404,7 +410,10 @@ async def test_ingest_legal_document_vertex_ai_fallback(legal_ingestion_service,
                 "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
                 return_value=sample_legal_text,
             ),
-            patch("services.llm_clients.vertex_ai_service.VertexAIService", return_value=mock_vertex_service),
+            patch(
+                "services.llm_clients.vertex_ai_service.VertexAIService",
+                return_value=mock_vertex_service,
+            ),
         ):
             result = await service.ingest_legal_document(tmp_path)
 
@@ -453,7 +462,10 @@ async def test_ingest_legal_document_vertex_ai_fallback_failure(
                 "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
                 return_value=sample_legal_text,
             ),
-            patch("services.llm_clients.vertex_ai_service.VertexAIService", return_value=mock_vertex_service),
+            patch(
+                "services.llm_clients.vertex_ai_service.VertexAIService",
+                return_value=mock_vertex_service,
+            ),
             patch("services.ingestion.legal_ingestion_service.logger") as mock_logger,
         ):
             result = await service.ingest_legal_document(tmp_path)
@@ -494,7 +506,8 @@ async def test_ingest_legal_document_no_metadata(legal_ingestion_service, sample
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
 
@@ -531,7 +544,8 @@ async def test_ingest_legal_document_no_chunks(legal_ingestion_service, sample_l
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
 
@@ -572,7 +586,8 @@ async def test_ingest_legal_document_with_pasal_number(legal_ingestion_service, 
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
 
@@ -599,7 +614,8 @@ async def test_ingest_legal_document_exception_handling(legal_ingestion_service,
         mocks["cleaner"].clean.side_effect = Exception("Cleaning failed")
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path, title="Test Document")
 
@@ -644,7 +660,8 @@ async def test_ingest_legal_document_uses_title_from_metadata(
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
 
@@ -678,7 +695,8 @@ async def test_ingest_legal_document_uses_filename_when_no_title(
         mocks["classifier"].get_min_access_level.return_value = 0
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse", return_value=sample_legal_text
+            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
 

@@ -121,9 +121,9 @@ class TestConversationMemoryE2E:
                 db_pool=db_pool,
             )
 
-            assert (
-                len(conversation_history) == 3
-            ), f"Expected 3 messages, got {len(conversation_history)}"
+            assert len(conversation_history) == 3, (
+                f"Expected 3 messages, got {len(conversation_history)}"
+            )
             assert conversation_history[0]["content"] == turn1_user_message
             assert conversation_history[2]["content"] == turn2_user_message
 
@@ -211,9 +211,9 @@ class TestConversationMemoryE2E:
 
                 if call_args and "conversation_history" in call_args.kwargs:
                     history_passed = call_args.kwargs["conversation_history"]
-                    assert (
-                        len(history_passed) >= 2
-                    ), f"Expected at least 2 messages in history, got {len(history_passed)}"
+                    assert len(history_passed) >= 2, (
+                        f"Expected at least 2 messages in history, got {len(history_passed)}"
+                    )
                     print(f"✅ Conversation history passed to LLM: {len(history_passed)} messages")
 
                 # Verify answer contains Marco (entity extraction should add it to memory facts)
@@ -329,9 +329,9 @@ class TestConversationMemoryE2E:
 
             # Extract entities again - name should still be there
             entities_updated = extract_entities_from_history(history_updated)
-            assert (
-                entities_updated["name"] == "Marco"
-            ), "Name should still be remembered after multiple turns"
+            assert entities_updated["name"] == "Marco", (
+                "Name should still be remembered after multiple turns"
+            )
 
             # Cleanup
             await conn.execute("DELETE FROM conversations WHERE id = $1", conversation_id)

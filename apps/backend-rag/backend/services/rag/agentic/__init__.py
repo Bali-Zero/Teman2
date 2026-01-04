@@ -129,13 +129,13 @@ def create_agentic_rag(
     # ZANTARA LEAN STRATEGY (Dec 2025): Reduced to essential tools only.
     tools = [
         VectorSearchTool(retriever),  # FIRST: Primary tool for knowledge base search
-        PricingTool(),               # SECOND: Official Pricing
+        PricingTool(),  # SECOND: Official Pricing
         TeamKnowledgeTool(db_pool),  # THIRD: Team member queries
-        KnowledgeGraphTool(kg_builder), # FOURTH: Structured Knowledge Graph (NEW)
-        CalculatorTool(),            # FIFTH: Math safety
-        VisionTool(),                # SIXTH: Document analysis
-        ImageGenerationTool(),       # SEVENTH: Image generation (Imagen)
-        WebSearchTool(),             # EIGHTH: Web search for out-of-KB queries (Brave)
+        KnowledgeGraphTool(kg_builder),  # FOURTH: Structured Knowledge Graph (NEW)
+        CalculatorTool(),  # FIFTH: Math safety
+        VisionTool(),  # SIXTH: Document analysis
+        ImageGenerationTool(),  # SEVENTH: Image generation (Imagen)
+        WebSearchTool(),  # EIGHTH: Web search for out-of-KB queries (Brave)
     ]
     logger.debug("create_agentic_rag: Tools list created")
 

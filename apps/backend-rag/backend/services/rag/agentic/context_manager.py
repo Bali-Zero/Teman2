@@ -215,9 +215,13 @@ async def get_user_context(
 
             # DIAGNOSTIC: Log first 3 facts for debugging
             if memory_context.profile_facts:
-                logger.warning(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
+                logger.warning(
+                    f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}"
+                )
             else:
-                logger.warning(f"⚠️  [ContextManager] NO profile facts found for {original_user_id} - user recognition will fail!")
+                logger.warning(
+                    f"⚠️  [ContextManager] NO profile facts found for {original_user_id} - user recognition will fail!"
+                )
 
         except (asyncpg.PostgresError, ValueError, RuntimeError, KeyError) as e:
             logger.error(
@@ -228,6 +232,8 @@ async def get_user_context(
             context["facts"] = []
             context["collective_facts"] = []
     else:
-        logger.warning("⚠️  [ContextManager] NO memory_orchestrator provided - memory facts will be empty!")
+        logger.warning(
+            "⚠️  [ContextManager] NO memory_orchestrator provided - memory facts will be empty!"
+        )
 
     return context

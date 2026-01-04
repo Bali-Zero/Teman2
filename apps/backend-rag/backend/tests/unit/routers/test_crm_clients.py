@@ -1,6 +1,7 @@
 """
 Tests for CRM Clients Router
 """
+
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
@@ -41,6 +42,7 @@ def test_app(mock_db_pool):
 
     # Override database dependency
     pool, conn = mock_db_pool
+
     def override_get_database_pool():
         return pool
 
@@ -128,9 +130,7 @@ class TestCreateClient:
 
         pool, conn = mock_db_pool
 
-        conn.fetchrow = AsyncMock(
-            side_effect=asyncpg.UniqueViolationError("duplicate key value")
-        )
+        conn.fetchrow = AsyncMock(side_effect=asyncpg.UniqueViolationError("duplicate key value"))
 
         response = client.post(
             "/api/crm/clients/?created_by=test@example.com",
@@ -357,7 +357,9 @@ class TestGetClientsStats:
         pool, conn = mock_db_pool
 
         mock_status_row = TestCreateClient._create_mock_row({"status": "active", "count": 10})
-        mock_team_row = TestCreateClient._create_mock_row({"assigned_to": "team@example.com", "count": 5})
+        mock_team_row = TestCreateClient._create_mock_row(
+            {"assigned_to": "team@example.com", "count": 5}
+        )
         mock_count_row = TestCreateClient._create_mock_row({"count": 3})
 
         conn.fetch = AsyncMock(side_effect=[[mock_status_row], [mock_team_row]])
@@ -370,4 +372,3 @@ class TestGetClientsStats:
         assert "by_status" in response.json()
         assert "by_team_member" in response.json()
         assert "new_last_30_days" in response.json()
-

@@ -43,10 +43,12 @@ class TestKGExtractor:
         """Test entity extraction"""
         text = "PT PMA is a company type that requires minimum investment of 10 billion IDR"
 
-        with patch.object(kg_extractor.client, 'messages') as mock_messages:
+        with patch.object(kg_extractor.client, "messages") as mock_messages:
             mock_create = AsyncMock()
             mock_create.create.return_value = MagicMock(
-                content=[MagicMock(text='{"entities": [{"name": "PT PMA", "type": "Organization"}]}')]
+                content=[
+                    MagicMock(text='{"entities": [{"name": "PT PMA", "type": "Organization"}]}')
+                ]
             )
             mock_messages.create = mock_create
 
@@ -58,10 +60,14 @@ class TestKGExtractor:
         """Test relationship extraction"""
         text = "PT PMA requires minimum investment"
 
-        with patch.object(kg_extractor.client, 'messages') as mock_messages:
+        with patch.object(kg_extractor.client, "messages") as mock_messages:
             mock_create = AsyncMock()
             mock_create.create.return_value = MagicMock(
-                content=[MagicMock(text='{"relations": [{"source": "PT PMA", "target": "Investment", "type": "REQUIRES"}]}')]
+                content=[
+                    MagicMock(
+                        text='{"relations": [{"source": "PT PMA", "target": "Investment", "type": "REQUIRES"}]}'
+                    )
+                ]
             )
             mock_messages.create = mock_create
 
@@ -73,7 +79,7 @@ class TestKGExtractor:
         """Test error handling"""
         text = "test"
 
-        with patch.object(kg_extractor.client, 'messages') as mock_messages:
+        with patch.object(kg_extractor.client, "messages") as mock_messages:
             mock_messages.create.side_effect = Exception("API error")
 
             result = await kg_extractor.extract(text)
@@ -89,11 +95,7 @@ class TestExtractedEntity:
         from services.knowledge_graph.ontology import EntityType
 
         entity = ExtractedEntity(
-            id="e1",
-            name="PT PMA",
-            type=EntityType.ORGANIZATION,
-            mention="PT PMA",
-            confidence=0.9
+            id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA", confidence=0.9
         )
         assert entity.name == "PT PMA"
         assert entity.type == EntityType.ORGANIZATION
@@ -112,7 +114,7 @@ class TestExtractedRelation:
             target_id="e2",
             type=RelationType.REQUIRES,
             evidence="requires",
-            confidence=0.8
+            confidence=0.8,
         )
         assert relation.source_id == "e1"
         assert relation.target_id == "e2"
@@ -126,20 +128,15 @@ class TestExtractionResult:
         """Test result creation"""
         from services.knowledge_graph.ontology import EntityType, RelationType
 
-        entities = [ExtractedEntity(
-            id="e1",
-            name="PT PMA",
-            type=EntityType.ORGANIZATION,
-            mention="PT PMA"
-        )]
-        relations = [ExtractedRelation(
-            source_id="e1",
-            target_id="e2",
-            type=RelationType.REQUIRES,
-            evidence="requires"
-        )]
+        entities = [
+            ExtractedEntity(id="e1", name="PT PMA", type=EntityType.ORGANIZATION, mention="PT PMA")
+        ]
+        relations = [
+            ExtractedRelation(
+                source_id="e1", target_id="e2", type=RelationType.REQUIRES, evidence="requires"
+            )
+        ]
 
         result = ExtractionResult(chunk_id="chunk1", entities=entities, relations=relations)
         assert len(result.entities) == 1
         assert len(result.relations) == 1
-

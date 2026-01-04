@@ -324,6 +324,3 @@ class TestScalabilityScenarios:
 
             # Cleanup
             await conn.execute("DELETE FROM auto_scaling_triggers")
-
-
-

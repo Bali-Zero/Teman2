@@ -135,7 +135,6 @@ def create_list_practice_record(practice_id: int = 1, **kwargs) -> MockRecord:
 @pytest.fixture
 def mock_db_pool():
     """Create mock database pool with properly configured context manager"""
-    from unittest.mock import MagicMock
 
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
@@ -241,9 +240,7 @@ class TestPracticeCreateValidation:
         from app.routers.crm_practices import PracticeCreate
 
         with pytest.raises(ValueError, match="quoted_price must be non-negative"):
-            PracticeCreate(
-                client_id=1, practice_type_code="KITAS", quoted_price=Decimal("-100.00")
-            )
+            PracticeCreate(client_id=1, practice_type_code="KITAS", quoted_price=Decimal("-100.00"))
 
     def test_quoted_price_none_allowed(self):
         """Test None is allowed for quoted_price"""
@@ -348,9 +345,7 @@ class TestCreatePracticeEndpoint:
         mock_conn = mock_db_pool._mock_conn
 
         practice_type = create_practice_type_record(code="VISA", base_price=Decimal("2000.00"))
-        created_practice = create_practice_record(
-            practice_id=2, quoted_price=Decimal("2500.00")
-        )
+        created_practice = create_practice_record(practice_id=2, quoted_price=Decimal("2500.00"))
 
         mock_conn.fetchrow = AsyncMock(side_effect=[practice_type.data, created_practice.data])
         mock_conn.execute = AsyncMock()
@@ -421,7 +416,11 @@ class TestCreatePracticeEndpoint:
 
         assert response.status_code == 503
         detail = response.json()["detail"]
-        assert "unavailable" in detail.lower() or "database" in detail.lower() or "error" in detail.lower()
+        assert (
+            "unavailable" in detail.lower()
+            or "database" in detail.lower()
+            or "error" in detail.lower()
+        )
 
     def test_create_practice_invalid_payload(self, client):
         """Test practice creation with invalid payload"""
@@ -506,9 +505,7 @@ class TestListPracticesEndpoint:
         """Test listing practices filtered by assigned team member"""
         mock_conn = mock_db_pool._mock_conn
 
-        practices = [
-            create_list_practice_record(practice_id=1, assigned_to="user@example.com")
-        ]
+        practices = [create_list_practice_record(practice_id=1, assigned_to="user@example.com")]
         mock_conn.fetch = AsyncMock(return_value=[p.data for p in practices])
 
         response = client.get("/api/crm/practices/?assigned_to=user@example.com")
@@ -864,9 +861,7 @@ class TestUpdatePracticeEndpoint:
         mock_conn = mock_db_pool._mock_conn
 
         expiry = date.today() + timedelta(days=180)
-        updated = create_practice_record(
-            practice_id=1, status="completed", expiry_date=expiry
-        )
+        updated = create_practice_record(practice_id=1, status="completed", expiry_date=expiry)
         mock_conn.fetchrow = AsyncMock(return_value=updated.data)
         mock_conn.execute = AsyncMock()
 
@@ -1047,7 +1042,9 @@ class TestAddDocumentEndpoint:
 class TestGetPracticesStatsEndpoint:
     """Tests for GET /api/crm/practices/stats/overview endpoint"""
 
-    @pytest.mark.skip(reason="Skipped due to @cached decorator JSON serialization issue with MagicMock in test environment")
+    @pytest.mark.skip(
+        reason="Skipped due to @cached decorator JSON serialization issue with MagicMock in test environment"
+    )
     def test_get_stats_success(self, client, mock_db_pool):
         """Test getting practice statistics successfully"""
         mock_conn = mock_db_pool._mock_conn
@@ -1076,14 +1073,10 @@ class TestGetPracticesStatsEndpoint:
         active_count = {"count": 8}
 
         # Setup sequential mock responses
-        mock_conn.fetch = AsyncMock(side_effect=[
-            [MockRecord(r) for r in by_status],
-            [MockRecord(r) for r in by_type]
-        ])
-        mock_conn.fetchrow = AsyncMock(side_effect=[
-            MockRecord(revenue),
-            MockRecord(active_count)
-        ])
+        mock_conn.fetch = AsyncMock(
+            side_effect=[[MockRecord(r) for r in by_status], [MockRecord(r) for r in by_type]]
+        )
+        mock_conn.fetchrow = AsyncMock(side_effect=[MockRecord(revenue), MockRecord(active_count)])
 
         response = client.get("/api/crm/practices/stats/overview")
 
@@ -1095,17 +1088,23 @@ class TestGetPracticesStatsEndpoint:
         assert "by_type" in data
         assert "revenue" in data
 
-    @pytest.mark.skip(reason="Skipped due to @cached decorator JSON serialization issue with MagicMock in test environment")
+    @pytest.mark.skip(
+        reason="Skipped due to @cached decorator JSON serialization issue with MagicMock in test environment"
+    )
     def test_get_stats_empty_database(self, client, mock_db_pool):
         """Test getting stats when database is empty"""
         mock_conn = mock_db_pool._mock_conn
 
         # Return empty results for all queries
         mock_conn.fetch = AsyncMock(side_effect=[[], []])
-        mock_conn.fetchrow = AsyncMock(side_effect=[
-            MockRecord({"total_revenue": None, "paid_revenue": None, "outstanding_revenue": None}),
-            MockRecord({"count": 0})
-        ])
+        mock_conn.fetchrow = AsyncMock(
+            side_effect=[
+                MockRecord(
+                    {"total_revenue": None, "paid_revenue": None, "outstanding_revenue": None}
+                ),
+                MockRecord({"count": 0}),
+            ]
+        )
 
         response = client.get("/api/crm/practices/stats/overview")
 
@@ -1114,7 +1113,9 @@ class TestGetPracticesStatsEndpoint:
         assert data["total_practices"] == 0
         assert data["active_practices"] == 0
 
-    @pytest.mark.skip(reason="Skipped due to @cached decorator JSON serialization issue with MagicMock in test environment")
+    @pytest.mark.skip(
+        reason="Skipped due to @cached decorator JSON serialization issue with MagicMock in test environment"
+    )
     def test_get_stats_database_error(self, client, mock_db_pool):
         """Test stats handles database errors"""
         mock_conn = mock_db_pool._mock_conn
@@ -1306,9 +1307,7 @@ class TestEdgeCases:
         mock_conn = mock_db_pool._mock_conn
 
         practice_type = create_practice_type_record()
-        created_practice = create_practice_record(
-            practice_id=1, quoted_price=Decimal("0.00")
-        )
+        created_practice = create_practice_record(practice_id=1, quoted_price=Decimal("0.00"))
 
         mock_conn.fetchrow = AsyncMock(side_effect=[practice_type.data, created_practice.data])
         mock_conn.execute = AsyncMock()

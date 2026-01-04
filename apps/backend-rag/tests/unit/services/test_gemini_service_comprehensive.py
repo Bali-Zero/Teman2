@@ -30,7 +30,10 @@ class TestGeminiJakselService:
         with patch("services.llm_clients.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = "test_key"
             with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
-                with patch("services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client):
+                with patch(
+                    "services.llm_clients.gemini_service.GenAIClient",
+                    return_value=mock_genai_client,
+                ):
                     return GeminiJakselService()
 
     def test_init(self, service):
@@ -43,7 +46,10 @@ class TestGeminiJakselService:
         with patch("services.llm_clients.gemini_service.settings") as mock_settings:
             mock_settings.google_api_key = "test_key"
             with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
-                with patch("services.llm_clients.gemini_service.GenAIClient", return_value=mock_genai_client):
+                with patch(
+                    "services.llm_clients.gemini_service.GenAIClient",
+                    return_value=mock_genai_client,
+                ):
                     service = GeminiJakselService(model_name="gemini-3-flash-preview")
                     assert "gemini-3-flash-preview" in service.model_name
 

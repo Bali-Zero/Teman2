@@ -39,7 +39,9 @@ class GoogleServices:
                 if self._gemini_initialized:
                     logger.info("✅ Google Gemini AI initialized successfully (new SDK)")
             else:
-                logger.warning("⚠️ GOOGLE_API_KEY not set or SDK unavailable - Gemini AI services disabled")
+                logger.warning(
+                    "⚠️ GOOGLE_API_KEY not set or SDK unavailable - Gemini AI services disabled"
+                )
                 self._gemini_initialized = False
 
             # Initialize Drive Service
@@ -94,9 +96,7 @@ class GoogleServices:
         # Strip 'models/' prefix for new SDK compatibility
         return model_name.replace("models/", "")
 
-    def get_gemini_model_name(
-        self, model_name: str = "gemini-3-flash-preview"
-    ) -> str:
+    def get_gemini_model_name(self, model_name: str = "gemini-3-flash-preview") -> str:
         """Get Gemini model name for use with GenAIClient.
 
         Note: This method now returns a model name string instead of a model instance.

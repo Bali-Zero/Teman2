@@ -166,7 +166,7 @@ async def main():
 
         # Summary
         total = sum(len(ids) for ids in all_duplicates.values())
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"📊 SUMMARY: {total} duplicates found")
         print("=" * 60)
 

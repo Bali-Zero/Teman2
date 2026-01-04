@@ -16,7 +16,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -128,7 +128,9 @@ def test_init_without_pool():
 def test_get_auto_crm_success(conversation_service, mock_auto_crm_service):
     """Test lazy loading of Auto-CRM service successfully"""
     # Mock the import at the module level
-    with patch("services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service):
+    with patch(
+        "services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service
+    ):
         result = conversation_service._get_auto_crm()
 
         assert result == mock_auto_crm_service
@@ -138,7 +140,9 @@ def test_get_auto_crm_success(conversation_service, mock_auto_crm_service):
 def test_get_auto_crm_cached(conversation_service, mock_auto_crm_service):
     """Test that Auto-CRM service is cached after first load"""
     # Mock the import at the module level
-    with patch("services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service) as mock_get_service:
+    with patch(
+        "services.crm.auto_crm_service.get_auto_crm_service", return_value=mock_auto_crm_service
+    ) as mock_get_service:
         # First call
         result1 = conversation_service._get_auto_crm()
         # Second call
@@ -162,7 +166,10 @@ def test_get_auto_crm_import_error(conversation_service):
 def test_get_auto_crm_general_exception(conversation_service):
     """Test handling of general exception when loading Auto-CRM"""
     # Mock the import to raise an exception
-    with patch("services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Unexpected error")):
+    with patch(
+        "services.crm.auto_crm_service.get_auto_crm_service",
+        side_effect=Exception("Unexpected error"),
+    ):
         result = conversation_service._get_auto_crm()
 
         assert result is None
@@ -418,9 +425,7 @@ async def test_save_conversation_memory_cache_error(
     mock_cache = MagicMock()
     mock_cache.add_message.side_effect = Exception("Cache error")
 
-    with patch(
-        "services.misc.conversation_service.get_memory_cache", return_value=mock_cache
-    ):
+    with patch("services.misc.conversation_service.get_memory_cache", return_value=mock_cache):
         result = await conversation_service.save_conversation(
             user_email="test@example.com",
             messages=sample_messages,
@@ -546,9 +551,7 @@ async def test_get_history_from_db_with_session_id(conversation_service, mock_db
 
 
 @pytest.mark.asyncio
-async def test_get_history_from_db_without_session_id(
-    conversation_service, mock_db_pool
-):
+async def test_get_history_from_db_without_session_id(conversation_service, mock_db_pool):
     """Test retrieving history from DB without session_id"""
     pool, conn = mock_db_pool
 
@@ -635,9 +638,7 @@ async def test_get_history_from_db_json_string(conversation_service, mock_db_poo
 
 
 @pytest.mark.asyncio
-async def test_get_history_fallback_to_cache(
-    conversation_service, mock_db_pool, mock_memory_cache
-):
+async def test_get_history_fallback_to_cache(conversation_service, mock_db_pool, mock_memory_cache):
     """Test falling back to memory cache when DB returns no results"""
     pool, conn = mock_db_pool
     conn.fetchrow.return_value = None
@@ -712,9 +713,7 @@ async def test_get_history_db_error_fallback_to_cache(
 
 
 @pytest.mark.asyncio
-async def test_get_history_cache_error(
-    conversation_service, mock_db_pool, mock_memory_cache
-):
+async def test_get_history_cache_error(conversation_service, mock_db_pool, mock_memory_cache):
     """Test handling of cache errors"""
     pool, conn = mock_db_pool
     conn.fetchrow.return_value = None
@@ -776,9 +775,7 @@ async def test_get_history_cache_limit_applied(
     pool, conn = mock_db_pool
     conn.fetchrow.return_value = None
 
-    cached_messages = [
-        {"role": "user", "content": f"Msg {i}"} for i in range(25)
-    ]
+    cached_messages = [{"role": "user", "content": f"Msg {i}"} for i in range(25)]
     mock_memory_cache.get_conversation.return_value = cached_messages
 
     with patch(
@@ -869,8 +866,7 @@ async def test_get_history_default_limit(conversation_service, mock_db_pool):
 
     # Create 100 messages
     many_messages = [
-        {"role": "user" if i % 2 == 0 else "assistant", "content": f"Msg {i}"}
-        for i in range(100)
+        {"role": "user" if i % 2 == 0 else "assistant", "content": f"Msg {i}"} for i in range(100)
     ]
     conn.fetchrow.return_value = {"messages": many_messages}
 

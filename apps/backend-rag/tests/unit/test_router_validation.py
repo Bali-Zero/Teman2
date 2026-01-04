@@ -33,8 +33,8 @@ from app.routers import (
 @pytest.fixture
 def client_agentic():
     """Create FastAPI test client for agentic_rag router"""
-    from app.routers.agentic_rag import get_orchestrator
     from app.dependencies import get_current_user
+    from app.routers.agentic_rag import get_orchestrator
 
     app = FastAPI()
     app.include_router(agentic_rag.router)

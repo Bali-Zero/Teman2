@@ -23,9 +23,10 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from services.llm_clients.pricing import TokenUsage
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
-from services.llm_clients.pricing import TokenUsage
+
 
 def mock_token_usage():
     return TokenUsage(prompt_tokens=10, completion_tokens=20)
@@ -43,10 +44,8 @@ class TestReasoningFinalCoverage:
         mock_tool.execute = AsyncMock(
             return_value='{"content": "KITAS info", "sources": [{"id": "doc1", "score": 0.9}]}'
         )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -57,13 +56,20 @@ class TestReasoningFinalCoverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -74,8 +80,14 @@ class TestReasoningFinalCoverage:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -99,10 +111,8 @@ class TestReasoningFinalCoverage:
         mock_tool.execute = AsyncMock(
             return_value='{"content": "KITAS info", "sources": "not a list"}'
         )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -111,13 +121,20 @@ class TestReasoningFinalCoverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -128,8 +145,14 @@ class TestReasoningFinalCoverage:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -158,6 +181,7 @@ class TestReasoningFinalCoverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -166,12 +190,17 @@ class TestReasoningFinalCoverage:
             else:
                 # Final answer generation raises RuntimeError
                 raise RuntimeError("Runtime error")
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -207,7 +236,11 @@ class TestReasoningFinalCoverage:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -238,6 +271,7 @@ class TestReasoningFinalCoverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -246,13 +280,18 @@ class TestReasoningFinalCoverage:
             else:
                 # Final answer generation raises RuntimeError
                 raise RuntimeError("Runtime error")
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -293,7 +332,11 @@ class TestReasoningFinalCoverage:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -313,4 +356,3 @@ class TestReasoningFinalCoverage:
         # Should filter stub response
         assert state.final_answer != "observation: none"
         assert len(state.final_answer) > 0
-

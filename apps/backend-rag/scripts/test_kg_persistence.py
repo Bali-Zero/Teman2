@@ -1,16 +1,23 @@
 """
 Test Knowledge Graph Persistence & Export
 """
-import sys
-import os
+
 import asyncio
-import asyncpg
 import json
+import os
+import sys
+
+import asyncpg
 
 # Add parent directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from backend.services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder, Entity, Relationship
+from backend.services.autonomous_agents.knowledge_graph_builder import (
+    Entity,
+    KnowledgeGraphBuilder,
+    Relationship,
+)
+
 
 async def test_persistence():
     print("🔌 Connecting to DB...")
@@ -31,7 +38,7 @@ async def test_persistence():
         entity_type="kbli_code",
         name="Restaurant KBLI (Persistent)",
         description="Persistent restaurant entity",
-        properties={"risk": "high", "source": "test_script"}
+        properties={"risk": "high", "source": "test_script"},
     )
     await kg.add_entity(e1)
 
@@ -40,7 +47,7 @@ async def test_persistence():
         entity_type="permit",
         name="NIB (Persistent)",
         description="Persistent NIB",
-        properties={"validity": "forever"}
+        properties={"validity": "forever"},
     )
     await kg.add_entity(e2)
 
@@ -49,24 +56,24 @@ async def test_persistence():
         source_entity_id="kbli_56101_persistent",
         target_entity_id="permit_nib_persistent",
         relationship_type="requires",
-        properties={"mandatory": True}
+        properties={"mandatory": True},
     )
     await kg.add_relationship(r1)
-    
+
     print("✅ Data persisted.")
 
     # 2. SIMULATE RESTART (New Instance)
     print("\n🔄 Simulating Server Restart (New Instance)...")
     kg_new = KnowledgeGraphBuilder(db_pool=pool)
-    
+
     # 3. EXPORT FROM DB (Should fetch what we just saved)
     print("📦 Exporting from DB...")
     json_out = await kg_new.export_graph("json")
     data = json.loads(json_out)
-    
+
     entities = data.get("entities", [])
     print(f"📊 Found {len(entities)} entities in DB export.")
-    
+
     found = False
     for e in entities:
         if e["entity_id"] == "kbli_56101_persistent":
@@ -74,11 +81,12 @@ async def test_persistence():
             print(f"✅ Verified Entity: {e['name']}")
             print(f"   Properties: {e['properties']}")
             break
-            
+
     if not found:
         print("❌ Failed to find persisted entity!")
 
     await pool.close()
+
 
 if __name__ == "__main__":
     asyncio.run(test_persistence())

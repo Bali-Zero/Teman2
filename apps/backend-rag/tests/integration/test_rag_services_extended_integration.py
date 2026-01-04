@@ -354,7 +354,9 @@ class TestVisionRAGIntegration:
         mock_genai_client = MagicMock()
         mock_genai_client.is_available = True
         mock_genai_client.generate_content = AsyncMock(
-            return_value={"text": '{"type": "TABLE", "extracted_text": "KBLI 56101", "description": "Table with KBLI codes"}'}
+            return_value={
+                "text": '{"type": "TABLE", "extracted_text": "KBLI 56101", "description": "Table with KBLI codes"}'
+            }
         )
         with (
             patch("services.rag.vision_rag.GENAI_AVAILABLE", True),

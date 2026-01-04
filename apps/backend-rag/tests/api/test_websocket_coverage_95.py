@@ -10,6 +10,7 @@ Coverage:
 - Error handling and edge cases
 """
 
+import asyncio
 import os
 import sys
 from pathlib import Path

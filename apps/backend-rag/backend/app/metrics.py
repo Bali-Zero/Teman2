@@ -39,25 +39,19 @@ ai_tokens_used = Counter("zantara_ai_tokens_used_total", "Total AI tokens used",
 
 # LLM Token Usage Metrics (Detailed)
 llm_prompt_tokens = Counter(
-    "zantara_llm_prompt_tokens_total",
-    "Total prompt/input tokens used",
-    ["model", "endpoint"]
+    "zantara_llm_prompt_tokens_total", "Total prompt/input tokens used", ["model", "endpoint"]
 )
 llm_completion_tokens = Counter(
     "zantara_llm_completion_tokens_total",
     "Total completion/output tokens used",
-    ["model", "endpoint"]
+    ["model", "endpoint"],
 )
-llm_cost_usd = Counter(
-    "zantara_llm_cost_usd_total",
-    "Total LLM cost in USD",
-    ["model"]
-)
+llm_cost_usd = Counter("zantara_llm_cost_usd_total", "Total LLM cost in USD", ["model"])
 llm_request_tokens = Histogram(
     "zantara_llm_request_tokens",
     "Tokens per request distribution",
     ["model", "type"],  # type = "prompt" or "completion"
-    buckets=[10, 50, 100, 500, 1000, 2000, 5000, 10000, 20000]
+    buckets=[10, 50, 100, 500, 1000, 2000, 5000, 10000, 20000],
 )
 
 # Database Metrics
@@ -91,46 +85,40 @@ rag_parallel_searches = Counter(
 rag_queries_total = Counter(
     "zantara_rag_queries_total",
     "Total RAG queries processed",
-    ["collection", "route_used", "status"]
+    ["collection", "route_used", "status"],
 )
 rag_tool_calls_total = Counter(
-    "zantara_rag_tool_calls_total",
-    "Total tool calls in agentic RAG",
-    ["tool_name", "status"]
+    "zantara_rag_tool_calls_total", "Total tool calls in agentic RAG", ["tool_name", "status"]
 )
 rag_fallback_count = Counter(
-    "zantara_rag_fallback_count_total",
-    "LLM model fallback events",
-    ["from_model", "to_model"]
+    "zantara_rag_fallback_count_total", "LLM model fallback events", ["from_model", "to_model"]
 )
 rag_context_length = Histogram(
     "zantara_rag_context_length_tokens",
     "Context length in tokens per query",
     ["collection"],
-    buckets=[100, 500, 1000, 2000, 4000, 8000, 16000, 32000]
+    buckets=[100, 500, 1000, 2000, 4000, 8000, 16000, 32000],
 )
 
 # Race Condition Metrics (Dec 2025 - Lock Contention Monitoring)
 memory_lock_timeout_total = Counter(
-    "zantara_memory_lock_timeout_total",
-    "Number of memory lock timeouts",
-    ["user_id"]
+    "zantara_memory_lock_timeout_total", "Number of memory lock timeouts", ["user_id"]
 )
 memory_lock_contention_seconds = Histogram(
     "zantara_memory_lock_contention_seconds",
     "Time spent waiting for memory locks",
     ["operation"],
-    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 5.0],
 )
 collection_lock_timeout_total = Counter(
     "zantara_collection_lock_timeout_total",
     "Number of collection lock timeouts",
-    ["collection_name"]
+    ["collection_name"],
 )
 cache_db_consistency_errors_total = Counter(
     "zantara_cache_db_consistency_errors_total",
     "Number of cache-DB consistency errors",
-    ["session_id"]
+    ["session_id"],
 )
 
 # Error Handling Metrics (Dec 2025 - Error Handling Fix)
@@ -178,7 +166,7 @@ bm25_initialization_success_total = Counter(
 bm25_initialization_failed_total = Counter(
     "zantara_bm25_initialization_failed_total",
     "Number of BM25 initialization failures",
-    ["error_type"]
+    ["error_type"],
 )
 
 memory_orchestrator_healthy_total = Counter(
@@ -205,27 +193,21 @@ memory_context_failed_total = Counter(
 llm_circuit_breaker_open_total = Counter(
     "zantara_llm_circuit_breaker_open_total",
     "Number of times circuit breaker was open (skipped model)",
-    ["model"]
+    ["model"],
 )
 llm_circuit_breaker_opened_total = Counter(
     "zantara_llm_circuit_breaker_opened_total",
     "Number of times circuit breaker opened",
-    ["model", "error_type"]
+    ["model", "error_type"],
 )
 llm_quota_exhausted_total = Counter(
-    "zantara_llm_quota_exhausted_total",
-    "Number of quota exhausted errors",
-    ["model"]
+    "zantara_llm_quota_exhausted_total", "Number of quota exhausted errors", ["model"]
 )
 llm_service_unavailable_total = Counter(
-    "zantara_llm_service_unavailable_total",
-    "Number of service unavailable errors",
-    ["model"]
+    "zantara_llm_service_unavailable_total", "Number of service unavailable errors", ["model"]
 )
 llm_model_error_total = Counter(
-    "zantara_llm_model_error_total",
-    "Number of model errors",
-    ["model", "error_type"]
+    "zantara_llm_model_error_total", "Number of model errors", ["model", "error_type"]
 )
 llm_all_models_failed_total = Counter(
     "zantara_llm_all_models_failed_total",
@@ -240,14 +222,12 @@ llm_max_depth_reached_total = Counter(
     "Number of times max fallback depth was reached",
 )
 llm_fallback_depth = Histogram(
-    "zantara_llm_fallback_depth",
-    "Fallback depth distribution",
-    buckets=[0, 1, 2, 3, 4, 5]
+    "zantara_llm_fallback_depth", "Fallback depth distribution", buckets=[0, 1, 2, 3, 4, 5]
 )
 llm_query_cost_usd = Histogram(
     "zantara_llm_query_cost_usd",
     "Query cost in USD distribution",
-    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0],
 )
 
 database_init_success_total = Counter(
@@ -257,7 +237,7 @@ database_init_success_total = Counter(
 database_init_failed_total = Counter(
     "zantara_database_init_failed_total",
     "Number of database initialization failures",
-    ["error_type", "is_transient"]
+    ["error_type", "is_transient"],
 )
 database_init_permanent_failure_total = Counter(
     "zantara_database_init_permanent_failure_total",
@@ -273,19 +253,108 @@ database_health_check_failed_total = Counter(
 )
 
 qdrant_timeout_total = Counter(
-    "zantara_qdrant_timeout_total",
-    "Number of Qdrant timeout errors",
-    ["error_type"]
+    "zantara_qdrant_timeout_total", "Number of Qdrant timeout errors", ["error_type"]
 )
 qdrant_http_error_total = Counter(
-    "zantara_qdrant_http_error_total",
-    "Number of Qdrant HTTP errors",
-    ["status_code", "error_type"]
+    "zantara_qdrant_http_error_total", "Number of Qdrant HTTP errors", ["status_code", "error_type"]
 )
 
 reasoning_low_context_quality_total = Counter(
     "zantara_reasoning_low_context_quality_total",
     "Number of times context quality was too low",
+)
+
+# Google Drive Metrics (Jan 2026 - Team Drive Integration)
+drive_operations_total = Counter(
+    "zantara_drive_operations_total",
+    "Total Google Drive operations",
+    [
+        "operation",
+        "user_email",
+        "status",
+    ],  # operation: upload, download, create_folder, create_doc, rename, delete, move, copy
+)
+drive_operation_duration_seconds = Histogram(
+    "zantara_drive_operation_duration_seconds",
+    "Google Drive operation duration in seconds",
+    ["operation"],
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
+)
+drive_file_size_bytes = Histogram(
+    "zantara_drive_file_size_bytes",
+    "Size of files uploaded/downloaded",
+    ["operation"],
+    buckets=[1024, 10240, 102400, 1048576, 10485760, 104857600],  # 1KB to 100MB
+)
+drive_oauth_refresh_total = Counter(
+    "zantara_drive_oauth_refresh_total",
+    "Number of OAuth token refresh operations",
+    ["status"],  # success, failed
+)
+drive_oauth_token_expiry_seconds = Gauge(
+    "zantara_drive_oauth_token_expiry_seconds", "Seconds until OAuth token expires"
+)
+drive_errors_total = Counter(
+    "zantara_drive_errors_total",
+    "Total Google Drive errors",
+    [
+        "error_type",
+        "operation",
+    ],  # error_type: auth_failed, quota_exceeded, not_found, permission_denied, network_error
+)
+drive_quota_usage_percent = Gauge(
+    "zantara_drive_quota_usage_percent", "Google Drive quota usage percentage"
+)
+drive_active_users = Gauge(
+    "zantara_drive_active_users", "Number of users who accessed Drive in last hour"
+)
+drive_files_accessed_total = Counter(
+    "zantara_drive_files_accessed_total",
+    "Total files accessed by type",
+    [
+        "file_type",
+        "action",
+    ],  # file_type: folder, document, spreadsheet, pdf, image, other; action: view, download
+)
+
+# Email Metrics (Jan 2026 - Zoho Mail Integration)
+email_operations_total = Counter(
+    "zantara_email_operations_total",
+    "Total email operations",
+    ["operation", "user_id", "status"],
+    # operation: send, reply, forward, delete, mark_read, mark_unread, flag, unflag, move, list, search, get_attachment
+)
+email_operation_duration_seconds = Histogram(
+    "zantara_email_operation_duration_seconds",
+    "Email operation duration in seconds",
+    ["operation"],
+    buckets=[0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0],
+)
+email_attachment_size_bytes = Histogram(
+    "zantara_email_attachment_size_bytes",
+    "Size of email attachments uploaded/downloaded",
+    ["operation"],
+    buckets=[1024, 10240, 102400, 1048576, 10485760],  # 1KB to 10MB
+)
+email_oauth_refresh_total = Counter(
+    "zantara_email_oauth_refresh_total",
+    "Number of Zoho OAuth token refresh operations",
+    ["status"],  # success, failed
+)
+email_errors_total = Counter(
+    "zantara_email_errors_total",
+    "Total email errors",
+    ["error_type", "operation"],
+    # error_type: auth_failed, rate_limited, not_found, api_error, network_error
+)
+email_unread_count = Gauge(
+    "zantara_email_unread_count",
+    "Total unread emails per user",
+    ["user_id"],
+)
+email_active_users = Gauge(
+    "zantara_email_active_users",
+    "Number of users with connected email accounts",
 )
 
 # Boot time tracking
@@ -442,11 +511,7 @@ class MetricsCollector:
             status: Query outcome ('success', 'error', 'fallback', 'cache_hit')
             context_tokens: Number of tokens in the context (for histogram)
         """
-        rag_queries_total.labels(
-            collection=collection,
-            route_used=route_used,
-            status=status
-        ).inc()
+        rag_queries_total.labels(collection=collection, route_used=route_used, status=status).inc()
 
         if context_tokens > 0:
             rag_context_length.labels(collection=collection).observe(context_tokens)
@@ -501,6 +566,153 @@ class MetricsCollector:
             session_id: Session ID where the error occurred
         """
         cache_db_consistency_errors_total.labels(session_id=session_id).inc()
+
+    # Google Drive Metrics Methods
+    def record_drive_operation(
+        self,
+        operation: str,
+        user_email: str,
+        status: str,
+        duration_seconds: float = 0,
+        file_size_bytes: int = 0,
+    ):
+        """Record a Google Drive operation.
+
+        Args:
+            operation: Type of operation (upload, download, create_folder, create_doc, rename, delete, move, copy, list, search)
+            user_email: Email of user performing the operation
+            status: Operation outcome (success, error)
+            duration_seconds: Time taken for the operation
+            file_size_bytes: Size of file for upload/download operations
+        """
+        # Sanitize email for metrics (use hash or truncate for privacy)
+        safe_email = user_email.split("@")[0] if user_email else "unknown"
+
+        drive_operations_total.labels(
+            operation=operation, user_email=safe_email, status=status
+        ).inc()
+
+        if duration_seconds > 0:
+            drive_operation_duration_seconds.labels(operation=operation).observe(duration_seconds)
+
+        if file_size_bytes > 0:
+            drive_file_size_bytes.labels(operation=operation).observe(file_size_bytes)
+
+    def record_drive_oauth_refresh(self, status: str):
+        """Record an OAuth token refresh operation.
+
+        Args:
+            status: Refresh outcome (success, failed)
+        """
+        drive_oauth_refresh_total.labels(status=status).inc()
+
+    def set_drive_oauth_expiry(self, seconds_until_expiry: float):
+        """Set the time until OAuth token expires.
+
+        Args:
+            seconds_until_expiry: Seconds until token expires
+        """
+        drive_oauth_token_expiry_seconds.set(seconds_until_expiry)
+
+    def record_drive_error(self, error_type: str, operation: str):
+        """Record a Google Drive error.
+
+        Args:
+            error_type: Type of error (auth_failed, quota_exceeded, not_found, permission_denied, network_error)
+            operation: Operation that caused the error
+        """
+        drive_errors_total.labels(error_type=error_type, operation=operation).inc()
+
+    def set_drive_quota_usage(self, usage_percent: float):
+        """Set the Drive quota usage percentage.
+
+        Args:
+            usage_percent: Quota usage as percentage (0-100)
+        """
+        drive_quota_usage_percent.set(usage_percent)
+
+    def set_drive_active_users(self, count: int):
+        """Set the number of active Drive users.
+
+        Args:
+            count: Number of users who accessed Drive recently
+        """
+        drive_active_users.set(count)
+
+    def record_drive_file_access(self, file_type: str, action: str):
+        """Record a file access event.
+
+        Args:
+            file_type: Type of file (folder, document, spreadsheet, pdf, image, other)
+            action: Access action (view, download)
+        """
+        drive_files_accessed_total.labels(file_type=file_type, action=action).inc()
+
+    # Email Metrics Methods
+    def record_email_operation(
+        self,
+        operation: str,
+        user_id: str,
+        status: str,
+        duration_seconds: float = 0,
+        attachment_size_bytes: int = 0,
+    ):
+        """Record an email operation.
+
+        Args:
+            operation: Type of operation (send, reply, forward, delete, mark_read, mark_unread, flag, unflag, move, list, search, get_attachment, upload_attachment)
+            user_id: User performing the operation
+            status: Operation outcome (success, error)
+            duration_seconds: Time taken for the operation
+            attachment_size_bytes: Size of attachment for upload/download operations
+        """
+        # Sanitize user_id for metrics (use hash or truncate for privacy)
+        safe_user_id = user_id[:8] if user_id else "unknown"
+
+        email_operations_total.labels(
+            operation=operation, user_id=safe_user_id, status=status
+        ).inc()
+
+        if duration_seconds > 0:
+            email_operation_duration_seconds.labels(operation=operation).observe(duration_seconds)
+
+        if attachment_size_bytes > 0:
+            email_attachment_size_bytes.labels(operation=operation).observe(attachment_size_bytes)
+
+    def record_email_oauth_refresh(self, status: str):
+        """Record an email OAuth token refresh operation.
+
+        Args:
+            status: Refresh outcome (success, failed)
+        """
+        email_oauth_refresh_total.labels(status=status).inc()
+
+    def record_email_error(self, error_type: str, operation: str):
+        """Record an email error.
+
+        Args:
+            error_type: Type of error (auth_failed, rate_limited, not_found, api_error, network_error)
+            operation: Operation that caused the error
+        """
+        email_errors_total.labels(error_type=error_type, operation=operation).inc()
+
+    def set_email_unread_count(self, user_id: str, count: int):
+        """Set the unread email count for a user.
+
+        Args:
+            user_id: User identifier
+            count: Number of unread emails
+        """
+        safe_user_id = user_id[:8] if user_id else "unknown"
+        email_unread_count.labels(user_id=safe_user_id).set(count)
+
+    def set_email_active_users(self, count: int):
+        """Set the number of users with connected email accounts.
+
+        Args:
+            count: Number of active email users
+        """
+        email_active_users.set(count)
 
 
 # Global metrics collector instance

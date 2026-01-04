@@ -11,7 +11,7 @@ Coverage:
 import os
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -37,13 +37,13 @@ class TestFeedbackP1Endpoints:
         pool = MagicMock()
         conn = AsyncMock()
         transaction = MagicMock()
-        
+
         # Setup async context managers
         pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
         pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
         conn.transaction.return_value.__aenter__ = AsyncMock(return_value=transaction)
         conn.transaction.return_value.__aexit__ = AsyncMock(return_value=None)
-        
+
         return pool, conn
 
     def test_submit_feedback_positive_rating_no_review(self, authenticated_client, mock_db_pool):
@@ -56,6 +56,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(return_value=rating_id)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -76,7 +77,7 @@ class TestFeedbackP1Endpoints:
                 assert data["success"] is True
                 assert data["review_queue_id"] is None  # Should NOT create review_queue
                 assert "Feedback saved successfully" in data["message"]
-                
+
                 # Verify fetchval was called once (only for conversation_ratings insert)
                 assert conn.fetchval.call_count == 1
         finally:
@@ -94,6 +95,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -114,14 +116,16 @@ class TestFeedbackP1Endpoints:
                 assert data["success"] is True
                 assert data["review_queue_id"] == str(review_queue_id)  # Should create review_queue
                 assert "added to review queue" in data["message"]
-                
+
                 # Verify fetchval was called twice (conversation_ratings + review_queue)
                 assert conn.fetchval.call_count == 2
         finally:
             if original_pool:
                 app.state.db_pool = original_pool
 
-    def test_submit_feedback_rating_1_creates_review_urgent(self, authenticated_client, mock_db_pool):
+    def test_submit_feedback_rating_1_creates_review_urgent(
+        self, authenticated_client, mock_db_pool
+    ):
         """Test POST /api/v2/feedback - rating 1 creates review_queue with urgent priority"""
         pool, conn = mock_db_pool
         session_id = uuid4()
@@ -131,6 +135,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -150,7 +155,7 @@ class TestFeedbackP1Endpoints:
                 data = response.json()
                 assert data["success"] is True
                 assert data["review_queue_id"] == str(review_queue_id)
-                
+
                 # Verify the INSERT query includes priority='urgent' for rating 1
                 # Check that fetchval was called with correct parameters
                 assert conn.fetchval.call_count == 2
@@ -158,7 +163,9 @@ class TestFeedbackP1Endpoints:
             if original_pool:
                 app.state.db_pool = original_pool
 
-    def test_submit_feedback_with_correction_text_creates_review(self, authenticated_client, mock_db_pool):
+    def test_submit_feedback_with_correction_text_creates_review(
+        self, authenticated_client, mock_db_pool
+    ):
         """Test POST /api/v2/feedback - correction_text SHOULD create review_queue even with high rating"""
         pool, conn = mock_db_pool
         session_id = uuid4()
@@ -168,6 +175,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -189,14 +197,16 @@ class TestFeedbackP1Endpoints:
                 assert data["success"] is True
                 assert data["review_queue_id"] == str(review_queue_id)  # Should create review_queue
                 assert "added to review queue" in data["message"]
-                
+
                 # Verify fetchval was called twice (conversation_ratings + review_queue)
                 assert conn.fetchval.call_count == 2
         finally:
             if original_pool:
                 app.state.db_pool = original_pool
 
-    def test_submit_feedback_correction_text_combined_with_feedback(self, authenticated_client, mock_db_pool):
+    def test_submit_feedback_correction_text_combined_with_feedback(
+        self, authenticated_client, mock_db_pool
+    ):
         """Test POST /api/v2/feedback - correction_text is combined with feedback_text in DB"""
         pool, conn = mock_db_pool
         session_id = uuid4()
@@ -205,6 +215,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(return_value=rating_id)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -231,7 +242,9 @@ class TestFeedbackP1Endpoints:
             if original_pool:
                 app.state.db_pool = original_pool
 
-    def test_submit_feedback_empty_correction_text_no_review(self, authenticated_client, mock_db_pool):
+    def test_submit_feedback_empty_correction_text_no_review(
+        self, authenticated_client, mock_db_pool
+    ):
         """Test POST /api/v2/feedback - empty correction_text should NOT create review_queue"""
         pool, conn = mock_db_pool
         session_id = uuid4()
@@ -240,6 +253,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(return_value=rating_id)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -328,6 +342,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -353,6 +368,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchrow = AsyncMock(return_value=None)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -381,6 +397,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(return_value=3)  # low_ratings_count
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -420,7 +437,11 @@ class TestFeedbackP1Endpoints:
             data = response.json()
             # Check for database error message (may vary)
             detail = data.get("detail", "")
-            assert "database" in detail.lower() or "connection" in detail.lower() or "unavailable" in detail.lower()
+            assert (
+                "database" in detail.lower()
+                or "connection" in detail.lower()
+                or "unavailable" in detail.lower()
+            )
         finally:
             if original_pool:
                 app.state.db_pool = original_pool
@@ -433,6 +454,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(side_effect=asyncpg.PostgresError("Database error"))
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -461,6 +483,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(return_value=rating_id)
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -485,7 +508,9 @@ class TestFeedbackP1Endpoints:
             if original_pool:
                 app.state.db_pool = original_pool
 
-    def test_submit_feedback_rating_4_with_correction_creates_review(self, authenticated_client, mock_db_pool):
+    def test_submit_feedback_rating_4_with_correction_creates_review(
+        self, authenticated_client, mock_db_pool
+    ):
         """Test POST /api/v2/feedback - rating 4 with correction SHOULD create review_queue"""
         pool, conn = mock_db_pool
         session_id = uuid4()
@@ -495,6 +520,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
         from app.main_cloud import app
+
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
 
@@ -518,4 +544,3 @@ class TestFeedbackP1Endpoints:
         finally:
             if original_pool:
                 app.state.db_pool = original_pool
-

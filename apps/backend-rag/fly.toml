@@ -12,9 +12,8 @@ primary_region = 'sin'
 
 [deploy]
   strategy = 'rolling'
-  # release_command = "sh -c 'python -m backend.db.migrate apply-all && python scripts/populate_kg.py --limit 50'"
-  # TEMPORARILY DISABLED: flyctl crashes with SIGSEGV when streaming release_command logs
-  # Migrations & KG Population: Run automatically via release_command to bypass local shell restrictions
+  release_command = "sh -c 'python -m backend.db.migrate apply-all'"
+  # Re-enabled by Safe Deploy Initiative (2026-01-05) - if it crashes, use safe_deploy.sh manual fallback
 
 [env]
   ENVIRONMENT = 'production'

@@ -29,20 +29,20 @@ def clean_image_generation_response(text: str) -> str:
         return text
 
     # Process line by line for better control
-    lines = text.split('\n')
+    lines = text.split("\n")
     cleaned_lines = []
 
     skip_patterns = [
-        r'pollinations\.ai',  # Any line with pollinations URL
-        r'^\s*\[Visualizza',  # Lines starting with [Visualizza
-        r'^\s*\d+\.\s*\*{0,2}Versione',  # "1. Versione..." or "1. **Versione..."
-        r'^\s*\d+\.\s*\*{0,2}(Prima|Seconda|Opzione)',  # Numbered options
-        r'^Ecco le opzioni',  # "Ecco le opzioni..."
-        r'^Ecco (due|le)',  # "Ecco due/le immagini..."
-        r'^Ho (creato|generato) (due|le)',  # "Ho creato due..."
-        r'^Ti propongo',  # "Ti propongo due..."
-        r'^\s*\(https?://',  # Lines starting with (http...
-        r'^Spero che queste opzioni',  # "Spero che queste opzioni..."
+        r"pollinations\.ai",  # Any line with pollinations URL
+        r"^\s*\[Visualizza",  # Lines starting with [Visualizza
+        r"^\s*\d+\.\s*\*{0,2}Versione",  # "1. Versione..." or "1. **Versione..."
+        r"^\s*\d+\.\s*\*{0,2}(Prima|Seconda|Opzione)",  # Numbered options
+        r"^Ecco le opzioni",  # "Ecco le opzioni..."
+        r"^Ecco (due|le)",  # "Ecco due/le immagini..."
+        r"^Ho (creato|generato) (due|le)",  # "Ho creato due..."
+        r"^Ti propongo",  # "Ti propongo due..."
+        r"^\s*\(https?://",  # Lines starting with (http...
+        r"^Spero che queste opzioni",  # "Spero che queste opzioni..."
     ]
 
     for line in lines:
@@ -54,11 +54,11 @@ def clean_image_generation_response(text: str) -> str:
         if not should_skip:
             cleaned_lines.append(line)
 
-    text = '\n'.join(cleaned_lines)
+    text = "\n".join(cleaned_lines)
 
     # Clean up multiple newlines and spaces
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    text = re.sub(r'  +', ' ', text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"  +", " ", text)
     text = text.strip()
 
     # If almost everything was removed, provide a default response
@@ -118,9 +118,9 @@ class AgenticQueryRequest(BaseModel):
     images: list[ImageInput] | None = None  # Attached images for vision
     session_id: str | None = None
     conversation_id: int | None = None
-    conversation_history: list[
-        ConversationMessageInput
-    ] | None = None  # Direct history from frontend
+    conversation_history: list[ConversationMessageInput] | None = (
+        None  # Direct history from frontend
+    )
 
 
 class AgenticQueryResponse(BaseModel):
@@ -210,7 +210,9 @@ async def query_agentic_rag(
         logger.error(f"❌ Error in query_agentic_rag: {str(e)}\n{tb}")
         # Temporarily include traceback in response for debugging
         # Generic error message for production
-        raise HTTPException(status_code=500, detail="Internal Server Error: The request could not be processed.") from e
+        raise HTTPException(
+            status_code=500, detail="Internal Server Error: The request could not be processed."
+        ) from e
 
 
 async def get_conversation_history_for_agentic(
@@ -336,8 +338,7 @@ async def stream_agentic_rag(
     authenticated_user_id = current_user.get("email") or current_user.get("user_id")
 
     logger.info(
-        f"🔐 Authenticated user: {authenticated_user_id} "
-        f"(role: {current_user.get('role', 'user')})"
+        f"🔐 Authenticated user: {authenticated_user_id} (role: {current_user.get('role', 'user')})"
     )
     # Get correlation ID from request state (set by RequestTracingMiddleware)
     correlation_id = (
@@ -364,18 +365,24 @@ async def stream_agentic_rag(
 
     # TRACING: Record span for streaming request (completes before response streams)
     # This ensures traces are sent even for long-running SSE connections
-    with trace_span("agentic_rag.stream", {
-        "user_id": authenticated_user_id or "anonymous",
-        "query_length": len(request_body.query) if request_body.query else 0,
-        "query_hash": query_hash,
-        "session_id": request_body.session_id or "none",
-        "correlation_id": correlation_id,
-        "has_conversation_history": bool(request_body.conversation_history),
-        "endpoint": "/api/agentic-rag/stream",
-    }):
-        add_span_event("stream_request_received", {
-            "query_preview": query_preview[:30] if query_preview else "",
-        })
+    with trace_span(
+        "agentic_rag.stream",
+        {
+            "user_id": authenticated_user_id or "anonymous",
+            "query_length": len(request_body.query) if request_body.query else 0,
+            "query_hash": query_hash,
+            "session_id": request_body.session_id or "none",
+            "correlation_id": correlation_id,
+            "has_conversation_history": bool(request_body.conversation_history),
+            "endpoint": "/api/agentic-rag/stream",
+        },
+    ):
+        add_span_event(
+            "stream_request_received",
+            {
+                "query_preview": query_preview[:30] if query_preview else "",
+            },
+        )
 
         # Validate query is not empty
         if not request_body.query or not request_body.query.strip():
@@ -396,11 +403,11 @@ async def stream_agentic_rag(
         try:
             # Yield initial status
             initial_status = {
-                'type': 'status',
-                'data': {
-                    'status': 'processing',
-                    'correlation_id': correlation_id,
-                }
+                "type": "status",
+                "data": {
+                    "status": "processing",
+                    "correlation_id": correlation_id,
+                },
             }
             yield f"data: {json.dumps(initial_status)}\n\n"
             events_yielded += 1
@@ -420,7 +427,9 @@ async def stream_agentic_rag(
                 )
 
             # Priority 2: Try to retrieve from database if no frontend history
-            elif authenticated_user_id and (request_body.conversation_id or request_body.session_id):
+            elif authenticated_user_id and (
+                request_body.conversation_id or request_body.session_id
+            ):
                 logger.info(
                     f"🔍 Retrieving conversation history from DB: conversation_id={request_body.conversation_id}, "
                     f"session_id={request_body.session_id}, user_id={authenticated_user_id} "
@@ -441,13 +450,13 @@ async def stream_agentic_rag(
                     logger.warning(f"Failed to load history: {e}")
                     # Yield error but continue
                     error_event = {
-                        'type': 'error',
-                        'data': {
-                            'error_type': 'history_load_failed',
-                            'message': 'Could not load conversation history',
-                            'non_fatal': True,
-                            'correlation_id': correlation_id,
-                        }
+                        "type": "error",
+                        "data": {
+                            "error_type": "history_load_failed",
+                            "message": "Could not load conversation history",
+                            "non_fatal": True,
+                            "correlation_id": correlation_id,
+                        },
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
@@ -465,10 +474,11 @@ async def stream_agentic_rag(
             images_for_vision = None
             if request_body.images and request_body.enable_vision:
                 images_for_vision = [
-                    {"base64": img.base64, "name": img.name}
-                    for img in request_body.images
+                    {"base64": img.base64, "name": img.name} for img in request_body.images
                 ]
-                logger.info(f"🖼️ Vision enabled with {len(images_for_vision)} images (correlation_id={correlation_id})")
+                logger.info(
+                    f"🖼️ Vision enabled with {len(images_for_vision)} images (correlation_id={correlation_id})"
+                )
 
             async for event in orchestrator.stream_query(
                 query=request_body.query,
@@ -483,13 +493,13 @@ async def stream_agentic_rag(
                         error_count += 1
                         if error_count >= max_errors:
                             error_event = {
-                                'type': 'error',
-                                'data': {
-                                    'error_type': 'too_many_errors',
-                                    'message': 'Stream aborted due to too many errors',
-                                    'fatal': True,
-                                    'correlation_id': correlation_id,
-                                }
+                                "type": "error",
+                                "data": {
+                                    "error_type": "too_many_errors",
+                                    "message": "Stream aborted due to too many errors",
+                                    "fatal": True,
+                                    "correlation_id": correlation_id,
+                                },
                             }
                             yield f"data: {json.dumps(error_event)}\n\n"
                             break
@@ -499,13 +509,13 @@ async def stream_agentic_rag(
                         error_count += 1
                         if error_count >= max_errors:
                             error_event = {
-                                'type': 'error',
-                                'data': {
-                                    'error_type': 'too_many_errors',
-                                    'message': 'Stream aborted due to too many errors',
-                                    'fatal': True,
-                                    'correlation_id': correlation_id,
-                                }
+                                "type": "error",
+                                "data": {
+                                    "error_type": "too_many_errors",
+                                    "message": "Stream aborted due to too many errors",
+                                    "fatal": True,
+                                    "correlation_id": correlation_id,
+                                },
                             }
                             yield f"data: {json.dumps(error_event)}\n\n"
                             break
@@ -554,13 +564,13 @@ async def stream_agentic_rag(
                     error_count += 1
                     logger.error(f"JSON serialization failed: {e}")
                     error_event = {
-                        'type': 'error',
-                        'data': {
-                            'error_type': 'serialization_error',
-                            'message': 'Failed to serialize event',
-                            'non_fatal': True,
-                            'correlation_id': correlation_id,
-                        }
+                        "type": "error",
+                        "data": {
+                            "error_type": "serialization_error",
+                            "message": "Failed to serialize event",
+                            "non_fatal": True,
+                            "correlation_id": correlation_id,
+                        },
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
@@ -569,13 +579,13 @@ async def stream_agentic_rag(
                     error_count += 1
                     logger.exception(f"Error processing stream event: {e}")
                     error_event = {
-                        'type': 'error',
-                        'data': {
-                            'error_type': 'processing_error',
-                            'message': str(e),
-                            'non_fatal': error_count < max_errors,
-                            'correlation_id': correlation_id,
-                        }
+                        "type": "error",
+                        "data": {
+                            "error_type": "processing_error",
+                            "message": str(e),
+                            "non_fatal": error_count < max_errors,
+                            "correlation_id": correlation_id,
+                        },
                     }
                     yield f"data: {json.dumps(error_event)}\n\n"
                     events_yielded += 1
@@ -585,11 +595,11 @@ async def stream_agentic_rag(
 
             # Yield final status
             final_status = {
-                'type': 'status',
-                'data': {
-                    'status': 'completed',
-                    'correlation_id': correlation_id,
-                }
+                "type": "status",
+                "data": {
+                    "status": "completed",
+                    "correlation_id": correlation_id,
+                },
             }
             yield f"data: {json.dumps(final_status)}\n\n"
             events_yielded += 1
@@ -597,13 +607,13 @@ async def stream_agentic_rag(
         except Exception as e:
             logger.exception(f"Fatal error in stream: {e}")
             fatal_error_event = {
-                'type': 'error',
-                'data': {
-                    'error_type': 'fatal_error',
-                    'message': f'Stream failed: {str(e)}',
-                    'fatal': True,
-                    'correlation_id': correlation_id,
-                }
+                "type": "error",
+                "data": {
+                    "error_type": "fatal_error",
+                    "message": f"Stream failed: {str(e)}",
+                    "fatal": True,
+                    "correlation_id": correlation_id,
+                },
             }
             yield f"data: {json.dumps(fatal_error_event)}\n\n"
             events_yielded += 1

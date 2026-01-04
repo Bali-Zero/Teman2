@@ -7,7 +7,7 @@ Tests concurrent read-write operations to ensure data consistency.
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -51,9 +51,7 @@ def mock_fact_extractor():
     """Mock fact extractor"""
     extractor = MagicMock()
     extractor.extract_facts_from_conversation = MagicMock(
-        return_value=[
-            {"content": "Test fact", "type": "general", "confidence": 0.8}
-        ]
+        return_value=[{"content": "Test fact", "type": "general", "confidence": 0.8}]
     )
     return extractor
 
@@ -83,14 +81,10 @@ async def test_concurrent_read_write_memory(orchestrator):
     )
 
     # Multiple reads should be able to proceed
-    read_tasks = [
-        orchestrator.get_user_context(user_email) for _ in range(5)
-    ]
+    read_tasks = [orchestrator.get_user_context(user_email) for _ in range(5)]
 
     # All should complete
-    results = await asyncio.gather(
-        *read_tasks, write_task, return_exceptions=True
-    )
+    results = await asyncio.gather(*read_tasks, write_task, return_exceptions=True)
 
     # Split reads and write result
     reads = results[:-1]
@@ -162,9 +156,7 @@ async def test_concurrent_reads_allowed(orchestrator):
     user_email = "test@example.com"
 
     # Simulate 20 concurrent reads (more than semaphore limit of 10)
-    tasks = [
-        orchestrator.get_user_context(user_email) for _ in range(20)
-    ]
+    tasks = [orchestrator.get_user_context(user_email) for _ in range(20)]
 
     # All should complete (semaphore will serialize but not block indefinitely)
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -176,4 +168,3 @@ async def test_concurrent_reads_allowed(orchestrator):
     # Verify all results are valid contexts
     for result in results:
         assert isinstance(result, MemoryContext)
-

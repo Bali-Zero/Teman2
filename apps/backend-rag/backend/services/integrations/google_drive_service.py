@@ -29,12 +29,13 @@ class GoogleDriveService:
     Manages Google Drive OAuth 2.0 authentication and file operations.
     """
 
-    # Required OAuth scopes
+    # Required OAuth scopes - FULL ACCESS for CRUD operations
     SCOPES = [
-        "https://www.googleapis.com/auth/drive.readonly",  # Read files and folders
-        "https://www.googleapis.com/auth/drive.file",  # Create/edit files created by app
-        "https://www.googleapis.com/auth/drive.metadata.readonly",  # Read file metadata
+        "https://www.googleapis.com/auth/drive",  # Full Drive access (read, write, delete)
     ]
+
+    # System-wide OAuth user ID (token shared by all team members)
+    SYSTEM_USER_ID = "SYSTEM"
 
     # Google OAuth endpoints
     AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -117,12 +118,16 @@ class GoogleDriveService:
             if response.status_code != 200:
                 error_data = response.json()
                 logger.error(f"[GDRIVE] Token exchange failed: {error_data}")
-                raise ValueError(f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}")
+                raise ValueError(
+                    f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}"
+                )
 
             token_data = response.json()
 
         # Calculate expiry time
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=token_data.get("expires_in", 3600))
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            seconds=token_data.get("expires_in", 3600)
+        )
 
         # Store tokens in database
         await self._store_tokens(
@@ -214,7 +219,9 @@ class GoogleDriveService:
 
             token_data = response.json()
 
-        expires_at = datetime.now(timezone.utc) + timedelta(seconds=token_data.get("expires_in", 3600))
+        expires_at = datetime.now(timezone.utc) + timedelta(
+            seconds=token_data.get("expires_in", 3600)
+        )
 
         await self._store_tokens(
             user_id=user_id,
@@ -314,7 +321,9 @@ class GoogleDriveService:
             if response.status_code != 200:
                 error = response.json()
                 logger.error(f"[GDRIVE] List files failed: {error}")
-                raise ValueError(f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}")
+                raise ValueError(
+                    f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}"
+                )
 
             data = response.json()
 
@@ -349,7 +358,9 @@ class GoogleDriveService:
 
             if response.status_code != 200:
                 error = response.json()
-                raise ValueError(f"Failed to get file: {error.get('error', {}).get('message', 'Unknown error')}")
+                raise ValueError(
+                    f"Failed to get file: {error.get('error', {}).get('message', 'Unknown error')}"
+                )
 
             return response.json()
 

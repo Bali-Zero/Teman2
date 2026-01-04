@@ -80,8 +80,7 @@ class PortalService:
 
             # Get primary company name
             primary_company = next(
-                (c for c in companies if c["is_primary"]),
-                companies[0] if companies else None
+                (c for c in companies if c["is_primary"]), companies[0] if companies else None
             )
 
             # Get upcoming tax deadlines (next 30 days)
@@ -104,15 +103,18 @@ class PortalService:
             )
 
             # Get unread messages count
-            unread_count = await conn.fetchval(
-                """
+            unread_count = (
+                await conn.fetchval(
+                    """
                 SELECT COUNT(*) FROM portal_messages
                 WHERE client_id = $1
                 AND direction = 'team_to_client'
                 AND read_at IS NULL
                 """,
-                client_id,
-            ) or 0
+                    client_id,
+                )
+                or 0
+            )
 
             # Get document counts
             doc_counts = await conn.fetchrow(
@@ -193,8 +195,12 @@ class PortalService:
 
         return {
             "status": status,
-            "type": f"{visa_practice['code']} - {visa_practice['name']}" if visa_practice["code"] else visa_practice["name"],
-            "expiryDate": visa_practice["expiry_date"].isoformat()[:10] if visa_practice["expiry_date"] else None,
+            "type": f"{visa_practice['code']} - {visa_practice['name']}"
+            if visa_practice["code"]
+            else visa_practice["name"],
+            "expiryDate": visa_practice["expiry_date"].isoformat()[:10]
+            if visa_practice["expiry_date"]
+            else None,
             "daysRemaining": days_left,
         }
 
@@ -216,28 +222,32 @@ class PortalService:
 
         # Add visa warning if expiring soon
         if visa_data["status"] == "warning" and visa_data["daysRemaining"]:
-            actions.append({
-                "id": f"visa-{action_id}",
-                "title": "Visa Expiring Soon",
-                "description": f"Your visa expires in {visa_data['daysRemaining']} days. Start renewal process.",
-                "priority": "high" if visa_data["daysRemaining"] <= 30 else "medium",
-                "type": "visa_renewal",
-                "href": "/portal/visa",
-            })
+            actions.append(
+                {
+                    "id": f"visa-{action_id}",
+                    "title": "Visa Expiring Soon",
+                    "description": f"Your visa expires in {visa_data['daysRemaining']} days. Start renewal process.",
+                    "priority": "high" if visa_data["daysRemaining"] <= 30 else "medium",
+                    "type": "visa_renewal",
+                    "href": "/portal/visa",
+                }
+            )
             action_id += 1
 
         # Add missing documents actions
         for item in action_items:
             missing_docs = item["missing_documents"] or []
             if missing_docs:
-                actions.append({
-                    "id": f"docs-{item['id']}",
-                    "title": f"Documents Required: {item['practice_name']}",
-                    "description": f"Please upload: {', '.join(missing_docs[:3])}{'...' if len(missing_docs) > 3 else ''}",
-                    "priority": "high" if item["status"] == "waiting_documents" else "medium",
-                    "type": "missing_documents",
-                    "href": "/portal/documents",
-                })
+                actions.append(
+                    {
+                        "id": f"docs-{item['id']}",
+                        "title": f"Documents Required: {item['practice_name']}",
+                        "description": f"Please upload: {', '.join(missing_docs[:3])}{'...' if len(missing_docs) > 3 else ''}",
+                        "priority": "high" if item["status"] == "waiting_documents" else "medium",
+                        "type": "missing_documents",
+                        "href": "/portal/documents",
+                    }
+                )
                 action_id += 1
                 if action_id > 5:  # Max 5 actions
                     break
@@ -329,13 +339,21 @@ class PortalService:
                 else:
                     status = "pending"
 
-                visa_type = f"{current_visa['code']} - {current_visa['type_name']}" if current_visa["code"] else current_visa["type_name"]
+                visa_type = (
+                    f"{current_visa['code']} - {current_visa['type_name']}"
+                    if current_visa["code"]
+                    else current_visa["type_name"]
+                )
 
                 current = {
                     "type": visa_type,
                     "status": status,
-                    "issueDate": current_visa["completion_date"].strftime("%d %b %Y") if current_visa["completion_date"] else "-",
-                    "expiryDate": current_visa["expiry_date"].strftime("%d %b %Y") if current_visa["expiry_date"] else "-",
+                    "issueDate": current_visa["completion_date"].strftime("%d %b %Y")
+                    if current_visa["completion_date"]
+                    else "-",
+                    "expiryDate": current_visa["expiry_date"].strftime("%d %b %Y")
+                    if current_visa["expiry_date"]
+                    else "-",
                     "daysRemaining": max(0, days_left),
                     "permitNumber": f"KITAS-{current_visa['id']:06d}",  # Generated permit number
                     "sponsor": "Bali Zero Indonesia",  # Default sponsor
@@ -346,7 +364,13 @@ class PortalService:
             for v in visa_history:
                 # Determine period string
                 start = v["start_date"].strftime("%b %Y") if v["start_date"] else ""
-                end = v["expiry_date"].strftime("%b %Y") if v["expiry_date"] else v["completion_date"].strftime("%b %Y") if v["completion_date"] else ""
+                end = (
+                    v["expiry_date"].strftime("%b %Y")
+                    if v["expiry_date"]
+                    else v["completion_date"].strftime("%b %Y")
+                    if v["completion_date"]
+                    else ""
+                )
                 period = f"{start} - {end}" if start and end else start or end or "-"
 
                 # Map status to frontend expected values
@@ -355,12 +379,14 @@ class PortalService:
                 else:
                     hist_status = "expired"
 
-                history.append({
-                    "id": str(v["id"]),
-                    "type": f"{v['code']} - {v['name']}" if v["code"] else v["name"],
-                    "period": period,
-                    "status": hist_status,
-                })
+                history.append(
+                    {
+                        "id": str(v["id"]),
+                        "type": f"{v['code']} - {v['name']}" if v["code"] else v["name"],
+                        "period": period,
+                        "status": hist_status,
+                    }
+                )
 
             # Build documents response (matching frontend PortalDocument)
             doc_list = []
@@ -387,17 +413,25 @@ class PortalService:
                     "expired": "expired",
                 }
 
-                doc_list.append({
-                    "id": str(d["id"]),
-                    "name": d["file_name"],
-                    "type": d["document_type"],
-                    "category": category_map.get(d["document_type"], "Other"),
-                    "status": status_map.get(d["status"], "pending"),
-                    "uploadDate": d["created_at"].strftime("%d %b %Y") if d["created_at"] else "-",
-                    "expiryDate": d["expiry_date"].strftime("%d %b %Y") if d["expiry_date"] else None,
-                    "size": f"{d['file_size_kb']} KB" if d["file_size_kb"] else "-",
-                    "downloadUrl": d["file_url"] if d["status"] in ("verified", "issued") else None,
-                })
+                doc_list.append(
+                    {
+                        "id": str(d["id"]),
+                        "name": d["file_name"],
+                        "type": d["document_type"],
+                        "category": category_map.get(d["document_type"], "Other"),
+                        "status": status_map.get(d["status"], "pending"),
+                        "uploadDate": d["created_at"].strftime("%d %b %Y")
+                        if d["created_at"]
+                        else "-",
+                        "expiryDate": d["expiry_date"].strftime("%d %b %Y")
+                        if d["expiry_date"]
+                        else None,
+                        "size": f"{d['file_size_kb']} KB" if d["file_size_kb"] else "-",
+                        "downloadUrl": d["file_url"]
+                        if d["status"] in ("verified", "issued")
+                        else None,
+                    }
+                )
 
             return {
                 "current": current,
@@ -438,9 +472,7 @@ class PortalService:
                 for c in companies
             ]
 
-    async def get_company_detail(
-        self, client_id: int, company_id: int
-    ) -> dict[str, Any]:
+    async def get_company_detail(self, client_id: int, company_id: int) -> dict[str, Any]:
         """Get detailed company information."""
         async with self.pool.acquire() as conn:
             # Verify client owns this company
@@ -517,15 +549,14 @@ class PortalService:
                         "id": d["id"],
                         "type": d["document_type"],
                         "name": d["file_name"],
-                        "downloadable": d["status"] in ("verified", "issued") and d["file_url"] is not None,
+                        "downloadable": d["status"] in ("verified", "issued")
+                        and d["file_url"] is not None,
                     }
                     for d in documents
                 ],
             }
 
-    async def set_primary_company(
-        self, client_id: int, company_id: int
-    ) -> dict[str, Any]:
+    async def set_primary_company(self, client_id: int, company_id: int) -> dict[str, Any]:
         """Set a company as primary for the client."""
         async with self.pool.acquire() as conn, conn.transaction():
             # Clear previous primary
@@ -649,7 +680,8 @@ class PortalService:
                     "size_kb": d["file_size_kb"],
                     "practice_id": d["practice_id"],
                     "practice_name": d["practice_name"],
-                    "downloadable": d["status"] in ("verified", "issued") and d["file_url"] is not None,
+                    "downloadable": d["status"] in ("verified", "issued")
+                    and d["file_url"] is not None,
                     "created_at": d["created_at"].isoformat(),
                 }
                 for d in documents
@@ -825,9 +857,7 @@ class PortalService:
                 "created_at": message["created_at"].isoformat(),
             }
 
-    async def mark_message_read(
-        self, client_id: int, message_id: int
-    ) -> dict[str, Any]:
+    async def mark_message_read(self, client_id: int, message_id: int) -> dict[str, Any]:
         """Mark a message as read."""
         async with self.pool.acquire() as conn:
             result = await conn.execute(
@@ -906,10 +936,10 @@ class PortalService:
             # Upsert preferences
             await conn.execute(
                 f"""
-                INSERT INTO client_preferences (client_id, {', '.join(allowed_fields.keys())})
+                INSERT INTO client_preferences (client_id, {", ".join(allowed_fields.keys())})
                 VALUES ($1, true, true, 'en', 'Asia/Jakarta')
                 ON CONFLICT (client_id) DO UPDATE
-                SET {', '.join(updates)}
+                SET {", ".join(updates)}
                 """,
                 *params,
             )
@@ -985,9 +1015,7 @@ class PortalService:
         }
         return progress_map.get(status, 0)
 
-    def _get_standard_tax_deadlines(
-        self, today: datetime
-    ) -> list[dict[str, Any]]:
+    def _get_standard_tax_deadlines(self, today: datetime) -> list[dict[str, Any]]:
         """Generate standard Indonesian tax deadlines."""
         year = today.year
         month = today.month
@@ -1004,13 +1032,19 @@ class PortalService:
                 tzinfo=timezone.utc,
             )
         days_until = (pph_date.date() - today.date()).days
-        deadlines.append({
-            "type": "PPh 21/23/4(2)",
-            "period": f"{pph_date.strftime('%b %Y')}",
-            "due_date": pph_date.isoformat(),
-            "days_until": days_until,
-            "urgency": "urgent" if days_until <= 14 else "warning" if days_until <= 30 else "normal",
-        })
+        deadlines.append(
+            {
+                "type": "PPh 21/23/4(2)",
+                "period": f"{pph_date.strftime('%b %Y')}",
+                "due_date": pph_date.isoformat(),
+                "days_until": days_until,
+                "urgency": "urgent"
+                if days_until <= 14
+                else "warning"
+                if days_until <= 30
+                else "normal",
+            }
+        )
 
         # PPN (VAT) - End of following month
         next_month = month + 1 if month < 12 else 1
@@ -1019,29 +1053,43 @@ class PortalService:
         if next_month == 12:
             ppn_date = datetime(next_year, 12, 31, tzinfo=timezone.utc)
         else:
-            ppn_date = datetime(next_year, next_month + 1, 1, tzinfo=timezone.utc) - timedelta(days=1)
+            ppn_date = datetime(next_year, next_month + 1, 1, tzinfo=timezone.utc) - timedelta(
+                days=1
+            )
 
         days_until = (ppn_date.date() - today.date()).days
-        deadlines.append({
-            "type": "PPN (VAT)",
-            "period": f"{ppn_date.strftime('%b %Y')}",
-            "due_date": ppn_date.isoformat(),
-            "days_until": days_until,
-            "urgency": "urgent" if days_until <= 14 else "warning" if days_until <= 30 else "normal",
-        })
+        deadlines.append(
+            {
+                "type": "PPN (VAT)",
+                "period": f"{ppn_date.strftime('%b %Y')}",
+                "due_date": ppn_date.isoformat(),
+                "days_until": days_until,
+                "urgency": "urgent"
+                if days_until <= 14
+                else "warning"
+                if days_until <= 30
+                else "normal",
+            }
+        )
 
         # Annual SPT - March 31
         spt_date = datetime(year, 3, 31, tzinfo=timezone.utc)
         if spt_date <= today:
             spt_date = datetime(year + 1, 3, 31, tzinfo=timezone.utc)
         days_until = (spt_date.date() - today.date()).days
-        deadlines.append({
-            "type": "Annual SPT",
-            "period": str(spt_date.year - 1),
-            "due_date": spt_date.isoformat(),
-            "days_until": days_until,
-            "urgency": "urgent" if days_until <= 14 else "warning" if days_until <= 30 else "normal",
-        })
+        deadlines.append(
+            {
+                "type": "Annual SPT",
+                "period": str(spt_date.year - 1),
+                "due_date": spt_date.isoformat(),
+                "days_until": days_until,
+                "urgency": "urgent"
+                if days_until <= 14
+                else "warning"
+                if days_until <= 30
+                else "normal",
+            }
+        )
 
         # Sort by days_until
         deadlines.sort(key=lambda x: x["days_until"])

@@ -5,7 +5,7 @@ Target: >95% coverage
 
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -51,7 +51,9 @@ class TestQdrantErrorClassifier:
         for status_code in [500, 502, 503, 504]:
             mock_response = MagicMock()
             mock_response.status_code = status_code
-            error = httpx.HTTPStatusError("Server error", request=MagicMock(), response=mock_response)
+            error = httpx.HTTPStatusError(
+                "Server error", request=MagicMock(), response=mock_response
+            )
 
             error_type, retryable = classifier.classify(error)
 
@@ -65,7 +67,9 @@ class TestQdrantErrorClassifier:
         for status_code in [400, 401, 403, 404, 422]:
             mock_response = MagicMock()
             mock_response.status_code = status_code
-            error = httpx.HTTPStatusError("Client error", request=MagicMock(), response=mock_response)
+            error = httpx.HTTPStatusError(
+                "Client error", request=MagicMock(), response=mock_response
+            )
 
             error_type, retryable = classifier.classify(error)
 
@@ -105,15 +109,17 @@ class TestQdrantMetrics:
 
         # Reset metrics
         original = _qdrant_metrics.copy()
-        _qdrant_metrics.update({
-            "search_calls": 0,
-            "search_total_time": 0.0,
-            "upsert_calls": 0,
-            "upsert_total_time": 0.0,
-            "upsert_documents_total": 0,
-            "retry_count": 0,
-            "errors": 0,
-        })
+        _qdrant_metrics.update(
+            {
+                "search_calls": 0,
+                "search_total_time": 0.0,
+                "upsert_calls": 0,
+                "upsert_total_time": 0.0,
+                "upsert_documents_total": 0,
+                "retry_count": 0,
+                "errors": 0,
+            }
+        )
 
         try:
             metrics = get_qdrant_metrics()
@@ -134,15 +140,17 @@ class TestQdrantMetrics:
         original = _qdrant_metrics.copy()
 
         # Set test data
-        _qdrant_metrics.update({
-            "search_calls": 10,
-            "search_total_time": 5.0,  # 5 seconds total
-            "upsert_calls": 5,
-            "upsert_total_time": 2.5,  # 2.5 seconds total
-            "upsert_documents_total": 100,
-            "retry_count": 2,
-            "errors": 1,
-        })
+        _qdrant_metrics.update(
+            {
+                "search_calls": 10,
+                "search_total_time": 5.0,  # 5 seconds total
+                "upsert_calls": 5,
+                "upsert_total_time": 2.5,  # 2.5 seconds total
+                "upsert_documents_total": 100,
+                "retry_count": 2,
+                "errors": 1,
+            }
+        )
 
         try:
             metrics = get_qdrant_metrics()
@@ -228,7 +236,3 @@ class TestRetryWithBackoff:
         assert result == "success"
         # Should have one delay (after first failure)
         assert len(delays) >= 1
-
-
-
-

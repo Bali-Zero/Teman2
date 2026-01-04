@@ -17,6 +17,7 @@ export interface UserProfile {
   role: string;
   team?: string;
   status?: string;
+  avatar?: string;
   metadata?: Record<string, unknown> | null;
   language_preference?: string;
 }

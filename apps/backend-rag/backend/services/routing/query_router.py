@@ -21,13 +21,12 @@ from typing import Any, Literal
 
 from app.core.constants import RoutingConstants
 
-from . import (
-    ConfidenceCalculatorService,
-    FallbackManagerService,
-    KeywordMatcherService,
-    PriorityOverrideService,
-    RoutingStatsService,
-)
+# Import directly from modules to avoid circular imports with __init__.py
+from .confidence_calculator import ConfidenceCalculatorService
+from .fallback_manager import FallbackManagerService
+from .keyword_matcher import KeywordMatcherService
+from .priority_override import PriorityOverrideService
+from .routing_stats import RoutingStatsService
 
 logger = logging.getLogger(__name__)
 

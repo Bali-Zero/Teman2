@@ -86,6 +86,3 @@ def test_all_message_types():
             message = get_fallback_message(msg_type, lang)
             assert isinstance(message, str)
             assert len(message) > 0
-
-
-

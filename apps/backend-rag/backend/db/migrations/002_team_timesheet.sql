@@ -26,7 +26,7 @@ CREATE OR REPLACE VIEW daily_work_hours AS
 SELECT
     user_id,
     email,
-    work_date,
+    DATE(clock_in_bali) as work_date,
     clock_in_bali,
     clock_out_bali,
     ROUND(CAST(EXTRACT(EPOCH FROM (clock_out_bali - clock_in_bali))/3600 AS NUMERIC), 2) as hours_worked
@@ -34,16 +34,21 @@ FROM (
     SELECT
         user_id,
         email,
-        DATE((timestamp AT TIME ZONE 'Asia/Makassar')) as work_date,
         (timestamp AT TIME ZONE 'Asia/Makassar') as clock_in_bali,
         LEAD((timestamp AT TIME ZONE 'Asia/Makassar')) OVER (
-            PARTITION BY user_id, DATE((timestamp AT TIME ZONE 'Asia/Makassar'))
+            PARTITION BY user_id 
             ORDER BY timestamp
-        ) as clock_out_bali
+        ) as clock_out_bali,
+        action_type,
+        LEAD(action_type) OVER (
+            PARTITION BY user_id
+            ORDER BY timestamp
+        ) as next_action_type
     FROM team_timesheet
-    WHERE action_type = 'clock_in'
 ) AS shifts
-WHERE clock_out_bali IS NOT NULL;
+WHERE action_type = 'clock_in' 
+  AND next_action_type = 'clock_out'
+  AND clock_out_bali IS NOT NULL;
 
 -- View: Current online status (who is clocked in without clock-out)
 CREATE OR REPLACE VIEW team_online_status AS

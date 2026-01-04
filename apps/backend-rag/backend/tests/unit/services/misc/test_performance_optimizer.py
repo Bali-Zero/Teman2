@@ -67,6 +67,7 @@ class TestAsyncTimed:
     @pytest.mark.asyncio
     async def test_async_timed(self):
         """Test async_timed decorator"""
+
         @async_timed("test_component")
         async def test_func():
             return "result"
@@ -80,6 +81,7 @@ class TestTimed:
 
     def test_timed(self):
         """Test timed decorator"""
+
         @timed("test_component")
         def test_func():
             return "result"
@@ -125,6 +127,7 @@ class TestAsyncLRUCache:
         await cache.set("key1", "value1")
         # Wait a tiny bit to ensure expiration
         import asyncio
+
         await asyncio.sleep(0.01)
 
         result = await cache.get("key1")
@@ -216,4 +219,3 @@ class TestMemoryOptimizer:
         settings = MemoryOptimizer.optimize_embedding_model()
         assert isinstance(settings, dict)
         assert "device" in settings
-

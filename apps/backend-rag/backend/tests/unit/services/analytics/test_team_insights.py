@@ -50,6 +50,7 @@ class TestTeamInsightsService:
     async def test_generate_team_insights_with_sessions(self, team_insights, mock_db_pool):
         """Test generating team insights with sessions"""
         from unittest.mock import MagicMock
+
         session = MagicMock()
         session.__getitem__ = lambda self, key: {
             "user_name": "User 1",
@@ -60,7 +61,7 @@ class TestTeamInsightsService:
             "conversations_count": 20,
             "activities_count": 50,
             "start_hour": 9.0,
-            "day_of_week": 1
+            "day_of_week": 1,
         }.get(key)
         sessions = [session]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -74,4 +75,3 @@ class TestTeamInsightsService:
         mock_db_pool.fetch = AsyncMock(return_value=[])
         results = await team_insights.generate_team_insights(days=14)
         assert isinstance(results, dict)
-

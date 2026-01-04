@@ -9,16 +9,15 @@ import asyncio
 import json
 import os
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
+
 async def run_controlled_extraction(
-    collection: str = "legal_unified_hybrid",
-    sample_size: int = 50,
-    dry_run: bool = True
+    collection: str = "legal_unified_hybrid", sample_size: int = 50, dry_run: bool = True
 ):
     """
     Estrazione controllata con review.
@@ -29,15 +28,16 @@ async def run_controlled_extraction(
         dry_run: Se True, mostra risultati senza persistere
     """
     from qdrant_client import QdrantClient
+
     from app.core.config import settings
 
-    print(f"\n{'='*60}")
-    print(f"🔬 KNOWLEDGE GRAPH - CONTROLLED EXTRACTION")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("🔬 KNOWLEDGE GRAPH - CONTROLLED EXTRACTION")
+    print(f"{'=' * 60}")
     print(f"Collection: {collection}")
     print(f"Sample size: {sample_size}")
     print(f"Mode: {'DRY RUN (no DB writes)' if dry_run else 'LIVE (will persist)'}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Connect to Qdrant
     qdrant_url = settings.qdrant_url or os.getenv("QDRANT_URL", "http://localhost:6333")
@@ -49,10 +49,7 @@ async def run_controlled_extraction(
     try:
         # Scroll to get sample
         results = qdrant.scroll(
-            collection_name=collection,
-            limit=sample_size,
-            with_payload=True,
-            with_vectors=False
+            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False
         )
 
         chunks = results[0]
@@ -150,7 +147,7 @@ async def run_controlled_extraction(
                             "name": name,
                             "mentions": 0,
                             "source_chunks": [],
-                            "context_snippets": []
+                            "context_snippets": [],
                         }
 
                     all_entities[entity_id]["mentions"] += 1
@@ -172,41 +169,45 @@ async def run_controlled_extraction(
                 if re.search(rel_pattern, text, re.IGNORECASE):
                     # Create relationships between entities in same chunk
                     for j, e1 in enumerate(chunk_entities):
-                        for e2 in chunk_entities[j+1:]:
+                        for e2 in chunk_entities[j + 1 :]:
                             rel_id = f"{e1}_{rel_type}_{e2}"
                             if rel_id not in [r["relationship_id"] for r in all_relationships]:
-                                all_relationships.append({
-                                    "relationship_id": rel_id,
-                                    "source": e1,
-                                    "target": e2,
-                                    "type": rel_type,
-                                    "source_chunk": chunk_id,
-                                    "confidence": 0.7  # Lower confidence for inferred
-                                })
+                                all_relationships.append(
+                                    {
+                                        "relationship_id": rel_id,
+                                        "source": e1,
+                                        "target": e2,
+                                        "type": rel_type,
+                                        "source_chunk": chunk_id,
+                                        "confidence": 0.7,  # Lower confidence for inferred
+                                    }
+                                )
 
     # Sort entities by mentions (most mentioned first)
     sorted_entities = sorted(all_entities.values(), key=lambda x: x["mentions"], reverse=True)
 
     # Output results
-    print(f"\n{'='*60}")
-    print(f"📊 EXTRACTION RESULTS")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("📊 EXTRACTION RESULTS")
+    print(f"{'=' * 60}")
     print(f"Total entities found: {len(sorted_entities)}")
     print(f"Total relationships inferred: {len(all_relationships)}")
 
     # Show top entities
-    print(f"\n📌 TOP ENTITIES (by mention count):")
+    print("\n📌 TOP ENTITIES (by mention count):")
     print("-" * 60)
     for i, entity in enumerate(sorted_entities[:30], 1):
-        print(f"{i:2}. [{entity['entity_type']:12}] {entity['name']:20} ({entity['mentions']} mentions)")
-        if entity['context_snippets']:
+        print(
+            f"{i:2}. [{entity['entity_type']:12}] {entity['name']:20} ({entity['mentions']} mentions)"
+        )
+        if entity["context_snippets"]:
             print(f"    Context: {entity['context_snippets'][0][:80]}...")
 
     if len(sorted_entities) > 30:
         print(f"    ... and {len(sorted_entities) - 30} more entities")
 
     # Show relationships
-    print(f"\n🔗 RELATIONSHIPS (sample):")
+    print("\n🔗 RELATIONSHIPS (sample):")
     print("-" * 60)
     for i, rel in enumerate(all_relationships[:20], 1):
         source_name = all_entities.get(rel["source"], {}).get("name", rel["source"])
@@ -217,7 +218,7 @@ async def run_controlled_extraction(
         print(f"    ... and {len(all_relationships) - 20} more relationships")
 
     # Entity type distribution
-    print(f"\n📈 ENTITY TYPE DISTRIBUTION:")
+    print("\n📈 ENTITY TYPE DISTRIBUTION:")
     print("-" * 60)
     type_counts = {}
     for e in sorted_entities:
@@ -237,8 +238,8 @@ async def run_controlled_extraction(
         "stats": {
             "total_entities": len(sorted_entities),
             "total_relationships": len(all_relationships),
-            "entity_type_distribution": type_counts
-        }
+            "entity_type_distribution": type_counts,
+        },
     }
 
     output_file = f"kg_extraction_{collection}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -246,10 +247,10 @@ async def run_controlled_extraction(
         json.dump(output, f, indent=2, ensure_ascii=False)
 
     print(f"\n💾 Results saved to: {output_file}")
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("⏸️  REVIEW THE RESULTS ABOVE")
     print("   If satisfied, run with dry_run=False to persist to DB")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return output
 
@@ -264,8 +265,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    asyncio.run(run_controlled_extraction(
-        collection=args.collection,
-        sample_size=args.sample,
-        dry_run=not args.live
-    ))
+    asyncio.run(
+        run_controlled_extraction(
+            collection=args.collection, sample_size=args.sample, dry_run=not args.live
+        )
+    )

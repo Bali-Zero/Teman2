@@ -121,6 +121,7 @@ class TestAuthDecorators:
     @pytest.mark.asyncio
     async def test_public_endpoint(self, mock_request):
         """Test public_endpoint decorator"""
+
         @public_endpoint
         async def test_endpoint(request):
             return {"message": "public"}
@@ -264,7 +265,3 @@ class TestAuthDecorators:
         assert exc.status_code == 403
         assert exc.detail == "Forbidden"
         assert str(exc) == "Forbidden"
-
-
-
-

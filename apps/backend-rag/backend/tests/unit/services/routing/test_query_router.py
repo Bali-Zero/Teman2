@@ -146,13 +146,17 @@ class TestQueryRouter:
 
     def test_get_fallback_collections(self, query_router):
         """Test getting fallback collections"""
-        fallbacks = query_router.get_fallback_collections("visa_oracle", confidence=0.5, max_fallbacks=3)
+        fallbacks = query_router.get_fallback_collections(
+            "visa_oracle", confidence=0.5, max_fallbacks=3
+        )
         assert isinstance(fallbacks, list)
         assert len(fallbacks) > 0
 
     def test_get_fallback_collections_none(self, query_router):
         """Test getting fallback collections for unknown collection"""
-        fallbacks = query_router.get_fallback_collections("unknown_collection", confidence=0.5, max_fallbacks=3)
+        fallbacks = query_router.get_fallback_collections(
+            "unknown_collection", confidence=0.5, max_fallbacks=3
+        )
         assert isinstance(fallbacks, list)
 
     def test_route_with_confidence(self, query_router):
@@ -165,7 +169,9 @@ class TestQueryRouter:
 
     def test_route_with_confidence_low_confidence(self, query_router):
         """Test routing with low confidence"""
-        collection, confidence, fallbacks = query_router.route_with_confidence("ambiguous query text")
+        collection, confidence, fallbacks = query_router.route_with_confidence(
+            "ambiguous query text"
+        )
         assert collection is not None
         # Low confidence queries may still have confidence >= 0.5, just check it's valid
         assert 0.0 <= confidence <= 1.0
@@ -203,4 +209,3 @@ class TestQueryRouter:
         """Test route_query with priority override"""
         result = await query_router.route_query("chi sono", user_id="user123")
         assert result["collection_name"] == "bali_zero_team"
-

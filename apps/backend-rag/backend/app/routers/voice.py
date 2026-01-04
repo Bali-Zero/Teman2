@@ -30,6 +30,7 @@ async def verify_api_key(x_api_key: str | None = Header(None)) -> dict:
 
     return {"user_id": "voice-service", "role": "service"}
 
+
 router = APIRouter(
     prefix="/api/voice",
     tags=["voice"],
@@ -39,6 +40,7 @@ router = APIRouter(
 
 class VoiceQueryRequest(BaseModel):
     """Simple voice query request."""
+
     query: str
     user_id: str | None = "voice-user"
     session_id: str | None = None
@@ -47,6 +49,7 @@ class VoiceQueryRequest(BaseModel):
 
 class VoiceQueryResponse(BaseModel):
     """Fast voice response."""
+
     answer: str
     sources: list[str] = []
     execution_time: float
@@ -100,10 +103,12 @@ async def generate_fast_response(
     if conversation_history:
         for msg in conversation_history[-6:]:
             if msg.get("role") in ["user", "assistant"]:
-                messages.append({
-                    "role": msg["role"],
-                    "content": msg["content"][:500]  # Truncate long messages
-                })
+                messages.append(
+                    {
+                        "role": msg["role"],
+                        "content": msg["content"][:500],  # Truncate long messages
+                    }
+                )
 
     # Add current query with context
     user_message = f"""Context from knowledge base:
@@ -133,7 +138,7 @@ async def voice_query(
     request: VoiceQueryRequest,
     http_request: Request,
     api_user: dict = Depends(verify_api_key),
-    search_service = Depends(get_search_service),
+    search_service=Depends(get_search_service),
 ):
     """
     Fast voice query endpoint.
@@ -198,6 +203,7 @@ async def voice_query(
 
 class ElevenLabsRequest(BaseModel):
     """ElevenLabs webhook request - flexible field names."""
+
     query: str | None = None
     question: str | None = None  # Alternative field name
     text: str | None = None  # Another alternative
@@ -220,7 +226,7 @@ async def elevenlabs_options():
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
-        }
+        },
     )
 
 
@@ -228,7 +234,7 @@ async def elevenlabs_options():
 async def elevenlabs_webhook(
     request: ElevenLabsRequest,
     http_request: Request,
-    search_service = Depends(get_search_service),
+    search_service=Depends(get_search_service),
 ):
     """
     ElevenLabs Conversational AI webhook.
@@ -276,13 +282,12 @@ async def elevenlabs_webhook(
 
         # Return format that ElevenLabs can use as context
         return JSONResponse(
-            content={"result": answer},
-            headers={"Access-Control-Allow-Origin": "*"}
+            content={"result": answer}, headers={"Access-Control-Allow-Origin": "*"}
         )
 
     except Exception as e:
         logger.error(f"ElevenLabs query failed: {e}", exc_info=True)
         return JSONResponse(
             content={"result": "Mi dispiace, c'è stato un errore. Riprova tra poco."},
-            headers={"Access-Control-Allow-Origin": "*"}
+            headers={"Access-Control-Allow-Origin": "*"},
         )

@@ -3,9 +3,6 @@ Unit Tests for Feedback P1 Logic
 Tests the review_queue creation logic without requiring full app import
 """
 
-import pytest
-from uuid import uuid4
-
 
 class TestFeedbackP1Logic:
     """Test the review_queue creation logic"""
@@ -14,7 +11,7 @@ class TestFeedbackP1Logic:
         """Test: rating 1 should trigger review_queue"""
         rating = 1
         correction_text = None
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is True
 
@@ -22,7 +19,7 @@ class TestFeedbackP1Logic:
         """Test: rating 2 should trigger review_queue"""
         rating = 2
         correction_text = None
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is True
 
@@ -30,7 +27,7 @@ class TestFeedbackP1Logic:
         """Test: rating 3 without correction should NOT trigger review_queue"""
         rating = 3
         correction_text = None
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is False
 
@@ -38,7 +35,7 @@ class TestFeedbackP1Logic:
         """Test: rating 4 without correction should NOT trigger review_queue"""
         rating = 4
         correction_text = None
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is False
 
@@ -46,7 +43,7 @@ class TestFeedbackP1Logic:
         """Test: rating 5 without correction should NOT trigger review_queue"""
         rating = 5
         correction_text = None
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is False
 
@@ -54,7 +51,7 @@ class TestFeedbackP1Logic:
         """Test: correction_text should trigger review_queue even with high rating"""
         rating = 5
         correction_text = "The correct answer is X"
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is True
 
@@ -62,7 +59,7 @@ class TestFeedbackP1Logic:
         """Test: empty correction_text should NOT trigger review_queue"""
         rating = 4
         correction_text = ""
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is False
 
@@ -70,7 +67,7 @@ class TestFeedbackP1Logic:
         """Test: whitespace-only correction_text should NOT trigger review_queue"""
         rating = 4
         correction_text = "   "
-        
+
         should_review = rating <= 2 or bool(correction_text and correction_text.strip())
         assert should_review is False
 
@@ -96,14 +93,14 @@ class TestFeedbackP1Logic:
         """Test: correction_text should be combined with feedback_text"""
         feedback_text = "Some feedback"
         correction_text = "Correct answer is X"
-        
+
         combined = feedback_text or ""
         if correction_text:
             if combined:
                 combined = f"{combined}\n\n[Correction]: {correction_text}"
             else:
                 combined = f"[Correction]: {correction_text}"
-        
+
         assert "[Correction]: Correct answer is X" in combined
         assert "Some feedback" in combined
 
@@ -111,13 +108,12 @@ class TestFeedbackP1Logic:
         """Test: correction_text without feedback_text"""
         feedback_text = None
         correction_text = "Correct answer is X"
-        
+
         combined = feedback_text or ""
         if correction_text:
             if combined:
                 combined = f"{combined}\n\n[Correction]: {correction_text}"
             else:
                 combined = f"[Correction]: {correction_text}"
-        
-        assert combined == "[Correction]: Correct answer is X"
 
+        assert combined == "[Correction]: Correct answer is X"

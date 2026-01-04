@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Extract KG entities from 500 chunks using backend's async QdrantClient"""
+
 import asyncio
 import json
 import re
@@ -113,7 +114,7 @@ async def main():
                             "type": entity_type,
                             "name": name,
                             "mentions": 0,
-                            "source_chunks": []
+                            "source_chunks": [],
                         }
                     all_entities[eid]["mentions"] += 1
                     if chunk_id not in all_entities[eid]["source_chunks"]:
@@ -125,16 +126,18 @@ async def main():
             for rel_pattern, rel_type in RELATIONSHIP_PATTERNS:
                 if re.search(rel_pattern, text, re.IGNORECASE):
                     for i, e1 in enumerate(chunk_entities):
-                        for e2 in chunk_entities[i+1:]:
+                        for e2 in chunk_entities[i + 1 :]:
                             rel_id = f"{e1}_{rel_type}_{e2}"
                             if rel_id not in [r["id"] for r in all_relationships]:
-                                all_relationships.append({
-                                    "id": rel_id,
-                                    "source": e1,
-                                    "target": e2,
-                                    "type": rel_type,
-                                    "chunk": chunk_id
-                                })
+                                all_relationships.append(
+                                    {
+                                        "id": rel_id,
+                                        "source": e1,
+                                        "target": e2,
+                                        "type": rel_type,
+                                        "chunk": chunk_id,
+                                    }
+                                )
 
     # Results
     sorted_e = sorted(all_entities.values(), key=lambda x: x["mentions"], reverse=True)
@@ -154,12 +157,12 @@ async def main():
         for e in entities[:5]:
             print(f"  {e['name']:25} ({e['mentions']:3} mentions)")
         if len(entities) > 5:
-            print(f"  ... and {len(entities)-5} more")
+            print(f"  ... and {len(entities) - 5} more")
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print("="*60)
+    print("=" * 60)
     for t, entities in sorted(by_type.items()):
         total_mentions = sum(e["mentions"] for e in entities)
         print(f"  {t:15}: {len(entities):4} entities, {total_mentions:6} mentions")
@@ -173,8 +176,8 @@ async def main():
             "total_entities": len(sorted_e),
             "total_relationships": len(all_relationships),
             "by_type": {t: len(e) for t, e in by_type.items()},
-            "chunks_processed": len(all_chunks)
-        }
+            "chunks_processed": len(all_chunks),
+        },
     }
     with open("/tmp/kg_extraction_500.json", "w") as f:
         json.dump(output, f, indent=2)

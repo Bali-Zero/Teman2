@@ -103,7 +103,10 @@ def test_init_few_shot_history(mock_genai_client):
         with patch("services.llm_clients.gemini_service.GENAI_AVAILABLE", True):
             with patch("services.llm_clients.gemini_service.settings") as mock_settings:
                 mock_settings.google_api_key = "test-api-key"
-                with patch("services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES", [{"role": "user", "content": "test"}]):
+                with patch(
+                    "services.llm_clients.gemini_service.FEW_SHOT_EXAMPLES",
+                    [{"role": "user", "content": "test"}],
+                ):
                     service = GeminiJakselService()
                     assert len(service.few_shot_history) == 1
                     assert service.few_shot_history[0]["role"] == "user"
@@ -234,7 +237,9 @@ async def test_fallback_to_openrouter_on_quota_exceeded(mock_genai_client):
                     yield "OpenRouter response"
 
                 with patch.object(
-                    service, "_fallback_to_openrouter_stream", return_value=mock_openrouter_stream(None, None, None)
+                    service,
+                    "_fallback_to_openrouter_stream",
+                    return_value=mock_openrouter_stream(None, None, None),
                 ):
                     chunks = []
                     async for chunk in service.generate_response_stream("Test"):

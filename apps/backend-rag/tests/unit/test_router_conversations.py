@@ -148,7 +148,9 @@ class TestGetCurrentUser:
             assert "Authentication required" in str(exc_info.value.detail)
 
     @pytest.mark.asyncio
-    async def test_valid_token_returns_user(self, mock_settings, valid_jwt_token, mock_request_no_user):
+    async def test_valid_token_returns_user(
+        self, mock_settings, valid_jwt_token, mock_request_no_user
+    ):
         """Test that valid token returns user dict"""
         with patch("app.core.config.settings", mock_settings):
             from fastapi.security import HTTPAuthorizationCredentials

@@ -38,8 +38,7 @@ def mock_embedder():
 def collection_warmup_service(mock_collection_manager, mock_embedder):
     """Create CollectionWarmupService instance"""
     return CollectionWarmupService(
-        collection_manager=mock_collection_manager,
-        embedder=mock_embedder
+        collection_manager=mock_collection_manager, embedder=mock_embedder
     )
 
 
@@ -49,8 +48,7 @@ class TestCollectionWarmupService:
     def test_init(self, mock_collection_manager, mock_embedder):
         """Test initialization"""
         service = CollectionWarmupService(
-            collection_manager=mock_collection_manager,
-            embedder=mock_embedder
+            collection_manager=mock_collection_manager, embedder=mock_embedder
         )
         assert service.collection_manager == mock_collection_manager
         assert service.embedder == mock_embedder

@@ -63,7 +63,7 @@ class TestTeamTimesheetService:
         mock_row = MagicMock()
         mock_row.__getitem__ = lambda self, key: {
             "is_online": True,
-            "last_action_bali": datetime.now(BALI_TZ)
+            "last_action_bali": datetime.now(BALI_TZ),
         }.get(key)
         mock_conn.fetchrow = AsyncMock(return_value=mock_row)
         mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -81,7 +81,7 @@ class TestTeamTimesheetService:
         mock_row = MagicMock()
         mock_row.__getitem__ = lambda self, key: {
             "is_online": True,
-            "last_action_bali": datetime.now(BALI_TZ)
+            "last_action_bali": datetime.now(BALI_TZ),
         }.get(key)
         mock_conn.fetchrow = AsyncMock(return_value=mock_row)
         mock_conn.execute = AsyncMock()
@@ -119,4 +119,3 @@ class TestTeamTimesheetService:
         await timesheet_service.start_auto_logout_monitor()
         await timesheet_service.stop_auto_logout_monitor()
         assert timesheet_service.running is False
-

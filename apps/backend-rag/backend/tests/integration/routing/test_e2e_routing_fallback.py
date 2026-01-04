@@ -33,10 +33,9 @@ if str(backend_path) not in sys.path:
 def mock_search_service():
     """Mock SearchService"""
     service = MagicMock()
-    service.search = AsyncMock(return_value={
-        "results": [{"id": "doc1", "text": "Test", "score": 0.8}],
-        "total": 1
-    })
+    service.search = AsyncMock(
+        return_value={"results": [{"id": "doc1", "text": "Test", "score": 0.8}], "total": 1}
+    )
     return service
 
 
@@ -79,11 +78,9 @@ def routing_stats():
     stats = MagicMock()
     stats.record_routing = MagicMock()
     stats.record_fallback = MagicMock()
-    stats.get_stats = MagicMock(return_value={
-        "total_routings": 0,
-        "collection_stats": {},
-        "failed_routings": 0
-    })
+    stats.get_stats = MagicMock(
+        return_value={"total_routings": 0, "collection_stats": {}, "failed_routings": 0}
+    )
     return stats
 
 
@@ -98,11 +95,13 @@ class TestE2ERoutingFallback:
         query = "Quanto costa E33G KITAS?"
 
         # Mock routing decision
-        with patch.object(query_router, 'route') as mock_route:
+        with patch.object(query_router, "route") as mock_route:
             mock_route.return_value = "visa_oracle"
 
             # Mock specialized router (should not trigger)
-            with patch.object(specialized_router, 'should_route_to_specialized') as mock_specialized:
+            with patch.object(
+                specialized_router, "should_route_to_specialized"
+            ) as mock_specialized:
                 mock_specialized.return_value = False
 
                 # Execute routing
@@ -112,11 +111,7 @@ class TestE2ERoutingFallback:
                 assert collection == "visa_oracle"
 
                 # Record routing stats
-                routing_stats.record_routing(
-                    query=query,
-                    collection=collection,
-                    success=True
-                )
+                routing_stats.record_routing(query=query, collection=collection, success=True)
 
                 # Verify stats recorded
                 stats = routing_stats.get_stats()
@@ -130,10 +125,12 @@ class TestE2ERoutingFallback:
         query = "Informazioni su visto"
 
         # Mock primary collection failure
-        mock_search_service.search = AsyncMock(side_effect=[
-            Exception("Primary collection error"),  # First attempt fails
-            {"results": [{"id": "doc1", "text": "Test"}], "total": 1}  # Fallback succeeds
-        ])
+        mock_search_service.search = AsyncMock(
+            side_effect=[
+                Exception("Primary collection error"),  # First attempt fails
+                {"results": [{"id": "doc1", "text": "Test"}], "total": 1},  # Fallback succeeds
+            ]
+        )
 
         # Define fallback chain
         fallback_chain = ["visa_oracle", "legal_unified", "kbli_unified"]
@@ -143,9 +140,7 @@ class TestE2ERoutingFallback:
         for collection in fallback_chain:
             try:
                 result = await mock_search_service.search(
-                    query=query,
-                    collection=collection,
-                    limit=5
+                    query=query, collection=collection, limit=5
                 )
                 if result:
                     break
@@ -161,7 +156,7 @@ class TestE2ERoutingFallback:
             query=query,
             primary_collection=fallback_chain[0],
             fallback_collection=fallback_chain[1],
-            success=True
+            success=True,
         )
 
     @pytest.mark.asyncio
@@ -172,16 +167,19 @@ class TestE2ERoutingFallback:
         query = "Analizza le ultime modifiche alle leggi sull'immigrazione"
 
         # Mock specialized service detection
-        with patch.object(specialized_router, 'should_route_to_autonomous_research') as mock_autonomous:
+        with patch.object(
+            specialized_router, "should_route_to_autonomous_research"
+        ) as mock_autonomous:
             mock_autonomous.return_value = True
 
             # Mock autonomous research service
-            with patch('services.misc.autonomous_research_service.AutonomousResearchService') as mock_service:
+            with patch(
+                "services.misc.autonomous_research_service.AutonomousResearchService"
+            ) as mock_service:
                 mock_service_instance = MagicMock()
-                mock_service_instance.research = AsyncMock(return_value={
-                    "success": True,
-                    "results": ["Result 1", "Result 2"]
-                })
+                mock_service_instance.research = AsyncMock(
+                    return_value={"success": True, "results": ["Result 1", "Result 2"]}
+                )
                 mock_service.return_value = mock_service_instance
 
                 # Execute routing
@@ -192,20 +190,18 @@ class TestE2ERoutingFallback:
 
                 # Record specialized routing stats
                 routing_stats.record_routing(
-                    query=query,
-                    collection="autonomous_research",
-                    success=True
+                    query=query, collection="autonomous_research", success=True
                 )
 
     @pytest.mark.asyncio
-    async def test_confidence_based_routing(
-        self, query_router, routing_stats, mock_search_service
-    ):
+    async def test_confidence_based_routing(self, query_router, routing_stats, mock_search_service):
         """Test routing based on confidence scores"""
         query = "Visto E33G"
 
         # Mock confidence calculation
-        with patch('services.routing.confidence_calculator.ConfidenceCalculatorService') as mock_confidence:
+        with patch(
+            "services.routing.confidence_calculator.ConfidenceCalculatorService"
+        ) as mock_confidence:
             mock_confidence_instance = MagicMock()
             mock_confidence_instance.calculate_confidence = MagicMock(return_value=0.75)
             mock_confidence.return_value = mock_confidence_instance
@@ -224,10 +220,7 @@ class TestE2ERoutingFallback:
 
             # Record confidence-based routing
             routing_stats.record_routing(
-                query=query,
-                collection=collection,
-                confidence=confidence,
-                success=True
+                query=query, collection=collection, confidence=confidence, success=True
             )
 
     @pytest.mark.asyncio
@@ -238,16 +231,12 @@ class TestE2ERoutingFallback:
         queries = [
             ("Quanto costa E33G?", "visa_oracle"),
             ("Come aprire PT PMA?", "kbli_unified"),
-            ("Informazioni su tasse", "tax_genius")
+            ("Informazioni su tasse", "tax_genius"),
         ]
 
         # Record multiple routings
         for query, collection in queries:
-            routing_stats.record_routing(
-                query=query,
-                collection=collection,
-                success=True
-            )
+            routing_stats.record_routing(query=query, collection=collection, success=True)
 
         # Get statistics
         stats = routing_stats.get_stats()
@@ -266,7 +255,7 @@ class TestE2ERoutingFallback:
         query = "URGENTE: Informazioni su visto"
 
         # Mock priority override
-        with patch('services.routing.priority_override.PriorityOverrideService') as mock_priority:
+        with patch("services.routing.priority_override.PriorityOverrideService") as mock_priority:
             mock_priority_instance = MagicMock()
             mock_priority_instance.get_override_collection = MagicMock(return_value="visa_oracle")
             mock_priority.return_value = mock_priority_instance
@@ -284,10 +273,7 @@ class TestE2ERoutingFallback:
 
             # Record priority routing
             routing_stats.record_routing(
-                query=query,
-                collection=collection,
-                priority_override=True,
-                success=True
+                query=query, collection=collection, priority_override=True, success=True
             )
 
     @pytest.mark.asyncio
@@ -307,9 +293,7 @@ class TestE2ERoutingFallback:
         for collection in fallback_chain:
             try:
                 result = await mock_search_service.search(
-                    query=query,
-                    collection=collection,
-                    limit=5
+                    query=query, collection=collection, limit=5
                 )
                 if result:
                     success = True
@@ -321,13 +305,8 @@ class TestE2ERoutingFallback:
         assert success is False
 
         # Record failure
-        routing_stats.record_routing(
-            query=query,
-            collection=fallback_chain[0],
-            success=False
-        )
+        routing_stats.record_routing(query=query, collection=fallback_chain[0], success=False)
 
         # Verify failure tracked
         stats = routing_stats.get_stats()
         assert stats.get("failed_routings", 0) >= 1
-

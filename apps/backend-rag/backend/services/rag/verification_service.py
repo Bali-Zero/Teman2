@@ -44,7 +44,9 @@ class VerificationService:
     def __init__(self):
         self._genai_client: GenAIClient | None = None
         self._available = False
-        self.model_name = "gemini-3-flash-preview"  # Use Flash for verification (fast, good at reading)
+        self.model_name = (
+            "gemini-3-flash-preview"  # Use Flash for verification (fast, good at reading)
+        )
 
         if settings.google_api_key and GENAI_AVAILABLE:
             try:
@@ -83,7 +85,7 @@ class VerificationService:
 
         # Prepare context text
         context_text = "\n\n".join(
-            [f"[Source {i+1}] {chunk}" for i, chunk in enumerate(context_chunks)]
+            [f"[Source {i + 1}] {chunk}" for i, chunk in enumerate(context_chunks)]
         )
 
         # Prompt for the verifier

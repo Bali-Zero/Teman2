@@ -38,8 +38,7 @@ def mock_embedder():
 def cultural_insights_service(mock_collection_manager, mock_embedder):
     """Create CulturalInsightsService instance"""
     return CulturalInsightsService(
-        collection_manager=mock_collection_manager,
-        embedder=mock_embedder
+        collection_manager=mock_collection_manager, embedder=mock_embedder
     )
 
 
@@ -49,8 +48,7 @@ class TestCulturalInsightsService:
     def test_init(self, mock_collection_manager, mock_embedder):
         """Test initialization"""
         service = CulturalInsightsService(
-            collection_manager=mock_collection_manager,
-            embedder=mock_embedder
+            collection_manager=mock_collection_manager, embedder=mock_embedder
         )
         assert service.collection_manager == mock_collection_manager
         assert service.embedder == mock_embedder
@@ -59,8 +57,7 @@ class TestCulturalInsightsService:
     async def test_add_insight(self, cultural_insights_service):
         """Test adding cultural insight"""
         result = await cultural_insights_service.add_insight(
-            text="Test insight",
-            metadata={"topic": "business", "language": "en"}
+            text="Test insight", metadata={"topic": "business", "language": "en"}
         )
         assert isinstance(result, bool)
 
@@ -69,8 +66,7 @@ class TestCulturalInsightsService:
         """Test adding insight when collection not available"""
         cultural_insights_service.collection_manager.get_collection.return_value = None
         result = await cultural_insights_service.add_insight(
-            text="Test insight",
-            metadata={"topic": "business"}
+            text="Test insight", metadata={"topic": "business"}
         )
         assert result is False
 
@@ -81,10 +77,7 @@ class TestCulturalInsightsService:
             "topic": "business",
             "when_to_use": ["first_contact", "casual_chat"],
         }
-        result = await cultural_insights_service.add_insight(
-            text="Test insight",
-            metadata=metadata
-        )
+        result = await cultural_insights_service.add_insight(text="Test insight", metadata=metadata)
         assert isinstance(result, bool)
 
     @pytest.mark.asyncio
@@ -94,8 +87,7 @@ class TestCulturalInsightsService:
             side_effect=Exception("Embedding error")
         )
         result = await cultural_insights_service.add_insight(
-            text="Test insight",
-            metadata={"topic": "business"}
+            text="Test insight", metadata={"topic": "business"}
         )
         assert result is False
 
@@ -103,11 +95,13 @@ class TestCulturalInsightsService:
     async def test_query_insights(self, cultural_insights_service):
         """Test querying cultural insights"""
         mock_collection = MagicMock()
-        mock_collection.search = AsyncMock(return_value={
-            "ids": ["id1"],
-            "documents": ["Test document"],
-            "metadatas": [{"topic": "business"}],
-        })
+        mock_collection.search = AsyncMock(
+            return_value={
+                "ids": ["id1"],
+                "documents": ["Test document"],
+                "metadatas": [{"topic": "business"}],
+            }
+        )
         cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
 
         result = await cultural_insights_service.query_insights("business query")
@@ -126,16 +120,17 @@ class TestCulturalInsightsService:
     async def test_query_insights_with_when_to_use(self, cultural_insights_service):
         """Test querying insights with when_to_use filter"""
         mock_collection = MagicMock()
-        mock_collection.search = AsyncMock(return_value={
-            "ids": [],
-            "documents": [],
-            "metadatas": [],
-        })
+        mock_collection.search = AsyncMock(
+            return_value={
+                "ids": [],
+                "documents": [],
+                "metadatas": [],
+            }
+        )
         cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
 
         result = await cultural_insights_service.query_insights(
-            "business query",
-            when_to_use="first_contact"
+            "business query", when_to_use="first_contact"
         )
         assert isinstance(result, list)
 
@@ -154,12 +149,14 @@ class TestCulturalInsightsService:
     async def test_query_insights_with_results(self, cultural_insights_service):
         """Test querying insights with results"""
         mock_collection = MagicMock()
-        mock_collection.search = AsyncMock(return_value={
-            "ids": ["id1", "id2"],
-            "documents": ["Doc 1", "Doc 2"],
-            "metadatas": [{"topic": "business"}, {"topic": "casual"}],
-            "distances": [0.1, 0.2],
-        })
+        mock_collection.search = AsyncMock(
+            return_value={
+                "ids": ["id1", "id2"],
+                "documents": ["Doc 1", "Doc 2"],
+                "metadatas": [{"topic": "business"}, {"topic": "casual"}],
+                "distances": [0.1, 0.2],
+            }
+        )
         cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
 
         result = await cultural_insights_service.query_insights("business query")
@@ -171,12 +168,14 @@ class TestCulturalInsightsService:
     async def test_query_insights_missing_distances(self, cultural_insights_service):
         """Test querying insights with missing distances"""
         mock_collection = MagicMock()
-        mock_collection.search = AsyncMock(return_value={
-            "ids": ["id1"],
-            "documents": ["Doc 1"],
-            "metadatas": [{"topic": "business"}],
-            "distances": [],
-        })
+        mock_collection.search = AsyncMock(
+            return_value={
+                "ids": ["id1"],
+                "documents": ["Doc 1"],
+                "metadatas": [{"topic": "business"}],
+                "distances": [],
+            }
+        )
         cultural_insights_service.collection_manager.get_collection.return_value = mock_collection
 
         result = await cultural_insights_service.query_insights("business query")

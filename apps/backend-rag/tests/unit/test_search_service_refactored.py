@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from services.ingestion.collection_manager import CollectionManager
-from services.routing.conflict_resolver import ConflictResolver
 from services.misc.cultural_insights_service import CulturalInsightsService
+from services.routing.conflict_resolver import ConflictResolver
 from services.routing.query_router_integration import QueryRouterIntegration
 from services.search.search_service import SearchService
 
@@ -315,6 +315,7 @@ class TestSearchServiceRefactored:
     async def test_search_filters_enabled_by_default(self, search_service, mock_collection_manager):
         """Test that filters are enabled by default (apply_filters=None means enabled)"""
         import uuid
+
         # Use unique query to avoid cache hits
         unique_query = f"test_filter_default_{uuid.uuid4().hex[:8]}"
 
@@ -362,6 +363,7 @@ class TestSearchServiceRefactored:
     async def test_search_filters_explicitly_enabled(self, search_service, mock_collection_manager):
         """Test that filters are applied when apply_filters=True"""
         import uuid
+
         unique_query = f"test_filter_enabled_{uuid.uuid4().hex[:8]}"
 
         captured_filter = None
@@ -390,7 +392,9 @@ class TestSearchServiceRefactored:
 
         with patch("core.cache.get_cache_service") as mock_cache:
             mock_cache.return_value.get.return_value = None  # Cache miss
-            await search_service.search(query=unique_query, user_level=2, limit=5, apply_filters=True)
+            await search_service.search(
+                query=unique_query, user_level=2, limit=5, apply_filters=True
+            )
 
         # Filters should be enabled (not forced to None)
         # For zantara_books with user_level=2, tier filter should be built
@@ -402,6 +406,7 @@ class TestSearchServiceRefactored:
     ):
         """Test that filters are disabled when apply_filters=False"""
         import uuid
+
         unique_query = f"test_filter_disabled_{uuid.uuid4().hex[:8]}"
 
         captured_filter = "not_none_initially"
@@ -430,7 +435,9 @@ class TestSearchServiceRefactored:
 
         with patch("core.cache.get_cache_service") as mock_cache:
             mock_cache.return_value.get.return_value = None  # Cache miss
-            await search_service.search(query=unique_query, user_level=2, limit=5, apply_filters=False)
+            await search_service.search(
+                query=unique_query, user_level=2, limit=5, apply_filters=False
+            )
 
         # Filters should be disabled (forced to None)
         assert captured_filter is None

@@ -143,6 +143,3 @@ def log_database_operation(
         context.update(kwargs)
 
     logger.debug(f"🗄️ {operation} {table}", extra={"context": context})
-
-
-

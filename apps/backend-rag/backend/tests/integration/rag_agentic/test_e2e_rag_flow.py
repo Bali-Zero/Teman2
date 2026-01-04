@@ -31,23 +31,25 @@ from services.rag.agentic import AgenticRAGOrchestrator
 def mock_search_service():
     """Mock SearchService for RAG retrieval"""
     service = MagicMock()
-    service.search = AsyncMock(return_value={
-        "results": [
-            {
-                "id": "doc1",
-                "text": "E33G Digital Nomad KITAS costs Rp 17-19 million",
-                "score": 0.85,
-                "metadata": {"source": "visa_oracle", "type": "visa_info"}
-            },
-            {
-                "id": "doc2",
-                "text": "E33G requires proof of remote work and $2,000/month income",
-                "score": 0.82,
-                "metadata": {"source": "visa_oracle", "type": "requirements"}
-            }
-        ],
-        "total": 2
-    })
+    service.search = AsyncMock(
+        return_value={
+            "results": [
+                {
+                    "id": "doc1",
+                    "text": "E33G Digital Nomad KITAS costs Rp 17-19 million",
+                    "score": 0.85,
+                    "metadata": {"source": "visa_oracle", "type": "visa_info"},
+                },
+                {
+                    "id": "doc2",
+                    "text": "E33G requires proof of remote work and $2,000/month income",
+                    "score": 0.82,
+                    "metadata": {"source": "visa_oracle", "type": "requirements"},
+                },
+            ],
+            "total": 2,
+        }
+    )
     return service
 
 
@@ -85,7 +87,7 @@ def mock_llm_gateway():
             " on",
             " the",
             " documents",
-            "."
+            ".",
         ]
         for chunk in chunks:
             yield chunk
@@ -93,10 +95,12 @@ def mock_llm_gateway():
     gateway.stream_query = AsyncMock(return_value=mock_stream())
 
     # Mock non-streaming response
-    gateway.query = AsyncMock(return_value={
-        "text": "E33G Digital Nomad KITAS costs Rp 17-19 million based on the documents.",
-        "usage": {"prompt_tokens": 100, "completion_tokens": 50}
-    })
+    gateway.query = AsyncMock(
+        return_value={
+            "text": "E33G Digital Nomad KITAS costs Rp 17-19 million based on the documents.",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+        }
+    )
 
     return gateway
 
@@ -105,12 +109,14 @@ def mock_llm_gateway():
 def mock_memory_orchestrator():
     """Mock Memory Orchestrator"""
     orchestrator = MagicMock()
-    orchestrator.get_user_context = AsyncMock(return_value={
-        "profile": {"name": "Test User", "role": "Entrepreneur"},
-        "facts": [],
-        "collective_facts": [],
-        "entities": {}
-    })
+    orchestrator.get_user_context = AsyncMock(
+        return_value={
+            "profile": {"name": "Test User", "role": "Entrepreneur"},
+            "facts": [],
+            "collective_facts": [],
+            "entities": {},
+        }
+    )
     orchestrator.save_conversation = AsyncMock(return_value={"success": True})
     return orchestrator
 
@@ -118,13 +124,13 @@ def mock_memory_orchestrator():
 @pytest.fixture
 def orchestrator(mock_search_service, mock_db_pool, mock_memory_orchestrator):
     """Create AgenticRAGOrchestrator with mocked dependencies"""
-    with patch('services.rag.agentic.create_agentic_rag') as mock_create:
-        with patch('services.memory.MemoryOrchestrator', return_value=mock_memory_orchestrator):
+    with patch("services.rag.agentic.create_agentic_rag") as mock_create:
+        with patch("services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator):
             orchestrator = AgenticRAGOrchestrator(
                 retriever=mock_search_service,
                 db_pool=mock_db_pool,
                 semantic_cache=None,
-                clarification_service=None
+                clarification_service=None,
             )
             return orchestrator
 
@@ -141,18 +147,20 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
 
         # Mock intent classification
-        with patch('services.classification.intent_classifier.IntentClassifier') as mock_intent:
+        with patch("services.classification.intent_classifier.IntentClassifier") as mock_intent:
             mock_classifier = MagicMock()
-            mock_classifier.classify_intent = AsyncMock(return_value={
-                "category": "business_simple",
-                "confidence": 0.9,
-                "suggested_ai": "fast",
-                "skip_rag": False
-            })
+            mock_classifier.classify_intent = AsyncMock(
+                return_value={
+                    "category": "business_simple",
+                    "confidence": 0.9,
+                    "suggested_ai": "fast",
+                    "skip_rag": False,
+                }
+            )
             mock_intent.return_value = mock_classifier
 
             # Mock LLM response with tool call
-            with patch.object(orchestrator, '_llm_gateway') as mock_gateway:
+            with patch.object(orchestrator, "_llm_gateway") as mock_gateway:
                 mock_gateway_instance = MagicMock()
 
                 # First call: Tool call for vector_search
@@ -160,25 +168,26 @@ class TestE2ERAGFlow:
                 mock_tool_call.function_call.name = "vector_search"
                 mock_tool_call.function_call.args = {
                     "query": "E33G Digital Nomad KITAS cost",
-                    "collection": "visa_oracle"
+                    "collection": "visa_oracle",
                 }
 
                 # Second call: Final answer
                 mock_final_response = MagicMock()
-                mock_final_response.text = "E33G Digital Nomad KITAS costa Rp 17-19 milioni secondo i documenti."
+                mock_final_response.text = (
+                    "E33G Digital Nomad KITAS costa Rp 17-19 milioni secondo i documenti."
+                )
 
-                mock_gateway_instance.stream_query = AsyncMock(side_effect=[
-                    [mock_tool_call],  # Tool call
-                    [mock_final_response]  # Final answer
-                ])
+                mock_gateway_instance.stream_query = AsyncMock(
+                    side_effect=[
+                        [mock_tool_call],  # Tool call
+                        [mock_final_response],  # Final answer
+                    ]
+                )
                 mock_gateway.return_value = mock_gateway_instance
 
                 # Execute query
                 result = await orchestrator.process_query(
-                    query=query,
-                    user_id=user_id,
-                    session_id="test-session",
-                    conversation_history=[]
+                    query=query, user_id=user_id, session_id="test-session", conversation_history=[]
                 )
 
                 # Verify flow
@@ -200,28 +209,22 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
 
         # Mock pricing tool
-        with patch('services.rag.agentic.tools.PricingTool') as mock_pricing:
+        with patch("services.rag.agentic.tools.PricingTool") as mock_pricing:
             mock_pricing_instance = MagicMock()
-            mock_pricing_instance.execute = AsyncMock(return_value={
-                "service": "E33G",
-                "price": "Rp 17-19 million"
-            })
+            mock_pricing_instance.execute = AsyncMock(
+                return_value={"service": "E33G", "price": "Rp 17-19 million"}
+            )
             mock_pricing.return_value = mock_pricing_instance
 
             # Mock calculator tool
-            with patch('services.rag.agentic.tools.CalculatorTool') as mock_calc:
+            with patch("services.rag.agentic.tools.CalculatorTool") as mock_calc:
                 mock_calc_instance = MagicMock()
-                mock_calc_instance.execute = AsyncMock(return_value={
-                    "result": "Rp 20-22 million"
-                })
+                mock_calc_instance.execute = AsyncMock(return_value={"result": "Rp 20-22 million"})
                 mock_calc.return_value = mock_calc_instance
 
                 # Execute query
                 result = await orchestrator.process_query(
-                    query=query,
-                    user_id=user_id,
-                    session_id="test-session",
-                    conversation_history=[]
+                    query=query, user_id=user_id, session_id="test-session", conversation_history=[]
                 )
 
                 # Verify multi-step reasoning occurred
@@ -239,7 +242,7 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
         conversation_history = [
             {"role": "user", "content": "Quanto costa E33G?"},
-            {"role": "assistant", "content": "E33G costa Rp 17-19 milioni."}
+            {"role": "assistant", "content": "E33G costa Rp 17-19 milioni."},
         ]
 
         # Execute query with history
@@ -247,7 +250,7 @@ class TestE2ERAGFlow:
             query=query,
             user_id=user_id,
             session_id="test-session",
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
         )
 
         # Verify context includes conversation history
@@ -265,11 +268,10 @@ class TestE2ERAGFlow:
         user_id = "test@example.com"
 
         # Mock response pipeline stages
-        with patch('services.rag.agentic.pipeline.VerificationStage') as mock_verify:
-            with patch('services.rag.agentic.pipeline.PostProcessingStage') as mock_post:
-                with patch('services.rag.agentic.pipeline.CitationStage') as mock_cite:
-                    with patch('services.rag.agentic.pipeline.FormatStage') as mock_format:
-
+        with patch("services.rag.agentic.pipeline.VerificationStage") as mock_verify:
+            with patch("services.rag.agentic.pipeline.PostProcessingStage") as mock_post:
+                with patch("services.rag.agentic.pipeline.CitationStage") as mock_cite:
+                    with patch("services.rag.agentic.pipeline.FormatStage") as mock_format:
                         mock_verify_instance = MagicMock()
                         mock_verify_instance.process = MagicMock(return_value="verified")
                         mock_verify.return_value = mock_verify_instance
@@ -291,7 +293,7 @@ class TestE2ERAGFlow:
                             query=query,
                             user_id=user_id,
                             session_id="test-session",
-                            conversation_history=[]
+                            conversation_history=[],
                         )
 
                         # Verify pipeline stages were called
@@ -311,10 +313,7 @@ class TestE2ERAGFlow:
         # Execute query - should handle error gracefully
         try:
             result = await orchestrator.process_query(
-                query=query,
-                user_id=user_id,
-                session_id="test-session",
-                conversation_history=[]
+                query=query, user_id=user_id, session_id="test-session", conversation_history=[]
             )
             # Should either return error response or fallback
             assert result is not None
@@ -336,16 +335,13 @@ class TestE2ERAGFlow:
             for chunk in chunks:
                 yield chunk
 
-        with patch.object(orchestrator, 'stream_query') as mock_stream_query:
+        with patch.object(orchestrator, "stream_query") as mock_stream_query:
             mock_stream_query.return_value = mock_stream()
 
             # Collect streamed chunks
             chunks = []
             async for chunk in orchestrator.stream_query(
-                query=query,
-                user_id=user_id,
-                session_id="test-session",
-                conversation_history=[]
+                query=query, user_id=user_id, session_id="test-session", conversation_history=[]
             ):
                 chunks.append(chunk)
 
@@ -371,15 +367,12 @@ class TestE2ERAGFlow:
             retriever=mock_search_service,
             db_pool=mock_db_pool,
             semantic_cache=mock_cache,
-            clarification_service=None
+            clarification_service=None,
         )
 
         # Execute query
         result = await orchestrator_with_cache.process_query(
-            query=query,
-            user_id=user_id,
-            session_id="test-session",
-            conversation_history=[]
+            query=query, user_id=user_id, session_id="test-session", conversation_history=[]
         )
 
         # Verify cache was checked
@@ -388,4 +381,3 @@ class TestE2ERAGFlow:
         # Verify cache was set (if result was successful)
         if result and "error" not in str(result).lower():
             mock_cache.set.assert_called()
-

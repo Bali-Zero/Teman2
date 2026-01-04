@@ -32,7 +32,7 @@ def mock_db_pool():
 @pytest.fixture
 def google_drive_service(mock_db_pool):
     """Create GoogleDriveService instance"""
-    with patch('services.integrations.google_drive_service.settings') as mock_settings:
+    with patch("services.integrations.google_drive_service.settings") as mock_settings:
         mock_settings.google_drive_client_id = "test_client_id"
         mock_settings.google_drive_client_secret = "test_secret"
         mock_settings.google_drive_redirect_uri = "http://localhost/callback"
@@ -54,7 +54,7 @@ class TestGoogleDriveService:
 
     def test_is_configured_false(self, mock_db_pool):
         """Test is_configured when credentials are missing"""
-        with patch('services.integrations.google_drive_service.settings') as mock_settings:
+        with patch("services.integrations.google_drive_service.settings") as mock_settings:
             mock_settings.google_drive_client_id = None
             mock_settings.google_drive_client_secret = None
             mock_settings.google_drive_redirect_uri = None
@@ -71,7 +71,7 @@ class TestGoogleDriveService:
 
     def test_get_authorization_url_not_configured(self, mock_db_pool):
         """Test getting authorization URL when not configured"""
-        with patch('app.core.config.settings') as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.google_drive_client_id = None
             service = GoogleDriveService(db_pool=mock_db_pool)
             with pytest.raises(ValueError):
@@ -80,20 +80,19 @@ class TestGoogleDriveService:
     @pytest.mark.asyncio
     async def test_exchange_code(self, google_drive_service, mock_db_pool):
         """Test exchanging authorization code"""
-        with patch('httpx.AsyncClient') as mock_client_class:
+        with patch("httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {
                 "access_token": "test_token",
                 "refresh_token": "test_refresh",
-                "expires_in": 3600
+                "expires_in": 3600,
             }
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
             mock_client.__aexit__ = AsyncMock(return_value=None)
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client_class.return_value = mock_client
-            with patch.object(google_drive_service, '_store_tokens', new_callable=AsyncMock):
+            with patch.object(google_drive_service, "_store_tokens", new_callable=AsyncMock):
                 result = await google_drive_service.exchange_code("test_code", "user1")
                 assert "access_token" in result
-

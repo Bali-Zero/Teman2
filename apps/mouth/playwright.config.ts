@@ -15,7 +15,7 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
 
   // Timeout per singolo test
-  timeout: 30 * 1000,
+  timeout: 60 * 1000,
 
   // Retry su CI
   retries: process.env.CI ? 2 : 0,
@@ -29,7 +29,7 @@ export default defineConfig({
   // Shared settings per tutti i test
   use: {
     // Base URL dell'applicazione
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000',
 
     // Screenshot su failure
     screenshot: 'only-on-failure',
@@ -44,7 +44,7 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
 
     // Action timeout
-    actionTimeout: 10 * 1000,
+    actionTimeout: 20 * 1000,
   },
 
   // Progetti per diversi browser

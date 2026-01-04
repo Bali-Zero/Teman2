@@ -257,4 +257,3 @@ class TestZantaraResponseValidator:
 
         assert result.was_modified is True
         assert len(result.violations) > 1
-

@@ -421,6 +421,7 @@ class TestCollectionHealthService:
         # At 10% hit rate and 0.2 avg confidence, we should see issues or critical status
         # Check that health_status is not EXCELLENT (meaning there are problems)
         from services.ingestion.collection_health_service import HealthStatus
+
         assert health.health_status != HealthStatus.EXCELLENT
 
     def test_get_all_collection_health(self, service):

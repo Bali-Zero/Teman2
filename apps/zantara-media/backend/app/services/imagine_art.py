@@ -598,20 +598,22 @@ class _DeferredImagineArt:
         aspect_ratio: "AspectRatio" = AspectRatio.SQUARE,
         negative_prompt: Optional[str] = None,
         cfg_scale: float = 7.5,
-    ) -> "ImageResult":
+    ) -> "GenerationResult":
         """Generate image using ImagineArt."""
         client = self._get_client()
         if not client:
-            return ImageResult(success=False, error="ImagineArt not configured")
+            return GenerationResult(success=False, error="ImagineArt not configured")
         return await client.generate_image(
             prompt, style, aspect_ratio, negative_prompt, cfg_scale
         )
 
-    async def generate_article_cover(self, title: str, category: str) -> "ImageResult":
+    async def generate_article_cover(
+        self, title: str, category: str
+    ) -> "GenerationResult":
         """Generate cover image for an article."""
         client = self._get_client()
         if not client:
-            return ImageResult(success=False, error="ImagineArt not configured")
+            return GenerationResult(success=False, error="ImagineArt not configured")
         return await client.generate_article_cover(title, category)
 
     async def health_check(self) -> dict:

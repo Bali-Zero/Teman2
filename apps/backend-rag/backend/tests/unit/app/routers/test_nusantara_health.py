@@ -80,4 +80,3 @@ class TestNusantaraHealthRouter:
             assert "status" in island_data
             assert "metrics" in island_data
             assert "coordinates" in island_data
-

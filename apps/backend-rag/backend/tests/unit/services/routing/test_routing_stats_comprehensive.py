@@ -69,7 +69,7 @@ class TestRoutingStatsService:
             confidence=0.6,
             fallbacks_used=False,
             confidence_threshold_high=0.8,
-            confidence_threshold_low=0.4
+            confidence_threshold_low=0.4,
         )
         assert routing_stats.fallback_stats["medium_confidence"] == 1
 
@@ -145,7 +145,3 @@ class TestRoutingStatsService:
         assert routing_stats.fallback_stats["high_confidence"] == 2
         assert routing_stats.fallback_stats["medium_confidence"] == 1
         assert routing_stats.fallback_stats["fallbacks_used"] == 2
-
-
-
-

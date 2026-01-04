@@ -64,11 +64,7 @@ class TestResponseHandler:
         with patch("services.routing.response_handler.process_zantara_response") as mock_process:
             mock_process.return_value = "Sanitized"
 
-            result = response_handler.sanitize_response(
-                "Raw response",
-                "casual",
-                apply_santai=True
-            )
+            result = response_handler.sanitize_response("Raw response", "casual", apply_santai=True)
             assert result == "Sanitized"
 
     def test_sanitize_response_without_contact(self, response_handler):
@@ -77,9 +73,6 @@ class TestResponseHandler:
             mock_process.return_value = "Sanitized"
 
             result = response_handler.sanitize_response(
-                "Raw response",
-                "greeting",
-                add_contact=False
+                "Raw response", "greeting", add_contact=False
             )
             assert result == "Sanitized"
-

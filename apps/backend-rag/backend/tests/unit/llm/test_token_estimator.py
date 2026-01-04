@@ -96,7 +96,7 @@ class TestTokenEstimator:
             estimator = TokenEstimator("gpt-4")
             messages = [
                 {"role": "user", "content": "Hello"},
-                {"role": "assistant", "content": "Hi there"}
+                {"role": "assistant", "content": "Hi there"},
             ]
             count = estimator.estimate_messages_tokens(messages)
             assert count > 0  # Should include overhead
@@ -114,8 +114,7 @@ class TestTokenEstimator:
             estimator = TokenEstimator("gpt-4")
             messages = [
                 {"role": "user"},  # Missing content
-                {"content": "Hello"}  # Missing role
+                {"content": "Hello"},  # Missing role
             ]
             count = estimator.estimate_messages_tokens(messages)
             assert count >= 0
-

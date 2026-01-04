@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indonesia Launches New Golden Visa Program for High-... | BaliZero</title>
+    <meta name="description" content="Indonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific i...">
+    <meta name="keywords" content="Indonesia, BaliZero, KITAS, Indonesia visa, Indonesia expat, Bali, Southeast Asia, KITAP">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+
+        /* Approval Banner */
+        .approval-banner {
+            background: linear-gradient(90deg, #f39c12 0%, #e74c3c 100%);
+            color: white;
+            text-align: center;
+            padding: 12px 20px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* Header */
+        .site-header {
+            background: white;
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #e67e22;
+            text-decoration: none;
+        }
+        .logo span { color: #2c3e50; }
+
+        /* Article Container */
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px 80px;
+            background: white;
+            min-height: calc(100vh - 200px);
+        }
+
+        /* Category Badge */
+        .category-badge {
+            display: inline-block;
+            background: #fff3e0;
+            color: #e67e22;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        /* Article Title */
+        .article-title {
+            font-size: clamp(28px, 5vw, 42px);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            color: #1a1a2e;
+        }
+
+        /* Meta Info */
+        .article-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #eee;
+        }
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .meta-item svg {
+            width: 16px;
+            height: 16px;
+            opacity: 0.6;
+        }
+
+        /* Cover Image */
+        .cover-image {
+            width: 100%;
+            height: auto;
+            border-radius: 16px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+        }
+
+        /* Article Content */
+        .article-content {
+            font-size: 17px;
+            color: #444;
+        }
+        .article-content h1 {
+            font-size: 32px;
+            color: #1a1a2e;
+            margin: 40px 0 20px;
+        }
+        .article-content h2 {
+            font-size: 26px;
+            color: #1a1a2e;
+            margin: 35px 0 18px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .article-content h3 {
+            font-size: 20px;
+            color: #e67e22;
+            margin: 25px 0 12px;
+        }
+        .article-content p {
+            margin-bottom: 20px;
+        }
+        .article-content ul {
+            margin: 20px 0;
+            padding-left: 25px;
+        }
+        .article-content li {
+            margin-bottom: 10px;
+        }
+        .article-content strong {
+            color: #1a1a2e;
+        }
+        .article-content a {
+            color: #e67e22;
+            text-decoration: none;
+        }
+        .article-content a:hover {
+            text-decoration: underline;
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            margin-top: 50px;
+            padding-top: 40px;
+            border-top: 2px solid #fff3e0;
+        }
+        .faq-section h2 {
+            color: #e67e22;
+            margin-bottom: 30px;
+        }
+        .faq-item {
+            background: #fafafa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+        }
+        .faq-item h3 {
+            color: #1a1a2e;
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+        .faq-item p {
+            color: #666;
+            font-size: 15px;
+        }
+
+        /* Source Attribution */
+        .source-box {
+            background: #fafafa;
+            border-left: 4px solid #e67e22;
+            padding: 20px 25px;
+            margin-top: 40px;
+            border-radius: 0 12px 12px 0;
+        }
+        .source-box p {
+            color: #666;
+            font-size: 14px;
+            margin: 0;
+        }
+        .source-box a {
+            color: #e67e22;
+        }
+
+        /* Tags */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+        .tag {
+            background: #f5f5f5;
+            color: #666;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Footer */
+        .site-footer {
+            background: #1a1a2e;
+            padding: 40px 20px;
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .article-container { padding: 20px 15px 60px; }
+            .article-title { font-size: 24px; }
+            .article-content { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Approval Banner -->
+    <div class="approval-banner">
+        ⚠️ PREVIEW - Pending Approval - This article is not yet published
+    </div>
+
+    <!-- Header -->
+    <header class="site-header">
+        <div class="header-content">
+            <a href="https://balizero.com" class="logo">Bali<span>Zero</span></a>
+            <span style="color: #888; font-size: 14px;">News & Insights</span>
+        </div>
+    </header>
+
+    <!-- Article -->
+    <article class="article-container">
+        <!-- Category -->
+        <span class="category-badge">immigration</span>
+
+        <!-- Title -->
+        <h1 class="article-title">Indonesia Launches New Golden Visa Program for High-...</h1>
+
+        <!-- Meta -->
+        <div class="article-meta">
+            <span class="meta-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                January 04, 2026
+            </span>
+            <span class="meta-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                1 min read
+            </span>
+            <span class="meta-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2" />
+                </svg>
+                Unknown
+            </span>
+        </div>
+
+        <!-- Cover Image -->
+        <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1200&h=630&fit=crop" alt="Indonesia Launches New Golden Visa Program for High-..." class="cover-image">
+
+        <!-- Content -->
+        <div class="article-content">
+            <h2>Executive Summary</h2>
+<p>Indonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific investment thresholds. This landmark immigration policy aims to attract wealthy individuals and boost foreign direct investment.</p>
+<h2>Key Requirements</h2>
+<ul><li><strong>Minimum Investment</strong>: USD 350,000 in Indonesian government bonds or approved business sectors</li>
+<li><strong>Validity</strong>: 5-10 years depending on investment level</li>
+<li><strong>Benefits</strong>: Multiple entry, work authorization, path to permanent residency</li>
+<li><strong>Processing Time</strong>: 30-45 business days</li>
+</ul>
+<h2>Who Qualifies?</h2>
+<p>The program targets:
+<ul><li>High-net-worth individuals with proven investment capacity</li>
+<li>Business owners looking to establish presence in Southeast Asia</li>
+<li>Retirees seeking long-term residency in Bali</li>
+</ul>
+<h2>Impact for Expats</h2></p>
+<p>This visa represents a significant shift in Indonesia's immigration policy, previously known for complex and restrictive visa requirements. The Golden Visa offers a streamlined path for those willing to make substantial investments.</p>
+<h2>How to Apply</h2>
+<p>Applications can be submitted through the Directorate General of Immigration or authorized visa agents. Required documents include proof of funds, clean criminal record, and valid passport.</p>
+<p>---
+<em>Source: Ministry of Law and Human Rights Press Release</em></p>
+        </div>
+
+        <!-- FAQ -->
+        <section class="faq-section"><h2>Frequently Asked Questions</h2>
+                <div class="faq-item">
+                    <h3>What visa do I need to live in Indonesia?</h3>
+                    <p>
+ Executive Summary
+
+Indonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific investment thresholds.</p>
+                </div>
+                
+                <div class="faq-item">
+                    <h3>How long can I stay in Indonesia?</h3>
+                    <p> Key Requirements
+
+- Minimum Investment: USD 350,000 in Indonesian government bonds or approved business sectors
+- Validity: 5-10 years depending on investment level
+- Benefits: Multiple entry, work authorization, path to permanent residency
+- Processing Time: 30-45 business days
+
+ Who Qualifies?</p>
+                </div>
+                
+                <div class="faq-item">
+                    <h3>What are the requirements?</h3>
+                    <p> Key Requirements
+
+- Minimum Investment: USD 350,000 in Indonesian government bonds or approved business sectors
+- Validity: 5-10 years depending on investment level
+- Benefits: Multiple entry, work authorization, path to permanent residency
+- Processing Time: 30-45 business days
+
+ Who Qualifies?</p>
+                </div>
+                </section>
+
+        <!-- Source -->
+        <div class="source-box">
+            <p>📰 Source: <a href="https://kompas.com/golden-visa-launch" target="_blank" rel="noopener">Unknown</a></p>
+        </div>
+
+        <!-- Tags -->
+        <div class="tags">
+            <span class="tag">Indonesia</span><span class="tag">BaliZero</span><span class="tag">KITAS</span><span class="tag">Indonesia visa</span><span class="tag">Indonesia expat</span><span class="tag">Bali</span><span class="tag">Southeast Asia</span><span class="tag">KITAP</span>
+        </div>
+    </article>
+
+    <!-- Footer -->
+    <footer class="site-footer">
+        <p>© 2026 BaliZero. Indonesia's trusted guide for expats and investors.</p>
+    </footer>
+</body>
+</html>

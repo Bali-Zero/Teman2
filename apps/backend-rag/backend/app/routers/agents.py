@@ -398,7 +398,7 @@ async def extract_knowledge_graph(
                     "PART_OF",
                 ],
             },
-            "extraction_method": "LLM" if knowledge_graph.llm_gateway else "Regex"
+            "extraction_method": "LLM" if knowledge_graph.llm_gateway else "Regex",
         }
     except Exception as e:
         logger.error(f"Knowledge graph extraction failed: {e}")
@@ -451,7 +451,7 @@ async def export_knowledge_graph(
             "format": format,
             "internal_format": internal_format,
             "data": export_data,
-            "stats": knowledge_graph.get_graph_stats()
+            "stats": knowledge_graph.get_graph_stats(),
         }
     except Exception as e:
         logger.error(f"Export failed: {e}")

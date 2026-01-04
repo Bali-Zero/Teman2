@@ -12,7 +12,6 @@ Files are filtered based on user's department:
 - Board: All folders
 """
 
-import json
 import logging
 from typing import Annotated
 
@@ -33,6 +32,7 @@ SHARED_FOLDERS = ["_Shared", "Shared", "Common", "Templates"]
 
 class FileItem(BaseModel):
     """File or folder item."""
+
     id: str
     name: str
     type: str  # 'file' or 'folder'
@@ -45,24 +45,28 @@ class FileItem(BaseModel):
 
 class FileListResponse(BaseModel):
     """Response for file listing."""
+
     files: list[FileItem]
     next_page_token: str | None = None
 
 
 class BreadcrumbItem(BaseModel):
     """Breadcrumb path item."""
+
     id: str
     name: str
 
 
 class CreateFolderRequest(BaseModel):
     """Request to create a folder."""
+
     name: str
     parent_id: str
 
 
 class CreateDocRequest(BaseModel):
     """Request to create a Google Doc/Sheet/Slides."""
+
     name: str
     parent_id: str
     doc_type: str = "document"  # document, spreadsheet, presentation
@@ -70,83 +74,147 @@ class CreateDocRequest(BaseModel):
 
 class RenameRequest(BaseModel):
     """Request to rename a file/folder."""
+
     new_name: str
 
 
 class MoveRequest(BaseModel):
     """Request to move a file/folder."""
+
     new_parent_id: str
     old_parent_id: str | None = None
 
 
 class CopyRequest(BaseModel):
     """Request to copy a file."""
+
     new_name: str | None = None
     parent_id: str | None = None
 
 
 class OperationResponse(BaseModel):
     """Response for file operations."""
+
     success: bool
     file: FileItem | None = None
     message: str | None = None
 
 
-# Dependency to get drive service
-def get_drive() -> TeamDriveService:
-    service = get_team_drive_service()
+# Dependency to get drive service (with OAuth support)
+async def get_drive(
+    pool: Annotated[any, Depends(get_database_pool)],
+) -> TeamDriveService:
+    """
+    Get TeamDriveService with OAuth support.
+
+    Uses db_pool to lookup OAuth SYSTEM token for 30TB quota.
+    Falls back to Service Account if OAuth not configured.
+    """
+    service = get_team_drive_service(db_pool=pool)
     if not service.is_configured():
-        raise HTTPException(
-            status_code=503,
-            detail="Google Drive integration not configured"
-        )
+        raise HTTPException(status_code=503, detail="Google Drive integration not configured")
     return service
 
 
-async def get_user_allowed_folders(user_email: str, pool) -> tuple[list[str], bool]:
+async def get_user_allowed_folders(
+    user_email: str,
+    pool,
+    context_folder: str | None = None,
+) -> tuple[list[str], bool]:
     """
     Get list of folder names the user is allowed to access.
+    Uses folder_access_rules table for granular permissions.
+
+    Args:
+        user_email: User's email address
+        pool: Database connection pool
+        context_folder: Parent folder name (None = root level)
+
     Returns (folder_names, can_see_all)
+    - folder_names: List of allowed folder patterns
+    - can_see_all: Always False now (granular permissions for everyone)
     """
     try:
         async with pool.acquire() as conn:
-            # Get user's department and personal folders
+            # Get user's department and role
             user_row = await conn.fetchrow(
                 """
-                SELECT tm.department, tm.drive_folders, tm.full_name, d.drive_folders as dept_folders, d.can_see_all
+                SELECT tm.department, tm.full_name, d.name as role_name, d.can_see_all
                 FROM team_members tm
                 LEFT JOIN departments d ON tm.department = d.code
                 WHERE tm.email = $1 AND tm.active = true
                 """,
-                user_email
+                user_email,
             )
 
             if not user_row:
-                # User not found, return only shared folders
+                # User not found, return only default shared folders
                 return SHARED_FOLDERS.copy(), False
 
-            # Board members see everything
-            if user_row['can_see_all']:
-                return [], True
+            department = user_row["department"]
+            full_name = user_row["full_name"] or ""
+            can_see_all = user_row["can_see_all"] or False
 
-            allowed = set(SHARED_FOLDERS)
+            # Determine user's role from can_see_all flag
+            # Board members have can_see_all=True in their department
+            role = "board" if can_see_all else "team"
 
-            # Add department folders
-            if user_row['dept_folders']:
-                dept_folders = user_row['dept_folders'] if isinstance(user_row['dept_folders'], list) else json.loads(user_row['dept_folders'])
-                allowed.update(dept_folders)
+            # Query folder_access_rules with priority order
+            # Priority: user_email > department_code > role > default (*)
+            # context_folder = NULL in DB means "applies everywhere" (wildcard context)
+            rules = await conn.fetch(
+                """
+                SELECT allowed_folders, priority
+                FROM folder_access_rules
+                WHERE active = true
+                  AND (
+                    context_folder IS NULL  -- NULL = applies everywhere
+                    OR context_folder = $3  -- specific context match
+                  )
+                  AND (
+                    user_email = $1
+                    OR department_code = $2
+                    OR role = $4
+                    OR role = '*'
+                  )
+                ORDER BY priority DESC
+                """,
+                user_email,
+                department,
+                context_folder,
+                role,
+            )
 
-            # Add personal folders (user's name)
-            if user_row['full_name']:
-                # Add variations of user's name
-                name = user_row['full_name']
-                allowed.add(name)
-                allowed.add(name.split()[0])  # First name only
+            # Aggregate all allowed folders
+            allowed = set()
+            has_wildcard = False
+            for rule in rules:
+                folders = rule["allowed_folders"]
+                if folders:
+                    # Check for wildcard - user sees EVERYTHING
+                    if "*" in folders:
+                        has_wildcard = True
+                        logger.info(f"[TEAM_DRIVE] Wildcard access for {user_email}")
+                        break
+                    allowed.update(folders)
 
-            # Add custom folders assigned to this user
-            if user_row['drive_folders']:
-                personal = user_row['drive_folders'] if isinstance(user_row['drive_folders'], list) else json.loads(user_row['drive_folders'])
-                allowed.update(personal)
+            # If wildcard found, return can_see_all=True
+            if has_wildcard:
+                return ["*"], True
+
+            # Always add user's personal folder (first name)
+            if full_name:
+                first_name = full_name.split()[0]
+                allowed.add(first_name)
+                allowed.add(full_name)
+
+            # Fallback to shared folders if no rules matched
+            if not allowed:
+                allowed.update(SHARED_FOLDERS)
+
+            logger.info(
+                f"[TEAM_DRIVE] Permissions for {user_email} in context={context_folder}: {list(allowed)}"
+            )
 
             return list(allowed), False
 
@@ -158,6 +226,9 @@ async def get_user_allowed_folders(user_email: str, pool) -> tuple[list[str], bo
 
 def folder_matches_allowed(folder_name: str, allowed_folders: list[str]) -> bool:
     """Check if a folder name matches any of the allowed folder patterns."""
+    # Wildcard means full access
+    if "*" in allowed_folders:
+        return True
     folder_lower = folder_name.lower()
     for allowed in allowed_folders:
         if allowed.lower() in folder_lower or folder_lower in allowed.lower():
@@ -172,21 +243,29 @@ async def drive_status(
 ):
     """
     Check if Drive integration is configured and accessible.
+
+    Shows OAuth status if connected (30TB quota).
     """
     try:
         # Quick test - list 1 file
         result = await drive.list_files(page_size=1)
+
+        # Get connection info
+        conn_info = drive.get_connection_info()
+
         return {
             "status": "connected",
-            "service_account": "nuzantara-bot@nuzantara.iam.gserviceaccount.com",
-            "files_accessible": len(result.get("files", [])) > 0
+            "mode": conn_info["mode"],  # "oauth" or "service_account"
+            "connected_as": conn_info["connected_as"],
+            "is_oauth": conn_info["is_oauth"],
+            "files_accessible": len(result.get("files", [])) > 0,
+            "quota_info": "30TB (antonellosiano@gmail.com)"
+            if conn_info["is_oauth"]
+            else "Workspace quota (zero@balizero.com)",
         }
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Status check failed: {e}")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return {"status": "error", "error": str(e)}
 
 
 @router.get("/files", response_model=FileListResponse)
@@ -201,17 +280,29 @@ async def list_files(
 ):
     """
     List files in a folder or search across all shared files.
-    Files are filtered based on user's department permissions.
+    Files are filtered based on user's folder_access_rules permissions.
 
     - If `folder_id` is provided, lists contents of that folder
     - If `q` is provided, searches for files matching the query
-    - Otherwise, lists root-level folders filtered by department
+    - Otherwise, lists root-level folders filtered by permissions
     """
     try:
         user_email = current_user.get("email", "")
 
-        # Get user's allowed folders
-        allowed_folders, can_see_all = await get_user_allowed_folders(user_email, pool)
+        # Determine context folder name for permission lookup
+        context_folder = None
+        if folder_id:
+            # Get the folder's name to use as context
+            try:
+                folder_path = await drive.get_folder_path(folder_id)
+                if folder_path:
+                    # Use the current folder's name as context
+                    context_folder = folder_path[-1]["name"] if folder_path else None
+            except Exception as e:
+                logger.warning(f"[TEAM_DRIVE] Could not get folder path: {e}")
+
+        # Get user's allowed folders for this context
+        allowed_folders, _ = await get_user_allowed_folders(user_email, pool, context_folder)
 
         result = await drive.list_files(
             folder_id=folder_id,
@@ -222,15 +313,20 @@ async def list_files(
 
         files = result["files"]
 
-        # Filter at root level only (when no folder_id specified)
-        if not folder_id and not can_see_all:
-            filtered_files = []
-            for f in files:
-                # Allow all non-folder files
-                if f["type"] != "folder" or folder_matches_allowed(f["name"], allowed_folders):
-                    filtered_files.append(f)
-            files = filtered_files
-            logger.info(f"[TEAM_DRIVE] Filtered {len(result['files'])} -> {len(files)} files for {user_email}")
+        # Apply folder filtering (at ALL levels, not just root)
+        filtered_files = []
+        for f in files:
+            # Allow all non-folder files
+            if f["type"] != "folder" or folder_matches_allowed(f["name"], allowed_folders):
+                filtered_files.append(f)
+
+        if len(filtered_files) != len(files):
+            logger.info(
+                f"[TEAM_DRIVE] Filtered {len(files)} -> {len(filtered_files)} for {user_email} "
+                f"(context={context_folder})"
+            )
+
+        files = filtered_files
 
         return FileListResponse(
             files=[FileItem(**f) for f in files],
@@ -285,7 +381,7 @@ async def download_file(
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "Content-Length": str(len(content)),
-            }
+            },
         )
 
     except Exception as e:
@@ -316,7 +412,9 @@ async def search_files(
     q: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     drive: Annotated[TeamDriveService, Depends(get_drive)],
-    file_type: str | None = Query(None, description="Filter by type: folder, document, spreadsheet, pdf"),
+    file_type: str | None = Query(
+        None, description="Filter by type: folder, document, spreadsheet, pdf"
+    ),
     page_size: int = Query(20, ge=1, le=50),
 ):
     """
@@ -343,6 +441,7 @@ async def search_files(
 # =========================================================================
 # CRUD Operations
 # =========================================================================
+
 
 async def check_write_permission(
     user_email: str,
@@ -388,8 +487,7 @@ async def upload_file(
     # Check write permission
     if not await check_write_permission(user_email, parent_id, pool, drive):
         raise HTTPException(
-            status_code=403,
-            detail="Non hai i permessi per caricare file in questa cartella"
+            status_code=403, detail="Non hai i permessi per caricare file in questa cartella"
         )
 
     try:
@@ -406,7 +504,7 @@ async def upload_file(
         return OperationResponse(
             success=True,
             file=FileItem(**result),
-            message=f"File '{file.filename}' caricato con successo"
+            message=f"File '{file.filename}' caricato con successo",
         )
 
     except Exception as e:
@@ -428,10 +526,7 @@ async def create_folder(
 
     # Check write permission
     if not await check_write_permission(user_email, request.parent_id, pool, drive):
-        raise HTTPException(
-            status_code=403,
-            detail="Non hai i permessi per creare cartelle qui"
-        )
+        raise HTTPException(status_code=403, detail="Non hai i permessi per creare cartelle qui")
 
     try:
         result = await drive.create_folder(
@@ -442,9 +537,7 @@ async def create_folder(
         logger.info(f"[TEAM_DRIVE] {user_email} created folder: {request.name}")
 
         return OperationResponse(
-            success=True,
-            file=FileItem(**result),
-            message=f"Cartella '{request.name}' creata"
+            success=True, file=FileItem(**result), message=f"Cartella '{request.name}' creata"
         )
 
     except Exception as e:
@@ -466,10 +559,7 @@ async def create_doc(
 
     # Check write permission
     if not await check_write_permission(user_email, request.parent_id, pool, drive):
-        raise HTTPException(
-            status_code=403,
-            detail="Non hai i permessi per creare documenti qui"
-        )
+        raise HTTPException(status_code=403, detail="Non hai i permessi per creare documenti qui")
 
     try:
         result = await drive.create_google_doc(
@@ -489,7 +579,7 @@ async def create_doc(
         return OperationResponse(
             success=True,
             file=FileItem(**result),
-            message=f"{doc_type_names.get(request.doc_type, 'Documento')} '{request.name}' creato"
+            message=f"{doc_type_names.get(request.doc_type, 'Documento')} '{request.name}' creato",
         )
 
     except ValueError as e:
@@ -520,9 +610,7 @@ async def rename_file(
         logger.info(f"[TEAM_DRIVE] {user_email} renamed {file_id} to: {request.new_name}")
 
         return OperationResponse(
-            success=True,
-            file=FileItem(**result),
-            message=f"Rinominato in '{request.new_name}'"
+            success=True, file=FileItem(**result), message=f"Rinominato in '{request.new_name}'"
         )
 
     except Exception as e:
@@ -551,10 +639,7 @@ async def delete_file(
         action = "eliminato definitivamente" if permanent else "spostato nel cestino"
         logger.info(f"[TEAM_DRIVE] {user_email} deleted {file_id} (permanent={permanent})")
 
-        return {
-            "success": True,
-            "message": f"File {action}"
-        }
+        return {"success": True, "message": f"File {action}"}
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error deleting file: {e}")
@@ -577,8 +662,7 @@ async def move_file(
     # Check write permission on destination
     if not await check_write_permission(user_email, request.new_parent_id, pool, drive):
         raise HTTPException(
-            status_code=403,
-            detail="Non hai i permessi per spostare file in questa cartella"
+            status_code=403, detail="Non hai i permessi per spostare file in questa cartella"
         )
 
     try:
@@ -590,11 +674,7 @@ async def move_file(
 
         logger.info(f"[TEAM_DRIVE] {user_email} moved {file_id} to {request.new_parent_id}")
 
-        return OperationResponse(
-            success=True,
-            file=FileItem(**result),
-            message="File spostato"
-        )
+        return OperationResponse(success=True, file=FileItem(**result), message="File spostato")
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error moving file: {e}")
@@ -618,8 +698,7 @@ async def copy_file(
     if request.parent_id:
         if not await check_write_permission(user_email, request.parent_id, pool, drive):
             raise HTTPException(
-                status_code=403,
-                detail="Non hai i permessi per copiare file in questa cartella"
+                status_code=403, detail="Non hai i permessi per copiare file in questa cartella"
             )
 
     try:
@@ -631,12 +710,174 @@ async def copy_file(
 
         logger.info(f"[TEAM_DRIVE] {user_email} copied {file_id}")
 
-        return OperationResponse(
-            success=True,
-            file=FileItem(**result),
-            message="File copiato"
-        )
+        return OperationResponse(success=True, file=FileItem(**result), message="File copiato")
 
     except Exception as e:
         logger.error(f"[TEAM_DRIVE] Error copying file: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =========================================================================
+# Permission Management (Board only)
+# =========================================================================
+
+
+class PermissionItem(BaseModel):
+    """Permission entry."""
+
+    id: str
+    email: str
+    name: str
+    role: str  # owner, writer, commenter, reader
+    type: str  # user, group, domain, anyone
+
+
+class AddPermissionRequest(BaseModel):
+    """Request to add permission."""
+
+    email: str
+    role: str = "reader"  # reader, commenter, writer
+    send_notification: bool = True
+
+
+class UpdatePermissionRequest(BaseModel):
+    """Request to update permission."""
+
+    role: str  # reader, commenter, writer
+
+
+async def check_is_board(user_email: str, pool) -> bool:
+    """Check if user is a board member (can_see_all)."""
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT d.can_see_all
+                FROM team_members tm
+                JOIN departments d ON tm.department = d.code
+                WHERE tm.email = $1 AND tm.active = true
+                """,
+                user_email,
+            )
+            return row and row["can_see_all"]
+    except Exception:
+        return False
+
+
+@router.get("/files/{file_id}/permissions", response_model=list[PermissionItem])
+async def list_permissions(
+    file_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    drive: Annotated[TeamDriveService, Depends(get_drive)],
+):
+    """
+    List permissions for a file/folder.
+    All authenticated users can view who has access.
+    Zero is hidden from other users (invisible admin).
+    """
+    user_email = current_user.get("email", "")
+
+    # Hidden admin emails - only visible to themselves
+    HIDDEN_ADMINS = ["zero@balizero.com", "antonellosiano@gmail.com"]
+
+    try:
+        permissions = await drive.list_permissions(file_id)
+
+        # Filter out hidden admins unless the requester is one of them
+        if user_email not in HIDDEN_ADMINS:
+            permissions = [p for p in permissions if p.get("email") not in HIDDEN_ADMINS]
+
+        return [PermissionItem(**p) for p in permissions]
+
+    except Exception as e:
+        logger.error(f"[TEAM_DRIVE] Error listing permissions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/files/{file_id}/permissions", response_model=PermissionItem)
+async def add_permission(
+    file_id: str,
+    request: AddPermissionRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    drive: Annotated[TeamDriveService, Depends(get_drive)],
+):
+    """
+    Add permission for a user. All authenticated users can manage permissions.
+    """
+    user_email = current_user.get("email", "")
+
+    try:
+        permission = await drive.add_permission(
+            file_id=file_id,
+            email=request.email,
+            role=request.role,
+            send_notification=request.send_notification,
+        )
+
+        logger.info(
+            f"[TEAM_DRIVE] {user_email} added {request.role} for {request.email} on {file_id}"
+        )
+
+        return PermissionItem(**permission)
+
+    except Exception as e:
+        logger.error(f"[TEAM_DRIVE] Error adding permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/files/{file_id}/permissions/{permission_id}", response_model=PermissionItem)
+async def update_permission(
+    file_id: str,
+    permission_id: str,
+    request: UpdatePermissionRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    drive: Annotated[TeamDriveService, Depends(get_drive)],
+):
+    """
+    Update permission role. All authenticated users can manage permissions.
+    """
+    user_email = current_user.get("email", "")
+
+    try:
+        permission = await drive.update_permission(
+            file_id=file_id,
+            permission_id=permission_id,
+            role=request.role,
+        )
+
+        logger.info(
+            f"[TEAM_DRIVE] {user_email} updated permission {permission_id} to {request.role}"
+        )
+
+        return PermissionItem(**permission)
+
+    except Exception as e:
+        logger.error(f"[TEAM_DRIVE] Error updating permission: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/files/{file_id}/permissions/{permission_id}")
+async def remove_permission(
+    file_id: str,
+    permission_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    drive: Annotated[TeamDriveService, Depends(get_drive)],
+):
+    """
+    Remove permission. All authenticated users can manage permissions.
+    """
+    user_email = current_user.get("email", "")
+
+    try:
+        await drive.remove_permission(
+            file_id=file_id,
+            permission_id=permission_id,
+        )
+
+        logger.info(f"[TEAM_DRIVE] {user_email} removed permission {permission_id} from {file_id}")
+
+        return {"success": True, "message": "Permesso rimosso"}
+
+    except Exception as e:
+        logger.error(f"[TEAM_DRIVE] Error removing permission: {e}")
         raise HTTPException(status_code=500, detail=str(e))

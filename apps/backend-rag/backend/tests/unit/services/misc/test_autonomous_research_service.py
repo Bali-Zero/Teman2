@@ -20,11 +20,13 @@ from services.misc.autonomous_research_service import AutonomousResearchService,
 def mock_search_service():
     """Mock search service"""
     service = MagicMock()
-    service.search = AsyncMock(return_value={
-        "documents": ["Test document"],
-        "metadatas": [{"source": "test"}],
-        "ids": ["doc1"]
-    })
+    service.search = AsyncMock(
+        return_value={
+            "documents": ["Test document"],
+            "metadatas": [{"source": "test"}],
+            "ids": ["doc1"],
+        }
+    )
     return service
 
 
@@ -40,10 +42,9 @@ def mock_query_router():
 def mock_zantara_ai():
     """Mock ZANTARA AI service"""
     service = MagicMock()
-    service.generate_content = AsyncMock(return_value={
-        "text": "Synthesized answer",
-        "model": "test_model"
-    })
+    service.generate_content = AsyncMock(
+        return_value={"text": "Synthesized answer", "model": "test_model"}
+    )
     return service
 
 
@@ -53,7 +54,7 @@ def autonomous_research_service(mock_search_service, mock_query_router, mock_zan
     return AutonomousResearchService(
         search_service=mock_search_service,
         query_router=mock_query_router,
-        zantara_ai_service=mock_zantara_ai
+        zantara_ai_service=mock_zantara_ai,
     )
 
 
@@ -86,23 +87,30 @@ class TestAutonomousResearchService:
         assert len(expanded) > 0
 
     @pytest.mark.asyncio
-    async def test_research_simple_query(self, autonomous_research_service, mock_search_service, mock_query_router):
+    async def test_research_simple_query(
+        self, autonomous_research_service, mock_search_service, mock_query_router
+    ):
         """Test researching a simple query"""
         mock_search_service.search.return_value = {
             "results": [{"text": "Test document", "score": 0.8}] * 5
         }
-        mock_query_router.route_with_confidence = MagicMock(return_value=("collection1", 0.9, ["collection1", "collection2"]))
+        mock_query_router.route_with_confidence = MagicMock(
+            return_value=("collection1", 0.9, ["collection1", "collection2"])
+        )
         result = await autonomous_research_service.research("test query")
         assert isinstance(result, ResearchResult)
         assert result.original_query == "test query"
 
     @pytest.mark.asyncio
-    async def test_research_max_iterations(self, autonomous_research_service, mock_search_service, mock_query_router):
+    async def test_research_max_iterations(
+        self, autonomous_research_service, mock_search_service, mock_query_router
+    ):
         """Test research hitting max iterations"""
         mock_search_service.search.return_value = {
             "results": [{"text": "Test document", "score": 0.3}]
         }
-        mock_query_router.route_with_confidence = MagicMock(return_value=("collection1", 0.3, ["collection1", "collection2"]))
+        mock_query_router.route_with_confidence = MagicMock(
+            return_value=("collection1", 0.3, ["collection1", "collection2"])
+        )
         result = await autonomous_research_service.research("test query")
         assert result.total_steps <= autonomous_research_service.MAX_ITERATIONS
-

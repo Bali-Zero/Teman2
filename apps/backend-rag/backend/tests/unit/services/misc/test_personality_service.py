@@ -34,9 +34,10 @@ class TestPersonalityService:
 
     def test_get_user_personality(self, personality_service):
         """Test getting user personality"""
-        with patch("services.misc.personality_service.TEAM_MEMBERS", [
-            {"id": "test1", "email": "test@example.com", "name": "Test", "traits": []}
-        ]):
+        with patch(
+            "services.misc.personality_service.TEAM_MEMBERS",
+            [{"id": "test1", "email": "test@example.com", "name": "Test", "traits": []}],
+        ):
             service = PersonalityService()
             personality = service.get_user_personality("test@example.com")
             assert personality is not None

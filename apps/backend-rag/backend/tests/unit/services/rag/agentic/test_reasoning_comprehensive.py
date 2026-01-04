@@ -65,17 +65,16 @@ class TestReasoningEngine:
         mock_response_obj.candidates = []
 
         # Mock LLM response with final answer (no tool calls)
-        mock_llm_gateway.send_message = AsyncMock(return_value=(
-            "The answer is 42",
-            "gemini-3-flash",
-            mock_response_obj,
-            MagicMock(total_tokens=100)
-        ))
-
-        state = AgentState(
-            query="What is 2+2?",
-            max_steps=5
+        mock_llm_gateway.send_message = AsyncMock(
+            return_value=(
+                "The answer is 42",
+                "gemini-3-flash",
+                mock_response_obj,
+                MagicMock(total_tokens=100),
+            )
         )
+
+        state = AgentState(query="What is 2+2?", max_steps=5)
 
         result_state, model_name, messages, token_usage = await reasoning_engine.execute_react_loop(
             state=state,
@@ -86,7 +85,7 @@ class TestReasoningEngine:
             query="What is 2+2?",
             user_id="test_user",
             model_tier=1,
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
 
         assert result_state is not None
@@ -117,6 +116,7 @@ class TestReasoningEngine:
 
         # First call: tool call, second call: final answer
         call_count = 0
+
         async def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -126,7 +126,7 @@ class TestReasoningEngine:
                     "I need to use test_tool",
                     "gemini-3-flash",
                     mock_response_obj,
-                    MagicMock(total_tokens=100)
+                    MagicMock(total_tokens=100),
                 )
             else:
                 # Second call returns final answer
@@ -135,15 +135,12 @@ class TestReasoningEngine:
                     "The result is: result",
                     "gemini-3-flash",
                     mock_response_obj,
-                    MagicMock(total_tokens=100)
+                    MagicMock(total_tokens=100),
                 )
 
         mock_llm_gateway.send_message = mock_send_message
 
-        state = AgentState(
-            query="test query",
-            max_steps=5
-        )
+        state = AgentState(query="test query", max_steps=5)
 
         result_state, model_name, messages, token_usage = await reasoning_engine.execute_react_loop(
             state=state,
@@ -154,7 +151,7 @@ class TestReasoningEngine:
             query="test query",
             user_id="test_user",
             model_tier=1,
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
 
         assert result_state is not None
@@ -171,6 +168,7 @@ class TestReasoningEngine:
 
         # Mock LLM to always return a thought (not final answer) to force max steps
         call_count = 0
+
         async def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -178,14 +176,14 @@ class TestReasoningEngine:
                 f"Step {call_count}: thinking...",
                 "gemini-3-flash",
                 mock_response_obj,
-                MagicMock(total_tokens=50)
+                MagicMock(total_tokens=50),
             )
 
         mock_llm_gateway.send_message = mock_send_message
 
         state = AgentState(
             query="test query",
-            max_steps=3  # Limit to 3 steps
+            max_steps=3,  # Limit to 3 steps
         )
 
         result_state, model_name, messages, token_usage = await reasoning_engine.execute_react_loop(
@@ -197,7 +195,7 @@ class TestReasoningEngine:
             query="test query",
             user_id="test_user",
             model_tier=1,
-            tool_execution_counter={"count": 0}
+            tool_execution_counter={"count": 0},
         )
 
         assert result_state is not None
@@ -255,6 +253,7 @@ class TestToolCallValidation:
 
     def test_is_valid_tool_call_valid(self):
         """Test valid tool call"""
+
         class ToolCall:
             def __init__(self):
                 self.tool_name = "test"
@@ -269,6 +268,7 @@ class TestToolCallValidation:
 
     def test_is_valid_tool_call_no_name(self):
         """Test tool call without name"""
+
         class ToolCall:
             def __init__(self):
                 self.arguments = {}
@@ -278,6 +278,7 @@ class TestToolCallValidation:
 
     def test_is_valid_tool_call_none_arguments(self):
         """Test tool call with None arguments"""
+
         class ToolCall:
             def __init__(self):
                 self.tool_name = "test"
@@ -309,4 +310,3 @@ class TestTeamQueryDetection:
         query = "Who handles visas in the team?"
         is_team, query_type, search_term = detect_team_query(query)
         assert is_team is True
-

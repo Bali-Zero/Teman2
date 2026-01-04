@@ -149,6 +149,7 @@ class TestWebSocketAuth:
     async def test_get_current_user_ws_invalid(self, mock_jwt, mock_settings):
         """Test getting current user with invalid token"""
         from jose import JWTError
+
         mock_settings.jwt_secret_key = "secret"
         mock_settings.jwt_algorithm = "HS256"
         mock_jwt.decode.side_effect = JWTError("Invalid token")

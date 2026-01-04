@@ -333,4 +333,4 @@ class TestZantaraTools:
         tools1 = get_zantara_tools()
         tools2 = get_zantara_tools()
 
-        assert tools1 is tools2 or "error" in result
+        assert tools1 is tools2

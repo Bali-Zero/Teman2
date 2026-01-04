@@ -164,7 +164,9 @@ class TestGetDatabasePool:
 
         assert exc_info.value.status_code == 503
         # Detail is now a string, not a dict
-        assert "database" in exc_info.value.detail.lower() or "pool" in exc_info.value.detail.lower()
+        assert (
+            "database" in exc_info.value.detail.lower() or "pool" in exc_info.value.detail.lower()
+        )
 
 
 # ============================================================================

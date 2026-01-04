@@ -1,0 +1,48 @@
+{
+  "article_id": "65708874ed4d",
+  "title": "Indonesia Extends Digital Nomad Visa to 5 Years",
+  "category": "immigration",
+  "source": "Jakarta Post",
+  "source_url": "https://example.com/nomad-visa",
+  "preview_html": "data/previews/65708874ed4d.html",
+  "preview_url": "file:///Users/antonellosiano/Desktop/nuzantara/apps/bali-intel-scraper/scripts/data/previews/65708874ed4d.html",
+  "seo_metadata": {
+    "title": "Indonesia Extends Digital Nomad Visa to 5 Years | BaliZero",
+    "meta_description": "Indonesia extends Digital Nomad Visa E33G from 1 to 5 years. Learn about requirements, costs, and how to apply for this groundbreaking visa.",
+    "keywords": [
+      "digital nomad visa",
+      "E33G",
+      "Indonesia visa",
+      "remote work",
+      "Bali",
+      "BaliZero"
+    ],
+    "key_entities": [
+      "Indonesia",
+      "Bali",
+      "Ministry of Law",
+      "Digital Nomad Visa",
+      "E33G"
+    ],
+    "faq_items": [
+      {
+        "question": "How long is the digital nomad visa valid?",
+        "answer": "The E33G Digital Nomad Visa is now valid for up to 5 years."
+      },
+      {
+        "question": "What is the income requirement?",
+        "answer": "You need to prove a minimum monthly income of $2,000 USD."
+      }
+    ],
+    "canonical_url": "https://balizero.com/news/immigration/digital-nomad-visa-extended",
+    "reading_time_minutes": 4,
+    "tldr_summary": "Indonesia has extended the Digital Nomad Visa (E33G) from 1 year to 5 years, requiring $2,000/month income and allowing remote work for foreign companies.",
+    "schema_json_ld": "{\"@context\": \"https://schema.org\", \"@type\": \"NewsArticle\", \"headline\": \"Indonesia Extends Digital Nomad Visa\"}"
+  },
+  "enriched_content": "# Indonesia Extends Digital Nomad Visa to 5 Years\n\n## Executive Summary\n\nThe Indonesian government has officially announced an extension of the Digital Nomad Visa (E33G) validity period from 1 year to 5 years, making Indonesia one of the most attractive destinations for remote workers in Southeast Asia.\n\n## Key Changes\n\n- **Validity**: Extended from 1 year to 5 years\n- **Income requirement**: $2,000 USD/month minimum\n- **Work authorization**: Remote work for foreign companies permitted\n- **Tax status**: Not subject to Indonesian income tax if staying less than 183 days/year\n\n## Impact for Digital Nomads\n\nThis policy change positions Bali and other Indonesian destinations as top choices for the growing digital nomad community. The extended visa reduces administrative burden and provides long-term stability for remote workers.\n\n## How to Apply\n\nApplications can be submitted through Indonesian embassies worldwide or converted from a tourist visa within Indonesia. Processing time is approximately 4-6 weeks.\n\n---\n*Source: Ministry of Law and Human Rights*\n",
+  "image_url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&h=630&fit=crop",
+  "created_at": "2026-01-04T11:12:00.640825+00:00",
+  "status": "pending",
+  "approved_at": null,
+  "telegram_message_id": null
+}

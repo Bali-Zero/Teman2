@@ -25,7 +25,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from services.misc.graph_extractor import GraphExtractor, ExtractedGraph
+from services.misc.graph_extractor import ExtractedGraph, GraphExtractor
 
 
 class TestExtractedGraph:
@@ -483,7 +483,9 @@ class TestGraphExtractorExtractFromText:
             assert "Test error" in error_call
 
     @pytest.mark.asyncio
-    async def test_extract_from_text_relationships_both_keys_present(self, extractor, mock_ai_client):
+    async def test_extract_from_text_relationships_both_keys_present(
+        self, extractor, mock_ai_client
+    ):
         """Test when both 'relationships' and 'relations' keys are present"""
         # 'relationships' should take precedence
         response_data = {
@@ -573,7 +575,12 @@ class TestGraphExtractorIntegration:
                     "name": "PP 31/2013",
                     "description": "Immigration regulation",
                 },
-                {"id": "visa_211", "type": "VISA", "name": "Visa 211", "description": "Tourist visa"},
+                {
+                    "id": "visa_211",
+                    "type": "VISA",
+                    "name": "Visa 211",
+                    "description": "Tourist visa",
+                },
             ],
             "relationships": [
                 {"source": "pp_31_2013", "target": "visa_211", "type": "DEFINES", "strength": 1.0}

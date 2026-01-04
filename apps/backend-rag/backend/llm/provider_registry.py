@@ -58,24 +58,28 @@ def _register_builtin_providers():
     """Register all built-in providers."""
     try:
         from llm.providers.gemini import GeminiProvider
+
         register_provider("gemini", GeminiProvider)
     except ImportError:
         pass
 
     try:
         from llm.providers.openrouter import OpenRouterProvider
+
         register_provider("openrouter", OpenRouterProvider)
     except ImportError:
         pass
 
     try:
         from llm.providers.deepseek import DeepSeekProvider
+
         register_provider("deepseek", DeepSeekProvider)
     except ImportError:
         pass
 
     try:
         from llm.providers.vertex import VertexProvider
+
         register_provider("vertex", VertexProvider)
     except ImportError:
         pass

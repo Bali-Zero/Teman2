@@ -24,17 +24,19 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EntityMention:
     """A mention of an entity in text"""
-    text: str                     # The mention text
+
+    text: str  # The mention text
     entity_id: str | None = None  # Resolved entity ID
     entity_type: EntityType | None = None
-    position: int = 0             # Position in text
-    is_pronoun: bool = False      # Is this a pronoun/reference
+    position: int = 0  # Position in text
+    is_pronoun: bool = False  # Is this a pronoun/reference
     confidence: float = 0.8
 
 
 @dataclass
 class EntityCluster:
     """Cluster of mentions referring to same entity"""
+
     canonical_id: str
     canonical_name: str
     entity_type: EntityType
@@ -146,9 +148,7 @@ class CoreferenceResolver:
         """Compile regex patterns for efficiency"""
         self.compiled_patterns = {}
         for ref_type, patterns in self.REFERENCE_PATTERNS.items():
-            self.compiled_patterns[ref_type] = [
-                re.compile(p, re.IGNORECASE) for p in patterns
-            ]
+            self.compiled_patterns[ref_type] = [re.compile(p, re.IGNORECASE) for p in patterns]
 
     def find_references(self, text: str) -> list[EntityMention]:
         """
@@ -165,12 +165,14 @@ class CoreferenceResolver:
         for ref_type, patterns in self.compiled_patterns.items():
             for pattern in patterns:
                 for match in pattern.finditer(text):
-                    mentions.append(EntityMention(
-                        text=match.group(),
-                        position=match.start(),
-                        is_pronoun=True,
-                        entity_type=self._ref_type_to_entity_type(ref_type),
-                    ))
+                    mentions.append(
+                        EntityMention(
+                            text=match.group(),
+                            position=match.start(),
+                            is_pronoun=True,
+                            entity_type=self._ref_type_to_entity_type(ref_type),
+                        )
+                    )
 
         return sorted(mentions, key=lambda m: m.position)
 
@@ -212,9 +214,7 @@ class CoreferenceResolver:
 
         return normalized
 
-    def cluster_entities(
-        self, entities: list[ExtractedEntity]
-    ) -> dict[str, EntityCluster]:
+    def cluster_entities(self, entities: list[ExtractedEntity]) -> dict[str, EntityCluster]:
         """
         Cluster entities by canonical name
 
@@ -406,9 +406,7 @@ class CoreferenceResolver:
 
         return resolutions
 
-    def deduplicate_entities(
-        self, entities: list[ExtractedEntity]
-    ) -> list[ExtractedEntity]:
+    def deduplicate_entities(self, entities: list[ExtractedEntity]) -> list[ExtractedEntity]:
         """
         Deduplicate entities by merging similar ones
 
@@ -424,14 +422,16 @@ class CoreferenceResolver:
         deduplicated = []
         for cluster in clusters.values():
             # Create single entity from cluster
-            deduplicated.append(ExtractedEntity(
-                id=cluster.canonical_id,
-                type=cluster.entity_type,
-                name=cluster.canonical_name,
-                mention=cluster.mentions[0] if cluster.mentions else cluster.canonical_name,
-                attributes=cluster.attributes,
-                confidence=0.9,
-            ))
+            deduplicated.append(
+                ExtractedEntity(
+                    id=cluster.canonical_id,
+                    type=cluster.entity_type,
+                    name=cluster.canonical_name,
+                    mention=cluster.mentions[0] if cluster.mentions else cluster.canonical_name,
+                    attributes=cluster.attributes,
+                    confidence=0.9,
+                )
+            )
 
         return deduplicated
 

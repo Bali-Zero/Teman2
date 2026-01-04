@@ -53,14 +53,14 @@ class TestCoreferenceResolver:
                 type=EntityType.UNDANG_UNDANG,
                 name="UU No. 6 Tahun 2023",
                 mention="UU No. 6 Tahun 2023",
-                confidence=0.9
+                confidence=0.9,
             ),
             ExtractedEntity(
                 id="id2",
                 type=EntityType.UNDANG_UNDANG,
                 name="UU No. 6 Tahun 2023",
                 mention="UU No. 6 Tahun 2023",
-                confidence=0.8
+                confidence=0.8,
             ),
         ]
         clusters = coreference_resolver.cluster_entities(entities)
@@ -72,7 +72,7 @@ class TestCoreferenceResolver:
             "cluster1": EntityCluster(
                 canonical_id="id1",
                 canonical_name="Test Entity",
-                entity_type=EntityType.UNDANG_UNDANG
+                entity_type=EntityType.UNDANG_UNDANG,
             )
         }
         coreference_resolver.update_cache(clusters)
@@ -85,7 +85,7 @@ class TestCoreferenceResolver:
             "cluster1": EntityCluster(
                 canonical_id="id1",
                 canonical_name="Test Entity",
-                entity_type=EntityType.UNDANG_UNDANG
+                entity_type=EntityType.UNDANG_UNDANG,
             )
         }
         coreference_resolver.update_cache(clusters)
@@ -98,7 +98,9 @@ class TestCoreferenceResolver:
         with patch("services.knowledge_graph.coreference.anthropic.Anthropic") as mock_anthropic:
             mock_client = MagicMock()
             mock_message = MagicMock()
-            mock_message.content = [MagicMock(text='{"entity_id": "id1", "entity_type": "undang_undang"}')]
+            mock_message.content = [
+                MagicMock(text='{"entity_id": "id1", "entity_type": "undang_undang"}')
+            ]
             mock_response = MagicMock()
             mock_response.content = [mock_message]
             mock_client.messages.create = AsyncMock(return_value=mock_response)
@@ -110,7 +112,7 @@ class TestCoreferenceResolver:
                 "cluster1": EntityCluster(
                     canonical_id="id1",
                     canonical_name="UU No. 6 Tahun 2023",
-                    entity_type=EntityType.UNDANG_UNDANG
+                    entity_type=EntityType.UNDANG_UNDANG,
                 )
             }
             coreference_resolver.update_cache(clusters)
@@ -128,14 +130,14 @@ class TestCoreferenceResolver:
                 type=EntityType.UNDANG_UNDANG,
                 name="Entity 1",
                 mention="Entity 1",
-                confidence=0.9
+                confidence=0.9,
             ),
             ExtractedEntity(
                 id="id2",
                 type=EntityType.UNDANG_UNDANG,
                 name="Entity 1",
                 mention="Entity 1",
-                confidence=0.8
+                confidence=0.8,
             ),
         ]
         deduplicated = coreference_resolver.deduplicate_entities(entities)
@@ -147,7 +149,7 @@ class TestCoreferenceResolver:
             "cluster1": EntityCluster(
                 canonical_id="id1",
                 canonical_name="Test Entity",
-                entity_type=EntityType.UNDANG_UNDANG
+                entity_type=EntityType.UNDANG_UNDANG,
             )
         }
         coreference_resolver.update_cache(clusters)
@@ -159,4 +161,3 @@ class TestCoreferenceResolver:
         stats = coreference_resolver.get_cache_stats()
         assert isinstance(stats, dict)
         assert "total_entities" in stats
-

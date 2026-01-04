@@ -23,7 +23,9 @@ class AICRMExtractor:
         """Initialize with ZANTARA AI client"""
         try:
             self.client = ai_client if ai_client else ZantaraAIClient()
-            logger.info(f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}")
+            logger.info(
+                f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}"
+            )
         except Exception as e:
             logger.error(f"❌ Failed to initialize ZANTARA AI: {e}")
             raise

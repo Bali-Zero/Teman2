@@ -6,11 +6,11 @@ Tests different collections and query types directly via API
 
 import asyncio
 import json
-import sys
 import os
+import sys
 
 # Add backend to path correctly
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
 from services.rag.agentic.tools import VectorSearchTool
 from services.search.search_service import SearchService
@@ -78,9 +78,9 @@ TEST_QUESTIONS = {
 
 async def test_vector_search_tool():
     """Test the VectorSearchTool directly"""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("TESTING VECTORSEARCHTOOL DIRECTLY")
-    print("="*80)
+    print("=" * 80)
 
     # Initialize
     search_service = SearchService()
@@ -103,30 +103,36 @@ async def test_vector_search_tool():
                 status = "PASS" if sources and max_score > 0.5 else "FAIL"
 
                 print(f"  [{status}] {q[:50]}...")
-                print(f"       Collections: {collections}, MaxScore: {max_score:.2f}, Sources: {len(sources)}")
+                print(
+                    f"       Collections: {collections}, MaxScore: {max_score:.2f}, Sources: {len(sources)}"
+                )
 
-                results.append({
-                    "category": category,
-                    "question": q,
-                    "status": status,
-                    "collections": list(collections),
-                    "max_score": max_score,
-                    "num_sources": len(sources),
-                })
+                results.append(
+                    {
+                        "category": category,
+                        "question": q,
+                        "status": status,
+                        "collections": list(collections),
+                        "max_score": max_score,
+                        "num_sources": len(sources),
+                    }
+                )
 
             except Exception as e:
                 print(f"  [ERROR] {q[:50]}... → {str(e)[:50]}")
-                results.append({
-                    "category": category,
-                    "question": q,
-                    "status": "ERROR",
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "category": category,
+                        "question": q,
+                        "status": "ERROR",
+                        "error": str(e),
+                    }
+                )
 
     # Summary
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("SUMMARY")
-    print("="*80)
+    print("=" * 80)
 
     total = len(results)
     passed = sum(1 for r in results if r["status"] == "PASS")
@@ -134,11 +140,11 @@ async def test_vector_search_tool():
     errors = sum(1 for r in results if r["status"] == "ERROR")
 
     print(f"Total: {total} | PASS: {passed} | FAIL: {failed} | ERROR: {errors}")
-    print(f"Success Rate: {passed/total*100:.1f}%")
+    print(f"Success Rate: {passed / total * 100:.1f}%")
 
     # Category breakdown
     print("\nBy Category:")
-    for cat in TEST_QUESTIONS.keys():
+    for cat in TEST_QUESTIONS:
         cat_results = [r for r in results if r["category"] == cat]
         cat_pass = sum(1 for r in cat_results if r["status"] == "PASS")
         print(f"  {cat}: {cat_pass}/{len(cat_results)}")

@@ -67,7 +67,8 @@ class TestRAGPipelineTrace:
     def test_add_step(self):
         """Test adding step to trace"""
         trace = RAGPipelineTrace(query="test")
-        step = trace.add_step("embedding", metadata={"model": "test"})
+        # Pass model as a kwarg (not inside metadata dict)
+        step = trace.add_step("embedding", model="test")
 
         assert len(trace.steps) == 1
         assert step.step_name == "embedding"
@@ -105,15 +106,16 @@ class TestRAGPipelineDebugger:
     def test_init(self):
         """Test RAGPipelineDebugger initialization"""
         debugger = RAGPipelineDebugger(query="test query", correlation_id="test-123")
-        assert debugger.query == "test query"
-        assert debugger.correlation_id == "test-123"
+        # query is stored in trace, not on debugger directly
+        assert debugger.trace.query == "test query"
+        assert debugger.trace.correlation_id == "test-123"
         assert debugger.trace is not None
 
     def test_init_without_correlation_id(self):
         """Test initialization without correlation ID"""
         debugger = RAGPipelineDebugger(query="test")
-        assert debugger.query == "test"
-        assert debugger.correlation_id is None
+        assert debugger.trace.query == "test"
+        assert debugger.trace.correlation_id is None
 
     def test_step_context_manager(self):
         """Test using step as context manager"""
@@ -139,24 +141,27 @@ class TestRAGPipelineDebugger:
     def test_finish(self):
         """Test finishing debugger"""
         debugger = RAGPipelineDebugger(query="test")
-        trace = debugger.finish(final_response="Done")
+        # Parameter is 'response', not 'final_response'
+        trace = debugger.finish(response="Done")
 
         assert trace.final_response == "Done"
         assert trace.total_duration_ms is not None
 
     def test_get_trace(self):
-        """Test getting trace"""
+        """Test getting trace as dict"""
         debugger = RAGPipelineDebugger(query="test")
-        trace = debugger.get_trace()
+        # get_trace returns a dict, not RAGPipelineTrace
+        trace_dict = debugger.get_trace()
 
-        assert trace.query == "test"
-        assert trace == debugger.trace
+        assert trace_dict["query"] == "test"
+        assert isinstance(trace_dict, dict)
 
     def test_add_documents_retrieved(self):
         """Test adding retrieved documents"""
         debugger = RAGPipelineDebugger(query="test")
         docs = [{"id": 1, "text": "doc1"}, {"id": 2, "text": "doc2"}]
-        debugger.add_documents_retrieved(docs)
+        # Method is add_documents with stage parameter
+        debugger.add_documents(docs, stage="retrieved")
 
         assert len(debugger.trace.documents_retrieved) == 2
 
@@ -164,7 +169,7 @@ class TestRAGPipelineDebugger:
         """Test adding reranked documents"""
         debugger = RAGPipelineDebugger(query="test")
         docs = [{"id": 1, "score": 0.9}, {"id": 2, "score": 0.8}]
-        debugger.add_documents_reranked(docs)
+        debugger.add_documents(docs, stage="reranked")
 
         assert len(debugger.trace.documents_reranked) == 2
 
@@ -182,7 +187,3 @@ class TestRAGPipelineDebugger:
         debugger.add_fallback("model_fallback")
 
         assert "model_fallback" in debugger.trace.fallbacks_activated
-
-
-
-

@@ -194,9 +194,7 @@ async def save_conversation(
     mem_cache = get_memory_cache()
     try:
         for msg in request.messages:
-            mem_cache.add_message(
-                session_id, msg.get("role", "unknown"), msg.get("content", "")
-            )
+            mem_cache.add_message(session_id, msg.get("role", "unknown"), msg.get("content", ""))
         logger.info(
             f"✅ Saved {len(request.messages)} messages to memory cache for session {session_id}"
         )
@@ -262,7 +260,8 @@ async def save_conversation(
             else:
                 # Exponential backoff before retry
                 import asyncio
-                wait_time = 2 ** attempt
+
+                wait_time = 2**attempt
                 logger.warning(
                     f"⚠️ DB Save attempt {attempt + 1} failed, retrying in {wait_time}s: {e}"
                 )

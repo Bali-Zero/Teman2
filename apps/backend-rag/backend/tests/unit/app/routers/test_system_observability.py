@@ -65,7 +65,9 @@ class TestSystemObservabilityRouter:
 
     def test_get_system_health_error(self, app, client, mock_unified_health_service):
         """Test system health with error"""
-        mock_unified_health_service.run_all_checks = AsyncMock(side_effect=Exception("Service error"))
+        mock_unified_health_service.run_all_checks = AsyncMock(
+            side_effect=Exception("Service error")
+        )
         app.dependency_overrides[get_unified_health_service] = lambda: mock_unified_health_service
 
         response = client.get("/api/admin/system-health")
@@ -126,4 +128,3 @@ class TestSystemObservabilityRouter:
 
         response = client.get("/api/admin/postgres/data?table=test-table!")
         assert response.status_code == 400
-

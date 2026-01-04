@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services.rag.agentic.prompt_builder import SystemPromptBuilder
 from services.rag.agent.tools import DatabaseQueryTool
+from services.rag.agentic.prompt_builder import SystemPromptBuilder
 from services.rag.agentic.tools import VectorSearchTool
 
 
@@ -103,6 +103,8 @@ class TestHybridBrainTools:
 
         # Assertions - check for core elements in current prompt structure
         assert "ZANTARA" in prompt  # Core identity
-        assert "<system_instructions>" in prompt or "<role>" in prompt  # Instructions section (new format)
+        assert (
+            "<system_instructions>" in prompt or "<role>" in prompt
+        )  # Instructions section (new format)
         assert "verified_data" in prompt.lower() or "knowledge" in prompt.lower()  # Data handling
         assert "language" in prompt.lower()  # Language protocol

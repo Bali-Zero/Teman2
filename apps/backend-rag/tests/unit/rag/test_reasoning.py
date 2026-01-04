@@ -33,12 +33,14 @@ if str(backend_path) not in sys.path:
 
 from google.api_core.exceptions import ResourceExhausted
 
+from services.llm_clients.pricing import TokenUsage
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
-from services.llm_clients.pricing import TokenUsage
+
 
 def mock_token_usage():
     return TokenUsage(prompt_tokens=10, completion_tokens=20)
+
 
 # ============================================================================
 # Test ReasoningEngine Initialization
@@ -86,10 +88,15 @@ class TestReActLoopExecution:
         # Add sufficient context to avoid ABSTAIN from Uncertainty AI
         state.context_gathered = ["Mathematical calculation: 2+2 equals 4"]
         state.sources = [{"id": 1, "title": "Math source", "score": 0.9}]
-        
+
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: This is the answer", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Final Answer: This is the answer",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -176,7 +183,10 @@ class TestReActLoopExecution:
         assert result_state.current_step == 2
         assert len(result_state.steps) == 2
         assert result_state.steps[0].action.tool_name == "calculator"
-        assert result_state.steps[0].observation == "Calculation result: 2+2 equals 4. Mathematical operation completed."
+        assert (
+            result_state.steps[0].observation
+            == "Calculation result: 2+2 equals 4. Mathematical operation completed."
+        )
 
     @pytest.mark.asyncio
     async def test_execute_react_loop_early_exit_on_vector_search(self):
@@ -199,7 +209,9 @@ class TestReActLoopExecution:
             "services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value=(rich_content, 0.15)):
+            with patch(
+                "services.rag.agentic.reasoning.execute_tool", return_value=(rich_content, 0.15)
+            ):
                 result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -228,7 +240,12 @@ class TestReActLoopExecution:
         llm_gateway = AsyncMock()
         # Never provide final answer
         llm_gateway.send_message = AsyncMock(
-            return_value=("Thought: Still thinking...", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Thought: Still thinking...",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 
@@ -293,7 +310,9 @@ class TestToolCallParsing:
                 None,
             ],  # First iteration: native returns tool_call, Second iteration: both return None
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value=("result", 0.05)):
+            with patch(
+                "services.rag.agentic.reasoning.execute_tool", return_value=("result", 0.05)
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -349,7 +368,9 @@ class TestCitationHandling:
             "services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)):
+            with patch(
+                "services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -388,7 +409,9 @@ class TestCitationHandling:
             "services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
-            with patch("services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)):
+            with patch(
+                "services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -426,7 +449,12 @@ class TestFinalAnswerGeneration:
         llm_gateway.send_message = AsyncMock(
             side_effect=[
                 ("Thought: Search for info", "gemini-2.0-flash", None, mock_token_usage()),
-                ("Generated final answer based on context", "gemini-2.0-flash", None, mock_token_usage()),
+                (
+                    "Generated final answer based on context",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                ),
             ]
         )
         chat = MagicMock()
@@ -438,7 +466,8 @@ class TestFinalAnswerGeneration:
             # Provide substantial context with keywords to avoid ABSTAIN
             substantial_context = "Test information and details about the query. " * 20
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=(substantial_context, 0.3)
+                "services.rag.agentic.reasoning.execute_tool",
+                return_value=(substantial_context, 0.3),
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -466,7 +495,12 @@ class TestFinalAnswerGeneration:
 
         llm_gateway = AsyncMock()
         llm_gateway.send_message = AsyncMock(
-            return_value=("Final Answer: No further action needed", "gemini-2.0-flash", None, mock_token_usage())
+            return_value=(
+                "Final Answer: No further action needed",
+                "gemini-2.0-flash",
+                None,
+                mock_token_usage(),
+            )
         )
         chat = MagicMock()
 

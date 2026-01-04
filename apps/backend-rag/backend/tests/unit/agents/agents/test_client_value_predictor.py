@@ -36,11 +36,13 @@ def mock_db_pool():
 @pytest.fixture
 def client_value_predictor(mock_db_pool):
     """Create ClientValuePredictor instance"""
-    with patch("agents.agents.client_value_predictor.ClientScoringService"), \
-         patch("agents.agents.client_value_predictor.ClientSegmentationService"), \
-         patch("agents.agents.client_value_predictor.NurturingMessageService"), \
-         patch("agents.agents.client_value_predictor.WhatsAppNotificationService"), \
-         patch("app.core.config.settings") as mock_settings:
+    with (
+        patch("agents.agents.client_value_predictor.ClientScoringService"),
+        patch("agents.agents.client_value_predictor.ClientSegmentationService"),
+        patch("agents.agents.client_value_predictor.NurturingMessageService"),
+        patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
+        patch("app.core.config.settings") as mock_settings,
+    ):
         mock_settings.twilio_account_sid = "test_sid"
         mock_settings.twilio_auth_token = "test_token"
         mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -53,11 +55,13 @@ class TestClientValuePredictor:
 
     def test_init(self, mock_db_pool):
         """Test initialization"""
-        with patch("agents.agents.client_value_predictor.ClientScoringService"), \
-             patch("agents.agents.client_value_predictor.ClientSegmentationService"), \
-             patch("agents.agents.client_value_predictor.NurturingMessageService"), \
-             patch("agents.agents.client_value_predictor.WhatsAppNotificationService"), \
-             patch("app.core.config.settings") as mock_settings:
+        with (
+            patch("agents.agents.client_value_predictor.ClientScoringService"),
+            patch("agents.agents.client_value_predictor.ClientSegmentationService"),
+            patch("agents.agents.client_value_predictor.NurturingMessageService"),
+            patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
+            patch("app.core.config.settings") as mock_settings,
+        ):
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -87,12 +91,14 @@ class TestClientValuePredictor:
         mock_app_module.state = MagicMock()
         mock_app_module.state.db_pool = mock_pool
 
-        with patch("app.main_cloud.app", mock_app_module), \
-             patch("agents.agents.client_value_predictor.ClientScoringService"), \
-             patch("agents.agents.client_value_predictor.ClientSegmentationService"), \
-             patch("agents.agents.client_value_predictor.NurturingMessageService"), \
-             patch("agents.agents.client_value_predictor.WhatsAppNotificationService"), \
-             patch("app.core.config.settings") as mock_settings:
+        with (
+            patch("app.main_cloud.app", mock_app_module),
+            patch("agents.agents.client_value_predictor.ClientScoringService"),
+            patch("agents.agents.client_value_predictor.ClientSegmentationService"),
+            patch("agents.agents.client_value_predictor.NurturingMessageService"),
+            patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
+            patch("app.core.config.settings") as mock_settings,
+        ):
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -103,23 +109,21 @@ class TestClientValuePredictor:
     @pytest.mark.asyncio
     async def test_calculate_client_score(self, client_value_predictor):
         """Test calculating client score"""
-        mock_score = {
-            "client_id": "123",
-            "ltv_score": 75.0,
-            "interaction_count": 10
-        }
-        enriched_score = {
-            **mock_score,
-            "segment": "HIGH_VALUE",
-            "risk_level": "LOW_RISK"
-        }
-        client_value_predictor.scoring_service.calculate_client_score = AsyncMock(return_value=mock_score)
-        client_value_predictor.segmentation_service.enrich_client_data = MagicMock(return_value=enriched_score)
+        mock_score = {"client_id": "123", "ltv_score": 75.0, "interaction_count": 10}
+        enriched_score = {**mock_score, "segment": "HIGH_VALUE", "risk_level": "LOW_RISK"}
+        client_value_predictor.scoring_service.calculate_client_score = AsyncMock(
+            return_value=mock_score
+        )
+        client_value_predictor.segmentation_service.enrich_client_data = MagicMock(
+            return_value=enriched_score
+        )
 
         result = await client_value_predictor.calculate_client_score("123")
         assert result == enriched_score
         client_value_predictor.scoring_service.calculate_client_score.assert_called_once_with("123")
-        client_value_predictor.segmentation_service.enrich_client_data.assert_called_once_with(mock_score)
+        client_value_predictor.segmentation_service.enrich_client_data.assert_called_once_with(
+            mock_score
+        )
 
     @pytest.mark.asyncio
     async def test_calculate_client_score_none(self, client_value_predictor):
@@ -134,4 +138,3 @@ class TestClientValuePredictor:
         """Test getting database pool"""
         pool = await client_value_predictor._get_db_pool()
         assert pool == client_value_predictor.db_pool
-

@@ -197,10 +197,10 @@ _db_manager_instance: DatabaseManager | None = None
 def get_db_manager() -> DatabaseManager:
     """
     Get or create database manager singleton.
-    
+
     Uses lazy initialization to avoid database connection errors during module import.
     The manager is only initialized when first accessed.
-    
+
     Returns:
         DatabaseManager instance
     """
@@ -215,15 +215,19 @@ def get_db_manager() -> DatabaseManager:
             _db_manager_instance = DatabaseManager(database_url)
         except Exception as e:
             logger.warning(f"⚠️ Failed to initialize database manager: {e}")
+
             # Create a dummy instance that will fail gracefully when used
             # This allows imports to succeed even if DB is not available
             class DummyDatabaseManager:
                 async def get_user_profile(self, *args, **kwargs):
                     return None
+
                 async def store_feedback(self, *args, **kwargs):
                     pass
+
                 async def store_query_analytics(self, *args, **kwargs):
                     pass
+
             _db_manager_instance = DummyDatabaseManager()  # type: ignore
     return _db_manager_instance
 

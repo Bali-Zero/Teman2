@@ -40,16 +40,20 @@ class TestFeatureFlags:
 
     def test_should_enable_collective_memory_enabled_with_langgraph(self):
         """Test collective memory flag when enabled and langgraph available"""
-        with patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True), \
-             patch("importlib.util.find_spec") as mock_find_spec:
+        with (
+            patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True),
+            patch("importlib.util.find_spec") as mock_find_spec,
+        ):
             mock_find_spec.return_value = MagicMock()
             result = should_enable_collective_memory()
             assert result is True
 
     def test_should_enable_collective_memory_enabled_without_langgraph(self):
         """Test collective memory flag when enabled but langgraph not available"""
-        with patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True), \
-             patch("importlib.util.find_spec") as mock_find_spec:
+        with (
+            patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True),
+            patch("importlib.util.find_spec") as mock_find_spec,
+        ):
             mock_find_spec.return_value = None
             result = should_enable_collective_memory()
             assert result is False

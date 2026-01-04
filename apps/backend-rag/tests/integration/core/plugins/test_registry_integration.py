@@ -6,6 +6,7 @@ Tests plugin registration, discovery, and lifecycle with real plugins
 import os
 import sys
 from pathlib import Path
+from unittest.mock import PropertyMock
 
 import pytest
 import pytest_asyncio

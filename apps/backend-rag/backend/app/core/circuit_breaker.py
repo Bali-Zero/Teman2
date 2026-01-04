@@ -168,9 +168,7 @@ class CircuitBreaker:
                     logger.error(f"Fallback also failed: {e}")
                     raise
             else:
-                raise RuntimeError(
-                    f"Circuit breaker '{self.name}' is OPEN. Service unavailable."
-                )
+                raise RuntimeError(f"Circuit breaker '{self.name}' is OPEN. Service unavailable.")
 
         try:
             result = await func()
@@ -192,4 +190,3 @@ class CircuitBreaker:
                 time.time() - self.last_failure_time if self.last_failure_time else None
             ),
         }
-

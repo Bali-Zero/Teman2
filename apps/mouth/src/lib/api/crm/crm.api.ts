@@ -547,4 +547,29 @@ export class CrmApi {
       { method: 'DELETE' }
     );
   }
+
+  /**
+   * Create an interaction/note for a client
+   */
+  async createInteraction(data: {
+    client_id: number;
+    interaction_type: 'note' | 'chat' | 'email' | 'whatsapp' | 'call' | 'meeting';
+    summary: string;
+    subject?: string;
+    team_member: string;
+    direction?: 'inbound' | 'outbound';
+    practice_id?: number;
+  }): Promise<Interaction> {
+    return this.client.request<Interaction>(
+      '/api/crm/interactions/',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          direction: data.direction || 'outbound',
+          channel: 'workspace',
+        }),
+      }
+    );
+  }
 }

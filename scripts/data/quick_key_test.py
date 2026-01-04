@@ -12,18 +12,17 @@ print(f"Testing API Key: {API_KEY[:5]}...")
 
 try:
     genai.configure(api_key=API_KEY)
-    
+
     # List models to see what's available and if auth works
     print("Listing models...")
     for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
+        if "generateContent" in m.supported_generation_methods:
             print(f"- {m.name}")
-            
+
     print("\nGenerazione di prova con gemini-1.5-flash...")
     model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content("Sei vivo?")
     print(f"✅ RISPOSTA: {response.text}")
-    
+
 except Exception as e:
     print(f"❌ ERRORE: {e}")
-

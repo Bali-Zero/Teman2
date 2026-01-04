@@ -84,8 +84,7 @@ class TestContextWindowManager:
         """Test trimming conversation with existing summary"""
         messages = [{"role": "user", "content": f"Message {i}"} for i in range(20)]
         result = context_window_manager.trim_conversation_history(
-            messages,
-            current_summary="Previous conversation summary"
+            messages, current_summary="Previous conversation summary"
         )
         assert result["context_summary"] == "Previous conversation summary"
 
@@ -129,8 +128,7 @@ class TestContextWindowManager:
             )
 
         result = await context_window_manager.generate_summary(
-            messages,
-            existing_summary="Previous summary"
+            messages, existing_summary="Previous summary"
         )
         assert isinstance(result, str)
         assert len(result) > 0
@@ -139,7 +137,7 @@ class TestContextWindowManager:
         """Test building summarization prompt"""
         messages = [
             {"role": "user", "content": "Test message 1"},
-            {"role": "assistant", "content": "Test response 1"}
+            {"role": "assistant", "content": "Test response 1"},
         ]
         prompt = context_window_manager.build_summarization_prompt(messages)
         assert isinstance(prompt, str)

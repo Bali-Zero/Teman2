@@ -34,9 +34,7 @@ class TestFallbackManagerService:
     def test_get_fallback_collections_high_confidence(self, fallback_manager):
         """Test getting fallback collections with high confidence"""
         collections = fallback_manager.get_fallback_collections(
-            "visa_oracle",
-            confidence=0.8,
-            max_fallbacks=3
+            "visa_oracle", confidence=0.8, max_fallbacks=3
         )
         assert len(collections) == 1
         assert collections[0] == "visa_oracle"
@@ -44,9 +42,7 @@ class TestFallbackManagerService:
     def test_get_fallback_collections_medium_confidence(self, fallback_manager):
         """Test getting fallback collections with medium confidence"""
         collections = fallback_manager.get_fallback_collections(
-            "visa_oracle",
-            confidence=0.5,
-            max_fallbacks=3
+            "visa_oracle", confidence=0.5, max_fallbacks=3
         )
         assert len(collections) == 2  # Primary + 1 fallback
         assert collections[0] == "visa_oracle"
@@ -54,9 +50,7 @@ class TestFallbackManagerService:
     def test_get_fallback_collections_low_confidence(self, fallback_manager):
         """Test getting fallback collections with low confidence"""
         collections = fallback_manager.get_fallback_collections(
-            "visa_oracle",
-            confidence=0.2,
-            max_fallbacks=3
+            "visa_oracle", confidence=0.2, max_fallbacks=3
         )
         assert len(collections) >= 2  # Primary + fallbacks
         assert collections[0] == "visa_oracle"
@@ -64,9 +58,7 @@ class TestFallbackManagerService:
     def test_get_fallback_collections_unknown_collection(self, fallback_manager):
         """Test getting fallback collections for unknown collection"""
         collections = fallback_manager.get_fallback_collections(
-            "unknown_collection",
-            confidence=0.2,
-            max_fallbacks=3
+            "unknown_collection", confidence=0.2, max_fallbacks=3
         )
         assert len(collections) == 1  # Only primary
         assert collections[0] == "unknown_collection"
@@ -82,4 +74,3 @@ class TestFallbackManagerService:
         chain = fallback_manager.get_fallback_chain("unknown_collection")
         assert len(chain) == 1
         assert chain[0] == "unknown_collection"
-

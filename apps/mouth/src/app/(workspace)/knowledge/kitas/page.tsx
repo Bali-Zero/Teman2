@@ -161,133 +161,94 @@ function VisaCard({ visa, onClick, onDownloadPdf }: VisaCardProps) {
     <div
       onClick={onClick}
       className={`
-        group relative overflow-hidden rounded-2xl border cursor-pointer
+        group relative overflow-hidden rounded-xl border cursor-pointer
         bg-gradient-to-br ${getCategoryColor(visa.category)}
-        hover:scale-[1.02] hover:shadow-xl hover:shadow-[var(--accent)]/10
+        hover:scale-[1.02] hover:shadow-lg hover:shadow-[var(--accent)]/10
         transition-all duration-300 ease-out
       `}
     >
       {/* Recommended Badge */}
       {isRecommended && (
-        <div className="absolute top-4 right-4 z-10">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold shadow-lg">
-            <Star className="w-3.5 h-3.5 fill-current" />
-            Recommended
+        <div className="absolute top-1.5 right-1.5 z-10">
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-semibold shadow-lg">
+            <Star className="w-2 h-2 fill-current" />
+            Top
           </div>
         </div>
       )}
 
       {/* New Badge */}
       {isNew && !isRecommended && (
-        <div className="absolute top-4 right-4 z-10">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-semibold shadow-lg">
-            <Sparkles className="w-3.5 h-3.5" />
+        <div className="absolute top-1.5 right-1.5 z-10">
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[8px] font-semibold shadow-lg">
+            <Sparkles className="w-2 h-2" />
             New
           </div>
         </div>
       )}
 
       {/* Card Content */}
-      <div className="p-6">
-        {/* BIG VISA CODE - Prominent Display */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-3xl font-black text-[var(--foreground)] tracking-tight">
+      <div className="p-2 pt-5">
+        {/* Visa Code + Category */}
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-black text-[var(--foreground)] tracking-tight">
             {visa.code}
           </span>
-          <span className={`px-2.5 py-1 text-xs font-medium rounded-full border ${getCategoryBadgeColor(visa.category)}`}>
+          <span className={`px-1.5 py-0.5 text-[8px] font-medium rounded-full border ${getCategoryBadgeColor(visa.category)}`}>
             {visa.category}
           </span>
         </div>
 
         {/* Title */}
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-[var(--foreground)] mb-1 group-hover:text-[var(--accent)] transition-colors leading-tight">
-            {visa.name}
-          </h3>
-          {difficulty && (
-            <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${getDifficultyColor(difficulty)}`}>
-              {getDifficultyLabel(difficulty)}
-            </span>
-          )}
-        </div>
+        <h3 className="text-[10px] font-semibold text-[var(--foreground)] mb-1 group-hover:text-[var(--accent)] transition-colors leading-tight line-clamp-1">
+          {visa.name}
+        </h3>
 
-        {/* Key Info Grid */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          {/* Duration */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[var(--background)]/50">
-            <div className="w-9 h-9 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center">
-              <Clock className="w-4.5 h-4.5 text-[var(--accent)]" />
-            </div>
-            <div>
-              <p className="text-xs text-[var(--foreground-muted)]">Duration</p>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{visa.duration || 'Varies'}</p>
-            </div>
+        {/* Compact Info Row */}
+        <div className="flex items-center gap-2 mb-1.5 text-[8px] text-[var(--foreground-muted)]">
+          <div className="flex items-center gap-0.5">
+            <Clock className="w-2.5 h-2.5 text-[var(--accent)]" />
+            <span>{visa.duration || 'Varies'}</span>
           </div>
-
-          {/* Cost */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[var(--background)]/50">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Wallet className="w-4.5 h-4.5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xs text-[var(--foreground-muted)]">From</p>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{visa.cost_visa || 'Contact us'}</p>
-            </div>
-          </div>
-
-          {/* Processing Time */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[var(--background)]/50">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <Timer className="w-4.5 h-4.5 text-blue-400" />
-            </div>
-            <div>
-              <p className="text-xs text-[var(--foreground-muted)]">Processing</p>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{visa.processing_time_normal || 'Varies'}</p>
-            </div>
-          </div>
-
-          {/* Total Stay */}
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-[var(--background)]/50">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <Shield className="w-4.5 h-4.5 text-purple-400" />
-            </div>
-            <div>
-              <p className="text-xs text-[var(--foreground-muted)]">Max Stay</p>
-              <p className="text-sm font-semibold text-[var(--foreground)]">{visa.total_stay || 'Varies'}</p>
-            </div>
+          <div className="flex items-center gap-0.5">
+            <Wallet className="w-2.5 h-2.5 text-emerald-400" />
+            <span>{visa.cost_visa || 'Contact'}</span>
           </div>
         </div>
 
-        {/* Quick Benefits */}
-        <div className="space-y-2 mb-5">
-          {visa.benefits.slice(0, 3).map((benefit, idx) => (
-            <div key={idx} className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <span className="text-sm text-[var(--foreground-secondary)] line-clamp-1">{benefit}</span>
-            </div>
-          ))}
-        </div>
+        {/* Difficulty Badge */}
+        {difficulty && (
+          <span className={`inline-block px-1.5 py-0.5 text-[8px] font-medium rounded-full mb-1.5 ${getDifficultyColor(difficulty)}`}>
+            {getDifficultyLabel(difficulty)}
+          </span>
+        )}
 
-        {/* CTA with PDF Download */}
-        <div className="flex items-center justify-between pt-4 border-t border-[var(--border)]">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 text-sm text-[var(--foreground-muted)]">
-              <FileCheck className="w-4 h-4" />
-              <span>{visa.requirements.length} req</span>
+        {/* Single Benefit */}
+        {visa.benefits.length > 0 && (
+          <div className="flex items-start gap-1 mb-1.5">
+            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <span className="text-[8px] text-[var(--foreground-secondary)] line-clamp-1">{visa.benefits[0]}</span>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-1.5 border-t border-[var(--border)]">
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-0.5 text-[8px] text-[var(--foreground-muted)]">
+              <FileCheck className="w-2.5 h-2.5" />
+              <span>{visa.requirements.length}</span>
             </div>
-            {/* PDF Download Button */}
             <button
               onClick={handlePdfDownload}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--background)]/60 hover:bg-[var(--accent)]/20 text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors text-xs"
-              title="Download PDF Info Sheet"
+              className="flex items-center gap-0.5 px-1 py-0.5 rounded bg-[var(--background)]/60 hover:bg-[var(--accent)]/20 text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors text-[8px]"
+              title="Download PDF"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>PDF</span>
+              <Download className="w-2 h-2" />
             </button>
           </div>
-          <div className="flex items-center gap-1 text-[var(--accent)] font-medium text-sm group-hover:gap-2 transition-all">
-            <span>Details</span>
-            <ChevronRight className="w-4 h-4" />
+          <div className="flex items-center gap-0.5 text-[var(--accent)] font-medium text-[8px] group-hover:gap-1 transition-all">
+            <span>View</span>
+            <ChevronRight className="w-2.5 h-2.5" />
           </div>
         </div>
       </div>
@@ -510,9 +471,9 @@ export default function KitasVisaPage() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-80 rounded-2xl bg-[var(--background-secondary)] animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="h-32 rounded-xl bg-[var(--background-secondary)] animate-pulse" />
           ))}
         </div>
       )}
@@ -530,13 +491,13 @@ export default function KitasVisaPage() {
 
       {/* Visa Cards Grouped by Series */}
       {!isLoading && !error && orderedSeries.length > 0 && (
-        <div className="space-y-10">
+        <div className="space-y-6">
           {orderedSeries.map((series) => (
-            <div key={series} className="space-y-4">
+            <div key={series} className="space-y-2">
               {/* Series Header */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <div className={`
-                  w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl
+                  w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm
                   ${series === 'E' || series === 'KITAP'
                     ? 'bg-orange-500/40 text-orange-500 dark:text-orange-400 border border-orange-500/50'
                     : 'bg-sky-500/40 text-sky-500 dark:text-sky-400 border border-sky-500/50'}
@@ -544,17 +505,17 @@ export default function KitasVisaPage() {
                   {series}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-[var(--foreground)]">
+                  <h2 className="text-sm font-bold text-[var(--foreground)]">
                     {getSeriesDisplayName(series)}
                   </h2>
-                  <p className="text-sm text-[var(--foreground-muted)]">
+                  <p className="text-[10px] text-[var(--foreground-muted)]">
                     {visasBySeries[series].length} visa type{visasBySeries[series].length > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
 
               {/* Series Grid */}
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {visasBySeries[series].map((visa) => (
                   <VisaCard
                     key={visa.id}
@@ -583,32 +544,32 @@ export default function KitasVisaPage() {
       )}
 
       {/* Auxiliary Immigration Services */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-purple-500/40 text-purple-500 dark:text-purple-400 border border-purple-500/50 flex items-center justify-center">
-            <FileCheck className="w-6 h-6" />
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-purple-500/40 text-purple-500 dark:text-purple-400 border border-purple-500/50 flex items-center justify-center">
+            <FileCheck className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-[var(--foreground)]">
+            <h2 className="text-sm font-bold text-[var(--foreground)]">
               Auxiliary Immigration Services
             </h2>
-            <p className="text-sm text-[var(--foreground-muted)]">
+            <p className="text-[10px] text-[var(--foreground-muted)]">
               Additional documents & procedures
             </p>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {AUXILIARY_SERVICES.map((service) => (
             <div
               key={service.name}
-              className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] hover:border-purple-500/50 transition-all"
+              className="p-2 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] hover:border-purple-500/50 transition-all"
             >
-              <h3 className="font-semibold text-[var(--foreground)] mb-1">{service.name}</h3>
-              <p className="text-xs text-[var(--foreground-muted)] mb-3">{service.description}</p>
+              <h3 className="text-[10px] font-semibold text-[var(--foreground)] mb-0.5 line-clamp-1">{service.name}</h3>
+              <p className="text-[8px] text-[var(--foreground-muted)] mb-1.5 line-clamp-1">{service.description}</p>
               <div className="flex items-center justify-between">
-                <span className="text-lg font-bold text-purple-400">{service.price}</span>
-                <span className="text-xs text-[var(--foreground-muted)]">{service.processing}</span>
+                <span className="text-xs font-bold text-purple-400">{service.price}</span>
+                <span className="text-[8px] text-[var(--foreground-muted)]">{service.processing}</span>
               </div>
             </div>
           ))}

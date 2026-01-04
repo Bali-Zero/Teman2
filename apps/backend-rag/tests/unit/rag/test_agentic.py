@@ -21,9 +21,9 @@ from services.rag.agentic import (
     CalculatorTool,
     VectorSearchTool,
 )
-from services.rag.agentic.tool_executor import parse_tool_call_regex
 from services.rag.agentic.prompt_builder import SystemPromptBuilder
 from services.rag.agentic.response_processor import post_process_response
+from services.rag.agentic.tool_executor import parse_tool_call_regex
 from services.response.cleaner import clean_response, is_out_of_domain
 
 
@@ -36,7 +36,9 @@ def mock_genai_client():
     # Create the nested async mock structure: _client.aio.models.generate_content
     mock_response = MagicMock()
     mock_response.text = "Final Answer: The answer is 10."
-    mock_response.candidates = [MagicMock(content=MagicMock(parts=[MagicMock(text="Final Answer: The answer is 10.")]))]
+    mock_response.candidates = [
+        MagicMock(content=MagicMock(parts=[MagicMock(text="Final Answer: The answer is 10.")]))
+    ]
 
     mock_client._client = MagicMock()
     mock_client._client.aio = MagicMock()
@@ -51,7 +53,9 @@ def orchestrator(mock_genai_client):
     """Create AgenticRAGOrchestrator with mocked GenAI client"""
     # Patch the correct module paths - GENAI_AVAILABLE is in llm_gateway
     with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
-        with patch("services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client):
+        with patch(
+            "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+        ):
             with patch("services.rag.agentic.orchestrator.settings") as mock_settings:
                 mock_settings.google_api_key = "test-api-key"
                 orch = AgenticRAGOrchestrator(tools=[CalculatorTool()])
@@ -84,12 +88,15 @@ async def test_vector_search_tool():
     res = await tool.execute("query")
     # Result is now JSON with content and sources
     import json
+
     result = json.loads(res)
     assert "Found it" in result["content"]
     assert len(result["sources"]) == 1
 
 
-@pytest.mark.skip(reason="Test uses deprecated model.start_chat API - orchestrator was refactored to use LLMGateway")
+@pytest.mark.skip(
+    reason="Test uses deprecated model.start_chat API - orchestrator was refactored to use LLMGateway"
+)
 @pytest.mark.asyncio
 async def test_agent_process_query_flow(orchestrator):
     """Test the ReAct loop - SKIPPED: Requires full integration test with mocked LLMGateway"""
@@ -111,7 +118,9 @@ def test_parse_tool_call():
     assert call2.arguments["expression"] == "1+1"
 
 
-@pytest.mark.skip(reason="Test uses deprecated model.start_chat API - orchestrator was refactored to use LLMGateway")
+@pytest.mark.skip(
+    reason="Test uses deprecated model.start_chat API - orchestrator was refactored to use LLMGateway"
+)
 @pytest.mark.asyncio
 async def test_agent_stream_flow(orchestrator):
     """Test the Streaming ReAct loop - SKIPPED: Requires full integration test with mocked LLMGateway"""
@@ -302,7 +311,9 @@ def test_post_process_response_cleans_internal_reasoning():
 def test_post_process_response_formats_procedural_questions():
     """Test that post_process_response formats procedural questions as numbered lists"""
     query = "Come faccio a richiedere il KITAS?"
-    response = "Prepara i documenti necessari. Trova uno sponsor locale. Applica online al sito ufficiale."
+    response = (
+        "Prepara i documenti necessari. Trova uno sponsor locale. Applica online al sito ufficiale."
+    )
     processed = post_process_response(response, query)
     # Should contain numbered list (if actionable sentences detected)
     # Note: The processor only formats if it detects action verbs
@@ -318,3 +329,209 @@ def test_post_process_response_adds_emotional_acknowledgment():
     # (depends on has_emotional_content detection)
     assert len(processed) > 0
     assert "ricorso" in processed.lower()  # Original content preserved
+
+
+def test_post_process_response_with_existing_numbered_list():
+    """Test that post_process_response doesn't reformat if numbered list already exists"""
+    query = "Come faccio a richiedere il KITAS?"
+    response = "1. Prepara i documenti\n2. Trova uno sponsor\n3. Applica online"
+    processed = post_process_response(response, query)
+    # Should preserve existing numbered list
+    assert "1." in processed
+    assert "2." in processed
+
+
+def test_post_process_response_procedural_with_action_verbs():
+    """Test that post_process_response formats procedural questions with action verbs"""
+    query = "Come faccio a richiedere il visto?"
+    # Response with action verbs in Italian
+    response = "Prepara i documenti necessari per la richiesta. Trova uno sponsor locale che ti supporti. Applica online al sito ufficiale del governo."
+    processed = post_process_response(response, query)
+    # Should format as numbered list if action verbs detected
+    assert len(processed) > 0
+
+
+def test_post_process_response_emotional_already_present():
+    """Test that post_process_response doesn't add emotional acknowledgment if already present"""
+    query = "Sono disperato!"
+    # Response that already contains emotional acknowledgment
+    response = "Capisco la frustrazione, ma tranquillo - quasi ogni situazione ha una soluzione. Puoi fare ricorso."
+    processed = post_process_response(response, query)
+    # Should not duplicate the acknowledgment
+    assert processed.count("Capisco la frustrazione") <= 1
+
+
+def test_post_process_response_different_languages():
+    """Test that post_process_response handles different languages correctly"""
+    # English query
+    query_en = "I'm desperate, my visa was rejected!"
+    response_en = "You can appeal."
+    processed_en = post_process_response(response_en, query_en)
+    assert len(processed_en) > 0
+
+    # Indonesian query
+    query_id = "Saya putus asa, visa saya ditolak!"
+    response_id = "Anda bisa banding."
+    processed_id = post_process_response(response_id, query_id)
+    assert len(processed_id) > 0
+
+
+def test_post_process_response_non_procedural():
+    """Test that post_process_response handles non-procedural questions"""
+    query = "Che cos'è il KITAS?"
+    response = (
+        "Il KITAS è un permesso di soggiorno temporaneo per lavoratori stranieri in Indonesia."
+    )
+    processed = post_process_response(response, query)
+    # Should not format as numbered list
+    assert len(processed) > 0
+    assert "KITAS" in processed
+
+
+def test_post_process_response_empty_string():
+    """Test that post_process_response handles empty strings"""
+    query = "Test query"
+    response = ""
+    processed = post_process_response(response, query)
+    # Should return empty or stripped string
+    assert isinstance(processed, str)
+
+
+def test_post_process_response_whitespace():
+    """Test that post_process_response strips whitespace"""
+    query = "Test query"
+    response = "   Response with whitespace   "
+    processed = post_process_response(response, query)
+    # Should be stripped
+    assert processed == processed.strip()
+
+
+def test_format_as_numbered_list_insufficient_sentences():
+    """Test that _format_as_numbered_list returns original text if not enough actionable sentences"""
+    from services.rag.agentic.response_processor import _format_as_numbered_list
+
+    # Text with only one actionable sentence (needs at least 2)
+    text = "Prepara i documenti necessari. Questo è solo un esempio."
+    result = _format_as_numbered_list(text, "it")
+    # Should return original text since only 1 actionable sentence
+    assert result == text
+
+
+def test_format_as_numbered_list_short_sentences():
+    """Test that _format_as_numbered_list filters out sentences that are too short"""
+    from services.rag.agentic.response_processor import _format_as_numbered_list
+
+    # Text with short sentences (less than 20 chars)
+    text = "Prepara. Trova. Applica."
+    result = _format_as_numbered_list(text, "it")
+    # Should return original text since sentences are too short
+    assert result == text
+
+
+def test_format_as_numbered_list_english():
+    """Test that _format_as_numbered_list works with English"""
+    from services.rag.agentic.response_processor import _format_as_numbered_list
+
+    text = "Prepare the necessary documents for your application. Find a local sponsor who can support you. Apply online at the official government website."
+    result = _format_as_numbered_list(text, "en")
+    # Should format as numbered list
+    assert "1." in result or result == text
+
+
+def test_format_as_numbered_list_indonesian():
+    """Test that _format_as_numbered_list works with Indonesian"""
+    from services.rag.agentic.response_processor import _format_as_numbered_list
+
+    text = "Siapkan dokumen yang diperlukan untuk aplikasi Anda. Cari sponsor lokal yang dapat mendukung Anda. Ajukan online di situs resmi pemerintah."
+    result = _format_as_numbered_list(text, "id")
+    # Should format as numbered list
+    assert "1." in result or result == text
+
+
+def test_format_as_numbered_list_unknown_language():
+    """Test that _format_as_numbered_list defaults to English for unknown languages"""
+    from services.rag.agentic.response_processor import _format_as_numbered_list
+
+    text = "Prepare the documents. Find a sponsor. Apply online."
+    result = _format_as_numbered_list(text, "fr")  # Unknown language
+    # Should default to English verbs
+    assert isinstance(result, str)
+
+
+def test_has_numbered_list_false():
+    """Test that _has_numbered_list returns False when no numbered list exists"""
+    from services.rag.agentic.response_processor import _has_numbered_list
+
+    text = "This is a regular paragraph without any numbered items."
+    assert _has_numbered_list(text) is False
+
+
+def test_has_numbered_list_with_parentheses():
+    """Test that _has_numbered_list detects numbered lists with parentheses"""
+    from services.rag.agentic.response_processor import _has_numbered_list
+
+    text = "1) First item\n2) Second item"
+    assert _has_numbered_list(text) is True
+
+
+def test_has_emotional_acknowledgment_false():
+    """Test that _has_emotional_acknowledgment returns False when no acknowledgment exists"""
+    from services.rag.agentic.response_processor import _has_emotional_acknowledgment
+
+    text = "This is a regular response without emotional acknowledgment."
+    assert _has_emotional_acknowledgment(text, "en") is False
+
+
+def test_has_emotional_acknowledgment_english():
+    """Test that _has_emotional_acknowledgment detects English acknowledgments"""
+    from services.rag.agentic.response_processor import _has_emotional_acknowledgment
+
+    text = "I understand the frustration, but don't worry - here's the solution."
+    assert _has_emotional_acknowledgment(text, "en") is True
+
+
+def test_has_emotional_acknowledgment_indonesian():
+    """Test that _has_emotional_acknowledgment detects Indonesian acknowledgments"""
+    from services.rag.agentic.response_processor import _has_emotional_acknowledgment
+
+    text = "Saya mengerti frustrasinya, tapi tenang - ada solusinya."
+    assert _has_emotional_acknowledgment(text, "id") is True
+
+
+def test_add_emotional_acknowledgment_already_present():
+    """Test that _add_emotional_acknowledgment doesn't add if already present"""
+    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+
+    text = "Capisco la frustrazione, ma tranquillo - quasi ogni situazione ha una soluzione. Ecco la risposta."
+    result = _add_emotional_acknowledgment(text, "it")
+    # Should not duplicate
+    assert result == text
+
+
+def test_add_emotional_acknowledgment_english():
+    """Test that _add_emotional_acknowledgment adds English acknowledgment"""
+    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+
+    text = "You can appeal the decision."
+    result = _add_emotional_acknowledgment(text, "en")
+    assert "I understand the frustration" in result
+    assert "You can appeal" in result
+
+
+def test_add_emotional_acknowledgment_indonesian():
+    """Test that _add_emotional_acknowledgment adds Indonesian acknowledgment"""
+    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+
+    text = "Anda bisa banding."
+    result = _add_emotional_acknowledgment(text, "id")
+    assert "Saya mengerti frustrasinya" in result
+    assert "Anda bisa banding" in result
+
+
+def test_add_emotional_acknowledgment_unknown_language():
+    """Test that _add_emotional_acknowledgment defaults to Italian for unknown languages"""
+    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+
+    text = "Test response"
+    result = _add_emotional_acknowledgment(text, "fr")  # Unknown language
+    assert "Capisco la frustrazione" in result

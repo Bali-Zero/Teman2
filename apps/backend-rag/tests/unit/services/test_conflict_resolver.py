@@ -12,10 +12,8 @@ Tests cover:
 
 import os
 import sys
-from pathlib import Path
 from datetime import datetime
-from unittest.mock import patch, MagicMock
-from dataclasses import dataclass
+from pathlib import Path
 
 # Setup environment
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
@@ -25,8 +23,8 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
 import pytest
+
 from services.routing.conflict_resolver import ConflictResolver
-from app.core.constants import SearchConstants
 
 
 class TestConflictResolverInitialization:
@@ -45,6 +43,7 @@ class TestConflictResolverInitialization:
     def test_init_logs_initialization(self, caplog):
         """Test that initialization logs success message"""
         import logging
+
         caplog.set_level(logging.INFO)
 
         resolver = ConflictResolver()
@@ -225,6 +224,7 @@ class TestConflictDetection:
     def test_detect_conflicts_logs_warning(self, caplog):
         """Test that conflict detection logs warning messages"""
         import logging
+
         caplog.set_level(logging.WARNING)
 
         resolver = ConflictResolver()
@@ -291,7 +291,10 @@ class TestConflictResolution:
         loser = next(r for r in resolved if r["id"] == "base")
 
         assert winner["metadata"]["conflict_resolution"]["status"] == "preferred"
-        assert winner["metadata"]["conflict_resolution"]["reason"] == "temporal_priority (updates collection)"
+        assert (
+            winner["metadata"]["conflict_resolution"]["reason"]
+            == "temporal_priority (updates collection)"
+        )
         assert winner["metadata"]["conflict_resolution"]["alternate_source"] == "tax_knowledge"
 
         assert loser["metadata"]["conflict_resolution"]["status"] == "alternate"
@@ -315,7 +318,10 @@ class TestConflictResolution:
         loser = next(r for r in resolved if r["id"] == "base")
 
         assert winner["metadata"]["conflict_resolution"]["status"] == "preferred"
-        assert winner["metadata"]["conflict_resolution"]["reason"] == "temporal_priority (updates collection)"
+        assert (
+            winner["metadata"]["conflict_resolution"]["reason"]
+            == "temporal_priority (updates collection)"
+        )
         assert winner["metadata"]["conflict_resolution"]["alternate_source"] == "tax_knowledge"
 
         assert loser["metadata"]["conflict_resolution"]["status"] == "alternate"
@@ -469,6 +475,7 @@ class TestConflictResolution:
     def test_resolve_conflicts_logs_resolution(self, caplog):
         """Test that conflict resolution logs info messages"""
         import logging
+
         caplog.set_level(logging.INFO)
 
         resolver = ConflictResolver()
@@ -541,7 +548,10 @@ class TestConflictResolution:
         loser = next(r for r in resolved if r["id"] == "base")
 
         assert winner["metadata"]["conflict_resolution"]["status"] == "preferred"
-        assert winner["metadata"]["conflict_resolution"]["reason"] == "temporal_priority (updates collection)"
+        assert (
+            winner["metadata"]["conflict_resolution"]["reason"]
+            == "temporal_priority (updates collection)"
+        )
         assert loser["metadata"]["conflict_resolution"]["status"] == "alternate"
 
 

@@ -25,11 +25,17 @@ try:
 except ImportError:
     # Fallback if tracing not available
     from contextlib import contextmanager
+
     @contextmanager
     def trace_span(name, attrs=None):
         yield
-    def set_span_attribute(key, value): pass
-    def set_span_status(status, msg=None): pass
+
+    def set_span_attribute(key, value):
+        pass
+
+    def set_span_status(status, msg=None):
+        pass
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +48,7 @@ RETRY_BASE_DELAY = 1.0  # seconds
 
 class QdrantErrorType(Enum):
     """Qdrant error types."""
+
     RETRYABLE = "retryable"  # Can retry
     NON_RETRYABLE = "non_retryable"  # Don't retry
     CLIENT_ERROR = "client_error"  # Bad request
@@ -77,6 +84,7 @@ class QdrantErrorClassifier:
 
         # Unknown error - don't retry by default
         return QdrantErrorType.NON_RETRYABLE, False
+
 
 # Connection pool limits
 MAX_KEEPALIVE_CONNECTIONS = 10
@@ -417,10 +425,11 @@ class QdrantClient:
                         "error_type": error_type.value,
                         "retryable": retryable,
                         "timeout": self.timeout,
-                    }
+                    },
                 )
                 try:
                     from app.metrics import qdrant_timeout_total
+
                     qdrant_timeout_total.labels(error_type=error_type.value).inc()
                 except ImportError:
                     pass
@@ -436,14 +445,14 @@ class QdrantClient:
                         "error_type": error_type.value,
                         "retryable": retryable,
                         "response_text": error_text[:200] if error_text else None,
-                    }
+                    },
                 )
 
                 try:
                     from app.metrics import qdrant_http_error_total
+
                     qdrant_http_error_total.labels(
-                        status_code=e.response.status_code,
-                        error_type=error_type.value
+                        status_code=e.response.status_code, error_type=error_type.value
                     ).inc()
                 except ImportError:
                     pass
@@ -486,14 +495,18 @@ class QdrantClient:
             except Exception as e:
                 logger.error(f"Qdrant request error: {e}")
                 raise ConnectionError(f"Qdrant connection error: {e}") from e
+
         start_time = time.time()
         # 🔍 TRACING: Span for Qdrant search
-        with trace_span("qdrant.search", {
-            "collection": self.collection_name,
-            "limit": limit,
-            "has_filter": bool(filter),
-            "vector_name": vector_name or "default",
-        }):
+        with trace_span(
+            "qdrant.search",
+            {
+                "collection": self.collection_name,
+                "limit": limit,
+                "has_filter": bool(filter),
+                "vector_name": vector_name or "default",
+            },
+        ):
             try:
                 result = await _retry_with_backoff(_do_search)
                 # Track metrics
@@ -510,7 +523,13 @@ class QdrantClient:
                 _qdrant_metrics["errors"] += 1
                 set_span_status("error", str(e))
                 logger.error(f"Qdrant search error after retries: {e}", exc_info=True)
-                return {"ids": [], "documents": [], "metadatas": [], "distances": [], "total_found": 0}
+                return {
+                    "ids": [],
+                    "documents": [],
+                    "metadatas": [],
+                    "distances": [],
+                    "total_found": 0,
+                }
 
     async def get_stats(self) -> dict:
         """
@@ -995,13 +1014,16 @@ class QdrantClient:
 
         start_time = time.time()
         # 🔍 TRACING: Span for Qdrant hybrid search
-        with trace_span("qdrant.hybrid_search", {
-            "collection": self.collection_name,
-            "limit": limit,
-            "prefetch_limit": prefetch_limit,
-            "has_filter": bool(filter),
-            "search_type": "hybrid_rrf",
-        }):
+        with trace_span(
+            "qdrant.hybrid_search",
+            {
+                "collection": self.collection_name,
+                "limit": limit,
+                "prefetch_limit": prefetch_limit,
+                "has_filter": bool(filter),
+                "search_type": "hybrid_rrf",
+            },
+        ):
             try:
                 result = await _retry_with_backoff(_do_hybrid_search)
                 elapsed = time.time() - start_time

@@ -60,7 +60,7 @@ class ReasoningEngineService:
         # RAG context
         if use_full_docs and documents:
             rag_context = (
-                f"FULL DOCUMENT CONTEXT:\n{'-' * 80}\n" f"{chr(10).join(documents)}\n{'-' * 80}"
+                f"FULL DOCUMENT CONTEXT:\n{'-' * 80}\n{chr(10).join(documents)}\n{'-' * 80}"
             )
         else:
             rag_context = (

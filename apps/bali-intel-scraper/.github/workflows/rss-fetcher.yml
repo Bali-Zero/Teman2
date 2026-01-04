@@ -1,0 +1,52 @@
+name: RSS News Fetcher
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      max_age:
+        description: 'Max article age in days'
+        required: false
+        default: '5'
+      limit:
+        description: 'Articles per topic'
+        required: false
+        default: '10'
+
+jobs:
+  fetch-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install httpx loguru
+
+      - name: Fetch and send news
+        env:
+          BALIZERO_API_URL: https://balizero.com
+        run: |
+          cd apps/bali-intel-scraper
+          python scripts/rss_fetcher.py \
+            --max-age ${{ github.event.inputs.max_age || '5' }} \
+            --limit ${{ github.event.inputs.limit || '10' }} \
+            --api-url $BALIZERO_API_URL \
+            --send
+
+      - name: Summary
+        run: |
+          echo "## RSS Fetcher Results" >> $GITHUB_STEP_SUMMARY
+          echo "Fetched news from Google News RSS" >> $GITHUB_STEP_SUMMARY
+          echo "- Max Age: ${{ github.event.inputs.max_age || '5' }} days" >> $GITHUB_STEP_SUMMARY
+          echo "- Limit: ${{ github.event.inputs.limit || '10' }} per topic" >> $GITHUB_STEP_SUMMARY

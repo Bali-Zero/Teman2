@@ -227,9 +227,9 @@ class TestGetTodaySchedule:
         time_pattern = re.compile(r"^\d{1,2}:\d{2}$")
 
         for entry in data["entries"]:
-            assert time_pattern.match(
-                entry["time"]
-            ), f"Invalid time format: {entry['time']}"
+            assert time_pattern.match(entry["time"]), (
+                f"Invalid time format: {entry['time']}"
+            )
 
     def test_today_schedule_valid_status(self, dashboard_client):
         """Test that schedule entries have valid status"""
@@ -238,9 +238,9 @@ class TestGetTodaySchedule:
 
         valid_statuses = ["pending", "in_progress", "completed", "failed", "scheduled"]
         for entry in data["entries"]:
-            assert (
-                entry["status"] in valid_statuses
-            ), f"Invalid status: {entry['status']}"
+            assert entry["status"] in valid_statuses, (
+                f"Invalid status: {entry['status']}"
+            )
 
 
 # ============================================================================

@@ -53,6 +53,7 @@ class TestSessionRouter:
         """Test getting session service"""
         # Reset global
         import app.routers.session as module
+
         module._session_service = None
 
         with patch("app.routers.session.SessionService") as mock_service_class:
@@ -97,8 +98,7 @@ class TestSessionRouter:
     def test_update_session(self, client, mock_session_service):
         """Test updating a session"""
         response = client.put(
-            "/api/sessions/session123",
-            json={"history": [{"role": "user", "content": "Updated"}]}
+            "/api/sessions/session123", json={"history": [{"role": "user", "content": "Updated"}]}
         )
         assert response.status_code == 200
         data = response.json()
@@ -111,8 +111,7 @@ class TestSessionRouter:
         app.dependency_overrides[get_session_service] = lambda: mock_session_service
 
         response = client.put(
-            "/api/sessions/session123",
-            json={"history": [{"role": "user", "content": "Updated"}]}
+            "/api/sessions/session123", json={"history": [{"role": "user", "content": "Updated"}]}
         )
         assert response.status_code == 400
 
@@ -120,7 +119,7 @@ class TestSessionRouter:
         """Test extending session TTL"""
         response = client.put(
             "/api/sessions/session123/ttl",
-            json={"history": [{"role": "user", "content": "Test"}], "ttl_hours": 24}
+            json={"history": [{"role": "user", "content": "Test"}], "ttl_hours": 24},
         )
         assert response.status_code == 200
         data = response.json()
@@ -133,4 +132,3 @@ class TestSessionRouter:
         data = response.json()
         assert data["success"] is True
         mock_session_service.delete_session.assert_called_once_with("session123")
-

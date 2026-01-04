@@ -97,7 +97,9 @@ class ZohoOAuthService:
             ValueError: If token exchange fails
         """
         logger.info(f"[ZOHO_DEBUG] Starting exchange_code for user {user_id}")
-        logger.info(f"[ZOHO_DEBUG] client_id: {self.client_id[:8] if self.client_id else 'None'}...")
+        logger.info(
+            f"[ZOHO_DEBUG] client_id: {self.client_id[:8] if self.client_id else 'None'}..."
+        )
         logger.info(f"[ZOHO_DEBUG] client_secret: {'set' if self.client_secret else 'None'}")
         logger.info(f"[ZOHO_DEBUG] redirect_uri: {self.redirect_uri}")
         logger.info(f"[ZOHO_DEBUG] accounts_url: {self.accounts_url}")
@@ -128,8 +130,12 @@ class ZohoOAuthService:
 
                 if response.status_code != 200:
                     error_data = response.json() if response.content else {}
-                    logger.error(f"[ZOHO_DEBUG] Token exchange failed: {response.status_code} - {error_data}")
-                    raise ValueError(f"Token exchange failed: {error_data.get('error', 'unknown error')}")
+                    logger.error(
+                        f"[ZOHO_DEBUG] Token exchange failed: {response.status_code} - {error_data}"
+                    )
+                    raise ValueError(
+                        f"Token exchange failed: {error_data.get('error', 'unknown error')}"
+                    )
 
                 token_data = response.json()
 
@@ -153,7 +159,9 @@ class ZohoOAuthService:
                     expires_in=token_data.get("expires_in", 3600),
                 )
 
-                logger.info(f"[ZOHO_DEBUG] Zoho OAuth successful for user {user_id}: {account_info['email']}")
+                logger.info(
+                    f"[ZOHO_DEBUG] Zoho OAuth successful for user {user_id}: {account_info['email']}"
+                )
                 return token_data
 
         except httpx.RequestError as e:
@@ -171,7 +179,9 @@ class ZohoOAuthService:
             Dict with account_id and email
         """
         # VERSION MARKER - helps identify which code version is running
-        logger.info("[ZOHO_DEBUG] ===== _get_account_info VERSION: 2024-12-30-v3 WITH SAFEGUARD =====")
+        logger.info(
+            "[ZOHO_DEBUG] ===== _get_account_info VERSION: 2024-12-30-v3 WITH SAFEGUARD ====="
+        )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
@@ -197,15 +207,21 @@ class ZohoOAuthService:
             email_list = account.get("email", [])
             primary_email = ""
 
-            logger.info(f"[ZOHO_DEBUG] Raw email_list type: {type(email_list)}, value: {email_list}")
+            logger.info(
+                f"[ZOHO_DEBUG] Raw email_list type: {type(email_list)}, value: {email_list}"
+            )
 
             if isinstance(email_list, list):
                 logger.info(f"[ZOHO_DEBUG] email_list is a list with {len(email_list)} items")
                 for i, email_entry in enumerate(email_list):
-                    logger.info(f"[ZOHO_DEBUG] Processing item {i}: type={type(email_entry)}, value={email_entry}")
+                    logger.info(
+                        f"[ZOHO_DEBUG] Processing item {i}: type={type(email_entry)}, value={email_entry}"
+                    )
                     is_dict = isinstance(email_entry, dict)
                     is_primary = email_entry.get("isPrimary") if is_dict else None
-                    logger.info(f"[ZOHO_DEBUG] is_dict={is_dict}, isPrimary={is_primary}, type(isPrimary)={type(is_primary)}")
+                    logger.info(
+                        f"[ZOHO_DEBUG] is_dict={is_dict}, isPrimary={is_primary}, type(isPrimary)={type(is_primary)}"
+                    )
                     if is_dict and is_primary:
                         primary_email = email_entry.get("mailId", "")
                         logger.info(f"[ZOHO_DEBUG] FOUND primary! mailId={primary_email}")
@@ -224,12 +240,16 @@ class ZohoOAuthService:
                 primary_email = account.get("emailAddress", "")
                 logger.info(f"[ZOHO_DEBUG] Using emailAddress fallback: {primary_email}")
 
-            logger.info(f"[ZOHO_DEBUG] Extracted email: {primary_email}, type: {type(primary_email)}")
+            logger.info(
+                f"[ZOHO_DEBUG] Extracted email: {primary_email}, type: {type(primary_email)}"
+            )
 
             # FINAL SAFEGUARD: Ensure email is ALWAYS a string
             # This handles edge cases where extraction might have failed
             if not isinstance(primary_email, str):
-                logger.error(f"[ZOHO_DEBUG] CRITICAL: primary_email is NOT a string! Type: {type(primary_email)}, Value: {primary_email}")
+                logger.error(
+                    f"[ZOHO_DEBUG] CRITICAL: primary_email is NOT a string! Type: {type(primary_email)}, Value: {primary_email}"
+                )
                 # Try to extract from whatever we have
                 if isinstance(primary_email, list) and primary_email:
                     first_item = primary_email[0]
@@ -460,7 +480,9 @@ class ZohoOAuthService:
                 "connected": True,
                 "email": row["email_address"],
                 "account_id": row["account_id"],
-                "expires_at": row["token_expires_at"].isoformat() if row["token_expires_at"] else None,
+                "expires_at": row["token_expires_at"].isoformat()
+                if row["token_expires_at"]
+                else None,
                 "api_domain": row["api_domain"],
             }
 

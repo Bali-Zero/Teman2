@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExtractedEntity:
     """Extracted entity from text"""
+
     id: str
     type: EntityType
     name: str
@@ -42,6 +43,7 @@ class ExtractedEntity:
 @dataclass
 class ExtractedRelation:
     """Extracted relation between entities"""
+
     source_id: str
     target_id: str
     type: RelationType
@@ -53,6 +55,7 @@ class ExtractedRelation:
 @dataclass
 class ExtractionResult:
     """Result of extraction from a chunk"""
+
     chunk_id: str
     entities: list[ExtractedEntity] = field(default_factory=list)
     relations: list[ExtractedRelation] = field(default_factory=list)
@@ -162,9 +165,7 @@ Return a JSON object with an "entities" array:
 
 Extract entities now:"""
 
-    def _build_relation_extraction_prompt(
-        self, text: str, entities: list[ExtractedEntity]
-    ) -> str:
+    def _build_relation_extraction_prompt(self, text: str, entities: list[ExtractedEntity]) -> str:
         """Build prompt for relation extraction given entities"""
         entity_list = []
         for e in entities:
@@ -450,14 +451,16 @@ Extract entities and relations now:"""
                     logger.debug(f"Unknown entity type: {type_str}")
                     continue
 
-                entities.append(ExtractedEntity(
-                    id=e.get("id", f"e{len(entities)+1}"),
-                    type=entity_type,
-                    name=e.get("name", ""),
-                    mention=e.get("mention", e.get("name", "")),
-                    attributes=e.get("attributes", {}),
-                    confidence=float(e.get("confidence", 0.8)),
-                ))
+                entities.append(
+                    ExtractedEntity(
+                        id=e.get("id", f"e{len(entities) + 1}"),
+                        type=entity_type,
+                        name=e.get("name", ""),
+                        mention=e.get("mention", e.get("name", "")),
+                        attributes=e.get("attributes", {}),
+                        confidence=float(e.get("confidence", 0.8)),
+                    )
+                )
             except Exception as ex:
                 logger.debug(f"Failed to parse entity: {ex}")
 
@@ -494,14 +497,16 @@ Extract entities and relations now:"""
                     logger.debug(f"Unknown relation type: {type_str}")
                     continue
 
-                relations.append(ExtractedRelation(
-                    source_id=r.get("source_id", ""),
-                    target_id=r.get("target_id", ""),
-                    type=rel_type,
-                    evidence=r.get("evidence", ""),
-                    confidence=float(r.get("confidence", 0.7)),
-                    attributes=r.get("attributes", {}),
-                ))
+                relations.append(
+                    ExtractedRelation(
+                        source_id=r.get("source_id", ""),
+                        target_id=r.get("target_id", ""),
+                        type=rel_type,
+                        evidence=r.get("evidence", ""),
+                        confidence=float(r.get("confidence", 0.7)),
+                        attributes=r.get("attributes", {}),
+                    )
+                )
             except Exception as ex:
                 logger.debug(f"Failed to parse relation: {ex}")
 
@@ -528,6 +533,6 @@ Extract entities and relations now:"""
             results.append(result)
 
             if (i + 1) % batch_size == 0:
-                logger.info(f"Processed {i+1}/{len(texts)} chunks")
+                logger.info(f"Processed {i + 1}/{len(texts)} chunks")
 
         return results

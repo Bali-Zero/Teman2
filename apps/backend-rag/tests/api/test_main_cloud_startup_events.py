@@ -38,20 +38,19 @@ class TestStartupEvents:
             # Mock initialize_services and initialize_plugins to avoid heavy initialization in tests
             from unittest.mock import AsyncMock, patch
 
-            with patch(
-                "app.main_cloud.initialize_services", new_callable=AsyncMock
-            ) as mock_init, patch(
-                "app.main_cloud.initialize_plugins", new_callable=AsyncMock
-            ) as mock_plugins:
+            with (
+                patch("app.main_cloud.initialize_services", new_callable=AsyncMock) as mock_init,
+                patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock) as mock_plugins,
+            ):
                 # Run startup
                 await on_startup()
 
                 # Verify AlertService is initialized (happens before initialize_services)
                 assert hasattr(app.state, "alert_service"), "alert_service should be in app.state"
                 assert app.state.alert_service is not None, "alert_service should not be None"
-                assert isinstance(
-                    app.state.alert_service, AlertService
-                ), f"Expected AlertService, got {type(app.state.alert_service)}"
+                assert isinstance(app.state.alert_service, AlertService), (
+                    f"Expected AlertService, got {type(app.state.alert_service)}"
+                )
                 # Verify initialize_services was called
                 mock_init.assert_called_once()
                 mock_plugins.assert_called_once()
@@ -79,37 +78,39 @@ class TestStartupEvents:
             app.state.services_initialized = False
 
             # Run startup first time
-            with patch("app.main_cloud.initialize_services", new_callable=AsyncMock), patch(
-                "app.main_cloud.initialize_plugins", new_callable=AsyncMock
+            with (
+                patch("app.main_cloud.initialize_services", new_callable=AsyncMock),
+                patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock),
             ):
                 await on_startup()
             first_instance = getattr(app.state, "alert_service", None)
 
             # Verify first instance was created
-            assert (
-                first_instance is not None
-            ), f"First instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
-            assert isinstance(
-                first_instance, AlertService
-            ), f"Expected AlertService, got {type(first_instance)}"
+            assert first_instance is not None, (
+                f"First instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
+            )
+            assert isinstance(first_instance, AlertService), (
+                f"Expected AlertService, got {type(first_instance)}"
+            )
 
             # Reset to allow second run (but keep alert_service to test idempotency)
             app.state.services_initialized = False
 
             # Run startup again (will overwrite alert_service)
-            with patch("app.main_cloud.initialize_services", new_callable=AsyncMock), patch(
-                "app.main_cloud.initialize_plugins", new_callable=AsyncMock
+            with (
+                patch("app.main_cloud.initialize_services", new_callable=AsyncMock),
+                patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock),
             ):
                 await on_startup()
             second_instance = getattr(app.state, "alert_service", None)
 
             # Both should be AlertService instances
-            assert (
-                second_instance is not None
-            ), f"Second instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
-            assert isinstance(
-                second_instance, AlertService
-            ), f"Expected AlertService, got {type(second_instance)}"
+            assert second_instance is not None, (
+                f"Second instance should not be None. State keys: {[k for k in dir(app.state) if not k.startswith('_')]}"
+            )
+            assert isinstance(second_instance, AlertService), (
+                f"Expected AlertService, got {type(second_instance)}"
+            )
         finally:
             # Restore original state
             if original_alert_service is not None:

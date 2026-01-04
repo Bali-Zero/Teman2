@@ -368,7 +368,7 @@ class SystemPromptBuilder:
         query: str = "",
         deep_think_mode: bool = False,
         additional_context: str = "",
-        conversation_history: list[dict] | None = None
+        conversation_history: list[dict] | None = None,
     ) -> str:
         """Construct dynamic, personalized system prompt with intelligent caching.
 
@@ -452,24 +452,52 @@ class SystemPromptBuilder:
             email_lower = user_email.lower()
             if "antonello" in email_lower or "siano" in email_lower:
                 is_creator = True
-            elif "@balizero.com" in email_lower or profile and "admin" in str(profile.get("role", "")).lower():
+            elif (
+                "@balizero.com" in email_lower
+                or profile
+                and "admin" in str(profile.get("role", "")).lower()
+            ):
                 is_team = True
 
         # Detect language EARLY for cache key
         query_lower = query.lower() if query else ""
-        indo_markers = ["apa", "bagaimana", "siapa", "dimana", "kapan", "mengapa",
-                       "yang", "dengan", "untuk", "dari", "saya", "aku", "kamu",
-                       "anda", "bisa", "mau", "ingin", "tolong", "halo", "gimana",
-                       "gue", "gw", "lu", "dong", "nih", "banget"]
+        indo_markers = [
+            "apa",
+            "bagaimana",
+            "siapa",
+            "dimana",
+            "kapan",
+            "mengapa",
+            "yang",
+            "dengan",
+            "untuk",
+            "dari",
+            "saya",
+            "aku",
+            "kamu",
+            "anda",
+            "bisa",
+            "mau",
+            "ingin",
+            "tolong",
+            "halo",
+            "gimana",
+            "gue",
+            "gw",
+            "lu",
+            "dong",
+            "nih",
+            "banget",
+        ]
         is_indonesian = any(marker in query_lower for marker in indo_markers)
 
         # Detect specific language (with descriptive names for prompts)
         detected_lang = None
         if not is_indonesian and query and len(query) > 3:
             # Japanese detection: Check for Hiragana/Katakana (unique to Japanese)
-            has_hiragana = any('\u3040' <= c <= '\u309f' for c in query)
-            has_katakana = any('\u30a0' <= c <= '\u30ff' for c in query)
-            has_kanji = any('\u4e00' <= c <= '\u9fff' for c in query)
+            has_hiragana = any("\u3040" <= c <= "\u309f" for c in query)
+            has_katakana = any("\u30a0" <= c <= "\u30ff" for c in query)
+            has_kanji = any("\u4e00" <= c <= "\u9fff" for c in query)
 
             if has_hiragana or has_katakana:
                 # Hiragana/Katakana = definitely Japanese
@@ -477,19 +505,86 @@ class SystemPromptBuilder:
             elif has_kanji and not has_hiragana and not has_katakana:
                 # Only Kanji, no kana = likely Chinese
                 detected_lang = "CHINESE (中文)"
-            elif any('\u0600' <= c <= '\u06ff' for c in query):
+            elif any("\u0600" <= c <= "\u06ff" for c in query):
                 detected_lang = "ARABIC (العربية)"
-            elif any('\u0400' <= c <= '\u04ff' for c in query):
+            elif any("\u0400" <= c <= "\u04ff" for c in query):
                 detected_lang = "RUSSIAN/UKRAINIAN"
-            elif any(w in query_lower for w in ["ciao", "come", "cosa", "voglio", "grazie", "posso", "perché", "buongiorno", "buonasera"]):
+            elif any(
+                w in query_lower
+                for w in [
+                    "ciao",
+                    "come",
+                    "cosa",
+                    "voglio",
+                    "grazie",
+                    "posso",
+                    "perché",
+                    "buongiorno",
+                    "buonasera",
+                ]
+            ):
                 detected_lang = "ITALIAN (Italiano)"
-            elif any(w in query_lower for w in ["bonjour", "comment", "pourquoi", "merci", "oui", "non", "je", "nous", "vous", "est-ce"]):
+            elif any(
+                w in query_lower
+                for w in [
+                    "bonjour",
+                    "comment",
+                    "pourquoi",
+                    "merci",
+                    "oui",
+                    "non",
+                    "je",
+                    "nous",
+                    "vous",
+                    "est-ce",
+                ]
+            ):
                 detected_lang = "FRENCH (Français)"
-            elif any(w in query_lower for w in ["hola", "cómo", "gracias", "qué", "por qué", "buenos días", "buenas tardes", "quiero", "puedo"]):
+            elif any(
+                w in query_lower
+                for w in [
+                    "hola",
+                    "cómo",
+                    "gracias",
+                    "qué",
+                    "por qué",
+                    "buenos días",
+                    "buenas tardes",
+                    "quiero",
+                    "puedo",
+                ]
+            ):
                 detected_lang = "SPANISH (Español)"
-            elif any(w in query_lower for w in ["guten tag", "guten morgen", "danke", "bitte", "wie", "warum", "ich möchte", "können", "hallo"]):
+            elif any(
+                w in query_lower
+                for w in [
+                    "guten tag",
+                    "guten morgen",
+                    "danke",
+                    "bitte",
+                    "wie",
+                    "warum",
+                    "ich möchte",
+                    "können",
+                    "hallo",
+                ]
+            ):
                 detected_lang = "GERMAN (Deutsch)"
-            elif any(w in query_lower for w in ["olá", "bom dia", "boa tarde", "obrigado", "obrigada", "como", "porque", "quero", "posso", "você"]):
+            elif any(
+                w in query_lower
+                for w in [
+                    "olá",
+                    "bom dia",
+                    "boa tarde",
+                    "obrigado",
+                    "obrigada",
+                    "como",
+                    "porque",
+                    "quero",
+                    "posso",
+                    "você",
+                ]
+            ):
                 detected_lang = "PORTUGUESE (Português)"
             else:
                 detected_lang = "SAME AS USER'S QUERY"
@@ -519,7 +614,9 @@ class SystemPromptBuilder:
             user_role = profile.get("role", "Team Member")
             dept = profile.get("department", "General")
             notes = profile.get("notes", "")
-            memory_parts.append(f"User Name: {user_name}\nRole: {user_role}\nDepartment: {dept}\nNotes: {notes}")
+            memory_parts.append(
+                f"User Name: {user_name}\nRole: {user_role}\nDepartment: {dept}\nNotes: {notes}"
+            )
         elif entities:
             user_name = entities.get("user_name", "Partner")
             user_city = entities.get("user_city", "Unknown City")
@@ -535,7 +632,9 @@ class SystemPromptBuilder:
 
         # 4. Collective Knowledge
         if collective_facts:
-            memory_parts.append("COLLECTIVE KNOWLEDGE:\n" + "\n".join([f"- {f}" for f in collective_facts]))
+            memory_parts.append(
+                "COLLECTIVE KNOWLEDGE:\n" + "\n".join([f"- {f}" for f in collective_facts])
+            )
 
         user_memory_text = "\n\n".join(memory_parts) if memory_parts else "No specific memory yet."
 
@@ -557,17 +656,33 @@ class SystemPromptBuilder:
             stripped_template = ZANTARA_MASTER_TEMPLATE.format(
                 rag_results=rag_results,
                 user_memory=user_memory_text,
-                query=query if query else "General inquiry"
+                query=query if query else "General inquiry",
             )
             # Remove Jaksel-specific instructions
             jaksel_phrases = [
-                'Jaksel', 'Jakarta Selatan', '"gue"', '"banget"', '"nih"', '"dong"',
-                '"bro"', 'Basically gini bro', 'Makes sense kan?', 'Full Jaksel',
-                'Business Jaksel', 'Jaksel flair', 'Jaksel flavor', 'Jaksel persona',
-                '"gimana"', '"kayak"', '"sih"', '"deh"', '"lho"', '"kok"',
+                "Jaksel",
+                "Jakarta Selatan",
+                '"gue"',
+                '"banget"',
+                '"nih"',
+                '"dong"',
+                '"bro"',
+                "Basically gini bro",
+                "Makes sense kan?",
+                "Full Jaksel",
+                "Business Jaksel",
+                "Jaksel flair",
+                "Jaksel flavor",
+                "Jaksel persona",
+                '"gimana"',
+                '"kayak"',
+                '"sih"',
+                '"deh"',
+                '"lho"',
+                '"kok"',
             ]
             for phrase in jaksel_phrases:
-                stripped_template = stripped_template.replace(phrase, '')
+                stripped_template = stripped_template.replace(phrase, "")
 
             # Add strong language instruction
             language_header = f"""
@@ -583,7 +698,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             final_prompt = ZANTARA_MASTER_TEMPLATE.format(
                 rag_results=rag_results,
                 user_memory=user_memory_text,
-                query=query if query else "General inquiry"
+                query=query if query else "General inquiry",
             )
 
         if deep_think_instr:
@@ -634,7 +749,10 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         user_lang = None
         facts_text = " ".join(facts).lower()
         # Indonesian/Balinese/Javanese → Indonesian
-        if any(w in facts_text for w in ["indonesian", "indonesiano", "balinese", "javanese", "sundanese"]):
+        if any(
+            w in facts_text
+            for w in ["indonesian", "indonesiano", "balinese", "javanese", "sundanese"]
+        ):
             user_lang = "id"
         # Italian
         elif any(w in facts_text for w in ["italian", "italiano"]):
@@ -669,13 +787,20 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                 # Determine response language: user preference > query language > default
                 if user_lang is None:
                     # Detect from query
-                    if any(word in query_lower for word in ["ciao", "salve", "buongiorno", "buonasera"]):
+                    if any(
+                        word in query_lower for word in ["ciao", "salve", "buongiorno", "buonasera"]
+                    ):
                         user_lang = "it"
                     elif any(word in query_lower for word in ["привіт", "вітаю", "добрий"]):
                         user_lang = "uk"
-                    elif any(word in query_lower for word in ["привет", "здравствуй", "добрый", "доброе"]):
+                    elif any(
+                        word in query_lower for word in ["привет", "здравствуй", "добрый", "доброе"]
+                    ):
                         user_lang = "ru"
-                    elif any(word in query_lower for word in ["halo", "hai", "hei", "selamat", "apa kabar", "kabar"]):
+                    elif any(
+                        word in query_lower
+                        for word in ["halo", "hai", "hei", "selamat", "apa kabar", "kabar"]
+                    ):
                         user_lang = "id"
                     else:
                         user_lang = "en"
@@ -723,17 +848,75 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
 
         # Business keywords that require RAG
         business_keywords = [
-            "visa", "kitas", "kitap", "voa", "pt pma", "pt local", "pma", "kbli",
-            "tax", "pajak", "pph", "ppn", "company", "business", "legal", "law",
-            "regulation", "permit", "license", "contract", "notaris", "bank",
-            "investment", "investor", "capital", "modal", "hukum", "peraturan",
-            "undang", "izin", "akta", "npwp", "siup", "tdp", "nib", "oss",
-            "immigration", "imigrasi", "sponsor", "rptka", "imta", "tenaga kerja",
-            "how much", "quanto costa", "berapa", "pricing", "price", "harga",
-            "deadline", "expire", "renewal", "extension", "perpanjang",
-            "ceo", "founder", "team", "tim", "anggota", "member", "staff",
-            "chi è", "who is", "siapa", "direttore", "director", "manager",
-            settings.COMPANY_NAME.lower(), "zerosphere", "kintsugi",
+            "visa",
+            "kitas",
+            "kitap",
+            "voa",
+            "pt pma",
+            "pt local",
+            "pma",
+            "kbli",
+            "tax",
+            "pajak",
+            "pph",
+            "ppn",
+            "company",
+            "business",
+            "legal",
+            "law",
+            "regulation",
+            "permit",
+            "license",
+            "contract",
+            "notaris",
+            "bank",
+            "investment",
+            "investor",
+            "capital",
+            "modal",
+            "hukum",
+            "peraturan",
+            "undang",
+            "izin",
+            "akta",
+            "npwp",
+            "siup",
+            "tdp",
+            "nib",
+            "oss",
+            "immigration",
+            "imigrasi",
+            "sponsor",
+            "rptka",
+            "imta",
+            "tenaga kerja",
+            "how much",
+            "quanto costa",
+            "berapa",
+            "pricing",
+            "price",
+            "harga",
+            "deadline",
+            "expire",
+            "renewal",
+            "extension",
+            "perpanjang",
+            "ceo",
+            "founder",
+            "team",
+            "tim",
+            "anggota",
+            "member",
+            "staff",
+            "chi è",
+            "who is",
+            "siapa",
+            "direttore",
+            "director",
+            "manager",
+            settings.COMPANY_NAME.lower(),
+            "zerosphere",
+            "kintsugi",
         ]
 
         for keyword in business_keywords:
@@ -747,9 +930,9 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         # 1. Check for specific Visa Code patterns (E33G, C312, etc.)
         # This catches codes that might not be in the keyword list
         if re.search(r"\b[eE]\d{2}[a-zA-Z]?\b", query_lower):
-             return False # It's a visa code, definitely business
-        if re.search(r"\b[cC]\d{3}[a-zA-Z]?\b", query_lower): # C312 etc
-             return False
+            return False  # It's a visa code, definitely business
+        if re.search(r"\b[cC]\d{3}[a-zA-Z]?\b", query_lower):  # C312 etc
+            return False
 
         # 2. If it's short, check if it explicitly matches CASUAL patterns.
         # If it doesn't match casual patterns, safe default is to ASSUME BUSINESS/RAG.
@@ -774,7 +957,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
             # Casual statements about day/mood
             r"(hari ini|today|oggi|lagi|feeling|mood|vibes)",
             # General Chatters
-            r"^(ok|bene|good|great|thanks|grazie|terima kasih|si|no|yes|cool|wow|haha|wkwk|lol)$"
+            r"^(ok|bene|good|great|thanks|grazie|terima kasih|si|no|yes|cool|wow|haha|wkwk|lol)$",
         ]
 
         for pattern in casual_patterns:
@@ -822,6 +1005,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                     "Living the dream in Bali! 🌴 How about you? Got any questions for me?",
                 ]
             import random
+
             return random.choice(responses)
 
         # "Cosa fai" / "What do you do" responses
@@ -910,28 +1094,43 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
                 logger.warning(f"🛡️ [Security] Prompt injection attempt detected: {pattern}")
                 # Language-aware response
                 if any(w in query_lower for w in ["ignora", "dimentica", "sei ora", "fai finta"]):
-                    return (True, f"Mi dispiace, ma non posso cambiare il mio ruolo o ignorare le mie istruzioni. "
-                                  f"Sono Zantara, l'assistente specializzato di {settings.COMPANY_NAME}. "
-                                  "Posso aiutarti con visti, apertura società, tasse e questioni legali in Indonesia. "
-                                  "Come posso assisterti oggi?")
-                return (True, f"I'm sorry, but I cannot change my role or ignore my instructions. "
-                              f"I'm Zantara, {settings.COMPANY_NAME}'s specialized assistant. "
-                              "I can help you with visas, company setup, taxes, and legal matters in Indonesia. "
-                              "How can I assist you today?")
+                    return (
+                        True,
+                        f"Mi dispiace, ma non posso cambiare il mio ruolo o ignorare le mie istruzioni. "
+                        f"Sono Zantara, l'assistente specializzato di {settings.COMPANY_NAME}. "
+                        "Posso aiutarti con visti, apertura società, tasse e questioni legali in Indonesia. "
+                        "Come posso assisterti oggi?",
+                    )
+                return (
+                    True,
+                    f"I'm sorry, but I cannot change my role or ignore my instructions. "
+                    f"I'm Zantara, {settings.COMPANY_NAME}'s specialized assistant. "
+                    "I can help you with visas, company setup, taxes, and legal matters in Indonesia. "
+                    "How can I assist you today?",
+                )
 
         # Check for off-topic requests
         for pattern in offtopic_patterns:
             if re.search(pattern, query_lower):
                 logger.info(f"🚫 [Scope] Off-topic request detected: {pattern}")
-                if any(w in query_lower for w in ["dimmi", "raccontami", "scrivi", "canta", "giochiamo"]):
-                    return (True, "Mi fa piacere che tu voglia chiacchierare! 😊 "
-                                  "Però sono specializzata in visti, business e questioni legali in Indonesia. "
-                                  "Non sono bravissima con barzellette o poesie! "
-                                  "Hai qualche domanda su questi argomenti?")
-                return (True, "I appreciate you wanting to chat! 😊 "
-                              "However, I specialize in visas, business setup, and legal matters in Indonesia. "
-                              "I'm not great at jokes or poems! "
-                              "Do you have any questions about these topics?")
+                if any(
+                    w in query_lower
+                    for w in ["dimmi", "raccontami", "scrivi", "canta", "giochiamo"]
+                ):
+                    return (
+                        True,
+                        "Mi fa piacere che tu voglia chiacchierare! 😊 "
+                        "Però sono specializzata in visti, business e questioni legali in Indonesia. "
+                        "Non sono bravissima con barzellette o poesie! "
+                        "Hai qualche domanda su questi argomenti?",
+                    )
+                return (
+                    True,
+                    "I appreciate you wanting to chat! 😊 "
+                    "However, I specialize in visas, business setup, and legal matters in Indonesia. "
+                    "I'm not great at jokes or poems! "
+                    "Do you have any questions about these topics?",
+                )
 
         return (False, None)
 
@@ -956,11 +1155,28 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         is_cyrillic = any("\u0400" <= c <= "\u04ff" for c in query)
         is_ukrainian = any(w in query_lower for w in ["привіт", "як", "дякую", "хто я"])
         is_russian = any(w in query_lower for w in ["привет", "как", "спасибо", "кто я"])
-        is_italian = any(w in query_lower for w in ["chi", "sono", "cosa", settings.COMPANY_NAME.lower(), "zantara"])
-        is_indonesian = any(w in query_lower for w in ["siapa", "aku", "saya", "apa", "gimana", "bagaimana", "gue", "lu"])
+        is_italian = any(
+            w in query_lower
+            for w in ["chi", "sono", "cosa", settings.COMPANY_NAME.lower(), "zantara"]
+        )
+        is_indonesian = any(
+            w in query_lower
+            for w in ["siapa", "aku", "saya", "apa", "gimana", "bagaimana", "gue", "lu"]
+        )
 
         # User identity ("Who am I?")
-        if any(p in query_lower for p in ["chi sono io", "who am i", "кто я", "хто я", "siapa aku", "siapa saya", "gue siapa"]):
+        if any(
+            p in query_lower
+            for p in [
+                "chi sono io",
+                "who am i",
+                "кто я",
+                "хто я",
+                "siapa aku",
+                "siapa saya",
+                "gue siapa",
+            ]
+        ):
             # PRIORITY 1: Use profile data (from user_profiles + team_access tables)
             user_role = profile.get("role", "")
             user_email = profile.get("email", "")

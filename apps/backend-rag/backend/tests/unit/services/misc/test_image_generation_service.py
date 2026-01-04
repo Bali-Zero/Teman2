@@ -26,7 +26,7 @@ class TestImageGenerationService:
 
     def test_init_without_api_key(self):
         """Test initialization without API key"""
-        with patch('app.core.config.settings') as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.google_imagen_api_key = None
             mock_settings.google_api_key = None
             service = ImageGenerationService()
@@ -34,14 +34,14 @@ class TestImageGenerationService:
 
     def test_init_with_settings_api_key(self):
         """Test initialization with settings API key"""
-        with patch('app.core.config.settings') as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.google_imagen_api_key = "imagen_key"
             service = ImageGenerationService()
             assert service.api_key == "imagen_key"
 
     def test_init_fallback_to_google_api_key(self):
         """Test initialization with fallback to google_api_key"""
-        with patch('app.core.config.settings') as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.google_imagen_api_key = None
             mock_settings.google_api_key = "google_key"
             service = ImageGenerationService()
@@ -50,7 +50,7 @@ class TestImageGenerationService:
     @pytest.mark.asyncio
     async def test_generate_image_no_api_key(self):
         """Test generating image without API key"""
-        with patch('app.core.config.settings') as mock_settings:
+        with patch("app.core.config.settings") as mock_settings:
             mock_settings.google_imagen_api_key = None
             mock_settings.google_api_key = None
             service = ImageGenerationService(api_key=None)
@@ -82,4 +82,3 @@ class TestImageGenerationService:
         assert result["success"] is True
         assert "url" in result
         assert result["service"] == "pollinations_fallback"
-

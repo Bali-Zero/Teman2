@@ -15,7 +15,7 @@ Tests all endpoints in backend/app/routers/crm_clients.py:
 import sys
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
@@ -52,8 +52,9 @@ class TestClientCreateValidation:
 
     def test_client_create_invalid_type(self):
         """Test validation fails for invalid client_type"""
-        from app.routers.crm_clients import ClientCreate
         from pydantic import ValidationError
+
+        from app.routers.crm_clients import ClientCreate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientCreate(full_name="John Doe", client_type="invalid_type")
@@ -62,8 +63,9 @@ class TestClientCreateValidation:
 
     def test_client_create_empty_name(self):
         """Test validation fails for empty full_name"""
-        from app.routers.crm_clients import ClientCreate
         from pydantic import ValidationError
+
+        from app.routers.crm_clients import ClientCreate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientCreate(full_name="   ")
@@ -72,8 +74,9 @@ class TestClientCreateValidation:
 
     def test_client_create_name_too_long(self):
         """Test validation fails for full_name > 200 chars"""
-        from app.routers.crm_clients import ClientCreate
         from pydantic import ValidationError
+
+        from app.routers.crm_clients import ClientCreate
 
         long_name = "A" * 201
         with pytest.raises(ValidationError) as exc_info:
@@ -105,16 +108,15 @@ class TestClientUpdateValidation:
         """Test creating valid ClientUpdate instance"""
         from app.routers.crm_clients import ClientUpdate
 
-        update = ClientUpdate(
-            full_name="Jane Doe", email="jane@example.com", status="active"
-        )
+        update = ClientUpdate(full_name="Jane Doe", email="jane@example.com", status="active")
         assert update.full_name == "Jane Doe"
         assert update.status == "active"
 
     def test_client_update_invalid_status(self):
         """Test validation fails for invalid status"""
-        from app.routers.crm_clients import ClientUpdate
         from pydantic import ValidationError
+
+        from app.routers.crm_clients import ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientUpdate(status="invalid_status")
@@ -123,8 +125,9 @@ class TestClientUpdateValidation:
 
     def test_client_update_invalid_type(self):
         """Test validation fails for invalid client_type"""
-        from app.routers.crm_clients import ClientUpdate
         from pydantic import ValidationError
+
+        from app.routers.crm_clients import ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientUpdate(client_type="invalid_type")
@@ -133,8 +136,9 @@ class TestClientUpdateValidation:
 
     def test_client_update_empty_name(self):
         """Test validation fails for empty full_name"""
-        from app.routers.crm_clients import ClientUpdate
         from pydantic import ValidationError
+
+        from app.routers.crm_clients import ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientUpdate(full_name="   ")
@@ -143,8 +147,9 @@ class TestClientUpdateValidation:
 
     def test_client_update_name_too_long(self):
         """Test validation fails for full_name > 200 chars"""
-        from app.routers.crm_clients import ClientUpdate
         from pydantic import ValidationError
+
+        from app.routers.crm_clients import ClientUpdate
 
         long_name = "A" * 201
         with pytest.raises(ValidationError) as exc_info:
@@ -627,9 +632,7 @@ class TestUpdateClient:
         """Test updating with no fields returns 400"""
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
 
-        response = client.patch(
-            "/api/crm/clients/1?updated_by=admin@example.com", json={}
-        )
+        response = client.patch("/api/crm/clients/1?updated_by=admin@example.com", json={})
 
         assert response.status_code == 400
         assert "No fields to update" in response.json()["detail"]
@@ -816,19 +819,41 @@ class TestGetClientSummary:
         assert data["interactions"]["total"] == 0
         assert len(data["renewals"]["upcoming"]) == 0
 
-    def test_get_client_summary_practice_status_counts(
-        self, client, mock_db_pool, mock_client_row
-    ):
+    def test_get_client_summary_practice_status_counts(self, client, mock_db_pool, mock_client_row):
         """Test practice status counting logic"""
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetchrow.return_value = mock_client_row
 
         # Multiple practices with different statuses
         practices = [
-            {"id": 1, "status": "in_progress", "practice_type_name": "Visa", "category": "immigration", "created_at": datetime.now()},
-            {"id": 2, "status": "completed", "practice_type_name": "Work Permit", "category": "immigration", "created_at": datetime.now()},
-            {"id": 3, "status": "inquiry", "practice_type_name": "KITAS", "category": "immigration", "created_at": datetime.now()},
-            {"id": 4, "status": "cancelled", "practice_type_name": "Business License", "category": "business", "created_at": datetime.now()},
+            {
+                "id": 1,
+                "status": "in_progress",
+                "practice_type_name": "Visa",
+                "category": "immigration",
+                "created_at": datetime.now(),
+            },
+            {
+                "id": 2,
+                "status": "completed",
+                "practice_type_name": "Work Permit",
+                "category": "immigration",
+                "created_at": datetime.now(),
+            },
+            {
+                "id": 3,
+                "status": "inquiry",
+                "practice_type_name": "KITAS",
+                "category": "immigration",
+                "created_at": datetime.now(),
+            },
+            {
+                "id": 4,
+                "status": "cancelled",
+                "practice_type_name": "Business License",
+                "category": "business",
+                "created_at": datetime.now(),
+            },
         ]
 
         mock_conn.fetch.side_effect = [practices, [], []]
@@ -866,8 +891,9 @@ class TestGetClientsStats:
     @pytest.mark.asyncio
     async def test_get_stats_success(self, mock_db_pool):
         """Test successfully getting client statistics"""
-        from app.routers.crm_clients import get_clients_stats
         from fastapi import Request
+
+        from app.routers.crm_clients import get_clients_stats
 
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
 
@@ -906,8 +932,9 @@ class TestGetClientsStats:
     @pytest.mark.asyncio
     async def test_get_stats_no_clients(self, mock_db_pool):
         """Test stats with no clients in database"""
-        from app.routers.crm_clients import get_clients_stats
         from fastapi import Request
+
+        from app.routers.crm_clients import get_clients_stats
 
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetch.side_effect = [[], []]
@@ -933,8 +960,9 @@ class TestGetClientsStats:
     @pytest.mark.asyncio
     async def test_get_stats_database_error(self, mock_db_pool):
         """Test database error during stats retrieval"""
-        from app.routers.crm_clients import get_clients_stats
         from fastapi import Request
+
+        from app.routers.crm_clients import get_clients_stats
 
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetch.side_effect = asyncpg.PostgresError("Database error")
@@ -958,11 +986,11 @@ class TestConstants:
     def test_constants_values(self):
         """Test that constants have expected values"""
         from app.routers.crm_clients import (
-            MAX_LIMIT,
-            DEFAULT_LIMIT,
-            STATUS_VALUES,
             CACHE_TTL_STATS_SECONDS,
+            DEFAULT_LIMIT,
+            MAX_LIMIT,
             STATS_DAYS_RECENT,
+            STATUS_VALUES,
         )
 
         assert MAX_LIMIT == 200
@@ -986,9 +1014,7 @@ class TestErrorHandling:
         from fastapi import HTTPException
 
         # Create a function that raises HTTPException
-        mock_conn.fetchrow.side_effect = HTTPException(
-            status_code=404, detail="Custom error"
-        )
+        mock_conn.fetchrow.side_effect = HTTPException(status_code=404, detail="Custom error")
 
         response = client.get("/api/crm/clients/1")
 
@@ -1007,9 +1033,7 @@ class TestErrorHandling:
     def test_foreign_key_violation(self, client, mock_db_pool, mock_client_row):
         """Test foreign key violation error handling"""
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
-        mock_conn.fetchrow.side_effect = asyncpg.ForeignKeyViolationError(
-            "Foreign key violation"
-        )
+        mock_conn.fetchrow.side_effect = asyncpg.ForeignKeyViolationError("Foreign key violation")
 
         response = client.patch(
             "/api/crm/clients/1?updated_by=admin@example.com",
@@ -1028,9 +1052,7 @@ class TestErrorHandling:
 class TestEdgeCases:
     """Tests for edge cases and boundary conditions"""
 
-    def test_client_with_all_optional_fields(
-        self, client, mock_db_pool, mock_client_row
-    ):
+    def test_client_with_all_optional_fields(self, client, mock_db_pool, mock_client_row):
         """Test creating client with all optional fields populated"""
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         full_row = mock_client_row.copy()

@@ -58,12 +58,14 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_zantara_tool(self, tool_executor, mock_zantara_tools):
         """Test executing ZantaraTools"""
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_123",
-            "name": "get_pricing",
-            "input": {"service_type": "visa"}
-        }]
+        tool_uses = [
+            {
+                "type": "tool_use",
+                "id": "toolu_123",
+                "name": "get_pricing",
+                "input": {"service_type": "visa"},
+            }
+        ]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         assert results[0]["tool_use_id"] == "toolu_123"
@@ -72,12 +74,14 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_mcp_tool(self, tool_executor, mock_mcp_client):
         """Test executing MCP tool"""
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_456",
-            "name": "mcp_test_tool",
-            "input": {"param": "value"}
-        }]
+        tool_uses = [
+            {
+                "type": "tool_use",
+                "id": "toolu_456",
+                "name": "mcp_test_tool",
+                "input": {"param": "value"},
+            }
+        ]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         mock_mcp_client.execute_tool.assert_called_once()
@@ -86,17 +90,16 @@ class TestToolExecutor:
     async def test_execute_tool_calls_unknown_tool(self, tool_executor, mock_mcp_client):
         """Test executing unknown tool"""
         mock_mcp_client.is_mcp_tool.return_value = False
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_789",
-            "name": "unknown_tool",
-            "input": {}
-        }]
+        tool_uses = [{"type": "tool_use", "id": "toolu_789", "name": "unknown_tool", "input": {}}]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         # Check for error indication in result
         result = results[0]
-        assert result.get("is_error") is True or "not available" in str(result.get("content", "")).lower() or "error" in str(result.get("content", "")).lower()
+        assert (
+            result.get("is_error") is True
+            or "not available" in str(result.get("content", "")).lower()
+            or "error" in str(result.get("content", "")).lower()
+        )
 
     @pytest.mark.asyncio
     async def test_execute_tool_calls_empty_list(self, tool_executor):
@@ -107,13 +110,10 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_zantara_tool_error(self, tool_executor, mock_zantara_tools):
         """Test executing ZantaraTools with error"""
-        mock_zantara_tools.execute_tool = AsyncMock(return_value={"success": False, "error": "Test error"})
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_123",
-            "name": "get_pricing",
-            "input": {}
-        }]
+        mock_zantara_tools.execute_tool = AsyncMock(
+            return_value={"success": False, "error": "Test error"}
+        )
+        tool_uses = [{"type": "tool_use", "id": "toolu_123", "name": "get_pricing", "input": {}}]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         assert results[0].get("is_error") is True
@@ -121,13 +121,10 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_mcp_tool_error(self, tool_executor, mock_mcp_client):
         """Test executing MCP tool with error"""
-        mock_mcp_client.execute_tool = AsyncMock(return_value={"success": False, "error": "MCP error"})
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_456",
-            "name": "mcp_test_tool",
-            "input": {}
-        }]
+        mock_mcp_client.execute_tool = AsyncMock(
+            return_value={"success": False, "error": "MCP error"}
+        )
+        tool_uses = [{"type": "tool_use", "id": "toolu_456", "name": "mcp_test_tool", "input": {}}]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         assert results[0].get("is_error") is True
@@ -136,12 +133,7 @@ class TestToolExecutor:
     async def test_execute_tool_calls_exception(self, tool_executor, mock_zantara_tools):
         """Test handling exceptions during tool execution"""
         mock_zantara_tools.execute_tool = AsyncMock(side_effect=Exception("Test exception"))
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_123",
-            "name": "get_pricing",
-            "input": {}
-        }]
+        tool_uses = [{"type": "tool_use", "id": "toolu_123", "name": "get_pricing", "input": {}}]
         results = await tool_executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         assert results[0].get("is_error") is True
@@ -168,7 +160,9 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_error(self, tool_executor, mock_zantara_tools):
         """Test execute_tool with error"""
-        mock_zantara_tools.execute_tool = AsyncMock(return_value={"success": False, "error": "Error"})
+        mock_zantara_tools.execute_tool = AsyncMock(
+            return_value={"success": False, "error": "Error"}
+        )
         result = await tool_executor.execute_tool("get_pricing", {})
         assert result["success"] is False
         assert "error" in result
@@ -214,28 +208,19 @@ class TestToolExecutor:
         """Test executing tool calls without ZantaraTools"""
         mock_mcp_client.is_mcp_tool.return_value = False
         executor = ToolExecutor(mcp_client=mock_mcp_client)
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_123",
-            "name": "get_pricing",
-            "input": {}
-        }]
+        tool_uses = [{"type": "tool_use", "id": "toolu_123", "name": "get_pricing", "input": {}}]
         results = await executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         # Should return error because tool is not available
-        assert results[0].get("is_error") is True or "not available" in str(results[0].get("content", ""))
+        assert results[0].get("is_error") is True or "not available" in str(
+            results[0].get("content", "")
+        )
 
     @pytest.mark.asyncio
     async def test_execute_tool_calls_without_mcp_client(self, mock_zantara_tools):
         """Test executing tool calls without MCP client"""
         executor = ToolExecutor(zantara_tools=mock_zantara_tools)
-        tool_uses = [{
-            "type": "tool_use",
-            "id": "toolu_456",
-            "name": "mcp_test_tool",
-            "input": {}
-        }]
+        tool_uses = [{"type": "tool_use", "id": "toolu_456", "name": "mcp_test_tool", "input": {}}]
         results = await executor.execute_tool_calls(tool_uses)
         assert len(results) == 1
         assert results[0].get("is_error") is True
-

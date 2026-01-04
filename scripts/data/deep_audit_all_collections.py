@@ -304,7 +304,7 @@ async def main():
                 f.write("\n**Short Documents (first 5):**\n")
                 for doc in r["short_docs"][:5]:
                     f.write(
-                        f"- `{doc['id']}`: {doc['len']} chars - \"{doc['preview']}...\"\n"
+                        f'- `{doc["id"]}`: {doc["len"]} chars - "{doc["preview"]}..."\n'
                     )
 
             f.write("\n---\n\n")

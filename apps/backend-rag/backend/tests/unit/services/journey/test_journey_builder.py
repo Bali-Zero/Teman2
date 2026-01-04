@@ -22,28 +22,30 @@ from services.journey.journey_templates import JourneyTemplatesService
 def mock_templates_service():
     """Mock JourneyTemplatesService"""
     service = MagicMock(spec=JourneyTemplatesService)
-    service.get_template = MagicMock(return_value={
-        "title": "Test Journey",
-        "description": "Test Description",
-        "steps": [
-            {
-                "step_id": "step1",
-                "title": "Step 1",
-                "description": "First step",
-                "prerequisites": [],
-                "required_documents": [],
-                "estimated_duration_days": 5
-            },
-            {
-                "step_id": "step2",
-                "title": "Step 2",
-                "description": "Second step",
-                "prerequisites": ["step1"],
-                "required_documents": ["doc1"],
-                "estimated_duration_days": 3
-            }
-        ]
-    })
+    service.get_template = MagicMock(
+        return_value={
+            "title": "Test Journey",
+            "description": "Test Description",
+            "steps": [
+                {
+                    "step_id": "step1",
+                    "title": "Step 1",
+                    "description": "First step",
+                    "prerequisites": [],
+                    "required_documents": [],
+                    "estimated_duration_days": 5,
+                },
+                {
+                    "step_id": "step2",
+                    "title": "Step 2",
+                    "description": "Second step",
+                    "prerequisites": ["step1"],
+                    "required_documents": ["doc1"],
+                    "estimated_duration_days": 3,
+                },
+            ],
+        }
+    )
     return service
 
 
@@ -73,7 +75,7 @@ class TestJourneyBuilderService:
             journey_id="journey1",
             journey_type="company_setup",
             client_id="client1",
-            template_key="pt_pma_setup"
+            template_key="pt_pma_setup",
         )
         assert journey.journey_id == "journey1"
         assert journey.journey_type == "company_setup"
@@ -89,11 +91,13 @@ class TestJourneyBuilderService:
             journey_type="company_setup",
             client_id="client1",
             template_key="pt_pma_setup",
-            metadata={"priority": "high"}
+            metadata={"priority": "high"},
         )
         assert journey.metadata["priority"] == "high"
 
-    def test_build_journey_from_template_unknown_template(self, journey_builder, mock_templates_service):
+    def test_build_journey_from_template_unknown_template(
+        self, journey_builder, mock_templates_service
+    ):
         """Test building journey with unknown template"""
         mock_templates_service.get_template.return_value = None
         with pytest.raises(ValueError, match="Unknown template"):
@@ -101,7 +105,7 @@ class TestJourneyBuilderService:
                 journey_id="journey1",
                 journey_type="company_setup",
                 client_id="client1",
-                template_key="unknown_template"
+                template_key="unknown_template",
             )
 
     def test_build_journey_from_template_estimated_completion(self, journey_builder):
@@ -110,7 +114,7 @@ class TestJourneyBuilderService:
             journey_id="journey1",
             journey_type="company_setup",
             client_id="client1",
-            template_key="pt_pma_setup"
+            template_key="pt_pma_setup",
         )
         # Total days = 5 + 3 = 8
         assert journey.estimated_completion is not None
@@ -124,7 +128,7 @@ class TestJourneyBuilderService:
                 "description": "Custom description",
                 "prerequisites": [],
                 "required_documents": [],
-                "estimated_duration_days": 10
+                "estimated_duration_days": 10,
             }
         ]
         journey = journey_builder.build_custom_journey(
@@ -133,7 +137,7 @@ class TestJourneyBuilderService:
             client_id="client1",
             title="Custom Journey",
             description="Custom Description",
-            steps=steps
+            steps=steps,
         )
         assert journey.journey_id == "custom_journey1"
         assert journey.title == "Custom Journey"
@@ -142,18 +146,14 @@ class TestJourneyBuilderService:
 
     def test_build_custom_journey_with_minimal_steps(self, journey_builder):
         """Test building custom journey with minimal step data"""
-        steps = [
-            {
-                "title": "Step 1"
-            }
-        ]
+        steps = [{"title": "Step 1"}]
         journey = journey_builder.build_custom_journey(
             journey_id="custom_journey1",
             journey_type="custom_type",
             client_id="client1",
             title="Custom Journey",
             description="Custom Description",
-            steps=steps
+            steps=steps,
         )
         assert len(journey.steps) == 1
         assert journey.steps[0].step_number == 1
@@ -168,7 +168,6 @@ class TestJourneyBuilderService:
             title="Custom Journey",
             description="Custom Description",
             steps=steps,
-            metadata={"custom": "value"}
+            metadata={"custom": "value"},
         )
         assert journey.metadata["custom"] == "value"
-

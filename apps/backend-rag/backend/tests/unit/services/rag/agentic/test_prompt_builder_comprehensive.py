@@ -38,7 +38,7 @@ class TestSystemPromptBuilder:
         prompt = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile},
-            query=query
+            query=query,
         )
 
         assert prompt is not None
@@ -48,14 +48,12 @@ class TestSystemPromptBuilder:
     def test_build_prompt_with_memory_facts(self, prompt_builder):
         """Test prompt building with memory facts"""
         user_profile = {"email": "test@example.com"}
-        memory_facts = [
-            {"fact": "User is interested in KITAS", "category": "interest"}
-        ]
+        memory_facts = [{"fact": "User is interested in KITAS", "category": "interest"}]
 
         prompt = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile, "memory_facts": memory_facts},
-            query="Tell me about KITAS"
+            query="Tell me about KITAS",
         )
 
         assert "KITAS" in prompt
@@ -63,14 +61,12 @@ class TestSystemPromptBuilder:
     def test_build_prompt_with_collective_facts(self, prompt_builder):
         """Test prompt building with collective facts"""
         user_profile = {"email": "test@example.com"}
-        collective_facts = [
-            {"fact": "KITAS costs 15M IDR", "confidence": 0.9}
-        ]
+        collective_facts = [{"fact": "KITAS costs 15M IDR", "confidence": 0.9}]
 
         prompt = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile, "collective_facts": collective_facts},
-            query="What is KITAS?"
+            query="What is KITAS?",
         )
 
         assert prompt is not None
@@ -83,7 +79,7 @@ class TestSystemPromptBuilder:
         prompt = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile, "rag_results": rag_results},
-            query="What is KITAS?"
+            query="What is KITAS?",
         )
 
         assert "KITAS" in prompt
@@ -96,7 +92,7 @@ class TestSystemPromptBuilder:
         prompt = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile},
-            query=query
+            query=query,
         )
 
         assert prompt is not None
@@ -109,7 +105,7 @@ class TestSystemPromptBuilder:
         prompt = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile},
-            query=query
+            query=query,
         )
 
         assert prompt is not None
@@ -122,7 +118,7 @@ class TestSystemPromptBuilder:
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile},
             query="Complex question",
-            deep_think_mode=True
+            deep_think_mode=True,
         )
 
         assert prompt is not None
@@ -134,13 +130,13 @@ class TestSystemPromptBuilder:
         prompt1 = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile},
-            query="test"
+            query="test",
         )
 
         prompt2 = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile},
-            query="test"
+            query="test",
         )
 
         # Should use cache (same inputs)
@@ -153,13 +149,13 @@ class TestSystemPromptBuilder:
         prompt1 = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile, "facts": []},
-            query="test"
+            query="test",
         )
 
         prompt2 = prompt_builder.build_system_prompt(
             user_id=user_profile.get("email", "test@example.com"),
             context={"user_profile": user_profile, "facts": ["new fact"]},
-            query="test"
+            query="test",
         )
 
         # Should be different (facts changed) - the cache key includes len(facts)

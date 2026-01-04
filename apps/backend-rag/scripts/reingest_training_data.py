@@ -26,6 +26,7 @@ dotenv_path = backend_rag_root / ".env"
 sys.path.insert(0, str(backend_rag_root / "backend"))
 
 from dotenv import load_dotenv
+
 load_dotenv(dotenv_path)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -73,22 +74,23 @@ QDRANT_URL = os.getenv("QDRANT_URL", "https://nuzantara-qdrant.fly.dev")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 
 
-def upsert_point(point_id: int, dense_vector: list, sparse_indices: list, sparse_values: list, payload: dict) -> bool:
+def upsert_point(
+    point_id: int, dense_vector: list, sparse_indices: list, sparse_values: list, payload: dict
+) -> bool:
     """Upsert a single point to Qdrant using direct HTTP request."""
     url = f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points"
-    headers = {
-        "Content-Type": "application/json",
-        "api-key": QDRANT_API_KEY
-    }
+    headers = {"Content-Type": "application/json", "api-key": QDRANT_API_KEY}
     data = {
-        "points": [{
-            "id": point_id,
-            "vector": {
-                "dense": dense_vector,
-                "bm25": {"indices": sparse_indices, "values": sparse_values}
-            },
-            "payload": payload
-        }]
+        "points": [
+            {
+                "id": point_id,
+                "vector": {
+                    "dense": dense_vector,
+                    "bm25": {"indices": sparse_indices, "values": sparse_values},
+                },
+                "payload": payload,
+            }
+        ]
     }
 
     for attempt in range(3):
@@ -101,7 +103,7 @@ def upsert_point(point_id: int, dense_vector: list, sparse_indices: list, sparse
         except Exception as e:
             if attempt < 2:
                 wait_time = 5 * (attempt + 1)
-                logger.warning(f"  ⚠️ Retry {attempt+1}/3 (waiting {wait_time}s): {e}")
+                logger.warning(f"  ⚠️ Retry {attempt + 1}/3 (waiting {wait_time}s): {e}")
                 time.sleep(wait_time)
             else:
                 logger.error(f"  ❌ Failed after 3 attempts: {e}")
@@ -134,7 +136,7 @@ def reingest_files():
             logger.warning(f"File not found: {full_path}")
             continue
 
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
         logger.info(f"Processing: {file_path}")
 
         # Read file content
@@ -186,11 +188,13 @@ def reingest_files():
             }
 
             # Upsert to Qdrant
-            success = upsert_point(point_id_int, dense_embedding, sparse_indices, sparse_values, payload)
+            success = upsert_point(
+                point_id_int, dense_embedding, sparse_indices, sparse_values, payload
+            )
             if success:
                 total_upserted += 1
                 if (idx + 1) % 10 == 0:
-                    logger.info(f"  ✅ Progress: {idx+1}/{len(chunks)} chunks")
+                    logger.info(f"  ✅ Progress: {idx + 1}/{len(chunks)} chunks")
             else:
                 logger.error(f"  ❌ Failed chunk {idx}")
 
@@ -199,7 +203,7 @@ def reingest_files():
 
         logger.info(f"  ✅ File complete: {total_upserted} chunks upserted")
 
-    logger.info(f"\n{'='*60}")
+    logger.info(f"\n{'=' * 60}")
     logger.info(f"COMPLETED: {total_upserted}/{total_chunks} chunks upserted")
     logger.info(f"Collection: {COLLECTION_NAME}")
 

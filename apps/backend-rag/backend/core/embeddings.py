@@ -24,6 +24,7 @@ except ImportError:
     def set_span_status(status, msg=None):
         pass
 
+
 # Import settings - try both absolute paths
 try:
     from app.core.config import settings as _default_settings
@@ -170,12 +171,15 @@ class EmbeddingsGenerator:
         Raises:
             Exception: If API call fails
         """
-        with trace_span("embedding.generate", {
-            "provider": self.provider,
-            "model": self.model,
-            "texts_count": len(texts),
-            "dimensions": self.dimensions,
-        }):
+        with trace_span(
+            "embedding.generate",
+            {
+                "provider": self.provider,
+                "model": self.model,
+                "texts_count": len(texts),
+                "dimensions": self.dimensions,
+            },
+        ):
             if not texts:
                 logger.warning("Empty text list provided for embedding")
                 set_span_attribute("skipped", True)

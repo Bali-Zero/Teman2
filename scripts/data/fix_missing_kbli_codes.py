@@ -11,7 +11,6 @@ Usage:
 
 import json
 import os
-import sys
 from datetime import datetime
 
 # Missing codes identified from official sources
@@ -30,20 +29,20 @@ MISSING_CODES = {
         "kepemilikan_asing": {
             "pma_diizinkan": True,
             "maksimum": "100%",
-            "catatan": "Terbuka untuk investasi asing"
+            "catatan": "Terbuka untuk investasi asing",
         },
         "skala_usaha": ["Mikro", "Kecil", "Menengah", "Besar"],
         "perizinan_berusaha": {
             "dokumen_wajib": [
                 "NIB (Nomor Induk Berusaha)",
                 "Sertifikat Standar Usaha Pariwisata",
-                "Dokumen Penilaian Mandiri"
+                "Dokumen Penilaian Mandiri",
             ],
-            "kewenangan": "Bupati/Walikota (Lokal), Menteri (PMA)"
+            "kewenangan": "Bupati/Walikota (Lokal), Menteri (PMA)",
         },
         "source": "BPS_KBLI_2020 + PP_28_2025",
         "added_by": "fix_missing_kbli_codes.py",
-        "added_at": datetime.now().isoformat()
+        "added_at": datetime.now().isoformat(),
     }
 }
 
@@ -90,7 +89,9 @@ def main():
         "apps/backend-rag/data/kbli.json",
     ]
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    base_dir = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
 
     target_file = None
     for path in possible_paths:
@@ -125,23 +126,23 @@ def main():
         content = f"""
 {context}
 
-# KBLI {code}: {info['judul']}
+# KBLI {code}: {info["judul"]}
 
 ## Deskripsi
-{info['deskripsi']}
+{info["deskripsi"]}
 
 ## Informasi PP 28/2025
-- **Tingkat Risiko**: {info['tingkat_risiko']}
-- **Investasi Asing (PMA)**: {'✅ Diizinkan' if info['kepemilikan_asing']['pma_diizinkan'] else '❌ Tidak Diizinkan'}
-- **Batas Maksimum PMA**: {info['kepemilikan_asing']['maksimum']}
-- **Skala Usaha**: {', '.join(info['skala_usaha'])}
+- **Tingkat Risiko**: {info["tingkat_risiko"]}
+- **Investasi Asing (PMA)**: {"✅ Diizinkan" if info["kepemilikan_asing"]["pma_diizinkan"] else "❌ Tidak Diizinkan"}
+- **Batas Maksimum PMA**: {info["kepemilikan_asing"]["maksimum"]}
+- **Skala Usaha**: {", ".join(info["skala_usaha"])}
 
 ## Perizinan
-- **Dokumen Wajib**: {', '.join(info['perizinan_berusaha']['dokumen_wajib'])}
-- **Kewenangan**: {info['perizinan_berusaha']['kewenangan']}
+- **Dokumen Wajib**: {", ".join(info["perizinan_berusaha"]["dokumen_wajib"])}
+- **Kewenangan**: {info["perizinan_berusaha"]["kewenangan"]}
 
 ---
-Sumber: {info['source']}
+Sumber: {info["source"]}
 """
         print(content)
 

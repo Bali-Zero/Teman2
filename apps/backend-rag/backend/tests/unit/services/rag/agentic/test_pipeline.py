@@ -33,11 +33,7 @@ class TestPipelineStages:
     async def test_verification_stage_process_short_response(self):
         """Test VerificationStage with short response"""
         stage = VerificationStage(min_response_length=50)
-        data = {
-            "response": "Short",
-            "query": "test",
-            "context_chunks": []
-        }
+        data = {"response": "Short", "query": "test", "context_chunks": []}
         result = await stage.process(data)
         assert result["verification_status"] == "skipped"
 
@@ -48,7 +44,7 @@ class TestPipelineStages:
         data = {
             "response": "This is a longer response that should trigger verification",
             "query": "test",
-            "context_chunks": []
+            "context_chunks": [],
         }
         result = await stage.process(data)
         assert result["verification_status"] == "skipped"
@@ -57,10 +53,7 @@ class TestPipelineStages:
     async def test_post_processing_stage(self):
         """Test PostProcessingStage"""
         stage = PostProcessingStage()
-        data = {
-            "response": "Test response with [citation:1]",
-            "query": "test"
-        }
+        data = {"response": "Test response with [citation:1]", "query": "test"}
         result = await stage.process(data)
         assert isinstance(result, dict)
         assert "response" in result
@@ -69,10 +62,7 @@ class TestPipelineStages:
     async def test_citation_stage(self):
         """Test CitationStage"""
         stage = CitationStage()
-        data = {
-            "response": "Test response",
-            "sources": [{"id": "1", "text": "Source 1"}]
-        }
+        data = {"response": "Test response", "sources": [{"id": "1", "text": "Source 1"}]}
         result = await stage.process(data)
         assert isinstance(result, dict)
 
@@ -80,10 +70,7 @@ class TestPipelineStages:
     async def test_format_stage(self):
         """Test FormatStage"""
         stage = FormatStage()
-        data = {
-            "response": "Test response",
-            "query": "test"
-        }
+        data = {"response": "Test response", "query": "test"}
         result = await stage.process(data)
         assert isinstance(result, dict)
 
@@ -93,27 +80,13 @@ class TestPipelineStages:
         # Check if ResponsePipeline requires stages parameter
         try:
             pipeline = ResponsePipeline(stages=[])
-            data = {
-                "response": "Test response",
-                "query": "test",
-                "context_chunks": []
-            }
+            data = {"response": "Test response", "query": "test", "context_chunks": []}
             result = await pipeline.process(data)
             assert isinstance(result, dict)
         except TypeError:
             # If it requires stages, create with default stages
-            stages = [
-                VerificationStage(),
-                PostProcessingStage(),
-                CitationStage(),
-                FormatStage()
-            ]
+            stages = [VerificationStage(), PostProcessingStage(), CitationStage(), FormatStage()]
             pipeline = ResponsePipeline(stages=stages)
-            data = {
-                "response": "Test response",
-                "query": "test",
-                "context_chunks": []
-            }
+            data = {"response": "Test response", "query": "test", "context_chunks": []}
             result = await pipeline.process(data)
             assert isinstance(result, dict)
-

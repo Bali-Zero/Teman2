@@ -288,13 +288,13 @@ async def trigger_webhook(request: WebhookRequest):
     This sends raw scraped items to balizero.com/api/news for review and publication.
     Items are sent with 'pending' status and need admin approval.
     """
-    logger.info(f"Webhook triggered: categories={request.categories}, limit={request.limit}")
+    logger.info(
+        f"Webhook triggered: categories={request.categories}, limit={request.limit}"
+    )
 
     try:
         result = run_stage4_webhook(
-            categories=request.categories,
-            limit=request.limit,
-            dry_run=request.dry_run
+            categories=request.categories, limit=request.limit, dry_run=request.dry_run
         )
 
         return {

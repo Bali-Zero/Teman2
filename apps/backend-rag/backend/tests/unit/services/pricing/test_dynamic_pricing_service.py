@@ -36,8 +36,7 @@ def mock_search_service():
 def dynamic_pricing_service(mock_synthesis_service, mock_search_service):
     """Create DynamicPricingService instance"""
     return DynamicPricingService(
-        cross_oracle_synthesis_service=mock_synthesis_service,
-        search_service=mock_search_service
+        cross_oracle_synthesis_service=mock_synthesis_service, search_service=mock_search_service
     )
 
 
@@ -70,10 +69,14 @@ class TestDynamicPricingService:
         assert category == "Other"
 
     @pytest.mark.asyncio
-    async def test_calculate_pricing(self, dynamic_pricing_service, mock_synthesis_service, mock_search_service):
+    async def test_calculate_pricing(
+        self, dynamic_pricing_service, mock_synthesis_service, mock_search_service
+    ):
         """Test calculating pricing"""
         mock_synthesis_result = MagicMock()
-        mock_synthesis_result.sources = {"oracle1": {"success": True, "results": [{"text": "Setup cost: Rp 50 juta"}]}}
+        mock_synthesis_result.sources = {
+            "oracle1": {"success": True, "results": [{"text": "Setup cost: Rp 50 juta"}]}
+        }
         mock_synthesis_result.timeline = "4-6 months"
         mock_synthesis_result.oracles_consulted = ["oracle1"]
         mock_synthesis_result.confidence = 0.8
@@ -84,4 +87,3 @@ class TestDynamicPricingService:
         result = await dynamic_pricing_service.calculate_pricing("PT PMA setup")
         assert isinstance(result, PricingResult)
         assert result.scenario == "PT PMA setup"
-

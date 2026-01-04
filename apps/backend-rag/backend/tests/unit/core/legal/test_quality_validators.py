@@ -213,4 +213,3 @@ class TestQualityValidators:
         result = assess_document_quality(text)
         assert result["needs_reextract"] is False
         assert result["ocr_quality_score"] > 0.7
-

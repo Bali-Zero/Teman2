@@ -31,6 +31,7 @@ router = APIRouter(prefix="/api/blog/newsletter", tags=["newsletter"])
 
 class SubscribeRequest(BaseModel):
     """Subscribe request model"""
+
     email: EmailStr
     name: str | None = None
     categories: list[str] = []
@@ -48,6 +49,7 @@ class SubscribeRequest(BaseModel):
 
 class SubscribeResponse(BaseModel):
     """Subscribe response model"""
+
     success: bool
     message: str
     subscriberId: str | None = None
@@ -55,12 +57,14 @@ class SubscribeResponse(BaseModel):
 
 class ConfirmRequest(BaseModel):
     """Confirm subscription request"""
+
     subscriberId: str
     token: str
 
 
 class UnsubscribeRequest(BaseModel):
     """Unsubscribe request"""
+
     subscriberId: str | None = None
     email: str | None = None
     token: str | None = None
@@ -68,6 +72,7 @@ class UnsubscribeRequest(BaseModel):
 
 class PreferencesRequest(BaseModel):
     """Update preferences request"""
+
     subscriberId: str | None = None
     email: str | None = None
     categories: list[str] | None = None
@@ -77,6 +82,7 @@ class PreferencesRequest(BaseModel):
 
 class SubscriberResponse(BaseModel):
     """Subscriber response model"""
+
     id: str
     email: str
     name: str | None = None
@@ -93,10 +99,7 @@ class SubscriberResponse(BaseModel):
 
 
 @router.post("/subscribe", response_model=SubscribeResponse)
-async def subscribe(
-    request: SubscribeRequest,
-    pool=Depends(get_database_pool)
-):
+async def subscribe(request: SubscribeRequest, pool=Depends(get_database_pool)):
     """
     Subscribe to the newsletter.
     Creates a new subscriber and sends confirmation email.
@@ -105,7 +108,7 @@ async def subscribe(
         # Check if email already exists
         existing = await conn.fetchrow(
             "SELECT id, confirmed, unsubscribed_at FROM newsletter_subscribers WHERE email = $1",
-            request.email
+            request.email,
         )
 
         if existing:
@@ -113,7 +116,10 @@ async def subscribe(
                 # Already confirmed and active
                 raise HTTPException(
                     status_code=409,
-                    detail={"message": "This email is already subscribed", "code": "ALREADY_SUBSCRIBED"}
+                    detail={
+                        "message": "This email is already subscribed",
+                        "code": "ALREADY_SUBSCRIBED",
+                    },
                 )
             elif existing["unsubscribed_at"]:
                 # Resubscribing
@@ -137,13 +143,13 @@ async def subscribe(
                     request.categories,
                     request.frequency,
                     request.language,
-                    request.name
+                    request.name,
                 )
                 logger.info(f"Resubscribed: {request.email}")
                 return SubscribeResponse(
                     success=True,
                     message="Please check your email to confirm your subscription.",
-                    subscriberId=existing["id"]
+                    subscriberId=existing["id"],
                 )
             else:
                 # Exists but not confirmed - resend confirmation
@@ -165,13 +171,13 @@ async def subscribe(
                     request.categories,
                     request.frequency,
                     request.language,
-                    request.name
+                    request.name,
                 )
                 logger.info(f"Resent confirmation: {request.email}")
                 return SubscribeResponse(
                     success=True,
                     message="Confirmation email resent. Please check your inbox.",
-                    subscriberId=existing["id"]
+                    subscriberId=existing["id"],
                 )
 
         # New subscriber
@@ -189,7 +195,7 @@ async def subscribe(
             request.categories,
             request.frequency,
             request.language,
-            confirmation_token
+            confirmation_token,
         )
 
         subscriber_id = row["id"]
@@ -201,15 +207,12 @@ async def subscribe(
         return SubscribeResponse(
             success=True,
             message="Please check your email to confirm your subscription.",
-            subscriberId=subscriber_id
+            subscriberId=subscriber_id,
         )
 
 
 @router.post("/confirm")
-async def confirm_subscription(
-    request: ConfirmRequest,
-    pool=Depends(get_database_pool)
-):
+async def confirm_subscription(request: ConfirmRequest, pool=Depends(get_database_pool)):
     """
     Confirm a newsletter subscription using the token from email.
     """
@@ -220,7 +223,7 @@ async def confirm_subscription(
             WHERE id = $1 AND confirmation_token = $2
             """,
             request.subscriberId,
-            request.token
+            request.token,
         )
 
         if not row:
@@ -238,7 +241,7 @@ async def confirm_subscription(
                 updated_at = NOW()
             WHERE id = $1
             """,
-            request.subscriberId
+            request.subscriberId,
         )
 
         logger.info(f"Confirmed subscription: {row['email']}")
@@ -246,10 +249,7 @@ async def confirm_subscription(
 
 
 @router.post("/unsubscribe")
-async def unsubscribe(
-    request: UnsubscribeRequest,
-    pool=Depends(get_database_pool)
-):
+async def unsubscribe(request: UnsubscribeRequest, pool=Depends(get_database_pool)):
     """
     Unsubscribe from the newsletter.
     """
@@ -257,13 +257,11 @@ async def unsubscribe(
         # Find subscriber by ID, email, or token
         if request.subscriberId:
             row = await conn.fetchrow(
-                "SELECT id, email FROM newsletter_subscribers WHERE id = $1",
-                request.subscriberId
+                "SELECT id, email FROM newsletter_subscribers WHERE id = $1", request.subscriberId
             )
         elif request.email:
             row = await conn.fetchrow(
-                "SELECT id, email FROM newsletter_subscribers WHERE email = $1",
-                request.email
+                "SELECT id, email FROM newsletter_subscribers WHERE email = $1", request.email
             )
         else:
             raise HTTPException(status_code=400, detail="Email or subscriberId required")
@@ -277,7 +275,7 @@ async def unsubscribe(
             SET unsubscribed_at = NOW(), updated_at = NOW()
             WHERE id = $1
             """,
-            row["id"]
+            row["id"],
         )
 
         logger.info(f"Unsubscribed: {row['email']}")
@@ -285,10 +283,7 @@ async def unsubscribe(
 
 
 @router.patch("/preferences")
-async def update_preferences(
-    request: PreferencesRequest,
-    pool=Depends(get_database_pool)
-):
+async def update_preferences(request: PreferencesRequest, pool=Depends(get_database_pool)):
     """
     Update newsletter preferences.
     """
@@ -296,13 +291,11 @@ async def update_preferences(
         # Find subscriber
         if request.subscriberId:
             row = await conn.fetchrow(
-                "SELECT id FROM newsletter_subscribers WHERE id = $1",
-                request.subscriberId
+                "SELECT id FROM newsletter_subscribers WHERE id = $1", request.subscriberId
             )
         elif request.email:
             row = await conn.fetchrow(
-                "SELECT id FROM newsletter_subscribers WHERE email = $1",
-                request.email
+                "SELECT id FROM newsletter_subscribers WHERE email = $1", request.email
             )
         else:
             raise HTTPException(status_code=400, detail="Email or subscriberId required")
@@ -348,7 +341,7 @@ async def list_subscribers(
     confirmed: bool | None = Query(None),
     limit: int = Query(100, le=500),
     offset: int = Query(0),
-    pool=Depends(get_database_pool)
+    pool=Depends(get_database_pool),
 ):
     """
     List newsletter subscribers (admin endpoint).
@@ -360,7 +353,7 @@ async def list_subscribers(
         param_idx = 1
 
         if category:
-            conditions.append(f"${ param_idx} = ANY(categories)")
+            conditions.append(f"${param_idx} = ANY(categories)")
             params.append(category)
             param_idx += 1
 
@@ -400,7 +393,7 @@ async def list_subscribers(
                 frequency=row["frequency"] or "weekly",
                 language=row["language"] or "en",
                 confirmed=row["confirmed"] or False,
-                created_at=row["created_at"]
+                created_at=row["created_at"],
             )
             for row in rows
         ]
@@ -409,7 +402,7 @@ async def list_subscribers(
             "subscribers": [s.model_dump() for s in subscribers],
             "total": total,
             "limit": limit,
-            "offset": offset
+            "offset": offset,
         }
 
 
@@ -419,7 +412,7 @@ async def log_newsletter_send(
     recipient_count: int,
     sent_count: int,
     failed_count: int,
-    pool=Depends(get_database_pool)
+    pool=Depends(get_database_pool),
 ):
     """
     Log a newsletter send event (admin endpoint).
@@ -433,7 +426,7 @@ async def log_newsletter_send(
             article_id,
             recipient_count,
             sent_count,
-            failed_count
+            failed_count,
         )
 
         return {"success": True}

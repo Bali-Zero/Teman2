@@ -26,6 +26,7 @@ const TEAM_PHOTOS: Record<string, string> = {
   ari: '/images/team/ari.png',
   'ari.firda': '/images/team/ari.png',
   dea: '/images/team/dea.png',
+  sahira: '/images/team/sahira.png',
 };
 
 // Get photo URL from email

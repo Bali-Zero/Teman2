@@ -64,7 +64,6 @@ async def get_dashboard_stats(request: Request) -> dict[str, str | dict[str, str
                 "error": "Database pool not initialized",
             }
 
-
         async with db_pool.acquire() as conn:
             # Get real statistics from database
             # Active conversations (last 24h)

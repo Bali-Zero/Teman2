@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Search, Menu, ChevronDown, X, Globe, Newspaper, Bell } from 'lucide-react';
+import { Search, Menu, ChevronDown, X, Globe } from 'lucide-react';
 import { SearchModal } from '@/components/blog/SearchBar';
 
 // Language options
@@ -122,20 +122,20 @@ export default function BlogLayout({
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-1">
-              {/* Insights Dropdown */}
+              {/* News Dropdown (formerly Insights) */}
               <div
                 className="relative"
-                onMouseEnter={() => setActiveDropdown('insights')}
+                onMouseEnter={() => setActiveDropdown('news')}
                 onMouseLeave={() => setActiveDropdown(null)}
               >
                 <button
                   className="flex items-center gap-1 px-4 py-2 text-sm text-white/80 hover:text-white transition-colors"
                 >
-                  Insights
+                  News
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
-                {activeDropdown === 'insights' && (
+                {activeDropdown === 'news' && (
                   <div className="absolute top-full left-0 w-64 bg-[#0a2540] border border-white/10 rounded-lg shadow-xl py-2 mt-1">
                     {INSIGHT_CATEGORIES.map((category) => (
                       <Link
@@ -178,20 +178,6 @@ export default function BlogLayout({
                   </div>
                 )}
               </div>
-
-              {/* News Feed */}
-              <Link
-                href={isAdmin ? "/news?admin=true" : "/news"}
-                className="relative px-4 py-2 text-sm text-white/80 hover:text-white transition-colors flex items-center gap-1.5"
-              >
-                <Newspaper className="w-4 h-4" />
-                News
-                {isAdmin && pendingNewsCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
-                    {pendingNewsCount}
-                  </span>
-                )}
-              </Link>
 
               {/* Team */}
               <Link
@@ -296,7 +282,7 @@ export default function BlogLayout({
             <nav className="max-w-[1400px] mx-auto px-4 py-4 space-y-1">
               <div className="py-2">
                 <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white/40">
-                  Insights
+                  News
                 </p>
                 {INSIGHT_CATEGORIES.map((category) => (
                   <Link
@@ -327,19 +313,6 @@ export default function BlogLayout({
               </div>
 
               <div className="py-2 border-t border-white/10">
-                <Link
-                  href={isAdmin ? "/news?admin=true" : "/news"}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Newspaper className="w-4 h-4" />
-                  News
-                  {isAdmin && pendingNewsCount > 0 && (
-                    <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold bg-red-500 text-white rounded-full">
-                      {pendingNewsCount}
-                    </span>
-                  )}
-                </Link>
                 <Link
                   href="/team"
                   className="block px-4 py-2.5 text-sm text-white/70 hover:text-white transition-colors"
@@ -483,10 +456,10 @@ export default function BlogLayout({
               </ul>
             </div>
 
-            {/* Insights */}
+            {/* News */}
             <div>
               <h4 className="text-sm font-semibold uppercase tracking-wider text-white mb-5">
-                Insights
+                News
               </h4>
               <ul className="space-y-3">
                 {INSIGHT_CATEGORIES.map((category) => (

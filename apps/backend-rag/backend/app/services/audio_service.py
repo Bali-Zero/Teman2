@@ -133,7 +133,7 @@ class AudioService:
         """
         try:
             # URL encode the text - use safe chars for better compatibility
-            encoded_text = quote(text, safe='')
+            encoded_text = quote(text, safe="")
 
             # Build TTS URL
             url = f"{POLLINATIONS_TTS_URL}/{encoded_text}"
@@ -172,9 +172,7 @@ class AudioService:
         Generate speech using OpenAI TTS.
         """
         response = await self.openai_client.audio.speech.create(
-            model=model,
-            voice=voice,
-            input=text
+            model=model, voice=voice, input=text
         )
         return response.content
 

@@ -45,18 +45,22 @@ class GeminiJakselService:
                 self._genai_client = get_genai_client()
                 self._available = self._genai_client.is_available
                 if self._available:
-                    auth_method = getattr(self._genai_client, '_auth_method', 'unknown')
-                    logger.info(f"✅ Gemini Jaksel Service initialized (model: {self.model_name}, auth: {auth_method})")
+                    auth_method = getattr(self._genai_client, "_auth_method", "unknown")
+                    logger.info(
+                        f"✅ Gemini Jaksel Service initialized (model: {self.model_name}, auth: {auth_method})"
+                    )
             except Exception as e:
                 logger.warning(f"Failed to initialize Gemini client: {e}")
 
         # Pre-compute history from examples for "Few-Shot" prompting
         self.few_shot_history = []
         for ex in FEW_SHOT_EXAMPLES:
-            self.few_shot_history.append({
-                "role": ex["role"],
-                "content": ex["content"],
-            })
+            self.few_shot_history.append(
+                {
+                    "role": ex["role"],
+                    "content": ex["content"],
+                }
+            )
 
         # OpenRouter client for fallback (lazy loaded)
         self._openrouter_client = None
@@ -172,10 +176,12 @@ class GeminiJakselService:
                 for msg in history:
                     content = msg.get("content", "")
                     if content:
-                        chat_history.append({
-                            "role": msg.get("role", "user"),
-                            "content": content,
-                        })
+                        chat_history.append(
+                            {
+                                "role": msg.get("role", "user"),
+                                "content": content,
+                            }
+                        )
 
                 # Build final message
                 if context and context.strip():

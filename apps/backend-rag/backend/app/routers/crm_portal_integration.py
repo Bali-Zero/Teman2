@@ -144,7 +144,9 @@ async def get_portal_status(
                     "has_portal_access": True,
                     "portal_user_id": portal_user["id"],
                     "portal_email": portal_user["email"],
-                    "last_login": portal_user["last_login"].isoformat() if portal_user["last_login"] else None,
+                    "last_login": portal_user["last_login"].isoformat()
+                    if portal_user["last_login"]
+                    else None,
                     "pending_invite": False,
                     "invite_expires_at": None,
                 },
@@ -216,9 +218,7 @@ async def send_portal_invite(
             created_by=current_user.get("email", "system"),
         )
 
-        logger.info(
-            f"Portal invite sent for client {client_id} by {current_user.get('email')}"
-        )
+        logger.info(f"Portal invite sent for client {client_id} by {current_user.get('email')}")
 
         return {
             "success": True,
@@ -389,9 +389,7 @@ async def send_message_to_client(
                 current_user.get("email", "team"),
             )
 
-            logger.info(
-                f"Team message sent to client {client_id} by {current_user.get('email')}"
-            )
+            logger.info(f"Team message sent to client {client_id} by {current_user.get('email')}")
 
             return {
                 "success": True,

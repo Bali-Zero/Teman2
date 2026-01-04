@@ -6,7 +6,7 @@ Tests feature flag configuration and checking
 import os
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

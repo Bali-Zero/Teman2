@@ -88,9 +88,7 @@ class InviteService:
                 created_by,
             )
 
-            logger.info(
-                f"Created invitation for client {client_id} ({email}) by {created_by}"
-            )
+            logger.info(f"Created invitation for client {client_id} ({email}) by {created_by}")
 
             return {
                 "invitation_id": invitation["id"],
@@ -287,7 +285,9 @@ class InviteService:
                     "used_at": row["used_at"].isoformat() if row["used_at"] else None,
                     "created_by": row["created_by"],
                     "created_at": row["created_at"].isoformat(),
-                    "status": "used" if row["used_at"] else (
+                    "status": "used"
+                    if row["used_at"]
+                    else (
                         "expired" if row["expires_at"] < datetime.now(timezone.utc) else "pending"
                     ),
                 }

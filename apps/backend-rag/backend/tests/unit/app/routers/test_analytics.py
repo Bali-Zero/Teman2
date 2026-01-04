@@ -57,7 +57,9 @@ class TestAnalyticsRouter:
         """Test getting overview stats"""
         from app.routers.analytics import get_overview
 
-        with patch("services.analytics.analytics_aggregator.AnalyticsAggregator") as mock_aggregator:
+        with patch(
+            "services.analytics.analytics_aggregator.AnalyticsAggregator"
+        ) as mock_aggregator:
             mock_agg_instance = MagicMock()
             mock_agg_instance.get_overview_stats = AsyncMock(return_value=MagicMock())
             mock_aggregator.return_value = mock_agg_instance
@@ -70,7 +72,9 @@ class TestAnalyticsRouter:
         """Test getting RAG stats"""
         from app.routers.analytics import get_rag_stats
 
-        with patch("services.analytics.analytics_aggregator.AnalyticsAggregator") as mock_aggregator:
+        with patch(
+            "services.analytics.analytics_aggregator.AnalyticsAggregator"
+        ) as mock_aggregator:
             mock_agg_instance = MagicMock()
             mock_agg_instance.get_rag_stats = AsyncMock(return_value=MagicMock())
             mock_aggregator.return_value = mock_agg_instance
@@ -83,11 +87,12 @@ class TestAnalyticsRouter:
         """Test getting CRM stats"""
         from app.routers.analytics import get_crm_stats
 
-        with patch("services.analytics.analytics_aggregator.AnalyticsAggregator") as mock_aggregator:
+        with patch(
+            "services.analytics.analytics_aggregator.AnalyticsAggregator"
+        ) as mock_aggregator:
             mock_agg_instance = MagicMock()
             mock_agg_instance.get_crm_stats = AsyncMock(return_value=MagicMock())
             mock_aggregator.return_value = mock_agg_instance
 
             result = await get_crm_stats(request=mock_request, user=mock_founder_user)
             assert result is not None
-

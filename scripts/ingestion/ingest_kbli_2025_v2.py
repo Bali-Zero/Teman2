@@ -297,7 +297,7 @@ def ingest_kbli(
                 break
             content = format_kbli_content(code, info)
             meta = extract_metadata(code, info, parent_id)
-            print(f"\n--- Sample {i+1}: KBLI {code} ---")
+            print(f"\n--- Sample {i + 1}: KBLI {code} ---")
             print(f"Content length: {len(content)} chars")
             print(
                 f"Metadata: {json.dumps(meta, indent=2, ensure_ascii=False)[:500]}..."
@@ -328,9 +328,9 @@ def ingest_kbli(
     dataset_description = f"""
 KBLI 2025 - Klasifikasi Baku Lapangan Usaha Indonesia
 
-Source: {file_metadata.get('peraturan', 'PP 28/2025 + KBLI 2020 (BPS)')}
+Source: {file_metadata.get("peraturan", "PP 28/2025 + KBLI 2020 (BPS)")}
 Total Codes: {len(codes)}
-Generated: {file_metadata.get('generated', 'Unknown')}
+Generated: {file_metadata.get("generated", "Unknown")}
 
 Berisi klasifikasi lengkap kode usaha Indonesia dengan:
 - Informasi kepemilikan asing (PMA)

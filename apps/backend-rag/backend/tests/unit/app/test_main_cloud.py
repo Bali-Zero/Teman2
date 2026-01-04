@@ -33,9 +33,11 @@ class TestMainCloud:
     @pytest.mark.asyncio
     async def test_on_startup(self):
         """Test startup handler"""
-        with patch("app.main_cloud.initialize_services") as mock_init_services, \
-             patch("app.main_cloud.initialize_plugins") as mock_init_plugins, \
-             patch("app.main_cloud.AlertService") as mock_alert:
+        with (
+            patch("app.main_cloud.initialize_services") as mock_init_services,
+            patch("app.main_cloud.initialize_plugins") as mock_init_plugins,
+            patch("app.main_cloud.AlertService") as mock_alert,
+        ):
             mock_init_services.return_value = None
             mock_init_plugins.return_value = None
 
@@ -158,7 +160,3 @@ class TestMainCloud:
         """Test safe endpoint label with empty string"""
         label = _safe_endpoint_label("")
         assert label == "unknown"
-
-
-
-

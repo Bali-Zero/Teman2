@@ -49,6 +49,7 @@ class TestHealthMonitor:
     async def test_stop(self, health_monitor):
         """Test stopping monitor"""
         import asyncio
+
         health_monitor.running = True
 
         # Create a real task that can be cancelled
@@ -67,9 +68,7 @@ class TestHealthMonitor:
         mock_executor = MagicMock()
 
         health_monitor.set_services(
-            memory_service=mock_memory,
-            intelligent_router=mock_router,
-            tool_executor=mock_executor
+            memory_service=mock_memory, intelligent_router=mock_router, tool_executor=mock_executor
         )
         assert health_monitor.memory_service == mock_memory
         assert health_monitor.intelligent_router == mock_router

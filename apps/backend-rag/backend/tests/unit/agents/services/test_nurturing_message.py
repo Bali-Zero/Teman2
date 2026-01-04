@@ -64,11 +64,15 @@ class TestNurturingMessageService:
             "days_since_last_interaction": 5,
             "total_interactions": 10,
             "practice_count": 2,
-            "sentiment_score": 80
+            "sentiment_score": 80,
         }
 
-        with patch("agents.services.nurturing_message.detect_language", return_value="it"), \
-             patch("agents.services.nurturing_message.get_language_instruction", return_value="Italian"):
+        with (
+            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch(
+                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+            ),
+        ):
             message = await service.generate_message(client_data)
             assert message == "Test message"
             mock_ai_client.generate_text.assert_called_once()
@@ -79,10 +83,7 @@ class TestNurturingMessageService:
         with patch("agents.services.nurturing_message.ZANTARA_AVAILABLE", False):
             service = NurturingMessageService()
 
-            client_data = {
-                "name": "Test Client",
-                "segment": "VIP"
-            }
+            client_data = {"name": "Test Client", "segment": "VIP"}
 
             message = await service.generate_message(client_data)
             assert isinstance(message, str)
@@ -92,17 +93,19 @@ class TestNurturingMessageService:
     async def test_generate_message_timeout(self, mock_ai_client):
         """Test generating message with timeout"""
         import asyncio
+
         service = NurturingMessageService(ai_client=mock_ai_client)
 
         mock_ai_client.generate_text = AsyncMock(side_effect=asyncio.TimeoutError())
 
-        client_data = {
-            "name": "Test Client",
-            "segment": "VIP"
-        }
+        client_data = {"name": "Test Client", "segment": "VIP"}
 
-        with patch("agents.services.nurturing_message.detect_language", return_value="it"), \
-             patch("agents.services.nurturing_message.get_language_instruction", return_value="Italian"):
+        with (
+            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch(
+                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+            ),
+        ):
             message = await service.generate_message(client_data, timeout=0.1)
             assert isinstance(message, str)
             assert len(message) > 0
@@ -114,13 +117,14 @@ class TestNurturingMessageService:
 
         mock_ai_client.generate_text = AsyncMock(side_effect=Exception("AI error"))
 
-        client_data = {
-            "name": "Test Client",
-            "segment": "VIP"
-        }
+        client_data = {"name": "Test Client", "segment": "VIP"}
 
-        with patch("agents.services.nurturing_message.detect_language", return_value="it"), \
-             patch("agents.services.nurturing_message.get_language_instruction", return_value="Italian"):
+        with (
+            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch(
+                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+            ),
+        ):
             message = await service.generate_message(client_data)
             assert isinstance(message, str)
             assert len(message) > 0
@@ -138,11 +142,15 @@ class TestNurturingMessageService:
             "total_interactions": 10,
             "practice_count": 2,
             "sentiment_score": 80,
-            "notes": "Test notes"
+            "notes": "Test notes",
         }
 
-        with patch("agents.services.nurturing_message.detect_language", return_value="it"), \
-             patch("agents.services.nurturing_message.get_language_instruction", return_value="Italian"):
+        with (
+            patch("agents.services.nurturing_message.detect_language", return_value="it"),
+            patch(
+                "agents.services.nurturing_message.get_language_instruction", return_value="Italian"
+            ),
+        ):
             prompt = service._build_prompt(client_data)
             assert isinstance(prompt, str)
             assert "Test Client" in prompt
@@ -152,15 +160,8 @@ class TestNurturingMessageService:
         """Test generating fallback message"""
         service = NurturingMessageService(ai_client=mock_ai_client)
 
-        client_data = {
-            "name": "Test Client",
-            "segment": "VIP"
-        }
+        client_data = {"name": "Test Client", "segment": "VIP"}
 
         message = service._generate_fallback_message(client_data)
         assert isinstance(message, str)
         assert len(message) > 0
-
-
-
-

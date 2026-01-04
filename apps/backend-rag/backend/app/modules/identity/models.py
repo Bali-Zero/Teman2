@@ -60,6 +60,11 @@ class User(SQLModel, table=True):
         default=None, description="Character notes and personality traits for AI"
     )
 
+    # Profile photo
+    avatar: str | None = Field(
+        default=None, max_length=255, description="URL path to team member profile photo"
+    )
+
     # Security tracking
     last_login: datetime | None = Field(default=None, description="Last successful login timestamp")
     failed_attempts: int = Field(default=0, description="Number of failed login attempts")

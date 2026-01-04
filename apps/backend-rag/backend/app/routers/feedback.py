@@ -66,19 +66,20 @@ async def submit_feedback(
             )
 
         # Insert rating into database
-        async with db_pool.acquire() as conn:
-            async with conn.transaction():
-                # Combine feedback_text and correction_text if both exist
-                combined_feedback = request.feedback_text or ""
-                if request.correction_text:
-                    if combined_feedback:
-                        combined_feedback = f"{combined_feedback}\n\n[Correction]: {request.correction_text}"
-                    else:
-                        combined_feedback = f"[Correction]: {request.correction_text}"
+        async with db_pool.acquire() as conn, conn.transaction():
+            # Combine feedback_text and correction_text if both exist
+            combined_feedback = request.feedback_text or ""
+            if request.correction_text:
+                if combined_feedback:
+                    combined_feedback = (
+                        f"{combined_feedback}\n\n[Correction]: {request.correction_text}"
+                    )
+                else:
+                    combined_feedback = f"[Correction]: {request.correction_text}"
 
-                # Insert into conversation_ratings
-                rating_id = await conn.fetchval(
-                    """
+            # Insert into conversation_ratings
+            rating_id = await conn.fetchval(
+                """
                     INSERT INTO conversation_ratings (
                         session_id,
                         user_id,
@@ -90,28 +91,32 @@ async def submit_feedback(
                     VALUES ($1, $2, $3, $4, $5, NULL)
                     RETURNING id
                     """,
-                    request.session_id,
-                    user_id,
-                    request.rating,
-                    request.feedback_type,
-                    combined_feedback if combined_feedback else None,
+                request.session_id,
+                user_id,
+                request.rating,
+                request.feedback_type,
+                combined_feedback if combined_feedback else None,
+            )
+
+            logger.info(
+                f"✅ Conversation rated: session_id={request.session_id}, "
+                f"rating={request.rating}, rating_id={rating_id}"
+            )
+
+            # CRITICAL LOGIC: Create review_queue entry if rating <= 2 OR correction_text provided
+            review_queue_id: UUID | None = None
+            should_review = request.rating <= 2 or (
+                request.correction_text and request.correction_text.strip()
+            )
+
+            if should_review:
+                # Determine priority based on rating
+                priority = (
+                    "urgent" if request.rating == 1 else "high" if request.rating == 2 else "medium"
                 )
 
-                logger.info(
-                    f"✅ Conversation rated: session_id={request.session_id}, "
-                    f"rating={request.rating}, rating_id={rating_id}"
-                )
-
-                # CRITICAL LOGIC: Create review_queue entry if rating <= 2 OR correction_text provided
-                review_queue_id: UUID | None = None
-                should_review = request.rating <= 2 or (request.correction_text and request.correction_text.strip())
-
-                if should_review:
-                    # Determine priority based on rating
-                    priority = "urgent" if request.rating == 1 else "high" if request.rating == 2 else "medium"
-
-                    review_queue_id = await conn.fetchval(
-                        """
+                review_queue_id = await conn.fetchval(
+                    """
                         INSERT INTO review_queue (
                             source_feedback_id,
                             status,
@@ -120,22 +125,21 @@ async def submit_feedback(
                         VALUES ($1, 'pending', $2)
                         RETURNING id
                         """,
-                        rating_id,
-                        priority,
-                    )
-
-                    logger.info(
-                        f"📋 Review queue entry created: review_queue_id={review_queue_id}, "
-                        f"rating={request.rating}, has_correction={bool(request.correction_text)}"
-                    )
-
-                return FeedbackResponse(
-                    success=True,
-                    review_queue_id=review_queue_id,
-                    message="Feedback saved successfully" + (
-                        " and added to review queue" if review_queue_id else ""
-                    ),
+                    rating_id,
+                    priority,
                 )
+
+                logger.info(
+                    f"📋 Review queue entry created: review_queue_id={review_queue_id}, "
+                    f"rating={request.rating}, has_correction={bool(request.correction_text)}"
+                )
+
+            return FeedbackResponse(
+                success=True,
+                review_queue_id=review_queue_id,
+                message="Feedback saved successfully"
+                + (" and added to review queue" if review_queue_id else ""),
+            )
 
     except HTTPException:
         raise

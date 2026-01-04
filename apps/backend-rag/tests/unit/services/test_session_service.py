@@ -7,7 +7,7 @@ import json
 import sys
 from datetime import timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -496,9 +496,7 @@ class TestUpdateHistoryWithTtl:
         """Test history update with custom TTL"""
         history = [{"role": "user", "content": "Hello"}]
 
-        result = await session_service.update_history_with_ttl(
-            "session_123", history, ttl_hours=48
-        )
+        result = await session_service.update_history_with_ttl("session_123", history, ttl_hours=48)
 
         assert result is True
         # Verify setex was called with custom TTL
@@ -517,9 +515,7 @@ class TestUpdateHistoryWithTtl:
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_update_history_with_ttl_invalid_format(
-        self, session_service, mock_redis
-    ):
+    async def test_update_history_with_ttl_invalid_format(self, session_service, mock_redis):
         """Test history update with invalid format"""
         result = await session_service.update_history_with_ttl(
             "session_123", "not a list", ttl_hours=24
@@ -528,16 +524,12 @@ class TestUpdateHistoryWithTtl:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_update_history_with_ttl_redis_error(
-        self, session_service, mock_redis
-    ):
+    async def test_update_history_with_ttl_redis_error(self, session_service, mock_redis):
         """Test history update with Redis error"""
         mock_redis.setex = AsyncMock(side_effect=Exception("Redis error"))
         history = [{"role": "user", "content": "Hello"}]
 
-        result = await session_service.update_history_with_ttl(
-            "session_123", history, ttl_hours=24
-        )
+        result = await session_service.update_history_with_ttl("session_123", history, ttl_hours=24)
 
         assert result is False
 
@@ -562,9 +554,7 @@ class TestExtendTtlCustom:
         assert call_args[0][1] == timedelta(hours=72)
 
     @pytest.mark.asyncio
-    async def test_extend_ttl_custom_session_not_found(
-        self, session_service, mock_redis
-    ):
+    async def test_extend_ttl_custom_session_not_found(self, session_service, mock_redis):
         """Test custom TTL extension for non-existent session"""
         mock_redis.expire = AsyncMock(return_value=False)
 

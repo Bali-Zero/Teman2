@@ -57,10 +57,7 @@ class TestGraphExtractor:
         mock_response = '{"entities": [], "relationships": []}'
         mock_ai_client.generate_response = AsyncMock(return_value=mock_response)
 
-        result = await graph_extractor.extract_from_text(
-            "Test text",
-            context="Additional context"
-        )
+        result = await graph_extractor.extract_from_text("Test text", context="Additional context")
 
         assert isinstance(result, ExtractedGraph)
         mock_ai_client.generate_response.assert_called_once()
@@ -82,7 +79,9 @@ class TestGraphExtractor:
     @pytest.mark.asyncio
     async def test_extract_from_text_relations_key(self, graph_extractor, mock_ai_client):
         """Test extraction with 'relations' key instead of 'relationships'"""
-        mock_response = '{"entities": [], "relations": [{"source": "a", "target": "b", "type": "REQUIRES"}]}'
+        mock_response = (
+            '{"entities": [], "relations": [{"source": "a", "target": "b", "type": "REQUIRES"}]}'
+        )
         mock_ai_client.generate_response = AsyncMock(return_value=mock_response)
 
         result = await graph_extractor.extract_from_text("Test")
@@ -139,7 +138,3 @@ class TestExtractedGraph:
         graph = ExtractedGraph(entities=entities, relationships=relationships)
         assert len(graph.entities) == 1
         assert len(graph.relationships) == 1
-
-
-
-

@@ -33,10 +33,7 @@ def mock_redis():
 def semantic_cache(mock_redis):
     """Create SemanticCache instance"""
     return SemanticCache(
-        redis_client=mock_redis,
-        similarity_threshold=0.95,
-        default_ttl=3600,
-        max_cache_size=10000
+        redis_client=mock_redis, similarity_threshold=0.95, default_ttl=3600, max_cache_size=10000
     )
 
 
@@ -52,7 +49,7 @@ def sample_result():
     return {
         "results": [{"id": "1", "content": "test"}],
         "query": "test query",
-        "timestamp": "2024-01-01T00:00:00"
+        "timestamp": "2024-01-01T00:00:00",
     }
 
 
@@ -69,10 +66,7 @@ class TestSemanticCache:
     def test_init_custom_params(self, mock_redis):
         """Test initialization with custom parameters"""
         cache = SemanticCache(
-            redis_client=mock_redis,
-            similarity_threshold=0.9,
-            default_ttl=1800,
-            max_cache_size=5000
+            redis_client=mock_redis, similarity_threshold=0.9, default_ttl=1800, max_cache_size=5000
         )
         assert cache.similarity_threshold == 0.9
         assert cache.default_ttl == 1800
@@ -82,6 +76,7 @@ class TestSemanticCache:
     async def test_get_cached_result_exact_match(self, semantic_cache, sample_result, mock_redis):
         """Test getting cached result with exact match"""
         import json
+
         mock_redis.get = AsyncMock(return_value=json.dumps(sample_result))
 
         result = await semantic_cache.get_cached_result("test query")
@@ -97,18 +92,19 @@ class TestSemanticCache:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_cached_result_semantic_match(self, semantic_cache, sample_embedding, sample_result, mock_redis):
+    async def test_get_cached_result_semantic_match(
+        self, semantic_cache, sample_embedding, sample_result, mock_redis
+    ):
         """Test getting cached result with semantic match"""
         mock_redis.get = AsyncMock(return_value=None)
 
         # Mock semantic similarity search
-        with patch.object(semantic_cache, '_find_similar_query') as mock_find:
-            mock_find.return_value = {
-                "data": sample_result,
-                "similarity": 0.96
-            }
+        with patch.object(semantic_cache, "_find_similar_query") as mock_find:
+            mock_find.return_value = {"data": sample_result, "similarity": 0.96}
 
-            result = await semantic_cache.get_cached_result("test query", query_embedding=sample_embedding)
+            result = await semantic_cache.get_cached_result(
+                "test query", query_embedding=sample_embedding
+            )
             assert result is not None
             assert result["cache_hit"] == "semantic"
 
@@ -128,41 +124,38 @@ class TestSemanticCache:
         mock_redis.zcard = AsyncMock(return_value=0)
 
         result = await semantic_cache.cache_result(
-            query="test query",
-            query_embedding=sample_embedding,
-            result=sample_result
+            query="test query", query_embedding=sample_embedding, result=sample_result
         )
 
         assert result is True
         mock_redis.setex.assert_called()
 
     @pytest.mark.asyncio
-    async def test_cache_result_with_ttl(self, semantic_cache, sample_embedding, sample_result, mock_redis):
+    async def test_cache_result_with_ttl(
+        self, semantic_cache, sample_embedding, sample_result, mock_redis
+    ):
         """Test caching result with custom TTL"""
         mock_redis.setex = AsyncMock(return_value=True)
         mock_redis.zadd = AsyncMock(return_value=1)
         mock_redis.zcard = AsyncMock(return_value=0)
 
         result = await semantic_cache.cache_result(
-            query="test query",
-            query_embedding=sample_embedding,
-            result=sample_result,
-            ttl=1800
+            query="test query", query_embedding=sample_embedding, result=sample_result, ttl=1800
         )
 
         assert result is True
         mock_redis.setex.assert_called()
 
     @pytest.mark.asyncio
-    async def test_cache_result_error(self, semantic_cache, sample_embedding, sample_result, mock_redis):
+    async def test_cache_result_error(
+        self, semantic_cache, sample_embedding, sample_result, mock_redis
+    ):
         """Test caching result with error"""
         mock_redis.set = AsyncMock(side_effect=Exception("Redis error"))
 
         # Should not raise exception
         await semantic_cache.cache_result(
-            query="test query",
-            query_embedding=sample_embedding,
-            result=sample_result
+            query="test query", query_embedding=sample_embedding, result=sample_result
         )
 
     @pytest.mark.asyncio
@@ -204,4 +197,3 @@ class TestSemanticCache:
         result = await semantic_cache._find_similar_query(sample_embedding)
         # May return None if similarity is below threshold
         assert result is None or isinstance(result, dict)
-

@@ -123,7 +123,7 @@ async def ingest_tax_genius(dry_run: bool = False) -> dict:
         logger.info(f"   Path: {doc_path}")
 
         # Read document
-        with open(doc_path, "r", encoding="utf-8") as f:
+        with open(doc_path, encoding="utf-8") as f:
             content = f.read()
 
         logger.info(f"   Size: {len(content):,} characters")
@@ -146,7 +146,7 @@ async def ingest_tax_genius(dry_run: bool = False) -> dict:
             # Show sample chunks
             for i, chunk in enumerate(chunks[:3]):
                 preview = chunk["text"][:100].replace("\n", " ")
-                logger.info(f"   Sample chunk {i+1}: {preview}...")
+                logger.info(f"   Sample chunk {i + 1}: {preview}...")
             continue
 
         # Generate embeddings
@@ -208,7 +208,9 @@ async def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Ingest tax documents to tax_genius collection")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be done without ingesting")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be done without ingesting"
+    )
     args = parser.parse_args()
 
     result = await ingest_tax_genius(dry_run=args.dry_run)

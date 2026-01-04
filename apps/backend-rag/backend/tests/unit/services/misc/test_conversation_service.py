@@ -2,6 +2,7 @@
 Comprehensive tests for ConversationService
 Target: >95% coverage
 """
+
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -205,11 +206,13 @@ class TestConversationService:
         messages = [{"role": "user", "content": "I need a KITAS"}]
 
         mock_auto_crm = AsyncMock()
-        mock_auto_crm.process_conversation = AsyncMock(return_value={
-            "success": True,
-            "client_id": 1,
-            "client_created": True,
-        })
+        mock_auto_crm.process_conversation = AsyncMock(
+            return_value={
+                "success": True,
+                "client_id": 1,
+                "client_created": True,
+            }
+        )
 
         with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
@@ -226,7 +229,9 @@ class TestConversationService:
                 mock_auto_crm.process_conversation.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_save_conversation_auto_crm_not_available(self, conversation_service, mock_db_pool):
+    async def test_save_conversation_auto_crm_not_available(
+        self, conversation_service, mock_db_pool
+    ):
         """Test handling when Auto-CRM is not available"""
         pool, conn = mock_db_pool
 
@@ -331,7 +336,9 @@ class TestConversationService:
 
     def test_get_auto_crm_general_error(self, conversation_service):
         """Test handling general error for Auto-CRM"""
-        with patch("services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Error")):
+        with patch(
+            "services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Error")
+        ):
             result = conversation_service._get_auto_crm()
 
             assert result is None

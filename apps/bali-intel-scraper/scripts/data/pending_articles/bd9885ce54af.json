@@ -1,0 +1,72 @@
+{
+  "article_id": "bd9885ce54af",
+  "title": "Indonesia Launches New Golden Visa Program for High-Net-Worth Investors",
+  "category": "immigration",
+  "source": "Unknown",
+  "source_url": "https://kompas.com/golden-visa-launch",
+  "preview_html": "data/previews/bd9885ce54af.html",
+  "preview_url": "https://balizero.com/preview/bd9885ce54af.html",
+  "seo_metadata": {
+    "title": "Indonesia Launches New Golden Visa Program for High-...",
+    "meta_description": "Indonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific i...",
+    "keywords": [
+      "Indonesia",
+      "BaliZero",
+      "KITAS",
+      "Indonesia visa",
+      "Indonesia expat",
+      "Bali",
+      "Southeast Asia",
+      "KITAP"
+    ],
+    "canonical_url": "https://balizero.com/news/immigration/indonesia-launches-new-golden-visa-program-for-hig-223b62",
+    "tldr_summary": "\n Executive Summary\n\nIndonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific investment thresholds. This landmark immigration policy aims to attract wealthy individuals and boost foreign direct investment. The program targets:\n- High-net-worth individuals with proven investment capacity\n- Business owners looking to establish presence in Southeast Asia\n- Retirees seeking long-term residency in Bali\n\n Impact ",
+    "key_entities": [
+      "BaliZero",
+      "Indonesia",
+      "KITAS",
+      "Indonesia visa",
+      "BKPM",
+      "Bali",
+      "Imigrasi",
+      "Southeast Asia"
+    ],
+    "faq_items": [
+      {
+        "question": "What visa do I need to live in Indonesia?",
+        "answer": "\n Executive Summary\n\nIndonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific investment thresholds."
+      },
+      {
+        "question": "How long can I stay in Indonesia?",
+        "answer": " Key Requirements\n\n- Minimum Investment: USD 350,000 in Indonesian government bonds or approved business sectors\n- Validity: 5-10 years depending on investment level\n- Benefits: Multiple entry, work authorization, path to permanent residency\n- Processing Time: 30-45 business days\n\n Who Qualifies?"
+      },
+      {
+        "question": "What are the requirements?",
+        "answer": " Key Requirements\n\n- Minimum Investment: USD 350,000 in Indonesian government bonds or approved business sectors\n- Validity: 5-10 years depending on investment level\n- Benefits: Multiple entry, work authorization, path to permanent residency\n- Processing Time: 30-45 business days\n\n Who Qualifies?"
+      }
+    ],
+    "reading_time_minutes": 1,
+    "og": {
+      "title": "Indonesia Launches New Golden Visa Program for High-...",
+      "description": "Indonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific i...",
+      "image": "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1200&h=630&fit=crop",
+      "type": "article"
+    },
+    "twitter": {
+      "card": "summary_large_image",
+      "title": "Indonesia Launches New Golden Visa Program for High-...",
+      "description": "Indonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific i..."
+    },
+    "schema_json_ld": "{\n  \"@context\": \"https://schema.org\",\n  \"@graph\": [\n    {\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"NewsArticle\",\n      \"headline\": \"Indonesia Launches New Golden Visa Program for High-...\",\n      \"description\": \"Indonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific i...\",\n      \"image\": \"https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1200&h=630&fit=crop\",\n      \"datePublished\": \"2026-01-04\",\n      \"dateModified\": \"2026-01-04T11:37:34.025917+00:00\",\n      \"author\": {\n        \"@type\": \"Organization\",\n        \"name\": \"BaliZero\",\n        \"url\": \"https://balizero.com\",\n        \"logo\": \"https://balizero.com/images/balizero-logo.png\",\n        \"sameAs\": [\n          \"https://www.linkedin.com/company/balizero\",\n          \"https://www.instagram.com/balizero\",\n          \"https://wa.me/6285904369574\"\n        ]\n      },\n      \"publisher\": {\n        \"@type\": \"Organization\",\n        \"name\": \"BaliZero\",\n        \"url\": \"https://balizero.com\",\n        \"logo\": {\n          \"@type\": \"ImageObject\",\n          \"url\": \"https://balizero.com/images/balizero-logo.png\"\n        },\n        \"sameAs\": [\n          \"https://www.linkedin.com/company/balizero\",\n          \"https://www.instagram.com/balizero\",\n          \"https://wa.me/6285904369574\"\n        ]\n      },\n      \"mainEntityOfPage\": {\n        \"@type\": \"WebPage\",\n        \"@id\": \"https://balizero.com/news/immigration/indonesia-launches-new-golden-visa-program-for-hig-223b62\"\n      },\n      \"articleSection\": \"Immigration\",\n      \"keywords\": \"Indonesia, BaliZero, KITAS, Indonesia visa, Indonesia expat, Bali, Southeast Asia, KITAP\",\n      \"wordCount\": 184,\n      \"inLanguage\": \"en\",\n      \"about\": [\n        {\n          \"@type\": \"Thing\",\n          \"name\": \"BaliZero\"\n        },\n        {\n          \"@type\": \"Thing\",\n          \"name\": \"Indonesia\"\n        },\n        {\n          \"@type\": \"Thing\",\n          \"name\": \"KITAS\"\n        },\n        {\n          \"@type\": \"Thing\",\n          \"name\": \"Indonesia visa\"\n        },\n        {\n          \"@type\": \"Thing\",\n          \"name\": \"BKPM\"\n        }\n      ],\n      \"mentions\": [\n        {\n          \"@type\": \"Country\",\n          \"name\": \"Indonesia\"\n        },\n        {\n          \"@type\": \"Place\",\n          \"name\": \"Bali\"\n        }\n      ],\n      \"speakable\": {\n        \"@type\": \"SpeakableSpecification\",\n        \"cssSelector\": [\n          \".article-summary\",\n          \".key-takeaway\",\n          \".tldr\"\n        ]\n      }\n    },\n    {\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"Organization\",\n      \"name\": \"BaliZero\",\n      \"url\": \"https://balizero.com\",\n      \"logo\": \"https://balizero.com/images/balizero-logo.png\",\n      \"description\": \"Indonesia's trusted guide for expats and investors. Expert visa, tax, and business consulting since 2015.\",\n      \"foundingDate\": \"2015\",\n      \"foundingLocation\": {\n        \"@type\": \"Place\",\n        \"name\": \"Bali, Indonesia\"\n      },\n      \"areaServed\": {\n        \"@type\": \"Country\",\n        \"name\": \"Indonesia\"\n      },\n      \"sameAs\": [\n        \"https://www.linkedin.com/company/balizero\",\n        \"https://www.instagram.com/balizero\",\n        \"https://wa.me/6285904369574\"\n      ],\n      \"contactPoint\": {\n        \"@type\": \"ContactPoint\",\n        \"telephone\": \"+62-859-0436-9574\",\n        \"contactType\": \"customer service\",\n        \"availableLanguage\": [\n          \"English\",\n          \"Indonesian\",\n          \"Italian\"\n        ]\n      },\n      \"knowsAbout\": [\n        \"Indonesia visa\",\n        \"KITAS\",\n        \"Indonesia tax\",\n        \"PT PMA\",\n        \"Company formation Indonesia\",\n        \"Bali real estate\",\n        \"Expat services Indonesia\"\n      ]\n    },\n    {\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"BreadcrumbList\",\n      \"itemListElement\": [\n        {\n          \"@type\": \"ListItem\",\n          \"position\": 1,\n          \"name\": \"Home\",\n          \"item\": \"https://balizero.com\"\n        },\n        {\n          \"@type\": \"ListItem\",\n          \"position\": 2,\n          \"name\": \"News\",\n          \"item\": \"https://balizero.com/news\"\n        },\n        {\n          \"@type\": \"ListItem\",\n          \"position\": 3,\n          \"name\": \"Immigration\",\n          \"item\": \"https://balizero.com/news/immigration\"\n        },\n        {\n          \"@type\": \"ListItem\",\n          \"position\": 4,\n          \"name\": \"Indonesia Launches New Golden Visa Program for Hig\"\n        }\n      ]\n    },\n    {\n      \"@context\": \"https://schema.org\",\n      \"@type\": \"FAQPage\",\n      \"mainEntity\": [\n        {\n          \"@type\": \"Question\",\n          \"name\": \"What visa do I need to live in Indonesia?\",\n          \"acceptedAnswer\": {\n            \"@type\": \"Answer\",\n            \"text\": \"\\n Executive Summary\\n\\nIndonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific investment thresholds.\"\n          }\n        },\n        {\n          \"@type\": \"Question\",\n          \"name\": \"How long can I stay in Indonesia?\",\n          \"acceptedAnswer\": {\n            \"@type\": \"Answer\",\n            \"text\": \" Key Requirements\\n\\n- Minimum Investment: USD 350,000 in Indonesian government bonds or approved business sectors\\n- Validity: 5-10 years depending on investment level\\n- Benefits: Multiple entry, work authorization, path to permanent residency\\n- Processing Time: 30-45 business days\\n\\n Who Qualifies?\"\n          }\n        },\n        {\n          \"@type\": \"Question\",\n          \"name\": \"What are the requirements?\",\n          \"acceptedAnswer\": {\n            \"@type\": \"Answer\",\n            \"text\": \" Key Requirements\\n\\n- Minimum Investment: USD 350,000 in Indonesian government bonds or approved business sectors\\n- Validity: 5-10 years depending on investment level\\n- Benefits: Multiple entry, work authorization, path to permanent residency\\n- Processing Time: 30-45 business days\\n\\n Who Qualifies?\"\n          }\n        }\n      ]\n    }\n  ]\n}",
+    "dates": {
+      "published": "2026-01-04",
+      "modified": "2026-01-04T11:37:34.025917+00:00"
+    }
+  },
+  "enriched_content": "\n## Executive Summary\n\nIndonesia has officially launched its highly anticipated Golden Visa program, offering long-term residency to foreign investors who meet specific investment thresholds. This landmark immigration policy aims to attract wealthy individuals and boost foreign direct investment.\n\n## Key Requirements\n\n- **Minimum Investment**: USD 350,000 in Indonesian government bonds or approved business sectors\n- **Validity**: 5-10 years depending on investment level\n- **Benefits**: Multiple entry, work authorization, path to permanent residency\n- **Processing Time**: 30-45 business days\n\n## Who Qualifies?\n\nThe program targets:\n- High-net-worth individuals with proven investment capacity\n- Business owners looking to establish presence in Southeast Asia\n- Retirees seeking long-term residency in Bali\n\n## Impact for Expats\n\nThis visa represents a significant shift in Indonesia's immigration policy, previously known for complex and restrictive visa requirements. The Golden Visa offers a streamlined path for those willing to make substantial investments.\n\n## How to Apply\n\nApplications can be submitted through the Directorate General of Immigration or authorized visa agents. Required documents include proof of funds, clean criminal record, and valid passport.\n\n---\n*Source: Ministry of Law and Human Rights Press Release*\n        ",
+  "image_url": "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=1200&h=630&fit=crop",
+  "created_at": "2026-01-04T11:37:34.027620+00:00",
+  "status": "pending",
+  "approved_at": null,
+  "telegram_message_id": 55
+}

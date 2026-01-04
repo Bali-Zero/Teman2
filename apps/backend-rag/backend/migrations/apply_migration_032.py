@@ -22,8 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from migrations.migration_032_drop_legacy_kg_tables import MIGRATION_ID, MIGRATION_NAME, run
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,7 @@ async def main():
         """)
 
         if legacy_tables:
-            table_names = [t['table_name'] for t in legacy_tables]
+            table_names = [t["table_name"] for t in legacy_tables]
             logger.info(f"Found legacy tables to drop: {table_names}")
 
             # Show row counts before dropping

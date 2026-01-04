@@ -54,15 +54,30 @@ from .reasoning import ReasoningEngine, detect_team_query
 # Conversation recall trigger phrases (multilingual)
 RECALL_TRIGGERS = [
     # Italian
-    "ti ricordi", "ricordi quando", "di che parlavamo", "di che cliente",
-    "il cliente di cui", "che mi hai detto", "prima hai detto",
+    "ti ricordi",
+    "ricordi quando",
+    "di che parlavamo",
+    "di che cliente",
+    "il cliente di cui",
+    "che mi hai detto",
+    "prima hai detto",
     # English
-    "do you remember", "remember when", "what did i say", "what did you say",
-    "the client we discussed", "earlier you said", "you mentioned before",
-    "recall our conversation", "what we talked about",
+    "do you remember",
+    "remember when",
+    "what did i say",
+    "what did you say",
+    "the client we discussed",
+    "earlier you said",
+    "you mentioned before",
+    "recall our conversation",
+    "what we talked about",
     # Indonesian
-    "ingat tidak", "kamu ingat", "tadi aku bilang", "sebelumnya",
-    "klien yang tadi", "yang kita bahas",
+    "ingat tidak",
+    "kamu ingat",
+    "tadi aku bilang",
+    "sebelumnya",
+    "klien yang tadi",
+    "yang kita bahas",
 ]
 from app.metrics import metrics_collector
 from services.llm_clients.pricing import TokenUsage
@@ -82,6 +97,7 @@ TIER_OPENROUTER = 3
 
 class StreamEvent(BaseModel):
     """Schema per eventi stream."""
+
     type: str
     data: Any
     timestamp: float | None = None
@@ -110,11 +126,38 @@ def _wrap_query_with_language_instruction(query: str) -> str:
 
     # Indonesian markers - if found, allow Jaksel style
     indonesian_markers = [
-        "apa", "bagaimana", "siapa", "dimana", "kapan", "mengapa",
-        "yang", "dengan", "untuk", "dari", "saya", "aku", "kamu",
-        "anda", "bisa", "mau", "ingin", "perlu", "tolong", "halo",
-        "selamat", "terima kasih", "gimana", "gue", "gw", "lu",
-        "dong", "nih", "banget", "keren", "mantap", "boleh"
+        "apa",
+        "bagaimana",
+        "siapa",
+        "dimana",
+        "kapan",
+        "mengapa",
+        "yang",
+        "dengan",
+        "untuk",
+        "dari",
+        "saya",
+        "aku",
+        "kamu",
+        "anda",
+        "bisa",
+        "mau",
+        "ingin",
+        "perlu",
+        "tolong",
+        "halo",
+        "selamat",
+        "terima kasih",
+        "gimana",
+        "gue",
+        "gw",
+        "lu",
+        "dong",
+        "nih",
+        "banget",
+        "keren",
+        "mantap",
+        "boleh",
     ]
 
     # Check if Indonesian
@@ -137,21 +180,26 @@ Pertanyaan User:
     detected_lang = "the user's language"
 
     # Chinese detection (contains Chinese characters)
-    if any('\u4e00' <= char <= '\u9fff' for char in query):
+    if any("\u4e00" <= char <= "\u9fff" for char in query):
         detected_lang = "CHINESE (中文)"
     # Arabic detection
-    elif any('\u0600' <= char <= '\u06ff' for char in query):
+    elif any("\u0600" <= char <= "\u06ff" for char in query):
         detected_lang = "ARABIC (العربية)"
     # Cyrillic (Russian/Ukrainian)
-    elif any('\u0400' <= char <= '\u04ff' for char in query):
+    elif any("\u0400" <= char <= "\u04ff" for char in query):
         if any(word in query_lower for word in ["привіт", "як", "справи", "добре", "дякую"]):
             detected_lang = "UKRAINIAN (Українська)"
         else:
             detected_lang = "RUSSIAN (Русский)"
     # Check for specific language patterns
-    elif any(word in query_lower for word in ["ciao", "come", "cosa", "voglio", "posso", "grazie", "perché"]):
+    elif any(
+        word in query_lower
+        for word in ["ciao", "come", "cosa", "voglio", "posso", "grazie", "perché"]
+    ):
         detected_lang = "ITALIAN (Italiano)"
-    elif any(word in query_lower for word in ["bonjour", "comment", "pourquoi", "merci", "s'il vous"]):
+    elif any(
+        word in query_lower for word in ["bonjour", "comment", "pourquoi", "merci", "s'il vous"]
+    ):
         detected_lang = "FRENCH (Français)"
     elif any(word in query_lower for word in ["hola", "cómo", "como estas", "gracias", "por qué"]):
         detected_lang = "SPANISH (Español)"
@@ -235,13 +283,13 @@ class AgenticRAGOrchestrator:
             - Converts tools to Gemini function declarations for native calling
         """
         logger.debug(f"AgenticRAGOrchestrator.__init__ started. Model: {model_name}")
-        self.tools = {tool.name: tool for tool in tools} # Changed to dict for direct access
+        self.tools = {tool.name: tool for tool in tools}  # Changed to dict for direct access
         self.db_pool = db_pool
         self.model_name = model_name
         self.semantic_cache = semantic_cache
         self.retriever = retriever
         self.clarification_service = clarification_service
-        self.llm_gateway = llm_gateway or LLMGateway() # Initialize LLMGateway here
+        self.llm_gateway = llm_gateway or LLMGateway()  # Initialize LLMGateway here
 
         # Convert tools to Gemini function declarations for native calling
         self.gemini_tools = [tool.to_gemini_function_declaration() for tool in tools]
@@ -268,7 +316,9 @@ class AgenticRAGOrchestrator:
         # Initialize LLM Gateway (manages all model interactions and fallbacks)
         logger.debug("AgenticRAGOrchestrator: Initializing LLMGateway...")
         # self.llm_gateway = LLMGateway(gemini_tools=self.gemini_tools) # Moved above
-        self.llm_gateway.set_gemini_tools(self.gemini_tools) # Set tools after LLMGateway is initialized
+        self.llm_gateway.set_gemini_tools(
+            self.gemini_tools
+        )  # Set tools after LLMGateway is initialized
         logger.debug("AgenticRAGOrchestrator: LLMGateway initialized")
 
         # BRIDGE: Inject LLM Gateway into tools that need semantic intelligence
@@ -288,7 +338,9 @@ class AgenticRAGOrchestrator:
 
         # Initialize Entity Extraction Service
         logger.debug("AgenticRAGOrchestrator: Initializing EntityExtractionService...")
-        self.entity_extractor = entity_extractor or EntityExtractionService(llm_gateway=self.llm_gateway)
+        self.entity_extractor = entity_extractor or EntityExtractionService(
+            llm_gateway=self.llm_gateway
+        )
         logger.debug("AgenticRAGOrchestrator: EntityExtractionService initialized")
 
         # Initialize KG-Enhanced Retrieval Service
@@ -315,7 +367,7 @@ class AgenticRAGOrchestrator:
         # Summarizes older messages to preserve key facts while managing token budget
         self.context_window_manager = ContextWindowManager(
             max_messages=20,  # Keep last 20 messages in full
-            summary_threshold=30  # Start summarizing when >30 messages
+            summary_threshold=30,  # Start summarizing when >30 messages
         )
         logger.debug("AgenticRAGOrchestrator: ContextWindowManager initialized")
 
@@ -397,8 +449,7 @@ class AgenticRAGOrchestrator:
                 lock_wait_time = time.time() - lock_start_time
                 if lock_wait_time > 0.01:  # Only record if waited > 10ms
                     metrics_collector.record_memory_lock_contention(
-                        operation="save_memory",
-                        wait_time_seconds=lock_wait_time
+                        operation="save_memory", wait_time_seconds=lock_wait_time
                     )
 
             finally:
@@ -428,12 +479,15 @@ class AgenticRAGOrchestrator:
         tool_execution_counter = {"count": 0}
 
         # 🔍 TRACING: Parent span for entire query processing
-        with trace_span("orchestrator.process_query", {
-            "user_id": user_id or "anonymous",
-            "query_length": len(query),
-            "session_id": session_id or "none",
-            "has_history": bool(conversation_history),
-        }):
+        with trace_span(
+            "orchestrator.process_query",
+            {
+                "user_id": user_id or "anonymous",
+                "query_length": len(query),
+                "session_id": session_id or "none",
+                "has_history": bool(conversation_history),
+            },
+        ):
             # 1. UNIVERSAL CONTEXT LOADING (CRITICAL: Must be first for Identity)
             effective_user_id = user_id or "anonymous"
             with trace_span("context.load_user", {"user_id": effective_user_id}):
@@ -449,12 +503,23 @@ class AgenticRAGOrchestrator:
                     set_span_attribute("facts_count", len(user_context.get("facts", [])))
                     set_span_status("ok")
                 except Exception as e:
-                    logger.warning(f"⚠️ [Context] Failed to load user context (degraded): {e}", exc_info=True)
-                    user_context = {"profile": None, "facts": [], "collective_facts": [], "history": []}
+                    logger.warning(
+                        f"⚠️ [Context] Failed to load user context (degraded): {e}", exc_info=True
+                    )
+                    user_context = {
+                        "profile": None,
+                        "facts": [],
+                        "collective_facts": [],
+                        "history": [],
+                    }
                     set_span_status("error", str(e))
 
         history_to_use = conversation_history or user_context.get("history", [])
-        if not isinstance(history_to_use, list) or history_to_use and not isinstance(history_to_use[0], dict):
+        if (
+            not isinstance(history_to_use, list)
+            or history_to_use
+            and not isinstance(history_to_use[0], dict)
+        ):
             history_to_use = []
 
         # Apply context window management for long conversations
@@ -462,19 +527,23 @@ class AgenticRAGOrchestrator:
         if len(history_to_use) > 0:
             trim_result = self.context_window_manager.trim_conversation_history(history_to_use)
             if trim_result["needs_summarization"]:
-                logger.info(f"📊 [ContextWindow] Summarizing {len(trim_result['messages_to_summarize'])} older messages")
+                logger.info(
+                    f"📊 [ContextWindow] Summarizing {len(trim_result['messages_to_summarize'])} older messages"
+                )
                 try:
                     summary = await self.context_window_manager.generate_summary(
-                        trim_result["messages_to_summarize"],
-                        trim_result["context_summary"]
+                        trim_result["messages_to_summarize"], trim_result["context_summary"]
                     )
                     history_to_use = self.context_window_manager.inject_summary_into_history(
-                        trim_result["trimmed_messages"],
-                        summary
+                        trim_result["trimmed_messages"], summary
                     )
-                    logger.info(f"✅ [ContextWindow] Summarized to {len(history_to_use)} messages with summary")
+                    logger.info(
+                        f"✅ [ContextWindow] Summarized to {len(history_to_use)} messages with summary"
+                    )
                 except Exception as e:
-                    logger.warning(f"⚠️ [ContextWindow] Summarization failed, using trimmed history: {e}")
+                    logger.warning(
+                        f"⚠️ [ContextWindow] Summarization failed, using trimmed history: {e}"
+                    )
                     history_to_use = trim_result["trimmed_messages"]
             else:
                 history_to_use = trim_result["trimmed_messages"]
@@ -497,7 +566,7 @@ class AgenticRAGOrchestrator:
                 model_used="security-gate",
                 timings={"total": time.time() - start_time},
                 verification_status="blocked",
-                document_count=0
+                document_count=0,
             )
 
         # 0. Check Greetings (skip RAG for simple greetings)
@@ -515,7 +584,7 @@ class AgenticRAGOrchestrator:
                 model_used="greeting-pattern",
                 timings={"total": time.time() - start_time},
                 verification_status="passed",
-                document_count=0
+                document_count=0,
             )
 
         # 0.05 Check Casual Conversation (skip RAG for "come stai", "how are you", etc.)
@@ -532,7 +601,7 @@ class AgenticRAGOrchestrator:
                 model_used="casual-pattern",
                 timings={"total": time.time() - start_time},
                 verification_status="passed",
-                document_count=0
+                document_count=0,
             )
 
         # 0.1 CLARIFICATION GATE (Ambiguity Detection)
@@ -560,15 +629,17 @@ class AgenticRAGOrchestrator:
                     evidence_score=0.0,
                     is_ambiguous=True,
                     clarification_question=clarification_msg,
-                    entities=ambiguity_info.get("entities", {}), # Pass if available, else empty
+                    entities=ambiguity_info.get("entities", {}),  # Pass if available, else empty
                     model_used="clarification-gate",
                     timings={"total": time.time() - start_time},
                     verification_status="skipped",
-                    document_count=0
+                    document_count=0,
                 )
 
         # 0.5 Check Identity / Hardcoded Patterns
-        identity_response = self.prompt_builder.check_identity_questions(query, context=user_context)
+        identity_response = self.prompt_builder.check_identity_questions(
+            query, context=user_context
+        )
         if identity_response:
             logger.info("🤖 [Identity] Returning hardcoded identity response")
             return CoreResult(
@@ -581,7 +652,7 @@ class AgenticRAGOrchestrator:
                 model_used="identity-pattern",
                 timings={"total": time.time() - start_time},
                 verification_status="passed",
-                document_count=0
+                document_count=0,
             )
 
         # NOTE: Casual conversation detection removed (Dec 2025)
@@ -594,18 +665,18 @@ class AgenticRAGOrchestrator:
             logger.info(f"🚫 [Out-of-Domain] Query rejected: {reason}")
             answer_text = OUT_OF_DOMAIN_RESPONSES.get(reason, OUT_OF_DOMAIN_RESPONSES["unknown"])
             return CoreResult(
-                    answer=answer_text,
-                    sources=[],
-                    verification_score=0.0,
-                    evidence_score=0.0,
-                    is_ambiguous=False,
-                    entities={},
-                    model_used=f"out-of-domain-{reason}",
-                    timings={"total": time.time() - start_time},
-                    verification_status="blocked",
-                    document_count=0,
-                    warnings=[f"Query blocked: {reason}"]
-                )
+                answer=answer_text,
+                sources=[],
+                verification_score=0.0,
+                evidence_score=0.0,
+                is_ambiguous=False,
+                entities={},
+                model_used=f"out-of-domain-{reason}",
+                timings={"total": time.time() - start_time},
+                verification_status="blocked",
+                document_count=0,
+                warnings=[f"Query blocked: {reason}"],
+            )
 
         # 0.8 PRE-RAG ENTITY EXTRACTION
         with trace_span("entity.extraction", {"query_length": len(query)}):
@@ -629,7 +700,7 @@ class AgenticRAGOrchestrator:
                         # Assuming cached['result'] is the answer if it's the old format.
                         # Best effort mapping for now:
 
-                        cached_result = cached.get("result", cached) # Handle wrapper
+                        cached_result = cached.get("result", cached)  # Handle wrapper
 
                         # Check if it's a dict that looks like CoreResult (has 'model_used' etc) or old result
                         answer = cached_result.get("answer", "")
@@ -642,7 +713,7 @@ class AgenticRAGOrchestrator:
                             cache_hit=True,
                             timings={"total": time.time() - start_time},
                             entities=extracted_entities,
-                            document_count=len(sources)
+                            document_count=len(sources),
                         )
                     else:
                         set_span_attribute("cache_hit", "false")
@@ -651,7 +722,7 @@ class AgenticRAGOrchestrator:
                     set_span_status("error", str(e))
 
         # Default model tier (will be refined by intent classifier if not streaming)
-        model_tier = TIER_PRO # Default to PRO for non-streaming
+        model_tier = TIER_PRO  # Default to PRO for non-streaming
         deep_think_mode = False
 
         # Initialize state components for ReAct
@@ -661,7 +732,9 @@ class AgenticRAGOrchestrator:
         # Build system prompt with KG context
         system_context_for_prompt = ""
         if any(extracted_entities.values()):
-            system_context_for_prompt = f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
+            system_context_for_prompt = (
+                f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
+            )
 
         # KG-Enhanced Retrieval: Get graph context for query
         kg_context = None
@@ -670,7 +743,9 @@ class AgenticRAGOrchestrator:
                 kg_context = await self.kg_retrieval.get_context_for_query(query, max_depth=1)
                 if kg_context and kg_context.graph_summary:
                     system_context_for_prompt += "\n" + kg_context.graph_summary
-                    logger.info(f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context")
+                    logger.info(
+                        f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context"
+                    )
             except Exception as e:
                 logger.warning(f"⚠️ [KG] Failed to get graph context: {e}")
 
@@ -678,14 +753,13 @@ class AgenticRAGOrchestrator:
             user_id=user_id or "anonymous",
             context=user_context,
             query=query,
-            additional_context=system_context_for_prompt, # Inject extracted entities + KG context
-            conversation_history=history_to_use  # Pass history for greeting check
+            additional_context=system_context_for_prompt,  # Inject extracted entities + KG context
+            conversation_history=history_to_use,  # Pass history for greeting check
         )
 
         # Create chat session
         chat = self.llm_gateway.create_chat_with_history(
-             history_to_use=history_to_use,
-             model_tier=model_tier
+            history_to_use=history_to_use, model_tier=model_tier
         )
         # --- QUALITY ROUTING: REACT LOOP (Full Agentic Architecture) ---
         logger.info(f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})")
@@ -697,17 +771,20 @@ class AgenticRAGOrchestrator:
             "search": 0.0,
             "rerank": 0.0,
             "llm": 0.0,
-            "reasoning": 0.0
+            "reasoning": 0.0,
         }
 
         # Initialize token usage for tracking (default if exception occurs)
         token_usage = TokenUsage()
 
-        with trace_span("react.loop", {
-            "model_tier": model_tier,
-            "user_id": user_id or "anonymous",
-            "query_length": len(query),
-        }):
+        with trace_span(
+            "react.loop",
+            {
+                "model_tier": model_tier,
+                "user_id": user_id or "anonymous",
+                "query_length": len(query),
+            },
+        ):
             try:
                 loop_start = time.time()
                 (
@@ -816,10 +893,12 @@ class AgenticRAGOrchestrator:
             completion_tokens=token_usage.completion_tokens,
             total_tokens=token_usage.total_tokens,
             cost_usd=token_usage.cost_usd,
-            verification_status="passed" if getattr(state, "verification_score", 0.0) > 0.7 else "unchecked",
+            verification_status="passed"
+            if getattr(state, "verification_score", 0.0) > 0.7
+            else "unchecked",
             document_count=len(sources),
             timings=timings,
-            warnings=[]
+            warnings=[],
         )
 
     def _create_error_event(
@@ -861,12 +940,15 @@ class AgenticRAGOrchestrator:
         tool_execution_counter = {"count": 0}
 
         # 🔍 TRACING: Add span event for stream query start
-        add_span_event("stream_query.start", {
-            "user_id": user_id,
-            "query_length": len(query),
-            "session_id": session_id or "none",
-            "images_count": len(images) if images else 0,
-        })
+        add_span_event(
+            "stream_query.start",
+            {
+                "user_id": user_id,
+                "query_length": len(query),
+                "session_id": session_id or "none",
+                "images_count": len(images) if images else 0,
+            },
+        )
 
         # Log vision mode if images are attached
         if images:
@@ -877,11 +959,7 @@ class AgenticRAGOrchestrator:
             try:
                 memory_orchestrator = await self._get_memory_orchestrator()
                 user_context = await get_user_context(
-                    self.db_pool,
-                    user_id,
-                    memory_orchestrator,
-                    query=query,
-                    session_id=session_id
+                    self.db_pool, user_id, memory_orchestrator, query=query, session_id=session_id
                 )
                 set_span_attribute("facts_count", len(user_context.get("facts", [])))
                 set_span_status("ok")
@@ -891,7 +969,11 @@ class AgenticRAGOrchestrator:
                 set_span_status("error", str(e))
 
         history_to_use = conversation_history or user_context.get("history", [])
-        if not isinstance(history_to_use, list) or history_to_use and not isinstance(history_to_use[0], dict):
+        if (
+            not isinstance(history_to_use, list)
+            or history_to_use
+            and not isinstance(history_to_use[0], dict)
+        ):
             history_to_use = []
 
         # Apply context window management for long conversations
@@ -899,24 +981,30 @@ class AgenticRAGOrchestrator:
         if len(history_to_use) > 0:
             trim_result = self.context_window_manager.trim_conversation_history(history_to_use)
             if trim_result["needs_summarization"]:
-                logger.info(f"📊 [ContextWindow Stream] Summarizing {len(trim_result['messages_to_summarize'])} older messages")
+                logger.info(
+                    f"📊 [ContextWindow Stream] Summarizing {len(trim_result['messages_to_summarize'])} older messages"
+                )
                 try:
                     summary = await self.context_window_manager.generate_summary(
-                        trim_result["messages_to_summarize"],
-                        trim_result["context_summary"]
+                        trim_result["messages_to_summarize"], trim_result["context_summary"]
                     )
                     history_to_use = self.context_window_manager.inject_summary_into_history(
-                        trim_result["trimmed_messages"],
-                        summary
+                        trim_result["trimmed_messages"], summary
                     )
-                    logger.info(f"✅ [ContextWindow Stream] Summarized to {len(history_to_use)} messages with summary")
+                    logger.info(
+                        f"✅ [ContextWindow Stream] Summarized to {len(history_to_use)} messages with summary"
+                    )
                 except Exception as e:
-                    logger.warning(f"⚠️ [ContextWindow Stream] Summarization failed, using trimmed history: {e}")
+                    logger.warning(
+                        f"⚠️ [ContextWindow Stream] Summarization failed, using trimmed history: {e}"
+                    )
                     history_to_use = trim_result["trimmed_messages"]
             else:
                 history_to_use = trim_result["trimmed_messages"]
 
-        logger.info(f"🧠 [Stream Context] Loaded context for {user_id or 'anonymous'} (History: {len(history_to_use)} msgs)")
+        logger.info(
+            f"🧠 [Stream Context] Loaded context for {user_id or 'anonymous'} (History: {len(history_to_use)} msgs)"
+        )
 
         # -1. SECURITY GATE: Prompt Injection Detection (MUST BE FIRST!)
         is_injection, injection_response = self.prompt_builder.detect_prompt_injection(query)
@@ -953,7 +1041,9 @@ class AgenticRAGOrchestrator:
             return
 
         # 0.5 Check Identity / Hardcoded Patterns
-        identity_response = self.prompt_builder.check_identity_questions(query, context=user_context)
+        identity_response = self.prompt_builder.check_identity_questions(
+            query, context=user_context
+        )
         if identity_response:
             logger.info("🤖 [Identity Stream] Returning hardcoded identity response")
             yield {"type": "metadata", "data": {"status": "identity", "route": "identity-pattern"}}
@@ -985,8 +1075,8 @@ class AgenticRAGOrchestrator:
                     "data": {
                         "status": "clarification_needed",
                         "confidence": ambiguity_info["confidence"],
-                        "reasons": ambiguity_info["reasons"]
-                    }
+                        "reasons": ambiguity_info["reasons"],
+                    },
                 }
 
                 # Stream the clarification question
@@ -1000,13 +1090,15 @@ class AgenticRAGOrchestrator:
 
         # EARLY TEAM QUERY CHECK - handle team questions immediately
         is_team_query, team_query_type, team_search_term = detect_team_query(query)
-        if is_team_query and "team_knowledge" in self.tools: # Changed self.tool_map to self.tools
-            logger.info(f"🎯 [Early Team Route] Forcing team_knowledge for: {team_query_type}={team_search_term}")
+        if is_team_query and "team_knowledge" in self.tools:  # Changed self.tool_map to self.tools
+            logger.info(
+                f"🎯 [Early Team Route] Forcing team_knowledge for: {team_query_type}={team_search_term}"
+            )
             yield {"type": "metadata", "data": {"status": "team-query", "route": "team-knowledge"}}
             yield {"type": "status", "data": "Fetching team data..."}
             try:
                 team_result = await execute_tool(
-                    self.tools, # Changed self.tool_map to self.tools
+                    self.tools,  # Changed self.tool_map to self.tools
                     "team_knowledge",
                     {"query_type": team_query_type, "search_term": team_search_term},
                     user_id,
@@ -1029,9 +1121,14 @@ Answer directly. Example: "Zainal Abidin è il CEO di {settings.COMPANY_NAME}."
                         history_to_use=history_to_use, model_tier=TIER_FLASH
                     )
                     team_response, model_used, _ = await self.llm_gateway.send_message(
-                        team_chat, team_prompt, system_prompt="", tier=TIER_FLASH, enable_function_calling=False
+                        team_chat,
+                        team_prompt,
+                        system_prompt="",
+                        tier=TIER_FLASH,
+                        enable_function_calling=False,
                     )
                     import re
+
                     tokens = re.findall(r"\S+|\s+", team_response)
                     for token in tokens:
                         yield {"type": "token", "data": token}
@@ -1046,14 +1143,19 @@ Answer directly. Example: "Zainal Abidin è il CEO di {settings.COMPANY_NAME}."
         # for information that's actually in the conversation history
         if _is_conversation_recall_query(query) and len(history_to_use) > 0:
             logger.info("🧠 [Recall Gate] Detected conversation recall query - bypassing RAG")
-            yield {"type": "metadata", "data": {"status": "recall", "route": "conversation-history"}}
+            yield {
+                "type": "metadata",
+                "data": {"status": "recall", "route": "conversation-history"},
+            }
             yield {"type": "status", "data": "Ricordando la conversazione..."}
 
             # Format conversation history for the prompt
-            history_text = "\n".join([
-                f"{'USER' if msg.get('role') == 'user' else 'ASSISTANT'}: {msg.get('content', '')}"
-                for msg in history_to_use[-20:]  # Last 20 messages
-            ])
+            history_text = "\n".join(
+                [
+                    f"{'USER' if msg.get('role') == 'user' else 'ASSISTANT'}: {msg.get('content', '')}"
+                    for msg in history_to_use[-20:]  # Last 20 messages
+                ]
+            )
 
             recall_prompt = f"""You are ZANTARA. The user is asking you to recall something from THIS conversation.
 
@@ -1069,12 +1171,18 @@ Respond in the SAME language the user is using."""
 
             try:
                 recall_chat = self.llm_gateway.create_chat_with_history(
-                    history_to_use=[], model_tier=TIER_FLASH  # Empty history - we put it in prompt
+                    history_to_use=[],
+                    model_tier=TIER_FLASH,  # Empty history - we put it in prompt
                 )
                 recall_response, model_used, _, _ = await self.llm_gateway.send_message(
-                    recall_chat, recall_prompt, system_prompt="", tier=TIER_FLASH, enable_function_calling=False
+                    recall_chat,
+                    recall_prompt,
+                    system_prompt="",
+                    tier=TIER_FLASH,
+                    enable_function_calling=False,
                 )
                 import re
+
                 tokens = re.findall(r"\S+|\s+", recall_response)
                 for token in tokens:
                     yield {"type": "token", "data": token}
@@ -1108,16 +1216,17 @@ Respond in the SAME language the user is using."""
         with trace_span("entity.extraction_stream", {"query_length": len(query)}):
             extracted_entities = await self.entity_extractor.extract_entities(query)
             if any(extracted_entities.values()):
-                logger.info(f"🔍 [Entity Extraction Stream] Extracted entities: {extracted_entities}")
+                logger.info(
+                    f"🔍 [Entity Extraction Stream] Extracted entities: {extracted_entities}"
+                )
                 set_span_attribute("entities_found", str(extracted_entities))
-                yield {
-                    "type": "metadata",
-                    "data": {"extracted_entities": extracted_entities}
-                }
+                yield {"type": "metadata", "data": {"extracted_entities": extracted_entities}}
             set_span_status("ok")
 
         # 1. SEMANTIC CACHE CHECK
-        with trace_span("cache.semantic_check_stream", {"cache_enabled": bool(self.semantic_cache)}):
+        with trace_span(
+            "cache.semantic_check_stream", {"cache_enabled": bool(self.semantic_cache)}
+        ):
             if self.semantic_cache:
                 try:
                     cached = await self.semantic_cache.get_cached_result(query)
@@ -1129,7 +1238,10 @@ Respond in the SAME language the user is using."""
                         result["cache_hit"] = cached.get("cache_hit", "exact")
                         result["execution_time"] = time.time() - start_time
 
-                        yield {"type": "metadata", "data": {"status": "cache-hit", "route": "semantic-cache"}}
+                        yield {
+                            "type": "metadata",
+                            "data": {"status": "cache-hit", "route": "semantic-cache"},
+                        }
                         for token in result["answer"].split():
                             yield {"type": "token", "data": token + " "}
                             await asyncio.sleep(0.01)
@@ -1171,7 +1283,9 @@ Respond in the SAME language the user is using."""
         # Build system prompt with KG context
         system_context_for_prompt = ""
         if any(extracted_entities.values()):
-            system_context_for_prompt = f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
+            system_context_for_prompt = (
+                f"\nKNOWN ENTITIES (Use strict filtering if possible): {extracted_entities}"
+            )
 
         # KG-Enhanced Retrieval: Get graph context for query
         if self.kg_retrieval:
@@ -1179,14 +1293,19 @@ Respond in the SAME language the user is using."""
                 kg_context = await self.kg_retrieval.get_context_for_query(query, max_depth=1)
                 if kg_context and kg_context.graph_summary:
                     system_context_for_prompt += "\n" + kg_context.graph_summary
-                    logger.info(f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context")
+                    logger.info(
+                        f"🔗 [KG] Added {len(kg_context.entities_found)} entities, {len(kg_context.relationships)} relationships to context"
+                    )
             except Exception as e:
                 logger.warning(f"⚠️ [KG] Failed to get graph context: {e}")
 
         system_prompt = self.prompt_builder.build_system_prompt(
-            user_id, user_context, query, deep_think_mode=deep_think_mode,
-            additional_context=system_context_for_prompt, # Inject extracted entities + KG context
-            conversation_history=history_to_use  # Pass history for greeting check
+            user_id,
+            user_context,
+            query,
+            deep_think_mode=deep_think_mode,
+            additional_context=system_context_for_prompt,  # Inject extracted entities + KG context
+            conversation_history=history_to_use,  # Pass history for greeting check
         )
 
         # Create chat session
@@ -1196,10 +1315,13 @@ Respond in the SAME language the user is using."""
 
         # Stream response using New Streaming ReAct Logic
         # 🔍 TRACING: Add event for ReAct stream start
-        add_span_event("react.stream.start", {
-            "model_tier": model_tier,
-            "user_id": user_id,
-        })
+        add_span_event(
+            "react.stream.start",
+            {
+                "model_tier": model_tier,
+                "user_id": user_id,
+            },
+        )
 
         full_answer = ""
         try:
@@ -1214,8 +1336,10 @@ Respond in the SAME language the user is using."""
                 state=state,
                 llm_gateway=self.llm_gateway,
                 chat=chat,
-                initial_prompt=_wrap_query_with_language_instruction(query), # Wrapped with language instruction
-                system_prompt=system_prompt, # System prompt with injected entities
+                initial_prompt=_wrap_query_with_language_instruction(
+                    query
+                ),  # Wrapped with language instruction
+                system_prompt=system_prompt,  # System prompt with injected entities
                 query=query,
                 user_id=user_id or "anonymous",
                 model_tier=model_tier,
@@ -1232,7 +1356,7 @@ Respond in the SAME language the user is using."""
                                 "correlation_id": correlation_id,
                                 "user_id": user_id,
                                 "error_count": event_error_count,
-                            }
+                            },
                         )
                         metrics_collector.stream_event_none_total.inc()
 
@@ -1240,7 +1364,7 @@ Respond in the SAME language the user is using."""
                             yield self._create_error_event(
                                 "too_many_errors",
                                 "Stream aborted due to too many malformed events",
-                                correlation_id
+                                correlation_id,
                             )
                             break
                         continue
@@ -1254,7 +1378,7 @@ Respond in the SAME language the user is using."""
                                 "user_id": user_id,
                                 "event_type": str(type(raw_event)),
                                 "error_count": event_error_count,
-                            }
+                            },
                         )
                         metrics_collector.stream_event_invalid_type_total.inc()
                         continue
@@ -1273,7 +1397,7 @@ Respond in the SAME language the user is using."""
                                     "user_id": user_id,
                                     "validation_errors": str(e.errors()),
                                     "raw_event": str(raw_event)[:200],
-                                }
+                                },
                             )
                             metrics_collector.stream_event_validation_failed_total.inc()
 
@@ -1281,7 +1405,7 @@ Respond in the SAME language the user is using."""
                             yield self._create_error_event(
                                 "validation_error",
                                 f"Event validation failed: {str(e)}",
-                                correlation_id
+                                correlation_id,
                             )
                             continue
                     else:
@@ -1299,6 +1423,7 @@ Respond in the SAME language the user is using."""
                     event_error_count += 1
                     # Use error classification for better error handling
                     from app.core.error_classification import ErrorClassifier, get_error_context
+
                     error_category, error_severity = ErrorClassifier.classify_error(e)
                     error_context = get_error_context(
                         e,
@@ -1308,16 +1433,13 @@ Respond in the SAME language the user is using."""
                     )
 
                     logger.exception(
-                        "❌ [Stream] Unexpected error processing event",
-                        extra=error_context
+                        "❌ [Stream] Unexpected error processing event", extra=error_context
                     )
                     metrics_collector.stream_event_processing_error_total.inc()
 
                     if event_error_count >= self._max_event_errors:
                         yield self._create_error_event(
-                            "processing_error",
-                            f"Stream aborted: {str(e)}",
-                            correlation_id
+                            "processing_error", f"Stream aborted: {str(e)}", correlation_id
                         )
                         break
 
@@ -1325,11 +1447,14 @@ Respond in the SAME language the user is using."""
             execution_time = time.time() - start_time
 
             # 🔍 TRACING: Add event for stream completion
-            add_span_event("react.stream.complete", {
-                "execution_time_ms": int(execution_time * 1000),
-                "answer_length": len(full_answer),
-                "tools_executed": tool_execution_counter["count"],
-            })
+            add_span_event(
+                "react.stream.complete",
+                {
+                    "execution_time_ms": int(execution_time * 1000),
+                    "answer_length": len(full_answer),
+                    "tools_executed": tool_execution_counter["count"],
+                },
+            )
 
             # 🎯 PROACTIVITY: Generate follow-up questions
             followup_questions = []
@@ -1339,14 +1464,16 @@ Respond in the SAME language the user is using."""
                         query=query,
                         response=full_answer[:500],  # Use first 500 chars for efficiency
                         use_ai=True,  # AI generates in user's language (any language)
-                        conversation_context=None
+                        conversation_context=None,
                     )
                     if followup_questions:
-                        logger.info(f"📝 [Proactive] Generated {len(followup_questions)} follow-up questions")
+                        logger.info(
+                            f"📝 [Proactive] Generated {len(followup_questions)} follow-up questions"
+                        )
                         # Emit metadata event with follow-up questions
                         yield {
                             "type": "metadata",
-                            "data": {"followup_questions": followup_questions}
+                            "data": {"followup_questions": followup_questions},
                         }
                 except Exception as followup_err:
                     logger.warning(f"⚠️ [Proactive] Failed to generate follow-ups: {followup_err}")
@@ -1354,9 +1481,7 @@ Respond in the SAME language the user is using."""
             # 🧠 MEMORY PERSISTENCE (background)
             if full_answer and user_id and user_id != "anonymous":
                 try:
-                    asyncio.create_task(
-                        self._save_conversation_memory(user_id, query, full_answer)
-                    )
+                    asyncio.create_task(self._save_conversation_memory(user_id, query, full_answer))
                 except Exception as mem_err:
                     logger.warning(f"Failed to trigger memory save: {mem_err}")
 
@@ -1370,6 +1495,7 @@ Respond in the SAME language the user is using."""
         except Exception as e:
             # Use error classification for better error handling
             from app.core.error_classification import ErrorClassifier, get_error_context
+
             error_category, error_severity = ErrorClassifier.classify_error(e)
             error_context = get_error_context(
                 e,
@@ -1378,16 +1504,11 @@ Respond in the SAME language the user is using."""
                 query=query[:100],
             )
 
-            logger.exception(
-                "❌ [Stream] Fatal error in stream_query",
-                extra=error_context
-            )
+            logger.exception("❌ [Stream] Fatal error in stream_query", extra=error_context)
             add_span_event("react.stream.error", {"error": str(e)})
             # Yield final error event
             yield self._create_error_event(
-                "fatal_error",
-                f"Stream failed: {str(e)}",
-                correlation_id
+                "fatal_error", f"Stream failed: {str(e)}", correlation_id
             )
             metrics_collector.stream_fatal_error_total.inc()
             return
@@ -1403,7 +1524,8 @@ Respond in the SAME language the user is using."""
             )
             task.add_done_callback(
                 lambda t: logger.error(f"❌ Memory save failed: {t.exception()}")
-                if t.exception() else None
+                if t.exception()
+                else None
             )
 
         return

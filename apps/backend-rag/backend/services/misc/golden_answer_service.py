@@ -13,8 +13,11 @@ Flow:
 This provides 250x speedup for ~50-60% of queries.
 """
 
+from __future__ import annotations
+
 import hashlib
 import logging
+from typing import Any
 
 import asyncpg
 import numpy as np
@@ -40,7 +43,7 @@ class GoldenAnswerService:
         """
         self.database_url = database_url
         self.pool: asyncpg.Pool | None = None
-        self.model: SentenceTransformer | None = None
+        self.model: Any | None = None
         self.similarity_threshold = 0.80  # 80% similarity required
 
     async def connect(self):

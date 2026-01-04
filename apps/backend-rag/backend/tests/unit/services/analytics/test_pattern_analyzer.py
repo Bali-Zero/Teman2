@@ -50,12 +50,13 @@ class TestPatternAnalyzerService:
     async def test_analyze_work_patterns_with_sessions(self, pattern_analyzer, mock_db_pool):
         """Test analyzing work patterns with sessions"""
         from unittest.mock import MagicMock
+
         session = MagicMock()
         session.__getitem__ = lambda self, key: {
             "session_start": datetime.now(),
             "duration_minutes": 60,
             "day_of_week": 1,
-            "start_hour": 9.0
+            "start_hour": 9.0,
         }.get(key)
         sessions = [session]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -70,4 +71,3 @@ class TestPatternAnalyzerService:
         results = await pattern_analyzer.analyze_work_patterns(user_email="test@example.com")
         assert isinstance(results, dict)
         mock_db_pool.fetch.assert_called_once()
-

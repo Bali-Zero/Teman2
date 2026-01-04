@@ -54,20 +54,24 @@ def mock_memory_cache():
 def mock_auto_crm():
     """Mock Auto-CRM Service"""
     service = MagicMock()
-    service.process_conversation = AsyncMock(return_value={
-        "success": True,
-        "client_id": 123,
-        "client_created": True,
-        "practice_id": 456,
-        "practice_created": False
-    })
+    service.process_conversation = AsyncMock(
+        return_value={
+            "success": True,
+            "client_id": 123,
+            "client_created": True,
+            "practice_id": 456,
+            "practice_created": False,
+        }
+    )
     return service
 
 
 @pytest.fixture
 def conversation_service(mock_db_pool, mock_memory_cache):
     """Create ConversationService with mocked dependencies"""
-    with patch('services.misc.conversation_service.get_memory_cache', return_value=mock_memory_cache):
+    with patch(
+        "services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+    ):
         service = ConversationService(db_pool=mock_db_pool)
         return service
 
@@ -83,7 +87,7 @@ class TestE2EConversationFlow:
         user_email = "test@example.com"
         messages = [
             {"role": "user", "content": "Mi chiamo Marco Verdi e voglio aprire una PT PMA"},
-            {"role": "assistant", "content": "Ciao Marco! Ti aiuto con la PT PMA."}
+            {"role": "assistant", "content": "Ciao Marco! Ti aiuto con la PT PMA."},
         ]
         session_id = "test-session-123"
 
@@ -98,12 +102,12 @@ class TestE2EConversationFlow:
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
         # Mock Auto-CRM
-        with patch.object(conversation_service, '_get_auto_crm', return_value=mock_auto_crm):
+        with patch.object(conversation_service, "_get_auto_crm", return_value=mock_auto_crm):
             result = await conversation_service.save_conversation(
                 user_email=user_email,
                 messages=messages,
                 session_id=session_id,
-                metadata={"source": "web"}
+                metadata={"source": "web"},
             )
 
             # Verify conversation was saved
@@ -131,7 +135,7 @@ class TestE2EConversationFlow:
         mock_row.__getitem__ = lambda self, key: {
             "messages": [
                 {"role": "user", "content": "Ciao"},
-                {"role": "assistant", "content": "Ciao! Come posso aiutarti?"}
+                {"role": "assistant", "content": "Ciao! Come posso aiutarti?"},
             ]
         }[key]
 
@@ -140,9 +144,7 @@ class TestE2EConversationFlow:
 
         # Retrieve history
         result = await conversation_service.get_history(
-            user_email=user_email,
-            limit=10,
-            session_id=session_id
+            user_email=user_email, limit=10, session_id=session_id
         )
 
         # Verify history retrieved
@@ -164,16 +166,16 @@ class TestE2EConversationFlow:
         conn.fetchrow = AsyncMock(side_effect=Exception("DB error"))
 
         # Mock memory cache fallback
-        mock_memory_cache.get_conversation = MagicMock(return_value=[
-            {"role": "user", "content": "Ciao"},
-            {"role": "assistant", "content": "Ciao!"}
-        ])
+        mock_memory_cache.get_conversation = MagicMock(
+            return_value=[
+                {"role": "user", "content": "Ciao"},
+                {"role": "assistant", "content": "Ciao!"},
+            ]
+        )
 
         # Retrieve history
         result = await conversation_service.get_history(
-            user_email=user_email,
-            limit=10,
-            session_id=session_id
+            user_email=user_email, limit=10, session_id=session_id
         )
 
         # Verify fallback to memory cache
@@ -192,12 +194,12 @@ class TestE2EConversationFlow:
         # Save multiple turns
         turn1_messages = [
             {"role": "user", "content": "Mi chiamo Marco"},
-            {"role": "assistant", "content": "Ciao Marco!"}
+            {"role": "assistant", "content": "Ciao Marco!"},
         ]
 
         turn2_messages = [
             {"role": "user", "content": "Come mi chiamo?"},
-            {"role": "assistant", "content": "Ti chiami Marco!"}
+            {"role": "assistant", "content": "Ti chiami Marco!"},
         ]
 
         # Mock DB inserts
@@ -212,15 +214,11 @@ class TestE2EConversationFlow:
 
         # Save both turns
         result1 = await conversation_service.save_conversation(
-            user_email=user_email,
-            messages=turn1_messages,
-            session_id=session_id
+            user_email=user_email, messages=turn1_messages, session_id=session_id
         )
 
         result2 = await conversation_service.save_conversation(
-            user_email=user_email,
-            messages=turn2_messages,
-            session_id=session_id
+            user_email=user_email, messages=turn2_messages, session_id=session_id
         )
 
         # Verify both saved
@@ -240,7 +238,7 @@ class TestE2EConversationFlow:
             {
                 "role": "user",
                 "content": "Ho completato la domanda per E33G oggi",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         ]
         session_id = "test-session-123"
@@ -253,19 +251,16 @@ class TestE2EConversationFlow:
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
         # Mock EpisodicMemoryService
-        with patch('services.memory.EpisodicMemoryService') as mock_episodic:
+        with patch("services.memory.EpisodicMemoryService") as mock_episodic:
             mock_episodic_instance = MagicMock()
-            mock_episodic_instance.create_event = AsyncMock(return_value={
-                "event_id": 123,
-                "success": True
-            })
+            mock_episodic_instance.create_event = AsyncMock(
+                return_value={"event_id": 123, "success": True}
+            )
             mock_episodic.return_value = mock_episodic_instance
 
             # Save conversation
             result = await conversation_service.save_conversation(
-                user_email=user_email,
-                messages=messages,
-                session_id=session_id
+                user_email=user_email, messages=messages, session_id=session_id
             )
 
             # Verify conversation saved
@@ -285,7 +280,7 @@ class TestE2EConversationFlow:
             "source": "web",
             "ip": "127.0.0.1",
             "user_agent": "Mozilla/5.0",
-            "team_member": "system"
+            "team_member": "system",
         }
 
         # Mock DB insert
@@ -297,10 +292,7 @@ class TestE2EConversationFlow:
 
         # Save with metadata
         result = await conversation_service.save_conversation(
-            user_email=user_email,
-            messages=messages,
-            session_id="test-session",
-            metadata=metadata
+            user_email=user_email, messages=messages, session_id="test-session", metadata=metadata
         )
 
         # Verify metadata was included
@@ -324,9 +316,7 @@ class TestE2EConversationFlow:
 
         # Save conversation - should fallback to memory cache
         result = await conversation_service.save_conversation(
-            user_email=user_email,
-            messages=messages,
-            session_id="test-session"
+            user_email=user_email, messages=messages, session_id="test-session"
         )
 
         # Verify graceful degradation
@@ -336,4 +326,3 @@ class TestE2EConversationFlow:
 
         # Verify memory cache was used
         assert mock_memory_cache.add_message.called
-

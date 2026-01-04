@@ -352,7 +352,12 @@ def test_search_intel_limit_results(client, mock_embedder, mock_qdrant_client):
         return_value={
             "documents": ["Doc"] * 50,
             "metadatas": [
-                {"id": f"doc{i}", "title": f"Title {i}", "tier": "T1", "published_date": "2024-01-01"}
+                {
+                    "id": f"doc{i}",
+                    "title": f"Title {i}",
+                    "tier": "T1",
+                    "published_date": "2024-01-01",
+                }
                 for i in range(50)
             ],
             "distances": [0.1 + i * 0.01 for i in range(50)],
@@ -881,9 +886,7 @@ def test_get_trends_all_collections(client, mock_qdrant_client):
 
 def test_get_trends_handles_collection_exception(client, mock_qdrant_client):
     """Test trends handles exception from individual collection"""
-    mock_qdrant_client.get_collection_stats = MagicMock(
-        side_effect=Exception("Stats unavailable")
-    )
+    mock_qdrant_client.get_collection_stats = MagicMock(side_effect=Exception("Stats unavailable"))
 
     with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends?category=immigration")
@@ -967,9 +970,7 @@ def test_get_collection_stats_invalid_collection(client, mock_qdrant_client):
 
 def test_get_collection_stats_qdrant_exception(client, mock_qdrant_client):
     """Test stats endpoint handles Qdrant exception"""
-    mock_qdrant_client.get_collection_stats = MagicMock(
-        side_effect=Exception("Stats error")
-    )
+    mock_qdrant_client.get_collection_stats = MagicMock(side_effect=Exception("Stats error"))
 
     with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/stats/immigration")
@@ -988,6 +989,7 @@ def test_get_collection_stats_includes_timestamp(client, mock_qdrant_client):
 
         # Verify timestamp is ISO format
         from datetime import datetime
+
         try:
             datetime.fromisoformat(data["last_updated"])
             timestamp_valid = True

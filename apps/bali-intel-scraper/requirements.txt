@@ -1,21 +1,28 @@
-# BALI ZERO INTEL SCRAPER - Requirements
-# Ultra-economico: Llama 4 Scout + Gemini 2.0 Flash + Claude Haiku fallback
+# BALI ZERO INTEL SCRAPER - Requirements v2
+# Features: Smart Extraction, Pre-Scoring, Semantic Dedup, Claude Enrichment
 
 # API Framework
 fastapi==0.115.7
 uvicorn[standard]==0.34.0
 httpx==0.28.1
 
-# Web Scraping
+# Web Scraping - Multi-layer extraction
 requests==2.31.0
 beautifulsoup4==4.12.3
 lxml==5.1.0
 playwright==1.48.0
+trafilatura>=1.6.0          # Smart content extraction
+newspaper3k>=0.2.8          # Article extraction fallback
+feedparser>=6.0.0           # RSS parsing
 
 # AI Models
 anthropic==0.42.0
 google-generativeai==0.3.2
 openai==1.57.4
+
+# Semantic Deduplication (optional but recommended)
+qdrant-client>=1.7.0        # Vector database
+sentence-transformers>=2.2.0 # Local embeddings (all-MiniLM-L6-v2)
 
 # Utilities
 loguru==0.7.2
@@ -31,3 +38,9 @@ psycopg2-binary==2.9.9
 
 # Data processing
 pydantic==2.5.3
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0

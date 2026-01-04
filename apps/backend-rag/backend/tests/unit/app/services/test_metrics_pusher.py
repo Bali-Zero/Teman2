@@ -24,7 +24,7 @@ def metrics_pusher():
         username="test-user",
         token="test-token",
         push_interval=15,
-        service_name="test-service"
+        service_name="test-service",
     )
 
 
@@ -33,7 +33,10 @@ class TestMetricsPusher:
 
     def test_init(self, metrics_pusher):
         """Test initialization"""
-        assert metrics_pusher.remote_write_url == "https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push"
+        assert (
+            metrics_pusher.remote_write_url
+            == "https://prometheus-prod-01-eu-west-0.grafana.net/api/prom/push"
+        )
         assert metrics_pusher.username == "test-user"
         assert metrics_pusher.token == "test-token"
         assert metrics_pusher.push_interval == 15
@@ -98,8 +101,12 @@ class TestMetricsPusher:
     @pytest.mark.asyncio
     async def test_push_metrics(self, metrics_pusher):
         """Test pushing metrics"""
-        with patch.object(metrics_pusher, '_collect_metrics', return_value="test_metric 123.45") as mock_collect, \
-             patch("app.services.metrics_pusher.httpx.AsyncClient") as mock_client:
+        with (
+            patch.object(
+                metrics_pusher, "_collect_metrics", return_value="test_metric 123.45"
+            ) as mock_collect,
+            patch("app.services.metrics_pusher.httpx.AsyncClient") as mock_client,
+        ):
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_client_instance = AsyncMock()
@@ -111,4 +118,3 @@ class TestMetricsPusher:
 
             assert result is True
             mock_collect.assert_called_once()
-

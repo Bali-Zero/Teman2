@@ -26,7 +26,7 @@ VECTOR_SIZE = 1536  # text-embedding-3-small dimensions
 def create_collection(collection_name: str) -> bool:
     """Create collection if it doesn't exist."""
     url = f"{QDRANT_URL}/collections/{collection_name}"
-    
+
     # Check if collection exists
     check_cmd = [
         "curl",
@@ -40,7 +40,7 @@ def create_collection(collection_name: str) -> bool:
         "--max-time",
         "30",
     ]
-    
+
     try:
         result = subprocess.run(check_cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0 and "error" not in result.stdout.lower():
@@ -48,14 +48,14 @@ def create_collection(collection_name: str) -> bool:
             return True
     except:
         pass
-    
+
     # Create collection
     payload = {"vectors": {"size": VECTOR_SIZE, "distance": "Cosine"}}
-    
+
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
         json.dump(payload, tmp)
         tmp_path = tmp.name
-    
+
     create_cmd = [
         "curl",
         "-X",
@@ -74,11 +74,11 @@ def create_collection(collection_name: str) -> bool:
         "--max-time",
         "30",
     ]
-    
+
     try:
         result = subprocess.run(create_cmd, capture_output=True, text=True, timeout=30)
         output = result.stdout
-        
+
         if "HTTP_CODE:200" in output or "HTTP_CODE:201" in output:
             print(f"✅ Created collection {collection_name}")
             return True
@@ -107,7 +107,7 @@ def main():
         sys.exit(1)
 
     # Load payload data
-    with open(PAYLOAD_FILE, "r") as f:
+    with open(PAYLOAD_FILE) as f:
         data = json.load(f)
 
     collection = data["collection"]
@@ -118,12 +118,12 @@ def main():
     print(f"Total Points: {total}")
     print(f"Batch Size: {BATCH_SIZE}")
     print()
-    
+
     # Create collection if it doesn't exist
     if not create_collection(collection):
         print("❌ Cannot proceed without collection")
         sys.exit(1)
-    
+
     print()
 
     # Upload in batches
@@ -193,7 +193,7 @@ def main():
         print(f"✅ Upload complete! Successfully uploaded {success_count} points to {collection}")
         sys.exit(0)
     else:
-        print(f"⚠️  Upload completed with errors")
+        print("⚠️  Upload completed with errors")
         print(f"   Success: {success_count} points")
         print(f"   Failed: {failed_count} points")
         sys.exit(1)
@@ -201,4 +201,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

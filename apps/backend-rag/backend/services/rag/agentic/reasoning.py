@@ -107,16 +107,95 @@ def calculate_evidence_score(
         query_lower = query.lower()
         # Extract meaningful keywords (words longer than 3 chars, excluding common words)
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "can", "this", "that", "these",
-            "those", "i", "you", "he", "she", "it", "we", "they", "what", "which",
-            "who", "whom", "whose", "where", "when", "why", "how", "all", "each",
-            "every", "both", "few", "more", "most", "other", "some", "such", "no",
-            "nor", "not", "only", "own", "same", "so", "than", "too", "very",
-            "il", "la", "lo", "gli", "le", "un", "una", "uno", "di", "da",
-            "in", "con", "su", "per", "tra", "fra", "che", "chi", "cosa", "come",
-            "dove", "quando", "perché", "quale", "quali",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "can",
+            "this",
+            "that",
+            "these",
+            "those",
+            "i",
+            "you",
+            "he",
+            "she",
+            "it",
+            "we",
+            "they",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "whose",
+            "where",
+            "when",
+            "why",
+            "how",
+            "all",
+            "each",
+            "every",
+            "both",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "nor",
+            "not",
+            "only",
+            "own",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "il",
+            "la",
+            "lo",
+            "gli",
+            "le",
+            "un",
+            "una",
+            "uno",
+            "di",
+            "da",
+            "in",
+            "con",
+            "su",
+            "per",
+            "tra",
+            "fra",
+            "che",
+            "chi",
+            "cosa",
+            "come",
+            "dove",
+            "quando",
+            "perché",
+            "quale",
+            "quali",
         }
         query_keywords = [
             word.lower()
@@ -141,11 +220,11 @@ def _validate_context_quality(
 ) -> float:
     """
     Validate context quality and return score (0.0-1.0).
-    
+
     Args:
         query: Original user query
         context_items: List of context strings from tool results
-        
+
     Returns:
         Quality score between 0.0 and 1.0
     """
@@ -256,18 +335,24 @@ class ReasoningEngine:
 
         # ==================== REACT LOOP ====================
         # 🔍 TRACING: Span for entire ReAct loop
-        with trace_span("react.execute_loop", {
-            "user_id": user_id,
-            "max_steps": state.max_steps,
-            "query_length": len(query),
-        }):
+        with trace_span(
+            "react.execute_loop",
+            {
+                "user_id": user_id,
+                "max_steps": state.max_steps,
+                "query_length": len(query),
+            },
+        ):
             while state.current_step < state.max_steps:
                 state.current_step += 1
 
                 # 🔍 TRACING: Span for each step
-                with trace_span(f"react.step.{state.current_step}", {
-                    "step_number": state.current_step,
-                }):
+                with trace_span(
+                    f"react.step.{state.current_step}",
+                    {
+                        "step_number": state.current_step,
+                    },
+                ):
                     # Get model response with automatic fallback and native function calling
                     try:
                         if state.current_step == 1:
@@ -277,7 +362,12 @@ class ReasoningEngine:
                             last_observation = state.steps[-1].observation if state.steps else ""
                             message = f"Observation: {last_observation}\n\nContinue with your next thought or provide final answer."
 
-                        text_response, model_used_name, response_obj, step_usage = await llm_gateway.send_message(
+                        (
+                            text_response,
+                            model_used_name,
+                            response_obj,
+                            step_usage,
+                        ) = await llm_gateway.send_message(
                             chat,
                             message,
                             system_prompt,
@@ -291,7 +381,9 @@ class ReasoningEngine:
                         set_span_attribute("model_used", model_used_name)
                         set_span_attribute("step_tokens", step_usage.total_tokens)
                         conversation_messages.append({"role": "user", "content": message})
-                        conversation_messages.append({"role": "assistant", "content": text_response})
+                        conversation_messages.append(
+                            {"role": "assistant", "content": text_response}
+                        )
 
                     except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError) as e:
                         logger.error(f"Error during chat interaction: {e}", exc_info=True)
@@ -317,7 +409,9 @@ class ReasoningEngine:
                                 for part in candidate.content.parts:
                                     tool_call = parse_tool_call(part, use_native=True)
                                     if tool_call:
-                                        logger.info("✅ [Native Function Call] Detected in response")
+                                        logger.info(
+                                            "✅ [Native Function Call] Detected in response"
+                                        )
                                         set_span_attribute("function_call_mode", "native")
                                         break
                                 if tool_call:
@@ -339,7 +433,10 @@ class ReasoningEngine:
 
                     if is_valid_tool_call(tool_call):
                         set_span_attribute("tool_name", tool_call.tool_name)
-                        add_span_event("tool.call", {"tool": tool_call.tool_name, "args": str(tool_call.arguments)[:200]})
+                        add_span_event(
+                            "tool.call",
+                            {"tool": tool_call.tool_name, "args": str(tool_call.arguments)[:200]},
+                        )
 
                         logger.info(
                             f"🔧 [Agent] Calling tool: {tool_call.tool_name} with {tool_call.arguments}"
@@ -354,7 +451,9 @@ class ReasoningEngine:
 
                         # Store tool timing for metrics (attached to step later)
                         tool_call.execution_time = tool_duration
-                        set_span_attribute("tool_result_length", len(tool_result) if tool_result else 0)
+                        set_span_attribute(
+                            "tool_result_length", len(tool_result) if tool_result else 0
+                        )
                         set_span_attribute("tool_duration_ms", int(tool_duration * 1000))
 
                         # --- CITATION HANDLING ---
@@ -395,7 +494,9 @@ class ReasoningEngine:
                             except json.JSONDecodeError:
                                 pass
                             except (KeyError, ValueError, TypeError) as e:
-                                logger.warning(f"Failed to parse vector_search result: {e}", exc_info=True)
+                                logger.warning(
+                                    f"Failed to parse vector_search result: {e}", exc_info=True
+                                )
 
                         # Handle image generation results
                         if tool_call.tool_name == "generate_image":
@@ -403,9 +504,13 @@ class ReasoningEngine:
                                 parsed_result = json.loads(tool_result)
                                 if isinstance(parsed_result, dict) and parsed_result.get("success"):
                                     # Extract image URL or base64 data
-                                    image_url = parsed_result.get("image_url") or parsed_result.get("image_data")
+                                    image_url = parsed_result.get("image_url") or parsed_result.get(
+                                        "image_data"
+                                    )
                                     if image_url:
-                                        logger.info(f"🖼️ [Agent] Image generated: {parsed_result.get('service')}")
+                                        logger.info(
+                                            f"🖼️ [Agent] Image generated: {parsed_result.get('service')}"
+                                        )
                                         # Store in state for final response
                                         if not hasattr(state, "generated_images"):
                                             state.generated_images = []
@@ -429,7 +534,9 @@ class ReasoningEngine:
                         if tool_result and len(tool_result.strip()) > 0:
                             state.context_gathered.append(tool_result)
                         else:
-                            logger.warning("⚠️ [Agent] Skipping empty tool_result for context_gathered")
+                            logger.warning(
+                                "⚠️ [Agent] Skipping empty tool_result for context_gathered"
+                            )
 
                         # Validate context quality before using
                         if state.context_gathered:
@@ -445,26 +552,33 @@ class ReasoningEngine:
                                         "quality_score": quality_score,
                                         "context_items": len(state.context_gathered),
                                         "step": state.current_step,
-                                    }
+                                    },
                                 )
                                 try:
                                     from app.metrics import reasoning_low_context_quality_total
+
                                     reasoning_low_context_quality_total.inc()
                                 except ImportError:
                                     pass
 
                                 # Try to gather more context if not at max steps
                                 if state.current_step < state.max_steps:
-                                    logger.info("🔄 [Agent] Low quality context, continuing to gather more...")
+                                    logger.info(
+                                        "🔄 [Agent] Low quality context, continuing to gather more..."
+                                    )
                                     continue  # Try another tool
                                 else:
                                     # Last step - use what we have but warn
-                                    logger.warning("Using low-quality context due to max steps reached")
+                                    logger.warning(
+                                        "Using low-quality context due to max steps reached"
+                                    )
 
                         # OPTIMIZATION: Early exit (only for simple queries)
                         # Complex queries (business_complex, business_strategic) may need KG tool
                         complex_intents = {"business_complex", "business_strategic", "devai_code"}
-                        is_complex_query = getattr(state, "intent_type", "simple") in complex_intents
+                        is_complex_query = (
+                            getattr(state, "intent_type", "simple") in complex_intents
+                        )
 
                         if (
                             tool_call.tool_name == "vector_search"
@@ -477,16 +591,23 @@ class ReasoningEngine:
                             set_span_status("ok")
                             break
                         elif is_complex_query and tool_call.tool_name == "vector_search":
-                            logger.info("🔗 [Complex Query] Allowing multi-tool reasoning (KG may be needed)")
+                            logger.info(
+                                "🔗 [Complex Query] Allowing multi-tool reasoning (KG may be needed)"
+                            )
 
                         set_span_status("ok")
 
                     else:
                         # No tool call, assume final answer or just thought
                         set_span_attribute("has_tool_call", "false")
-                        if "Final Answer:" in text_response or state.current_step >= state.max_steps:
+                        if (
+                            "Final Answer:" in text_response
+                            or state.current_step >= state.max_steps
+                        ):
                             if "Final Answer:" in text_response:
-                                state.final_answer = text_response.split("Final Answer:")[-1].strip()
+                                state.final_answer = text_response.split("Final Answer:")[
+                                    -1
+                                ].strip()
                             else:
                                 state.final_answer = text_response
 
@@ -509,7 +630,9 @@ class ReasoningEngine:
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
         # 🔍 TRACING: Evidence score calculation
-        sources_count = len(state.sources) if hasattr(state, "sources") and state.sources is not None else 0
+        sources_count = (
+            len(state.sources) if hasattr(state, "sources") and state.sources is not None else 0
+        )
         with trace_span("react.evidence_score", {"sources_count": sources_count}):
             # Calculate evidence score after ReAct loop
             sources = state.sources if hasattr(state, "sources") else None
@@ -527,21 +650,34 @@ class ReasoningEngine:
         # Check if trusted tools (calculator, pricing, team) were used successfully
         # These tools provide their own evidence and don't need KB sources
         trusted_tools_used = False
-        trusted_tool_names = {"calculator", "get_pricing", "search_team_member", "get_team_members_list", "team_knowledge"}
+        trusted_tool_names = {
+            "calculator",
+            "get_pricing",
+            "search_team_member",
+            "get_team_members_list",
+            "team_knowledge",
+        }
         for step in state.steps:
             if step.action and hasattr(step.action, "tool_name"):
                 if step.action.tool_name in trusted_tool_names and step.observation:
                     # Tool was used and produced output
                     if "error" not in step.observation.lower():
                         trusted_tools_used = True
-                        logger.info(f"🧮 [Trusted Tool] {step.action.tool_name} used successfully, bypassing evidence check")
+                        logger.info(
+                            f"🧮 [Trusted Tool] {step.action.tool_name} used successfully, bypassing evidence check"
+                        )
                         break
 
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
         # Skip evidence check for general tasks (translation, summarization, etc.)
         # Also skip if trusted tools were used successfully
-        if state.final_answer and evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
+        if (
+            state.final_answer
+            and evidence_score < 0.3
+            and not state.skip_rag
+            and not trusted_tools_used
+        ):
             logger.warning(
                 f"🛡️ [Uncertainty] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
             )
@@ -579,7 +715,9 @@ class ReasoningEngine:
                         "(e.g., 'Based on limited information...', 'It appears that...'). "
                         "Do NOT be definitive."
                     )
-                    logger.info(f"🛡️ [Uncertainty] Weak evidence detected (Score: {evidence_score:.2f}), adding warning")
+                    logger.info(
+                        f"🛡️ [Uncertainty] Weak evidence detected (Score: {evidence_score:.2f}), adding warning"
+                    )
 
                 final_prompt = f"""
 Based on the information gathered:
@@ -589,7 +727,12 @@ Based on the information gathered:
 Provide a final, comprehensive answer to: {query}
 """
                 try:
-                    state.final_answer, model_used_name, _, final_usage = await llm_gateway.send_message(
+                    (
+                        state.final_answer,
+                        model_used_name,
+                        _,
+                        final_usage,
+                    ) = await llm_gateway.send_message(
                         chat,
                         final_prompt,
                         system_prompt,
@@ -607,7 +750,12 @@ Provide a final, comprehensive answer to: {query}
                 logger.info("🏷️ [General Task] No context needed, proceeding with LLM generation")
                 # Generate answer directly for general tasks
                 try:
-                    state.final_answer, model_used_name, _, final_usage = await llm_gateway.send_message(
+                    (
+                        state.final_answer,
+                        model_used_name,
+                        _,
+                        final_usage,
+                    ) = await llm_gateway.send_message(
                         chat,
                         f"Please answer this request: {query}",
                         system_prompt,
@@ -617,7 +765,9 @@ Provide a final, comprehensive answer to: {query}
                     accumulated_usage = accumulated_usage + final_usage
                 except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
                     logger.error("Failed to generate answer for general task", exc_info=True)
-                    state.final_answer = "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
+                    state.final_answer = (
+                        "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
+                    )
             else:
                 logger.warning("🛡️ [Uncertainty] No context gathered, triggering ABSTAIN")
                 state.final_answer = (
@@ -659,14 +809,17 @@ Provide a final, comprehensive answer to: {query}
                             f"🛡️ [Pipeline] REJECTED draft (Score: {verification.get('score', 0)}). "
                             f"Reason: {verification.get('reasoning', 'unknown')}"
                         )
-                        add_span_event("pipeline.self_correction", {"reason": verification.get('reasoning', 'unknown')})
+                        add_span_event(
+                            "pipeline.self_correction",
+                            {"reason": verification.get("reasoning", "unknown")},
+                        )
 
                         # SELF-CORRECTION
                         rephrase_prompt = f"""
 SYSTEM: Your previous answer was REJECTED by the fact-checker.
 
-REASON: {verification.get('reasoning', 'Insufficient evidence')}
-MISSING/WRONG: {', '.join(verification.get('missing_citations', []))}
+REASON: {verification.get("reasoning", "Insufficient evidence")}
+MISSING/WRONG: {", ".join(verification.get("missing_citations", []))}
 
 TASK: Rewrite the answer using ONLY the provided context.
 Do not invent information. If the context is insufficient, admit it.
@@ -774,7 +927,12 @@ Do not invent information. If the context is insufficient, admit it.
             # Check for native function call
             if hasattr(response_obj, "candidates") and response_obj.candidates:
                 for candidate in response_obj.candidates:
-                    if hasattr(candidate, "content") and candidate.content and hasattr(candidate.content, "parts") and candidate.content.parts:
+                    if (
+                        hasattr(candidate, "content")
+                        and candidate.content
+                        and hasattr(candidate.content, "parts")
+                        and candidate.content.parts
+                    ):
                         for part in candidate.content.parts:
                             tool_call = parse_tool_call(part, use_native=True)
                             if tool_call:
@@ -791,7 +949,10 @@ Do not invent information. If the context is insufficient, admit it.
 
             if is_valid_tool_call(tool_call):
                 # Yield tool call event
-                yield {"type": "tool_call", "data": {"tool": tool_call.tool_name, "args": tool_call.arguments}}
+                yield {
+                    "type": "tool_call",
+                    "data": {"tool": tool_call.tool_name, "args": tool_call.arguments},
+                }
 
                 logger.info(f"🔧 [Agent Stream] Calling tool: {tool_call.tool_name}")
                 tool_result, tool_duration = await execute_tool(
@@ -840,7 +1001,9 @@ Do not invent information. If the context is insufficient, admit it.
                         parsed_result = json.loads(tool_result)
                         if isinstance(parsed_result, dict) and parsed_result.get("success"):
                             # Extract image URL or base64 data
-                            image_url = parsed_result.get("image_url") or parsed_result.get("image_data")
+                            image_url = parsed_result.get("image_url") or parsed_result.get(
+                                "image_data"
+                            )
                             if image_url:
                                 # Yield special image event for frontend rendering
                                 yield {
@@ -849,9 +1012,11 @@ Do not invent information. If the context is insufficient, admit it.
                                         "url": image_url,
                                         "service": parsed_result.get("service", "unknown"),
                                         "prompt": parsed_result.get("message", ""),
-                                    }
+                                    },
                                 }
-                                logger.info(f"🖼️ [Agent Stream] Image generated: {parsed_result.get('service')}")
+                                logger.info(
+                                    f"🖼️ [Agent Stream] Image generated: {parsed_result.get('service')}"
+                                )
                                 # Store in state for final response
                                 if not hasattr(state, "generated_images"):
                                     state.generated_images = []
@@ -874,7 +1039,10 @@ Do not invent information. If the context is insufficient, admit it.
                     state.context_gathered.append(tool_result)
 
                 # Yield observation event
-                yield {"type": "observation", "data": tool_result[:500] if len(tool_result) > 500 else tool_result}
+                yield {
+                    "type": "observation",
+                    "data": tool_result[:500] if len(tool_result) > 500 else tool_result,
+                }
 
                 # Early exit optimization (only for simple queries)
                 # Complex queries (business_complex, business_strategic) may need KG tool
@@ -890,7 +1058,9 @@ Do not invent information. If the context is insufficient, admit it.
                     logger.info("🚀 [Stream Early Exit] Sufficient context from retrieval.")
                     break
                 elif is_complex_query and tool_call.tool_name == "vector_search":
-                    logger.info("🔗 [Stream Complex Query] Allowing multi-tool reasoning (KG may be needed)")
+                    logger.info(
+                        "🔗 [Stream Complex Query] Allowing multi-tool reasoning (KG may be needed)"
+                    )
 
             else:
                 # No tool call - check for final answer
@@ -927,10 +1097,20 @@ Do not invent information. If the context is insufficient, admit it.
         # Check if trusted tools (calculator, pricing, team) were used successfully
         # These tools provide their own evidence and don't need KB sources
         trusted_tools_used = False
-        trusted_tool_names = {"calculator", "get_pricing", "search_team_member", "get_team_members_list", "team_knowledge"}
+        trusted_tool_names = {
+            "calculator",
+            "get_pricing",
+            "search_team_member",
+            "get_team_members_list",
+            "team_knowledge",
+        }
         logger.info(f"🔍 [Trusted Tools Debug] Checking {len(state.steps)} steps for trusted tools")
         for step in state.steps:
-            tool_name = step.action.tool_name if step.action and hasattr(step.action, "tool_name") else "no_action"
+            tool_name = (
+                step.action.tool_name
+                if step.action and hasattr(step.action, "tool_name")
+                else "no_action"
+            )
             obs_preview = step.observation[:50] if step.observation else "None"
             logger.info(f"🔍 [Step Debug] tool={tool_name}, obs={obs_preview}")
             if step.action and hasattr(step.action, "tool_name"):
@@ -938,14 +1118,21 @@ Do not invent information. If the context is insufficient, admit it.
                     # Tool was used and produced output
                     if "error" not in step.observation.lower():
                         trusted_tools_used = True
-                        logger.info(f"🧮 [Trusted Tool Stream] {step.action.tool_name} used successfully, bypassing evidence check")
+                        logger.info(
+                            f"🧮 [Trusted Tool Stream] {step.action.tool_name} used successfully, bypassing evidence check"
+                        )
                         break
 
         # ==================== POLICY ENFORCEMENT ====================
         # If final_answer already exists but evidence is weak, override it
         # Skip evidence check for general tasks (translation, summarization, etc.)
         # Also skip if trusted tools were used successfully
-        if state.final_answer and evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
+        if (
+            state.final_answer
+            and evidence_score < 0.3
+            and not state.skip_rag
+            and not trusted_tools_used
+        ):
             logger.warning(
                 f"🛡️ [Uncertainty Stream] Overriding existing answer due to low evidence (Score: {evidence_score:.2f})"
             )
@@ -957,7 +1144,9 @@ Do not invent information. If the context is insufficient, admit it.
         elif state.skip_rag and evidence_score < 0.3:
             logger.info("🏷️ [General Task Stream] Skipping evidence check (skip_rag=True)")
         elif trusted_tools_used and evidence_score < 0.3:
-            logger.info("🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)")
+            logger.info(
+                "🧮 [Trusted Tool Stream] Skipping evidence check (trusted_tools_used=True)"
+            )
 
         # ==================== FINAL ANSWER GENERATION ====================
         if not state.final_answer and state.context_gathered:
@@ -966,7 +1155,9 @@ Do not invent information. If the context is insufficient, admit it.
             # Also skip if trusted tools were used successfully
             if evidence_score < 0.3 and not state.skip_rag and not trusted_tools_used:
                 # ABSTAIN: Skip LLM generation, return uncertainty message
-                logger.warning(f"🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: {evidence_score:.2f})")
+                logger.warning(
+                    f"🛡️ [Uncertainty Stream] Triggered ABSTAIN (Score: {evidence_score:.2f})"
+                )
                 state.final_answer = (
                     "Mi dispiace, non ho trovato informazioni verificate sufficienti "
                     "nei documenti ufficiali per rispondere alla tua domanda specifica. "
@@ -982,7 +1173,9 @@ Do not invent information. If the context is insufficient, admit it.
                         "(e.g., 'Based on limited information...', 'It appears that...'). "
                         "Do NOT be definitive."
                     )
-                    logger.info(f"🛡️ [Uncertainty Stream] Weak evidence detected (Score: {evidence_score:.2f}), adding warning")
+                    logger.info(
+                        f"🛡️ [Uncertainty Stream] Weak evidence detected (Score: {evidence_score:.2f}), adding warning"
+                    )
 
                 final_prompt = f"""
 Based on the information gathered:
@@ -1005,7 +1198,9 @@ Provide a final, comprehensive answer to: {query}
             # No context gathered at all
             # For general tasks, this is OK - generate answer without RAG context
             if state.skip_rag:
-                logger.info("🏷️ [General Task Stream] No context needed, proceeding with LLM generation")
+                logger.info(
+                    "🏷️ [General Task Stream] No context needed, proceeding with LLM generation"
+                )
                 try:
                     state.final_answer, _, _, _ = await llm_gateway.send_message(
                         chat,
@@ -1016,7 +1211,9 @@ Provide a final, comprehensive answer to: {query}
                     )
                 except (ResourceExhausted, ServiceUnavailable, ValueError, RuntimeError):
                     logger.error("Failed to generate answer for general task", exc_info=True)
-                    state.final_answer = "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
+                    state.final_answer = (
+                        "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
+                    )
             else:
                 logger.warning("🛡️ [Uncertainty Stream] No context gathered, triggering ABSTAIN")
                 state.final_answer = (
@@ -1030,7 +1227,9 @@ Provide a final, comprehensive answer to: {query}
             "no further action needed" in state.final_answer.lower()
             or "observation: none" in state.final_answer.lower()
         ):
-            state.final_answer = "Mi dispiace, non ho capito bene la tua richiesta. Potresti riformularla?"
+            state.final_answer = (
+                "Mi dispiace, non ho capito bene la tua richiesta. Potresti riformularla?"
+            )
 
         # Process through pipeline
         if state.final_answer and self.response_pipeline:
@@ -1055,7 +1254,7 @@ Provide a final, comprehensive answer to: {query}
             chunk_size = 20  # characters per chunk
             answer = state.final_answer
             for i in range(0, len(answer), chunk_size):
-                chunk = answer[i:i + chunk_size]
+                chunk = answer[i : i + chunk_size]
                 yield {"type": "token", "data": chunk}
 
         # Yield sources if available

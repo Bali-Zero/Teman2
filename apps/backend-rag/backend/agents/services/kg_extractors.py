@@ -182,4 +182,3 @@ Only include clear, meaningful relationships."""
         except Exception as e:
             logger.error(f"Error extracting relationships: {e}", exc_info=True)
             return []
-

@@ -11,7 +11,7 @@ import sys
 import tempfile
 from io import BytesIO
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -33,6 +33,7 @@ def app():
     """Create test FastAPI app with media router"""
     app = FastAPI()
     from app.routers.media import router
+
     app.include_router(router)
     return app
 
@@ -70,10 +71,7 @@ class TestGenerateImageEndpoint:
         }
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": "a beautiful sunset"}
-            )
+            response = client.post("/media/generate-image", json={"prompt": "a beautiful sunset"})
 
         assert response.status_code == 200
         data = response.json()
@@ -93,10 +91,7 @@ class TestGenerateImageEndpoint:
         }
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": "test prompt"}
-            )
+            response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 503
         data = response.json()
@@ -112,10 +107,7 @@ class TestGenerateImageEndpoint:
         }
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": ""}
-            )
+            response = client.post("/media/generate-image", json={"prompt": ""})
 
         assert response.status_code == 400
         data = response.json()
@@ -131,10 +123,7 @@ class TestGenerateImageEndpoint:
         }
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": "test prompt"}
-            )
+            response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 500
         data = response.json()
@@ -147,10 +136,7 @@ class TestGenerateImageEndpoint:
         mock_image_service.generate_image.side_effect = RuntimeError("Unexpected error")
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": "test prompt"}
-            )
+            response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 500
         data = response.json()
@@ -168,10 +154,7 @@ class TestGenerateImageEndpoint:
         }
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": "test"}
-            )
+            response = client.post("/media/generate-image", json={"prompt": "test"})
 
         assert response.status_code == 200
         data = response.json()
@@ -192,10 +175,7 @@ class TestGenerateImageEndpoint:
         }
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": long_prompt}
-            )
+            response = client.post("/media/generate-image", json={"prompt": long_prompt})
 
         assert response.status_code == 200
         assert response.json()["success"] is True
@@ -212,10 +192,7 @@ class TestGenerateImageEndpoint:
         }
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            response = client.post(
-                "/media/generate-image",
-                json={"prompt": special_prompt}
-            )
+            response = client.post("/media/generate-image", json={"prompt": special_prompt})
 
         assert response.status_code == 200
         mock_image_service.generate_image.assert_called_once_with(special_prompt)
@@ -223,20 +200,14 @@ class TestGenerateImageEndpoint:
     @pytest.mark.asyncio
     async def test_generate_image_invalid_request_body(self, client):
         """Test with invalid request body"""
-        response = client.post(
-            "/media/generate-image",
-            json={"wrong_field": "value"}
-        )
+        response = client.post("/media/generate-image", json={"wrong_field": "value"})
 
         assert response.status_code == 422  # Validation error
 
     @pytest.mark.asyncio
     async def test_generate_image_empty_request_body(self, client):
         """Test with empty request body"""
-        response = client.post(
-            "/media/generate-image",
-            json={}
-        )
+        response = client.post("/media/generate-image", json={})
 
         assert response.status_code == 422  # Validation error
 
@@ -304,6 +275,7 @@ class TestUploadFileEndpoint:
         mock_file_path = MagicMock()
 
         with patch("app.routers.media.Path") as mock_path_class:
+
             def path_side_effect(arg):
                 if arg == "image.png":
                     mock = MagicMock()
@@ -339,6 +311,7 @@ class TestUploadFileEndpoint:
         mock_file_path = MagicMock()
 
         with patch("app.routers.media.Path") as mock_path_class:
+
             def path_side_effect(arg):
                 if arg == "filename_no_ext":
                     mock = MagicMock()
@@ -373,6 +346,7 @@ class TestUploadFileEndpoint:
         mock_file_path = MagicMock()
 
         with patch("app.routers.media.Path") as mock_path_class:
+
             def path_side_effect(arg):
                 if arg == "document.pdf":
                     mock = MagicMock()
@@ -408,6 +382,7 @@ class TestUploadFileEndpoint:
         mock_file_path = MagicMock()
 
         with patch("app.routers.media.Path") as mock_path_class:
+
             def path_side_effect(arg):
                 if arg == "audio.mp3":
                     mock = MagicMock()
@@ -510,7 +485,9 @@ class TestUploadFileEndpoint:
             mock_upload_dir.__truediv__ = MagicMock(return_value=mock_file_path)
 
             with patch("builtins.open", create=True) as mock_open:
-                with patch("app.routers.media.shutil.copyfileobj", side_effect=OSError("Copy failed")):
+                with patch(
+                    "app.routers.media.shutil.copyfileobj", side_effect=OSError("Copy failed")
+                ):
                     mock_file = MagicMock()
                     mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                     mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -576,8 +553,9 @@ class TestImagePromptModel:
 
     def test_image_prompt_missing_field(self):
         """Test ImagePrompt with missing field"""
-        from app.routers.media import ImagePrompt
         from pydantic import ValidationError
+
+        from app.routers.media import ImagePrompt
 
         with pytest.raises(ValidationError):
             ImagePrompt()
@@ -606,10 +584,7 @@ class TestLogging:
 
         with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
             with patch("app.routers.media.logger") as mock_logger:
-                response = client.post(
-                    "/media/generate-image",
-                    json={"prompt": "test"}
-                )
+                response = client.post("/media/generate-image", json={"prompt": "test"})
 
         assert response.status_code == 500
         # Verify logger.error was called

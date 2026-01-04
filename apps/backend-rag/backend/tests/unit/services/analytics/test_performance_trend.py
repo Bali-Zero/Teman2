@@ -50,12 +50,13 @@ class TestPerformanceTrendService:
     async def test_analyze_performance_trends_with_sessions(self, performance_trend, mock_db_pool):
         """Test analyzing performance trends with sessions"""
         from unittest.mock import MagicMock
+
         session = MagicMock()
         session.__getitem__ = lambda self, key: {
             "session_start": datetime.now() - timedelta(days=7),
             "duration_minutes": 480,
             "conversations_count": 30,
-            "activities_count": 100
+            "activities_count": 100,
         }.get(key)
         session.session_start = datetime.now() - timedelta(days=7)
         sessions = [session]
@@ -70,4 +71,3 @@ class TestPerformanceTrendService:
         mock_db_pool.fetch = AsyncMock(return_value=[])
         results = await performance_trend.analyze_performance_trends("test@example.com", weeks=8)
         assert isinstance(results, dict)
-

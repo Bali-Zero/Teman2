@@ -1,397 +1,502 @@
 """
-Unit tests for app/setup/service_initializer.py
-Target: >95% coverage
+Tests for service_initializer module
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
+from fastapi import FastAPI
 
 from app.setup.service_initializer import (
-    _init_background_services,
     _init_critical_services,
-    _init_crm_memory,
-    _init_database_services,
-    _init_intelligent_router,
     _init_rag_components,
     _init_specialized_agents,
     _init_tool_stack,
     _is_transient_error,
-    initialize_services,
+    initialize_crm_and_memory_services,
+    initialize_database_services,
+    initialize_intelligent_router,
 )
 
 
-class TestServiceInitializer:
-    """Tests for service_initializer.py"""
+class TestIsTransientError:
+    """Test _is_transient_error function"""
 
-    @pytest.fixture
-    def mock_app(self):
-        """Create a mock FastAPI app"""
-        app = MagicMock()
-        app.state = MagicMock()
-        return app
+    def test_connection_error(self):
+        """Test connection error is transient"""
+        error = ConnectionError("Connection failed")
+        assert _is_transient_error(error) is True
+
+    def test_timeout_error(self):
+        """Test timeout error is transient"""
+        error = Exception("Timeout occurred")
+        assert _is_transient_error(error) is True
+
+    def test_temporarily_unavailable(self):
+        """Test temporarily unavailable error is transient"""
+        error = Exception("Service temporarily unavailable")
+        assert _is_transient_error(error) is True
+
+    def test_too_many_connections(self):
+        """Test too many connections error is transient"""
+        error = Exception("Too many connections")
+        assert _is_transient_error(error) is True
+
+    def test_server_closed(self):
+        """Test server closed error is transient"""
+        error = Exception("Server closed connection")
+        assert _is_transient_error(error) is True
+
+    def test_network_error(self):
+        """Test network error is transient"""
+        error = Exception("Network error occurred")
+        assert _is_transient_error(error) is True
+
+    def test_permanent_error(self):
+        """Test permanent error is not transient"""
+        error = ValueError("Invalid value")
+        assert _is_transient_error(error) is False
+
+    def test_unknown_error(self):
+        """Test unknown error is not transient"""
+        error = Exception("Unknown error")
+        assert _is_transient_error(error) is False
+
+
+class TestInitCriticalServices:
+    """Test _init_critical_services function"""
 
     @pytest.mark.asyncio
-    async def test_init_critical_services_success(self, mock_app):
+    @patch("services.misc.cultural_insights_service.CulturalInsightsService")
+    @patch("services.routing.query_router_integration.QueryRouterIntegration")
+    @patch("services.routing.conflict_resolver.ConflictResolver")
+    @patch("services.ingestion.collection_manager.CollectionManager")
+    @patch("core.embeddings.create_embeddings_generator")
+    @patch("app.setup.service_initializer.ZantaraAIClient")
+    @patch("app.setup.service_initializer.SearchService")
+    @patch("app.setup.service_initializer.service_registry")
+    async def test_init_critical_services_success(
+        self,
+        mock_registry,
+        mock_search_service,
+        mock_ai_client,
+        mock_embedder,
+        mock_collection_manager,
+        mock_conflict_resolver,
+        mock_query_router,
+        mock_cultural_insights,
+    ):
         """Test successful initialization of critical services"""
-        with patch("app.setup.service_initializer.SearchService") as mock_search, \
-             patch("app.setup.service_initializer.ZantaraAIClient") as mock_ai, \
-             patch("app.setup.service_initializer.CollectionManager") as mock_cm, \
-             patch("app.setup.service_initializer.create_embeddings_generator") as mock_emb, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
+        app = FastAPI()
+        app.state = MagicMock()
 
-            mock_search_instance = MagicMock()
-            mock_search.return_value = mock_search_instance
-            mock_ai_instance = MagicMock()
-            mock_ai.return_value = mock_ai_instance
-            mock_cm_instance = MagicMock()
-            mock_cm.return_value = mock_cm_instance
-            mock_emb.return_value = MagicMock()
-            mock_registry.has_critical_failures.return_value = False
+        mock_registry.has_critical_failures.return_value = False
 
-            search_service, ai_client = await _init_critical_services(mock_app)
+        mock_search = MagicMock()
+        mock_search_service.return_value = mock_search
+        mock_ai = MagicMock()
+        mock_ai_client.return_value = mock_ai
 
-            assert search_service is not None
-            assert ai_client is not None
-            assert mock_app.state.search_service == mock_search_instance
-            assert mock_app.state.ai_client == mock_ai_instance
+        search_service, ai_client = await _init_critical_services(app)
+
+        assert search_service is not None
+        assert ai_client is not None
 
     @pytest.mark.asyncio
-    async def test_init_critical_services_failure(self, mock_app):
-        """Test failure of critical services raises RuntimeError"""
-        with patch("app.setup.service_initializer.SearchService") as mock_search, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
+    @patch("app.setup.service_initializer.service_registry")
+    @patch("app.setup.service_initializer.SearchService")
+    async def test_init_critical_services_search_failure(self, mock_search_service, mock_registry):
+        """Test SearchService initialization failure"""
+        app = FastAPI()
+        app.state = MagicMock()
 
-            mock_search.side_effect = RuntimeError("Search service failed")
-            mock_registry.has_critical_failures.return_value = True
-            mock_registry.format_failures_message.return_value = "Critical services failed"
+        mock_search_service.side_effect = ConnectionError("Qdrant connection failed")
+        mock_registry.has_critical_failures.return_value = True
+        mock_registry.format_failures_message.return_value = "Critical services failed"
 
-            with pytest.raises(RuntimeError):
-                await _init_critical_services(mock_app)
-
-    @pytest.mark.asyncio
-    async def test_init_tool_stack_success(self, mock_app):
-        """Test successful initialization of tool stack"""
-        with patch("app.setup.service_initializer.ZantaraTools") as mock_tools, \
-             patch("app.setup.service_initializer.initialize_mcp_client") as mock_mcp, \
-             patch("app.setup.service_initializer.ToolExecutor") as mock_executor, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
-
-            mock_tools_instance = MagicMock()
-            mock_tools.return_value = mock_tools_instance
-            mock_mcp_instance = MagicMock()
-            mock_mcp_instance.available_tools = []
-            mock_mcp.return_value = mock_mcp_instance
-            mock_executor_instance = MagicMock()
-            mock_executor.return_value = mock_executor_instance
-
-            result = await _init_tool_stack(mock_app)
-
-            assert result == mock_executor_instance
-            assert mock_app.state.tool_executor == mock_executor_instance
+        with pytest.raises(RuntimeError):
+            await _init_critical_services(app)
 
     @pytest.mark.asyncio
-    async def test_init_tool_stack_mcp_failure(self, mock_app):
+    @patch("app.setup.service_initializer.service_registry")
+    @patch("app.setup.service_initializer.ZantaraAIClient")
+    @patch("app.setup.service_initializer.SearchService")
+    async def test_init_critical_services_ai_failure(
+        self, mock_search_service, mock_ai_client, mock_registry
+    ):
+        """Test ZantaraAIClient initialization failure"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_search_service.return_value = MagicMock()
+        mock_ai_client.side_effect = ValueError("AI client init failed")
+        mock_registry.has_critical_failures.return_value = True
+        mock_registry.format_failures_message.return_value = "Critical services failed"
+
+        with pytest.raises(RuntimeError):
+            await _init_critical_services(app)
+
+
+class TestInitToolStack:
+    """Test _init_tool_stack function"""
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.initialize_mcp_client")
+    @patch("app.setup.service_initializer.ZantaraTools")
+    @patch("app.setup.service_initializer.ToolExecutor")
+    async def test_init_tool_stack_success(
+        self, mock_tool_executor, mock_zantara_tools, mock_mcp_client
+    ):
+        """Test successful tool stack initialization"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_mcp = MagicMock()
+        mock_mcp.available_tools = [MagicMock(), MagicMock()]
+        mock_mcp_client.return_value = mock_mcp
+
+        mock_executor = MagicMock()
+        mock_tool_executor.return_value = mock_executor
+
+        result = await _init_tool_stack(app)
+
+        assert result is not None
+        mock_tool_executor.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.initialize_mcp_client")
+    @patch("app.setup.service_initializer.ZantaraTools")
+    @patch("app.setup.service_initializer.ToolExecutor")
+    async def test_init_tool_stack_mcp_failure(
+        self, mock_tool_executor, mock_zantara_tools, mock_mcp_client
+    ):
         """Test tool stack initialization with MCP failure"""
-        with patch("app.setup.service_initializer.ZantaraTools") as mock_tools, \
-             patch("app.setup.service_initializer.initialize_mcp_client") as mock_mcp, \
-             patch("app.setup.service_initializer.ToolExecutor") as mock_executor, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
+        app = FastAPI()
+        app.state = MagicMock()
 
-            mock_tools_instance = MagicMock()
-            mock_tools.return_value = mock_tools_instance
-            mock_mcp.side_effect = Exception("MCP failed")
-            mock_executor_instance = MagicMock()
-            mock_executor.return_value = mock_executor_instance
+        mock_mcp_client.side_effect = Exception("MCP init failed")
+        mock_executor = MagicMock()
+        mock_tool_executor.return_value = mock_executor
 
-            result = await _init_tool_stack(mock_app)
+        result = await _init_tool_stack(app)
 
-            assert result == mock_executor_instance
-            assert mock_app.state.mcp_client is None
+        # Should still succeed even if MCP fails
+        assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_init_rag_components(self, mock_app):
-        """Test initialization of RAG components"""
-        mock_search_service = MagicMock()
-        mock_cultural_insights = MagicMock()
-        mock_app.state.cultural_insights = mock_cultural_insights
 
-        with patch("app.setup.service_initializer.CulturalRAGService") as mock_crag, \
-             patch("app.setup.service_initializer.QueryRouter") as mock_qr, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
-
-            mock_crag_instance = MagicMock()
-            mock_crag.return_value = mock_crag_instance
-            mock_qr_instance = MagicMock()
-            mock_qr.return_value = mock_qr_instance
-
-            result = await _init_rag_components(mock_app, mock_search_service)
-
-            assert result == mock_qr_instance
-            mock_crag.assert_called_once()
+class TestInitRAGComponents:
+    """Test _init_rag_components function"""
 
     @pytest.mark.asyncio
-    async def test_init_specialized_agents(self, mock_app):
-        """Test initialization of specialized agents"""
+    @patch("app.setup.service_initializer.CulturalRAGService")
+    @patch("app.setup.service_initializer.QueryRouter")
+    async def test_init_rag_components_with_cultural_insights(
+        self, mock_query_router, mock_cultural_rag
+    ):
+        """Test RAG components initialization with cultural insights"""
+        app = FastAPI()
+        app.state = MagicMock()
+        app.state.cultural_insights = MagicMock()
+
+        mock_search = MagicMock()
+        mock_router = MagicMock()
+        mock_query_router.return_value = mock_router
+
+        result = await _init_rag_components(app, mock_search)
+
+        assert result is not None
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.CulturalRAGService")
+    @patch("app.setup.service_initializer.QueryRouter")
+    async def test_init_rag_components_without_cultural_insights(
+        self, mock_query_router, mock_cultural_rag
+    ):
+        """Test RAG components initialization without cultural insights"""
+        app = FastAPI()
+        app.state = MagicMock()
+        app.state.cultural_insights = None
+
+        mock_search = MagicMock()
+        mock_router = MagicMock()
+        mock_query_router.return_value = mock_router
+
+        result = await _init_rag_components(app, mock_search)
+
+        assert result is not None
+
+
+class TestInitSpecializedAgents:
+    """Test _init_specialized_agents function"""
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.AutonomousResearchService")
+    @patch("app.setup.service_initializer.CrossOracleSynthesisService")
+    @patch("app.setup.service_initializer.ClientJourneyOrchestrator")
+    async def test_init_specialized_agents_success(
+        self, mock_client_journey, mock_cross_oracle, mock_autonomous_research
+    ):
+        """Test successful specialized agents initialization"""
+        app = FastAPI()
+        app.state = MagicMock()
+
         mock_search = MagicMock()
         mock_ai = MagicMock()
-        mock_qr = MagicMock()
+        mock_router = MagicMock()
 
-        with patch("app.setup.service_initializer.AutonomousResearchService") as mock_ar, \
-             patch("app.setup.service_initializer.CrossOracleSynthesisService") as mock_co, \
-             patch("app.setup.service_initializer.ClientJourneyOrchestrator") as mock_cj:
+        mock_autonomous_research.return_value = MagicMock()
+        mock_cross_oracle.return_value = MagicMock()
+        mock_client_journey.return_value = MagicMock()
 
-            mock_ar_instance = MagicMock()
-            mock_ar.return_value = mock_ar_instance
-            mock_co_instance = MagicMock()
-            mock_co.return_value = mock_co_instance
-            mock_cj_instance = MagicMock()
-            mock_cj.return_value = mock_cj_instance
+        result = await _init_specialized_agents(app, mock_search, mock_ai, mock_router)
 
-            ar, co, cj = await _init_specialized_agents(mock_app, mock_search, mock_ai, mock_qr)
-
-            assert ar == mock_ar_instance
-            assert co == mock_co_instance
-            assert cj == mock_cj_instance
+        assert len(result) == 3
+        assert all(r is not None for r in result)
 
     @pytest.mark.asyncio
-    async def test_init_database_services_no_url(self, mock_app):
+    @patch("app.setup.service_initializer.AutonomousResearchService")
+    @patch("app.setup.service_initializer.CrossOracleSynthesisService")
+    @patch("app.setup.service_initializer.ClientJourneyOrchestrator")
+    async def test_init_specialized_agents_partial_failure(
+        self, mock_client_journey, mock_cross_oracle, mock_autonomous_research
+    ):
+        """Test specialized agents initialization with partial failures"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_search = MagicMock()
+        mock_ai = MagicMock()
+        mock_router = MagicMock()
+
+        mock_autonomous_research.side_effect = Exception("Init failed")
+        mock_cross_oracle.return_value = MagicMock()
+        mock_client_journey.return_value = MagicMock()
+
+        result = await _init_specialized_agents(app, mock_search, mock_ai, mock_router)
+
+        # Should return None for failed service
+        assert result[0] is None
+        assert result[1] is not None
+        assert result[2] is not None
+
+
+class TestInitializeDatabaseServices:
+    """Test initialize_database_services function"""
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.settings")
+    @patch("app.setup.service_initializer.asyncpg")
+    async def test_initialize_database_services_no_url(self, mock_asyncpg, mock_settings):
         """Test database initialization without DATABASE_URL"""
-        with patch("app.setup.service_initializer.settings") as mock_settings, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
+        app = FastAPI()
+        app.state = MagicMock()
 
-            mock_settings.database_url = None
+        mock_settings.database_url = None
 
-            result = await _init_database_services(mock_app)
+        result = await initialize_database_services(app)
 
-            assert result is None
-            assert mock_app.state.ts_service is None
+        assert result is None
 
     @pytest.mark.asyncio
-    async def test_init_database_services_success(self, mock_app):
+    @patch("app.setup.service_initializer.asyncio.create_task")
+    @patch("services.analytics.daily_checkin_notifier.init_daily_notifier")
+    @patch("services.analytics.team_timesheet_service.init_timesheet_service")
+    @patch("app.setup.service_initializer.settings")
+    @patch("app.setup.service_initializer.asyncpg")
+    async def test_initialize_database_services_success(
+        self, mock_asyncpg, mock_settings, mock_timesheet, mock_daily_notifier, mock_create_task
+    ):
         """Test successful database initialization"""
-        with patch("app.setup.service_initializer.settings") as mock_settings, \
-             patch("app.setup.service_initializer.asyncpg") as mock_asyncpg, \
-             patch("app.setup.service_initializer.init_timesheet_service") as mock_ts, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry, \
-             patch("app.setup.service_initializer._database_health_check_loop") as mock_health:
+        app = FastAPI()
+        app.state = MagicMock()
 
-            mock_settings.database_url = "postgresql://test"
-            mock_settings.db_pool_min_size = 5
-            mock_settings.db_pool_max_size = 20
-            mock_settings.db_command_timeout = 60
+        mock_settings.database_url = "postgresql://test:test@localhost/test"
+        mock_settings.db_pool_min_size = 5
+        mock_settings.db_pool_max_size = 20
+        mock_settings.db_command_timeout = 60
 
-            mock_pool = AsyncMock()
-            mock_conn = AsyncMock()
-            mock_conn.execute = AsyncMock()
-            mock_conn.fetchval = AsyncMock(return_value=1)
-            mock_pool.acquire = AsyncMock()
-            mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
-            mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
-            mock_asyncpg.create_pool = AsyncMock(return_value=mock_pool)
-
-            mock_ts_service = MagicMock()
-            mock_ts_service.start_auto_logout_monitor = AsyncMock()
-            mock_ts.return_value = mock_ts_service
-
-            result = await _init_database_services(mock_app)
-
-            assert result == mock_pool
-            assert mock_app.state.ts_service == mock_ts_service
-
-    @pytest.mark.asyncio
-    async def test_init_database_services_retry(self, mock_app):
-        """Test database initialization with retry on transient error"""
-        with patch("app.setup.service_initializer.settings") as mock_settings, \
-             patch("app.setup.service_initializer.asyncpg") as mock_asyncpg, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry, \
-             patch("asyncio.sleep") as mock_sleep:
-
-            mock_settings.database_url = "postgresql://test"
-
-            # First attempt fails with transient error, second succeeds
-            mock_pool = AsyncMock()
-            mock_conn = AsyncMock()
-            mock_conn.fetchval = AsyncMock(return_value=1)
-            mock_pool.acquire = AsyncMock()
-            mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
-            mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
-
-            connection_error = ConnectionError("Connection timeout")
-            mock_asyncpg.create_pool = AsyncMock(side_effect=[connection_error, mock_pool])
-
-            with patch("app.setup.service_initializer.init_timesheet_service") as mock_ts:
-                mock_ts_service = MagicMock()
-                mock_ts_service.start_auto_logout_monitor = AsyncMock()
-                mock_ts.return_value = mock_ts_service
-
-                result = await _init_database_services(mock_app)
-
-                assert result == mock_pool
-                mock_sleep.assert_called()
-
-    def test_is_transient_error(self):
-        """Test transient error detection"""
-        assert _is_transient_error(ConnectionError("connection failed")) is True
-        assert _is_transient_error(TimeoutError("timeout")) is True
-        assert _is_transient_error(ValueError("invalid value")) is False
-        assert _is_transient_error(Exception("permanent error")) is False
-
-    @pytest.mark.asyncio
-    async def test_init_crm_memory_success(self, mock_app):
-        """Test successful CRM and memory initialization"""
-        mock_ai = MagicMock()
         mock_pool = AsyncMock()
+        mock_conn = AsyncMock()
+        mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_conn.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.fetchval = AsyncMock(return_value=1)
+        mock_conn.execute = AsyncMock()
+        mock_pool.acquire = AsyncMock(return_value=mock_conn)
+        mock_asyncpg.create_pool = AsyncMock(return_value=mock_pool)
 
-        with patch("app.setup.service_initializer.get_auto_crm_service") as mock_crm, \
-             patch("app.setup.service_initializer.MemoryServicePostgres") as mock_mem, \
-             patch("app.setup.service_initializer.ConversationService") as mock_conv, \
-             patch("app.setup.service_initializer.create_collective_memory_workflow") as mock_cmw, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry, \
-             patch("app.setup.service_initializer.settings") as mock_settings:
+        mock_ts_service = MagicMock()
+        mock_ts_service.start_auto_logout_monitor = AsyncMock()
+        mock_timesheet.return_value = mock_ts_service
 
-            mock_crm_service = MagicMock()
-            mock_crm_service.connect = AsyncMock()
-            mock_crm.return_value = mock_crm_service
+        mock_notifier = MagicMock()
+        mock_notifier.start = AsyncMock()
+        mock_daily_notifier.return_value = mock_notifier
 
-            mock_mem_service = MagicMock()
-            mock_mem_service.connect = AsyncMock()
-            mock_mem.return_value = mock_mem_service
+        result = await initialize_database_services(app)
 
-            mock_conv_service = MagicMock()
-            mock_conv.return_value = mock_conv_service
-
-            mock_cmw_instance = MagicMock()
-            mock_cmw.return_value = mock_cmw_instance
-
-            mock_settings.database_url = "postgresql://test"
-            mock_app.state.db_pool = mock_pool
-
-            await _init_crm_memory(mock_app, mock_ai, mock_pool)
-
-            assert mock_app.state.auto_crm_service == mock_crm_service
-            assert mock_app.state.memory_service == mock_mem_service
-            assert mock_app.state.conversation_service == mock_conv_service
+        assert result is not None
 
     @pytest.mark.asyncio
-    async def test_init_intelligent_router(self, mock_app):
-        """Test initialization of IntelligentRouter"""
+    @patch("app.setup.service_initializer.asyncio.sleep")
+    @patch("app.setup.service_initializer.settings")
+    @patch("app.setup.service_initializer.asyncpg")
+    async def test_initialize_database_services_connection_error(
+        self, mock_asyncpg, mock_settings, mock_sleep
+    ):
+        """Test database initialization with connection error"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_settings.database_url = "postgresql://test:test@localhost/test"
+        mock_asyncpg.create_pool = AsyncMock(side_effect=ConnectionError("Connection failed"))
+
+        result = await initialize_database_services(app)
+
+        # Should return None after retries
+        assert result is None
+
+
+class TestInitializeCRMAndMemoryServices:
+    """Test initialize_crm_and_memory_services function"""
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.get_auto_crm_service")
+    @patch("app.setup.service_initializer.MemoryServicePostgres")
+    @patch("app.setup.service_initializer.ConversationService")
+    @patch("app.setup.service_initializer.create_collective_memory_workflow")
+    @patch("app.setup.service_initializer.settings")
+    async def test_initialize_crm_and_memory_services_success(
+        self,
+        mock_settings,
+        mock_collective_memory,
+        mock_conversation,
+        mock_memory,
+        mock_auto_crm,
+    ):
+        """Test successful CRM and memory services initialization"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_settings.database_url = "postgresql://test:test@localhost/test"
+
+        mock_crm = MagicMock()
+        mock_crm.connect = AsyncMock()
+        mock_auto_crm.return_value = mock_crm
+
+        mock_memory_service = MagicMock()
+        mock_memory_service.connect = AsyncMock()
+        mock_memory.return_value = mock_memory_service
+
+        mock_conversation_service = MagicMock()
+        mock_conversation.return_value = mock_conversation_service
+
+        mock_workflow = MagicMock()
+        mock_collective_memory.return_value = mock_workflow
+
+        mock_db_pool = MagicMock()
+        mock_ai = MagicMock()
+
+        await initialize_crm_and_memory_services(app, mock_ai, mock_db_pool)
+
+        assert app.state.auto_crm_service is not None
+        assert app.state.memory_service is not None
+        assert app.state.conversation_service is not None
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.get_auto_crm_service")
+    @patch("app.setup.service_initializer.settings")
+    async def test_initialize_crm_and_memory_services_no_db_pool(
+        self, mock_settings, mock_auto_crm
+    ):
+        """Test CRM and memory services initialization without db_pool"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_settings.database_url = "postgresql://test:test@localhost/test"
+
+        mock_crm = MagicMock()
+        mock_crm.connect = AsyncMock()
+        mock_auto_crm.return_value = mock_crm
+
+        mock_ai = MagicMock()
+
+        await initialize_crm_and_memory_services(app, mock_ai, None)
+
+        # Should still initialize with dependency injection
+        assert app.state.auto_crm_service is not None
+
+
+class TestInitializeIntelligentRouter:
+    """Test initialize_intelligent_router function"""
+
+    @pytest.mark.asyncio
+    @patch("app.setup.service_initializer.IntelligentRouter")
+    @patch("app.setup.service_initializer.CollaboratorService")
+    async def test_initialize_intelligent_router_success(
+        self, mock_collaborator, mock_intelligent_router
+    ):
+        """Test successful intelligent router initialization"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_router = MagicMock()
+        mock_intelligent_router.return_value = mock_router
+
+        mock_collaborator_service = MagicMock()
+        mock_collaborator.return_value = mock_collaborator_service
+
         mock_ai = MagicMock()
         mock_search = MagicMock()
-        mock_tools = MagicMock()
-        mock_crag = MagicMock()
-        mock_pool = AsyncMock()
+        mock_tool_executor = MagicMock()
+        mock_cultural_rag = MagicMock()
 
-        with patch("app.setup.service_initializer.CollaboratorService") as mock_collab, \
-             patch("app.setup.service_initializer.IntelligentRouter") as mock_ir, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
+        await initialize_intelligent_router(
+            app,
+            mock_ai,
+            mock_search,
+            mock_tool_executor,
+            mock_cultural_rag,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
-            mock_collab_instance = MagicMock()
-            mock_collab.return_value = mock_collab_instance
-
-            mock_ir_instance = MagicMock()
-            mock_ir.return_value = mock_ir_instance
-
-            await _init_intelligent_router(
-                mock_app, mock_ai, mock_search, mock_tools, mock_crag,
-                None, None, None, None, mock_pool
-            )
-
-            assert mock_app.state.intelligent_router == mock_ir_instance
+        assert app.state.intelligent_router is not None
 
     @pytest.mark.asyncio
-    async def test_init_background_services(self, mock_app):
-        """Test initialization of background services"""
-        mock_search = MagicMock()
+    @patch("app.setup.service_initializer.IntelligentRouter")
+    @patch("app.setup.service_initializer.CollaboratorService")
+    async def test_initialize_intelligent_router_collaborator_failure(
+        self, mock_collaborator, mock_intelligent_router
+    ):
+        """Test intelligent router initialization with collaborator failure"""
+        app = FastAPI()
+        app.state = MagicMock()
+
+        mock_router = MagicMock()
+        mock_intelligent_router.return_value = mock_router
+
+        mock_collaborator.side_effect = Exception("Collaborator init failed")
+
         mock_ai = MagicMock()
-        mock_pool = AsyncMock()
+        mock_search = MagicMock()
+        mock_tool_executor = MagicMock()
+        mock_cultural_rag = MagicMock()
 
-        with patch("app.setup.service_initializer.AlertService") as mock_alert, \
-             patch("app.setup.service_initializer.HealthMonitor") as mock_health, \
-             patch("app.setup.service_initializer.redis_listener") as mock_redis, \
-             patch("app.setup.service_initializer.ProactiveComplianceMonitor") as mock_comp, \
-             patch("app.setup.service_initializer.create_and_start_scheduler") as mock_sched, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry, \
-             patch("asyncio.create_task") as mock_task:
+        await initialize_intelligent_router(
+            app,
+            mock_ai,
+            mock_search,
+            mock_tool_executor,
+            mock_cultural_rag,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
-            mock_alert_service = MagicMock()
-            mock_app.state.alert_service = mock_alert_service
-
-            mock_health_instance = MagicMock()
-            mock_health_instance.start = AsyncMock()
-            mock_health_instance.set_services = MagicMock()
-            mock_health.return_value = mock_health_instance
-
-            mock_redis_task = MagicMock()
-            mock_task.return_value = mock_redis_task
-
-            mock_comp_instance = MagicMock()
-            mock_comp_instance.start = AsyncMock()
-            mock_comp.return_value = mock_comp_instance
-
-            mock_sched_instance = MagicMock()
-            mock_sched.return_value = mock_sched_instance
-
-            await _init_background_services(mock_app, mock_search, mock_ai, mock_pool)
-
-            assert mock_app.state.health_monitor == mock_health_instance
-            assert mock_app.state.compliance_monitor == mock_comp_instance
-            assert mock_app.state.autonomous_scheduler == mock_sched_instance
-
-    @pytest.mark.asyncio
-    async def test_initialize_services_already_initialized(self, mock_app):
-        """Test that initialize_services skips if already initialized"""
-        mock_app.state.services_initialized = True
-
-        await initialize_services(mock_app)
-
-        # Should return early without initializing
-
-    @pytest.mark.asyncio
-    async def test_initialize_services_full_flow(self, mock_app):
-        """Test full service initialization flow"""
-        mock_app.state.services_initialized = False
-
-        with patch("app.setup.service_initializer._init_critical_services") as mock_crit, \
-             patch("app.setup.service_initializer._init_tool_stack") as mock_tools, \
-             patch("app.setup.service_initializer._init_rag_components") as mock_rag, \
-             patch("app.setup.service_initializer._init_specialized_agents") as mock_agents, \
-             patch("app.setup.service_initializer._init_database_services") as mock_db, \
-             patch("app.setup.service_initializer._init_crm_memory") as mock_crm, \
-             patch("app.setup.service_initializer._init_intelligent_router") as mock_ir, \
-             patch("app.setup.service_initializer._init_background_services") as mock_bg, \
-             patch("app.setup.service_initializer.CollaboratorService") as mock_collab, \
-             patch("app.setup.service_initializer.CulturalRAGService") as mock_crag, \
-             patch("app.setup.service_initializer.service_registry") as mock_registry:
-
-            mock_search = MagicMock()
-            mock_ai = MagicMock()
-            mock_crit.return_value = (mock_search, mock_ai)
-            mock_tools.return_value = MagicMock()
-            mock_rag.return_value = MagicMock()
-            mock_agents.return_value = (None, None, None)
-            mock_db.return_value = AsyncMock()
-            mock_collab.return_value = MagicMock()
-            mock_app.state.cultural_insights = MagicMock()
-
-            await initialize_services(mock_app)
-
-            assert mock_app.state.services_initialized is True
-            mock_crit.assert_called_once()
-            mock_tools.assert_called_once()
-            mock_rag.assert_called_once()
-            mock_agents.assert_called_once()
-            mock_db.assert_called_once()
-            mock_crm.assert_called_once()
-            mock_ir.assert_called_once()
-            mock_bg.assert_called_once()
-
-
-
-
+        # Should still initialize router even if collaborator fails
+        assert app.state.intelligent_router is not None

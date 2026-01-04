@@ -136,6 +136,7 @@ class TestGeneralExceptionHandler:
     @pytest.mark.asyncio
     async def test_general_exception_handler_with_pool_error(self, mock_request):
         """Test handling exception with Pool reference"""
+
         # Use a simple object instead of MagicMock to avoid serialization issues
         class SimpleState:
             correlation_id = None
@@ -157,4 +158,3 @@ class TestGeneralExceptionHandler:
         response = await general_exception_handler(mock_request, exc)
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-

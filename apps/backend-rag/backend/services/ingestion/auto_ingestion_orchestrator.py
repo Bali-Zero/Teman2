@@ -257,9 +257,7 @@ class AutoIngestionOrchestrator:
                 f"❌ Scraper service not configured for source {source.name}. "
                 "Cannot scrape without scraper service. Set scraper service in AutoIngestionOrchestrator initialization."
             )
-            raise ValueError(
-                f"Scraper service not configured. Cannot scrape source: {source.name}"
-            )
+            raise ValueError(f"Scraper service not configured. Cannot scrape source: {source.name}")
 
         # Use external scraper service
         try:

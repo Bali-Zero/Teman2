@@ -2,7 +2,10 @@
 Unit tests for Autonomous Agents Router
 """
 
+import importlib.util
 import sys
+import types
+from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -13,13 +16,44 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+if "psutil" not in sys.modules:
+    sys.modules["psutil"] = types.SimpleNamespace()
+
+if "langgraph.graph" not in sys.modules:
+
+    class _StateGraph:
+        pass
+
+    graph_stub = types.SimpleNamespace(END="END", StateGraph=_StateGraph)
+    sys.modules["langgraph"] = types.SimpleNamespace(graph=graph_stub)
+    sys.modules["langgraph.graph"] = graph_stub
+
 from fastapi import FastAPI
 
-from app.routers.autonomous_agents import agent_executions, router
+routers_pkg = types.ModuleType("app.routers")
+routers_pkg.__path__ = []
+sys.modules.setdefault("app.routers", routers_pkg)
+
+module_name = "app.routers.autonomous_agents"
+module_path = backend_path / "app" / "routers" / "autonomous_agents.py"
+spec = importlib.util.spec_from_file_location(module_name, module_path)
+autonomous_agents = importlib.util.module_from_spec(spec)
+sys.modules[module_name] = autonomous_agents
+assert spec and spec.loader
+spec.loader.exec_module(autonomous_agents)
+
+agent_executions = autonomous_agents.agent_executions
+router = autonomous_agents.router
 
 app = FastAPI()
 app.include_router(router)
 client = TestClient(app)
+
+
+@dataclass
+class _Chunk:
+    payload: dict
+    id: str
 
 
 # ============================================================================
@@ -121,12 +155,13 @@ def test_list_executions():
 
 
 @pytest.mark.asyncio
-async def test_run_conversation_trainer_task_no_analysis():
+async def test_run_conversation_trainer_task_no_analysis(monkeypatch):
     """Test conversation trainer background task when no analysis found"""
     from app.routers.autonomous_agents import _run_conversation_trainer_task
 
     execution_id = "test_exec_1"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
         trainer_instance = AsyncMock()
@@ -138,19 +173,20 @@ async def test_run_conversation_trainer_task_no_analysis():
         if agent_executions[execution_id]["status"] == "failed":
             print(f"DEBUG: Task failed with error: {agent_executions[execution_id].get('error')}")
 
-        assert (
-            agent_executions[execution_id]["status"] == "completed"
-        ), f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        assert agent_executions[execution_id]["status"] == "completed", (
+            f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        )
         assert "No high-rated conversations" in agent_executions[execution_id]["result"]["message"]
 
 
 @pytest.mark.asyncio
-async def test_run_conversation_trainer_task_success():
+async def test_run_conversation_trainer_task_success(monkeypatch):
     """Test conversation trainer background task successful execution"""
     from app.routers.autonomous_agents import _run_conversation_trainer_task
 
     execution_id = "test_exec_2"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
         trainer_instance = AsyncMock()
@@ -161,20 +197,21 @@ async def test_run_conversation_trainer_task_success():
 
         await _run_conversation_trainer_task(execution_id, days_back=7)
 
-        assert (
-            agent_executions[execution_id]["status"] == "completed"
-        ), f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        assert agent_executions[execution_id]["status"] == "completed", (
+            f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        )
         assert "pr_branch" in agent_executions[execution_id]["result"]
         assert agent_executions[execution_id]["result"]["insights_found"] == 2
 
 
 @pytest.mark.asyncio
-async def test_run_client_value_predictor_task_success():
+async def test_run_client_value_predictor_task_success(monkeypatch):
     """Test client value predictor background task successful execution"""
     from app.routers.autonomous_agents import _run_client_value_predictor_task
 
     execution_id = "test_exec_3"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.ClientValuePredictor") as mock_predictor:
         predictor_instance = AsyncMock()
@@ -190,20 +227,21 @@ async def test_run_client_value_predictor_task_success():
 
         await _run_client_value_predictor_task(execution_id)
 
-        assert (
-            agent_executions[execution_id]["status"] == "completed"
-        ), f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        assert agent_executions[execution_id]["status"] == "completed", (
+            f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        )
         assert agent_executions[execution_id]["result"]["vip_nurtured"] == 5
         assert agent_executions[execution_id]["result"]["high_risk_contacted"] == 3
 
 
 @pytest.mark.asyncio
-async def test_run_knowledge_graph_builder_task_with_init():
+async def test_run_knowledge_graph_builder_task_with_init(monkeypatch):
     """Test knowledge graph builder with schema initialization"""
     from app.routers.autonomous_agents import _run_knowledge_graph_builder_task
 
     execution_id = "test_exec_4"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
         builder_instance = AsyncMock()
@@ -221,19 +259,20 @@ async def test_run_knowledge_graph_builder_task_with_init():
         await _run_knowledge_graph_builder_task(execution_id, days_back=30, init_schema=True)
 
         builder_instance.init_graph_schema.assert_called_once()
-        assert (
-            agent_executions[execution_id]["status"] == "completed"
-        ), f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        assert agent_executions[execution_id]["status"] == "completed", (
+            f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        )
         assert agent_executions[execution_id]["result"]["top_entities_count"] == 2
 
 
 @pytest.mark.asyncio
-async def test_run_knowledge_graph_builder_task_without_init():
+async def test_run_knowledge_graph_builder_task_without_init(monkeypatch):
     """Test knowledge graph builder without schema initialization"""
     from app.routers.autonomous_agents import _run_knowledge_graph_builder_task
 
     execution_id = "test_exec_5"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
         builder_instance = AsyncMock()
@@ -247,9 +286,9 @@ async def test_run_knowledge_graph_builder_task_without_init():
         await _run_knowledge_graph_builder_task(execution_id, days_back=30, init_schema=False)
 
         builder_instance.init_graph_schema.assert_not_called()
-        assert (
-            agent_executions[execution_id]["status"] == "completed"
-        ), f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        assert agent_executions[execution_id]["status"] == "completed", (
+            f"Task failed with error: {agent_executions[execution_id].get('error')}"
+        )
 
 
 def test_get_execution_status_success():
@@ -370,12 +409,13 @@ def test_list_executions_negative_limit():
 
 
 @pytest.mark.asyncio
-async def test_run_conversation_trainer_task_exception():
+async def test_run_conversation_trainer_task_exception(monkeypatch):
     """Test conversation trainer background task exception handling"""
     from app.routers.autonomous_agents import _run_conversation_trainer_task
 
     execution_id = "test_exec_exception"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
         trainer_instance = AsyncMock()
@@ -390,12 +430,13 @@ async def test_run_conversation_trainer_task_exception():
 
 
 @pytest.mark.asyncio
-async def test_run_client_value_predictor_task_exception():
+async def test_run_client_value_predictor_task_exception(monkeypatch):
     """Test client value predictor background task exception handling"""
     from app.routers.autonomous_agents import _run_client_value_predictor_task
 
     execution_id = "test_exec_predictor_exception"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.ClientValuePredictor") as mock_predictor:
         predictor_instance = AsyncMock()
@@ -410,12 +451,13 @@ async def test_run_client_value_predictor_task_exception():
 
 
 @pytest.mark.asyncio
-async def test_run_knowledge_graph_builder_task_exception():
+async def test_run_knowledge_graph_builder_task_exception(monkeypatch):
     """Test knowledge graph builder background task exception handling"""
     from app.routers.autonomous_agents import _run_knowledge_graph_builder_task
 
     execution_id = "test_exec_kg_exception"
     agent_executions[execution_id] = {"status": "started"}
+    _install_main_cloud_stub(monkeypatch, db_pool=object())
 
     with patch("app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
         builder_instance = AsyncMock()
@@ -481,3 +523,262 @@ def test_get_autonomous_agents_status_structure():
         assert "total_agents" in data
         assert "agents" in data
         assert isinstance(data["agents"], list)
+
+
+# ============================================================================
+# Knowledge Graph Extraction & Persistence Endpoints
+# ============================================================================
+
+
+def _install_main_cloud_stub(monkeypatch, retriever=None, db_pool=None):
+    app_stub = types.SimpleNamespace(
+        state=types.SimpleNamespace(retriever=retriever, db_pool=db_pool)
+    )
+    module_stub = types.SimpleNamespace(app=app_stub)
+    monkeypatch.setitem(sys.modules, "app.main_cloud", module_stub)
+    return app_stub
+
+
+def test_extract_kg_sample_qdrant_unavailable(monkeypatch):
+    """Test extract sample returns 503 when qdrant is unavailable"""
+    _install_main_cloud_stub(monkeypatch, retriever=None)
+
+    response = client.get("/api/autonomous-agents/knowledge-graph/extract-sample")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Qdrant not available"
+
+
+def test_extract_kg_sample_success(monkeypatch):
+    """Test extract sample returns entities and relationships"""
+
+    class _QdrantClient:
+        def scroll(self, collection_name, limit, with_payload, with_vectors):
+            chunks = [
+                _Chunk(
+                    payload={"text": "PT PMA membutuhkan NIB dan PPh 21"},
+                    id="chunk-1",
+                ),
+                _Chunk(payload={"text": ""}, id="chunk-2"),
+            ]
+            return (chunks, None)
+
+    retriever = types.SimpleNamespace(client=_QdrantClient())
+    _install_main_cloud_stub(monkeypatch, retriever=retriever)
+
+    response = client.get("/api/autonomous-agents/knowledge-graph/extract-sample?sample_size=10")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "dry_run"
+    assert data["entities_found"] >= 2
+    assert data["relationships_inferred"] >= 1
+    assert "legal_entity" in data["entity_type_distribution"]
+    assert data["chunks_processed"] == 2
+
+
+def test_persist_kg_sample_qdrant_unavailable(monkeypatch):
+    """Test persist sample returns 503 when qdrant is unavailable"""
+    _install_main_cloud_stub(monkeypatch, retriever=None, db_pool=object())
+
+    response = client.post("/api/autonomous-agents/knowledge-graph/persist-sample")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Qdrant not available"
+
+
+def test_persist_kg_sample_db_unavailable(monkeypatch):
+    """Test persist sample returns 503 when db_pool is unavailable"""
+    retriever = types.SimpleNamespace(client=object())
+    _install_main_cloud_stub(monkeypatch, retriever=retriever, db_pool=None)
+
+    response = client.post("/api/autonomous-agents/knowledge-graph/persist-sample")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Database not available"
+
+
+def test_persist_kg_sample_success(monkeypatch):
+    """Test persist sample adds entities to the knowledge graph"""
+    added_entities = []
+
+    class _QdrantClient:
+        def scroll(self, collection_name, limit, with_payload, with_vectors):
+            chunks = [
+                _Chunk(
+                    payload={"text": "PT PMA wajib NIB PPh 21 KBLI 12345"},
+                    id="chunk-1",
+                )
+            ]
+            return (chunks, None)
+
+    @dataclass
+    class _Entity:
+        entity_id: str
+        entity_type: str
+        name: str
+        description: str
+        source_collection: str
+        confidence: float
+        source_chunk_ids: list
+
+    class _KnowledgeGraphBuilder:
+        def __init__(self, db_pool):
+            self.db_pool = db_pool
+
+        async def add_entity(self, entity):
+            added_entities.append(entity)
+
+    kg_module = types.SimpleNamespace(Entity=_Entity, KnowledgeGraphBuilder=_KnowledgeGraphBuilder)
+    monkeypatch.setitem(
+        sys.modules, "services.autonomous_agents.knowledge_graph_builder", kg_module
+    )
+
+    retriever = types.SimpleNamespace(client=_QdrantClient())
+    _install_main_cloud_stub(monkeypatch, retriever=retriever, db_pool=object())
+
+    response = client.post("/api/autonomous-agents/knowledge-graph/persist-sample?sample_size=10")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "persisted"
+    assert data["entities_added"] == 4
+    assert len(added_entities) == 4
+
+
+# ============================================================================
+# Scheduler Control Endpoints
+# ============================================================================
+
+
+def _install_scheduler_stub(monkeypatch, scheduler):
+    module_stub = types.SimpleNamespace(get_autonomous_scheduler=lambda: scheduler)
+    monkeypatch.setitem(sys.modules, "services.misc.autonomous_scheduler", module_stub)
+
+
+def test_get_scheduler_status_success(monkeypatch):
+    """Test scheduler status success response"""
+
+    class _Scheduler:
+        def get_status(self):
+            return {"running": True, "task_count": 2}
+
+    _install_scheduler_stub(monkeypatch, _Scheduler())
+
+    response = client.get("/api/autonomous-agents/scheduler/status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["scheduler"]["task_count"] == 2
+
+
+def test_get_scheduler_status_failure(monkeypatch):
+    """Test scheduler status failure response"""
+
+    def _raise():
+        raise RuntimeError("scheduler offline")
+
+    module_stub = types.SimpleNamespace(get_autonomous_scheduler=_raise)
+    monkeypatch.setitem(sys.modules, "services.misc.autonomous_scheduler", module_stub)
+
+    response = client.get("/api/autonomous-agents/scheduler/status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is False
+    assert "scheduler offline" in data["error"]
+
+
+def test_enable_scheduler_task_success(monkeypatch):
+    """Test enabling a scheduler task"""
+
+    class _Scheduler:
+        def enable_task(self, task_name):
+            return True
+
+    _install_scheduler_stub(monkeypatch, _Scheduler())
+
+    response = client.post("/api/autonomous-agents/scheduler/task/task-a/enable")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["task_name"] == "task-a"
+
+
+def test_enable_scheduler_task_not_found(monkeypatch):
+    """Test enabling a missing scheduler task"""
+
+    class _Scheduler:
+        def enable_task(self, task_name):
+            return False
+
+    _install_scheduler_stub(monkeypatch, _Scheduler())
+
+    response = client.post("/api/autonomous-agents/scheduler/task/missing/enable")
+
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+def test_enable_scheduler_task_exception(monkeypatch):
+    """Test enabling a task when scheduler fails"""
+
+    class _Scheduler:
+        def enable_task(self, task_name):
+            raise RuntimeError("scheduler error")
+
+    _install_scheduler_stub(monkeypatch, _Scheduler())
+
+    response = client.post("/api/autonomous-agents/scheduler/task/fail/enable")
+
+    assert response.status_code == 500
+    assert "scheduler error" in response.json()["detail"]
+
+
+def test_disable_scheduler_task_success(monkeypatch):
+    """Test disabling a scheduler task"""
+
+    class _Scheduler:
+        def disable_task(self, task_name):
+            return True
+
+    _install_scheduler_stub(monkeypatch, _Scheduler())
+
+    response = client.post("/api/autonomous-agents/scheduler/task/task-b/disable")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["task_name"] == "task-b"
+
+
+def test_disable_scheduler_task_not_found(monkeypatch):
+    """Test disabling a missing scheduler task"""
+
+    class _Scheduler:
+        def disable_task(self, task_name):
+            return False
+
+    _install_scheduler_stub(monkeypatch, _Scheduler())
+
+    response = client.post("/api/autonomous-agents/scheduler/task/missing/disable")
+
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+def test_disable_scheduler_task_exception(monkeypatch):
+    """Test disabling a task when scheduler fails"""
+
+    class _Scheduler:
+        def disable_task(self, task_name):
+            raise RuntimeError("scheduler error")
+
+    _install_scheduler_stub(monkeypatch, _Scheduler())
+
+    response = client.post("/api/autonomous-agents/scheduler/task/fail/disable")
+
+    assert response.status_code == 500
+    assert "scheduler error" in response.json()["detail"]

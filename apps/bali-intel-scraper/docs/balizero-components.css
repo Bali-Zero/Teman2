@@ -1,0 +1,748 @@
+/**
+ * BaliZero Intel Feed - Interactive Components
+ * Style Guide Components CSS
+ */
+
+:root {
+  --bz-primary: #2563eb;
+  --bz-primary-dark: #1d4ed8;
+  --bz-success: #10b981;
+  --bz-warning: #f59e0b;
+  --bz-danger: #ef4444;
+  --bz-info: #3b82f6;
+  --bz-gray-50: #f9fafb;
+  --bz-gray-100: #f3f4f6;
+  --bz-gray-200: #e5e7eb;
+  --bz-gray-500: #6b7280;
+  --bz-gray-700: #374151;
+  --bz-gray-900: #111827;
+  --bz-radius: 8px;
+  --bz-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  --bz-shadow-lg: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* ============================================
+   1. RISK/OPPORTUNITY METER
+   ============================================ */
+
+.bz-meter {
+  background: var(--bz-gray-50);
+  border-radius: var(--bz-radius);
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.bz-meter-label {
+  font-weight: 600;
+  color: var(--bz-gray-700);
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.bz-meter-bar {
+  background: var(--bz-gray-200);
+  border-radius: 9999px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.bz-meter-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
+
+.bz-meter-fill[data-level="low"] {
+  background: var(--bz-success);
+}
+
+.bz-meter-fill[data-level="medium"] {
+  background: var(--bz-warning);
+}
+
+.bz-meter-fill[data-level="high"] {
+  background: var(--bz-danger);
+}
+
+.bz-meter-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--bz-gray-500);
+  margin-top: 0.25rem;
+}
+
+/* ============================================
+   2. DECISION TREE
+   ============================================ */
+
+.bz-decision-tree {
+  background: var(--bz-gray-50);
+  border-radius: var(--bz-radius);
+  padding: 1.5rem;
+  margin: 1rem 0;
+  border: 1px solid var(--bz-gray-200);
+}
+
+.bz-question {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: var(--bz-gray-900);
+  margin-bottom: 1rem;
+}
+
+.bz-options {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.bz-option {
+  background: white;
+  border: 2px solid var(--bz-gray-200);
+  border-radius: var(--bz-radius);
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bz-option:hover {
+  border-color: var(--bz-primary);
+  background: var(--bz-gray-50);
+}
+
+.bz-option.selected {
+  border-color: var(--bz-primary);
+  background: var(--bz-primary);
+  color: white;
+}
+
+.bz-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: var(--bz-radius);
+  border-left: 4px solid var(--bz-primary);
+}
+
+/* ============================================
+   3. COMPARISON TABLE
+   ============================================ */
+
+.bz-compare {
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.bz-compare table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.bz-compare th {
+  background: var(--bz-gray-100);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--bz-gray-700);
+  border-bottom: 2px solid var(--bz-gray-200);
+}
+
+.bz-compare td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--bz-gray-200);
+}
+
+.bz-compare tr:hover {
+  background: var(--bz-gray-50);
+}
+
+.bz-compare .positive {
+  color: var(--bz-success);
+  font-weight: 600;
+}
+
+.bz-compare .negative {
+  color: var(--bz-danger);
+  font-weight: 600;
+}
+
+.bz-compare .neutral {
+  color: var(--bz-gray-500);
+}
+
+/* ============================================
+   4. TIMELINE
+   ============================================ */
+
+.bz-timeline {
+  position: relative;
+  padding-left: 2rem;
+  margin: 1.5rem 0;
+}
+
+.bz-timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--bz-gray-200);
+}
+
+.bz-timeline-item {
+  position: relative;
+  padding-bottom: 1.5rem;
+}
+
+.bz-timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -2rem;
+  top: 0.25rem;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--bz-gray-300);
+  border: 2px solid white;
+}
+
+.bz-timeline-item.past::before {
+  background: var(--bz-success);
+}
+
+.bz-timeline-item.current::before {
+  background: var(--bz-primary);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+.bz-timeline-item.future::before {
+  background: var(--bz-gray-300);
+}
+
+.bz-date {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bz-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bz-event {
+  font-weight: 500;
+  color: var(--bz-gray-900);
+  margin-top: 0.25rem;
+}
+
+.bz-timeline-item.current .bz-event {
+  color: var(--bz-primary);
+}
+
+/* ============================================
+   5. CHECKLIST
+   ============================================ */
+
+.bz-checklist {
+  background: var(--bz-gray-50);
+  border-radius: var(--bz-radius);
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.bz-checklist h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bz-gray-700);
+  margin-bottom: 0.75rem;
+}
+
+.bz-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  cursor: pointer;
+}
+
+.bz-check-item input[type="checkbox"] {
+  margin-top: 0.25rem;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--bz-primary);
+}
+
+.bz-check-item span {
+  color: var(--bz-gray-700);
+  line-height: 1.5;
+}
+
+.bz-check-item:has(input:checked) span {
+  text-decoration: line-through;
+  color: var(--bz-gray-500);
+}
+
+/* ============================================
+   6. EXPERT QUOTE BOX
+   ============================================ */
+
+.bz-expert-quote {
+  background: linear-gradient(135deg, var(--bz-gray-50), white);
+  border-radius: var(--bz-radius);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  border-left: 4px solid var(--bz-primary);
+  position: relative;
+}
+
+.bz-quote-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.bz-expert-quote blockquote {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--bz-gray-700);
+  font-style: italic;
+  margin: 0 0 0.75rem 0;
+}
+
+.bz-expert-quote cite {
+  font-size: 0.875rem;
+  color: var(--bz-gray-500);
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* ============================================
+   7. ALERT BOXES
+   ============================================ */
+
+.bz-alert {
+  border-radius: var(--bz-radius);
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.bz-alert strong {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.bz-alert-warning {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.bz-alert-success {
+  background: #d1fae5;
+  border: 1px solid #10b981;
+  color: #065f46;
+}
+
+.bz-alert-info {
+  background: #dbeafe;
+  border: 1px solid #3b82f6;
+  color: #1e40af;
+}
+
+.bz-alert-danger {
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+}
+
+/* ============================================
+   8. CTA BUTTONS
+   ============================================ */
+
+.bz-cta-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+
+.bz-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  border-radius: var(--bz-radius);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  font-size: 0.9375rem;
+}
+
+.bz-cta-primary {
+  background: var(--bz-primary);
+  color: white;
+}
+
+.bz-cta-primary:hover {
+  background: var(--bz-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--bz-shadow-lg);
+}
+
+.bz-cta-secondary {
+  background: white;
+  color: var(--bz-primary);
+  border: 2px solid var(--bz-primary);
+}
+
+.bz-cta-secondary:hover {
+  background: var(--bz-gray-50);
+}
+
+/* ============================================
+   9. SOURCE CREDIBILITY BADGE
+   ============================================ */
+
+.bz-source {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--bz-gray-200);
+  font-size: 0.875rem;
+}
+
+.bz-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bz-source-official {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.bz-source-verified {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.bz-source-expert {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.bz-source-unverified {
+  background: var(--bz-gray-100);
+  color: var(--bz-gray-500);
+}
+
+.bz-source-name {
+  color: var(--bz-gray-700);
+  font-weight: 500;
+}
+
+.bz-source-link {
+  color: var(--bz-primary);
+  text-decoration: none;
+  margin-left: auto;
+}
+
+.bz-source-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================
+   10. RELATED CONTENT CARDS
+   ============================================ */
+
+.bz-related {
+  margin: 2rem 0;
+}
+
+.bz-related h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bz-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.bz-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.bz-related-card {
+  background: white;
+  border: 1px solid var(--bz-gray-200);
+  border-radius: var(--bz-radius);
+  padding: 1rem;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.bz-related-card:hover {
+  border-color: var(--bz-primary);
+  box-shadow: var(--bz-shadow);
+}
+
+.bz-related-cat {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bz-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.bz-related-title {
+  display: block;
+  font-weight: 500;
+  color: var(--bz-gray-900);
+  line-height: 1.4;
+}
+
+/* ============================================
+   11. TL;DR BOX (30-Second Brief)
+   ============================================ */
+
+.bz-tldr {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-radius: var(--bz-radius);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  border: 1px solid #bfdbfe;
+}
+
+.bz-tldr-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  color: var(--bz-primary-dark);
+  margin-bottom: 1rem;
+}
+
+.bz-tldr-worry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.bz-tldr-worry.yes {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.bz-tldr-worry.no {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.bz-tldr-worry.depends {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.bz-tldr ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bz-tldr li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  color: var(--bz-gray-700);
+}
+
+.bz-tldr li strong {
+  color: var(--bz-gray-900);
+  min-width: 100px;
+}
+
+/* ============================================
+   12. BALI ZERO TAKE (Analysis Box)
+   ============================================ */
+
+.bz-take {
+  background: var(--bz-gray-900);
+  color: white;
+  border-radius: var(--bz-radius);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.bz-take-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #93c5fd;
+  margin-bottom: 1rem;
+}
+
+.bz-take-subtitle {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.bz-take h4 {
+  color: white;
+  font-size: 1rem;
+  margin: 1.25rem 0 0.5rem 0;
+}
+
+.bz-take p {
+  color: #d1d5db;
+  line-height: 1.6;
+}
+
+/* ============================================
+   13. CATEGORY BADGES
+   ============================================ */
+
+.bz-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bz-category-immigration {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.bz-category-business {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.bz-category-tax {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.bz-category-property {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+.bz-category-tech {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.bz-category-lifestyle {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+/* ============================================
+   14. PRIORITY BADGES
+   ============================================ */
+
+.bz-priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.bz-priority-high {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.bz-priority-high::before {
+  content: '🔴';
+  font-size: 0.625rem;
+}
+
+.bz-priority-medium {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.bz-priority-medium::before {
+  content: '🟡';
+  font-size: 0.625rem;
+}
+
+.bz-priority-low {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.bz-priority-low::before {
+  content: '🟢';
+  font-size: 0.625rem;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 640px) {
+  .bz-cta-group {
+    flex-direction: column;
+  }
+
+  .bz-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .bz-options {
+    flex-direction: column;
+  }
+
+  .bz-option {
+    width: 100%;
+    text-align: center;
+  }
+
+  .bz-source {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bz-source-link {
+    margin-left: 0;
+  }
+}

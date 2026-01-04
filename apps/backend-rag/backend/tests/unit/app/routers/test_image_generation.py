@@ -47,7 +47,7 @@ class TestImageGenerationRouter:
         mock_response.json.return_value = {
             "generatedImages": [
                 {"bytesBase64Encoded": "base64data1"},
-                {"bytesBase64Encoded": "base64data2"}
+                {"bytesBase64Encoded": "base64data2"},
             ]
         }
         mock_response.raise_for_status = MagicMock()
@@ -57,11 +57,7 @@ class TestImageGenerationRouter:
         mock_client_class.return_value = mock_client
 
         response = client.post(
-            "/api/v1/image/generate",
-            json={
-                "prompt": "test prompt",
-                "number_of_images": 2
-            }
+            "/api/v1/image/generate", json={"prompt": "test prompt", "number_of_images": 2}
         )
         assert response.status_code == 200
         data = response.json()
@@ -75,10 +71,7 @@ class TestImageGenerationRouter:
         mock_settings.google_ai_studio_key = None
         mock_settings.google_api_key = None
 
-        response = client.post(
-            "/api/v1/image/generate",
-            json={"prompt": "test"}
-        )
+        response = client.post("/api/v1/image/generate", json={"prompt": "test"})
         assert response.status_code == 500
 
     @patch("app.routers.image_generation.httpx.AsyncClient")
@@ -94,16 +87,14 @@ class TestImageGenerationRouter:
 
         # httpx.HTTPStatusError is raised when status_code is not 2xx
         import httpx
+
         error = httpx.HTTPStatusError("Forbidden", request=MagicMock(), response=mock_response)
         mock_client.post = AsyncMock(side_effect=error)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_class.return_value = mock_client
 
-        response = client.post(
-            "/api/v1/image/generate",
-            json={"prompt": "test"}
-        )
+        response = client.post("/api/v1/image/generate", json={"prompt": "test"})
         # The router checks for 403 specifically and raises HTTPException with 403
         assert response.status_code == 403
 
@@ -123,11 +114,7 @@ class TestImageGenerationRouter:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client_class.return_value = mock_client
 
-        response = client.post(
-            "/api/v1/image/generate",
-            json={"prompt": "test"}
-        )
+        response = client.post("/api/v1/image/generate", json={"prompt": "test"})
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
-

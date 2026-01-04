@@ -122,7 +122,7 @@ async def main():
                 batch = rows[i : i + batch_size]
                 tasks = [process_document(row, extractor, graph_service) for row in batch]
                 await asyncio.gather(*tasks)
-                logger.info(f"Processed batch {i//batch_size + 1}")
+                logger.info(f"Processed batch {i // batch_size + 1}")
 
     finally:
         await pool.close()

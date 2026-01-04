@@ -38,7 +38,9 @@ class TestProductivityScorerService:
         assert service.pool == mock_db_pool
 
     @pytest.mark.asyncio
-    async def test_calculate_productivity_scores_no_sessions(self, productivity_scorer, mock_db_pool):
+    async def test_calculate_productivity_scores_no_sessions(
+        self, productivity_scorer, mock_db_pool
+    ):
         """Test calculating productivity scores with no sessions"""
         mock_db_pool.fetch = AsyncMock(return_value=[])
         results = await productivity_scorer.calculate_productivity_scores()
@@ -54,7 +56,7 @@ class TestProductivityScorerService:
                 "total_minutes": 480,  # 8 hours
                 "total_conversations": 30,  # 3.75 per hour
                 "total_activities": 200,  # 25 per hour
-                "session_count": 1
+                "session_count": 1,
             }
         ]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -72,7 +74,7 @@ class TestProductivityScorerService:
                 "total_minutes": 240,  # 4 hours
                 "total_conversations": 4,  # 1 per hour
                 "total_activities": 20,  # 5 per hour
-                "session_count": 1
+                "session_count": 1,
             }
         ]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -82,7 +84,9 @@ class TestProductivityScorerService:
         assert "rating" in results[0]
 
     @pytest.mark.asyncio
-    async def test_calculate_productivity_scores_zero_hours(self, productivity_scorer, mock_db_pool):
+    async def test_calculate_productivity_scores_zero_hours(
+        self, productivity_scorer, mock_db_pool
+    ):
         """Test calculating productivity scores with zero hours"""
         sessions = [
             {
@@ -91,7 +95,7 @@ class TestProductivityScorerService:
                 "total_minutes": 0,
                 "total_conversations": 0,
                 "total_activities": 0,
-                "session_count": 1
+                "session_count": 1,
             }
         ]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -100,7 +104,9 @@ class TestProductivityScorerService:
         assert len(results) == 0
 
     @pytest.mark.asyncio
-    async def test_calculate_productivity_scores_multiple_users(self, productivity_scorer, mock_db_pool):
+    async def test_calculate_productivity_scores_multiple_users(
+        self, productivity_scorer, mock_db_pool
+    ):
         """Test calculating productivity scores for multiple users"""
         sessions = [
             {
@@ -109,7 +115,7 @@ class TestProductivityScorerService:
                 "total_minutes": 480,
                 "total_conversations": 30,
                 "total_activities": 200,
-                "session_count": 1
+                "session_count": 1,
             },
             {
                 "user_name": "User 2",
@@ -117,15 +123,17 @@ class TestProductivityScorerService:
                 "total_minutes": 240,
                 "total_conversations": 10,
                 "total_activities": 50,
-                "session_count": 1
-            }
+                "session_count": 1,
+            },
         ]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
         results = await productivity_scorer.calculate_productivity_scores()
         assert len(results) == 2
 
     @pytest.mark.asyncio
-    async def test_calculate_productivity_scores_custom_days(self, productivity_scorer, mock_db_pool):
+    async def test_calculate_productivity_scores_custom_days(
+        self, productivity_scorer, mock_db_pool
+    ):
         """Test calculating productivity scores with custom days"""
         sessions = [
             {
@@ -134,7 +142,7 @@ class TestProductivityScorerService:
                 "total_minutes": 480,
                 "total_conversations": 30,
                 "total_activities": 200,
-                "session_count": 1
+                "session_count": 1,
             }
         ]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -151,7 +159,7 @@ class TestProductivityScorerService:
                 "total_minutes": 480,
                 "total_conversations": 30,
                 "total_activities": 200,
-                "session_count": 1
+                "session_count": 1,
             }
         ]
         mock_db_pool.fetch = AsyncMock(return_value=sessions)
@@ -160,4 +168,3 @@ class TestProductivityScorerService:
         assert "conversations_per_hour" in results[0]["metrics"]
         assert "activities_per_hour" in results[0]["metrics"]
         assert "avg_session_hours" in results[0]["metrics"]
-

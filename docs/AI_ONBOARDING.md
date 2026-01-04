@@ -42,6 +42,7 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 | :--- | :--- | :--- | :--- | :--- |
 | **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 38 routers (250 endpoints), 169 services, 32 migrations (65+ tables). Handles Agentic RAG (ReAct pattern), AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
 | **Frontend** | `apps/mouth` | **Next.js 16** (React 19) | ✅ **PRIMARY** | The modern user interface. Uses Tailwind CSS 4, TypeScript, shadcn/ui components, and lightweight state management. |
+| **Intel Scraper** | `apps/bali-intel-scraper` | **Python 3.11** | ✅ **ACTIVE** | News processing pipeline: RSS → Scoring → Claude Validation → Enrichment → Image Gen → SEO/AEO → Telegram Approval → Publish. Cost: ~$0.06/article. |
 
 
 ### 2.2 Infrastructure
@@ -268,6 +269,75 @@ open http://localhost:9000   # SonarQube (admin/admin)
 ./sentinel
 ```
 
+### 4.10 Intel Scraper Pipeline (BaliZero News)
+
+Located in `apps/bali-intel-scraper/scripts/`. Automated news processing for BaliZero.
+
+**Pipeline Flow (7 Steps):**
+```
+RSS Fetcher → LLAMA Scorer → Claude Validator → Claude Enricher →
+Image Generator → SEO/AEO Optimizer → Telegram Approval → Publish
+```
+
+**Key Components:**
+
+| Step | File | Purpose | Cost |
+|------|------|---------|------|
+| 1. RSS Fetch | `rss_fetcher.py` | Fetch from RSS feeds | $0 |
+| 2. Scoring | `professional_scorer.py` | Keyword scoring + heuristics | $0 |
+| 3. Validation | `claude_validator.py` | AI gate for ambiguous articles | ~$0.01 |
+| 4. Enrichment | `article_deep_enricher.py` | Full article rewrite, Executive Brief | ~$0.05 |
+| 5. Image | `gemini_image_generator.py` | Cover image via Gemini | $0 |
+| 5.5. SEO/AEO | `seo_aeo_optimizer.py` | Schema.org, meta tags, FAQ, entities | $0 |
+| 6. Approval | `telegram_approval.py` | Telegram notification with buttons | $0 |
+| 7. Publish | `intel_pipeline.py` | POST to BaliZero API | $0 |
+
+**SEO/AEO Optimizer (NEW):**
+Optimizes for both traditional search (Google, Bing) AND AI search engines (ChatGPT, Claude, Perplexity, Gemini):
+- Schema.org JSON-LD (Article, FAQ, Organization, Breadcrumb)
+- OpenGraph and Twitter meta tags
+- TL;DR summary for AI citation
+- FAQ generation for featured snippets
+- Entity extraction for knowledge graphs
+- Keyword extraction
+
+**Documentation:** `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md`
+
+### 4.11 Telegram Integration
+
+**Bot:** `@zantara_bot`
+
+**Approval System:**
+- Sends HTML preview of articles before publishing
+- Inline buttons: ✅ Approve | ❌ Reject | ✏️ Request Changes
+- Multi-recipient support (comma-separated chat IDs)
+- HTML preview looks like final published article
+
+**Configuration (Fly.io Secrets):**
+```bash
+# View current secrets
+fly secrets list -a nuzantara-rag
+
+# Set Telegram approval chat ID
+fly secrets set TELEGRAM_APPROVAL_CHAT_ID=8290313965 -a nuzantara-rag
+
+# For multiple recipients
+fly secrets set TELEGRAM_APPROVAL_CHAT_ID="8290313965,ANOTHER_ID" -a nuzantara-rag
+```
+
+**Current Approvers:**
+- Zero (Chat ID: 8290313965)
+- Dea (Chat ID: 6217157548)
+- Damar (Chat ID: 1813875994)
+
+**Local Development:**
+Create `.env` in `apps/bali-intel-scraper/`:
+```bash
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}  # From Fly.io secrets
+TELEGRAM_CHAT_ID=8290313965
+PREVIEW_BASE_URL=https://balizero.com/preview
+```
+
 ---
 
 ## 5. 📁 KEY DIRECTORIES
@@ -285,6 +355,8 @@ open http://localhost:9000   # SonarQube (admin/admin)
 | `apps/mouth/src/app/` | Next.js App Router pages |
 | `apps/mouth/src/components/` | React components (shadcn/ui based) |
 | `apps/mouth/src/lib/api/` | API client layer (Zantara SDK) |
+| `apps/bali-intel-scraper/scripts/` | Intel pipeline: RSS, scoring, enrichment, SEO, Telegram |
+| `apps/bali-intel-scraper/docs/` | Pipeline documentation |
 | `docs/` | Project documentation |
 | `scripts/` | Deployment, testing, analysis scripts |
 
@@ -456,7 +528,8 @@ fly logs -a nuzantara-rag | grep "Native Function Call"
 | AI Handover Protocol | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Per golden rules |
 | Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
 | Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
+| **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | Per scraper news + SEO/AEO + Telegram |
 
 ---
 
-**Last Updated:** 2025-12-31 | **Deployed Version:** v1179
+**Last Updated:** 2026-01-04 | **Deployed Version:** v1180

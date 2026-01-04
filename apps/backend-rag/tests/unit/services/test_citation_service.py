@@ -25,10 +25,9 @@ Author: ZANTARA Test Team
 Date: 2025-12-23
 """
 
-import os
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -100,19 +99,19 @@ class TestExtractSourcesFromRag:
                     "title": "Immigration Regulations 2024",
                     "url": "https://example.com/immigration",
                     "date": "2024-01-15",
-                    "category": "immigration"
+                    "category": "immigration",
                 },
-                "score": 0.95
+                "score": 0.95,
             },
             {
                 "metadata": {
                     "title": "Tax Law Overview",
                     "source_url": "https://example.com/tax",
                     "scraped_at": "2024-03-10",
-                    "category": "tax"
+                    "category": "tax",
                 },
-                "score": 0.87
-            }
+                "score": 0.87,
+            },
         ]
 
         sources = service.extract_sources_from_rag(rag_results)
@@ -138,13 +137,10 @@ class TestExtractSourcesFromRag:
     def test_extract_sources_minimal_metadata(self, service):
         """Test extracting sources with minimal metadata"""
         rag_results = [
-            {
-                "metadata": {},
-                "score": 0.5
-            },
+            {"metadata": {}, "score": 0.5},
             {
                 "metadata": {"title": "Only Title"},
-            }
+            },
         ]
 
         sources = service.extract_sources_from_rag(rag_results)
@@ -184,7 +180,7 @@ class TestExtractSourcesFromRag:
                 "metadata": {
                     "title": "Test",
                     "url": "https://primary.com",
-                    "source_url": "https://secondary.com"
+                    "source_url": "https://secondary.com",
                 }
             }
         ]
@@ -194,13 +190,7 @@ class TestExtractSourcesFromRag:
     def test_extract_sources_date_priority(self, service):
         """Test that 'date' takes priority over 'scraped_at'"""
         rag_results = [
-            {
-                "metadata": {
-                    "title": "Test",
-                    "date": "2024-01-01",
-                    "scraped_at": "2024-02-01"
-                }
-            }
+            {"metadata": {"title": "Test", "date": "2024-01-01", "scraped_at": "2024-02-01"}}
         ]
         sources = service.extract_sources_from_rag(rag_results)
         assert sources[0]["date"] == "2024-01-01"
@@ -227,28 +217,29 @@ class TestFormatSourcesSection:
                 "id": 1,
                 "title": "Immigration Regulations 2024",
                 "url": "https://example.com/immigration",
-                "date": "2024-01-15"
+                "date": "2024-01-15",
             },
             {
                 "id": 2,
                 "title": "Tax Law Overview",
                 "url": "https://example.com/tax",
-                "date": "2024-03-10"
-            }
+                "date": "2024-03-10",
+            },
         ]
 
         section = service.format_sources_section(sources)
 
         assert "**Sources:**" in section
-        assert "[1] Immigration Regulations 2024 - https://example.com/immigration - 2024-01-15" in section
+        assert (
+            "[1] Immigration Regulations 2024 - https://example.com/immigration - 2024-01-15"
+            in section
+        )
         assert "[2] Tax Law Overview - https://example.com/tax - 2024-03-10" in section
         assert section.startswith("\n\n---\n**Sources:**")
 
     def test_format_sources_without_url(self, service):
         """Test formatting sources without URLs"""
-        sources = [
-            {"id": 1, "title": "Document 1", "date": "2024-01-01"}
-        ]
+        sources = [{"id": 1, "title": "Document 1", "date": "2024-01-01"}]
 
         section = service.format_sources_section(sources)
 
@@ -257,9 +248,7 @@ class TestFormatSourcesSection:
 
     def test_format_sources_without_date(self, service):
         """Test formatting sources without dates"""
-        sources = [
-            {"id": 1, "title": "Document 1", "url": "https://example.com"}
-        ]
+        sources = [{"id": 1, "title": "Document 1", "url": "https://example.com"}]
 
         section = service.format_sources_section(sources)
 
@@ -269,9 +258,7 @@ class TestFormatSourcesSection:
 
     def test_format_sources_title_only(self, service):
         """Test formatting sources with title only"""
-        sources = [
-            {"id": 1, "title": "Document 1"}
-        ]
+        sources = [{"id": 1, "title": "Document 1"}]
 
         section = service.format_sources_section(sources)
 
@@ -285,9 +272,7 @@ class TestFormatSourcesSection:
 
     def test_format_sources_long_date_truncation(self, service):
         """Test that long date strings are truncated to YYYY-MM-DD"""
-        sources = [
-            {"id": 1, "title": "Doc", "date": "2024-01-15T12:34:56.789Z"}
-        ]
+        sources = [{"id": 1, "title": "Doc", "date": "2024-01-15T12:34:56.789Z"}]
 
         section = service.format_sources_section(sources)
 
@@ -332,7 +317,7 @@ class TestInjectCitationContextIntoPrompt:
         system_prompt = "You are a helpful assistant."
         sources = [
             {"id": 1, "title": "Immigration Guide", "category": "immigration"},
-            {"id": 2, "title": "Tax Handbook", "category": "tax"}
+            {"id": 2, "title": "Tax Handbook", "category": "tax"},
         ]
 
         enhanced_prompt = service.inject_citation_context_into_prompt(system_prompt, sources)
@@ -381,10 +366,7 @@ class TestValidateCitationsInResponse:
     def test_validate_citations_all_valid(self, service):
         """Test validation with all valid citations"""
         response = "Indonesia requires KITAS [1]. Investment minimum is IDR 10B [2]."
-        sources = [
-            {"id": 1, "title": "Immigration Guide"},
-            {"id": 2, "title": "Investment Rules"}
-        ]
+        sources = [{"id": 1, "title": "Immigration Guide"}, {"id": 2, "title": "Investment Rules"}]
 
         result = service.validate_citations_in_response(response, sources)
 
@@ -399,10 +381,7 @@ class TestValidateCitationsInResponse:
     def test_validate_citations_with_invalid(self, service):
         """Test validation with invalid citations"""
         response = "Some fact [5]. Another fact [10]."
-        sources = [
-            {"id": 1, "title": "Doc 1"},
-            {"id": 2, "title": "Doc 2"}
-        ]
+        sources = [{"id": 1, "title": "Doc 1"}, {"id": 2, "title": "Doc 2"}]
 
         result = service.validate_citations_in_response(response, sources)
 
@@ -414,10 +393,7 @@ class TestValidateCitationsInResponse:
     def test_validate_citations_no_citations(self, service):
         """Test validation with no citations in response"""
         response = "This response has no citations at all."
-        sources = [
-            {"id": 1, "title": "Doc 1"},
-            {"id": 2, "title": "Doc 2"}
-        ]
+        sources = [{"id": 1, "title": "Doc 1"}, {"id": 2, "title": "Doc 2"}]
 
         result = service.validate_citations_in_response(response, sources)
 
@@ -430,10 +406,7 @@ class TestValidateCitationsInResponse:
     def test_validate_citations_duplicate_citations(self, service):
         """Test validation with duplicate citation numbers"""
         response = "Fact [1]. Another fact [1]. And [2]. More [2]."
-        sources = [
-            {"id": 1, "title": "Doc 1"},
-            {"id": 2, "title": "Doc 2"}
-        ]
+        sources = [{"id": 1, "title": "Doc 1"}, {"id": 2, "title": "Doc 2"}]
 
         result = service.validate_citations_in_response(response, sources)
 
@@ -447,7 +420,7 @@ class TestValidateCitationsInResponse:
         sources = [
             {"id": 1, "title": "Doc 1"},
             {"id": 2, "title": "Doc 2"},
-            {"id": 3, "title": "Doc 3"}
+            {"id": 3, "title": "Doc 3"},
         ]
 
         result = service.validate_citations_in_response(response, sources)
@@ -455,7 +428,7 @@ class TestValidateCitationsInResponse:
         assert result["valid"] is True
         assert result["citations_found"] == [1, 3]
         assert result["unused_sources"] == [2]
-        assert result["stats"]["citation_rate"] == pytest.approx(2/3)
+        assert result["stats"]["citation_rate"] == pytest.approx(2 / 3)
 
     def test_validate_citations_no_sources(self, service):
         """Test validation with no sources available"""
@@ -482,10 +455,7 @@ class TestValidateCitationsInResponse:
     def test_validate_citations_mixed_valid_invalid(self, service):
         """Test validation with mix of valid and invalid citations"""
         response = "Valid [1] and [2], invalid [5] and [7]."
-        sources = [
-            {"id": 1, "title": "Doc 1"},
-            {"id": 2, "title": "Doc 2"}
-        ]
+        sources = [{"id": 1, "title": "Doc 1"}, {"id": 2, "title": "Doc 2"}]
 
         result = service.validate_citations_in_response(response, sources)
 
@@ -506,7 +476,7 @@ class TestAppendSourcesToResponse:
         response = "This is the AI response."
         sources = [
             {"id": 1, "title": "Doc 1", "url": "https://example.com"},
-            {"id": 2, "title": "Doc 2", "date": "2024-01-01"}
+            {"id": 2, "title": "Doc 2", "date": "2024-01-01"},
         ]
 
         enhanced = service.append_sources_to_response(response, sources)
@@ -522,7 +492,7 @@ class TestAppendSourcesToResponse:
         sources = [
             {"id": 1, "title": "Doc 1"},
             {"id": 2, "title": "Doc 2"},
-            {"id": 3, "title": "Doc 3"}
+            {"id": 3, "title": "Doc 3"},
         ]
         validation = {"citations_found": [1, 3]}
 
@@ -556,10 +526,7 @@ class TestAppendSourcesToResponse:
     def test_append_sources_validation_none(self, service):
         """Test appending with validation=None (include all sources)"""
         response = "Response."
-        sources = [
-            {"id": 1, "title": "Doc 1"},
-            {"id": 2, "title": "Doc 2"}
-        ]
+        sources = [{"id": 1, "title": "Doc 1"}, {"id": 2, "title": "Doc 2"}]
 
         enhanced = service.append_sources_to_response(response, sources, None)
 
@@ -578,8 +545,14 @@ class TestProcessResponseWithCitations:
         """Test complete citation processing workflow"""
         response = "Business visa requires KITAS [1]. Investment minimum is IDR 10B [2]."
         rag_results = [
-            {"metadata": {"title": "Immigration Guide", "url": "https://example.com/imm"}, "score": 0.9},
-            {"metadata": {"title": "Investment Rules", "url": "https://example.com/inv"}, "score": 0.85}
+            {
+                "metadata": {"title": "Immigration Guide", "url": "https://example.com/imm"},
+                "score": 0.9,
+            },
+            {
+                "metadata": {"title": "Investment Rules", "url": "https://example.com/inv"},
+                "score": 0.85,
+            },
         ]
 
         result = service.process_response_with_citations(response, rag_results, auto_append=True)
@@ -671,7 +644,7 @@ class TestCreateSourceMetadataForFrontend:
                 "url": "https://example.com/imm",
                 "date": "2024-01-15",
                 "type": "rag",
-                "category": "immigration"
+                "category": "immigration",
             },
             {
                 "id": 2,
@@ -679,8 +652,8 @@ class TestCreateSourceMetadataForFrontend:
                 "url": "https://example.com/tax",
                 "date": "2024-02-20",
                 "type": "web",
-                "category": "tax"
-            }
+                "category": "tax",
+            },
         ]
 
         frontend_sources = service.create_source_metadata_for_frontend(sources)
@@ -698,9 +671,7 @@ class TestCreateSourceMetadataForFrontend:
 
     def test_create_frontend_metadata_minimal(self, service):
         """Test creating frontend metadata with minimal source data"""
-        sources = [
-            {"id": 1}
-        ]
+        sources = [{"id": 1}]
 
         frontend_sources = service.create_source_metadata_for_frontend(sources)
 
@@ -722,7 +693,7 @@ class TestCreateSourceMetadataForFrontend:
         sources = [
             {"id": 1, "title": "Only Title"},
             {"id": 2, "url": "https://example.com", "category": "custom"},
-            {"id": 3, "date": "2024-01-01", "type": "memory"}
+            {"id": 3, "date": "2024-01-01", "type": "memory"},
         ]
 
         frontend_sources = service.create_source_metadata_for_frontend(sources)
@@ -738,11 +709,7 @@ class TestCreateSourceMetadataForFrontend:
 
     def test_create_frontend_metadata_preserves_all_types(self, service):
         """Test that all source types are preserved"""
-        sources = [
-            {"id": 1, "type": "rag"},
-            {"id": 2, "type": "memory"},
-            {"id": 3, "type": "web"}
-        ]
+        sources = [{"id": 1, "type": "rag"}, {"id": 2, "type": "memory"}, {"id": 3, "type": "web"}]
 
         frontend_sources = service.create_source_metadata_for_frontend(sources)
 
@@ -762,7 +729,7 @@ class TestGenerateCitations:
         """Test generating citations from search results"""
         search_results = [
             {"metadata": {"title": "Doc 1", "url": "https://example.com"}, "score": 0.9},
-            {"metadata": {"title": "Doc 2"}, "score": 0.8}
+            {"metadata": {"title": "Doc 2"}, "score": 0.8},
         ]
 
         citations = await service.generate_citations(search_results)
@@ -782,7 +749,9 @@ class TestGenerateCitations:
         """Test that generate_citations calls extract_sources_from_rag"""
         search_results = [{"metadata": {"title": "Test"}}]
 
-        with patch.object(service, 'extract_sources_from_rag', return_value=[{"id": 1}]) as mock_extract:
+        with patch.object(
+            service, "extract_sources_from_rag", return_value=[{"id": 1}]
+        ) as mock_extract:
             citations = await service.generate_citations(search_results)
             mock_extract.assert_called_once_with(search_results)
             assert citations == [{"id": 1}]
@@ -829,16 +798,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_extract_sources_with_none_values(self, service):
         """Test extracting sources with None values in metadata"""
-        rag_results = [
-            {
-                "metadata": {
-                    "title": None,
-                    "url": None,
-                    "date": None
-                },
-                "score": None
-            }
-        ]
+        rag_results = [{"metadata": {"title": None, "url": None, "date": None}, "score": None}]
 
         # Should not raise exception
         sources = service.extract_sources_from_rag(rag_results)
@@ -850,7 +810,7 @@ class TestEdgeCasesAndErrorHandling:
         sources = [
             {"id": 1, "title": "Doc 1"},
             {"id": 2, "title": "Doc 2"},
-            {"id": 3, "title": "Doc 3"}
+            {"id": 3, "title": "Doc 3"},
         ]
 
         result = service.validate_citations_in_response(response, sources)
@@ -861,7 +821,7 @@ class TestEdgeCasesAndErrorHandling:
         """Test formatting sources with empty string values"""
         sources = [
             {"id": 1, "title": "", "url": "", "date": ""},
-            {"id": 2, "title": "Doc 2", "url": "", "date": ""}
+            {"id": 2, "title": "Doc 2", "url": "", "date": ""},
         ]
 
         section = service.format_sources_section(sources)
@@ -872,9 +832,7 @@ class TestEdgeCasesAndErrorHandling:
     def test_inject_citation_context_with_special_chars_in_title(self, service):
         """Test injecting citation context with special characters in title"""
         system_prompt = "Test"
-        sources = [
-            {"id": 1, "title": "Doc & Title [Special] <chars>", "category": "test"}
-        ]
+        sources = [{"id": 1, "title": "Doc & Title [Special] <chars>", "category": "test"}]
 
         enhanced = service.inject_citation_context_into_prompt(system_prompt, sources)
         assert "Doc & Title [Special] <chars>" in enhanced
@@ -937,6 +895,7 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_format_sources_date_exception_handling(self, service):
         """Test date formatting exception handling"""
+
         # Create a mock object that will raise an exception during isinstance check
         class BadDate:
             def __class__(self):
@@ -950,12 +909,10 @@ class TestEdgeCasesAndErrorHandling:
         # Override __class__ to break isinstance check
         # This is tricky - let's use a simpler approach with patching
 
-        sources = [
-            {"id": 1, "title": "Doc", "url": "https://example.com", "date": "valid"}
-        ]
+        sources = [{"id": 1, "title": "Doc", "url": "https://example.com", "date": "valid"}]
 
         # Patch isinstance to raise an exception
-        with patch('services.citation_service.isinstance', side_effect=Exception("Test exception")):
+        with patch("services.citation_service.isinstance", side_effect=Exception("Test exception")):
             # Should handle exception gracefully and not crash
             section = service.format_sources_section(sources)
             assert "**Sources:**" in section
@@ -978,20 +935,20 @@ class TestIntegrationScenarios:
                     "title": "Peraturan Imigrasi Indonesia 2024",
                     "url": "https://imigrasi.go.id/peraturan/2024",
                     "date": "2024-01-15T10:30:00",
-                    "category": "immigration"
+                    "category": "immigration",
                 },
                 "score": 0.92,
-                "content": "KITAS requirements..."
+                "content": "KITAS requirements...",
             },
             {
                 "metadata": {
                     "title": "BKPM Investment Guidelines",
                     "source_url": "https://bkpm.go.id/guidelines",
                     "scraped_at": "2024-02-20",
-                    "category": "investment"
+                    "category": "investment",
                 },
-                "score": 0.88
-            }
+                "score": 0.88,
+            },
         ]
 
         # AI response with citations
@@ -1032,9 +989,7 @@ class TestIntegrationScenarios:
         assert health["status"] == "healthy"
 
         # Generate citations
-        search_results = [
-            {"metadata": {"title": "Test Doc"}, "score": 0.9}
-        ]
+        search_results = [{"metadata": {"title": "Test Doc"}, "score": 0.9}]
         citations = await service.generate_citations(search_results)
         assert len(citations) == 1
 
@@ -1043,7 +998,7 @@ class TestIntegrationScenarios:
         # Step 1: Extract sources
         rag_results = [
             {"metadata": {"title": "Doc 1", "category": "tax"}, "score": 0.9},
-            {"metadata": {"title": "Doc 2", "category": "labor"}, "score": 0.85}
+            {"metadata": {"title": "Doc 2", "category": "labor"}, "score": 0.85},
         ]
         sources = service.extract_sources_from_rag(rag_results)
 

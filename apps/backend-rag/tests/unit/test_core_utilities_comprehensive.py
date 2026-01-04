@@ -472,6 +472,6 @@ def test_embedding_consistency(text, expected_embedding_size):
 
     embedding = service.generate_single_embedding(text)
 
-    assert (
-        len(embedding) == expected_embedding_size
-    ), f"Embedding for text of length {len(text)} should have size {expected_embedding_size}"
+    assert len(embedding) == expected_embedding_size, (
+        f"Embedding for text of length {len(text)} should have size {expected_embedding_size}"
+    )

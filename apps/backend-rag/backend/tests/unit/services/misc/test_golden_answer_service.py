@@ -53,7 +53,9 @@ class TestGoldenAnswerService:
     @pytest.mark.asyncio
     async def test_connect(self, golden_answer_service):
         """Test connecting to database"""
-        with patch("services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock) as mock_create_pool:
+        with patch(
+            "services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+        ) as mock_create_pool:
             mock_pool = MagicMock()
             mock_create_pool.return_value = mock_pool
 
@@ -86,13 +88,13 @@ class TestGoldenAnswerService:
             "cluster_id": 1,
             "canonical_question": "Test question",
             "answer": "Test answer",
-            "sources": ["source1"]
+            "sources": ["source1"],
         }.get(key)
         mock_row.get = lambda key, default=None: {
             "cluster_id": 1,
             "canonical_question": "Test question",
             "answer": "Test answer",
-            "sources": ["source1"]
+            "sources": ["source1"],
         }.get(key, default)
 
         @asynccontextmanager
@@ -111,7 +113,15 @@ class TestGoldenAnswerService:
     async def test_lookup_golden_answer_similarity_match(self, golden_answer_service, mock_db_pool):
         """Test looking up golden answer with similarity match"""
         mock_rows = [
-            MagicMock(**{"__getitem__": lambda self, key: {"canonical_question": "Test", "answer": "Answer", "sources": []}.get(key)})
+            MagicMock(
+                **{
+                    "__getitem__": lambda self, key: {
+                        "canonical_question": "Test",
+                        "answer": "Answer",
+                        "sources": [],
+                    }.get(key)
+                }
+            )
         ]
 
         @asynccontextmanager
@@ -124,11 +134,10 @@ class TestGoldenAnswerService:
         mock_db_pool.acquire = acquire
         golden_answer_service.pool = mock_db_pool
 
-        with patch.object(golden_answer_service, "_load_model"), \
-             patch("services.misc.golden_answer_service.SentenceTransformer") as mock_st:
+        # Since _load_model is patched as a no-op, we just need to set the model directly
+        with patch.object(golden_answer_service, "_load_model"):
             mock_model = MagicMock()
             mock_model.encode.return_value = [[0.1] * 384]
-            mock_st.return_value = mock_model
             golden_answer_service.model = mock_model
 
             result = await golden_answer_service.lookup_golden_answer("Test query")

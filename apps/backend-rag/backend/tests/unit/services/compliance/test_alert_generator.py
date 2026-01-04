@@ -30,7 +30,7 @@ def sample_compliance_item():
         deadline=(datetime.now() + timedelta(days=5)).isoformat(),
         requirement_details="Renew KITAS before expiry",
         required_documents=["passport", "sponsor_letter"],
-        estimated_cost=15000000
+        estimated_cost=15000000,
     )
 
 
@@ -49,11 +49,7 @@ class TestAlertGeneratorService:
         deadline = (datetime.now() - timedelta(days=1)).isoformat()
         sample_compliance_item.deadline = deadline
 
-        alert = generator.generate_alert(
-            sample_compliance_item,
-            AlertSeverity.CRITICAL,
-            -1
-        )
+        alert = generator.generate_alert(sample_compliance_item, AlertSeverity.CRITICAL, -1)
 
         assert alert.severity == AlertSeverity.CRITICAL
         assert "OVERDUE" in alert.message
@@ -64,11 +60,7 @@ class TestAlertGeneratorService:
         """Test generating urgent alert"""
         generator = AlertGeneratorService()
 
-        alert = generator.generate_alert(
-            sample_compliance_item,
-            AlertSeverity.URGENT,
-            5
-        )
+        alert = generator.generate_alert(sample_compliance_item, AlertSeverity.URGENT, 5)
 
         assert alert.severity == AlertSeverity.URGENT
         assert "URGENT" in alert.message
@@ -78,11 +70,7 @@ class TestAlertGeneratorService:
         """Test generating warning alert"""
         generator = AlertGeneratorService()
 
-        alert = generator.generate_alert(
-            sample_compliance_item,
-            AlertSeverity.WARNING,
-            20
-        )
+        alert = generator.generate_alert(sample_compliance_item, AlertSeverity.WARNING, 20)
 
         assert alert.severity == AlertSeverity.WARNING
         assert "REMINDER" in alert.message
@@ -92,11 +80,7 @@ class TestAlertGeneratorService:
         """Test generating info alert"""
         generator = AlertGeneratorService()
 
-        alert = generator.generate_alert(
-            sample_compliance_item,
-            AlertSeverity.INFO,
-            90
-        )
+        alert = generator.generate_alert(sample_compliance_item, AlertSeverity.INFO, 90)
 
         assert alert.severity == AlertSeverity.INFO
         assert "UPCOMING" in alert.message
@@ -106,11 +90,7 @@ class TestAlertGeneratorService:
         """Test generating alert with required documents"""
         generator = AlertGeneratorService()
 
-        alert = generator.generate_alert(
-            sample_compliance_item,
-            AlertSeverity.URGENT,
-            5
-        )
+        alert = generator.generate_alert(sample_compliance_item, AlertSeverity.URGENT, 5)
 
         assert "Required documents" in alert.message
         assert "passport" in alert.message
@@ -125,14 +105,10 @@ class TestAlertGeneratorService:
             title="Test Item",
             description="Test description",
             deadline=(datetime.now() + timedelta(days=5)).isoformat(),
-            requirement_details="Test requirement details"
+            requirement_details="Test requirement details",
         )
 
-        alert = generator.generate_alert(
-            item,
-            AlertSeverity.URGENT,
-            5
-        )
+        alert = generator.generate_alert(item, AlertSeverity.URGENT, 5)
 
         assert alert.estimated_cost is None
         assert "Estimated cost" not in alert.message
@@ -140,21 +116,14 @@ class TestAlertGeneratorService:
     def test_generate_alert_creates_unique_id(self, sample_compliance_item):
         """Test that each alert gets unique ID"""
         import time
+
         generator = AlertGeneratorService()
 
-        alert1 = generator.generate_alert(
-            sample_compliance_item,
-            AlertSeverity.URGENT,
-            5
-        )
+        alert1 = generator.generate_alert(sample_compliance_item, AlertSeverity.URGENT, 5)
 
         time.sleep(1.1)  # Wait more than 1 second to ensure different timestamp
 
-        alert2 = generator.generate_alert(
-            sample_compliance_item,
-            AlertSeverity.URGENT,
-            5
-        )
+        alert2 = generator.generate_alert(sample_compliance_item, AlertSeverity.URGENT, 5)
 
         assert alert1.alert_id != alert2.alert_id
         assert len(generator.alerts) == 2

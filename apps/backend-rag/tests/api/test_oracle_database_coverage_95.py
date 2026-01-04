@@ -170,9 +170,8 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_user_profile_db_error(self):
         """Test get_user_profile with database error"""
-        from sqlalchemy.exc import SQLAlchemyError
-
         from backend.services.oracle_database import DatabaseManager
+        from sqlalchemy.exc import SQLAlchemyError
 
         db_url = "postgresql://test:test@localhost:5432/test"
 
@@ -228,9 +227,8 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_store_query_analytics_db_error(self):
         """Test store_query_analytics with database error"""
-        from sqlalchemy.exc import SQLAlchemyError
-
         from backend.services.oracle_database import DatabaseManager
+        from sqlalchemy.exc import SQLAlchemyError
 
         db_url = "postgresql://test:test@localhost:5432/test"
 
@@ -287,9 +285,8 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_store_feedback_db_error(self):
         """Test store_feedback with database error"""
-        from sqlalchemy.exc import SQLAlchemyError
-
         from backend.services.oracle_database import DatabaseManager
+        from sqlalchemy.exc import SQLAlchemyError
 
         db_url = "postgresql://test:test@localhost:5432/test"
 

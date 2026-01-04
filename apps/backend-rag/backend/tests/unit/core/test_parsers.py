@@ -264,4 +264,3 @@ class TestGetDocumentInfo:
             assert info["file_type"] == ".epub"
         finally:
             os.unlink(temp_path)
-

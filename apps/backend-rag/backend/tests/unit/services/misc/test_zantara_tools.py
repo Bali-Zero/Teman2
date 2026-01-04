@@ -39,9 +39,14 @@ def mock_collaborator_service():
 @pytest.fixture
 def zantara_tools(mock_pricing_service, mock_collaborator_service):
     """Create ZantaraTools instance"""
-    with patch('services.misc.zantara_tools.get_pricing_service', return_value=mock_pricing_service):
-        with patch('services.misc.zantara_tools.CollaboratorService', return_value=mock_collaborator_service):
-            return ZantaraTools()
+    with (
+        patch("services.misc.zantara_tools.get_pricing_service", return_value=mock_pricing_service),
+        patch(
+            "services.misc.zantara_tools.CollaboratorService",
+            return_value=mock_collaborator_service,
+        ),
+    ):
+        return ZantaraTools()
 
 
 class TestZantaraTools:
@@ -63,7 +68,9 @@ class TestZantaraTools:
     @pytest.mark.asyncio
     async def test_execute_tool_get_pricing_with_query(self, zantara_tools, mock_pricing_service):
         """Test executing get_pricing tool with query"""
-        result = await zantara_tools.execute_tool("get_pricing", {"service_type": "visa", "query": "test"})
+        result = await zantara_tools.execute_tool(
+            "get_pricing", {"service_type": "visa", "query": "test"}
+        )
         assert result["success"] is True
         mock_pricing_service.search_service.assert_called_once()
 
@@ -83,7 +90,9 @@ class TestZantaraTools:
         mock_collaborator_service.search_members.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_execute_tool_get_team_members_list(self, zantara_tools, mock_collaborator_service):
+    async def test_execute_tool_get_team_members_list(
+        self, zantara_tools, mock_collaborator_service
+    ):
         """Test executing get_team_members_list tool"""
         result = await zantara_tools.execute_tool("get_team_members_list", {})
         assert result["success"] is True
@@ -131,7 +140,9 @@ class TestZantaraTools:
         assert len(result["data"]["results"]) == 1
 
     @pytest.mark.asyncio
-    async def test_get_team_members_list_with_department(self, zantara_tools, mock_collaborator_service):
+    async def test_get_team_members_list_with_department(
+        self, zantara_tools, mock_collaborator_service
+    ):
         """Test get_team_members_list with department filter"""
         mock_profile = MagicMock()
         mock_profile.name = "Test User"
@@ -161,4 +172,3 @@ class TestZantaraTools:
         # The method signature has _include_admin_tools but it's ignored
         tools = zantara_tools.get_tool_definitions()
         assert isinstance(tools, list)
-

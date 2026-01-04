@@ -139,15 +139,20 @@ async def bali_zero_chat_stream(
 
     # TRACING: Record span for streaming request (completes before response streams)
     query_hash = hashlib.sha256(query.encode()).hexdigest()[:8]
-    with trace_span("chat.stream.get", {
-        "user_id": user_id,
-        "query_length": len(query),
-        "query_hash": query_hash,
-        "endpoint": "/bali-zero/chat-stream",
-        "has_history": bool(conversation_history_list),
-        "has_memory": bool(user_memory),
-        "identified_user": collaborator.name if collaborator and collaborator.id != "anonymous" else "anonymous",
-    }):
+    with trace_span(
+        "chat.stream.get",
+        {
+            "user_id": user_id,
+            "query_length": len(query),
+            "query_hash": query_hash,
+            "endpoint": "/bali-zero/chat-stream",
+            "has_history": bool(conversation_history_list),
+            "has_memory": bool(user_memory),
+            "identified_user": collaborator.name
+            if collaborator and collaborator.id != "anonymous"
+            else "anonymous",
+        },
+    ):
         add_span_event("stream_initiated", {"query_preview": query[:30]})
         set_span_status("ok", "Stream initiated")
 
@@ -374,16 +379,21 @@ async def chat_stream_post(
 
     # TRACING: Record span for streaming request (completes before response streams)
     query_hash = hashlib.sha256(body.message.encode()).hexdigest()[:8]
-    with trace_span("chat.stream.post", {
-        "user_id": user_id,
-        "query_length": len(body.message),
-        "query_hash": query_hash,
-        "session_id": session_id or "none",
-        "endpoint": "/api/chat/stream",
-        "has_history": bool(conversation_history_list),
-        "has_memory": bool(user_memory),
-        "identified_user": collaborator.name if collaborator and collaborator.id != "anonymous" else "anonymous",
-    }):
+    with trace_span(
+        "chat.stream.post",
+        {
+            "user_id": user_id,
+            "query_length": len(body.message),
+            "query_hash": query_hash,
+            "session_id": session_id or "none",
+            "endpoint": "/api/chat/stream",
+            "has_history": bool(conversation_history_list),
+            "has_memory": bool(user_memory),
+            "identified_user": collaborator.name
+            if collaborator and collaborator.id != "anonymous"
+            else "anonymous",
+        },
+    ):
         add_span_event("stream_initiated", {"query_preview": body.message[:30]})
         set_span_status("ok", "Stream initiated")
 

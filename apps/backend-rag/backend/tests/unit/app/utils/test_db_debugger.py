@@ -16,9 +16,7 @@ if str(backend_path) not in sys.path:
 from app.utils.db_debugger import (
     DatabaseQueryDebugger,
     QueryTrace,
-    clear_query_log,
-    get_query_statistics,
-    get_slow_queries,
+    QueryTraceContext,
 )
 
 
@@ -76,41 +74,46 @@ class TestDatabaseQueryDebugger:
         trace_ctx = debugger.trace_query("SELECT * FROM users", params=("test",))
 
         assert trace_ctx is not None
-        assert trace_ctx.query == "SELECT * FROM users"
-        assert trace_ctx.params == ("test",)
+        assert isinstance(trace_ctx, QueryTraceContext)
+        # The trace is inside the context
+        assert trace_ctx.trace.query == "SELECT * FROM users"
+        assert trace_ctx.trace.params == ("test",)
 
     def test_trace_query_with_ids(self):
         """Test tracing query with connection and transaction IDs"""
         debugger = DatabaseQueryDebugger()
         trace_ctx = debugger.trace_query(
-            "SELECT * FROM users",
-            connection_id="conn-123",
-            transaction_id="txn-456"
+            "SELECT * FROM users", connection_id="conn-123", transaction_id="txn-456"
         )
 
-        assert trace_ctx.connection_id == "conn-123"
-        assert trace_ctx.transaction_id == "txn-456"
+        assert trace_ctx.trace.connection_id == "conn-123"
+        assert trace_ctx.trace.transaction_id == "txn-456"
 
     def test_get_slow_queries(self):
         """Test getting slow queries"""
         # Clear any existing queries
-        clear_query_log()
+        DatabaseQueryDebugger.clear_logs()
 
         # Get slow queries (should return empty list if none)
-        slow = get_slow_queries()
+        slow = DatabaseQueryDebugger.get_slow_queries()
         assert isinstance(slow, list)
 
-    def test_get_query_statistics(self):
-        """Test getting query statistics"""
-        stats = get_query_statistics()
-        assert isinstance(stats, dict)
-        assert "total_queries" in stats
-        assert "slow_queries" in stats
-        assert "average_duration_ms" in stats
+    def test_get_recent_queries(self):
+        """Test getting recent queries"""
+        queries = DatabaseQueryDebugger.get_recent_queries()
+        assert isinstance(queries, list)
 
-    def test_clear_query_log(self):
+    def test_analyze_query_patterns(self):
+        """Test analyzing query patterns"""
+        patterns = DatabaseQueryDebugger.analyze_query_patterns()
+        assert isinstance(patterns, dict)
+        assert "n_plus_one_patterns" in patterns
+        assert "missing_indexes" in patterns
+        assert "slow_patterns" in patterns
+
+    def test_clear_logs(self):
         """Test clearing query log"""
-        count = clear_query_log()
+        count = DatabaseQueryDebugger.clear_logs()
         assert isinstance(count, int)
         assert count >= 0
 
@@ -150,10 +153,35 @@ class TestQueryTraceContext:
         assert trace.duration_ms is not None
         if trace.duration_ms >= 10:
             # Should be in slow queries
-            slow = get_slow_queries(limit=100)
+            slow = DatabaseQueryDebugger.get_slow_queries(limit=100)
             # May or may not be in list depending on implementation
             assert isinstance(slow, list)
 
+    def test_query_trace_context_init(self):
+        """Test QueryTraceContext initialization"""
+        ctx = QueryTraceContext(
+            query="SELECT 1",
+            params=(1,),
+            connection_id="conn-1",
+            transaction_id="txn-1",
+            slow_threshold=500,
+        )
 
+        assert ctx.trace.query == "SELECT 1"
+        assert ctx.trace.params == (1,)
+        assert ctx.trace.connection_id == "conn-1"
+        assert ctx.trace.transaction_id == "txn-1"
+        assert ctx.slow_threshold == 500
 
+    def test_query_trace_context_enter_exit(self):
+        """Test QueryTraceContext __enter__ and __exit__"""
+        ctx = QueryTraceContext(query="SELECT 1")
 
+        # Test __enter__
+        trace = ctx.__enter__()
+        assert trace is ctx.trace
+
+        # Test __exit__ (returns False to not suppress exceptions)
+        result = ctx.__exit__(None, None, None)
+        assert result is False
+        assert trace.end_time is not None

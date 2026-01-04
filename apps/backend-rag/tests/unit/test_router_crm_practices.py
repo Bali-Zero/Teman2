@@ -187,12 +187,16 @@ async def test_create_practice_database_error(mock_asyncpg_pool, mock_request):
 
 
 @pytest.mark.asyncio
-async def test_get_practices_success(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
+async def test_get_practices_success(
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
+):
     """Test successful practices retrieval"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[sample_practice_data])
 
-    result = await list_practices(limit=10, offset=0, request=mock_request, db_pool=pool, current_user=mock_current_user)
+    result = await list_practices(
+        limit=10, offset=0, request=mock_request, db_pool=pool, current_user=mock_current_user
+    )
 
     assert isinstance(result, list)
     assert len(result) == 1
@@ -201,7 +205,9 @@ async def test_get_practices_success(mock_asyncpg_pool, mock_request, sample_pra
 
 
 @pytest.mark.asyncio
-async def test_get_practices_with_filters(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
+async def test_get_practices_with_filters(
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
+):
     """Test practices retrieval with filters"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[sample_practice_data])
@@ -222,22 +228,30 @@ async def test_get_practices_with_filters(mock_asyncpg_pool, mock_request, sampl
 
 
 @pytest.mark.asyncio
-async def test_list_practices_with_practice_type_filter(mock_asyncpg_pool, mock_request, mock_current_user):
+async def test_list_practices_with_practice_type_filter(
+    mock_asyncpg_pool, mock_request, mock_current_user
+):
     """Test listing practices filtered by practice type"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[])
 
-    result = await list_practices(practice_type="kitas", request=mock_request, db_pool=pool, current_user=mock_current_user)
+    result = await list_practices(
+        practice_type="kitas", request=mock_request, db_pool=pool, current_user=mock_current_user
+    )
     assert isinstance(result, list)
 
 
 @pytest.mark.asyncio
-async def test_list_practices_with_priority_filter(mock_asyncpg_pool, mock_request, mock_current_user):
+async def test_list_practices_with_priority_filter(
+    mock_asyncpg_pool, mock_request, mock_current_user
+):
     """Test listing practices filtered by priority"""
     pool, conn = mock_asyncpg_pool
     conn.fetch = AsyncMock(return_value=[])
 
-    result = await list_practices(priority="high", request=mock_request, db_pool=pool, current_user=mock_current_user)
+    result = await list_practices(
+        priority="high", request=mock_request, db_pool=pool, current_user=mock_current_user
+    )
     assert isinstance(result, list)
 
 
@@ -347,12 +361,16 @@ async def test_get_upcoming_renewals_database_error(mock_asyncpg_pool, mock_requ
 
 
 @pytest.mark.asyncio
-async def test_get_practice_success(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
+async def test_get_practice_success(
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
+):
     """Test successful practice retrieval by ID"""
     pool, conn = mock_asyncpg_pool
     conn.fetchrow = AsyncMock(return_value=sample_practice_data)
 
-    result = await get_practice(practice_id=1, request=mock_request, db_pool=pool, current_user=mock_current_user)
+    result = await get_practice(
+        practice_id=1, request=mock_request, db_pool=pool, current_user=mock_current_user
+    )
 
     # get_practice returns dict
     assert isinstance(result, dict)
@@ -367,7 +385,9 @@ async def test_get_practice_not_found(mock_asyncpg_pool, mock_request, mock_curr
     conn.fetchrow = AsyncMock(return_value=None)
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_practice(practice_id=999, request=mock_request, db_pool=pool, current_user=mock_current_user)
+        await get_practice(
+            practice_id=999, request=mock_request, db_pool=pool, current_user=mock_current_user
+        )
 
     assert exc_info.value.status_code == 404
 
@@ -379,7 +399,9 @@ async def test_get_practice_database_error(mock_asyncpg_pool, mock_request, mock
     conn.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
     with pytest.raises(HTTPException) as exc_info:
-        await get_practice(practice_id=1, request=mock_request, db_pool=pool, current_user=mock_current_user)
+        await get_practice(
+            practice_id=1, request=mock_request, db_pool=pool, current_user=mock_current_user
+        )
 
     assert exc_info.value.status_code == 500
 
@@ -390,7 +412,9 @@ async def test_get_practice_database_error(mock_asyncpg_pool, mock_request, mock
 
 
 @pytest.mark.asyncio
-async def test_update_practice_success(mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user):
+async def test_update_practice_success(
+    mock_asyncpg_pool, mock_request, sample_practice_data, mock_current_user
+):
     """Test successful practice update"""
     pool, conn = mock_asyncpg_pool
     updated_data = {**sample_practice_data, "status": "completed"}

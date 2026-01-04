@@ -330,6 +330,3 @@ class TestMonitoringObservabilityAdvanced:
 
             # Cleanup
             await conn.execute("DELETE FROM health_dashboard")
-
-
-

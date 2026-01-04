@@ -7,17 +7,16 @@ Usage:
     python scripts/test_kg_pipeline_llm.py [--sample 10] [--persist] [--clear-old]
 """
 
-import asyncio
 import argparse
+import asyncio
 import json
 import os
 import sys
-from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.services.knowledge_graph import KGPipeline, KGExtractor
+from backend.services.knowledge_graph import KGExtractor, KGPipeline
 from backend.services.knowledge_graph.pipeline import PipelineConfig
 
 
@@ -38,7 +37,7 @@ async def fetch_sample_chunks(collection: str, limit: int) -> list[tuple[str, st
                 "limit": limit,
                 "with_payload": True,
                 "with_vectors": False,
-            }
+            },
         )
 
         data = resp.json().get("result", {})
@@ -47,9 +46,8 @@ async def fetch_sample_chunks(collection: str, limit: int) -> list[tuple[str, st
         chunks = []
         for point in points:
             chunk_id = str(point.get("id", ""))
-            text = (
-                point.get("payload", {}).get("text", "") or
-                point.get("payload", {}).get("content", "")
+            text = point.get("payload", {}).get("text", "") or point.get("payload", {}).get(
+                "content", ""
             )
             if text and len(text.strip()) > 50:
                 chunks.append((chunk_id, text))
@@ -77,9 +75,9 @@ async def clear_old_kg_data():
 
 async def test_single_extraction(text: str, chunk_id: str = "test"):
     """Test extraction on a single text sample"""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print(f"Testing extraction on chunk: {chunk_id[:50]}...")
-    print("="*60)
+    print("=" * 60)
     print(f"\nText preview ({len(text)} chars):")
     print(text[:500] + "..." if len(text) > 500 else text)
 
@@ -88,7 +86,7 @@ async def test_single_extraction(text: str, chunk_id: str = "test"):
     # Extract entities and relations
     result = await extractor.extract(text, chunk_id)
 
-    print(f"\n📊 Extraction Results:")
+    print("\n📊 Extraction Results:")
     print(f"  Entities: {len(result.entities)}")
     print(f"  Relations: {len(result.relations)}")
 
@@ -134,9 +132,9 @@ async def test_pipeline(sample_size: int = 10, persist: bool = False, clear_old:
     await test_single_extraction(chunks[0][1], chunks[0][0])
 
     # Run full pipeline
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Running full pipeline on all samples...")
-    print("="*60)
+    print("=" * 60)
 
     config = PipelineConfig(
         model="claude-sonnet-4-20250514",

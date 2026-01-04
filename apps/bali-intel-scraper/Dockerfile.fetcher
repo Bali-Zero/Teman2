@@ -1,0 +1,16 @@
+# RSS Fetcher - Lightweight scheduled job
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install only required packages
+RUN pip install --no-cache-dir httpx loguru
+
+# Copy fetcher script
+COPY scripts/rss_fetcher.py /app/
+
+# Create logs dir
+RUN mkdir -p /app/logs
+
+# Run fetcher every 6h and exit
+CMD ["python", "rss_fetcher.py", "--max-age", "5", "--limit", "10", "--api-url", "https://balizero.com", "--send", "--every-6h"]

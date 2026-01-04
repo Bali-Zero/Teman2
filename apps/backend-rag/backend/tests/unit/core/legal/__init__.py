@@ -1,5 +1,1 @@
 """Tests for Legal Core"""
-
-
-
-

@@ -15,7 +15,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
@@ -33,6 +33,7 @@ from services.oracle.smart_oracle import (
 @dataclass
 class MockGeminiFile:
     """Mock Gemini file upload response"""
+
     uri: str = "https://generativelanguage.googleapis.com/v1/files/test-file"
     mime_type: str = "application/pdf"
     name: str = "test.pdf"
@@ -41,6 +42,7 @@ class MockGeminiFile:
 @dataclass
 class MockDriveFile:
     """Mock Google Drive file metadata"""
+
     id: str
     name: str
     mimeType: str = "application/pdf"
@@ -53,7 +55,9 @@ class TestGetDriveService:
     @patch("services.oracle.smart_oracle.json.loads")
     @patch("services.oracle.smart_oracle.service_account.Credentials.from_service_account_info")
     @patch("services.oracle.smart_oracle.build")
-    def test_get_drive_service_success(self, mock_build, mock_from_account_info, mock_json_loads, mock_settings):
+    def test_get_drive_service_success(
+        self, mock_build, mock_from_account_info, mock_json_loads, mock_settings
+    ):
         """Test successful Drive service initialization"""
         # Setup mocks
         mock_settings.google_credentials_json = '{"type": "service_account"}'
@@ -159,11 +163,7 @@ class TestDownloadPdfFromDrive:
         # Mock file search results
         mock_files_list = MagicMock()
         mock_execute = MagicMock()
-        mock_execute.return_value = {
-            "files": [
-                {"id": "file123", "name": "test_document.pdf"}
-            ]
-        }
+        mock_execute.return_value = {"files": [{"id": "file123", "name": "test_document.pdf"}]}
         mock_files_list.execute = mock_execute
         mock_service.files().list.return_value = mock_files_list
 
@@ -299,9 +299,7 @@ class TestDownloadPdfFromDrive:
 
         # Mock successful file search
         mock_files_list = MagicMock()
-        mock_files_list.execute.return_value = {
-            "files": [{"id": "file999", "name": "test.pdf"}]
-        }
+        mock_files_list.execute.return_value = {"files": [{"id": "file999", "name": "test.pdf"}]}
         mock_service.files().list.return_value = mock_files_list
 
         # Mock download failure
@@ -359,7 +357,10 @@ class TestSmartOracle:
 
         result = await smart_oracle("What is this document about?", "missing.pdf")
 
-        assert result == "Original document not found in Drive storage. Unable to perform deep analysis."
+        assert (
+            result
+            == "Original document not found in Drive storage. Unable to perform deep analysis."
+        )
 
     @pytest.mark.asyncio
     @patch("services.oracle.smart_oracle.download_pdf_from_drive")
@@ -412,7 +413,9 @@ class TestSmartOracle:
     @patch("services.oracle.smart_oracle.download_pdf_from_drive")
     @patch("services.oracle.smart_oracle._genai_client")
     @patch("services.oracle.smart_oracle.genai")
-    async def test_smart_oracle_genai_module_none(self, mock_genai_module, mock_genai_client, mock_download):
+    async def test_smart_oracle_genai_module_none(
+        self, mock_genai_module, mock_genai_client, mock_download
+    ):
         """Test smart oracle when genai module is None"""
         mock_download.return_value = "/tmp/test.pdf"
         mock_genai_client.is_available = True
@@ -443,9 +446,7 @@ class TestSmartOracle:
         mock_genai_client_instance.files.upload.return_value = mock_gemini_file
         mock_genai_module.Client.return_value = mock_genai_client_instance
 
-        mock_genai_client.generate_content = AsyncMock(
-            side_effect=Exception("Generation failed")
-        )
+        mock_genai_client.generate_content = AsyncMock(side_effect=Exception("Generation failed"))
 
         result = await smart_oracle("What is this document about?", "test.pdf")
 
@@ -536,8 +537,7 @@ class TestDriveConnection:
 
         assert result is True
         mock_service.files().list.assert_called_once_with(
-            pageSize=5,
-            fields="files(id, name, mimeType)"
+            pageSize=5, fields="files(id, name, mimeType)"
         )
 
     @patch("services.oracle.smart_oracle.get_drive_service")
@@ -602,6 +602,7 @@ class TestModuleLevelInitialization:
         # Import would trigger initialization, but we're testing the logic
         # In real scenario, this happens at module import time
         from llm.genai_client import GenAIClient
+
         client = GenAIClient(api_key="test_key")
 
         assert client is not None
@@ -617,6 +618,7 @@ class TestModuleLevelInitialization:
         # Should not raise, just log warning
         try:
             from llm.genai_client import GenAIClient
+
             client = GenAIClient(api_key="test_key")
             # If we get here, exception was caught
             assert True
@@ -662,9 +664,7 @@ class TestEdgeCases:
 
         long_name = "a" * 200 + ".pdf"
         mock_files_list = MagicMock()
-        mock_files_list.execute.return_value = {
-            "files": [{"id": "long_file", "name": long_name}]
-        }
+        mock_files_list.execute.return_value = {"files": [{"id": "long_file", "name": long_name}]}
         mock_service.files().list.return_value = mock_files_list
 
         pdf_content = b"fake pdf content"
@@ -730,9 +730,7 @@ class TestEdgeCases:
 
         # Simulate large response
         large_response = "A" * 10000
-        mock_genai_client.generate_content = AsyncMock(
-            return_value={"text": large_response}
-        )
+        mock_genai_client.generate_content = AsyncMock(return_value={"text": large_response})
 
         result = await smart_oracle("Summarize this document", "large_document.pdf")
 
@@ -776,4 +774,7 @@ class TestEdgeCases:
         # Verify the query was passed correctly (check normalized version without extra whitespace)
         call_args = mock_genai_client.generate_content.call_args
         normalized_query = complex_query.strip()
-        assert any(part in str(call_args) for part in ["analyze this document", "Summarize the main points"])
+        assert any(
+            part in str(call_args)
+            for part in ["analyze this document", "Summarize the main points"]
+        )

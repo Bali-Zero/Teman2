@@ -47,9 +47,7 @@ def mock_qdrant():
 def collective_memory_service(mock_db_pool, mock_embedder, mock_qdrant):
     """Create collective memory service instance"""
     return CollectiveMemoryService(
-        pool=mock_db_pool,
-        embedder=mock_embedder,
-        qdrant_client=mock_qdrant
+        pool=mock_db_pool, embedder=mock_embedder, qdrant_client=mock_qdrant
     )
 
 
@@ -83,9 +81,7 @@ class TestCollectiveMemoryService:
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.add_contribution(
-            user_id="test@example.com",
-            content="KITAS costs 15M",
-            category="pricing"
+            user_id="test@example.com", content="KITAS costs 15M", category="pricing"
         )
         assert result is not None
 
@@ -106,14 +102,14 @@ class TestCollectiveMemoryService:
 
         collective_memory_service.pool = mock_db_pool
         mock_db_pool.acquire = acquire
-        mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "source_count": 2, "is_promoted": False})
+        mock_conn.fetchrow = AsyncMock(
+            return_value={"id": 1, "source_count": 2, "is_promoted": False}
+        )
         mock_conn.fetchval = AsyncMock(return_value=3)  # 3 sources = promotion threshold
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.add_contribution(
-            user_id="test@example.com",
-            content="KITAS costs 15M",
-            category="pricing"
+            user_id="test@example.com", content="KITAS costs 15M", category="pricing"
         )
         assert result is not None
 
@@ -123,6 +119,7 @@ class TestCollectiveMemoryService:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
@@ -132,9 +129,7 @@ class TestCollectiveMemoryService:
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.refute_fact(
-            user_id="test@example.com",
-            memory_id=1,
-            reason="Incorrect information"
+            user_id="test@example.com", memory_id=1, reason="Incorrect information"
         )
         assert result is not None
 
@@ -144,14 +139,15 @@ class TestCollectiveMemoryService:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
 
         mock_db_pool.acquire = acquire
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"content": "Fact 1", "confidence": 0.9, "source_count": 3}
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[{"content": "Fact 1", "confidence": 0.9, "source_count": 3}]
+        )
 
         # Use get_collective_context which returns promoted facts
         facts = await collective_memory_service.get_collective_context(category="pricing", limit=10)
@@ -160,17 +156,18 @@ class TestCollectiveMemoryService:
     @pytest.mark.asyncio
     async def test_search_facts(self, collective_memory_service):
         """Test semantic search for facts"""
-        with patch.object(collective_memory_service, '_get_embedder') as mock_get_embedder, \
-             patch.object(collective_memory_service, '_get_qdrant') as mock_get_qdrant:
+        with (
+            patch.object(collective_memory_service, "_get_embedder") as mock_get_embedder,
+            patch.object(collective_memory_service, "_get_qdrant") as mock_get_qdrant,
+        ):
             mock_embedder = MagicMock()
             mock_embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 1536)
             mock_get_embedder.return_value = mock_embedder
 
             mock_qdrant = MagicMock()
-            mock_qdrant.search = AsyncMock(return_value={
-                "documents": [["test fact"]],
-                "metadatas": [{"confidence": 0.9}]
-            })
+            mock_qdrant.search = AsyncMock(
+                return_value={"documents": [["test fact"]], "metadatas": [{"confidence": 0.9}]}
+            )
             mock_get_qdrant.return_value = mock_qdrant
 
             results = await collective_memory_service.get_relevant_context("test query", limit=5)
@@ -183,6 +180,7 @@ class TestCollectiveMemory:
     def test_to_dict(self):
         """Test conversion to dict"""
         from datetime import datetime
+
         memory = CollectiveMemory(
             id=1,
             content="test",
@@ -192,7 +190,7 @@ class TestCollectiveMemory:
             is_promoted=True,
             first_learned_at=datetime.now(),
             last_confirmed_at=datetime.now(),
-            metadata={}
+            metadata={},
         )
 
         result = memory.to_dict()
@@ -223,8 +221,10 @@ class TestCollectiveMemory:
         # Reset qdrant to None to force initialization
         collective_memory_service._qdrant = None
         collective_memory_service._qdrant_initialized = False
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant_class, \
-             patch("app.core.config.settings") as mock_settings:
+        with (
+            patch("core.qdrant_db.QdrantClient") as mock_qdrant_class,
+            patch("app.core.config.settings") as mock_settings,
+        ):
             mock_settings.qdrant_url = "http://localhost:6333"
             mock_qdrant_instance = MagicMock()
             mock_qdrant_instance.create_collection = AsyncMock()
@@ -249,16 +249,27 @@ class TestCollectiveMemory:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
 
         mock_db_pool.acquire = acquire
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"id": 1, "content": "Fact 1", "category": "pricing", "confidence": 0.9,
-             "source_count": 3, "is_promoted": True, "first_learned_at": None,
-             "last_confirmed_at": None, "metadata": {}},
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "content": "Fact 1",
+                    "category": "pricing",
+                    "confidence": 0.9,
+                    "source_count": 3,
+                    "is_promoted": True,
+                    "first_learned_at": None,
+                    "last_confirmed_at": None,
+                    "metadata": {},
+                },
+            ]
+        )
 
         memories = await collective_memory_service.get_all_memories(limit=10)
         assert len(memories) > 0
@@ -269,14 +280,17 @@ class TestCollectiveMemory:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
 
         mock_db_pool.acquire = acquire
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"user_id": "user1@example.com", "action": "contribute", "created_at": None}
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"user_id": "user1@example.com", "action": "contribute", "created_at": None}
+            ]
+        )
 
         sources = await collective_memory_service.get_memory_sources(1)
         assert len(sources) > 0
@@ -287,13 +301,21 @@ class TestCollectiveMemory:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "id": 1, "content": "test fact", "category": "pricing",
-                "confidence": 0.9, "source_count": 3, "is_promoted": True,
-                "first_learned_at": None, "last_confirmed_at": None, "metadata": {}
-            }
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "content": "test fact",
+                    "category": "pricing",
+                    "confidence": 0.9,
+                    "source_count": 3,
+                    "is_promoted": True,
+                    "first_learned_at": None,
+                    "last_confirmed_at": None,
+                    "metadata": {},
+                }
+            ]
+        )
 
         @asynccontextmanager
         async def acquire():
@@ -312,6 +334,7 @@ class TestCollectiveMemory:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
@@ -331,8 +354,10 @@ class TestCollectiveMemory:
         """Test syncing memory to Qdrant"""
         from contextlib import asynccontextmanager
 
-        with patch.object(collective_memory_service, '_get_embedder') as mock_get_embedder, \
-             patch.object(collective_memory_service, '_get_qdrant') as mock_get_qdrant:
+        with (
+            patch.object(collective_memory_service, "_get_embedder") as mock_get_embedder,
+            patch.object(collective_memory_service, "_get_qdrant") as mock_get_qdrant,
+        ):
             mock_embedder = MagicMock()
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
             mock_get_embedder.return_value = mock_embedder
@@ -360,6 +385,7 @@ class TestCollectiveMemory:
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
@@ -371,11 +397,14 @@ class TestCollectiveMemory:
         assert result["status"] == "not_found"
 
     @pytest.mark.asyncio
-    async def test_refute_fact_low_confidence_removal(self, collective_memory_service, mock_db_pool):
+    async def test_refute_fact_low_confidence_removal(
+        self, collective_memory_service, mock_db_pool
+    ):
         """Test fact removal when confidence too low"""
         from contextlib import asynccontextmanager
 
         mock_conn = AsyncMock()
+
         @asynccontextmanager
         async def acquire():
             yield mock_conn
@@ -383,8 +412,9 @@ class TestCollectiveMemory:
         mock_db_pool.acquire = acquire
         mock_conn.fetchval = AsyncMock(return_value=True)  # Fact exists
         mock_conn.execute = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={"confidence": 0.1, "is_promoted": False})  # Low confidence
+        mock_conn.fetchrow = AsyncMock(
+            return_value={"confidence": 0.1, "is_promoted": False}
+        )  # Low confidence
 
         result = await collective_memory_service.refute_fact("user@example.com", 1, "Wrong")
         assert result["status"] == "removed"
-

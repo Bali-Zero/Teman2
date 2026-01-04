@@ -82,14 +82,15 @@ class ZantaraAIClient:
             ValueError: If no valid credentials in production environment
         """
         import os
+
         self.api_key = api_key or settings.google_api_key
         self.mock_mode = False
 
         # Check if Service Account credentials are available
         has_service_account = bool(
-            os.environ.get('GOOGLE_APPLICATION_CREDENTIALS') or
-            os.environ.get('GOOGLE_CREDENTIALS_JSON') or
-            getattr(settings, 'google_credentials_json', None)
+            os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+            or os.environ.get("GOOGLE_CREDENTIALS_JSON")
+            or getattr(settings, "google_credentials_json", None)
         )
 
         # Initialize GenAI client using new SDK wrapper
@@ -100,7 +101,7 @@ class ZantaraAIClient:
                 self._genai_client = GenAIClient(api_key=self.api_key if self.api_key else None)
                 if not self._genai_client.is_available:
                     raise RuntimeError("GenAI client initialization failed")
-                auth_method = getattr(self._genai_client, '_auth_method', 'unknown')
+                auth_method = getattr(self._genai_client, "_auth_method", "unknown")
                 logger.info(f"✅ Gemini AI Client initialized (auth: {auth_method})")
             except Exception as e:
                 logger.error(f"❌ Failed to configure Gemini: {e}")
@@ -110,10 +111,16 @@ class ZantaraAIClient:
                 self._genai_client = None
         else:
             if settings.environment == "production":
-                logger.critical("❌ CRITICAL: No Gemini credentials found in PRODUCTION environment")
-                raise ValueError("GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required in production")
+                logger.critical(
+                    "❌ CRITICAL: No Gemini credentials found in PRODUCTION environment"
+                )
+                raise ValueError(
+                    "GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required in production"
+                )
 
-            logger.warning("⚠️ No Gemini credentials found - defaulting to MOCK MODE (Development only)")
+            logger.warning(
+                "⚠️ No Gemini credentials found - defaulting to MOCK MODE (Development only)"
+            )
             self.mock_mode = True
             self._genai_client = None
 
@@ -523,74 +530,87 @@ class ZantaraAIClient:
                 await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
             return
 
-        async def _stream_operation():
-            """Inner function for retry handler using new SDK."""
-            # Prepare conversation history
-            gemini_history = []
-            if conversation_history:
-                for msg in conversation_history:
-                    gemini_history.append({
-                        "role": msg.get("role", "user"),
-                        "content": msg.get("content", ""),
-                    })
+        # Custom retry logic for streaming
+        # RetryHandler.execute_with_retry is not compatible with async generators (streams)
+        last_exception = None
+        for attempt in range(self.retry_handler.max_retries):
+            try:
+                # Prepare conversation history
+                gemini_history = []
+                if conversation_history:
+                    for msg in conversation_history:
+                        gemini_history.append(
+                            {
+                                "role": msg.get("role", "user"),
+                                "content": msg.get("content", ""),
+                            }
+                        )
 
-            # Create chat session with new SDK wrapper
-            chat = self._get_chat_session(system, gemini_history)
-            if not chat:
-                raise RuntimeError("Failed to create chat session")
+                # Create chat session with new SDK wrapper
+                chat = self._get_chat_session(system, gemini_history)
+                if not chat:
+                    raise RuntimeError("Failed to create chat session")
 
-            # Stream response
-            stream_active = False
-            async for chunk in chat.send_message_stream(
-                message,
-                max_output_tokens=max_tokens,
-                temperature=ZantaraAIClientConstants.DEFAULT_TEMPERATURE,
-            ):
-                stream_active = True
-                yield chunk
+                # Stream response
+                stream_active = False
+                async for chunk in chat.send_message_stream(
+                    message,
+                    max_output_tokens=max_tokens,
+                    temperature=ZantaraAIClientConstants.DEFAULT_TEMPERATURE,
+                ):
+                    stream_active = True
+                    yield chunk
 
-            if not stream_active:
-                logger.warning("⚠️ [ZantaraAI] No content received in stream")
-                raise ValueError("No content received from stream")
-
-        try:
-            async for chunk in self.retry_handler.execute_with_retry(
-                _stream_operation,
-                operation_name=f"Stream for user {user_id}",
-            ):
-                yield chunk
-            logger.info(f"✅ [ZantaraAI] Stream completed successfully for user {user_id}")
-            return
-        except ValueError as e:
-            # Handle API key leaked error specifically
-            error_msg = str(e).lower()
-            if "leaked" in error_msg or "api key" in error_msg:
-                logger.critical(f"🚨 [ZantaraAI] API key error for user {user_id}: {e}")
-                fallback_response = get_fallback_message("api_key_error", language)
-                words = fallback_response.split()
-                for word in words:
-                    yield word + " "
-                    await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
+                if not stream_active:
+                    logger.warning("⚠️ [ZantaraAI] No content received in stream")
+                    raise ValueError("No content received from stream")
+                
+                logger.info(f"✅ [ZantaraAI] Stream completed successfully for user {user_id}")
                 return
-            # Re-raise other ValueError exceptions
-            raise
-        except Exception as e:
-            logger.error(f"❌ [ZantaraAI] All streaming attempts failed for user {user_id}: {e}")
-            error_msg = str(e).lower()
-            # Check for API key errors in exception message
-            if "403" in error_msg or "leaked" in error_msg or "api key" in error_msg:
-                fallback_response = get_fallback_message("api_key_error", language)
-            else:
-                fallback_response = get_fallback_message("connection_error", language)
-            words = fallback_response.split()
-            for word in words:
-                yield word + " "
-                await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
-            return
 
-        # Should never reach here, but keep fallback guard
-        logger.error("❌ GenAI encountered unexpected error during streaming")
-        fallback_response = get_fallback_message("service_unavailable", language)
+            except ValueError as e:
+                # Handle API key leaked error specifically
+                error_msg = str(e).lower()
+                if "leaked" in error_msg or "api key" in error_msg:
+                    logger.critical(f"🚨 [ZantaraAI] API key error for user {user_id}: {e}")
+                    fallback_response = get_fallback_message("api_key_error", language)
+                    words = fallback_response.split()
+                    for word in words:
+                        yield word + " "
+                        await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
+                    return
+                # For other ValueErrors (like no content), retry
+                last_exception = e
+                # Fall through to retry logic
+
+            except Exception as e:
+                last_exception = e
+                error_msg = str(e).lower()
+                # Check for API key errors in exception message
+                if "403" in error_msg or "leaked" in error_msg or "api key" in error_msg:
+                    logger.critical(f"🚨 [ZantaraAI] API key error for user {user_id}: {e}")
+                    fallback_response = get_fallback_message("api_key_error", language)
+                    words = fallback_response.split()
+                    for word in words:
+                        yield word + " "
+                        await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
+                    return
+                
+                # Check if retryable (using RetryHandler logic implicitly via similar checks)
+                # But here we just retry all exceptions except auth ones caught above
+                
+            # Retry logic
+            if attempt < self.retry_handler.max_retries - 1:
+                delay = self.retry_handler.base_delay * (self.retry_handler.backoff_factor**attempt)
+                logger.warning(
+                    f"⚠️ Stream failed (attempt {attempt + 1}/{self.retry_handler.max_retries}): {last_exception}. Retrying in {delay}s..."
+                )
+                await asyncio.sleep(delay)
+            else:
+                logger.error(f"❌ [ZantaraAI] All streaming attempts failed for user {user_id}: {last_exception}")
+                
+        # If all retries failed, send fallback
+        fallback_response = get_fallback_message("connection_error", language)
         words = fallback_response.split()
         for word in words:
             yield word + " "

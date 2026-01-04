@@ -75,6 +75,7 @@ class TestGetAppState:
 
     def test_get_attribute_with_class_type(self):
         """Test getting attribute with class type check"""
+
         class TestService:
             pass
 
@@ -86,6 +87,7 @@ class TestGetAppState:
 
     def test_get_attribute_with_wrong_class_type(self):
         """Test getting attribute with wrong class type"""
+
         class TestService:
             pass
 
@@ -160,6 +162,7 @@ class TestGetRequestState:
 
     def test_get_attribute_with_dict_like_object(self):
         """Test getting attribute from dict-like object"""
+
         class DictLike:
             def __init__(self):
                 self.data = {"user_id": "user123"}

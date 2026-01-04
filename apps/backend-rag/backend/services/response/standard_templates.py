@@ -4,7 +4,6 @@ Defines structured markdown formats for key business domains (Visa, Tax, etc.)
 to ensure consistency and readability.
 """
 
-
 from app.core.config import settings
 
 

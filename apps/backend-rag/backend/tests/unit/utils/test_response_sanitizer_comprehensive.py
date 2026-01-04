@@ -59,7 +59,9 @@ class TestSanitizeZantaraResponse:
 
     def test_remove_thought_action_observation(self):
         """Test removing agentic reasoning artifacts"""
-        response = "THOUGHT: I need to think\nACTION: search\nOBSERVATION: found\nFinal Answer: Hello"
+        response = (
+            "THOUGHT: I need to think\nACTION: search\nOBSERVATION: found\nFinal Answer: Hello"
+        )
         result = sanitize_zantara_response(response)
         assert "THOUGHT:" not in result
         assert "ACTION:" not in result
@@ -244,8 +246,10 @@ class TestProcessZantaraResponse:
 
     def test_pipeline_without_santai(self):
         """Test pipeline without SANTAI mode"""
-        long_response = ". ".join([f"Sentence {i}" for i in range(10)])
+        # Create a response with >30 words (10 sentences x 5 words each = 50 words)
+        long_response = ". ".join([f"This is sentence number {i}" for i in range(10)])
         result = process_zantara_response(long_response, "greeting", apply_santai=False)
+        # Without SANTAI mode, full response should be preserved
         assert len(result.split()) > 30
 
     def test_pipeline_with_contact(self):
@@ -259,7 +263,3 @@ class TestProcessZantaraResponse:
         response = "Business information here."
         result = process_zantara_response(response, "business", add_contact=False)
         assert "whatsapp" not in result.lower()
-
-
-
-

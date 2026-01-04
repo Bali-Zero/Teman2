@@ -1,6 +1,7 @@
 """
 Tests for CollaboratorService
 """
+
 import json
 import tempfile
 from pathlib import Path
@@ -268,4 +269,3 @@ class TestCollaboratorService:
 
         assert result is not None
         assert result.id == "anonymous"
-

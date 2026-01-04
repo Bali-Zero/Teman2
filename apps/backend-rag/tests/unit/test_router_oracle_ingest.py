@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 # Ensure backend is in path
 backend_path = Path(__file__).parent.parent.parent / "backend"
@@ -157,6 +158,228 @@ async def test_ingest_documents_collection_not_found():
     assert "not found" in response.error.lower()
 
 
+@pytest.mark.asyncio
+async def test_ingest_documents_multiple_documents(mock_search_service):
+    """Test ingestion with multiple documents"""
+    # Mock the service to have collections
+    mock_vector_db = MagicMock()
+    mock_vector_db.upsert_documents = AsyncMock()
+    mock_search_service.collections = {"legal_intelligence": mock_vector_db}
+
+    # Mock EmbeddingsGenerator
+    mock_embedder = MagicMock()
+    mock_embedder.generate_batch_embeddings = MagicMock(
+        return_value=[[0.1] * 1536, [0.2] * 1536, [0.3] * 1536]
+    )
+
+    request = IngestRequest(
+        collection="legal_intelligence",
+        documents=[
+            DocumentChunk(
+                content="First document content with sufficient length here",
+                metadata={"law_id": "PP-28-2025", "pasal": "1"},
+            ),
+            DocumentChunk(
+                content="Second document content with sufficient length here",
+                metadata={"law_id": "PP-28-2025", "pasal": "2"},
+            ),
+            DocumentChunk(
+                content="Third document content with sufficient length here",
+                metadata={"law_id": "PP-29-2025", "pasal": "1"},
+            ),
+        ],
+        batch_size=100,
+    )
+
+    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+        response = await ingest_documents(request, mock_search_service)
+
+        assert response.success is True
+        assert response.collection == "legal_intelligence"
+        assert response.documents_ingested == 3
+        assert response.execution_time_ms > 0
+        assert mock_vector_db.upsert_documents.called
+        # Verify upsert was called with correct number of documents
+        call_args = mock_vector_db.upsert_documents.call_args
+        assert len(call_args[1]["chunks"]) == 3
+        assert len(call_args[1]["embeddings"]) == 3
+        assert len(call_args[1]["ids"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_ingest_documents_metadata_missing_fields(mock_search_service):
+    """Test ingestion with metadata missing law_id and pasal"""
+    # Mock the service to have collections
+    mock_vector_db = MagicMock()
+    mock_vector_db.upsert_documents = AsyncMock()
+    mock_search_service.collections = {"legal_intelligence": mock_vector_db}
+
+    # Mock EmbeddingsGenerator
+    mock_embedder = MagicMock()
+    mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
+
+    request = IngestRequest(
+        collection="legal_intelligence",
+        documents=[
+            DocumentChunk(
+                content="Test document content with sufficient length",
+                metadata={"category": "test"},  # No law_id or pasal
+            )
+        ],
+        batch_size=100,
+    )
+
+    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+        response = await ingest_documents(request, mock_search_service)
+
+        assert response.success is True
+        assert response.documents_ingested == 1
+        # Verify ID was generated with UNKNOWN and index
+        call_args = mock_vector_db.upsert_documents.call_args
+        assert "UNKNOWN_pasal_0_0" in call_args[1]["ids"]
+
+
+@pytest.mark.asyncio
+async def test_ingest_documents_upsert_failure(mock_search_service, sample_ingest_request):
+    """Test ingestion when upsert_documents fails"""
+    # Mock the service to have collections
+    mock_vector_db = MagicMock()
+    mock_vector_db.upsert_documents = AsyncMock(side_effect=Exception("Upsert error"))
+    mock_search_service.collections = {"legal_intelligence": mock_vector_db}
+
+    # Mock EmbeddingsGenerator
+    mock_embedder = MagicMock()
+    mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
+
+    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+        response = await ingest_documents(sample_ingest_request, mock_search_service)
+
+        assert response.success is False
+        assert response.collection == "legal_intelligence"
+        assert response.documents_ingested == 0
+        assert "Upsert error" in response.error or "error" in response.error.lower()
+        assert response.execution_time_ms > 0
+
+
+@pytest.mark.asyncio
+async def test_ingest_documents_execution_time(mock_search_service, sample_ingest_request):
+    """Test that execution_time_ms is calculated correctly"""
+    # Mock the service to have collections
+    mock_vector_db = MagicMock()
+    mock_vector_db.upsert_documents = AsyncMock()
+    mock_search_service.collections = {"legal_intelligence": mock_vector_db}
+
+    # Mock EmbeddingsGenerator
+    mock_embedder = MagicMock()
+    mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
+
+    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+        response = await ingest_documents(sample_ingest_request, mock_search_service)
+
+        assert response.success is True
+        assert response.execution_time_ms >= 0
+        assert isinstance(response.execution_time_ms, float)
+
+
+@pytest.mark.asyncio
+async def test_ingest_documents_batch_size_validation():
+    """Test IngestRequest batch_size validation"""
+    # Test batch_size too small
+    with pytest.raises(ValidationError) as exc_info:
+        IngestRequest(
+            collection="legal_intelligence",
+            documents=[
+                DocumentChunk(
+                    content="Test document content with sufficient length",
+                    metadata={"law_id": "TEST-1"},
+                )
+            ],
+            batch_size=5,  # Less than minimum 10
+        )
+    assert "greater than or equal to 10" in str(exc_info.value)
+
+    # Test batch_size too large
+    with pytest.raises(ValidationError) as exc_info:
+        IngestRequest(
+            collection="legal_intelligence",
+            documents=[
+                DocumentChunk(
+                    content="Test document content with sufficient length",
+                    metadata={"law_id": "TEST-1"},
+                )
+            ],
+            batch_size=600,  # Greater than maximum 500
+        )
+    assert "less than or equal to 500" in str(exc_info.value)
+
+    # Test valid batch_size at boundaries
+    request_min = IngestRequest(
+        collection="legal_intelligence",
+        documents=[
+            DocumentChunk(
+                content="Test document content with sufficient length",
+                metadata={"law_id": "TEST-1"},
+            )
+        ],
+        batch_size=10,  # Minimum
+    )
+    assert request_min.batch_size == 10
+
+    request_max = IngestRequest(
+        collection="legal_intelligence",
+        documents=[
+            DocumentChunk(
+                content="Test document content with sufficient length",
+                metadata={"law_id": "TEST-1"},
+            )
+        ],
+        batch_size=500,  # Maximum
+    )
+    assert request_max.batch_size == 500
+
+
+@pytest.mark.asyncio
+async def test_ingest_documents_content_min_length():
+    """Test DocumentChunk content min_length validation"""
+    # Test content too short
+    with pytest.raises(ValidationError) as exc_info:
+        DocumentChunk(
+            content="short",  # Less than minimum 10 characters
+            metadata={"law_id": "TEST-1"},
+        )
+    assert "at least 10 characters" in str(
+        exc_info.value
+    ) or "ensure this value has at least 10 characters" in str(exc_info.value)
+
+    # Test valid content
+    chunk = DocumentChunk(
+        content="This is a valid content with sufficient length",
+        metadata={"law_id": "TEST-1"},
+    )
+    assert len(chunk.content) >= 10
+
+
+@pytest.mark.asyncio
+async def test_ingest_documents_max_items_validation():
+    """Test IngestRequest max_items validation"""
+    # Test too many documents
+    too_many_docs = [
+        DocumentChunk(
+            content=f"Document {i} content with sufficient length here",
+            metadata={"law_id": f"TEST-{i}"},
+        )
+        for i in range(1001)  # More than maximum 1000
+    ]
+    with pytest.raises(ValidationError) as exc_info:
+        IngestRequest(
+            collection="legal_intelligence",
+            documents=too_many_docs,
+        )
+    assert "at most 1000 items" in str(
+        exc_info.value
+    ) or "ensure this value has at most 1000 items" in str(exc_info.value)
+
+
 # ============================================================================
 # Tests for list_collections
 # ============================================================================
@@ -223,3 +446,49 @@ async def test_list_collections_general_exception(mock_search_service):
 
     assert exc_info.value.status_code == 500
     assert "Critical error" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_list_collections_empty_collections(mock_search_service):
+    """Test list_collections with empty collections"""
+    mock_search_service.collections = {}
+
+    response = await list_collections(mock_search_service)
+
+    assert response["success"] is True
+    assert response["collections"] == []
+    assert response["details"] == {}
+
+
+@pytest.mark.asyncio
+async def test_list_collections_stats_missing_total_documents(mock_search_service):
+    """Test list_collections when stats don't have total_documents"""
+    # Mock collection with stats missing total_documents
+    mock_vector_db = MagicMock()
+    mock_vector_db.get_collection_stats = MagicMock(return_value={})  # Empty stats
+
+    mock_search_service.collections = {"test_collection": mock_vector_db}
+
+    response = await list_collections(mock_search_service)
+
+    assert response["success"] is True
+    assert "test_collection" in response["collections"]
+    assert response["details"]["test_collection"]["document_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_list_collections_stats_with_extra_fields(mock_search_service):
+    """Test list_collections when stats have extra fields"""
+    # Mock collection with stats having extra fields
+    mock_vector_db = MagicMock()
+    mock_vector_db.get_collection_stats = MagicMock(
+        return_value={"total_documents": 42, "extra_field": "value"}
+    )
+
+    mock_search_service.collections = {"test_collection": mock_vector_db}
+
+    response = await list_collections(mock_search_service)
+
+    assert response["success"] is True
+    assert response["details"]["test_collection"]["document_count"] == 42
+    assert response["details"]["test_collection"]["name"] == "test_collection"

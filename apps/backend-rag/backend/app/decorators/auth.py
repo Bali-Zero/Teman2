@@ -63,13 +63,15 @@ def require_auth(auth_type: str = "any", permissions: list = None):
             # Check permissions (for API key users)
             if permissions and auth_method == "api_key":
                 user_permissions = getattr(user_context, "permissions", [])
-                if not all(perm in user_permissions for perm in permissions if perm != "*"):
-                    logger.warning(
-                        f"Insufficient permissions for {request.url.path}: {user_permissions}"
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
-                    )
+                # Wildcard "*" in user permissions grants all permissions
+                if "*" not in user_permissions:
+                    if not all(perm in user_permissions for perm in permissions if perm != "*"):
+                        logger.warning(
+                            f"Insufficient permissions for {request.url.path}: {user_permissions}"
+                        )
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
+                        )
 
             logger.debug(
                 f"Access granted to {request.url.path} for user: {user_context.get('role', 'unknown')}"
@@ -267,9 +269,20 @@ def classify_endpoint(path: str) -> str:
     Returns:
         Security level classification
     """
-    for level, endpoints in ENDPOINT_CLASSIFICATION.items():
-        if any(endpoint in path for endpoint in endpoints):
-            return level
+    # Check from most specific to least specific
+    # Order: api_key, jwt, hybrid, admin_only, public
+    check_order = ["api_key", "jwt", "hybrid", "admin_only", "public"]
+    for level in check_order:
+        endpoints = ENDPOINT_CLASSIFICATION.get(level, [])
+        for endpoint in endpoints:
+            if endpoint.endswith("*"):
+                # Wildcard matching: /api/auth/* matches /api/auth/login
+                prefix = endpoint[:-1]
+                if path.startswith(prefix):
+                    return level
+            elif path == endpoint:
+                # Exact match
+                return level
 
     # Default to hybrid for unclassified endpoints
     return SecurityLevel.HYBRID

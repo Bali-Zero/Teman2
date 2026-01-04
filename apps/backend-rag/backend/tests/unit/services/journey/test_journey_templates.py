@@ -64,4 +64,3 @@ class TestJourneyTemplatesService:
             assert "step_id" in step
             assert "title" in step
             assert "description" in step
-

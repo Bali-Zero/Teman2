@@ -69,6 +69,8 @@ class TestPriorityOverrideService:
 
     def test_is_backend_services_query(self, priority_override):
         """Test detecting backend services query"""
-        assert priority_override.is_backend_services_query("quali endpoint sono disponibili") is True
+        assert (
+            priority_override.is_backend_services_query("quali endpoint sono disponibili") is True
+        )
         assert priority_override.is_backend_services_query("api documentation") is True
         assert priority_override.is_backend_services_query("what is visa") is False

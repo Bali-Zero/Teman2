@@ -57,6 +57,7 @@ class TestHandleDatabaseError:
 
     def test_handle_other_postgres_error_types(self):
         """Test handling other PostgresError types"""
+
         # Test with a different PostgresError subclass
         class CustomPostgresError(asyncpg.PostgresError):
             pass

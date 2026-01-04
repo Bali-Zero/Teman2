@@ -23,6 +23,7 @@ router = APIRouter(prefix="/api/crm", tags=["crm-enhanced"])
 # MODELS
 # ============================================
 
+
 class FamilyMemberCreate(BaseModel):
     full_name: str
     relationship: str  # 'spouse', 'child', 'parent', 'sibling', 'other'
@@ -89,11 +90,9 @@ class ClientProfileUpdate(BaseModel):
 # CLIENT PROFILE ENDPOINTS
 # ============================================
 
+
 @router.get("/clients/{client_id}/profile")
-async def get_client_profile(
-    client_id: int,
-    pool=Depends(get_database_pool)
-):
+async def get_client_profile(client_id: int, pool=Depends(get_database_pool)):
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
     """
@@ -112,7 +111,7 @@ async def get_client_profile(
             FROM clients
             WHERE id = $1
             """,
-            client_id
+            client_id,
         )
 
         if not client:
@@ -136,7 +135,7 @@ async def get_client_profile(
                 END,
                 full_name
             """,
-            client_id
+            client_id,
         )
 
         # Get documents grouped by category
@@ -160,7 +159,7 @@ async def get_client_profile(
               AND (d.is_archived IS NULL OR d.is_archived = false)
             ORDER BY d.document_category, d.document_type
             """,
-            client_id
+            client_id,
         )
 
         # Get expiry alerts
@@ -180,7 +179,7 @@ async def get_client_profile(
                 END,
                 expiry_date
             """,
-            client_id
+            client_id,
         )
 
         # Get active practices summary
@@ -208,7 +207,7 @@ async def get_client_profile(
                 END,
                 p.created_at DESC
             """,
-            client_id
+            client_id,
         )
 
         return {
@@ -224,15 +223,13 @@ async def get_client_profile(
                 "expired_count": sum(1 for a in expiry_alerts if a["alert_color"] == "expired"),
                 "red_alerts": sum(1 for a in expiry_alerts if a["alert_color"] == "red"),
                 "yellow_alerts": sum(1 for a in expiry_alerts if a["alert_color"] == "yellow"),
-            }
+            },
         }
 
 
 @router.patch("/clients/{client_id}/profile")
 async def update_client_profile(
-    client_id: int,
-    data: ClientProfileUpdate,
-    pool=Depends(get_database_pool)
+    client_id: int, data: ClientProfileUpdate, pool=Depends(get_database_pool)
 ):
     """
     Update client profile fields (avatar, Google Drive folder, etc.)
@@ -275,10 +272,10 @@ async def update_client_profile(
         await conn.execute(
             f"""
             UPDATE clients
-            SET {', '.join(update_fields)}, updated_at = NOW()
+            SET {", ".join(update_fields)}, updated_at = NOW()
             WHERE id = ${param_num}
             """,
-            *values
+            *values,
         )
 
     return {"success": True, "message": "Client profile updated"}
@@ -288,11 +285,9 @@ async def update_client_profile(
 # FAMILY MEMBERS ENDPOINTS
 # ============================================
 
+
 @router.get("/clients/{client_id}/family")
-async def get_family_members(
-    client_id: int,
-    pool=Depends(get_database_pool)
-):
+async def get_family_members(client_id: int, pool=Depends(get_database_pool)):
     """Get all family members for a client."""
     async with pool.acquire() as conn:
         members = await conn.fetch(
@@ -324,16 +319,14 @@ async def get_family_members(
                 END,
                 full_name
             """,
-            client_id
+            client_id,
         )
         return [dict(m) for m in members]
 
 
 @router.post("/clients/{client_id}/family")
 async def create_family_member(
-    client_id: int,
-    data: FamilyMemberCreate,
-    pool=Depends(get_database_pool)
+    client_id: int, data: FamilyMemberCreate, pool=Depends(get_database_pool)
 ):
     """Add a family member to a client."""
     async with pool.acquire() as conn:
@@ -351,9 +344,18 @@ async def create_family_member(
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             RETURNING id
             """,
-            client_id, data.full_name, data.relationship, data.date_of_birth,
-            data.nationality, data.passport_number, data.passport_expiry,
-            data.current_visa_type, data.visa_expiry, data.email, data.phone, data.notes
+            client_id,
+            data.full_name,
+            data.relationship,
+            data.date_of_birth,
+            data.nationality,
+            data.passport_number,
+            data.passport_expiry,
+            data.current_visa_type,
+            data.visa_expiry,
+            data.email,
+            data.phone,
+            data.notes,
         )
 
         return {"id": member_id, "success": True}
@@ -361,10 +363,7 @@ async def create_family_member(
 
 @router.patch("/clients/{client_id}/family/{member_id}")
 async def update_family_member(
-    client_id: int,
-    member_id: int,
-    data: FamilyMemberUpdate,
-    pool=Depends(get_database_pool)
+    client_id: int, member_id: int, data: FamilyMemberUpdate, pool=Depends(get_database_pool)
 ):
     """Update a family member."""
     update_fields = []
@@ -386,10 +385,10 @@ async def update_family_member(
         result = await conn.execute(
             f"""
             UPDATE client_family_members
-            SET {', '.join(update_fields)}, updated_at = NOW()
+            SET {", ".join(update_fields)}, updated_at = NOW()
             WHERE id = ${param_num} AND client_id = ${param_num + 1}
             """,
-            *values
+            *values,
         )
 
         if result == "UPDATE 0":
@@ -399,16 +398,13 @@ async def update_family_member(
 
 
 @router.delete("/clients/{client_id}/family/{member_id}")
-async def delete_family_member(
-    client_id: int,
-    member_id: int,
-    pool=Depends(get_database_pool)
-):
+async def delete_family_member(client_id: int, member_id: int, pool=Depends(get_database_pool)):
     """Delete a family member."""
     async with pool.acquire() as conn:
         result = await conn.execute(
             "DELETE FROM client_family_members WHERE id = $1 AND client_id = $2",
-            member_id, client_id
+            member_id,
+            client_id,
         )
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Family member not found")
@@ -420,12 +416,15 @@ async def delete_family_member(
 # DOCUMENTS ENDPOINTS
 # ============================================
 
+
 @router.get("/clients/{client_id}/documents")
 async def get_client_documents(
     client_id: int,
-    category: str | None = Query(None, description="Filter by category: immigration, pma, tax, personal"),
+    category: str | None = Query(
+        None, description="Filter by category: immigration, pma, tax, personal"
+    ),
     include_archived: bool = Query(False, description="Include archived documents"),
-    pool=Depends(get_database_pool)
+    pool=Depends(get_database_pool),
 ):
     """Get all documents for a client, optionally filtered by category."""
     async with pool.acquire() as conn:
@@ -465,11 +464,7 @@ async def get_client_documents(
 
 
 @router.post("/clients/{client_id}/documents")
-async def create_document(
-    client_id: int,
-    data: DocumentCreate,
-    pool=Depends(get_database_pool)
-):
+async def create_document(client_id: int, data: DocumentCreate, pool=Depends(get_database_pool)):
     """Add a document to a client."""
     async with pool.acquire() as conn:
         doc_id = await conn.fetchval(
@@ -482,9 +477,17 @@ async def create_document(
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'google_drive', 'google_drive')
             RETURNING id
             """,
-            client_id, data.document_type, data.document_category,
-            data.file_name, data.file_id, data.file_url, data.google_drive_file_url,
-            data.expiry_date, data.notes, data.family_member_id, data.practice_id
+            client_id,
+            data.document_type,
+            data.document_category,
+            data.file_name,
+            data.file_id,
+            data.file_url,
+            data.google_drive_file_url,
+            data.expiry_date,
+            data.notes,
+            data.family_member_id,
+            data.practice_id,
         )
 
         return {"id": doc_id, "success": True}
@@ -492,10 +495,7 @@ async def create_document(
 
 @router.patch("/clients/{client_id}/documents/{doc_id}")
 async def update_document(
-    client_id: int,
-    doc_id: int,
-    data: DocumentUpdate,
-    pool=Depends(get_database_pool)
+    client_id: int, doc_id: int, data: DocumentUpdate, pool=Depends(get_database_pool)
 ):
     """Update a document."""
     update_fields = []
@@ -517,10 +517,10 @@ async def update_document(
         result = await conn.execute(
             f"""
             UPDATE documents
-            SET {', '.join(update_fields)}, updated_at = NOW()
+            SET {", ".join(update_fields)}, updated_at = NOW()
             WHERE id = ${param_num} AND client_id = ${param_num + 1}
             """,
-            *values
+            *values,
         )
 
         if result == "UPDATE 0":
@@ -534,20 +534,20 @@ async def archive_document(
     client_id: int,
     doc_id: int,
     permanent: bool = Query(False, description="Permanently delete instead of archive"),
-    pool=Depends(get_database_pool)
+    pool=Depends(get_database_pool),
 ):
     """Archive or delete a document."""
     async with pool.acquire() as conn:
         if permanent:
             result = await conn.execute(
-                "DELETE FROM documents WHERE id = $1 AND client_id = $2",
-                doc_id, client_id
+                "DELETE FROM documents WHERE id = $1 AND client_id = $2", doc_id, client_id
             )
             action = "deleted"
         else:
             result = await conn.execute(
                 "UPDATE documents SET is_archived = true, updated_at = NOW() WHERE id = $1 AND client_id = $2",
-                doc_id, client_id
+                doc_id,
+                client_id,
             )
             action = "archived"
 
@@ -561,10 +561,9 @@ async def archive_document(
 # DOCUMENT CATEGORIES ENDPOINT
 # ============================================
 
+
 @router.get("/document-categories")
-async def get_document_categories(
-    pool=Depends(get_database_pool)
-):
+async def get_document_categories(pool=Depends(get_database_pool)):
     """Get all document categories for dropdowns."""
     async with pool.acquire() as conn:
         categories = await conn.fetch(
@@ -582,12 +581,13 @@ async def get_document_categories(
 # EXPIRY ALERTS ENDPOINTS
 # ============================================
 
+
 @router.get("/expiry-alerts")
 async def get_all_expiry_alerts(
     alert_color: str | None = Query(None, description="Filter by color: expired, red, yellow"),
     assigned_to: str | None = Query(None, description="Filter by team member email"),
     limit: int = Query(100, le=500),
-    pool=Depends(get_database_pool)
+    pool=Depends(get_database_pool),
 ):
     """Get all expiry alerts across all clients (for team dashboard)."""
     async with pool.acquire() as conn:
@@ -628,9 +628,7 @@ async def get_all_expiry_alerts(
 
 
 @router.get("/expiry-alerts/summary")
-async def get_expiry_alerts_summary(
-    pool=Depends(get_database_pool)
-):
+async def get_expiry_alerts_summary(pool=Depends(get_database_pool)):
     """Get summary counts of expiry alerts for dashboard."""
     async with pool.acquire() as conn:
         summary = await conn.fetchrow(
@@ -657,7 +655,4 @@ async def get_expiry_alerts_summary(
             """
         )
 
-        return {
-            "counts": dict(summary),
-            "urgent_alerts": [dict(a) for a in urgent]
-        }
+        return {"counts": dict(summary), "urgent_alerts": [dict(a) for a in urgent]}

@@ -64,7 +64,7 @@ class TestClientScoringService:
             "conversation_count": 8,
             "avg_rating": 4.5,
             "practice_statuses": ["active", "pending"],
-            "practice_count": 2
+            "practice_count": 2,
         }.get(key)
         mock_row.get = lambda key, default=None: {
             "name": "Test Client",
@@ -78,7 +78,7 @@ class TestClientScoringService:
             "conversation_count": 8,
             "avg_rating": 4.5,
             "practice_statuses": ["active", "pending"],
-            "practice_count": 2
+            "practice_count": 2,
         }.get(key, default)
 
         async with mock_db_pool.acquire() as conn:
@@ -109,6 +109,7 @@ class TestClientScoringService:
     @pytest.mark.asyncio
     async def test_calculate_client_score_not_found(self, client_scoring_service, mock_db_pool):
         """Test calculating client score when client not found"""
+
         @asynccontextmanager
         async def acquire():
             conn = MagicMock()
@@ -123,6 +124,7 @@ class TestClientScoringService:
     @pytest.mark.asyncio
     async def test_calculate_client_score_db_error(self, client_scoring_service, mock_db_pool):
         """Test calculating client score with database error"""
+
         @asynccontextmanager
         async def acquire():
             conn = MagicMock()
@@ -139,7 +141,7 @@ class TestClientScoringService:
         """Test calculating scores in batch"""
         mock_rows = [
             MagicMock(**{"__getitem__": lambda self, key: {"id": "1"}.get(key)}),
-            MagicMock(**{"__getitem__": lambda self, key: {"id": "2"}.get(key)})
+            MagicMock(**{"__getitem__": lambda self, key: {"id": "2"}.get(key)}),
         ]
 
         @asynccontextmanager
@@ -158,7 +160,3 @@ class TestClientScoringService:
         """Test calculating scores batch with empty list"""
         result = await client_scoring_service.calculate_scores_batch([])
         assert result == {}
-
-
-
-

@@ -168,7 +168,7 @@ def _strip_trailing_statement_terminator(sql: str) -> str:
     if not semicolon_positions:
         return sql.strip()
     # validate_query ensures we have at most one semicolon
-    return sql[:semicolon_positions[0]].rstrip()
+    return sql[: semicolon_positions[0]].rstrip()
 
 
 @dataclass
@@ -302,7 +302,7 @@ class PostgreSQLDebugger:
 
         # Whitelist: must start with SELECT (after whitespace/comments)
         m = re.match(r"[A-Za-z_]+", masked_stripped)
-        first_token = (m.group(0).upper() if m else "")
+        first_token = m.group(0).upper() if m else ""
 
         # Check whitelist: must start with SELECT
         if first_token != "SELECT":

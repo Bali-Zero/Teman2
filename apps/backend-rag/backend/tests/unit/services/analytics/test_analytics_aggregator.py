@@ -46,7 +46,7 @@ class TestAnalyticsAggregator:
         analytics_aggregator.app_state.memory_service = None
         stats = await analytics_aggregator.get_overview_stats()
         assert stats is not None
-        assert hasattr(stats, 'uptime_seconds')
+        assert hasattr(stats, "uptime_seconds")
 
     @pytest.mark.asyncio
     async def test_get_overview_stats_with_pool(self, analytics_aggregator):
@@ -67,5 +67,4 @@ class TestAnalyticsAggregator:
         stats = await analytics_aggregator.get_rag_stats()
         # Returns RAGStats object, not dict
         assert stats is not None
-        assert hasattr(stats, 'avg_latency_ms') or isinstance(stats, dict)
-
+        assert hasattr(stats, "avg_latency_ms") or isinstance(stats, dict)

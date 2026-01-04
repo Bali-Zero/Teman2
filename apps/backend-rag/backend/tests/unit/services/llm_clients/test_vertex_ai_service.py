@@ -114,4 +114,3 @@ class TestVertexAIService:
         except Exception:
             # If it raises, that's also valid
             pass
-

@@ -36,9 +36,10 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
+from services.llm_clients.pricing import TokenUsage
 from services.rag.agentic.reasoning import ReasoningEngine
 from services.tools.definitions import AgentState, ToolCall
-from services.llm_clients.pricing import TokenUsage
+
 
 def mock_token_usage():
     return TokenUsage(prompt_tokens=10, completion_tokens=20)
@@ -54,13 +55,9 @@ class TestReasoning90Coverage:
         """Test citation parsing KeyError exception handling (line 270-271)"""
         mock_tool = MagicMock()
         # Return JSON that causes KeyError when accessing 'sources'
-        mock_tool.execute = AsyncMock(
-            return_value='{"content": "KITAS info"}'
-        )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+        mock_tool.execute = AsyncMock(return_value='{"content": "KITAS info"}')
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -71,13 +68,20 @@ class TestReasoning90Coverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -88,8 +92,14 @@ class TestReasoning90Coverage:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -113,10 +123,8 @@ class TestReasoning90Coverage:
         mock_tool.execute = AsyncMock(
             return_value='{"content": "KITAS info", "sources": "invalid"}'
         )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -125,13 +133,20 @@ class TestReasoning90Coverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -142,8 +157,14 @@ class TestReasoning90Coverage:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -164,13 +185,9 @@ class TestReasoning90Coverage:
         """Test citation parsing TypeError exception handling (line 270-271)"""
         mock_tool = MagicMock()
         # Return JSON that causes TypeError
-        mock_tool.execute = AsyncMock(
-            return_value='{"content": "KITAS info", "sources": None}'
-        )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+        mock_tool.execute = AsyncMock(return_value='{"content": "KITAS info", "sources": None}')
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -179,13 +196,20 @@ class TestReasoning90Coverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -196,8 +220,14 @@ class TestReasoning90Coverage:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -227,16 +257,22 @@ class TestReasoning90Coverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             return ("Thought: Still thinking...", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -266,7 +302,9 @@ class TestReasoning90Coverage:
 
         llm_gateway = AsyncMock()
         from google.api_core.exceptions import ResourceExhausted
+
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -275,12 +313,17 @@ class TestReasoning90Coverage:
             else:
                 # Second call (final answer generation) raises error
                 raise ResourceExhausted("Rate limit exceeded")
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -297,7 +340,11 @@ class TestReasoning90Coverage:
         # Should handle LLM error gracefully
         assert result_state.final_answer is not None
         # Error message can be in Italian or English
-        assert "apologize" in result_state.final_answer.lower() or "couldn't" in result_state.final_answer.lower() or "dispiace" in result_state.final_answer.lower()
+        assert (
+            "apologize" in result_state.final_answer.lower()
+            or "couldn't" in result_state.final_answer.lower()
+            or "dispiace" in result_state.final_answer.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_final_answer_stub_filtering(self):
@@ -318,7 +365,11 @@ class TestReasoning90Coverage:
 
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -343,10 +394,8 @@ class TestReasoning90Coverage:
         mock_tool.execute = AsyncMock(
             return_value='{"content": "KITAS info", "sources": [{"id": "doc1", "score": 0.9}]}'
         )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -366,6 +415,7 @@ class TestReasoning90Coverage:
         mock_response_obj.candidates = [mock_candidate]
 
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -373,13 +423,16 @@ class TestReasoning90Coverage:
                 return ("Action", "gemini-2.0-flash", mock_response_obj, mock_token_usage())
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
+
         parse_call_count = 0
+
         def mock_parse_fn(*args, **kwargs):
             nonlocal parse_call_count
             parse_call_count += 1
@@ -387,7 +440,11 @@ class TestReasoning90Coverage:
                 return ToolCall(tool_name="vector_search", arguments={"query": "KITAS"})
             else:
                 return None
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_fn):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -414,10 +471,8 @@ class TestReasoning90Coverage:
         mock_tool.execute = AsyncMock(
             return_value='{"content": "KITAS info", "sources": [{"id": "doc1", "score": 0.9}]}'
         )
-        
-        tool_map = {
-            "vector_search": mock_tool
-        }
+
+        tool_map = {"vector_search": mock_tool}
         engine = ReasoningEngine(tool_map=tool_map)
 
         state = AgentState(query="What is KITAS?", max_steps=3)
@@ -428,13 +483,20 @@ class TestReasoning90Coverage:
 
         llm_gateway = AsyncMock()
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return ("Action: vector_search('KITAS')", "gemini-2.0-flash", None, mock_token_usage())
+                return (
+                    "Action: vector_search('KITAS')",
+                    "gemini-2.0-flash",
+                    None,
+                    mock_token_usage(),
+                )
             else:
                 return ("Answer: KITAS info", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
@@ -446,8 +508,14 @@ class TestReasoning90Coverage:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
+            with patch(
+                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+            ):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -478,20 +546,27 @@ class TestReasoning90Coverage:
 
         llm_gateway = AsyncMock()
         from google.api_core.exceptions import ServiceUnavailable
+
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 raise ServiceUnavailable("Service unavailable")
             return ("Answer", "gemini-2.0-flash", None, mock_token_usage())
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -533,7 +608,11 @@ class TestReasoning90Coverage:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -567,6 +646,7 @@ class TestReasoning90Coverage:
         llm_gateway = AsyncMock()
         # Use RuntimeError instead of ValueError from google.api_core
         call_count = 0
+
         def mock_send_message(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -575,13 +655,18 @@ class TestReasoning90Coverage:
             else:
                 # Final answer generation raises error
                 raise RuntimeError("Invalid response")
+
         llm_gateway.send_message = AsyncMock(side_effect=mock_send_message)
         chat = MagicMock()
 
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -602,7 +687,11 @@ class TestReasoning90Coverage:
         assert len(events) >= 0
         assert state.final_answer is not None
         # Error message can be in Italian or English
-        assert "apologize" in state.final_answer.lower() or "couldn't" in state.final_answer.lower() or "dispiace" in state.final_answer.lower()
+        assert (
+            "apologize" in state.final_answer.lower()
+            or "couldn't" in state.final_answer.lower()
+            or "dispiace" in state.final_answer.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_streaming_stub_filtering(self):
@@ -624,7 +713,11 @@ class TestReasoning90Coverage:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -651,7 +744,7 @@ class TestReasoning90Coverage:
         # Mock pipeline that raises error
         mock_pipeline = MagicMock()
         mock_pipeline.process = AsyncMock(side_effect=RuntimeError("Pipeline error"))
-        
+
         tool_map = {}
         engine = ReasoningEngine(tool_map=tool_map, response_pipeline=mock_pipeline)
 
@@ -669,7 +762,11 @@ class TestReasoning90Coverage:
         events = []
         tool_execution_counter = {"count": 0}
         from contextlib import nullcontext
-        with patch("services.rag.agentic.reasoning.trace_span", side_effect=lambda *args, **kwargs: nullcontext()):
+
+        with patch(
+            "services.rag.agentic.reasoning.trace_span",
+            side_effect=lambda *args, **kwargs: nullcontext(),
+        ):
             with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 async for event in engine.execute_react_loop_stream(
                     state=state,
@@ -689,4 +786,3 @@ class TestReasoning90Coverage:
         # Should handle pipeline error gracefully
         assert len(events) > 0
         assert state.final_answer is not None
-

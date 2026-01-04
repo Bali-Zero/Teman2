@@ -27,6 +27,7 @@ except ImportError:
     def set_span_status(status, msg=None):
         pass
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,15 +68,20 @@ class ReRanker:
         Returns:
             List of re-ranked document dictionaries with updated 'score' and 'rerank_score'.
         """
-        with trace_span("rerank.zeroentropy", {
-            "documents_count": len(documents),
-            "top_k": top_k,
-            "model": self.model_name,
-            "enabled": self.enabled,
-        }):
+        with trace_span(
+            "rerank.zeroentropy",
+            {
+                "documents_count": len(documents),
+                "top_k": top_k,
+                "model": self.model_name,
+                "enabled": self.enabled,
+            },
+        ):
             if not self.enabled or not documents:
                 set_span_attribute("skipped", True)
-                set_span_attribute("skip_reason", "disabled" if not self.enabled else "no_documents")
+                set_span_attribute(
+                    "skip_reason", "disabled" if not self.enabled else "no_documents"
+                )
                 set_span_status("ok")
                 return documents[:top_k]
 

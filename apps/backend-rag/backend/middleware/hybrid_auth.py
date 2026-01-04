@@ -111,12 +111,15 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/portal/invite/complete",  # Client registration completion (public)
             "/api/integrations/zoho/callback",  # Zoho OAuth callback (public)
             "/api/integrations/google-drive/callback",  # Google Drive OAuth callback (public)
+            "/api/integrations/google-drive/system/status",  # System OAuth status check (public)
             "/api/audio/",  # Audio TTS/STT endpoints (public for now)
             "/api/voice/elevenlabs",  # ElevenLabs webhook (public, no auth)
             "/api/knowledge/visa",  # Visa types knowledge base (public)
             "/api/blog/newsletter/subscribe",  # Newsletter subscription (public)
             "/api/blog/newsletter/confirm",  # Newsletter confirmation (public)
             "/api/blog/newsletter/unsubscribe",  # Newsletter unsubscribe (public)
+            "/api/blog/ask",  # AskZantara widget on blog articles (public)
+            "/api/telegram/webhook",  # Telegram bot webhook (public, verified by secret token)
         ]
 
         logger.info(
@@ -178,7 +181,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
                 # Inject authenticated user context into request state
                 request.state.user = auth_result
-                request.state.auth_type = getattr(auth_result, "auth_method", "unknown")
+                request.state.auth_type = auth_result.get("auth_method", "unknown")
 
                 user_email = auth_result.get("email", "unknown")
                 logger.debug(

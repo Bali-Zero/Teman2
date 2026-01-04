@@ -9,7 +9,7 @@ Verifies that ErrorMonitoringMiddleware:
 
 from unittest.mock import AsyncMock, MagicMock
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from middleware.error_monitoring import ErrorMonitoringMiddleware
 

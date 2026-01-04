@@ -140,7 +140,9 @@ class TestContextManagerSessionFiltering:
         assert len(result["history"]) == 2
 
     @pytest.mark.asyncio
-    async def test_empty_history_still_loads_memory_facts(self, mock_db_pool, mock_memory_orchestrator):
+    async def test_empty_history_still_loads_memory_facts(
+        self, mock_db_pool, mock_memory_orchestrator
+    ):
         """Test: Memory facts are ALWAYS loaded, even on first query (for user recognition)
 
         FIX USER RECOGNITION BUG: The previous logic skipped facts on first query

@@ -31,9 +31,7 @@ def mock_db_pool():
 def kg_builder(mock_db_pool):
     """Create KG builder instance"""
     return KnowledgeGraphBuilder(
-        search_service=MagicMock(),
-        db_pool=mock_db_pool,
-        llm_gateway=MagicMock()
+        search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock()
     )
 
 
@@ -43,9 +41,7 @@ class TestKnowledgeGraphBuilder:
     def test_init(self, mock_db_pool):
         """Test initialization"""
         builder = KnowledgeGraphBuilder(
-            search_service=MagicMock(),
-            db_pool=mock_db_pool,
-            llm_gateway=MagicMock()
+            search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock()
         )
         assert builder.db_pool == mock_db_pool
 
@@ -60,10 +56,11 @@ class TestKnowledgeGraphBuilder:
             description="Test entity",
             source_collection="test_collection",
             confidence=0.9,
-            source_chunk_ids=["chunk1"]
+            source_chunk_ids=["chunk1"],
         )
 
         from contextlib import asynccontextmanager
+
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()
 
@@ -80,11 +77,12 @@ class TestKnowledgeGraphBuilder:
     async def test_build_from_conversations(self, kg_builder):
         """Test building graph from conversations"""
         # Test extract_via_llm method
-        with patch.object(kg_builder.llm_gateway, 'conversational') as mock_llm:
+        with patch.object(kg_builder.llm_gateway, "conversational") as mock_llm:
             mock_llm.return_value = {
                 "text": '{"entities": [{"id": "test", "type": "LEGAL_ENTITY", "name": "PT PMA"}], "relationships": []}'
             }
 
-            result = await kg_builder.extract_via_llm("PT PMA requires investment", "test_collection", "chunk1")
+            result = await kg_builder.extract_via_llm(
+                "PT PMA requires investment", "test_collection", "chunk1"
+            )
             assert "entities" in result
-

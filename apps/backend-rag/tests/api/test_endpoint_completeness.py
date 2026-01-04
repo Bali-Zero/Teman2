@@ -452,6 +452,3 @@ class TestEveryHTTPMethod:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
         return mock_pool, mock_conn
-
-
-

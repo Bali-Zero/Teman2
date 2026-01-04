@@ -63,46 +63,52 @@ def mock_semantic_cache():
 @pytest.fixture
 def orchestrator(mock_tools, mock_db_pool, mock_retriever, mock_semantic_cache):
     """Create orchestrator instance"""
-    with patch("services.rag.agentic.orchestrator.LLMGateway"), \
-         patch("services.rag.agentic.orchestrator.IntentClassifier"), \
-         patch("services.rag.agentic.orchestrator.EmotionalAttunementService"), \
-         patch("services.rag.agentic.orchestrator.SystemPromptBuilder"), \
-         patch("services.rag.agentic.orchestrator.create_default_pipeline"), \
-         patch("services.rag.agentic.orchestrator.ReasoningEngine"), \
-         patch("services.rag.agentic.orchestrator.EntityExtractionService"), \
-         patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"), \
-         patch("services.rag.agentic.orchestrator.FollowupService"), \
-         patch("services.rag.agentic.orchestrator.GoldenAnswerService"), \
-         patch("services.rag.agentic.orchestrator.ContextWindowManager"):
+    with (
+        patch("services.rag.agentic.orchestrator.LLMGateway"),
+        patch("services.rag.agentic.orchestrator.IntentClassifier"),
+        patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
+        patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
+        patch("services.rag.agentic.orchestrator.create_default_pipeline"),
+        patch("services.rag.agentic.orchestrator.ReasoningEngine"),
+        patch("services.rag.agentic.orchestrator.EntityExtractionService"),
+        patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+        patch("services.rag.agentic.orchestrator.FollowupService"),
+        patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+        patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+    ):
         return AgenticRAGOrchestrator(
             tools=mock_tools,
             db_pool=mock_db_pool,
             retriever=mock_retriever,
-            semantic_cache=mock_semantic_cache
+            semantic_cache=mock_semantic_cache,
         )
 
 
 class TestAgenticRAGOrchestrator:
     """Tests for AgenticRAGOrchestrator"""
 
-    def test_init_with_all_services(self, mock_tools, mock_db_pool, mock_retriever, mock_semantic_cache):
+    def test_init_with_all_services(
+        self, mock_tools, mock_db_pool, mock_retriever, mock_semantic_cache
+    ):
         """Test initialization with all services"""
-        with patch("services.rag.agentic.orchestrator.LLMGateway") as mock_gateway, \
-             patch("services.rag.agentic.orchestrator.IntentClassifier"), \
-             patch("services.rag.agentic.orchestrator.EmotionalAttunementService"), \
-             patch("services.rag.agentic.orchestrator.SystemPromptBuilder"), \
-             patch("services.rag.agentic.orchestrator.create_default_pipeline"), \
-             patch("services.rag.agentic.orchestrator.ReasoningEngine"), \
-             patch("services.rag.agentic.orchestrator.EntityExtractionService"), \
-             patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"), \
-             patch("services.rag.agentic.orchestrator.FollowupService"), \
-             patch("services.rag.agentic.orchestrator.GoldenAnswerService"), \
-             patch("services.rag.agentic.orchestrator.ContextWindowManager"):
+        with (
+            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_gateway,
+            patch("services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("services.rag.agentic.orchestrator.FollowupService"),
+            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+        ):
             instance = AgenticRAGOrchestrator(
                 tools=mock_tools,
                 db_pool=mock_db_pool,
                 retriever=mock_retriever,
-                semantic_cache=mock_semantic_cache
+                semantic_cache=mock_semantic_cache,
             )
             assert instance is not None
             assert instance.tools == {tool.name: tool for tool in mock_tools}
@@ -112,17 +118,19 @@ class TestAgenticRAGOrchestrator:
 
     def test_init_without_optional_services(self, mock_tools):
         """Test initialization without optional services"""
-        with patch("services.rag.agentic.orchestrator.LLMGateway"), \
-             patch("services.rag.agentic.orchestrator.IntentClassifier"), \
-             patch("services.rag.agentic.orchestrator.EmotionalAttunementService"), \
-             patch("services.rag.agentic.orchestrator.SystemPromptBuilder"), \
-             patch("services.rag.agentic.orchestrator.create_default_pipeline"), \
-             patch("services.rag.agentic.orchestrator.ReasoningEngine"), \
-             patch("services.rag.agentic.orchestrator.EntityExtractionService"), \
-             patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"), \
-             patch("services.rag.agentic.orchestrator.FollowupService"), \
-             patch("services.rag.agentic.orchestrator.GoldenAnswerService"), \
-             patch("services.rag.agentic.orchestrator.ContextWindowManager"):
+        with (
+            patch("services.rag.agentic.orchestrator.LLMGateway"),
+            patch("services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("services.rag.agentic.orchestrator.FollowupService"),
+            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+        ):
             instance = AgenticRAGOrchestrator(tools=mock_tools)
             assert instance is not None
             assert instance.db_pool is None
@@ -150,6 +158,7 @@ class TestAgenticRAGOrchestrator:
             # Mock MemoryOrchestrator to raise RuntimeError (which is caught)
             def raise_exception(*args, **kwargs):
                 raise RuntimeError("DB error")
+
             mock_memory.side_effect = raise_exception
 
             result = await orchestrator._get_memory_orchestrator()
@@ -166,6 +175,7 @@ class TestAgenticRAGOrchestrator:
                 if db_pool is None:
                     raise ValueError("db_pool is required")
                 return MagicMock()
+
             mock_memory.side_effect = raise_error
 
             result = await orchestrator._get_memory_orchestrator()
@@ -178,9 +188,11 @@ class TestAgenticRAGOrchestrator:
         query = "What is KITAS?"
         user_id = "test_user"
 
-        with patch.object(orchestrator, 'stream_query') as mock_stream:
+        with patch.object(orchestrator, "stream_query") as mock_stream:
+
             async def async_gen():
                 yield StreamEvent(type="text", data="KITAS is")
+
             mock_stream.return_value = async_gen()
 
             async for event in orchestrator.stream_query(query, user_id):
@@ -193,15 +205,19 @@ class TestAgenticRAGOrchestrator:
         user_id = "test_user"
         history = [
             {"role": "user", "content": "What is KITAS?"},
-            {"role": "assistant", "content": "KITAS is a work permit"}
+            {"role": "assistant", "content": "KITAS is a work permit"},
         ]
 
-        with patch.object(orchestrator, 'stream_query') as mock_stream:
+        with patch.object(orchestrator, "stream_query") as mock_stream:
+
             async def async_gen():
                 yield StreamEvent(type="text", data="More info")
+
             mock_stream.return_value = async_gen()
 
-            async for event in orchestrator.stream_query(query, user_id, conversation_history=history):
+            async for event in orchestrator.stream_query(
+                query, user_id, conversation_history=history
+            ):
                 assert event.type == "text"
 
     @pytest.mark.asyncio
@@ -211,9 +227,11 @@ class TestAgenticRAGOrchestrator:
         user_id = "test_user"
         context = {"client_id": 123}
 
-        with patch.object(orchestrator, 'stream_query') as mock_stream:
+        with patch.object(orchestrator, "stream_query") as mock_stream:
+
             async def async_gen():
                 yield StreamEvent(type="text", data="KITAS")
+
             mock_stream.return_value = async_gen()
 
             async for event in orchestrator.stream_query(query, user_id, context=context):
@@ -225,9 +243,11 @@ class TestAgenticRAGOrchestrator:
         query = "What is KITAS?"
         user_id = "test_user"
 
-        with patch.object(orchestrator, 'stream_query') as mock_stream:
+        with patch.object(orchestrator, "stream_query") as mock_stream:
+
             async def async_gen():
                 yield StreamEvent(type="error", data="Processing error")
+
             mock_stream.return_value = async_gen()
 
             events = []
@@ -243,12 +263,12 @@ class TestAgenticRAGOrchestrator:
         query = "What is KITAS?"
         user_id = "test_user"
 
-        with patch.object(orchestrator, 'process_query') as mock_process:
+        with patch.object(orchestrator, "process_query") as mock_process:
             mock_result = CoreResult(
                 answer="KITAS is a work permit",
                 sources=[],
                 verification_score=1.0,
-                evidence_score=1.0
+                evidence_score=1.0,
             )
             mock_process.return_value = mock_result
 
@@ -261,12 +281,9 @@ class TestAgenticRAGOrchestrator:
         query = "Calculate 2+2"
         user_id = "test_user"
 
-        with patch.object(orchestrator, 'process_query') as mock_process:
+        with patch.object(orchestrator, "process_query") as mock_process:
             mock_result = CoreResult(
-                answer="4",
-                sources=[],
-                verification_score=1.0,
-                evidence_score=1.0
+                answer="4", sources=[], verification_score=1.0, evidence_score=1.0
             )
             mock_process.return_value = mock_result
 
@@ -279,12 +296,9 @@ class TestAgenticRAGOrchestrator:
         query = "What is 2+2?"
         user_id = "test_user"
 
-        with patch.object(orchestrator, 'process_query') as mock_process:
+        with patch.object(orchestrator, "process_query") as mock_process:
             mock_result = CoreResult(
-                answer="4",
-                sources=[],
-                verification_score=1.0,
-                evidence_score=1.0
+                answer="4", sources=[], verification_score=1.0, evidence_score=1.0
             )
             mock_process.return_value = mock_result
 
@@ -297,15 +311,12 @@ class TestAgenticRAGOrchestrator:
         query = "What is KITAS?"
         user_id = "test_user"
 
-        with patch.object(orchestrator.intent_classifier, 'classify') as mock_classify:
+        with patch.object(orchestrator.intent_classifier, "classify") as mock_classify:
             mock_classify.return_value = {"intent": "visa_query", "confidence": 0.9}
 
-            with patch.object(orchestrator, 'process_query') as mock_process:
+            with patch.object(orchestrator, "process_query") as mock_process:
                 mock_result = CoreResult(
-                    answer="KITAS info",
-                    sources=[],
-                    verification_score=1.0,
-                    evidence_score=1.0
+                    answer="KITAS info", sources=[], verification_score=1.0, evidence_score=1.0
                 )
                 mock_process.return_value = mock_result
 
@@ -319,15 +330,12 @@ class TestAgenticRAGOrchestrator:
         query = "What is KITAS?"
         user_id = "test_user"
 
-        with patch.object(orchestrator.followup_service, 'generate') as mock_followup:
+        with patch.object(orchestrator.followup_service, "generate") as mock_followup:
             mock_followup.return_value = ["How to apply?", "What documents needed?"]
 
-            with patch.object(orchestrator, 'process_query') as mock_process:
+            with patch.object(orchestrator, "process_query") as mock_process:
                 mock_result = CoreResult(
-                    answer="KITAS info",
-                    sources=[],
-                    verification_score=1.0,
-                    evidence_score=1.0
+                    answer="KITAS info", sources=[], verification_score=1.0, evidence_score=1.0
                 )
                 mock_process.return_value = mock_result
 
@@ -341,10 +349,12 @@ class TestAgenticRAGOrchestrator:
         query = "What is KITAS?"
         user_id = "test_user"
 
-        with patch.object(orchestrator, 'stream_query') as mock_stream:
+        with patch.object(orchestrator, "stream_query") as mock_stream:
+
             async def async_gen():
                 yield StreamEvent(type="metadata", data={"sources": []})
                 yield StreamEvent(type="text", data="KITAS")
+
             mock_stream.return_value = async_gen()
 
             events = []
@@ -361,7 +371,7 @@ class TestAgenticRAGOrchestrator:
 
         from google.api_core.exceptions import ResourceExhausted
 
-        with patch.object(orchestrator, 'process_query') as mock_process:
+        with patch.object(orchestrator, "process_query") as mock_process:
             mock_process.side_effect = ResourceExhausted("Quota exceeded")
 
             # Should handle gracefully
@@ -378,7 +388,7 @@ class TestAgenticRAGOrchestrator:
 
         from google.api_core.exceptions import ServiceUnavailable
 
-        with patch.object(orchestrator, 'process_query') as mock_process:
+        with patch.object(orchestrator, "process_query") as mock_process:
             mock_process.side_effect = ServiceUnavailable("Service down")
 
             try:
@@ -392,12 +402,7 @@ class TestStreamEvent:
 
     def test_stream_event_creation(self):
         """Test StreamEvent creation"""
-        event = StreamEvent(
-            type="text",
-            data="Hello",
-            timestamp=1234.5,
-            correlation_id="test-123"
-        )
+        event = StreamEvent(type="text", data="Hello", timestamp=1234.5, correlation_id="test-123")
         assert event.type == "text"
         assert event.data == "Hello"
         assert event.timestamp == 1234.5
@@ -456,4 +461,3 @@ class TestHelperFunctions:
         """Test non-recall query"""
         query = "What is KITAS?"
         assert _is_conversation_recall_query(query) is False
-

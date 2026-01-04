@@ -168,7 +168,9 @@ class VisionRAGService:
                 max_output_tokens=8192,
             )
 
-            clean_json = result_response.get("text", "{}").replace("```json", "").replace("```", "").strip()
+            clean_json = (
+                result_response.get("text", "{}").replace("```json", "").replace("```", "").strip()
+            )
             result = json.loads(clean_json)
 
             return VisualElement(

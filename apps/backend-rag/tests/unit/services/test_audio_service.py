@@ -1,587 +1,237 @@
-"""
-Comprehensive unit tests for app/services/audio_service.py
-Target: 90%+ coverage
-"""
-
-import os
-import sys
 from io import BytesIO
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
+import httpx
 import pytest
-
-# Setup path to backend
-os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
-backend_path = Path(__file__).parent.parent.parent.parent / "backend"
-sys.path.insert(0, str(backend_path))
 
 from app.services.audio_service import AudioService, get_audio_service
 
 
-class TestAudioServiceInitialization:
-    """Test AudioService initialization scenarios"""
+class _FakeResponse:
+    def __init__(self, status_code=200, headers=None, content=b"", json_data=None):
+        self.status_code = status_code
+        self.headers = headers or {}
+        self.content = content
+        self._json_data = json_data
 
-    def test_init_with_api_key(self):
-        """Test initialization with valid API key"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_api_key"
-            with patch("app.services.audio_service.AsyncOpenAI") as mock_openai:
-                mock_client = MagicMock()
-                mock_openai.return_value = mock_client
-
-                service = AudioService()
-
-                assert service.api_key == "test_api_key"
-                assert service.client is not None
-                mock_openai.assert_called_once_with(api_key="test_api_key")
-
-    def test_init_without_api_key(self, caplog):
-        """Test initialization without API key"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = None
-
-            service = AudioService()
-
-            assert service.api_key is None
-            assert service.client is None
-            assert "OPENAI_API_KEY not found" in caplog.text
-
-    def test_init_with_empty_api_key(self, caplog):
-        """Test initialization with empty string API key"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = ""
-
-            service = AudioService()
-
-            assert service.api_key == ""
-            assert service.client is None
-            assert "Audio services will be disabled" in caplog.text
+    def json(self):
+        if self._json_data is None:
+            raise ValueError("No JSON")
+        return self._json_data
 
 
-class TestAudioServiceTranscribeAudio:
-    """Test AudioService.transcribe_audio method"""
-
-    @pytest.fixture
-    def service_with_client(self):
-        """Create AudioService instance with mocked client"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_api_key"
-            with patch("app.services.audio_service.AsyncOpenAI") as mock_openai:
-                mock_client = MagicMock()
-                mock_openai.return_value = mock_client
-                service = AudioService()
-                return service
-
-    @pytest.fixture
-    def service_without_client(self):
-        """Create AudioService instance without client"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = None
-            service = AudioService()
-            return service
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_with_file_path_success(self, service_with_client):
-        """Test transcribe_audio with file path - success case"""
-        mock_transcript = MagicMock()
-        mock_transcript.text = "This is the transcribed text"
-
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(return_value=mock_transcript)
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        mock_file = MagicMock()
-        mock_file.read.return_value = b"audio data"
-
-        with patch("builtins.open", mock_open(read_data=b"audio data")) as mock_file_open:
-            result = await service_with_client.transcribe_audio("/path/to/audio.mp3")
-
-            assert result == "This is the transcribed text"
-            mock_file_open.assert_called_once_with("/path/to/audio.mp3", "rb")
-            mock_transcriptions.create.assert_called_once()
-            call_kwargs = mock_transcriptions.create.call_args.kwargs
-            assert call_kwargs["model"] == "whisper-1"
-            assert call_kwargs["language"] is None
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_with_file_path_and_language(self, service_with_client):
-        """Test transcribe_audio with file path and language parameter"""
-        mock_transcript = MagicMock()
-        mock_transcript.text = "Ini adalah teks yang ditranskripsikan"
-
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(return_value=mock_transcript)
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        with patch("builtins.open", mock_open(read_data=b"audio data")):
-            result = await service_with_client.transcribe_audio(
-                "/path/to/audio.mp3", language="id"
-            )
-
-            assert result == "Ini adalah teks yang ditranskripsikan"
-            call_kwargs = mock_transcriptions.create.call_args.kwargs
-            assert call_kwargs["language"] == "id"
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_with_custom_model(self, service_with_client):
-        """Test transcribe_audio with custom model parameter"""
-        mock_transcript = MagicMock()
-        mock_transcript.text = "Custom model transcription"
-
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(return_value=mock_transcript)
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        with patch("builtins.open", mock_open(read_data=b"audio data")):
-            result = await service_with_client.transcribe_audio(
-                "/path/to/audio.mp3", model="whisper-2"
-            )
-
-            assert result == "Custom model transcription"
-            call_kwargs = mock_transcriptions.create.call_args.kwargs
-            assert call_kwargs["model"] == "whisper-2"
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_with_file_buffer(self, service_with_client):
-        """Test transcribe_audio with file-like buffer object"""
-        mock_transcript = MagicMock()
-        mock_transcript.text = "Buffer transcription"
-
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(return_value=mock_transcript)
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        # Create a file-like buffer
-        buffer = BytesIO(b"audio data")
-        buffer.name = "test.mp3"
-
-        result = await service_with_client.transcribe_audio(buffer)
-
-        assert result == "Buffer transcription"
-        mock_transcriptions.create.assert_called_once()
-        call_kwargs = mock_transcriptions.create.call_args.kwargs
-        assert call_kwargs["file"] == buffer
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_without_client(self, service_without_client):
-        """Test transcribe_audio without initialized client"""
-        with pytest.raises(ValueError, match="Audio service is not available"):
-            await service_without_client.transcribe_audio("/path/to/audio.mp3")
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_api_exception(self, service_with_client, caplog):
-        """Test transcribe_audio when API raises exception"""
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(side_effect=Exception("API Error"))
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        with patch("builtins.open", mock_open(read_data=b"audio data")):
-            with pytest.raises(Exception, match="API Error"):
-                await service_with_client.transcribe_audio("/path/to/audio.mp3")
-
-            assert "Audio transcription failed" in caplog.text
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_file_closes_on_success(self, service_with_client):
-        """Test that file is properly closed after successful transcription"""
-        mock_transcript = MagicMock()
-        mock_transcript.text = "Transcription"
-
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(return_value=mock_transcript)
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        mock_file = MagicMock()
-        mock_file.read.return_value = b"audio data"
-
-        with patch("builtins.open", return_value=mock_file) as mock_open_func:
-            await service_with_client.transcribe_audio("/path/to/audio.mp3")
-            mock_file.close.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_file_closes_on_exception(self, service_with_client):
-        """Test that file is properly closed even when exception occurs"""
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(side_effect=Exception("Error"))
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        mock_file = MagicMock()
-
-        with patch("builtins.open", return_value=mock_file):
-            with pytest.raises(Exception):
-                await service_with_client.transcribe_audio("/path/to/audio.mp3")
-            mock_file.close.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_buffer_not_closed(self, service_with_client):
-        """Test that buffer objects are not closed (only file paths are closed)"""
-        mock_transcript = MagicMock()
-        mock_transcript.text = "Buffer transcription"
-
-        mock_audio = MagicMock()
-        mock_transcriptions = MagicMock()
-        mock_transcriptions.create = AsyncMock(return_value=mock_transcript)
-        mock_audio.transcriptions = mock_transcriptions
-        service_with_client.client.audio = mock_audio
-
-        buffer = BytesIO(b"audio data")
-        buffer.name = "test.mp3"
-        buffer.close = MagicMock()  # Mock close to verify it's not called
-
-        await service_with_client.transcribe_audio(buffer)
-
-        # Buffer.close should NOT be called since we didn't open it
-        buffer.close.assert_not_called()
+def _make_http_client(response=None, error=None):
+    client = AsyncMock()
+    if error:
+        client.get = AsyncMock(side_effect=error)
+    else:
+        client.get = AsyncMock(return_value=response)
+    client.aclose = AsyncMock()
+    return client
 
 
-class TestAudioServiceGenerateSpeech:
-    """Test AudioService.generate_speech method"""
+def _make_openai_client(transcript_text="ok", speech_content=b"audio", error=None):
+    audio = MagicMock()
+    if error:
+        audio.transcriptions.create = AsyncMock(side_effect=error)
+        audio.speech.create = AsyncMock(side_effect=error)
+    else:
+        transcript = MagicMock()
+        transcript.text = transcript_text
+        audio.transcriptions.create = AsyncMock(return_value=transcript)
+        speech = MagicMock()
+        speech.content = speech_content
+        audio.speech.create = AsyncMock(return_value=speech)
+    client = MagicMock()
+    client.audio = audio
+    return client
 
-    @pytest.fixture
-    def service_with_client(self):
-        """Create AudioService instance with mocked client"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_api_key"
-            with patch("app.services.audio_service.AsyncOpenAI") as mock_openai:
-                mock_client = MagicMock()
-                mock_openai.return_value = mock_client
-                service = AudioService()
-                return service
 
-    @pytest.fixture
-    def service_without_client(self):
-        """Create AudioService instance without client"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = None
-            service = AudioService()
-            return service
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_success_with_output_path(self, service_with_client):
-        """Test generate_speech with output path - success case"""
-        mock_response = MagicMock()
-        mock_response.stream_to_file = MagicMock()
-
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(return_value=mock_response)
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        result = await service_with_client.generate_speech(
-            "Hello world", output_path="/output/audio.mp3"
+def _build_service(openai_key="key", http_client=None, openai_client=None):
+    if http_client is None:
+        http_client = _make_http_client(
+            _FakeResponse(status_code=200, headers={"content-type": "audio/mpeg"}, content=b"tts")
         )
+    if openai_client is None and openai_key:
+        openai_client = _make_openai_client()
 
-        assert result == "/output/audio.mp3"
-        mock_speech.create.assert_called_once()
-        call_kwargs = mock_speech.create.call_args.kwargs
-        assert call_kwargs["model"] == "tts-1"
-        assert call_kwargs["voice"] == "alloy"
-        assert call_kwargs["input"] == "Hello world"
-        mock_response.stream_to_file.assert_called_once_with("/output/audio.mp3")
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_success_without_output_path(self, service_with_client):
-        """Test generate_speech without output path - returns bytes"""
-        mock_response = MagicMock()
-        mock_response.content = b"audio bytes content"
-
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(return_value=mock_response)
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        result = await service_with_client.generate_speech("Hello world")
-
-        assert result == b"audio bytes content"
-        mock_speech.create.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_with_custom_voice(self, service_with_client):
-        """Test generate_speech with custom voice parameter"""
-        mock_response = MagicMock()
-        mock_response.content = b"audio bytes"
-
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(return_value=mock_response)
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        result = await service_with_client.generate_speech("Hello", voice="onyx")
-
-        assert result == b"audio bytes"
-        call_kwargs = mock_speech.create.call_args.kwargs
-        assert call_kwargs["voice"] == "onyx"
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_with_custom_model(self, service_with_client):
-        """Test generate_speech with custom model parameter"""
-        mock_response = MagicMock()
-        mock_response.content = b"audio bytes"
-
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(return_value=mock_response)
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        result = await service_with_client.generate_speech("Hello", model="tts-1-hd")
-
-        assert result == b"audio bytes"
-        call_kwargs = mock_speech.create.call_args.kwargs
-        assert call_kwargs["model"] == "tts-1-hd"
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_with_all_voices(self, service_with_client):
-        """Test generate_speech with all available voice options"""
-        voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-
-        for voice in voices:
-            mock_response = MagicMock()
-            mock_response.content = b"audio bytes"
-
-            mock_speech = MagicMock()
-            mock_speech.create = AsyncMock(return_value=mock_response)
-            mock_audio = MagicMock()
-            mock_audio.speech = mock_speech
-            service_with_client.client.audio = mock_audio
-
-            result = await service_with_client.generate_speech("Test", voice=voice)
-
-            assert result == b"audio bytes"
-            call_kwargs = mock_speech.create.call_args.kwargs
-            assert call_kwargs["voice"] == voice
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_without_client(self, service_without_client):
-        """Test generate_speech without initialized client"""
-        with pytest.raises(ValueError, match="Audio service is not available"):
-            await service_without_client.generate_speech("Hello world")
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_api_exception(self, service_with_client, caplog):
-        """Test generate_speech when API raises exception"""
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(side_effect=Exception("TTS API Error"))
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        with pytest.raises(Exception, match="TTS API Error"):
-            await service_with_client.generate_speech("Hello world")
-
-        assert "Speech generation failed" in caplog.text
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_long_text(self, service_with_client):
-        """Test generate_speech with long text input"""
-        long_text = "This is a very long text. " * 100  # ~2600 characters
-
-        mock_response = MagicMock()
-        mock_response.content = b"long audio bytes"
-
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(return_value=mock_response)
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        result = await service_with_client.generate_speech(long_text)
-
-        assert result == b"long audio bytes"
-        call_kwargs = mock_speech.create.call_args.kwargs
-        assert call_kwargs["input"] == long_text
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_empty_text(self, service_with_client):
-        """Test generate_speech with empty text"""
-        mock_response = MagicMock()
-        mock_response.content = b""
-
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(return_value=mock_response)
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        result = await service_with_client.generate_speech("")
-
-        assert result == b""
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_unicode_text(self, service_with_client):
-        """Test generate_speech with Unicode text"""
-        unicode_text = "Selamat pagi! 你好! こんにちは! 🎉"
-
-        mock_response = MagicMock()
-        mock_response.content = b"unicode audio bytes"
-
-        mock_speech = MagicMock()
-        mock_speech.create = AsyncMock(return_value=mock_response)
-        mock_audio = MagicMock()
-        mock_audio.speech = mock_speech
-        service_with_client.client.audio = mock_audio
-
-        result = await service_with_client.generate_speech(unicode_text)
-
-        assert result == b"unicode audio bytes"
-        call_kwargs = mock_speech.create.call_args.kwargs
-        assert call_kwargs["input"] == unicode_text
-
-
-class TestGetAudioServiceSingleton:
-    """Test get_audio_service singleton function"""
-
-    def test_get_audio_service_returns_instance(self):
-        """Test that get_audio_service returns an AudioService instance"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_key"
-            with patch("app.services.audio_service.AsyncOpenAI"):
-                # Reset singleton
-                import app.services.audio_service
-                app.services.audio_service._audio_service = None
-
-                service = get_audio_service()
-
-                assert isinstance(service, AudioService)
-
-    def test_get_audio_service_singleton_behavior(self):
-        """Test that get_audio_service returns the same instance"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_key"
-            with patch("app.services.audio_service.AsyncOpenAI"):
-                # Reset singleton
-                import app.services.audio_service
-                app.services.audio_service._audio_service = None
-
-                service1 = get_audio_service()
-                service2 = get_audio_service()
-
-                assert service1 is service2
-
-    def test_get_audio_service_without_api_key(self):
-        """Test get_audio_service when API key is not available"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = None
-
-            # Reset singleton
-            import app.services.audio_service
-            app.services.audio_service._audio_service = None
-
-            service = get_audio_service()
-
-            assert isinstance(service, AudioService)
-            assert service.client is None
-
-
-class TestAudioServiceEdgeCases:
-    """Test edge cases and error scenarios"""
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_file_open_exception(self):
-        """Test transcribe_audio when file cannot be opened"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_key"
-            with patch("app.services.audio_service.AsyncOpenAI"):
-                service = AudioService()
-
-                with patch("builtins.open", side_effect=FileNotFoundError("File not found")):
-                    with pytest.raises(FileNotFoundError):
-                        await service.transcribe_audio("/nonexistent/file.mp3")
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_stream_to_file_exception(self, caplog):
-        """Test generate_speech when stream_to_file raises exception"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_key"
+    with patch("app.services.audio_service.settings") as mock_settings:
+        mock_settings.openai_api_key = openai_key
+        with patch("app.services.audio_service.httpx.AsyncClient", return_value=http_client):
             with patch("app.services.audio_service.AsyncOpenAI") as mock_openai:
-                mock_client = MagicMock()
-                mock_openai.return_value = mock_client
-
+                mock_openai.return_value = openai_client
                 service = AudioService()
+    return service
 
-                mock_response = MagicMock()
-                mock_response.stream_to_file = MagicMock(
-                    side_effect=IOError("Cannot write to file")
+
+def test_init_with_openai_key():
+    service = _build_service(openai_key="test-key")
+
+    assert service.openai_api_key == "test-key"
+    assert service.openai_client is not None
+
+
+def test_init_without_openai_key():
+    service = _build_service(openai_key=None)
+
+    assert service.openai_api_key is None
+    assert service.openai_client is None
+
+
+@pytest.mark.asyncio
+async def test_transcribe_audio_from_path():
+    service = _build_service(openai_key="test-key")
+
+    with patch("builtins.open", mock_open(read_data=b"audio data")) as mock_file:
+        result = await service.transcribe_audio("/path/to/audio.mp3", language="id")
+
+    assert result == "ok"
+    mock_file.assert_called_once_with("/path/to/audio.mp3", "rb")
+    call_kwargs = service.openai_client.audio.transcriptions.create.call_args.kwargs
+    assert call_kwargs["language"] == "id"
+
+
+@pytest.mark.asyncio
+async def test_transcribe_audio_from_buffer_not_closed():
+    service = _build_service(openai_key="test-key")
+
+    buffer = BytesIO(b"audio")
+    buffer.close = MagicMock()
+
+    result = await service.transcribe_audio(buffer)
+
+    assert result == "ok"
+    buffer.close.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_transcribe_audio_without_openai_key():
+    service = _build_service(openai_key=None)
+
+    with pytest.raises(ValueError, match="STT requires OpenAI API key"):
+        await service.transcribe_audio("/path/to/audio.mp3")
+
+
+@pytest.mark.asyncio
+async def test_transcribe_audio_exception_closes_file():
+    error = RuntimeError("api error")
+    service = _build_service(openai_key="test-key", openai_client=_make_openai_client(error=error))
+
+    mock_file = MagicMock()
+    with patch("builtins.open", return_value=mock_file):
+        with pytest.raises(RuntimeError, match="api error"):
+            await service.transcribe_audio("/path/to/audio.mp3")
+
+    mock_file.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_pollinations_success_returns_bytes():
+    service = _build_service(openai_key="test-key")
+
+    result = await service.generate_speech("hello", voice="alloy")
+
+    assert result == b"tts"
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_pollinations_success_with_output_path():
+    service = _build_service(openai_key="test-key")
+
+    with patch("builtins.open", mock_open()) as mock_file:
+        result = await service.generate_speech("hello", output_path="/tmp/audio.mp3")
+
+    assert result == "/tmp/audio.mp3"
+    mock_file.assert_called_once_with("/tmp/audio.mp3", "wb")
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_invalid_voice_defaults():
+    service = _build_service(openai_key="test-key")
+
+    result = await service.generate_speech("hello", voice="invalid")
+
+    assert result == b"tts"
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_fallback_to_openai():
+    http_client = _make_http_client(
+        _FakeResponse(status_code=500, headers={"content-type": "text/plain"})
+    )
+    openai_client = _make_openai_client(speech_content=b"fallback")
+    service = _build_service(
+        openai_key="test-key", http_client=http_client, openai_client=openai_client
+    )
+
+    result = await service.generate_speech("hello", voice="alloy")
+
+    assert result == b"fallback"
+
+
+@pytest.mark.asyncio
+async def test_generate_speech_fallback_missing_openai():
+    http_client = _make_http_client(
+        _FakeResponse(status_code=500, headers={"content-type": "text/plain"})
+    )
+    service = _build_service(openai_key=None, http_client=http_client)
+
+    with pytest.raises(ValueError, match="All TTS providers failed"):
+        await service.generate_speech("hello")
+
+
+@pytest.mark.asyncio
+async def test_pollinations_tts_non_audio_content():
+    response = _FakeResponse(
+        status_code=200,
+        headers={"content-type": "application/json"},
+        content=b'{"error":"bad"}',
+        json_data={"error": "bad"},
+    )
+    service = _build_service(openai_key="test-key", http_client=_make_http_client(response))
+
+    result = await service._pollinations_tts("hello", "alloy")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_pollinations_tts_timeout():
+    service = _build_service(
+        openai_key="test-key",
+        http_client=_make_http_client(error=httpx.TimeoutException("timeout")),
+    )
+
+    result = await service._pollinations_tts("hello", "alloy")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_close_closes_http_client():
+    http_client = _make_http_client(
+        _FakeResponse(status_code=200, headers={"content-type": "audio/mpeg"}, content=b"tts")
+    )
+    service = _build_service(openai_key="test-key", http_client=http_client)
+
+    await service.close()
+
+    http_client.aclose.assert_called_once()
+
+
+def test_get_audio_service_singleton():
+    with patch("app.services.audio_service.settings") as mock_settings:
+        mock_settings.openai_api_key = None
+        with patch("app.services.audio_service.httpx.AsyncClient") as mock_http:
+            mock_http.return_value = _make_http_client(
+                _FakeResponse(
+                    status_code=200, headers={"content-type": "audio/mpeg"}, content=b"tts"
                 )
+            )
+            import app.services.audio_service as audio_service
 
-                mock_speech = MagicMock()
-                mock_speech.create = AsyncMock(return_value=mock_response)
-                mock_audio = MagicMock()
-                mock_audio.speech = mock_speech
-                service.client.audio = mock_audio
+            audio_service._audio_service = None
+            first = get_audio_service()
+            second = get_audio_service()
 
-                with pytest.raises(IOError, match="Cannot write to file"):
-                    await service.generate_speech("Test", output_path="/invalid/path.mp3")
-
-                assert "Speech generation failed" in caplog.text
-
-    @pytest.mark.asyncio
-    async def test_transcribe_audio_with_various_file_extensions(self):
-        """Test transcribe_audio with different audio file extensions"""
-        file_extensions = [".mp3", ".wav", ".m4a", ".flac", ".ogg"]
-
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_key"
-            with patch("app.services.audio_service.AsyncOpenAI") as mock_openai:
-                mock_client = MagicMock()
-                mock_openai.return_value = mock_client
-
-                service = AudioService()
-
-                mock_transcript = MagicMock()
-                mock_transcript.text = "Transcription"
-
-                mock_audio = MagicMock()
-                mock_transcriptions = MagicMock()
-                mock_transcriptions.create = AsyncMock(return_value=mock_transcript)
-                mock_audio.transcriptions = mock_transcriptions
-                service.client.audio = mock_audio
-
-                for ext in file_extensions:
-                    with patch("builtins.open", mock_open(read_data=b"audio data")):
-                        result = await service.transcribe_audio(f"/path/to/file{ext}")
-                        assert result == "Transcription"
-
-    @pytest.mark.asyncio
-    async def test_generate_speech_special_characters_in_path(self):
-        """Test generate_speech with special characters in output path"""
-        with patch("app.services.audio_service.settings") as mock_settings:
-            mock_settings.openai_api_key = "test_key"
-            with patch("app.services.audio_service.AsyncOpenAI") as mock_openai:
-                mock_client = MagicMock()
-                mock_openai.return_value = mock_client
-
-                service = AudioService()
-
-                mock_response = MagicMock()
-                mock_response.stream_to_file = MagicMock()
-
-                mock_speech = MagicMock()
-                mock_speech.create = AsyncMock(return_value=mock_response)
-                mock_audio = MagicMock()
-                mock_audio.speech = mock_speech
-                service.client.audio = mock_audio
-
-                special_path = "/path/with spaces/and-dashes/file_name.mp3"
-                result = await service.generate_speech("Test", output_path=special_path)
-
-                assert result == special_path
-                mock_response.stream_to_file.assert_called_once_with(special_path)
+    assert first is second

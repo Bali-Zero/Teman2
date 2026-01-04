@@ -59,5 +59,3 @@ class ReviewQueueStatsResponse(BaseModel):
     total_reviews: int = Field(..., description="Total reviews in queue")
     low_ratings_count: int = Field(..., description="Count of ratings <= 2")
     corrections_count: int = Field(..., description="Count of feedbacks with corrections")
-
-

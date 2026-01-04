@@ -27,6 +27,7 @@ async def apply(conn: Any) -> None:
 
     print("✅ Applied migration 029: Added source_chunk_ids to Knowledge Graph")
 
+
 async def rollback(conn: Any) -> None:
     await conn.execute("ALTER TABLE kg_nodes DROP COLUMN IF EXISTS source_chunk_ids;")
     await conn.execute("ALTER TABLE kg_edges DROP COLUMN IF EXISTS source_chunk_ids;")

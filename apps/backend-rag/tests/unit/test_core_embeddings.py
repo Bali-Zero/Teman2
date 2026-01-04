@@ -10,7 +10,6 @@ import pytest
 from backend.core.embeddings import (
     EmbeddingsGenerator,
     create_embeddings_generator,
-    generate_embeddings,
 )
 
 
@@ -159,7 +158,9 @@ class TestEmbeddingsGeneratorSentenceTransformers:
         mock_settings.embedding_provider = "sentence-transformers"
 
         with patch.dict("sys.modules", {"sentence_transformers": mock_st_module}):
-            generator = EmbeddingsGenerator(provider="sentence-transformers", settings=mock_settings)
+            generator = EmbeddingsGenerator(
+                provider="sentence-transformers", settings=mock_settings
+            )
 
             assert generator.provider == "sentence-transformers"
             assert generator.model == "sentence-transformers/all-MiniLM-L6-v2"
@@ -236,7 +237,9 @@ class TestEmbeddingsGeneratorCommon:
 
         assert result == []
 
-    @pytest.mark.skip(reason="Tracing context manager has a bug with error handling - needs source fix")
+    @pytest.mark.skip(
+        reason="Tracing context manager has a bug with error handling - needs source fix"
+    )
     @patch("openai.OpenAI")
     def test_generate_embeddings_error_handling(self, mock_openai):
         """Test error handling in generate_embeddings"""
@@ -346,7 +349,9 @@ class TestEdgeCases:
 
         assert result == []
 
-    @pytest.mark.skip(reason="Tracing context manager has a bug with error handling - needs source fix")
+    @pytest.mark.skip(
+        reason="Tracing context manager has a bug with error handling - needs source fix"
+    )
     @patch("sentence_transformers.SentenceTransformer")
     def test_sentence_transformers_encode_error(self, mock_st):
         """Test error handling in Sentence Transformers encoding"""

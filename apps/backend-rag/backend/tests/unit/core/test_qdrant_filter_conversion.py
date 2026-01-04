@@ -85,11 +85,7 @@ class TestQdrantFilterConversion:
 
     def test_convert_filter_multiple_conditions(self, client):
         """Test converting filter with multiple conditions"""
-        filter_dict = {
-            "tier": {"$in": ["S", "A"]},
-            "status": "active",
-            "type": {"$ne": "test"}
-        }
+        filter_dict = {"tier": {"$in": ["S", "A"]}, "status": "active", "type": {"$ne": "test"}}
         result = client._convert_filter_to_qdrant_format(filter_dict)
 
         assert result is not None
@@ -103,7 +99,7 @@ class TestQdrantFilterConversion:
         filter_dict = {
             "tier": {"$in": ["S", "A", "B"]},
             "status": {"$ne": "deleted"},
-            "category": "legal"
+            "category": "legal",
         }
         result = client._convert_filter_to_qdrant_format(filter_dict)
 
@@ -174,7 +170,3 @@ class TestQdrantClientHelpers:
         # Second call should return same client
         client2 = await client._get_client()
         assert client2 == client1
-
-
-
-

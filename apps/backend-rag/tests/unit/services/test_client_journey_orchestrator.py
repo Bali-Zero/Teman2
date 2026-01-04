@@ -12,16 +12,14 @@ from pathlib import Path
 backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
-import pytest
-from dataclasses import asdict
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from services.misc.client_journey_orchestrator import (
-    ClientJourneyOrchestrator,
     ClientJourney,
-    JourneyStep,
+    ClientJourneyOrchestrator,
     JourneyStatus,
+    JourneyStep,
     StepStatus,
 )
 
@@ -96,13 +94,18 @@ class TestCreateJourney:
                     title="Company Name Approval",
                     description="Submit company name to KEMENKUMHAM for approval",
                     prerequisites=[],
-                    required_documents=["Proposed company names (3 options)", "Business plan summary"],
+                    required_documents=[
+                        "Proposed company names (3 options)",
+                        "Business plan summary",
+                    ],
                     estimated_duration_days=3,
                 )
             ],
             status=JourneyStatus.NOT_STARTED,
         )
-        orchestrator.builder_service.build_journey_from_template = MagicMock(return_value=mock_journey)
+        orchestrator.builder_service.build_journey_from_template = MagicMock(
+            return_value=mock_journey
+        )
 
         # Create journey
         result = orchestrator.create_journey(
@@ -207,7 +210,9 @@ class TestCreateJourney:
                 steps=[],
                 status=JourneyStatus.NOT_STARTED,
             )
-            orchestrator.builder_service.build_journey_from_template = MagicMock(return_value=mock_journey)
+            orchestrator.builder_service.build_journey_from_template = MagicMock(
+                return_value=mock_journey
+            )
             orchestrator.create_journey("pt_pma_setup", f"client{i}")
 
         # Check distribution
@@ -277,9 +282,7 @@ class TestCheckPrerequisites:
         )
 
         # Mock prerequisites checker
-        orchestrator.prerequisites_checker.check_prerequisites = MagicMock(
-            return_value=(True, [])
-        )
+        orchestrator.prerequisites_checker.check_prerequisites = MagicMock(return_value=(True, []))
 
         # Check prerequisites
         met, missing = orchestrator.check_prerequisites(journey, "step1")
@@ -287,7 +290,9 @@ class TestCheckPrerequisites:
         # Assertions
         assert met is True
         assert missing == []
-        orchestrator.prerequisites_checker.check_prerequisites.assert_called_once_with(journey, "step1")
+        orchestrator.prerequisites_checker.check_prerequisites.assert_called_once_with(
+            journey, "step1"
+        )
 
     def test_check_prerequisites_returns_missing(self):
         """Test that missing prerequisites are returned"""
@@ -342,9 +347,7 @@ class TestStartStep:
         orchestrator.active_journeys["test_journey"] = journey
 
         # Mock services
-        orchestrator.prerequisites_checker.check_prerequisites = MagicMock(
-            return_value=(True, [])
-        )
+        orchestrator.prerequisites_checker.check_prerequisites = MagicMock(return_value=(True, []))
         orchestrator.step_manager.start_step = MagicMock(return_value=True)
 
         # Start step
@@ -352,7 +355,9 @@ class TestStartStep:
 
         # Assertions
         assert result is True
-        orchestrator.prerequisites_checker.check_prerequisites.assert_called_once_with(journey, "step1")
+        orchestrator.prerequisites_checker.check_prerequisites.assert_called_once_with(
+            journey, "step1"
+        )
         orchestrator.step_manager.start_step.assert_called_once_with(journey, "step1")
 
     def test_start_step_journey_not_found(self):
@@ -427,7 +432,9 @@ class TestCompleteStep:
 
         # Assertions
         assert result is True
-        orchestrator.step_manager.complete_step.assert_called_once_with(journey, "step1", ["Test notes"])
+        orchestrator.step_manager.complete_step.assert_called_once_with(
+            journey, "step1", ["Test notes"]
+        )
 
     def test_complete_step_without_notes(self):
         """Test completing step without notes"""
@@ -1273,7 +1280,9 @@ class TestIntegrationScenarios:
                 ),
             ],
         )
-        orchestrator.builder_service.build_journey_from_template = MagicMock(return_value=mock_journey)
+        orchestrator.builder_service.build_journey_from_template = MagicMock(
+            return_value=mock_journey
+        )
 
         journey = orchestrator.create_journey("pt_pma_setup", "client123")
 
