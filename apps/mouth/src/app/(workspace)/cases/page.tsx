@@ -1,16 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  FolderKanban, Search, Filter, Plus, LayoutGrid, List, 
-  ChevronRight, Loader2, User, MessageCircle, Mail, Phone, 
-  FileText, MoreVertical, CheckCircle2
+import {
+  FolderKanban, Search, Filter, Plus, LayoutGrid, List,
+  ChevronRight, Loader2, User, MessageCircle, Mail, Phone,
+  FileText, MoreVertical, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import type { Practice } from '@/lib/api/crm/crm.types';
+import {
+  trackViewModeChange,
+  trackFilterApplied,
+  trackFilterRemoved,
+  trackSortApplied,
+  trackSearch,
+  trackCaseStatusChanged,
+  trackPaginationChange,
+  initializeAnalytics,
+} from '@/lib/analytics';
 
 type CaseStatus = 'inquiry' | 'quotation' | 'in_progress' | 'completed';
 
@@ -27,6 +37,8 @@ const STATUS_OPTIONS: { value: string; label: string; column: CaseStatus }[] = [
 ];
 
 type ViewMode = 'kanban' | 'list';
+type SortField = 'id' | 'practice_type_code' | 'client_name' | 'client_lead' | 'status' | 'created_at';
+type SortOrder = 'asc' | 'desc';
 
 interface FilterState {
   status: string;
@@ -47,6 +59,8 @@ export default function PratichePage() {
     type: '',
     assigned_to: '',
   });
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   // Context Menu State
   const [selectedPractice, setSelectedPractice] = useState<Practice | null>(null);
@@ -54,7 +68,14 @@ export default function PratichePage() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Pagination for large datasets
+  const [listPageNumber, setListPageNumber] = useState(1);
+  const itemsPerPage = 25;
+
   useEffect(() => {
+    // Initialize analytics on component mount
+    initializeAnalytics();
+
     const loadPractices = async () => {
       setIsLoading(true);
       try {
@@ -70,6 +91,51 @@ export default function PratichePage() {
 
     loadPractices();
   }, []);
+
+  // Track view mode changes
+  useEffect(() => {
+    trackViewModeChange(viewMode);
+  }, [viewMode]);
+
+  // Track search operations
+  useEffect(() => {
+    if (searchQuery) {
+      trackSearch(searchQuery, filteredPractices.length);
+    }
+  }, [searchQuery, filteredPractices.length]);
+
+  // Track filter changes
+  useEffect(() => {
+    const previousFilters = useRef<typeof filters>(filters);
+    Object.keys(filters).forEach((key) => {
+      if (
+        filters[key as keyof typeof filters] !==
+        previousFilters.current[key as keyof typeof filters]
+      ) {
+        if (filters[key as keyof typeof filters]) {
+          trackFilterApplied(
+            key as 'status' | 'type' | 'assigned_to',
+            filters[key as keyof typeof filters]
+          );
+        } else {
+          trackFilterRemoved(key);
+        }
+      }
+    });
+    previousFilters.current = filters;
+  }, [filters]);
+
+  // Track sort changes
+  useEffect(() => {
+    trackSortApplied(sortField, sortOrder);
+  }, [sortField, sortOrder]);
+
+  // Track pagination changes
+  useEffect(() => {
+    if (listPageNumber > 1) {
+      trackPaginationChange(listPageNumber, itemsPerPage);
+    }
+  }, [listPageNumber]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -87,15 +153,23 @@ export default function PratichePage() {
     setUpdatingId(practiceId);
     try {
       const user = await api.getProfile();
+
+      // Find old status for tracking
+      const practice = practices.find(p => p.id === practiceId);
+      const oldStatus = practice?.status || 'unknown';
+
       await api.crm.updatePractice(practiceId, { status: newStatus }, user.email);
-      
+
       // Update local state immediately for responsiveness
-      setPractices(prev => prev.map(p => 
+      setPractices(prev => prev.map(p =>
         p.id === practiceId ? { ...p, status: newStatus } : p
       ));
-      
+
+      // Track status change
+      trackCaseStatusChanged(practiceId, oldStatus, newStatus);
+
       toast.success('Status Updated', `Case moved to ${newStatus.replace(/_/g, ' ')}`);
-      
+
       setSelectedPractice(null);
       setMenuPosition(null);
     } catch (error) {
@@ -132,42 +206,93 @@ export default function PratichePage() {
     setFilters({ status: '', type: '', assigned_to: '' });
   };
 
+  const toggleSort = useCallback((field: SortField) => {
+    setSortField((prevField) => {
+      if (prevField === field) {
+        setSortOrder((prevOrder) => (prevOrder === 'asc' ? 'desc' : 'asc'));
+        return prevField;
+      } else {
+        setSortOrder('asc');
+        return field;
+      }
+    });
+  }, []);
+
   const activeFiltersCount = Object.values(filters).filter(Boolean).length;
 
-  const filteredPractices = practices.filter((p) => {
-    // Search filter
-    if (searchQuery) {
-      const matchesSearch =
-        p.id.toString().includes(searchQuery) ||
-        p.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.practice_type_code?.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
-    }
+  // Memoize filtered and sorted practices to avoid unnecessary recalculations
+  const filteredPractices = useMemo(() => practices
+    .filter((p) => {
+      // Search filter
+      if (searchQuery) {
+        const matchesSearch =
+          p.id.toString().includes(searchQuery) ||
+          p.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.practice_type_code?.toLowerCase().includes(searchQuery.toLowerCase());
+        if (!matchesSearch) return false;
+      }
 
-    // Status filter
-    if (filters.status && getStatusColumn(p.status) !== filters.status) {
-      return false;
-    }
+      // Status filter
+      if (filters.status && getStatusColumn(p.status) !== filters.status) {
+        return false;
+      }
 
-    // Type filter
-    if (filters.type && p.practice_type_code !== filters.type) {
-      return false;
-    }
+      // Type filter
+      if (filters.type && p.practice_type_code !== filters.type) {
+        return false;
+      }
 
-    // Assigned to filter
-    if (filters.assigned_to && p.client_lead !== filters.assigned_to) {
-      return false;
-    }
+      // Assigned to filter
+      if (filters.assigned_to && p.client_lead !== filters.assigned_to) {
+        return false;
+      }
 
-    return true;
-  });
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
 
-  const practicesByStatus = {
+      switch (sortField) {
+        case 'id':
+          comparison = (a.id || 0) - (b.id || 0);
+          break;
+        case 'practice_type_code':
+          comparison = (a.practice_type_code || '').localeCompare(b.practice_type_code || '');
+          break;
+        case 'client_name':
+          comparison = (a.client_name || '').localeCompare(b.client_name || '');
+          break;
+        case 'client_lead':
+          comparison = (a.client_lead || '').localeCompare(b.client_lead || '');
+          break;
+        case 'status':
+          comparison = (a.status || '').localeCompare(b.status || '');
+          break;
+        case 'created_at':
+          comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+          break;
+        default:
+          comparison = 0;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    }), [practices, searchQuery, filters, sortField, sortOrder]);
+
+  // Memoize practices by status to avoid unnecessary recalculations
+  const practicesByStatus = useMemo(() => ({
     inquiry: filteredPractices.filter((p) => getStatusColumn(p.status) === 'inquiry'),
     quotation: filteredPractices.filter((p) => getStatusColumn(p.status) === 'quotation'),
     in_progress: filteredPractices.filter((p) => getStatusColumn(p.status) === 'in_progress'),
     completed: filteredPractices.filter((p) => getStatusColumn(p.status) === 'completed'),
-  };
+  }), [filteredPractices]);
+
+  // Pagination for list view
+  const paginatedPractices = useMemo(() => {
+    const startIdx = (listPageNumber - 1) * itemsPerPage;
+    return filteredPractices.slice(startIdx, startIdx + itemsPerPage);
+  }, [filteredPractices, listPageNumber]);
+
+  const totalPages = Math.ceil(filteredPractices.length / itemsPerPage);
 
   const SkeletonCard = () => (
     <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] space-y-2">
@@ -495,16 +620,71 @@ export default function PratichePage() {
               <table className="w-full">
                 <thead className="bg-[var(--background-elevated)] border-b border-[var(--border)]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Case Type</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Client</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Assigned To</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Status</th>
+                    <th
+                      onClick={() => toggleSort('id')}
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        ID
+                        {sortField === 'id' && (
+                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        )}
+                        {sortField !== 'id' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => toggleSort('practice_type_code')}
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        Case Type
+                        {sortField === 'practice_type_code' && (
+                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        )}
+                        {sortField !== 'practice_type_code' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => toggleSort('client_name')}
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        Client
+                        {sortField === 'client_name' && (
+                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        )}
+                        {sortField !== 'client_name' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => toggleSort('client_lead')}
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        Assigned To
+                        {sortField === 'client_lead' && (
+                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        )}
+                        {sortField !== 'client_lead' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => toggleSort('status')}
+                      className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)] cursor-pointer hover:bg-[var(--background)]/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        Status
+                        {sortField === 'status' && (
+                          sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+                        )}
+                        {sortField !== 'status' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
+                      </div>
+                    </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-[var(--foreground)]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
-                  {filteredPractices.map((practice) => (
+                  {paginatedPractices.map((practice) => (
                     <tr
                       key={practice.id}
                       className="hover:bg-[var(--background-elevated)]/50 transition-colors cursor-pointer"
@@ -584,6 +764,50 @@ export default function PratichePage() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--background-elevated)]">
+                  <div className="text-sm text-[var(--foreground-muted)]">
+                    Showing {((listPageNumber - 1) * itemsPerPage) + 1} to {Math.min(listPageNumber * itemsPerPage, filteredPractices.length)} of {filteredPractices.length} cases
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setListPageNumber((p) => Math.max(1, p - 1))}
+                      disabled={listPageNumber === 1}
+                      className="px-3 py-1 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Previous
+                    </button>
+                    <div className="flex items-center gap-2 px-3 py-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setListPageNumber(pageNum)}
+                            className={`px-2 py-1 rounded-lg transition-colors ${
+                              listPageNumber === pageNum
+                                ? 'bg-[var(--accent)] text-white'
+                                : 'bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)]'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      {totalPages > 5 && <span className="text-[var(--foreground-muted)]">...</span>}
+                    </div>
+                    <button
+                      onClick={() => setListPageNumber((p) => Math.min(totalPages, p + 1))}
+                      disabled={listPageNumber === totalPages}
+                      className="px-3 py-1 rounded-lg border border-[var(--border)] bg-[var(--background-secondary)] text-[var(--foreground)] hover:bg-[var(--background)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
