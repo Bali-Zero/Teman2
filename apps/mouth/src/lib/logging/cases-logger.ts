@@ -39,6 +39,19 @@ interface LogMetadata {
   [key: string]: any;
 }
 
+interface LogData {
+  level: LogLevel;
+  category: LogCategory;
+  message: string;
+  metadata: LogMetadata;
+  timestamp: string;
+  userId?: string;
+  userEmail?: string;
+  sessionId?: string;
+  pageUrl?: string;
+  userAgent?: string;
+}
+
 class CasesLogger {
   private context: Partial<LogContext> = {};
   private isProduction = process.env.NODE_ENV === 'production';
@@ -79,7 +92,7 @@ class CasesLogger {
     category: LogCategory,
     message: string,
     metadata?: LogMetadata
-  ): object {
+  ): LogData {
     return {
       ...this.context,
       timestamp: new Date().toISOString(),
@@ -90,7 +103,7 @@ class CasesLogger {
     };
   }
 
-  private sendToLoggingService(logData: object) {
+  private sendToLoggingService(logData: LogData) {
     if (this.isProduction) {
       // Send to external logging service (e.g., Sentry, LogRocket, etc.)
       // Example: Sentry.captureMessage(JSON.stringify(logData));
