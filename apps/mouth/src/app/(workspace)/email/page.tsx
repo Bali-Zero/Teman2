@@ -307,18 +307,26 @@ export default function EmailPage() {
 
   // Handle delete
   const handleDelete = async (emailIds: string[]) => {
-    if (!confirm(`Delete ${emailIds.length} email(s)?`)) return;
+    if (!confirm(`Eliminare ${emailIds.length} email?`)) return;
 
     try {
-      await api.email.deleteEmails(emailIds);
-      setEmails((prev) => prev.filter((e) => !emailIds.includes(e.message_id)));
-      if (selectedEmailId && emailIds.includes(selectedEmailId)) {
-        setSelectedEmailId(null);
-        setSelectedEmail(null);
+      const result = await api.email.deleteEmails(emailIds);
+
+      // Only update UI if API call succeeded
+      if (result.success) {
+        setEmails((prev) => prev.filter((e) => !emailIds.includes(e.message_id)));
+        if (selectedEmailId && emailIds.includes(selectedEmailId)) {
+          setSelectedEmailId(null);
+          setSelectedEmail(null);
+        }
+        setSelectedIds(new Set());
+        alert(`✅ ${emailIds.length} email eliminate con successo`);
+      } else {
+        throw new Error('Delete operation failed');
       }
-      setSelectedIds(new Set());
     } catch (error) {
       console.error('Failed to delete emails:', error);
+      alert(`❌ Errore: Impossibile eliminare le email. Riprova.\n\nDettagli: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
