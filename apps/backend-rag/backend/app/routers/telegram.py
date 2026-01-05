@@ -3,6 +3,7 @@ Telegram Bot Webhook Router for Zantara
 Handles incoming Telegram messages and responds using the RAG system.
 """
 
+import asyncio
 import logging
 import time
 from datetime import datetime
@@ -461,7 +462,10 @@ async def process_telegram_message(
     request: Request,
 ):
     """
-    Background task to process a Telegram message and respond.
+    Background task con streaming progressivo per Telegram.
+    
+    Implementa streaming progressivo con aggiornamenti in tempo reale usando
+    edit_message_text per migliorare la latenza percepita.
 
     Args:
         chat_id: Telegram chat ID
@@ -470,57 +474,206 @@ async def process_telegram_message(
         message_id: Original message ID for reply
         request: FastAPI request for app state access
     """
+    placeholder_id = None
     try:
-        # Send typing indicator
+        # 1. Typing indicator
         await telegram_bot.send_chat_action(chat_id, "typing")
 
-        # Get orchestrator
+        # 2. Get orchestrator
         orchestrator = await get_orchestrator(request)
 
         # Create unique user_id for Telegram users
         telegram_user_id = f"telegram_{chat_id}"
 
-        # Process query through RAG
+        # 3. Send placeholder message
         logger.info(
             f"Processing Telegram message from {user_name} ({chat_id}): {message_text[:50]}..."
         )
-
-        result = await orchestrator.process_query(
-            query=message_text,
-            user_id=telegram_user_id,
-            session_id=f"telegram_session_{chat_id}",
-        )
-
-        # Format response
-        response_text = result.answer
-
-        # Truncate if too long (Telegram limit: 4096 chars)
-        if len(response_text) > 4000:
-            response_text = response_text[:3950] + "\n\n_...risposta troncata_"
-
-        # Send response
-        await telegram_bot.send_message(
+        placeholder_msg = await telegram_bot.send_message(
             chat_id=chat_id,
-            text=response_text,
+            text="🔍 Sto elaborando la tua richiesta...",
             reply_to_message_id=message_id,
-            parse_mode="Markdown",
         )
-
-        logger.info(f"Telegram response sent to {chat_id}")
-
-    except Exception as e:
-        logger.exception(f"Error processing Telegram message: {e}")
-
-        # Send error message
-        error_text = "⚠️ Sorry, something went wrong.\nPlease try again in a few seconds."
-        try:
+        placeholder_id = placeholder_msg.get("result", {}).get("message_id")
+        
+        if not placeholder_id:
+            logger.error("Failed to get placeholder message ID")
+            # Fallback to old method
+            result = await orchestrator.process_query(
+                query=message_text,
+                user_id=telegram_user_id,
+                session_id=f"telegram_session_{chat_id}",
+            )
+            response_text = result.answer
+            if len(response_text) > 4000:
+                response_text = response_text[:3950] + "\n\n_...risposta troncata_"
             await telegram_bot.send_message(
                 chat_id=chat_id,
-                text=error_text,
+                text=response_text,
                 reply_to_message_id=message_id,
+                parse_mode="Markdown",
             )
+            return
+
+        # 4. Stream con aggiornamenti progressivi (con timeout)
+        accumulated_text = ""
+        current_status = ""
+        last_update_time = time.time()
+        update_interval = 2.0  # Aggiorna ogni 2 secondi
+        sources_found = []
+        
+        try:
+            async with asyncio.timeout(45.0):  # 45s max (webhook timeout è 60s)
+                async for event in orchestrator.stream_query(
+                    query=message_text,
+                    user_id=telegram_user_id,
+                    session_id=f"telegram_session_{chat_id}",
+                ):
+                    # Gestisci diversi tipi di eventi
+                    if event.get("type") == "token":
+                        accumulated_text += event.get("data", "")
+                    
+                    elif event.get("type") == "status":
+                        status_data = event.get("data", "")
+                        if isinstance(status_data, dict):
+                            # Estrai il messaggio di status dal dict
+                            status_msg = status_data.get("status", "")
+                            # Se non c'è "status", prova altri campi comuni
+                            if not status_msg:
+                                status_msg = status_data.get("message", "")
+                        else:
+                            status_msg = str(status_data) if status_data else ""
+                        if status_msg:
+                            current_status = status_msg
+                    
+                    elif event.get("type") == "sources":
+                        sources_found = event.get("data", [])
+                    
+                    # Aggiorna messaggio periodicamente (rate limiting)
+                    current_time = time.time()
+                    if current_time - last_update_time >= update_interval:
+                        if accumulated_text and len(accumulated_text) > 50:
+                            # Costruisci testo da mostrare
+                            display_text = _format_telegram_message(
+                                accumulated_text,
+                                current_status,
+                                sources_found
+                            )
+                            
+                            # Truncate se troppo lungo
+                            if len(display_text) > 3900:
+                                display_text = display_text[:3850] + "\n\n_...continua..._"
+                            
+                            try:
+                                await telegram_bot.edit_message_text(
+                                    chat_id=chat_id,
+                                    message_id=placeholder_id,
+                                    text=display_text,
+                                    parse_mode="Markdown",
+                                )
+                                last_update_time = current_time
+                            except Exception as e:
+                                logger.warning(f"Failed to update Telegram message: {e}")
+                                # Continua comunque, non bloccare lo stream
+        except asyncio.TimeoutError:
+            logger.warning(f"⏱️ Telegram query timeout for {chat_id}")
+            if placeholder_id:
+                await telegram_bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=placeholder_id,
+                    text="⏱️ La ricerca sta richiedendo più tempo del previsto. Riprova tra un momento.",
+                )
+            return
+
+        # 5. Final update con risposta completa
+        final_text = _format_telegram_message(
+            accumulated_text,
+            current_status,
+            sources_found
+        )
+        
+        # Truncate se necessario (limite Telegram: 4096 chars)
+        if len(final_text) > 4000:
+            final_text = final_text[:3950] + "\n\n_...risposta troncata_"
+        
+        await telegram_bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=placeholder_id,
+            text=final_text,
+            parse_mode="Markdown",
+        )
+        
+        logger.info(f"✅ Telegram streaming response completed for {chat_id}")
+
+    except Exception as e:
+        logger.exception(f"❌ Error processing Telegram message: {e}")
+        try:
+            if placeholder_id:
+                await telegram_bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=placeholder_id,
+                    text="⚠️ Si è verificato un errore. Riprova tra un momento.",
+                )
+            else:
+                # Fallback: nuovo messaggio
+                await telegram_bot.send_message(
+                    chat_id=chat_id,
+                    text="⚠️ Si è verificato un errore. Riprova tra un momento.",
+                    reply_to_message_id=message_id,
+                )
         except Exception:
             logger.error("Failed to send error message to Telegram")
+
+
+def _format_telegram_message(
+    text: str,
+    status: str = "",
+    sources: list = None
+) -> str:
+    """
+    Formatta il messaggio Telegram con status e fonti.
+    
+    Args:
+        text: Testo accumulato
+        status: Messaggio di stato corrente
+        sources: Lista di fonti trovate (può essere None)
+    
+    Returns:
+        Testo formattato per Telegram
+    """
+    parts = []
+    
+    # Status prefix (se presente)
+    if status:
+        status_emoji = {
+            "processing": "🔍",
+            "searching": "🔎",
+            "analyzing": "🧠",
+            "calculating": "💰",
+            "fetching": "📚",
+        }.get(status.lower(), "⏳")
+        parts.append(f"{status_emoji} {status}")
+        parts.append("")  # Linea vuota
+    
+    # Testo principale
+    if text:
+        parts.append(text)
+    elif not status:
+        # Se non c'è né testo né status, mostra messaggio di attesa
+        parts.append("⏳ Elaborazione in corso...")
+    
+    # Fonti (opzionale, solo se breve)
+    if sources and isinstance(sources, list) and len(sources) <= 3:
+        parts.append("")
+        parts.append("📚 _Fonti:_")
+        for i, source in enumerate(sources[:3], 1):
+            if isinstance(source, dict):
+                title = source.get("title", "Documento")[:50]
+            else:
+                title = str(source)[:50]
+            parts.append(f"  {i}. {title}")
+    
+    return "\n".join(parts) if parts else "⏳ Elaborazione in corso..."
 
 
 @router.post("/webhook")
