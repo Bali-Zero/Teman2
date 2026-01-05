@@ -133,6 +133,10 @@ async def run_full_mode(
 
     enricher = ArticleDeepEnricher(api_url=api_url)
 
+    # Initialize Telegram approval system
+    from telegram_approval import TelegramApproval
+    telegram = TelegramApproval() if not dry_run else None
+
     enriched_count = 0
     sent_count = 0
     failed_count = 0
@@ -154,18 +158,46 @@ async def run_full_mode(
         if enriched:
             enriched_count += 1
 
-            # Send to API
+            # Send to Telegram for approval (HTML formatted)
+            if telegram and not dry_run:
+                try:
+                    article_data = {
+                        "title": enriched.headline,
+                        "content": enriched.executive_brief,
+                        "enriched_content": f"{enriched.facts}\n\n{enriched.bali_zero_take}",
+                        "category": enriched.category,
+                        "source": item.get("source", "Unknown"),
+                        "source_url": item.get("sourceUrl", ""),
+                        "image_url": enriched.cover_image or "",
+                    }
+
+                    pending = await telegram.submit_for_approval(
+                        article=article_data,
+                        seo_metadata=enriched.seo_metadata or {},
+                        enriched_content=f"{enriched.facts}\n\n{enriched.bali_zero_take}",
+                    )
+
+                    if pending.telegram_message_id:
+                        logger.success(f"   📱 Telegram sent! Message ID: {pending.telegram_message_id}")
+                        sent_count += 1
+                    else:
+                        logger.warning("   ⚠️ Telegram notification failed (check config)")
+                except Exception as e:
+                    logger.error(f"   ❌ Telegram error: {e}")
+
+            # Send to Intelligence/News Room (backend staging)
             if not dry_run:
                 result = await enricher.send_to_api(enriched, api_key=api_key)
                 if result.get("success") and not result.get("duplicate"):
-                    sent_count += 1
+                    logger.info("   📰 Sent to Intelligence/News Room")
                 elif result.get("duplicate"):
-                    logger.info("⏭️ Already in database")
+                    logger.info("   ⏭️ Already in database")
                 else:
-                    failed_count += 1
+                    # Don't count as failure if Telegram worked
+                    if not (telegram and sent_count > 0):
+                        failed_count += 1
             else:
-                logger.info(f"🔍 DRY RUN - Would send: {enriched.headline[:40]}...")
-                sent_count += 1
+                logger.info(f"   🔍 DRY RUN - Would send: {enriched.headline[:40]}...")
 
             # Rate limit for Claude
             await asyncio.sleep(5)
