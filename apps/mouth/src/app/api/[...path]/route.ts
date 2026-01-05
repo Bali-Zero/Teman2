@@ -70,6 +70,11 @@ async function proxy(req: NextRequest): Promise<Response> {
     } else {
       const buf = await req.arrayBuffer();
       body = buf.byteLength ? buf : undefined;
+      // CRITICAL: Preserve Content-Type header for JSON and other body types
+      // FastAPI needs this to parse request body correctly
+      if (contentType && !headers.has('content-type')) {
+        headers.set('content-type', contentType);
+      }
     }
   }
 
