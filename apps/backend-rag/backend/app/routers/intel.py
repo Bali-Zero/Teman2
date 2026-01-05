@@ -8,6 +8,7 @@ import shutil
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 from app.core.intel_approvers import get_chat_ids, get_required_votes, get_team_config
 from app.metrics import (
