@@ -220,6 +220,10 @@ async def create_client(
     start_time = time.time()
     try:
         async with db_pool.acquire() as conn:
+            # Sanitize date fields - convert empty strings to None
+            passport_expiry = client.passport_expiry if client.passport_expiry else None
+            date_of_birth = client.date_of_birth if client.date_of_birth else None
+
             row = await conn.fetchrow(
                 """
                 INSERT INTO clients (
@@ -241,8 +245,8 @@ async def create_client(
                 client.company_name,
                 client.nationality,
                 client.passport_number,
-                client.passport_expiry,
-                client.date_of_birth,
+                passport_expiry,
+                date_of_birth,
                 client.status,  # Use client's status instead of hardcoded "active"
                 client.client_type,
                 client.assigned_to,
@@ -522,9 +526,16 @@ async def update_client(
                 "custom_fields": "custom_fields",
             }
 
+            # Date fields that need empty string → None conversion
+            date_fields = {"passport_expiry", "date_of_birth"}
+
             for field, value in updates.dict(exclude_unset=True).items():
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
+
+                # Convert empty strings to None for date fields
+                if field in date_fields and value == "":
+                    value = None
 
                 if value is not None:
                     column_name = field_mapping[field]
