@@ -18,6 +18,7 @@ export interface Practice {
   start_date?: string;
   completion_date?: string;
   expiry_date?: string;
+  notes?: string;
   created_at: string;
 }
 

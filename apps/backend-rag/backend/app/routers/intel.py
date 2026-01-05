@@ -129,15 +129,23 @@ def classify_intel_type(category: str, title: str, content: str) -> str:
 
 
 async def send_intel_approval_notification(
-    intel_type: str, item_id: str, item_data: dict
+    intel_type: str,
+    item_id: str,
+    item_data: dict,
+    enriched_data: dict = None,
+    image_path: str = None
 ) -> bool:
     """
     Send Telegram notification to approval team with voting buttons.
+
+    Now sends RICH formatted article with image (Bali Zero style) instead of plain text.
 
     Args:
         intel_type: "news" or "visa"
         item_id: Unique item identifier
         item_data: Full item data from staging file
+        enriched_data: Enriched content from ArticleEnrichmentService (optional)
+        image_path: Path to generated cover image (optional)
 
     Returns:
         bool: True if notification sent successfully
@@ -159,26 +167,50 @@ async def send_intel_approval_notification(
         )
         return False
 
-    # Format message
-    title = item_data.get("title", "Untitled")
-    source = item_data.get("url", item_data.get("source", "Unknown"))
-    detected_at = item_data.get("detected_at", "Unknown")
-    detection_type = item_data.get("detection_type", "NEW")
+    # Use enriched data if available, otherwise fallback to raw
+    if enriched_data:
+        title = enriched_data.get("enriched_title", item_data.get("title", "Untitled"))
+        summary = enriched_data.get("enriched_summary", "")
+        key_points = enriched_data.get("key_points", [])
+        keywords = enriched_data.get("seo_keywords", [])
+        reading_time = enriched_data.get("reading_time_minutes", 3)
+    else:
+        title = item_data.get("title", "Untitled")
+        summary = item_data.get("content", "")[:200] + "..."
+        key_points = []
+        keywords = []
+        reading_time = 3
+
+    source = item_data.get("source_name", item_data.get("source", "Unknown"))
+    source_url = item_data.get("source_url", item_data.get("url", ""))
+    detected_at = item_data.get("detected_at", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
     emoji_map = {"visa": "🛂", "news": "📰"}
     emoji = emoji_map.get(intel_type, "📋")
 
-    message = f"""{emoji} *New {intel_type.title()} Update Detected*
+    # Build HTML formatted caption (Bali Zero style)
+    caption = f"""<b>{emoji} BALI ZERO INTELLIGENCE</b>
 
-*Title:* {title}
+<b>{title}</b>
 
-*Type:* {detection_type}
-*Source:* {source}
-*Detected:* {detected_at}
+{summary}
 
-🗳️ *Votazione {team_config['required_votes']}/{len(team_config['approvers'])}* per approvare/rifiutare
+<b>📌 Key Points:</b>"""
 
-_Item ID: `{item_id}`_"""
+    # Add key points (max 3)
+    for i, point in enumerate(key_points[:3], 1):
+        caption += f"\n  {i}. {point}"
+
+    caption += f"""
+
+<b>📰 Source:</b> <a href="{source_url}">{source}</a>
+<b>📅 Detected:</b> {detected_at}
+<b>⏱️ Read time:</b> {reading_time} min
+<b>🏷️ Tags:</b> {", ".join(keywords[:5])}
+
+🗳️ <b>Votazione {team_config['required_votes']}/{len(team_config['approvers'])}</b> per approvare/rifiutare
+
+<code>ID: {item_id}</code>"""
 
     # Inline keyboard
     keyboard = {
@@ -204,6 +236,8 @@ _Item ID: `{item_id}`_"""
         "votes": {"approve": [], "reject": []},
         "created_at": datetime.now().isoformat(),
         "item_data": item_data,
+        "enriched_data": enriched_data,
+        "image_path": image_path,
     }
 
     # Save voting status
@@ -214,16 +248,36 @@ _Item ID: `{item_id}`_"""
     success_count = 0
     for chat_id in chat_ids:
         try:
-            await telegram_bot.send_message(
-                chat_id=chat_id,
-                text=message,
-                parse_mode="Markdown",
-                reply_markup=keyboard,
-            )
+            # If we have an image, send as photo with caption
+            # Otherwise, send as text message
+            if image_path and Path(image_path).exists():
+                with open(image_path, 'rb') as photo:
+                    await telegram_bot.send_photo(
+                        chat_id=chat_id,
+                        photo=photo,
+                        caption=caption,
+                        parse_mode="HTML",
+                        reply_markup=keyboard,
+                    )
+            else:
+                # Fallback to text message if no image
+                await telegram_bot.send_message(
+                    chat_id=chat_id,
+                    text=caption,
+                    parse_mode="HTML",
+                    reply_markup=keyboard,
+                )
+
             success_count += 1
             logger.info(
-                f"Notification sent to {chat_id}",
-                extra={"intel_type": intel_type, "item_id": item_id, "chat_id": chat_id},
+                f"Rich notification sent to {chat_id}",
+                extra={
+                    "intel_type": intel_type,
+                    "item_id": item_id,
+                    "chat_id": chat_id,
+                    "has_image": bool(image_path),
+                    "enriched": bool(enriched_data)
+                },
             )
         except Exception as e:
             logger.error(
@@ -232,7 +286,7 @@ _Item ID: `{item_id}`_"""
             )
 
     logger.info(
-        f"Sent {success_count}/{len(chat_ids)} notifications",
+        f"Sent {success_count}/{len(chat_ids)} rich notifications",
         extra={"intel_type": intel_type, "item_id": item_id},
     )
 
@@ -442,17 +496,44 @@ async def preview_staging_item(type: str, item_id: str):
         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
 
+class ApprovalRequest(BaseModel):
+    """Request body for staging approval with optional enrichment data"""
+    intel_type: Optional[str] = None
+    item_id: Optional[str] = None
+    item_data: Optional[dict] = None
+    enriched_data: Optional[dict] = None
+    image_path: Optional[str] = None
+
+
 @router.post("/api/intel/staging/approve/{type}/{item_id}")
-async def approve_staging_item(type: str, item_id: str):
+async def approve_staging_item(
+    type: str,
+    item_id: str,
+    request: Optional[ApprovalRequest] = None
+):
     """
     Initiate approval process by sending Telegram notification to team.
 
+    Now supports ENRICHED content with AI-generated images!
+
     This endpoint triggers the voting process. The actual ingestion happens
     when the team reaches majority (2/3) via Telegram callback.
+
+    Request body (optional):
+    {
+        "enriched_data": {...},  # From ArticleEnrichmentService
+        "image_path": "/path/to/image.jpg"  # From Gemini image generation
+    }
     """
     logger.info(
         f"Approval request received - initiating Telegram voting",
-        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/approve"},
+        extra={
+            "type": type,
+            "item_id": item_id,
+            "endpoint": "/api/intel/staging/approve",
+            "has_enrichment": bool(request and request.enriched_data),
+            "has_image": bool(request and request.image_path)
+        },
     )
 
     directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
@@ -475,8 +556,14 @@ async def approve_staging_item(type: str, item_id: str):
             extra={"type": type, "item_id": item_id, "title": title},
         )
 
-        # Send Telegram notification to approval team
-        notification_sent = await send_intel_approval_notification(type, item_id, data)
+        # Extract enrichment data if provided
+        enriched_data = request.enriched_data if request else None
+        image_path = request.image_path if request else None
+
+        # Send Telegram notification to approval team (with rich formatting if enriched)
+        notification_sent = await send_intel_approval_notification(
+            type, item_id, data, enriched_data, image_path
+        )
 
         if not notification_sent:
             logger.error(

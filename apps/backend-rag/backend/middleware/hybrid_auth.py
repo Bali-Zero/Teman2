@@ -110,6 +110,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/portal/invite/validate/",  # Client invitation validation (public)
             "/api/portal/invite/complete",  # Client registration completion (public)
             "/api/intel/scraper/submit",  # Scraper → Intelligence Center bridge (public)
+            "/api/intel/staging/approve/",  # Auto-approve staging items to Telegram (internal)
             "/api/integrations/zoho/callback",  # Zoho OAuth callback (public)
             "/api/integrations/google-drive/callback",  # Google Drive OAuth callback (public)
             "/api/integrations/google-drive/system/status",  # System OAuth status check (public)

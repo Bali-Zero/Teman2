@@ -67,6 +67,7 @@ export default function PratichePage() {
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const previousFiltersRef = useRef<FilterState>(filters);
 
   // Pagination for large datasets
   const [listPageNumber, setListPageNumber] = useState(1);
@@ -99,11 +100,10 @@ export default function PratichePage() {
 
   // Track filter changes
   useEffect(() => {
-    const previousFilters = useRef<typeof filters>(filters);
     Object.keys(filters).forEach((key) => {
       if (
         filters[key as keyof typeof filters] !==
-        previousFilters.current[key as keyof typeof filters]
+        previousFiltersRef.current[key as keyof typeof filters]
       ) {
         if (filters[key as keyof typeof filters]) {
           trackFilterApplied(
@@ -115,7 +115,7 @@ export default function PratichePage() {
         }
       }
     });
-    previousFilters.current = filters;
+    previousFiltersRef.current = filters;
   }, [filters]);
 
   // Track sort changes
