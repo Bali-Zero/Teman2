@@ -45,6 +45,7 @@ import {
 
 // API & Hooks
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import { useConversations } from '@/hooks/useConversations';
 import { useTeamStatus } from '@/hooks/useTeamStatus';
 import { useAudioRecorder } from '@/hooks/useAudioRecorder';
@@ -106,6 +107,7 @@ export default function ChatPage() {
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
   const [ttsLoading, setTtsLoading] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null); // Track audio URLs for cleanup
 
   // Transitions
   const [isPending, startMessageTransition] = useTransition();
@@ -141,6 +143,11 @@ export default function ChatPage() {
   // Auth & Initial Data Load
   // ============================================
   const loadUserProfile = useCallback(async () => {
+    logger.debug('Loading user profile', {
+      component: 'ChatPage',
+      action: 'loadUserProfile',
+    });
+    
     try {
       const storedProfile = api.getUserProfile();
       if (storedProfile && isMountedRef.current) {
@@ -149,6 +156,11 @@ export default function ChatPage() {
         if (storedProfile.avatar) {
           setUserAvatar(storedProfile.avatar);
         }
+        logger.info('User profile loaded from cache', {
+          component: 'ChatPage',
+          action: 'loadUserProfile',
+          metadata: { email: storedProfile.email, hasAvatar: !!storedProfile.avatar },
+        });
         return;
       }
       const profile = await api.getProfile();
@@ -158,31 +170,70 @@ export default function ChatPage() {
         if (profile.avatar) {
           setUserAvatar(profile.avatar);
         }
+        logger.info('User profile loaded from API', {
+          component: 'ChatPage',
+          action: 'loadUserProfile',
+          metadata: { email: profile.email, hasAvatar: !!profile.avatar },
+        });
       }
     } catch (error) {
       if (isMountedRef.current) {
-        console.error('Failed to load profile:', error);
+        logger.error('Failed to load user profile', {
+          component: 'ChatPage',
+          action: 'loadUserProfile',
+        }, error instanceof Error ? error : new Error(String(error)));
       }
     }
   }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
+    logger.componentMount('ChatPage', { component: 'ChatPage' });
+    const userProfile = api.getUserProfile();
+    
     return () => {
       isMountedRef.current = false;
+      logger.componentUnmount('ChatPage', { component: 'ChatPage' });
     };
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!api.isAuthenticated()) {
+      logger.warn('User not authenticated, redirecting to login', {
+        component: 'ChatPage',
+        action: 'authCheck',
+      });
       router.push('/login');
       return;
     }
     const loadInitialData = async () => {
+      logger.debug('Loading initial data', {
+        component: 'ChatPage',
+        action: 'loadInitialData',
+      });
       setIsInitialLoading(true);
-      await Promise.all([loadConversationList(), loadClockStatus(), loadUserProfile()]);
-      if (isMountedRef.current) {
-        setIsInitialLoading(false);
+      const startTime = Date.now();
+      
+      try {
+        await Promise.all([loadConversationList(), loadClockStatus(), loadUserProfile()]);
+        const duration = Date.now() - startTime;
+        
+        if (isMountedRef.current) {
+          setIsInitialLoading(false);
+          logger.info('Initial data loaded successfully', {
+            component: 'ChatPage',
+            action: 'loadInitialData',
+            metadata: { duration },
+          });
+        }
+      } catch (error) {
+        if (isMountedRef.current) {
+          setIsInitialLoading(false);
+          logger.error('Failed to load initial data', {
+            component: 'ChatPage',
+            action: 'loadInitialData',
+          }, error instanceof Error ? error : new Error(String(error)));
+        }
       }
     };
     loadInitialData();
@@ -194,6 +245,10 @@ export default function ChatPage() {
       const savedAvatar = localStorage.getItem('user_avatar');
       if (savedAvatar && isMountedRef.current) {
         setUserAvatar(savedAvatar);
+        logger.debug('Avatar loaded from localStorage', {
+          component: 'ChatPage',
+          action: 'loadAvatar',
+        });
       }
     }
   }, []);
@@ -219,6 +274,13 @@ export default function ChatPage() {
     };
   }, [isPending]);
 
+  // Cleanup streaming steps to prevent memory leak
+  useEffect(() => {
+    if (!isPending && streamingSteps.length > 10) {
+      setStreamingSteps(prev => prev.slice(-10));
+    }
+  }, [isPending, streamingSteps.length]);
+
   // Toast auto-dismiss
   useEffect(() => {
     if (toast) {
@@ -240,11 +302,27 @@ export default function ChatPage() {
   const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      logger.debug('Avatar upload started', {
+        component: 'ChatPage',
+        action: 'handleAvatarChange',
+        metadata: { fileName: file.name, fileSize: file.size, fileType: file.type },
+      });
+      
       if (!file.type.startsWith('image/')) {
+        logger.warn('Invalid file type for avatar', {
+          component: 'ChatPage',
+          action: 'handleAvatarChange',
+          metadata: { fileType: file.type },
+        });
         showToast('Please select an image file', 'error');
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
+        logger.warn('Avatar file too large', {
+          component: 'ChatPage',
+          action: 'handleAvatarChange',
+          metadata: { fileSize: file.size },
+        });
         showToast('Image must be less than 5MB', 'error');
         return;
       }
@@ -253,7 +331,19 @@ export default function ChatPage() {
         const base64String = reader.result as string;
         setUserAvatar(base64String);
         localStorage.setItem('user_avatar', base64String);
+        logger.info('Avatar updated successfully', {
+          component: 'ChatPage',
+          action: 'handleAvatarChange',
+          metadata: { fileSize: file.size },
+        });
         showToast('Avatar updated', 'success');
+      };
+      reader.onerror = () => {
+        logger.error('Failed to read avatar file', {
+          component: 'ChatPage',
+          action: 'handleAvatarChange',
+        }, new Error('FileReader error'));
+        showToast('Failed to read image file', 'error');
       };
       reader.readAsDataURL(file);
     }
@@ -264,16 +354,40 @@ export default function ChatPage() {
     const files = e.target.files;
     if (!files) return;
 
+    logger.debug('Image attachment started', {
+      component: 'ChatPage',
+      action: 'handleImageAttach',
+      metadata: { fileCount: files.length, currentImageCount: attachedImages.length },
+    });
+
+    let attachedCount = 0;
+    let totalSize = 0;
+    
     Array.from(files).forEach(file => {
       if (!file.type.startsWith('image/')) {
+        logger.warn('Invalid file type for image attachment', {
+          component: 'ChatPage',
+          action: 'handleImageAttach',
+          metadata: { fileType: file.type, fileName: file.name },
+        });
         showToast('Please select an image file', 'error');
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
+        logger.warn('Image file too large', {
+          component: 'ChatPage',
+          action: 'handleImageAttach',
+          metadata: { fileSize: file.size, fileName: file.name },
+        });
         showToast('Image must be less than 10MB', 'error');
         return;
       }
-      if (attachedImages.length >= 5) {
+      if (attachedImages.length + attachedCount >= 5) {
+        logger.warn('Maximum images limit reached', {
+          component: 'ChatPage',
+          action: 'handleImageAttach',
+          metadata: { currentCount: attachedImages.length, attemptCount: attachedCount },
+        });
         showToast('Maximum 5 images allowed', 'error');
         return;
       }
@@ -281,17 +395,35 @@ export default function ChatPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        setAttachedImages(prev => [
-          ...prev,
-          {
-            id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-            base64: base64String,
-            name: file.name,
-            size: file.size,
-          },
-        ]);
+        setAttachedImages(prev => {
+          const newImages = [
+            ...prev,
+            {
+              id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              base64: base64String,
+              name: file.name,
+              size: file.size,
+            },
+          ];
+          logger.info('Image attached successfully', {
+            component: 'ChatPage',
+            action: 'handleImageAttach',
+            metadata: { imageCount: newImages.length, fileName: file.name, fileSize: file.size },
+          });
+          return newImages;
+        });
+      };
+      reader.onerror = () => {
+        logger.error('Failed to read image file', {
+          component: 'ChatPage',
+          action: 'handleImageAttach',
+          metadata: { fileName: file.name },
+        }, new Error('FileReader error'));
+        showToast('Failed to read image file', 'error');
       };
       reader.readAsDataURL(file);
+      attachedCount++;
+      totalSize += file.size;
     });
 
     // Reset input to allow selecting same file again
@@ -300,8 +432,16 @@ export default function ChatPage() {
 
   // Remove attached image
   const removeAttachedImage = useCallback((imageId: string) => {
-    setAttachedImages(prev => prev.filter(img => img.id !== imageId));
-  }, []);
+    logger.debug('Removing attached image', {
+      component: 'ChatPage',
+      action: 'removeAttachedImage',
+      metadata: { imageId, currentCount: attachedImages.length },
+    });
+    setAttachedImages(prev => {
+      const newImages = prev.filter(img => img.id !== imageId);
+      return newImages;
+    });
+  }, [attachedImages.length]);
 
   // Handle image button clicks
   const handleImageButtonClick = useCallback(() => {
@@ -316,6 +456,14 @@ export default function ChatPage() {
   // Handle image generation submit
   const handleImageGenSubmit = useCallback(() => {
     if (!imageGenPrompt.trim()) return;
+    
+    logger.info('Image generation requested', {
+      component: 'ChatPage',
+      action: 'handleImageGenSubmit',
+      metadata: { promptLength: imageGenPrompt.trim().length },
+    });
+    
+    
     // Set the input to the generation request and close modal
     setInput(`Genera un'immagine: ${imageGenPrompt.trim()}`);
     setImageGenPrompt('');
@@ -363,9 +511,23 @@ export default function ChatPage() {
 
     const userProfile = api.getUserProfile();
     const userId = userProfile?.email || 'anonymous';
+    const messageStartTime = Date.now();
 
     // Capture images before clearing
     const imagesToSend = [...attachedImages];
+
+    logger.info('Message send started', {
+      component: 'ChatPage',
+      action: 'handleSend',
+      metadata: {
+        sessionId,
+        textLength: trimmedInput.length,
+        hasImages: imagesToSend.length > 0,
+        imageCount: imagesToSend.length,
+        messageCount: messages.length,
+      },
+    });
+
 
     setInput('');
     setAttachedImages([]); // Clear images after capturing
@@ -423,6 +585,8 @@ export default function ChatPage() {
         },
         // onDone - called when complete
         (fullResponse, sources, metadata) => {
+          const messageDuration = Date.now() - messageStartTime;
+          
           // Handle generated image from metadata (cast to access generated_image)
           const typedMeta = metadata as {
             generated_image?: string;
@@ -432,6 +596,24 @@ export default function ChatPage() {
           } | undefined;
           const imageUrl = typedMeta?.generated_image;
           const followupQuestions = typedMeta?.followup_questions;
+          const executionTime = typedMeta?.execution_time || messageDuration / 1000;
+
+          logger.info('Message received successfully', {
+            component: 'ChatPage',
+            action: 'handleSend',
+            metadata: {
+              sessionId,
+              responseLength: fullResponse.length,
+              executionTime,
+              routeUsed: typedMeta?.route_used,
+              hasSources: (sources?.length || 0) > 0,
+              sourceCount: sources?.length || 0,
+              hasGeneratedImage: !!imageUrl,
+              hasFollowupQuestions: (followupQuestions?.length || 0) > 0,
+              totalDuration: messageDuration,
+            },
+          });
+
 
           setMessages(prev =>
             prev.map(m =>
@@ -456,17 +638,54 @@ export default function ChatPage() {
 
           // Save conversation
           startTransition(async () => {
-            await saveConversation(
-              newMessages.filter(m => !m.isStreaming).map(m => ({
-                ...m,
-                content: m.id === assistantMessage.id ? fullResponse : m.content
-              })),
-              sessionId
-            );
+            try {
+              logger.debug('Saving conversation', {
+                component: 'ChatPage',
+                action: 'saveConversation',
+                metadata: { sessionId, messageCount: newMessages.length },
+              });
+              
+              await saveConversation(
+                newMessages.filter(m => !m.isStreaming).map(m => ({
+                  ...m,
+                  content: m.id === assistantMessage.id ? fullResponse : m.content
+                })),
+                sessionId
+              );
+              
+              logger.info('Conversation saved successfully', {
+                component: 'ChatPage',
+                action: 'saveConversation',
+                metadata: { sessionId, messageCount: newMessages.length },
+              });
+              
+            } catch (error) {
+              logger.error('Failed to save conversation', {
+                component: 'ChatPage',
+                action: 'saveConversation',
+                metadata: { sessionId },
+              }, error instanceof Error ? error : new Error(String(error)));
+            }
           });
         },
         // onError - called on error
         (error: Error) => {
+          const errorType = error instanceof Error ? error.name : 'Unknown';
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          logger.error('Message send error', {
+            component: 'ChatPage',
+            action: 'handleSend',
+            metadata: {
+              sessionId,
+              errorType,
+              errorMessage,
+              hasImages: imagesToSend.length > 0,
+              messageLength: trimmedInput.length,
+            },
+          }, error instanceof Error ? error : new Error(String(error)));
+
+
           setMessages(prev =>
             prev.map(m =>
               m.id === assistantMessage.id
@@ -507,6 +726,16 @@ export default function ChatPage() {
       );
 
     } catch (error) {
+      logger.error('Message send failed', {
+        component: 'ChatPage',
+        action: 'handleSend',
+        metadata: {
+          sessionId,
+          hasImages: imagesToSend.length > 0,
+          messageLength: trimmedInput.length,
+        },
+      }, error instanceof Error ? error : new Error(String(error)));
+      
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantMessage.id
@@ -520,7 +749,10 @@ export default function ChatPage() {
         )
       );
       setCurrentStatus('');
-      showToast('Failed to send message', 'error');
+      setStreamingSteps([]);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      showToast(`Failed to send message: ${errorMessage}`, 'error');
     }
   }, [input, isPending, messages, sessionId, addOptimisticMessage, showToast, attachedImages]);
 
@@ -528,15 +760,29 @@ export default function ChatPage() {
   // Conversation Management
   // ============================================
   const handleNewChat = useCallback(() => {
+    logger.info('New chat created', {
+      component: 'ChatPage',
+      action: 'handleNewChat',
+      metadata: { previousSessionId: sessionId },
+    });
+    
+    const newSessionId = generateSessionId();
     setMessages([]);
     setCurrentStatus('');
-    setSessionId(generateSessionId());
+    setSessionId(newSessionId);
     setCurrentConversationId(null);
     setSidebarOpen(false);
-  }, [setCurrentConversationId]);
+    
+  }, [setCurrentConversationId, sessionId]);
 
   const handleConversationClick = useCallback(
     async (id: number) => {
+      logger.debug('Loading conversation', {
+        component: 'ChatPage',
+        action: 'handleConversationClick',
+        metadata: { conversationId: id },
+      });
+      
       setCurrentConversationId(id);
       // Load conversation messages
       try {
@@ -553,9 +799,21 @@ export default function ChatPage() {
           if (conv.session_id) {
             setSessionId(conv.session_id);
           }
+          
+          logger.info('Conversation loaded successfully', {
+            component: 'ChatPage',
+            action: 'handleConversationClick',
+            metadata: { conversationId: id, messageCount: conv.messages.length, sessionId: conv.session_id },
+          });
+          
         }
       } catch (error) {
-        console.error('Failed to load conversation:', error);
+        logger.error('Failed to load conversation', {
+          component: 'ChatPage',
+          action: 'handleConversationClick',
+          metadata: { conversationId: id },
+        }, error instanceof Error ? error : new Error(String(error)));
+        
       }
       if (window.innerWidth < 768) setSidebarOpen(false);
     },
@@ -565,9 +823,39 @@ export default function ChatPage() {
   const handleDeleteConversation = useCallback(
     async (id: number, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!window.confirm('Delete this conversation?')) return;
-      await deleteConversation(id);
-      if (currentConversationId === id) handleNewChat();
+      if (!window.confirm('Delete this conversation?')) {
+        logger.debug('Conversation deletion cancelled', {
+          component: 'ChatPage',
+          action: 'handleDeleteConversation',
+          metadata: { conversationId: id },
+        });
+        return;
+      }
+      
+      logger.info('Deleting conversation', {
+        component: 'ChatPage',
+        action: 'handleDeleteConversation',
+        metadata: { conversationId: id },
+      });
+      
+      try {
+        await deleteConversation(id);
+        logger.info('Conversation deleted successfully', {
+          component: 'ChatPage',
+          action: 'handleDeleteConversation',
+          metadata: { conversationId: id },
+        });
+        
+        
+        if (currentConversationId === id) handleNewChat();
+      } catch (error) {
+        logger.error('Failed to delete conversation', {
+          component: 'ChatPage',
+          action: 'handleDeleteConversation',
+          metadata: { conversationId: id },
+        }, error instanceof Error ? error : new Error(String(error)));
+        
+      }
     },
     [deleteConversation, currentConversationId, handleNewChat]
   );
@@ -577,20 +865,53 @@ export default function ChatPage() {
   // ============================================
   const handleMicClick = useCallback(async () => {
     if (isRecording) {
+      logger.info('Audio recording stopped', {
+        component: 'ChatPage',
+        action: 'handleMicClick',
+        metadata: { recordingTime, mimeType: audioMimeType },
+      });
+      
       stopRecording();
+      
     } else {
+      logger.info('Audio recording started', {
+        component: 'ChatPage',
+        action: 'handleMicClick',
+      });
+      
       try {
         await startRecording();
-      } catch {
-        showToast('Microphone access denied', 'error');
+      } catch (error) {
+        // Handle different error types for better UX
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorType = error instanceof Error ? error.name : 'Unknown';
+        
+        logger.error('Audio recording failed', {
+          component: 'ChatPage',
+          action: 'handleMicClick',
+          metadata: { errorType, errorMessage },
+        }, error instanceof Error ? error : new Error(String(error)));
+        
+        
+        if (errorMessage.includes('Permission denied') || errorMessage.includes('NotAllowedError')) {
+          showToast('Microphone access denied. Please allow microphone access in your browser settings.', 'error');
+        } else if (errorMessage.includes('NotFoundError') || errorMessage.includes('no microphone')) {
+          showToast('No microphone found. Please connect a microphone and try again.', 'error');
+        } else if (errorMessage.includes('NotReadableError') || errorMessage.includes('could not start')) {
+          showToast('Microphone is already in use. Please close other applications using the microphone.', 'error');
+        } else if (errorMessage.includes('OverconstrainedError') || errorMessage.includes('constraint')) {
+          showToast('Microphone constraints not supported. Try a different browser.', 'error');
+        } else {
+          showToast('Failed to access microphone. Please try again.', 'error');
+        }
       }
     }
-  }, [isRecording, startRecording, stopRecording, showToast]);
+  }, [isRecording, startRecording, stopRecording, showToast, recordingTime, audioMimeType]);
 
   // Audio transcription
   useEffect(() => {
     const processAudio = async () => {
-      if (audioBlob) {
+      if (audioBlob && isMountedRef.current) {
         try {
           // Validate audio blob before sending
           if (audioBlob.size < 1000) {
@@ -599,28 +920,76 @@ export default function ChatPage() {
             return;
           }
 
-          console.log(`[Audio] Processing blob: ${audioBlob.size} bytes, type: ${audioMimeType}`);
+          // Additional validation: check if blob is actually audio
+          if (!audioBlob.type.startsWith('audio/') && !audioMimeType.startsWith('audio/')) {
+            setInput('');
+            showToast('Invalid audio format. Please try recording again.', 'error');
+            return;
+          }
+
+          logger.debug('Processing audio blob', {
+            component: 'ChatPage',
+            action: 'transcribeAudio',
+            metadata: { blobSize: audioBlob.size, mimeType: audioMimeType },
+          });
           setInput('Transcribing...');
 
+          const transcriptionStartTime = Date.now();
           const text = await api.transcribeAudio(audioBlob, audioMimeType);
+          const transcriptionDuration = Date.now() - transcriptionStartTime;
+          
+          if (!isMountedRef.current) return; // Check if component is still mounted
+          
           if (text && text.trim()) {
+            logger.info('Audio transcribed successfully', {
+              component: 'ChatPage',
+              action: 'transcribeAudio',
+              metadata: {
+                blobSize: audioBlob.size,
+                mimeType: audioMimeType,
+                textLength: text.length,
+                duration: transcriptionDuration,
+                recordingTime,
+              },
+            });
+            
+            
             setInput(text);
           } else {
+            logger.warn('No speech detected in audio', {
+              component: 'ChatPage',
+              action: 'transcribeAudio',
+              metadata: { blobSize: audioBlob.size, duration: recordingTime },
+            });
+            
+            
             setInput('');
             showToast('No speech detected. Please speak clearly and try again.', 'error');
           }
         } catch (error) {
+          if (!isMountedRef.current) return; // Check if component is still mounted
+          
           setInput('');
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error('[Audio] Transcription error:', errorMessage);
+          logger.error('Audio transcription failed', {
+            component: 'ChatPage',
+            action: 'transcribeAudio',
+            metadata: { errorMessage },
+          }, error instanceof Error ? error : new Error(String(error)));
 
           // Provide specific error messages
-          if (errorMessage.includes('Unrecognized file format')) {
+          if (errorMessage.includes('Unrecognized file format') || errorMessage.includes('format not supported')) {
             showToast('Audio format not supported. Try a different browser.', 'error');
-          } else if (errorMessage.includes('400')) {
+          } else if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
             showToast('Invalid audio. Please try recording again.', 'error');
-          } else if (errorMessage.includes('401') || errorMessage.includes('403')) {
+          } else if (errorMessage.includes('401') || errorMessage.includes('403') || errorMessage.includes('Unauthorized')) {
             showToast('Authentication error. Please refresh the page.', 'error');
+          } else if (errorMessage.includes('413') || errorMessage.includes('too large')) {
+            showToast('Audio file too large. Please record a shorter message.', 'error');
+          } else if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+            showToast('Too many requests. Please wait a moment and try again.', 'error');
+          } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+            showToast('Transcription timeout. Please try again.', 'error');
           } else {
             showToast(`Transcription failed: ${errorMessage}`, 'error');
           }
@@ -636,57 +1005,206 @@ export default function ChatPage() {
   const handleTTS = useCallback(async (messageId: string, text: string) => {
     // If already playing this message, stop it
     if (playingMessageId === messageId) {
+      logger.debug('TTS stopped (already playing)', {
+        component: 'ChatPage',
+        action: 'handleTTS',
+        metadata: { messageId },
+      });
+      
+      // Cleanup current audio
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.src = ''; // Clear src to stop playback
         audioRef.current = null;
+      }
+      // Revoke URL if exists
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
       }
       setPlayingMessageId(null);
       return;
     }
 
-    // Stop any currently playing audio
+    logger.info('TTS started', {
+      component: 'ChatPage',
+      action: 'handleTTS',
+      metadata: { messageId, textLength: text.length, voice: 'nova' },
+    });
+
+    // Stop any currently playing audio and cleanup
     if (audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.src = ''; // Clear src to stop playback
       audioRef.current = null;
     }
+    // Revoke previous URL if exists
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
 
+    const ttsStartTime = Date.now();
     try {
       setTtsLoading(messageId);
       const audioBlob = await api.generateSpeech(text, 'nova');
 
+      // Validate audio blob
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error('Invalid audio blob received');
+      }
+
       const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = audioUrl; // Track URL for cleanup
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
 
+      // Remove old event listeners if they exist (defensive)
       audio.onended = () => {
-        setPlayingMessageId(null);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
+        if (audioUrlRef.current === audioUrl) {
+          const ttsDuration = Date.now() - ttsStartTime;
+          logger.info('TTS completed', {
+            component: 'ChatPage',
+            action: 'handleTTS',
+            metadata: { messageId, duration: ttsDuration },
+          });
+
+          setPlayingMessageId(null);
+          URL.revokeObjectURL(audioUrl);
+          audioUrlRef.current = null;
+          audioRef.current = null;
+        }
       };
 
-      audio.onerror = () => {
-        showToast('Audio playback failed', 'error');
-        setPlayingMessageId(null);
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
+      audio.onerror = (e) => {
+        logger.error('TTS audio playback error', {
+          component: 'ChatPage',
+          action: 'handleTTS',
+          metadata: { messageId },
+        }, e instanceof Error ? e : new Error(String(e)));
+
+        if (audioUrlRef.current === audioUrl) {
+          showToast('Audio playback failed', 'error');
+          setPlayingMessageId(null);
+          URL.revokeObjectURL(audioUrl);
+          audioUrlRef.current = null;
+          audioRef.current = null;
+        }
       };
 
-      setTtsLoading(null);
-      setPlayingMessageId(messageId);
-      await audio.play();
-    } catch {
+      // Handle play promise rejection
+      try {
+        setTtsLoading(null);
+        setPlayingMessageId(messageId);
+        await audio.play();
+      } catch (playError) {
+        logger.error('TTS audio play error', {
+          component: 'ChatPage',
+          action: 'handleTTS',
+          metadata: { messageId, errorType: playError instanceof Error ? playError.name : 'Unknown' },
+        }, playError instanceof Error ? playError : new Error(String(playError)));
+
+        // Cleanup on play failure
+        URL.revokeObjectURL(audioUrl);
+        audioUrlRef.current = null;
+        audioRef.current = null;
+        setTtsLoading(null);
+        setPlayingMessageId(null);
+        showToast('Failed to play audio. Please try again.', 'error');
+      }
+    } catch (error) {
+      // Cleanup on generation failure
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+      audioRef.current = null;
       setTtsLoading(null);
       setPlayingMessageId(null);
-      showToast('TTS generation failed', 'error');
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorType = error instanceof Error ? error.name : 'Unknown';
+      
+      logger.error('TTS generation failed', {
+        component: 'ChatPage',
+        action: 'handleTTS',
+        metadata: { messageId, errorType, errorMessage },
+      }, error instanceof Error ? error : new Error(String(error)));
+
+      if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        showToast('TTS generation timeout. Please try again.', 'error');
+      } else if (errorMessage.includes('429') || errorMessage.includes('rate limit')) {
+        showToast('Too many TTS requests. Please wait a moment.', 'error');
+      } else {
+        showToast('TTS generation failed. Please try again.', 'error');
+      }
     }
   }, [playingMessageId, showToast]);
 
-  // Cleanup audio on unmount
+  // ============================================
+  // UI Interactions
+  // ============================================
+  const handleSidebarOpen = useCallback(() => {
+    logger.debug('Sidebar opened', {
+      component: 'ChatPage',
+      action: 'handleSidebarOpen',
+    });
+    
+    setSidebarOpen(true);
+    
+    trackEvent('chat_sidebar_opened', {}, api.getUserProfile()?.email);
+  }, []);
+
+  const handleSidebarClose = useCallback(() => {
+    logger.debug('Sidebar closed', {
+      component: 'ChatPage',
+      action: 'handleSidebarClose',
+    });
+    
+    setSidebarOpen(false);
+    
+    trackEvent('chat_sidebar_closed', {}, api.getUserProfile()?.email);
+  }, []);
+
+  const handleSearchDocsOpen = useCallback(() => {
+    logger.info('Search docs opened', {
+      component: 'ChatPage',
+      action: 'handleSearchDocsOpen',
+      metadata: { hasInput: !!input, inputLength: input.length },
+    });
+    
+    setIsSearchDocsOpen(true);
+    
+    trackEvent('chat_search_docs_opened', {
+      hasInput: !!input,
+      inputLength: input.length,
+    }, api.getUserProfile()?.email);
+  }, [input]);
+
+  const handleSearchDocsClose = useCallback(() => {
+    logger.debug('Search docs closed', {
+      component: 'ChatPage',
+      action: 'handleSearchDocsClose',
+    });
+    
+    setIsSearchDocsOpen(false);
+    
+    trackEvent('chat_search_docs_closed', {}, api.getUserProfile()?.email);
+  }, []);
+
+  // Cleanup audio and URLs on unmount
   useEffect(() => {
     return () => {
+      // Stop and cleanup audio element
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.src = ''; // Clear src
         audioRef.current = null;
+      }
+      // Revoke any pending URLs
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
       }
     };
   }, []);
@@ -752,7 +1270,7 @@ export default function ChatPage() {
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 transition-opacity"
-          onClick={() => setSidebarOpen(false)}
+          onClick={handleSidebarClose}
         />
       )}
 
@@ -774,7 +1292,7 @@ export default function ChatPage() {
               <span className="font-medium text-white/90">Zantara</span>
             </div>
             <button
-              onClick={() => setSidebarOpen(false)}
+              onClick={handleSidebarClose}
               className="p-2 hover:bg-white/5 rounded-lg transition-colors"
             >
               <X className="w-5 h-5 text-gray-400" />
@@ -828,7 +1346,7 @@ export default function ChatPage() {
           {/* Sidebar Footer */}
           <div className="border-t border-white/5 p-4 space-y-1">
             <button
-              onClick={() => setIsSearchDocsOpen(true)}
+              onClick={handleSearchDocsOpen}
               className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors"
             >
               <Search className="w-4 h-4 text-gray-500" />
@@ -923,7 +1441,7 @@ export default function ChatPage() {
           <div className="h-full max-w-4xl mx-auto px-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setSidebarOpen(true)}
+                onClick={handleSidebarOpen}
                 className="p-2 hover:bg-white/5 rounded-lg transition-colors"
               >
                 <Menu className="w-5 h-5 text-gray-400" />
@@ -1143,13 +1661,15 @@ export default function ChatPage() {
                           title={playingMessageId === message.id ? 'Stop speaking' : 'Read aloud'}
                           disabled={ttsLoading === message.id}
                         >
-                          {ttsLoading === message.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : playingMessageId === message.id ? (
-                            <Square className="w-3.5 h-3.5" />
-                          ) : (
-                            <Volume2 className="w-3.5 h-3.5" />
-                          )}
+                          {(() => {
+                            if (ttsLoading === message.id) {
+                              return <Loader2 className="w-3.5 h-3.5 animate-spin" />;
+                            }
+                            if (playingMessageId === message.id) {
+                              return <Square className="w-3.5 h-3.5" />;
+                            }
+                            return <Volume2 className="w-3.5 h-3.5" />;
+                          })()}
                         </button>
                         <button className="p-1.5 hover:bg-white/5 rounded text-gray-500 hover:text-gray-300">
                           <ThumbsUp className="w-3.5 h-3.5" />
