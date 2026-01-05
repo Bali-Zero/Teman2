@@ -527,6 +527,6 @@ const TEAM_MEMBERS = [
   { name: 'Angel', initials: 'AG', role: 'Tax Expert', gradient: 'bg-gradient-to-br from-rose-500 to-red-600' },
   { name: 'Kadek', initials: 'KD', role: 'Tax', gradient: 'bg-gradient-to-br from-emerald-500 to-green-600' },
   { name: 'Dewa Ayu', initials: 'DA', role: 'Tax', gradient: 'bg-gradient-to-br from-violet-500 to-indigo-600' },
-  { name: 'Rina', initials: 'RI', role: 'Reception', gradient: 'bg-gradient-to-br from-pink-500 to-rose-600' },
+  { name: 'Faysha', initials: 'FA', role: 'Reception', gradient: 'bg-gradient-to-br from-pink-500 to-rose-600' },
   { name: 'Sahira', initials: 'SH', role: 'Marketing', gradient: 'bg-gradient-to-br from-purple-500 to-violet-600' },
 ];

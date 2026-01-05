@@ -721,7 +721,7 @@ async def main():
     parser.add_argument("--limit", type=int, default=10, help="Max items per category")
     parser.add_argument("--min-score", type=int, default=40, help="Min relevance score")
     parser.add_argument(
-        "--config", default="config/categories.json", help="Config path"
+        "--config", default="../config/categories.json", help="Config path"
     )
     parser.add_argument(
         "--no-semantic", action="store_true", help="Disable semantic dedup"

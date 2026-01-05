@@ -37,13 +37,20 @@ import { cropToSquare } from '@/lib/utils/imageResize';
 
 // Team members - ideally fetch from API
 const TEAM_MEMBERS = [
-  { value: 'ruslana@balizero.com', label: 'Ruslana' },
-  { value: 'krisna@balizero.com', label: 'Krisna', avatar: '/avatars/team/krisna.png' },
-  { value: 'veronika@balizero.com', label: 'Veronika' },
   { value: 'adit@balizero.com', label: 'Adit', avatar: '/avatars/team/adit.png' },
-  { value: 'zero@balizero.com', label: 'Antonello' },
   { value: 'ari@balizero.com', label: 'Ari', avatar: '/avatars/team/ari.png' },
+  { value: 'krisna@balizero.com', label: 'Krisna', avatar: '/avatars/team/krisna.png' },
   { value: 'dea@balizero.com', label: 'Dea', avatar: '/avatars/team/dea.png' },
+  { value: 'zero@balizero.com', label: 'Anton' },
+  { value: 'damar@balizero.com', label: 'Damar' },
+  { value: 'vino@balizero.com', label: 'Vino' },
+  { value: 'ruslana@balizero.com', label: 'Ruslana' },
+  { value: 'veronika@balizero.com', label: 'Veronika' },
+  { value: 'dewaayu@balizero.com', label: 'Dewa Ayu' },
+  { value: 'faysha@balizero.com', label: 'Faysha' },
+  { value: 'kadek@balizero.com', label: 'Kadek' },
+  { value: 'angel@balizero.com', label: 'Angel' },
+  { value: 'surya@balizero.com', label: 'Surya' },
   { value: 'sahira@balizero.com', label: 'Sahira', avatar: '/avatars/team/sahira.png' },
 ];
 
