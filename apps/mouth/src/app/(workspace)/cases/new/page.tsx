@@ -26,7 +26,7 @@ export default function NewPracticePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '', // Maps to notes
-    practice_type_code: 'kitas_work',
+    practice_type_code: 'kitas_application',
     client_id: searchParams.get('client_id') ? Number(searchParams.get('client_id')) : undefined,
   });
 

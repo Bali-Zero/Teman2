@@ -7,6 +7,7 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 
 from datetime import datetime
 from typing import Any
+import time
 
 import asyncpg
 from core.cache import cached
@@ -16,6 +17,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from app.dependencies import get_database_pool
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_database_operation, log_success
+from app.metrics import crm_client_operations, crm_validation_errors, crm_client_creation_duration
 
 logger = get_logger(__name__)
 
@@ -71,6 +73,14 @@ class ClientCreate(BaseModel):
         allowed_types = {"individual", "company"}
         if v not in allowed_types:
             raise ValueError(f"client_type must be one of {allowed_types}, got '{v}'")
+        return v
+
+    @field_validator("email", "passport_expiry", "date_of_birth", mode="before")
+    @classmethod
+    def validate_optional_fields(cls, v):
+        """Convert empty strings to None for optional fields"""
+        if isinstance(v, str) and not v.strip():
+            return None
         return v
 
     @field_validator("full_name")
@@ -207,6 +217,7 @@ async def create_client(
     - **avatar_url**: URL to client avatar image
     - **tags**: Array of tags (e.g., ['vip', 'urgent'])
     """
+    start_time = time.time()
     try:
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -252,16 +263,25 @@ async def create_client(
             new_client = dict(row)
             log_success(logger, f"Created client: {client.full_name}", client_id=new_client["id"])
             log_database_operation(logger, "CREATE", "clients", record_id=new_client["id"])
+
+            # Track metrics
+            crm_client_operations.labels(operation="create", status="success").inc()
+            crm_client_creation_duration.observe(time.time() - start_time)
+
             return ClientResponse(**new_client)
 
     except asyncpg.UniqueViolationError as e:
+        crm_client_operations.labels(operation="create", status="error").inc()
+        crm_validation_errors.labels(field="email_or_phone", error_type="duplicate").inc()
         logger.warning(f"Integrity error creating client: {e}")
         raise HTTPException(
             status_code=400, detail="Client with this email or phone already exists"
         ) from e
     except HTTPException:
+        crm_client_operations.labels(operation="create", status="error").inc()
         raise
     except Exception as e:
+        crm_client_operations.labels(operation="create", status="error").inc()
         raise handle_database_error(e)
 
 
@@ -473,6 +493,7 @@ async def update_client(
 
     Only provided fields will be updated. Other fields remain unchanged.
     """
+    start_time = time.time()
     try:
         async with db_pool.acquire() as conn:
             # Build update query dynamically
@@ -486,8 +507,11 @@ async def update_client(
                 "email": "email",
                 "phone": "phone",
                 "whatsapp": "whatsapp",
+                "company_name": "company_name",
                 "nationality": "nationality",
                 "passport_number": "passport_number",
+                "passport_expiry": "passport_expiry",
+                "date_of_birth": "date_of_birth",
                 "status": "status",
                 "client_type": "client_type",
                 "assigned_to": "assigned_to",
@@ -550,11 +574,17 @@ async def update_client(
                 client_id=client_id,
                 updated_by=updated_by,
             )
+
+            # Track metrics
+            crm_client_operations.labels(operation="update", status="success").inc()
+
             return ClientResponse(**dict(row))
 
     except HTTPException:
+        crm_client_operations.labels(operation="update", status="error").inc()
         raise
     except Exception as e:
+        crm_client_operations.labels(operation="update", status="error").inc()
         raise handle_database_error(e)
 
 
@@ -571,6 +601,7 @@ async def delete_client(
     This doesn't permanently delete the client, just marks them as inactive.
     Use with caution as this will also affect related practices and interactions.
     """
+    start_time = time.time()
     try:
         async with db_pool.acquire() as conn:
             # Soft delete (mark as inactive)
@@ -606,11 +637,17 @@ async def delete_client(
                 client_id=client_id,
                 deleted_by=deleted_by,
             )
+
+            # Track metrics
+            crm_client_operations.labels(operation="delete", status="success").inc()
+
             return {"success": True, "message": "Client marked as inactive"}
 
     except HTTPException:
+        crm_client_operations.labels(operation="delete", status="error").inc()
         raise
     except Exception as e:
+        crm_client_operations.labels(operation="delete", status="error").inc()
         raise handle_database_error(e)
 
 
