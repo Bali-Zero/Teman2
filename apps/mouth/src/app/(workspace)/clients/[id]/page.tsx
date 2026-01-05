@@ -80,6 +80,46 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: 'bg-gray-500/20 text-gray-400',
 };
 
+// Map nationalities to flag emojis
+const NATIONALITY_FLAGS: Record<string, string> = {
+  'Italian': '🇮🇹', 'Italy': '🇮🇹',
+  'Russian': '🇷🇺', 'Russia': '🇷🇺',
+  'Ukrainian': '🇺🇦', 'Ukraine': '🇺🇦',
+  'American': '🇺🇸', 'USA': '🇺🇸', 'United States': '🇺🇸',
+  'British': '🇬🇧', 'UK': '🇬🇧', 'United Kingdom': '🇬🇧',
+  'Australian': '🇦🇺', 'Australia': '🇦🇺',
+  'German': '🇩🇪', 'Germany': '🇩🇪',
+  'French': '🇫🇷', 'France': '🇫🇷',
+  'Spanish': '🇪🇸', 'Spain': '🇪🇸',
+  'Dutch': '🇳🇱', 'Netherlands': '🇳🇱',
+  'Indonesian': '🇮🇩', 'Indonesia': '🇮🇩',
+  'Chinese': '🇨🇳', 'China': '🇨🇳',
+  'Japanese': '🇯🇵', 'Japan': '🇯🇵',
+  'Korean': '🇰🇷', 'Korea': '🇰🇷', 'South Korea': '🇰🇷',
+  'Indian': '🇮🇳', 'India': '🇮🇳',
+  'Brazilian': '🇧🇷', 'Brazil': '🇧🇷',
+  'Canadian': '🇨🇦', 'Canada': '🇨🇦',
+  'Mexican': '🇲🇽', 'Mexico': '🇲🇽',
+  'Argentinian': '🇦🇷', 'Argentina': '🇦🇷',
+  'South African': '🇿🇦', 'South Africa': '🇿🇦',
+  'New Zealander': '🇳🇿', 'New Zealand': '🇳🇿',
+  'Irish': '🇮🇪', 'Ireland': '🇮🇪',
+  'Portuguese': '🇵🇹', 'Portugal': '🇵🇹',
+  'Polish': '🇵🇱', 'Poland': '🇵🇱',
+  'Turkish': '🇹🇷', 'Turkey': '🇹🇷',
+  'Thai': '🇹🇭', 'Thailand': '🇹🇭',
+  'Vietnamese': '🇻🇳', 'Vietnam': '🇻🇳',
+  'Filipino': '🇵🇭', 'Philippines': '🇵🇭',
+  'Malaysian': '🇲🇾', 'Malaysia': '🇲🇾',
+  'Singaporean': '🇸🇬', 'Singapore': '🇸🇬',
+};
+
+// Get flag emoji from nationality
+const getCountryFlag = (nationality: string | undefined): string | null => {
+  if (!nationality) return null;
+  return NATIONALITY_FLAGS[nationality] || null;
+};
+
 const INTERACTION_ICONS: Record<string, React.ReactNode> = {
   chat: <MessageCircle className="w-4 h-4" />,
   email: <Mail className="w-4 h-4" />,
@@ -205,6 +245,9 @@ export default function ClientDetailPage() {
     ['completed', 'approved'].includes(p.status)
   );
 
+  // Get country flag for fallback
+  const countryFlag = getCountryFlag(client.nationality);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -217,12 +260,12 @@ export default function ClientDetailPage() {
           <div className="w-16 h-16 rounded-full bg-[var(--accent)]/20 flex items-center justify-center overflow-hidden">
             {client.avatar_url ? (
               <img src={client.avatar_url} alt={client.full_name} className="w-full h-full object-cover" />
-            ) : client.status === 'lead' ? (
-              <img src="/avatars/default-lead.svg" alt="Lead" className="w-full h-full object-cover" />
-            ) : client.status === 'active' ? (
-              <img src="/avatars/default-active.svg" alt="Active" className="w-full h-full object-cover" />
+            ) : countryFlag ? (
+              <div className="w-full h-full rounded-full bg-[var(--background)] flex items-center justify-center text-4xl">
+                {countryFlag}
+              </div>
             ) : (
-              <User className="w-8 h-8 text-[var(--accent)]" />
+              <div className="w-full h-full rounded-full bg-white dark:bg-gray-300" />
             )}
           </div>
           <div>

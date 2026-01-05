@@ -35,13 +35,44 @@ const SENTIMENT_BG = {
   none: 'bg-gray-100 dark:bg-gray-800 text-gray-500'
 };
 
-// Helper to get default avatar based on client status
-const getDefaultAvatar = (status: string): string => {
-  const statusLower = status.toLowerCase();
-  if (statusLower === 'lead') return '/avatars/default-lead.svg';
-  if (statusLower === 'active') return '/avatars/default-active.svg';
-  // Fallback: show first letter in colored circle (handled in render)
-  return '';
+// Map nationalities to flag emojis
+const NATIONALITY_FLAGS: Record<string, string> = {
+  'Italian': '🇮🇹', 'Italy': '🇮🇹',
+  'Russian': '🇷🇺', 'Russia': '🇷🇺',
+  'Ukrainian': '🇺🇦', 'Ukraine': '🇺🇦',
+  'American': '🇺🇸', 'USA': '🇺🇸', 'United States': '🇺🇸',
+  'British': '🇬🇧', 'UK': '🇬🇧', 'United Kingdom': '🇬🇧',
+  'Australian': '🇦🇺', 'Australia': '🇦🇺',
+  'German': '🇩🇪', 'Germany': '🇩🇪',
+  'French': '🇫🇷', 'France': '🇫🇷',
+  'Spanish': '🇪🇸', 'Spain': '🇪🇸',
+  'Dutch': '🇳🇱', 'Netherlands': '🇳🇱',
+  'Indonesian': '🇮🇩', 'Indonesia': '🇮🇩',
+  'Chinese': '🇨🇳', 'China': '🇨🇳',
+  'Japanese': '🇯🇵', 'Japan': '🇯🇵',
+  'Korean': '🇰🇷', 'Korea': '🇰🇷', 'South Korea': '🇰🇷',
+  'Indian': '🇮🇳', 'India': '🇮🇳',
+  'Brazilian': '🇧🇷', 'Brazil': '🇧🇷',
+  'Canadian': '🇨🇦', 'Canada': '🇨🇦',
+  'Mexican': '🇲🇽', 'Mexico': '🇲🇽',
+  'Argentinian': '🇦🇷', 'Argentina': '🇦🇷',
+  'South African': '🇿🇦', 'South Africa': '🇿🇦',
+  'New Zealander': '🇳🇿', 'New Zealand': '🇳🇿',
+  'Irish': '🇮🇪', 'Ireland': '🇮🇪',
+  'Portuguese': '🇵🇹', 'Portugal': '🇵🇹',
+  'Polish': '🇵🇱', 'Poland': '🇵🇱',
+  'Turkish': '🇹🇷', 'Turkey': '🇹🇷',
+  'Thai': '🇹🇭', 'Thailand': '🇹🇭',
+  'Vietnamese': '🇻🇳', 'Vietnam': '🇻🇳',
+  'Filipino': '🇵🇭', 'Philippines': '🇵🇭',
+  'Malaysian': '🇲🇾', 'Malaysia': '🇲🇾',
+  'Singaporean': '🇸🇬', 'Singapore': '🇸🇬',
+};
+
+// Get flag emoji from nationality
+const getCountryFlag = (nationality: string | undefined): string | null => {
+  if (!nationality) return null;
+  return NATIONALITY_FLAGS[nationality] || null;
 };
 
 export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
@@ -52,8 +83,8 @@ export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
   const ringColor = SENTIMENT_COLORS[sentiment] || SENTIMENT_COLORS.none;
   const badgeStyle = SENTIMENT_BG[sentiment] || SENTIMENT_BG.none;
 
-  // Get avatar URL: use client's avatar or fallback to default
-  const avatarUrl = client.avatar_url || getDefaultAvatar(client.status);
+  // Get country flag for fallback
+  const countryFlag = getCountryFlag(client.nationality);
 
   return (
     <div className="relative group perspective-1000">
@@ -69,16 +100,18 @@ export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
         {/* Header with Avatar & Name */}
         <div className="flex items-start gap-3 mb-3">
           <div className={`relative w-10 h-10 rounded-full ${ringColor} ring-2 ring-offset-2 ring-offset-[var(--background-secondary)]`}>
-            {avatarUrl ? (
+            {client.avatar_url ? (
               <img
-                src={avatarUrl}
+                src={client.avatar_url}
                 alt={client.full_name}
                 className="w-full h-full rounded-full object-cover"
               />
-            ) : (
-              <div className="w-full h-full rounded-full bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)] font-bold">
-                {client.full_name.charAt(0)}
+            ) : countryFlag ? (
+              <div className="w-full h-full rounded-full bg-[var(--background)] flex items-center justify-center text-2xl">
+                {countryFlag}
               </div>
+            ) : (
+              <div className="w-full h-full rounded-full bg-white dark:bg-gray-300" />
             )}
 
             {/* Status Dot */}
