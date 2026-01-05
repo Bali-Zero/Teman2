@@ -335,6 +335,11 @@ async def create_family_member(
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
 
+        # Sanitize date fields - convert empty strings to None for PostgreSQL DATE columns
+        date_of_birth = data.date_of_birth if data.date_of_birth else None
+        passport_expiry = data.passport_expiry if data.passport_expiry else None
+        visa_expiry = data.visa_expiry if data.visa_expiry else None
+
         member_id = await conn.fetchval(
             """
             INSERT INTO client_family_members (
@@ -347,12 +352,12 @@ async def create_family_member(
             client_id,
             data.full_name,
             data.relationship,
-            data.date_of_birth,
+            date_of_birth,  # Sanitized
             data.nationality,
             data.passport_number,
-            data.passport_expiry,
+            passport_expiry,  # Sanitized
             data.current_visa_type,
-            data.visa_expiry,
+            visa_expiry,  # Sanitized
             data.email,
             data.phone,
             data.notes,
@@ -366,11 +371,18 @@ async def update_family_member(
     client_id: int, member_id: int, data: FamilyMemberUpdate, pool=Depends(get_database_pool)
 ):
     """Update a family member."""
+    # Date fields that need empty string → None conversion
+    date_fields = {"date_of_birth", "passport_expiry", "visa_expiry"}
+
     update_fields = []
     values = []
     param_num = 1
 
     for field, value in data.model_dump(exclude_unset=True).items():
+        # Convert empty strings to None for date fields
+        if field in date_fields and value == "":
+            value = None
+
         if value is not None:
             update_fields.append(f"{field} = ${param_num}")
             values.append(value)
@@ -467,6 +479,9 @@ async def get_client_documents(
 async def create_document(client_id: int, data: DocumentCreate, pool=Depends(get_database_pool)):
     """Add a document to a client."""
     async with pool.acquire() as conn:
+        # Sanitize date field - convert empty string to None for PostgreSQL DATE column
+        expiry_date = data.expiry_date if data.expiry_date else None
+
         doc_id = await conn.fetchval(
             """
             INSERT INTO documents (
@@ -484,7 +499,7 @@ async def create_document(client_id: int, data: DocumentCreate, pool=Depends(get
             data.file_id,
             data.file_url,
             data.google_drive_file_url,
-            data.expiry_date,
+            expiry_date,  # Sanitized
             data.notes,
             data.family_member_id,
             data.practice_id,
@@ -498,11 +513,18 @@ async def update_document(
     client_id: int, doc_id: int, data: DocumentUpdate, pool=Depends(get_database_pool)
 ):
     """Update a document."""
+    # Date field that needs empty string → None conversion
+    date_fields = {"expiry_date"}
+
     update_fields = []
     values = []
     param_num = 1
 
     for field, value in data.model_dump(exclude_unset=True).items():
+        # Convert empty strings to None for date field
+        if field in date_fields and value == "":
+            value = None
+
         if value is not None:
             update_fields.append(f"{field} = ${param_num}")
             values.append(value)
