@@ -47,7 +47,7 @@ export default function CaseDetailPage() {
 
       try {
         // TODO: Replace with dedicated getPractice(id) API endpoint
-        const allPractices = await api.crm.getPractices({ limit: 1000 });
+        const allPractices = await api.crm.getPractices({ limit: 200 });
         const foundPractice = allPractices.find(p => p.id === caseId);
 
         if (!foundPractice) {
