@@ -4,12 +4,23 @@ Handles incoming Telegram messages and responds using the RAG system.
 """
 
 import logging
+import time
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.intel_approvers import get_required_votes, get_team_config
+from app.metrics import (
+    intel_items_approved,
+    intel_items_rejected,
+    intel_qdrant_ingestion_duration,
+    intel_qdrant_ingestion_total,
+    intel_votes_cast,
+    intel_voting_duration,
+)
 from services.integrations.telegram_bot_service import telegram_bot
 from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
 
@@ -164,6 +175,278 @@ Servono {REQUIRED_VOTES} voti per decidere"""
     return tally
 
 
+# ===================================
+# INTELLIGENCE CENTER VOTING
+# ===================================
+
+PENDING_INTEL_PATH = Path("/tmp/pending_intel")
+PENDING_INTEL_PATH.mkdir(exist_ok=True)
+
+
+def get_intel_status(item_id: str) -> dict:
+    """Get intel item status from storage."""
+    status_file = PENDING_INTEL_PATH / f"{item_id}.json"
+    if status_file.exists():
+        return json.loads(status_file.read_text())
+    return {
+        "item_id": item_id,
+        "intel_type": "unknown",
+        "status": "voting",
+        "votes": {"approve": [], "reject": []},
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+
+def save_intel_status(item_id: str, data: dict) -> dict:
+    """Save intel item status to storage."""
+    status_file = PENDING_INTEL_PATH / f"{item_id}.json"
+    data["updated_at"] = datetime.utcnow().isoformat()
+    status_file.write_text(json.dumps(data, indent=2))
+    return data
+
+
+def add_intel_vote(item_id: str, intel_type: str, vote_type: str, user: dict) -> tuple[dict, str]:
+    """
+    Add a vote for an intel item.
+
+    Returns:
+        tuple: (intel_data, result_message)
+        result_message: "already_voted", "approved", "rejected", "vote_recorded"
+    """
+    data = get_intel_status(item_id)
+    data["intel_type"] = intel_type
+    user_id = user.get("id")
+    user_name = user.get("first_name", "Unknown")
+
+    # Check if already voted
+    all_voters = [v["user_id"] for v in data["votes"]["approve"]] + [
+        v["user_id"] for v in data["votes"]["reject"]
+    ]
+    if user_id in all_voters:
+        return data, "already_voted"
+
+    # Check if voting is still open
+    if data["status"] in ["approved", "rejected"]:
+        return data, "voting_closed"
+
+    # Add vote
+    vote_record = {
+        "user_id": user_id,
+        "user_name": user_name,
+        "voted_at": datetime.utcnow().isoformat(),
+    }
+    data["votes"][vote_type].append(vote_record)
+
+    # Metrics: Vote cast
+    intel_votes_cast.labels(
+        intel_type=intel_type,
+        vote_type=vote_type,
+        user=user_name
+    ).inc()
+
+    # Check for majority
+    required_votes = get_required_votes(intel_type)
+    approve_count = len(data["votes"]["approve"])
+    reject_count = len(data["votes"]["reject"])
+
+    if approve_count >= required_votes:
+        data["status"] = "approved"
+        save_intel_status(item_id, data)
+        logger.info(f"Intel {item_id} ({intel_type}) APPROVED with {approve_count} votes")
+
+        # Metrics: Item approved
+        intel_items_approved.labels(intel_type=intel_type).inc()
+
+        # Metrics: Voting duration
+        if "created_at" in data:
+            try:
+                created_dt = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
+                duration_seconds = (datetime.utcnow() - created_dt.replace(tzinfo=None)).total_seconds()
+                intel_voting_duration.labels(intel_type=intel_type).observe(duration_seconds)
+            except Exception:
+                pass  # Skip if timestamp parsing fails
+
+        return data, "approved"
+
+    if reject_count >= required_votes:
+        data["status"] = "rejected"
+        save_intel_status(item_id, data)
+        logger.info(f"Intel {item_id} ({intel_type}) REJECTED with {reject_count} votes")
+
+        # Metrics: Item rejected
+        intel_items_rejected.labels(intel_type=intel_type).inc()
+
+        # Metrics: Voting duration
+        if "created_at" in data:
+            try:
+                created_dt = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
+                duration_seconds = (datetime.utcnow() - created_dt.replace(tzinfo=None)).total_seconds()
+                intel_voting_duration.labels(intel_type=intel_type).observe(duration_seconds)
+            except Exception:
+                pass
+
+        return data, "rejected"
+
+    # Vote recorded but not decided yet
+    save_intel_status(item_id, data)
+    logger.info(
+        f"Intel {item_id} ({intel_type}): {user_name} voted {vote_type} (approve:{approve_count}, reject:{reject_count})"
+    )
+    return data, "vote_recorded"
+
+
+def format_intel_vote_tally(data: dict, intel_type: str, original_text: str = "") -> str:
+    """Format the current intel vote tally for display."""
+    approve_votes = data["votes"]["approve"]
+    reject_votes = data["votes"]["reject"]
+
+    approve_count = len(approve_votes)
+    reject_count = len(reject_votes)
+    required_votes = get_required_votes(intel_type)
+
+    # Build voter list
+    voters_list = []
+    for v in approve_votes:
+        voters_list.append(f"  {v['user_name']} ✅")
+    for v in reject_votes:
+        voters_list.append(f"  {v['user_name']} ❌")
+
+    voters_str = "\n".join(voters_list) if voters_list else "  (nessun voto)"
+
+    tally = f"""📊 VOTAZIONE IN CORSO
+
+{original_text}
+
+━━━━━━━━━━━━━━━━━━━━━━
+Voti: ✅ {approve_count}/{required_votes} | ❌ {reject_count}/{required_votes}
+
+Chi ha votato:
+{voters_str}
+━━━━━━━━━━━━━━━━━━━━━━
+Servono {required_votes} voti per decidere"""
+
+    return tally
+
+
+async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
+    """
+    Ingest approved intel item to Qdrant.
+
+    This function is called when an intel item receives majority approval.
+    It triggers the actual ingestion process.
+    """
+    ingestion_start = time.time()
+    collection_name = "visa_oracle" if intel_type == "visa" else "bali_intel_bali_news"
+
+    try:
+        # Import here to avoid circular dependency
+        from pathlib import Path as P
+        import json as j
+        import hashlib
+        from datetime import datetime as dt
+
+        # Read staged file
+        staging_base = P("data/staging")
+        type_dir = "visa" if intel_type == "visa" else "news"
+        staging_file = staging_base / type_dir / f"{item_id}.json"
+
+        if not staging_file.exists():
+            logger.error(f"Staging file not found: {staging_file}")
+            # Metrics: Ingestion failed
+            intel_qdrant_ingestion_total.labels(
+                collection=collection_name,
+                status="error_file_not_found"
+            ).inc()
+            return False
+
+        data = j.loads(staging_file.read_text())
+
+        # Import ingestion services
+        from core.qdrant_db import qdrant_client
+        from core.embeddings import embedding_service
+
+        # Extract content
+        title = data.get("title", "Untitled")
+        content = data.get("content", "")
+        source_url = data.get("source_url", "")
+        detection_type = data.get("detection_type", "unknown")
+
+        # Create full text for embedding
+        full_text = f"{title}\n\n{content}"
+
+        # Generate embedding
+        logger.info(f"Generating embedding for {intel_type} item {item_id}")
+        embedding = await embedding_service.get_embedding(full_text)
+
+        # Create metadata
+        metadata = {
+            "title": title,
+            "content": content,
+            "source_url": source_url,
+            "detection_type": detection_type,
+            "intel_type": intel_type,
+            "ingested_at": dt.utcnow().isoformat(),
+            "ingested_via": "telegram_voting",
+            "item_id": item_id,
+        }
+
+        # Add any additional metadata from staging file
+        for key in ["detected_at", "relevance_score", "category"]:
+            if key in data:
+                metadata[key] = data[key]
+
+        # Generate document ID
+        doc_id = hashlib.sha256(f"{intel_type}:{item_id}:{title}".encode()).hexdigest()
+
+        # Upsert to Qdrant
+        logger.info(f"Upserting to Qdrant: {collection_name}")
+        await qdrant_client.upsert_documents(
+            chunks=[full_text],
+            embeddings=[embedding],
+            metadatas=[metadata],
+            ids=[doc_id],
+        )
+
+        logger.info(f"✅ Successfully ingested {intel_type} item {item_id} to {collection_name}")
+
+        # Metrics: Ingestion success
+        intel_qdrant_ingestion_total.labels(
+            collection=collection_name,
+            status="success"
+        ).inc()
+
+        intel_qdrant_ingestion_duration.labels(
+            collection=collection_name
+        ).observe(time.time() - ingestion_start)
+
+        # Update staging file with ingestion timestamp
+        data["ingested_at"] = dt.utcnow().isoformat()
+        data["ingested_to_collection"] = collection_name
+        data["qdrant_id"] = doc_id
+
+        # Move to archived/approved
+        archive_dir = staging_base / type_dir / "archived" / "approved"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        approved_file = archive_dir / f"{item_id}.json"
+        approved_file.write_text(j.dumps(data, indent=2))
+        staging_file.unlink()  # Remove from staging
+
+        logger.info(f"Archived approved item to {approved_file}")
+
+        return True
+
+    except Exception as e:
+        logger.exception(f"Failed to ingest intel {item_id}: {e}")
+
+        # Metrics: Ingestion error
+        intel_qdrant_ingestion_total.labels(
+            collection=collection_name,
+            status="error_exception"
+        ).inc()
+
+        return False
+
+
 class WebhookSetupRequest(BaseModel):
     """Request to set up webhook."""
 
@@ -280,12 +563,153 @@ async def telegram_webhook(
 
         logger.info(f"Callback query: {data} from {user_name} ({user_id})")
 
-        # Parse callback data (format: "action:article_id")
-        if ":" in data:
-            action, article_id = data.split(":", 1)
-        else:
+        # Parse callback data
+        if ":" not in data:
             await telegram_bot.answer_callback_query(callback_id, "Invalid action", show_alert=True)
             return {"ok": True}
+
+        parts = data.split(":")
+
+        # =====================
+        # INTELLIGENCE CENTER HANDLERS
+        # =====================
+        if parts[0] == "intel" and len(parts) == 4:
+            # Format: intel:approve/reject:type:item_id
+            _, action, intel_type, item_id = parts
+
+            # Get original message text
+            original_text = message.get("text", "")
+            if "━━━━" in original_text:
+                original_text = original_text.split("━━━━")[0].strip()
+            if original_text.startswith("📊"):
+                lines = original_text.split("\n")
+                original_text = "\n".join(lines[1:]).strip()
+
+            # Handle APPROVE
+            if action == "approve":
+                intel_data, result = add_intel_vote(item_id, intel_type, "approve", user)
+
+                if result == "already_voted":
+                    await telegram_bot.answer_callback_query(
+                        callback_id, "⚠️ Hai già votato!", show_alert=True
+                    )
+
+                elif result == "voting_closed":
+                    await telegram_bot.answer_callback_query(
+                        callback_id, "⚠️ Votazione già chiusa", show_alert=True
+                    )
+
+                elif result == "approved":
+                    # Majority reached - APPROVED!
+                    voters = ", ".join([v["user_name"] for v in intel_data["votes"]["approve"]])
+                    required_votes = get_required_votes(intel_type)
+                    total_approvers = len(get_team_config(intel_type)["approvers"])
+
+                    await telegram_bot.answer_callback_query(
+                        callback_id, "✅ APPROVATO! Maggioranza raggiunta!", show_alert=True
+                    )
+                    await telegram_bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=f"✅ APPROVATO ({required_votes}/{total_approvers})\n\n{intel_type.upper()} Item {item_id}\n\nApprovato da: {voters}\n\n🔄 Ingestion a Qdrant in corso...",
+                        parse_mode=None,
+                    )
+                    # Trigger ingestion
+                    ingestion_success = await ingest_intel_to_qdrant(item_id, intel_type)
+                    if ingestion_success:
+                        logger.info(f"✅ Intel {item_id} ingested successfully")
+                    else:
+                        logger.error(f"❌ Intel {item_id} ingestion failed")
+
+                else:
+                    # Vote recorded, update tally
+                    approve_count = len(intel_data["votes"]["approve"])
+                    required_votes = get_required_votes(intel_type)
+                    await telegram_bot.answer_callback_query(
+                        callback_id,
+                        f"✅ Voto registrato ({approve_count}/{required_votes})",
+                        show_alert=False,
+                    )
+                    # Update message with new tally, keep buttons
+                    tally_text = format_intel_vote_tally(intel_data, intel_type, original_text)
+                    await telegram_bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=tally_text,
+                        parse_mode=None,
+                        reply_markup={
+                            "inline_keyboard": [
+                                [
+                                    {"text": "✅ APPROVE", "callback_data": f"intel:approve:{intel_type}:{item_id}"},
+                                    {"text": "❌ REJECT", "callback_data": f"intel:reject:{intel_type}:{item_id}"},
+                                ]
+                            ]
+                        },
+                    )
+
+            # Handle REJECT
+            elif action == "reject":
+                intel_data, result = add_intel_vote(item_id, intel_type, "reject", user)
+
+                if result == "already_voted":
+                    await telegram_bot.answer_callback_query(
+                        callback_id, "⚠️ Hai già votato!", show_alert=True
+                    )
+
+                elif result == "voting_closed":
+                    await telegram_bot.answer_callback_query(
+                        callback_id, "⚠️ Votazione già chiusa", show_alert=True
+                    )
+
+                elif result == "rejected":
+                    # Majority reached - REJECTED!
+                    voters = ", ".join([v["user_name"] for v in intel_data["votes"]["reject"]])
+                    required_votes = get_required_votes(intel_type)
+                    total_approvers = len(get_team_config(intel_type)["approvers"])
+
+                    await telegram_bot.answer_callback_query(
+                        callback_id, "❌ RIFIUTATO! Maggioranza raggiunta!", show_alert=True
+                    )
+                    await telegram_bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=f"❌ RIFIUTATO ({required_votes}/{total_approvers})\n\n{intel_type.upper()} Item {item_id}\n\nRifiutato da: {voters}\n\nL'item è stato scartato.",
+                        parse_mode=None,
+                    )
+
+                else:
+                    # Vote recorded, update tally
+                    reject_count = len(intel_data["votes"]["reject"])
+                    required_votes = get_required_votes(intel_type)
+                    await telegram_bot.answer_callback_query(
+                        callback_id,
+                        f"❌ Voto registrato ({reject_count}/{required_votes})",
+                        show_alert=False,
+                    )
+                    # Update message with new tally, keep buttons
+                    tally_text = format_intel_vote_tally(intel_data, intel_type, original_text)
+                    await telegram_bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        text=tally_text,
+                        parse_mode=None,
+                        reply_markup={
+                            "inline_keyboard": [
+                                [
+                                    {"text": "✅ APPROVE", "callback_data": f"intel:approve:{intel_type}:{item_id}"},
+                                    {"text": "❌ REJECT", "callback_data": f"intel:reject:{intel_type}:{item_id}"},
+                                ]
+                            ]
+                        },
+                    )
+
+            return {"ok": True}
+
+        # =====================
+        # ARTICLE APPROVAL HANDLERS (existing)
+        # =====================
+        # Parse callback data (format: "action:article_id")
+        action, article_id = data.split(":", 1)
 
         # Get original message text (without buttons) for context
         original_text = message.get("text", "")

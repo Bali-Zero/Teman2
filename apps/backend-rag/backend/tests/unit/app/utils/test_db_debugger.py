@@ -185,3 +185,4 @@ class TestQueryTraceContext:
         result = ctx.__exit__(None, None, None)
         assert result is False
         assert trace.end_time is not None
+

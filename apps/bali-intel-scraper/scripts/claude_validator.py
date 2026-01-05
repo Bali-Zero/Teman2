@@ -16,10 +16,14 @@ This saves Claude Max time for articles that actually matter.
 import subprocess
 import json
 import asyncio
+from datetime import datetime
 from typing import Dict, Optional, List, Tuple
 from dataclasses import dataclass
 from pathlib import Path
 from loguru import logger
+
+# Published articles registry (auto-updates on publish)
+PUBLISHED_ARTICLES_FILE = Path(__file__).parent / "data" / "published_articles.json"
 
 # Configure logging
 Path("logs").mkdir(exist_ok=True)
@@ -37,6 +41,8 @@ class ValidationResult:
     priority_override: Optional[str] = None  # If Claude thinks priority should change
     research_notes: Optional[str] = None  # Quick research findings
     enrichment_hints: Optional[List[str]] = None  # Hints for enrichment phase
+    is_duplicate: bool = False  # True if similar article already published
+    similar_to: Optional[str] = None  # Title of similar published article
 
 
 class ClaudeValidator:
@@ -45,6 +51,7 @@ class ClaudeValidator:
 
     Validates ambiguous articles before expensive enrichment.
     Can do quick web research to verify article validity/relevance.
+    Checks against published articles to avoid duplicates.
     """
 
     # Score ranges
@@ -54,13 +61,121 @@ class ClaudeValidator:
 
     def __init__(self, use_web_research: bool = True):
         self.use_web_research = use_web_research
+        self.published_articles = self._load_published_articles()
         self.stats = {
             "auto_approved": 0,
             "auto_rejected": 0,
             "validated_approved": 0,
             "validated_rejected": 0,
             "validation_errors": 0,
+            "duplicate_rejected": 0,
         }
+
+    def _load_published_articles(self) -> List[Dict]:
+        """Load list of already published articles"""
+        PUBLISHED_ARTICLES_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+        if PUBLISHED_ARTICLES_FILE.exists():
+            try:
+                with open(PUBLISHED_ARTICLES_FILE, "r") as f:
+                    data = json.load(f)
+                    logger.info(f"Loaded {len(data.get('articles', []))} published articles for duplicate check")
+                    return data.get("articles", [])
+            except Exception as e:
+                logger.warning(f"Error loading published articles: {e}")
+                return []
+        return []
+
+    @staticmethod
+    def add_published_article(title: str, url: str, category: str, published_at: str = None):
+        """
+        Add article to published registry. Call this after successful publish.
+
+        This is a static method so it can be called from anywhere:
+        ClaudeValidator.add_published_article("Title", "https://...", "immigration")
+        """
+        PUBLISHED_ARTICLES_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+        # Load existing
+        articles = []
+        if PUBLISHED_ARTICLES_FILE.exists():
+            try:
+                with open(PUBLISHED_ARTICLES_FILE, "r") as f:
+                    data = json.load(f)
+                    articles = data.get("articles", [])
+            except Exception:
+                articles = []
+
+        # Add new article
+        articles.append({
+            "title": title,
+            "url": url,
+            "category": category,
+            "published_at": published_at or datetime.now().isoformat(),
+        })
+
+        # Keep last 500 articles (rolling window)
+        articles = articles[-500:]
+
+        # Save
+        with open(PUBLISHED_ARTICLES_FILE, "w") as f:
+            json.dump({
+                "last_updated": datetime.now().isoformat(),
+                "count": len(articles),
+                "articles": articles
+            }, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Added to published registry: {title[:50]}...")
+
+    def _get_published_titles_for_prompt(self, limit: int = 50) -> str:
+        """Get recent published article titles for the validation prompt"""
+        if not self.published_articles:
+            return "No articles published yet."
+
+        recent = self.published_articles[-limit:]
+        lines = []
+        for art in recent:
+            lines.append(f"- [{art.get('category', 'general')}] {art.get('title', 'Untitled')}")
+
+        return "\n".join(lines)
+
+    def _quick_duplicate_check(self, title: str) -> Optional[str]:
+        """
+        Quick local duplicate check using keyword matching.
+        Returns the similar article title if likely duplicate, None otherwise.
+
+        This is a fast pre-check before Claude validation to catch obvious duplicates.
+        """
+        if not self.published_articles:
+            return None
+
+        # Normalize title for comparison
+        title_lower = title.lower()
+        title_words = set(title_lower.split())
+
+        # Remove common stop words
+        stop_words = {'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'is', 'are', 'was', 'were'}
+        title_words = title_words - stop_words
+
+        for pub in self.published_articles[-100:]:  # Check last 100
+            pub_title = pub.get("title", "").lower()
+            pub_words = set(pub_title.split()) - stop_words
+
+            if not pub_words:
+                continue
+
+            # Calculate word overlap
+            overlap = len(title_words & pub_words)
+            smaller_set = min(len(title_words), len(pub_words))
+
+            if smaller_set > 0:
+                similarity = overlap / smaller_set
+                # If more than 60% words match, likely duplicate
+                if similarity > 0.6:
+                    logger.debug(f"Quick duplicate check: {similarity:.0%} match with '{pub.get('title', '')[:50]}'")
+                    return pub.get("title")
+
+        return None
 
     def _build_validation_prompt(
         self,
@@ -73,6 +188,9 @@ class ClaudeValidator:
         llama_reason: str,
     ) -> str:
         """Build the validation prompt for Claude"""
+
+        # Get published articles for duplicate check
+        published_list = self._get_published_titles_for_prompt(limit=50)
 
         return f"""You are the Intelligence Gatekeeper at Bali Zero.
 
@@ -98,24 +216,36 @@ Category: {llama_category}
 Reason: {llama_reason}
 
 ═══════════════════════════════════════════════════════════════════════════════
+ALREADY PUBLISHED ARTICLES (check for duplicates!)
+═══════════════════════════════════════════════════════════════════════════════
+
+{published_list}
+
+═══════════════════════════════════════════════════════════════════════════════
 YOUR TASK
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. VALIDATE: Is this article actually relevant for Bali expats/investors?
+1. DUPLICATE CHECK (CRITICAL!):
+   - Compare this article against the ALREADY PUBLISHED list above
+   - If the topic/news is SUBSTANTIALLY SIMILAR to something already published → REJECT
+   - Similar = same regulation, same policy change, same event (even if different source)
+   - Different angle on SAME news = still a duplicate, REJECT
+
+2. VALIDATE: Is this article actually relevant for Bali expats/investors?
    - Does it affect visas, taxes, business, property, or lifestyle in Indonesia?
    - Is the information actionable or just noise?
    - Is this news or just clickbait/speculation?
 
-2. VERIFY: Quick fact-check
+3. VERIFY: Quick fact-check
    - Does this seem like legitimate news from the title/content?
    - Any red flags (clickbait, speculation, outdated)?
    - Is the source credible for this topic?
 
-3. DECIDE: Should we invest Claude Max time in deep enrichment?
+4. DECIDE: Should we invest Claude Max time in deep enrichment?
    - YES = Article deserves full BaliZero Executive Brief treatment
    - NO = Skip it, not worth the effort
 
-4. IMPROVE: If LLAMA got something wrong, correct it
+5. IMPROVE: If LLAMA got something wrong, correct it
    - Wrong category? Suggest correct one
    - Wrong priority? Suggest correct one
 
@@ -127,6 +257,8 @@ RESPOND WITH ONLY THIS JSON (no markdown, no extra text):
   "approved": <true/false>,
   "confidence": <0-100>,
   "reason": "<One sentence: why approve or reject>",
+  "is_duplicate": <true/false>,
+  "similar_to": "<Title of similar published article if duplicate, else null>",
   "category_override": "<null or correct category if LLAMA was wrong>",
   "priority_override": "<null or 'high'/'medium'/'low' if should change>",
   "research_notes": "<Any quick findings that would help enrichment, or null>",
@@ -134,7 +266,8 @@ RESPOND WITH ONLY THIS JSON (no markdown, no extra text):
 }}
 
 DECISION GUIDELINES:
-- APPROVE if: Directly affects expat/investor life, actionable, from credible source
+- REJECT if: DUPLICATE of already published article (check list above!)
+- APPROVE if: NEW topic, directly affects expat/investor life, actionable, from credible source
 - REJECT if: General Indonesia news with no expat angle, speculation, clickbait, outdated
 - When in doubt about relevance, lean toward REJECT (save Claude Max for quality)
 """
@@ -209,8 +342,21 @@ DECISION GUIDELINES:
             ValidationResult with approval decision and metadata
         """
 
-        # Auto-approve high scores
+        # High scores still need duplicate check
         if llama_score >= self.AUTO_APPROVE_THRESHOLD:
+            # Quick duplicate check for high-scoring articles
+            is_likely_duplicate = self._quick_duplicate_check(title)
+            if is_likely_duplicate:
+                self.stats["duplicate_rejected"] += 1
+                logger.warning(f"🔄 DUPLICATE rejected (high score but duplicate): {title[:50]}...")
+                return ValidationResult(
+                    approved=False,
+                    confidence=80,
+                    reason="High LLAMA score but likely duplicate of published article",
+                    is_duplicate=True,
+                    similar_to=is_likely_duplicate,
+                )
+
             self.stats["auto_approved"] += 1
             logger.info(f"✅ Auto-approved (score {llama_score}): {title[:50]}...")
             return ValidationResult(
@@ -262,8 +408,15 @@ DECISION GUIDELINES:
             data = json.loads(response)
 
             approved = data.get("approved", False)
+            is_duplicate = data.get("is_duplicate", False)
+            similar_to = data.get("similar_to")
 
-            if approved:
+            if is_duplicate:
+                self.stats["duplicate_rejected"] += 1
+                logger.warning(f"🔄 DUPLICATE rejected: {title[:50]}...")
+                if similar_to:
+                    logger.warning(f"   Similar to: {similar_to[:50]}...")
+            elif approved:
                 self.stats["validated_approved"] += 1
                 logger.success(f"✅ Validated & approved: {title[:50]}...")
             else:
@@ -278,6 +431,8 @@ DECISION GUIDELINES:
                 priority_override=data.get("priority_override"),
                 research_notes=data.get("research_notes"),
                 enrichment_hints=data.get("enrichment_hints"),
+                is_duplicate=is_duplicate,
+                similar_to=similar_to,
             )
 
         except json.JSONDecodeError as e:

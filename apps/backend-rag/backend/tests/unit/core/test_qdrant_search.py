@@ -304,3 +304,4 @@ class TestQdrantClientGetStats:
             # On error, get_stats returns collection_name and error only
             assert stats["collection_name"] == "test"
             assert "error" in stats
+

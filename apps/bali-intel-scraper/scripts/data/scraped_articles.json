@@ -1,0 +1,2068 @@
+{
+  "scraped_at": "2026-01-05T08:20:15.181233",
+  "stats": {
+    "total_sources": 157,
+    "sources_scraped": 82,
+    "articles_found": 262,
+    "articles_unique": 257,
+    "elapsed_seconds": 10.743648
+  },
+  "articles": [
+    {
+      "url": "https://www.imigrasi.go.id/berita/kopdar-ahii-2025-langkah-imigrasi-perkuat-pelayanan-informasi-untuk-masyarakat",
+      "title": "Kopdar Ahii 2025 Langkah Imigrasi Perkuat Pelayanan Informasi Untuk Masyarakat",
+      "source_name": "Imigrasi Indonesia",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "542d83d5c20bb79d73f19e23462d85f3"
+    },
+    {
+      "url": "https://www.imigrasi.go.id/siaran_pers/imigrasi-tetap-hadir-layani-masyarakat-selama-libur-natal-dan-tahun-baru-2026",
+      "title": "Imigrasi Tetap Hadir Layani Masyarakat Selama Libur Natal Dan Tahun Baru 2026",
+      "source_name": "Imigrasi Indonesia",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "75161233e8d4fe863d6215fdd9658ba0"
+    },
+    {
+      "url": "https://www.imigrasi.go.id/berita/sinergi-imigrasi-dan-kemenlu-permudah-notifikasi-dan-akses-kekonsuleran-wna-di-indonesia",
+      "title": "Sinergi Imigrasi Dan Kemenlu Permudah Notifikasi Dan Akses Kekonsuleran Wna Di Indonesia",
+      "source_name": "Imigrasi Indonesia",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "cb7231f8f09c825adf96988b7652b465"
+    },
+    {
+      "url": "https://www.imigrasi.go.id/berita/kemenimipas-terapkan-manajemen-risiko-demi-pelayanan-publik-lebih-baik",
+      "title": "Kemenimipas Terapkan Manajemen Risiko Demi Pelayanan Publik Lebih Baik",
+      "source_name": "Imigrasi Indonesia",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "1216e97eed2415f923bd77c2d8ac8685"
+    },
+    {
+      "url": "https://www.imigrasi.go.id/berita/libur-akhir-tahun-tiba-cek-dulu-kebijakan-visa-negara-tujuanmu",
+      "title": "Libur Akhir Tahun Tiba Cek Dulu Kebijakan Visa Negara Tujuanmu",
+      "source_name": "Imigrasi Indonesia",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "1e6f010660098c82cd30c8eceb095f84"
+    },
+    {
+      "url": "https://www.imigrasi.go.id/berita/liburan-ke-luar-negeri-jangan-lupa-isi-all-indonesia-saat-pulang-ya",
+      "title": "Liburan Ke Luar Negeri Jangan Lupa Isi All Indonesia Saat Pulang Ya",
+      "source_name": "Imigrasi Indonesia",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "0b7656f10a3e8e1235bb9a855f15c549"
+    },
+    {
+      "url": "https://www.imigrasi.go.id/berita/ditjen-imigrasi-dan-kemenlu-inisiasi-penerbitan-paspor-dinas-dan-diplomatik-di-kantor-imigrasi",
+      "title": "Ditjen Imigrasi Dan Kemenlu Inisiasi Penerbitan Paspor Dinas Dan Diplomatik Di Kantor Imigrasi",
+      "source_name": "Imigrasi Indonesia",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "aebee31629c12df5d798e70895d94e46"
+    },
+    {
+      "url": "https://kemnaker.go.id/news/detail/kemnaker-buka-proses-program-pemagangan-nasional-batch-2-tahun-2025-besok-ini-tahapannya",
+      "title": "Kemnaker Buka Proses Program Pemagangan Nasional Batch 2 Tahun 2025 Besok Ini Tahapannya",
+      "source_name": "Kemnaker RI",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "1dc0aef40bdec3ba7ece3e730d2c2ac1"
+    },
+    {
+      "url": "https://kemnaker.go.id/news/detail/wamenaker-regulasi-industri-tembakau-harus-berpihak-pada-pekerja-dan-petani",
+      "title": "Wamenaker Regulasi Industri Tembakau Harus Berpihak Pada Pekerja Dan Petani",
+      "source_name": "Kemnaker RI",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "9e707f1256d62e4171d57c74c4841c8c"
+    },
+    {
+      "url": "https://kemnaker.go.id/news/detail/indonesiaswiss-perkuat-kolaborasi-bidang-ketenagakerjaan-melalui-the-5th-tripartite-labour-dialogue",
+      "title": "Indonesiaswiss Perkuat Kolaborasi Bidang Ketenagakerjaan Melalui The 5Th Tripartite Labour Dialogue",
+      "source_name": "Kemnaker RI",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "2c89080bf3d82bc36d28e865fb17f236"
+    },
+    {
+      "url": "https://kemnaker.go.id/news/detail/1500-an-peserta-lolos-program-pemagangan-nasional-batch-i-gelombang-2",
+      "title": "1500 An Peserta Lolos Program Pemagangan Nasional Batch I Gelombang 2",
+      "source_name": "Kemnaker RI",
+      "source_tier": "T1",
+      "category": "immigration",
+      "content_hash": "60927c4a01a74ac289b3805d3977f8f9"
+    },
+    {
+      "url": "https://www.thejakartapost.com/business/2026/01/03/start-up-scandals-in-2025-force-investors-to-raise-the-bar-change-playbooks.html",
+      "title": "Start Up Scandals In 2025 Force Investors To Raise The Bar Change Playbooks",
+      "source_name": "Jakarta Post - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "67f5528fd16e52a6b45f8565e958d5bd"
+    },
+    {
+      "url": "http://www.thejakartapost.com/culture/tag/work-it-right?utm_source=(direct)&utm_medium=header",
+      "title": "Work It Right",
+      "source_name": "Jakarta Post - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "259d435c0f77c752b427ce315a3ef2d0"
+    },
+    {
+      "url": "https://en.tempo.co/read/2061442/soekarno-hatta-airport-introduces-corridor-gate-for-two-second-immigration-clearance",
+      "title": "Soekarno Hatta Airport Introduces Corridor Gate For Two Second Immigration Clearance",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "92cd57fa942d4a61fe55c44168f6b1a0"
+    },
+    {
+      "url": "https://en.tempo.co/read/2075548/singapore-entry-becomes-harder-as-airlines-set-no-boarding-system-in-2026",
+      "title": "Singapore Entry Becomes Harder As Airlines Set No Boarding System In 2026",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "84cf4e9d80064b750288a1d333d66358"
+    },
+    {
+      "url": "https://en.tempo.co/read/2070557/sabrina-carpenter-slams-white-house-for-misusing-her-song",
+      "title": "Sabrina Carpenter Slams White House For Misusing Her Song",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "9bd59bd4d3296aa694be7c5344834828"
+    },
+    {
+      "url": "https://en.tempo.co/read/2073230/bali-immigration-deports-four-foreigners-from-bonnie-blue-management",
+      "title": "Bali Immigration Deports Four Foreigners From Bonnie Blue Management",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "894ba617a3f39fd7e212db1ac195a4b4"
+    },
+    {
+      "url": "https://en.tempo.co/read/2070677/us-halts-immigration-processing-for-19-nations",
+      "title": "Us Halts Immigration Processing For 19 Nations",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "8abbf302aba6c02d430f8879728c4ff6"
+    },
+    {
+      "url": "https://en.tempo.co/read/2074058/26-chinese-nationals-detained-after-alleged-assault-on-indonesian-soldiers",
+      "title": "26 Chinese Nationals Detained After Alleged Assault On Indonesian Soldiers",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "d248e1a59da53b2a0bd0c768968b3cb1"
+    },
+    {
+      "url": "https://en.tempo.co/read/2067489/thailand-tightens-visa-screening-to-curb-abuse-by-foreign-tourists",
+      "title": "Thailand Tightens Visa Screening To Curb Abuse By Foreign Tourists",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "276ab438feecb5fe03ce36253789cd3e"
+    },
+    {
+      "url": "https://en.tempo.co/read/2077716/bali-immigration-office-posts-rp1-5-trillion-in-non-tax-state-revenue-in-2025",
+      "title": "Bali Immigration Office Posts Rp1 5 Trillion In Non Tax State Revenue In 2025",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "5bd562bbf03ed55040f53686af23b3cb"
+    },
+    {
+      "url": "https://en.tempo.co/read/2066769/immigration-to-deport-27-chinese-nationals-involved-in-scam",
+      "title": "Immigration To Deport 27 Chinese Nationals Involved In Scam",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "7ea894f8c6eeb2ea0bcb463294576eff"
+    },
+    {
+      "url": "https://en.tempo.co/read/2075343/indonesia-imposes-10-year-entry-ban-on-bonnie-blue",
+      "title": "Indonesia Imposes 10 Year Entry Ban On Bonnie Blue",
+      "source_name": "Tempo English - Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "f27a93717fa859ce8b6f09eac738ddc0"
+    },
+    {
+      "url": "https://www.kompas.com/jawa-barat/read/2025/12/18/122000288/ini-alasan-kemenimipas-terapkan-satu-jenis-paspor-nasional-mulai-2027",
+      "title": "Ini Alasan Kemenimipas Terapkan Satu Jenis Paspor Nasional Mulai 2027",
+      "source_name": "Kompas Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "3b0d20fce0f6c37b70ad43aab568cdc0"
+    },
+    {
+      "url": "https://www.cnnindonesia.com/internasional/20251227123644-106-1311057/6-wni-masuk-ilegal-ke-singapura-terancam-penjara-dan-cambuk",
+      "title": "6 Wni Masuk Ilegal Ke Singapura Terancam Penjara Dan Cambuk",
+      "source_name": "CNN Indonesia Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "4f727fa55a660b82d7125719e6d9e4c4"
+    },
+    {
+      "url": "https://www.cnnindonesia.com/nasional/20251216131425-20-1307361/15-wn-china-penyerang-prajurit-tni-di-ketapang-dibawa-ke-imigrasi",
+      "title": "15 Wn China Penyerang Prajurit Tni Di Ketapang Dibawa Ke Imigrasi",
+      "source_name": "CNN Indonesia Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "4ab73a0d041f212b38589beb80edf9dd"
+    },
+    {
+      "url": "https://www.cnnindonesia.com/nasional/20251222125250-12-1309493/imigrasi-resmi-tangkal-bonnie-blue-masuk-indonesia-10-tahun",
+      "title": "Imigrasi Resmi Tangkal Bonnie Blue Masuk Indonesia 10 Tahun",
+      "source_name": "CNN Indonesia Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "0aadbf94ca3a0fdffe0997d5eccc6ff1"
+    },
+    {
+      "url": "https://www.cnnindonesia.com/nasional/20251229192259-20-1311678/menteri-imipas-soal-buron-riza-chalid-di-malaysia-kelihatannya-masih",
+      "title": "Menteri Imipas Soal Buron Riza Chalid Di Malaysia Kelihatannya Masih",
+      "source_name": "CNN Indonesia Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "f24f9ef44f0357ac98fb63f7299c35e8"
+    },
+    {
+      "url": "https://www.cnnindonesia.com/nasional/20251221143731-20-1309208/imigrasi-soetta-tolak-727-wna-masuk-indonesia-selama-2025",
+      "title": "Imigrasi Soetta Tolak 727 Wna Masuk Indonesia Selama 2025",
+      "source_name": "CNN Indonesia Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "34543059f0de86576abfa9f632f34daf"
+    },
+    {
+      "url": "https://www.cnnindonesia.com/internasional/20251204040612-134-1302582/trump-kerahkan-aparat-imigrasi-ke-new-orleans-picu-polemik-baru",
+      "title": "Trump Kerahkan Aparat Imigrasi Ke New Orleans Picu Polemik Baru",
+      "source_name": "CNN Indonesia Immigration",
+      "source_tier": "T2",
+      "category": "immigration",
+      "content_hash": "1bf92c7d58d41885feb0aa17573f79b3"
+    },
+    {
+      "url": "https://www.pajak.go.id/id/sasaran-dan-rencana-strategis-2020-2024-direktorat-jenderal-pajak",
+      "title": "Sasaran Dan Rencana Strategis 2020 2024 Direktorat Jenderal Pajak",
+      "source_name": "DJP Regulations",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "48574e84e12f03c526fc28f7a9b937a8"
+    },
+    {
+      "url": "https://www.bi.go.id/id/publikasi/ruang-media/pidato-dewan-gubernur/Pages/Sambutan-GBI-PTBI-2025.aspx",
+      "title": "Sambutan Gbi Ptbi 2025",
+      "source_name": "Bank Indonesia",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "8d3d76b94d7d00b1166dd9639e13aa1b"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/Publikasi/Infografis/Pages/Stabilitas-Sektor-Jasa-Keuangan-Terjaga-di-Tengah-Meningkatnya-Risiko-Geopolitik-RDKB-Okt-2024.aspx",
+      "title": "Stabilitas Sektor Jasa Keuangan Terjaga Di Tengah Meningkatnya Risiko Geopolitik Rdkb Okt 2024",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "81c6c348d2f1dfa06ec8421905cfc69e"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/data-dan-statistik/laporan-tahunan/Pages/-Laporan-Keuangan-OJK-Tahun-2018-(Audited).aspx",
+      "title": "Laporan Keuangan Ojk Tahun 2018 (Audited)",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "5f3f15a07fefa3e98db13b26975bda40"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/data-dan-statistik/laporan-triwulanan/Pages/Laporan-Triwulan-III---2017.aspx",
+      "title": "Laporan Triwulan Iii   2017",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "1a8c74f95359b390be35e213a7bb5e7e"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/berita-dan-kegiatan/publikasi/Pages/OJK-Raih-Sertifikasi-ISO-2001---2015.aspx",
+      "title": "Ojk Raih Sertifikasi Iso 2001   2015",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "7a8b19dbdf5d92db366bbbdacf2453a8"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/berita-dan-kegiatan/publikasi/Pages/Materi-OJK-PROKSI-2016.aspx",
+      "title": "Materi Ojk Proksi 2016",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "37f4c081c0f68430c332de1b807d44a9"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/Publikasi/Infografis/Pages/Sektor-Jasa-Keuangan-Yang-Resilient-Untuk-Mendukung-Pertumbuhan-Ekonomi-Nasional-RDKB-Nov-2024.aspx",
+      "title": "Sektor Jasa Keuangan Yang Resilient Untuk Mendukung Pertumbuhan Ekonomi Nasional Rdkb Nov 2024",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "d04937d8f9eca6cdaf8efbc61bb55c03"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/Publikasi/E-Magazine/Pages/Majalah-Konsumen-Tw-III-2025.aspx",
+      "title": "Majalah Konsumen Tw Iii 2025",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "fd04c05d81d43f42170a67eb80bbe389"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/data-dan-statistik/laporan-triwulanan/Pages/Laporan-Triwulan-I---2015.aspx",
+      "title": "Laporan Triwulan I   2015",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "ec17a3c6b5bc869bfc7e806f74db6648"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/Publikasi/E-Magazine/Pages/Majalah-Edukasi-Konsumen-Triwulan-I-2025.aspx",
+      "title": "Majalah Edukasi Konsumen Triwulan I 2025",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "59e74fdd5c2f3f40315fd8a26f43604a"
+    },
+    {
+      "url": "https://www.ojk.go.id/id/Publikasi/E-Magazine/Pages/Majalah-Edukasi-Konsumen-Triwulan-I-2024.aspx",
+      "title": "Majalah Edukasi Konsumen Triwulan I 2024",
+      "source_name": "OJK (Financial Services)",
+      "source_tier": "T1",
+      "category": "tax_bkpm",
+      "content_hash": "a68d3d9de4cb5333f2be5c21f86306fc"
+    },
+    {
+      "url": "https://en.tempo.co/read/2069184/indonesias-tax-dg-forms-task-force-for-coretax-transformation",
+      "title": "Indonesias Tax Dg Forms Task Force For Coretax Transformation",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "c11a35613d52628f13579bc28970bbbb"
+    },
+    {
+      "url": "https://en.tempo.co/read/2068823/463-taxpayers-suspected-of-manipulating-data-to-evade-cpo-export-duties",
+      "title": "463 Taxpayers Suspected Of Manipulating Data To Evade Cpo Export Duties",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "9d5ef9178e791c406e402b481988098d"
+    },
+    {
+      "url": "https://en.tempo.co/read/2070592/the-political-aroma-around-the-djarum-tax-investigation",
+      "title": "The Political Aroma Around The Djarum Tax Investigation",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "77d3a804017f7665257ca2ce7b54f142"
+    },
+    {
+      "url": "https://en.tempo.co/read/2077040/indonesia-taps-openai-as-digital-vat-collector",
+      "title": "Indonesia Taps Openai As Digital Vat Collector",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "aeacf65cceb1dd617e7dd43d425a882b"
+    },
+    {
+      "url": "https://en.tempo.co/read/2077682/over-11-19-million-indonesian-taxpayers-activate-coretax-accounts",
+      "title": "Over 11 19 Million Indonesian Taxpayers Activate Coretax Accounts",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "a9b659295ba956291e998402b9f989fd"
+    },
+    {
+      "url": "https://en.tempo.co/read/2070830/behind-the-probe-into-djarums-tax-corruption-case",
+      "title": "Behind The Probe Into Djarums Tax Corruption Case",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "152f923ecb7d71bbf9859706e063ba10"
+    },
+    {
+      "url": "https://en.tempo.co/read/2066731/government-carbon-tax-not-a-priority-in-indonesias-2026-state-budget",
+      "title": "Government Carbon Tax Not A Priority In Indonesias 2026 State Budget",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "24483dc7f30711d85daf9b1e7df6898c"
+    },
+    {
+      "url": "https://en.tempo.co/read/2077345/coretax-activation-guide-4-things-taxpayers-must-know",
+      "title": "Coretax Activation Guide 4 Things Taxpayers Must Know",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "9d28bc7e5f5481308bf3304478f510b1"
+    },
+    {
+      "url": "https://en.tempo.co/read/2067348/indonesias-pt-djarum-ceo-on-travel-ban-list-amid-tax-corruption-probe",
+      "title": "Indonesias Pt Djarum Ceo On Travel Ban List Amid Tax Corruption Probe",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "522fae5676abe4297b23a877bfdd6ea0"
+    },
+    {
+      "url": "https://en.tempo.co/read/2070836/indonesia-logs-rp43-7-trillion-in-tax-revenue-from-digital-economy-sector",
+      "title": "Indonesia Logs Rp43 7 Trillion In Tax Revenue From Digital Economy Sector",
+      "source_name": "Tempo Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "5e8b9e65a5eeab9f7652434c51d4955f"
+    },
+    {
+      "url": "https://investor.id/market/423495/prediksi-harga-emas-antam-antm-senin5januari-2026",
+      "title": "Prediksi Harga Emas Antam Antm Senin5Januari 2026",
+      "source_name": "Investor Daily",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "4cb2ebcb848796b5d5e2d32e7d78f145"
+    },
+    {
+      "url": "https://investor.id/market/423491/harga-emas-antam-antm-hari-ini-sabtu-3-januari-2026-jatuh-dari-rp-25-juta",
+      "title": "Harga Emas Antam Antm Hari Ini Sabtu 3 Januari 2026 Jatuh Dari Rp 25 Juta",
+      "source_name": "Investor Daily",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "a8b3e637fb508096d3908e9d6bdf3b3d"
+    },
+    {
+      "url": "https://investor.id/multimedia/423531/apbn-2026-siap-dijalankan-dana-transfer-daerah-lebih-rendah-dibanding-2025",
+      "title": "Apbn 2026 Siap Dijalankan Dana Transfer Daerah Lebih Rendah Dibanding 2025",
+      "source_name": "Investor Daily",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "cc2792b8140999b2aa0e70daf71ee926"
+    },
+    {
+      "url": "https://investor.id/lifestyle/423516/perayaan-tahun-baru-2026-di-l-hotel-yogyakarta-malioboro-hadirkan-ngalanglang-jaman",
+      "title": "Perayaan Tahun Baru 2026 Di L Hotel Yogyakarta Malioboro Hadirkan Ngalanglang Jaman",
+      "source_name": "Investor Daily",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "e14066a9727c94123310732c76dcbee5"
+    },
+    {
+      "url": "https://investor.id/investory/423077/resolusi-ekonomi-indonesia-2026-merombak-mesin-pertumbuhan-melampaui-stabilitas",
+      "title": "Resolusi Ekonomi Indonesia 2026 Merombak Mesin Pertumbuhan Melampaui Stabilitas",
+      "source_name": "Investor Daily",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "9b6fbd412ce5176cc7f5d918c9401456"
+    },
+    {
+      "url": "https://investor.id/multimedia/423533/indeks-kepercayaan-industri-pada-desember-2025-tetap-ekspansif",
+      "title": "Indeks Kepercayaan Industri Pada Desember 2025 Tetap Ekspansif",
+      "source_name": "Investor Daily",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "188bc2fc6231dc04ebede6e505dec2ff"
+    },
+    {
+      "url": "https://investor.id/investory/423423/bintang-2025",
+      "title": "Bintang 2025",
+      "source_name": "Investor Daily",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "77c78cebe885df88a976268f10c3d301"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/news/20251224120216-4-696993/jangan-panik-dapat-email-dari-bos-pajak-lakukan-hal-ini",
+      "title": "Jangan Panik Dapat Email Dari Bos Pajak Lakukan Hal Ini",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "9a9b11edf948cb05d55eb62884febaa5"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/news/20251231111930-4-698598/simak-ini-perubahan-lapor-spt-pajak-orang-pribadi-di-coretax",
+      "title": "Simak Ini Perubahan Lapor Spt Pajak Orang Pribadi Di Coretax",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "594123e5ae893c98d0f83f5bb9b9f71a"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/news/20251224094405-4-696929/karyawan-pengusaha-sampai-perusahaan-ini-tidak-perlu-bayar-pajak",
+      "title": "Karyawan Pengusaha Sampai Perusahaan Ini Tidak Perlu Bayar Pajak",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "fa34817fea2ab75d57d80f3c14ae92d0"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/news/20260102064051-4-698997/5-catatan-purbaya-soal-pengelolaan-apbn-2025",
+      "title": "5 Catatan Purbaya Soal Pengelolaan Apbn 2025",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "b61044f83aa0238385ed8694750994c9"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/news/20251230082405-4-698183/santuy-pegawai-hingga-pengusaha-kategori-ini-tak-perlu-bayar-pajak",
+      "title": "Santuy Pegawai Hingga Pengusaha Kategori Ini Tak Perlu Bayar Pajak",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "0045dc671b88326b51a5b596f72877e7"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/news/20251230095245-8-698223/video-sudah-ada-987-juta-wajib-pajak-yang-aktivasi-coretax",
+      "title": "Video Sudah Ada 987 Juta Wajib Pajak Yang Aktivasi Coretax",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "1c02e3300392551f4570a8ba3b5d89af"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/tech/20251230072450-37-698166/pencipta-chatgpt-ditunjuk-pungut-pajak-di-indonesia",
+      "title": "Pencipta Chatgpt Ditunjuk Pungut Pajak Di Indonesia",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "9ba96140ebcbce83421620162726d4ad"
+    },
+    {
+      "url": "https://www.cnbcindonesia.com/news/20251222113901-4-696232/tok-sekolah-swasta-di-jakarta-bebas-pajak",
+      "title": "Tok Sekolah Swasta Di Jakarta Bebas Pajak",
+      "source_name": "CNBC Indonesia Tax",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "53a71c5595711f3a19638037857acc30"
+    },
+    {
+      "url": "https://www.pwc.com/content/pwc/id/power-guide-2025",
+      "title": "Power Guide 2025",
+      "source_name": "PwC Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "2c4dfe0e90c4c0b1a1f53a073d187006"
+    },
+    {
+      "url": "https://www.pwc.com/id/en/publications/legal/legal-alert-2025-51.pdf",
+      "title": "Legal Alert 2025 51.Pdf",
+      "source_name": "PwC Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "0b3e8664b1a726d462bdc68cd7ea12cf"
+    },
+    {
+      "url": "https://www.pwc.com/id/en/publications/assurance/pt-indonesia-sfas-2025.pdf",
+      "title": "Pt Indonesia Sfas 2025.Pdf",
+      "source_name": "PwC Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "cb8027f4c27b69cf5d89e0415b34adb3"
+    },
+    {
+      "url": "https://www.pwc.com/content/pwc/id/hopes-and-fears-2025",
+      "title": "Hopes And Fears 2025",
+      "source_name": "PwC Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "90463c4e1728f3e1fd9b6db5a1687bf0"
+    },
+    {
+      "url": "https://www.pwc.com/id/en/pwc-publications/indonesia-ceo-survey-2025.html",
+      "title": "Indonesia Ceo Survey 2025",
+      "source_name": "PwC Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "018901135dd90e45e62200c919598df3"
+    },
+    {
+      "url": "https://www.pwc.com/id/en/taxflash/assets/english/2025/taxflash-2025-16.pdf",
+      "title": "Taxflash 2025 16.Pdf",
+      "source_name": "PwC Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "f8264525ce174277abeea591b0f11aae"
+    },
+    {
+      "url": "https://www.pwc.com/id/en/taxflash/assets/english/2025/taxflash-2025-17.pdf",
+      "title": "Taxflash 2025 17.Pdf",
+      "source_name": "PwC Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "beb082fb791f9424ce3ca02b734fb43a"
+    },
+    {
+      "url": "https://www2.deloitte.com/southeast-asia/en/about/governance/sea-impact-report-2025.html",
+      "title": "Sea Impact Report 2025",
+      "source_name": "Deloitte Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "ed2f2b81f1b13d20e46262cbcb9b4d9b"
+    },
+    {
+      "url": "https://www.ey.com/en_id/media/webcasts/2025/12/why-cop30-matters-for-2026-nature-carbon-and-wider-policy",
+      "title": "Why Cop30 Matters For 2026 Nature Carbon And Wider Policy",
+      "source_name": "EY Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "195966ece7d5f8c9b27b66ad93102aea"
+    },
+    {
+      "url": "https://www.ey.com/en_id/media/webcasts/2026/01/what-to-expect-from-global-financial-services-regulation-in-2026",
+      "title": "What To Expect From Global Financial Services Regulation In 2026",
+      "source_name": "EY Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "60cd5c6ad3bdf59b54fbeffcf125a905"
+    },
+    {
+      "url": "https://www.ey.com/en_id/insights/tech-sector/top-10-opportunities-for-technology-companies-in-2026",
+      "title": "Top 10 Opportunities For Technology Companies In 2026",
+      "source_name": "EY Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "6588a559e6978939d4fb43371f61ac44"
+    },
+    {
+      "url": "https://www.ey.com/en_id/newsroom/2024/06/vellayan-subbiah-from-india-named-ey-world-entrepreneur-of-the-year-2024",
+      "title": "Vellayan Subbiah From India Named Ey World Entrepreneur Of The Year 2024",
+      "source_name": "EY Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "016718c834e208abeef47125e70df20e"
+    },
+    {
+      "url": "https://home.kpmg/id/en/home/insights/2025/04/id-2024-transparency-report.html",
+      "title": "Id 2024 Transparency Report",
+      "source_name": "KPMG Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "13368ec73a2c6d3663197ed28a82b2e8"
+    },
+    {
+      "url": "https://home.kpmg/id/en/home/insights/2025/01/id-are-you-ready-sak-indonesia-jan-2025.html",
+      "title": "Id Are You Ready Sak Indonesia Jan 2025",
+      "source_name": "KPMG Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "ed08548bc888aae61c479e8997265cb0"
+    },
+    {
+      "url": "https://home.kpmg/id/en/home/insights/2025/10/id-our-impact-plan-2024.html",
+      "title": "Id Our Impact Plan 2024",
+      "source_name": "KPMG Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "6ee41570c3935798886ba9fbf238ac35"
+    },
+    {
+      "url": "https://home.kpmg/id/en/home/insights/2025/10/id-sak-indonesia-oct-2025.html",
+      "title": "Id Sak Indonesia Oct 2025",
+      "source_name": "KPMG Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "5823bcac65ca5923e7da875a52c50e27"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/07/chambers-high-net-worth-guide-2025",
+      "title": "Chambers High Net Worth Guide 2025",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "b8b0a674fca73d1a0d903b20e3b46e61"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/09/asia-legal-awards-2025",
+      "title": "Asia Legal Awards 2025",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "906639507f8de87a2b301eaa0fd783b6"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/12/chambers-asia-pacific-2026",
+      "title": "Chambers Asia Pacific 2026",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "54191210eeb82a9cdc5282f932783f5a"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/09/itr-asia-pacific-and-emea-awards-2025",
+      "title": "Itr Asia Pacific And Emea Awards 2025",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "2eee572f658363843ebc5f56d6492c2b"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/06/chambers-asia-pacific-and-greater-china-region-awards-2025",
+      "title": "Chambers Asia Pacific And Greater China Region Awards 2025",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "3923ac14ed42836e07ef0b12a9b5fec8"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/06/managing-ips-ip-stars-2025",
+      "title": "Managing Ips Ip Stars 2025",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "0277fe580163b5ac983c4b2ff0eba76a"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/06/iam-patent-1000-2025-guide",
+      "title": "Iam Patent 1000 2025 Guide",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "e5eb558a6ca4f735fd4e3d7f1ee19025"
+    },
+    {
+      "url": "https://www.bakermckenzie.com/en/newsroom/2025/12/chambers-fintech-2026-guide",
+      "title": "Chambers Fintech 2026 Guide",
+      "source_name": "Baker McKenzie Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "7ae52acf141bd9ec0f0b85c8e41ed87c"
+    },
+    {
+      "url": "https://kadin.id/wp-content/uploads/Kadin-Newsletter-Desember-2025.pdf",
+      "title": "Kadin Newsletter Desember 2025.Pdf",
+      "source_name": "KADIN",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "115fcaec5441775cc2ba8c788a66ff8f"
+    },
+    {
+      "url": "https://kadin.id/kadin-newsletter/kadin-newsletter-desember-2025/",
+      "title": "Kadin Newsletter Desember 2025",
+      "source_name": "KADIN",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "032e1b391dbb722bb981e642a77658eb"
+    },
+    {
+      "url": "https://kadin.id/wp-content/uploads/Screenshot-2025-12-26-145929.jpg",
+      "title": "Screenshot 2025 12 26 145929.Jpg",
+      "source_name": "KADIN",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "43f1347cb8db0bcb86a5a2da7c6a193f"
+    },
+    {
+      "url": "https://apindo.or.id/media/pengukuhan-pengurus-apindo-2023-2028-luncurkan-program-pengentasan-stunting-dan-umkm-merdeka",
+      "title": "Pengukuhan Pengurus Apindo 2023 2028 Luncurkan Program Pengentasan Stunting Dan Umkm Merdeka",
+      "source_name": "APINDO",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "002a3440ff3bdb3d8270b9537fee7c74"
+    },
+    {
+      "url": "https://apindo.or.id/media/apindo-paparkan-outlook-ekonomi-dan-bisnis-2025",
+      "title": "Apindo Paparkan Outlook Ekonomi Dan Bisnis 2025",
+      "source_name": "APINDO",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "b0fc018301f484b9e165cd587f289f39"
+    },
+    {
+      "url": "https://apindo.or.id/media/dialog-apindo-capres-2024-roadmap-perekonomian-indonesia-2024-2029",
+      "title": "Dialog Apindo Capres 2024 Roadmap Perekonomian Indonesia 2024 2029",
+      "source_name": "APINDO",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "f0842747db407c3c8e66aad835cb1cc4"
+    },
+    {
+      "url": "https://www.amcham.or.id/news/detail/progress-and-greater-promise-ahead-2023-us-indonesia-investment-report-",
+      "title": "Progress And Greater Promise Ahead 2023 Us Indonesia Investment Report",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "854f08b3ebe120b44425c753fea337c8"
+    },
+    {
+      "url": "https://www.amcham.or.id/event/detail/in-person-services-committee-meeting---december-2025",
+      "title": "In Person Services Committee Meeting   December 2025",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "ee8d3cf17c2f451361386fc0e69d52a5"
+    },
+    {
+      "url": "https://www.amcham.or.id/event/detail/in-person--annual-general-meeting-2025---december-2025",
+      "title": "In Person  Annual General Meeting 2025   December 2025",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "21ec0f95217450dc2fe53fd751617af1"
+    },
+    {
+      "url": "https://www.amcham.or.id/en/news/index/report-and-publications",
+      "title": "Report And Publications",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "f351a9b89bab582679fdf5a85644771c"
+    },
+    {
+      "url": "https://www.amcham.or.id/en/gallery/detailphoto/in-person-amcham-indonesia-trade--sustainability-dinner---december-2025",
+      "title": "In Person Amcham Indonesia Trade  Sustainability Dinner   December 2025",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "285a26e340c0d73e89eddfcae3761e3b"
+    },
+    {
+      "url": "https://www.amcham.or.id/en/news/index/amcham-update",
+      "title": "Amcham Update",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "90f1ce46a96b6ef2ef5971501b327366"
+    },
+    {
+      "url": "https://www.amcham.or.id/news/detail/the-nist-privacy-framework-a-tool-for-improving-privacy-through-enterprise-risk-management-english",
+      "title": "The Nist Privacy Framework A Tool For Improving Privacy Through Enterprise Risk Management English",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "9abd9181b7971db730605e6dd8d3ceeb"
+    },
+    {
+      "url": "https://www.amcham.or.id/news/detail/resilient-indonesia-2022-us-indonesia-investment-report",
+      "title": "Resilient Indonesia 2022 Us Indonesia Investment Report",
+      "source_name": "AmCham Indonesia",
+      "source_tier": "T2",
+      "category": "tax_bkpm",
+      "content_hash": "36a83970c08379c87528687bfcb7d781"
+    },
+    {
+      "url": "https://www.99.co/id/panduan/category/bisnis-investasi-properti",
+      "title": "Bisnis Investasi Properti",
+      "source_name": "99.co Bali",
+      "source_tier": "T2",
+      "category": "property",
+      "content_hash": "7d167bdd4f64ee29786c9a4768d805d0"
+    },
+    {
+      "url": "https://www.99.co/id/panduan/category/advertorial",
+      "title": "Advertorial",
+      "source_name": "99.co Bali",
+      "source_tier": "T2",
+      "category": "property",
+      "content_hash": "8964265b93082bbd683b1655e951ab3b"
+    },
+    {
+      "url": "https://www.99.co/id/panduan/category/desain-dekorasi",
+      "title": "Desain Dekorasi",
+      "source_name": "99.co Bali",
+      "source_tier": "T2",
+      "category": "property",
+      "content_hash": "e907b720c8cd7e86e2d7c6941ff0f30b"
+    },
+    {
+      "url": "https://www.99.co/id/panduan/category/tips/rekomendasi",
+      "title": "Rekomendasi",
+      "source_name": "99.co Bali",
+      "source_tier": "T2",
+      "category": "property",
+      "content_hash": "e47db1df1c3f52bf062971aed79ff061"
+    },
+    {
+      "url": "https://www.99.co/id/panduan/category/info-lainnya",
+      "title": "Info Lainnya",
+      "source_name": "99.co Bali",
+      "source_tier": "T2",
+      "category": "property",
+      "content_hash": "20de28add4d13fea7be4f35df92011d3"
+    },
+    {
+      "url": "https://www.kontan.co.id//investasi.kontan.co.id/news/cek-rekomendasi-saham-asii-drma-auto-bolt-untuk-perdagangan-senin-512026",
+      "title": "Cek Rekomendasi Saham Asii Drma Auto Bolt Untuk Perdagangan Senin 512026",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "2415fb23996ae1788ea3706b1b7ac725"
+    },
+    {
+      "url": "https://www.kontan.co.id//insight.kontan.co.id/news/mengawali-pekan-di-awal-tahun-di-tengah-aksi-trump-cek-rekomendasi-saham-hari-ini",
+      "title": "Mengawali Pekan Di Awal Tahun Di Tengah Aksi Trump Cek Rekomendasi Saham Hari Ini",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "800daf3e7dcdc2eed8f5ea088b496398"
+    },
+    {
+      "url": "https://www.kontan.co.id//investasi.kontan.co.id/news/ihsg-berpeluang-menguat-lagi-pada-senin-512026-ini-rekomendasi-sahamnya",
+      "title": "Ihsg Berpeluang Menguat Lagi Pada Senin 512026 Ini Rekomendasi Sahamnya",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "0c8c55b886b4f0c4dacf1aacff3f0f8c"
+    },
+    {
+      "url": "https://www.kontan.co.id//jelajahekonomi.kontan.co.id/news/kisah-perjuangan-ade-maman-mendorong-pertanian-berkelanjutan-di-desa-babadan",
+      "title": "Kisah Perjuangan Ade Maman Mendorong Pertanian Berkelanjutan Di Desa Babadan",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "ff705ffade66261afaa693b95abf05a3"
+    },
+    {
+      "url": "https://www.kontan.co.id//jelajahekonomi.kontan.co.id/news/taraf-hidup-warga-babadan-naik-berkat-praktik-bertani-organik",
+      "title": "Taraf Hidup Warga Babadan Naik Berkat Praktik Bertani Organik",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "3b7eff71668199b243d52786810ee55d"
+    },
+    {
+      "url": "https://www.kontan.co.id//jelajahekonomi.kontan.co.id/news/meniti-solusi-produksi-pertanian-dengan-bantuan-agritek",
+      "title": "Meniti Solusi Produksi Pertanian Dengan Bantuan Agritek",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "baaf0be817656dde3fcca23a8b1be251"
+    },
+    {
+      "url": "https://www.kontan.co.id//fokus.kontan.co.id/news/stimulus-jelang-nataru-mampukah-bikin-ekonomi-2025-melaju",
+      "title": "Stimulus Jelang Nataru Mampukah Bikin Ekonomi 2025 Melaju",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "4ef08ecfd71dc88f32f011ecbd78489a"
+    },
+    {
+      "url": "https://www.kontan.co.id//fokus.kontan.co.id/news/pemerintah-terus-kaji-skema-pembayaran-utang-jumbo-whoosh",
+      "title": "Pemerintah Terus Kaji Skema Pembayaran Utang Jumbo Whoosh",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "419a1d9666ec4a3185fb28c04837f444"
+    },
+    {
+      "url": "https://www.kontan.co.id//fokus.kontan.co.id/news/ekspor-indonesia-bisa-tertinggal-as-beri-keuntungan-besar-untuk-negara-tetangga",
+      "title": "Ekspor Indonesia Bisa Tertinggal As Beri Keuntungan Besar Untuk Negara Tetangga",
+      "source_name": "Kontan",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "bfa7d2e0218ed1212e505b5622247d17"
+    },
+    {
+      "url": "https://swa.co.id/books/13/lead-with-compassion",
+      "title": "Lead With Compassion",
+      "source_name": "SWA Magazine",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "d0c42b51e6d5678635db444b5403f1fa"
+    },
+    {
+      "url": "https://swa.co.id/books/12/buku-journey-to-became-strong-brands",
+      "title": "Buku Journey To Became Strong Brands",
+      "source_name": "SWA Magazine",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "e9c28bed7596abf4845a6239acb3693d"
+    },
+    {
+      "url": "https://swa.co.id/books/16/indonesia-living-legends-resep-kuat-sehat-dan-tangkas-dari-perusahaan-dan-merek-produk-berusia-lebih-dari-50-tahun",
+      "title": "Indonesia Living Legends Resep Kuat Sehat Dan Tangkas Dari Perusahaan Dan Merek Produk Berusia Lebih Dari 50 Tahun",
+      "source_name": "SWA Magazine",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "de4bcfa05a12f3cc97c6420f5bc3b9a1"
+    },
+    {
+      "url": "https://swa.co.id/books/17/how-the-best-ceos-act",
+      "title": "How The Best Ceos Act",
+      "source_name": "SWA Magazine",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "b0acb9378b409c12a46e1cfee0fbd2dc"
+    },
+    {
+      "url": "https://swa.co.id/books/18/resourceful-women-business-leaders",
+      "title": "Resourceful Women Business Leaders",
+      "source_name": "SWA Magazine",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "9decca0e44d016cad7f41cafb6eacbfb"
+    },
+    {
+      "url": "https://www.infobrand.id/konsisten-beri-pengalaman-terbaik-ella-skincare-raih-top-customer-satisfaction-award-2025.phtml",
+      "title": "Konsisten Beri Pengalaman Terbaik Ella Skincare Raih Top Customer Satisfaction Award 2025.Phtml",
+      "source_name": "InfoBrand",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "88d28dff935bbcc6a5e66f980f0600f0"
+    },
+    {
+      "url": "https://www.infobrand.id/top-consumer-satisfaction-award-2025-apresiasi-brand-dengan-kepuasan-pelanggan-tertinggi.phtml",
+      "title": "Top Consumer Satisfaction Award 2025 Apresiasi Brand Dengan Kepuasan Pelanggan Tertinggi.Phtml",
+      "source_name": "InfoBrand",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "4822474aee996d35a10887a32d31ce0c"
+    },
+    {
+      "url": "https://www.infobrand.id/my-baby-angkat-makna-peran-ibu-di-hari-ibu-2025.phtml",
+      "title": "My Baby Angkat Makna Peran Ibu Di Hari Ibu 2025.Phtml",
+      "source_name": "InfoBrand",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "94d86b6e51bf8003e8094a879a07df84"
+    },
+    {
+      "url": "https://www.infobrand.id/tegaskan-eksistensi-sebagai-brand-pilihan-konsumen-noera-raih-brand-choice-award-2025-dan-brand-choice-award-for-health-beauty-2025.phtml",
+      "title": "Tegaskan Eksistensi Sebagai Brand Pilihan Konsumen Noera Raih Brand Choice Award 2025 Dan Brand Choice Award For Health Beauty 2025.Phtml",
+      "source_name": "InfoBrand",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "e414f6bc2863f6f9f70df445dd975dec"
+    },
+    {
+      "url": "https://www.infobrand.id/reseller-la-paris-ungkap-kepuasan-produk-dan-antusias-sambut-program-la-paris-goes-to-thailand-2026.phtml",
+      "title": "Reseller La Paris Ungkap Kepuasan Produk Dan Antusias Sambut Program La Paris Goes To Thailand 2026.Phtml",
+      "source_name": "InfoBrand",
+      "source_tier": "T2",
+      "category": "business_regulations",
+      "content_hash": "c55e5842fd79211d4aaf50b139e04d43"
+    },
+    {
+      "url": "https://peraturan.go.id/id/perda-kabupaten-sukoharjo-no-1-tahun-2025",
+      "title": "Perda Kabupaten Sukoharjo No 1 Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "436d1d9f39ffcf427b87b5a8812dd0c7"
+    },
+    {
+      "url": "https://peraturan.go.id/id/permenkeu-no-99--tahun-2025",
+      "title": "Permenkeu No 99  Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "5103567b0139a63a3268ce16db78708c"
+    },
+    {
+      "url": "https://peraturan.go.id/files2/pp-no-7-tahun-2025_terjemah.pdf",
+      "title": "Pp No 7 Tahun 2025 Terjemah.Pdf",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "b0501b36f4409ee50f51a5ffe2e0c49a"
+    },
+    {
+      "url": "https://peraturan.go.id/files/peraturan-lpsk-no-3-tahun-2025.pdf",
+      "title": "Peraturan Lpsk No 3 Tahun 2025.Pdf",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "d9a44e87e5e40bf24d185d906dc1eb61"
+    },
+    {
+      "url": "https://peraturan.go.id/id/peraturan-ojk-no-34-tahun-2025",
+      "title": "Peraturan Ojk No 34 Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "fb933aa24345ac8cd55a712f528a8a20"
+    },
+    {
+      "url": "https://peraturan.go.id/id/perda-provinsi-bali-no-2-tahun-2025",
+      "title": "Perda Provinsi Bali No 2 Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "8e178f569711e5417d0fd4aa04b7c53c"
+    },
+    {
+      "url": "https://peraturan.go.id/id/permendikdasmen-no-27-tahun-2025",
+      "title": "Permendikdasmen No 27 Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "c705d041f65c6d54723cc93aa669f658"
+    },
+    {
+      "url": "https://peraturan.go.id/id/uu-no-20-tahun-2025",
+      "title": "Uu No 20 Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "1f1dca91146c01983afa1ef2369cc1a6"
+    },
+    {
+      "url": "https://peraturan.go.id/id/permendiktisaintek-no-52-tahun-2025",
+      "title": "Permendiktisaintek No 52 Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "9e36245b53f17ff12728703b2dfdf915"
+    },
+    {
+      "url": "https://peraturan.go.id/id/permenkes-no-18-tahun-2025",
+      "title": "Permenkes No 18 Tahun 2025",
+      "source_name": "JDIH Kemenkumham",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "12bb3d7d2b4d33798a34649b4f980ecb"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/pengumuman/7113/seleksi-terbuka-calon-hakim-konstitusi-dari-unsur-mahkamah-agung-ri-tahun-anggaran-2026",
+      "title": "Seleksi Terbuka Calon Hakim Konstitusi Dari Unsur Mahkamah Agung Ri Tahun Anggaran 2026",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "418b02575a054691c4a8e1a8482a39f5"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/berita/7108/selamat-ini-dia-pemenang-lomba-foto-peradilan-tahun-2025",
+      "title": "Selamat Ini Dia Pemenang Lomba Foto Peradilan Tahun 2025",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "73817afd9d0ba982b90624f807dcf567"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/pengumuman/7112/pemesanan-dan-pembelian-pakaian-dinas-seragam-batik-mahkamah-agung-pdsbma-pada-koperasi-pusat-mahkamah-agung",
+      "title": "Pemesanan Dan Pembelian Pakaian Dinas Seragam Batik Mahkamah Agung Pdsbma Pada Koperasi Pusat Mahkamah Agung",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "967a2b14fa0e57dfdb4f3c561d3185cc"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/keputusan/5015/sk-kma-nomor-239kmaskxi2021-tentang-pemberlakuan-aplikasi-e-bima",
+      "title": "Sk Kma Nomor 239Kmaskxi2021 Tentang Pemberlakuan Aplikasi E Bima",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "7df9fa649b7cdbb265127cc7b98c95d9"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/berita/7107/ini-daftar-satuan-kerja-penerima-anugerah-mahkamah-agung-tahun-2025",
+      "title": "Ini Daftar Satuan Kerja Penerima Anugerah Mahkamah Agung Tahun 2025",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "9b3bc28d6c12db1700de5ba612b58e2c"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/berita/7105/capaian-ma-tahun-2025-dari-transformasi-digital-hingga-penguatan-pengawasan",
+      "title": "Capaian Ma Tahun 2025 Dari Transformasi Digital Hingga Penguatan Pengawasan",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "a8d550570ea61cba31b03c61168abfa2"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/keputusan/4739/perma-nomor-2-tahun-2021-tentang-perubahan-atas-peraturan-mahkamah-agung-nomor-3-tahun-2016-tentang-tata-cara-pengajuan-keberatan-dan-penitipan-ganti-kerugian-ke-pengadilan-negeri-dalam-pengadaan-tanah-bagi-pembangunan-untuk-kepentingan-umum",
+      "title": "Perma Nomor 2 Tahun 2021 Tentang Perubahan Atas Peraturan Mahkamah Agung Nomor 3 Tahun 2016 Tentang Tata Cara Pengajuan Keberatan Dan Penitipan Ganti Kerugian Ke Pengadilan Negeri Dalam Pengadaan Tanah Bagi Pembangunan Untuk Kepentingan Umum",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "6ed4ffe4e3389cbfef1f7b3008f01ac5"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/artikel/7076/membangun-sistem-keuangan-ma-kemandirian-anggaran-memerlukan-komitmen-politik-hukum",
+      "title": "Membangun Sistem Keuangan Ma Kemandirian Anggaran Memerlukan Komitmen Politik Hukum",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "f79016fa7de39ee653fa0e8af86fc818"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/pengumuman/7104/perpanjangan-kedua-waktu-pendaftaran-dan-perubahan-jadwal-pelaksanaan-seleksi-terbuka-pengisian-jabatan-pimpinan-tinggi-madya-dan-pratama-pada-mahkamah-agung-ri-tahun-anggaran-2025",
+      "title": "Perpanjangan Kedua Waktu Pendaftaran Dan Perubahan Jadwal Pelaksanaan Seleksi Terbuka Pengisian Jabatan Pimpinan Tinggi Madya Dan Pratama Pada Mahkamah Agung Ri Tahun Anggaran 2025",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "39d2726630b7affb616674df8bdaef0b"
+    },
+    {
+      "url": "https://www.mahkamahagung.go.id/id/keputusan/5603/surat-edaran-sekretaris-ma-nomor-1-tahun-2023-tentang-pemberlakuan-layanan-promosi-mutasi-kesekretariatan-pindah-antar-instansi-dan-jabatan-fungsional-berbasis-elektronik-pada-aplikasi-sistem-informasi-kepegawaian-di-lingkungan-mahkamah-agun",
+      "title": "Surat Edaran Sekretaris Ma Nomor 1 Tahun 2023 Tentang Pemberlakuan Layanan Promosi Mutasi Kesekretariatan Pindah Antar Instansi Dan Jabatan Fungsional Berbasis Elektronik Pada Aplikasi Sistem Informasi Kepegawaian Di Lingkungan Mahkamah Agun",
+      "source_name": "Mahkamah Agung",
+      "source_tier": "T1",
+      "category": "legal_updates",
+      "content_hash": "f91478ccfde5f66fc60526b9b0097efa"
+    },
+    {
+      "url": "https://www.hukumonline.com/berita/surat-pembaca/",
+      "title": "Surat Pembaca",
+      "source_name": "Hukumonline",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "5eadd89916dfb4703d9f7b8a2f3f2ffc"
+    },
+    {
+      "url": "https://www.hukumonline.com/pusatdata/detail/lt694bc8d1ba06d/keputusan-gubernur-sulawesi-selatan-nomor-2142-xii-tahun-2025/",
+      "title": "Keputusan Gubernur Sulawesi Selatan Nomor 2142 Xii Tahun 2025",
+      "source_name": "Hukumonline",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "12b1aeda0425effc11316950a49fee8d"
+    },
+    {
+      "url": "https://www.hukumonline.com/pusatdata/detail/lt69539ab826053/surat-keputusan-bersama-direksi-pt-bei--pt-kpei--dan-pt-ksei-nomor-kep-00089-bei-12-2025--kep-100-dir-kpei-1225--kep-0045-dir-ksei-1225-tahun-2025/",
+      "title": "Surat Keputusan Bersama Direksi Pt Bei  Pt Kpei  Dan Pt Ksei Nomor Kep 00089 Bei 12 2025  Kep 100 Dir Kpei 1225  Kep 0045 Dir Ksei 1225 Tahun 2025",
+      "source_name": "Hukumonline",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "a6004f9c9ad211e13f4663b94ae07106"
+    },
+    {
+      "url": "https://www.hukumonline.com/pusatdata/detail/lt6958b67ddf6e7/undang-undang-nomor-1-tahun-2026/",
+      "title": "Undang Undang Nomor 1 Tahun 2026",
+      "source_name": "Hukumonline",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "c5558eb68b2ee8fc687318051d2ef2a4"
+    },
+    {
+      "url": "https://www.hukumonline.com/pusatdata/detail/lt69577c39571cd/putusan-mahkamah-agung-nomor-593-k-pid-2016/",
+      "title": "Putusan Mahkamah Agung Nomor 593 K Pid 2016",
+      "source_name": "Hukumonline",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "5381327754f9cc4628b6872ee3c4324a"
+    },
+    {
+      "url": "https://www.hukumonline.com/stories/article/lt69570c843e05c/minuman-beralkohol-dan-perbuatan-pidana-di-mata-pengadilan/",
+      "title": "Minuman Beralkohol Dan Perbuatan Pidana Di Mata Pengadilan",
+      "source_name": "Hukumonline",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "7fc64e4d4e858d77914dcade473bdd0d"
+    },
+    {
+      "url": "https://www.makarim.com/news/safe-zone-indonesia-launches-2026-game-rating-system",
+      "title": "Safe Zone Indonesia Launches 2026 Game Rating System",
+      "source_name": "Makarim & Taira",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "6321a2d42c7dfb10a59d4181e9b17c9d"
+    },
+    {
+      "url": "https://www.makarim.com/news/publication",
+      "title": "Publication",
+      "source_name": "Makarim & Taira",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "6bd6beac1da76b2d2a9c3b7914ba034c"
+    },
+    {
+      "url": "https://www.makarim.com/news/who-must-report-what-to-submit-and-when-key-highlights-of-new-regulation-on-financial-reporting",
+      "title": "Who Must Report What To Submit And When Key Highlights Of New Regulation On Financial Reporting",
+      "source_name": "Makarim & Taira",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "d2ae2cbf4836cdd86d79734dfab109c4"
+    },
+    {
+      "url": "https://www.makarim.com/news/indonesia-s-updated-carbon-trading-rules-for-investors-and-businesses",
+      "title": "Indonesia S Updated Carbon Trading Rules For Investors And Businesses",
+      "source_name": "Makarim & Taira",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "d5cb5ac00ac8e273667909d0ceb32780"
+    },
+    {
+      "url": "https://www.makarim.com/news/corporate-crime-under-the-new-criminal-code-regime-a-quick-reminder",
+      "title": "Corporate Crime Under The New Criminal Code Regime A Quick Reminder",
+      "source_name": "Makarim & Taira",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "0dc4bcd0510ba1b634e57fd7da6112d2"
+    },
+    {
+      "url": "https://www.abnrlaw.com/news/abnr-ranked-in-band-1-chambers-fintech-legal-2026",
+      "title": "Abnr Ranked In Band 1 Chambers Fintech Legal 2026",
+      "source_name": "Ali Budiardjo (ABNR)",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "8d187f94774006982f1b897f8502cbe0"
+    },
+    {
+      "url": "https://www.abnrlaw.com/news/abnr-in-chambers-asia-pacific-2026",
+      "title": "Abnr In Chambers Asia Pacific 2026",
+      "source_name": "Ali Budiardjo (ABNR)",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "a5155260539f8c75b7499ff77c663f83"
+    },
+    {
+      "url": "https://www.abnrlaw.com/news/abnr-wins-twelve-awards-from-hk-based-asia-business-law-journal",
+      "title": "Abnr Wins Twelve Awards From Hk Based Asia Business Law Journal",
+      "source_name": "Ali Budiardjo (ABNR)",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "610901c21b2f19053dd95cd81a3211bc"
+    },
+    {
+      "url": "https://www.abnrlaw.com/news/abnr-named-alb-indonesia-law-firm-of-the-year-2022",
+      "title": "Abnr Named Alb Indonesia Law Firm Of The Year 2022",
+      "source_name": "Ali Budiardjo (ABNR)",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "e236a99c2634e1f60e18a4e1967c33eb"
+    },
+    {
+      "url": "https://www.abnrlaw.com/news/abnr-advises-on-indonesian-legal-aspects-of-infinity-development-holdings-singapore-ipo",
+      "title": "Abnr Advises On Indonesian Legal Aspects Of Infinity Development Holdings Singapore Ipo",
+      "source_name": "Ali Budiardjo (ABNR)",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "5cb761fb9c846a4569411a1aa4eed62d"
+    },
+    {
+      "url": "https://www.abnrlaw.com/news/abnr-successfully-assists-posco-international-on-landmark-acquisition-of-sampoerna-agro",
+      "title": "Abnr Successfully Assists Posco International On Landmark Acquisition Of Sampoerna Agro",
+      "source_name": "Ali Budiardjo (ABNR)",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "152cc13d6ed34c158d64c8097dde9625"
+    },
+    {
+      "url": "https://www.abnrlaw.com/news/abnr-assisted-a-successful-listing-of-seres-group-co-ltd-on-sehk",
+      "title": "Abnr Assisted A Successful Listing Of Seres Group Co Ltd On Sehk",
+      "source_name": "Ali Budiardjo (ABNR)",
+      "source_tier": "T2",
+      "category": "legal_updates",
+      "content_hash": "96cae8e3d674faa5a0dc7c2841b5521c"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/category/rilis-berita",
+      "title": "Rilis Berita",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "c919f4e736c1db19abd4eaec03dbf1f1"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/sandbox-kesehatan-2025-kemkes-dibuka",
+      "title": "Sandbox Kesehatan 2025 Kemkes Dibuka",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "f168530f429efa88417a4512e2a4dd5a"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/pembaruan-sistem-website-ssi-asik-januari-2026",
+      "title": "Pembaruan Sistem Website Ssi Asik Januari 2026",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "e7b586b6e855497c95ee37ed08b840e2"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/bersama-lawan-tb-rsup-persahabatan-hadirkan-i-echo-tuberkulosis-2025",
+      "title": "Bersama Lawan Tb Rsup Persahabatan Hadirkan I Echo Tuberkulosis 2025",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "8df3fa08d3d8f5c0afe45bd546770725"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/pengumuman-hasil-seleksi-administrasi-rekrutmen-tenaga-gf-atmr-tahun-2026",
+      "title": "Pengumuman Hasil Seleksi Administrasi Rekrutmen Tenaga Gf Atmr Tahun 2026",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "6522bcb51a299f6a1048148c7c847ab9"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/penundaan-sementara-hasil-seleksi-administrasi-rekrutmen-tenaga-gf-atmr-2026",
+      "title": "Penundaan Sementara Hasil Seleksi Administrasi Rekrutmen Tenaga Gf Atmr 2026",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "733084f47ba347d200f655128c63cd3a"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/pemilihan-direktur-politeknik-kesehatan-di-lingkungan-kementerian-kesehatan-tahun-2025",
+      "title": "Pemilihan Direktur Politeknik Kesehatan Di Lingkungan Kementerian Kesehatan Tahun 2025",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "c4cdd57d25ca0b6c8848745ea83d88a0"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/category/laporan-keuangan",
+      "title": "Laporan Keuangan",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "e0c74b123b734b76da5c829c99490b13"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/kemenkes-buka-lowongan-tenaga-global-fund-gf-atmr-tahun-2026-cek-formasi-dan-syaratnya",
+      "title": "Kemenkes Buka Lowongan Tenaga Global Fund Gf Atmr Tahun 2026 Cek Formasi Dan Syaratnya",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "9f716dd9d49577548fcb2daeda3bba31"
+    },
+    {
+      "url": "https://www.kemkes.go.id/id/pengumuman-rekrutmen-tenaga-program-global-fund-gf-atmr-tahun-2026",
+      "title": "Pengumuman Rekrutmen Tenaga Program Global Fund Gf Atmr Tahun 2026",
+      "source_name": "Kemenkes RI",
+      "source_tier": "T1",
+      "category": "healthcare",
+      "content_hash": "e4907787108b0b3016923085914bc711"
+    },
+    {
+      "url": "https://www.baliinternationalschool.com/school-calendar-2025-2026",
+      "title": "School Calendar 2025 2026",
+      "source_name": "Bali International School",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "501daa070ccc6b45860c7d15b98591b1"
+    },
+    {
+      "url": "https://www.jisedu.or.id/about/news-and-media/blog/post/~board/jis-blog/post/creating-structures-that-create-belonging-and-emotional-safety",
+      "title": "Creating Structures That Create Belonging And Emotional Safety",
+      "source_name": "JIS Jakarta",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "0c548b7fb5241d5d92edec0b618130c2"
+    },
+    {
+      "url": "https://www.jisedu.or.id/about/news-and-media/blog/post/~board/jis-blog/post/jiss-gamelan-legacy-safeguarding-a-national-treasure",
+      "title": "Jiss Gamelan Legacy Safeguarding A National Treasure",
+      "source_name": "JIS Jakarta",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "7bce7d830c174e4f5a695d6cb027bde1"
+    },
+    {
+      "url": "https://www.jisedu.or.id/about/news-and-media/blog/post/~board/jis-blog/post/faces-of-jis",
+      "title": "Faces Of Jis",
+      "source_name": "JIS Jakarta",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "ca9bcfd15a24f2364085105e984a1e76"
+    },
+    {
+      "url": "https://www.jisedu.or.id/about/news-and-media/blog/post/~board/jis-blog/post/bringing-it-home-our-graduates-are-ambassadors-of-indonesia-heres-how-to-be-purposeful-ones",
+      "title": "Bringing It Home Our Graduates Are Ambassadors Of Indonesia Heres How To Be Purposeful Ones",
+      "source_name": "JIS Jakarta",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "13beea6c939964e37e7dbb1d50eff469"
+    },
+    {
+      "url": "https://www.jisedu.or.id/about/news-and-media/blog/post/~board/jis-blog/post/the-impact-of-yayasan-emmanuel-changing-lives-and-driving-change-one-program-at-a-time",
+      "title": "The Impact Of Yayasan Emmanuel Changing Lives And Driving Change One Program At A Time",
+      "source_name": "JIS Jakarta",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "cfc351c9b5047a63760abac19b6927a8"
+    },
+    {
+      "url": "https://www.jisedu.or.id/about/news-and-media/blog/post/~board/jis-blog/post/home-away-from-home-how-jis-expatriate-students-preserve-their-native-culture-while-adapting-to-new-ones",
+      "title": "Home Away From Home How Jis Expatriate Students Preserve Their Native Culture While Adapting To New Ones",
+      "source_name": "JIS Jakarta",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "5717defe5861c2b8f89b4436943e49a4"
+    },
+    {
+      "url": "https://www.jisedu.or.id/about/news-and-media/blog/post/~board/jis-blog/post/pathway-to-the-future-what-to-look-for-in-a-high-school-to-best-prepare-your-teenager-for-university",
+      "title": "Pathway To The Future What To Look For In A High School To Best Prepare Your Teenager For University",
+      "source_name": "JIS Jakarta",
+      "source_tier": "T2",
+      "category": "education",
+      "content_hash": "d1c3c3cbf58b61804a43f5898471b239"
+    },
+    {
+      "url": "https://dephub.go.id/post/read/ruang-lingkup",
+      "title": "Ruang Lingkup",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "619cfce580d928b4481c55c850988f97"
+    },
+    {
+      "url": "https://dephub.go.id/post/read/transportation-information---2021",
+      "title": "Transportation Information   2021",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "e0de90088db8fef42df6ebc57f7216a7"
+    },
+    {
+      "url": "https://dephub.go.id/post/read/struktur-organisasi-kemenhub",
+      "title": "Struktur Organisasi Kemenhub",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "5ffbfbda6f89b089ebf0bbf6bf56d46e"
+    },
+    {
+      "url": "https://dephub.go.id/post/kategori/Pengumuman-Hasil-Pengadaan",
+      "title": "Pengumuman Hasil Pengadaan",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "d4a3588318225b8a9619ed152fc26254"
+    },
+    {
+      "url": "https://dephub.go.id/post/kategori/publikasi-transmedia",
+      "title": "Publikasi Transmedia",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "e759fe0541e85f4e6170c6a5698c5d39"
+    },
+    {
+      "url": "https://dephub.go.id/post/read/logistik-perintis-di-kalimantan-utara,-menjaga-konektivitas-laut-dan-udara-di-perbatasan",
+      "title": "Logistik Perintis Di Kalimantan Utara, Menjaga Konektivitas Laut Dan Udara Di Perbatasan",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "f56ee00464f1ee54b2c520f35a3e3484"
+    },
+    {
+      "url": "https://dephub.go.id/post/read/pengumuman-hasil-pelelangan-melalui-mekanisme-penunjukan-langsung-mitra-kerja-sama-konsesi-pengusahaan-wtdp-di-perairan-satui-kabupaten-tanah-bumbu-provinsi-kalimantan-selatan",
+      "title": "Pengumuman Hasil Pelelangan Melalui Mekanisme Penunjukan Langsung Mitra Kerja Sama Konsesi Pengusahaan Wtdp Di Perairan Satui Kabupaten Tanah Bumbu Provinsi Kalimantan Selatan",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "2f5f066cea9a77082ab20d7e553d743c"
+    },
+    {
+      "url": "https://dephub.go.id/post/read/tugas-fungsi",
+      "title": "Tugas Fungsi",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "6d956e0d4a433174b8843d3cf79d36d5"
+    },
+    {
+      "url": "https://dephub.go.id/post/kategori/Statistik-Dan-BIT",
+      "title": "Statistik Dan Bit",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "998af0593fb8853f9ad99da2b645606d"
+    },
+    {
+      "url": "https://dephub.go.id/post/read/merajut-konektivitas-di-provinsi-paling-selatan-indonesia",
+      "title": "Merajut Konektivitas Di Provinsi Paling Selatan Indonesia",
+      "source_name": "Ministry of Transportation",
+      "source_tier": "T1",
+      "category": "transportation",
+      "content_hash": "c50374bd18d2f68eb4b85e9e9ed1d408"
+    },
+    {
+      "url": "https://www.grab.com/id/press/others/tingkatkan-pelayanan-publik-dan-integrasi-transportasi-grab-indonesia-dan-pemerintah-provinsi-dki-jakarta-teken-mou-di-jakarta-future-festival-2025/",
+      "title": "Tingkatkan Pelayanan Publik Dan Integrasi Transportasi Grab Indonesia Dan Pemerintah Provinsi Dki Jakarta Teken Mou Di Jakarta Future Festival 2025",
+      "source_name": "Grab",
+      "source_tier": "T2",
+      "category": "transportation",
+      "content_hash": "13720826a227329bb1827b52db3ecb24"
+    },
+    {
+      "url": "https://www.bluebirdgroup.com/news/bluebird-hadir-di-solo-ajak-masyarakat-jelajah-kota-lebih-nyaman?lang=en",
+      "title": "Bluebird Hadir Di Solo Ajak Masyarakat Jelajah Kota Lebih Nyaman",
+      "source_name": "BlueBird",
+      "source_tier": "T2",
+      "category": "transportation",
+      "content_hash": "9c1beaa6a71800b31ecefae19cdd00e5"
+    },
+    {
+      "url": "https://www.bluebirdgroup.com/news/bluebird-group-temani-perjalanan-akhir-tahun-yang-aman-nyaman-untuk-warga-semarang?lang=en",
+      "title": "Bluebird Group Temani Perjalanan Akhir Tahun Yang Aman Nyaman Untuk Warga Semarang",
+      "source_name": "BlueBird",
+      "source_tier": "T2",
+      "category": "transportation",
+      "content_hash": "806a09cfbda1f2a91dfb27383b87b289"
+    },
+    {
+      "url": "https://www.bluebirdgroup.com/news/pendapatan-tumbuh-124-hingga-kuartal-iii-2025-bluebird-perkuat-kontribusi-non-taksi-dan-layanan-regional?lang=en",
+      "title": "Pendapatan Tumbuh 124 Hingga Kuartal Iii 2025 Bluebird Perkuat Kontribusi Non Taksi Dan Layanan Regional",
+      "source_name": "BlueBird",
+      "source_tier": "T2",
+      "category": "transportation",
+      "content_hash": "adbb82dd890bef6365d1880678a07f49"
+    },
+    {
+      "url": "https://www.balipost.com/news/2026/01/04/517584/Sepanjang-2025,Anjing-Positif-Rabies...html",
+      "title": "Sepanjang 2025,Anjing Positif Rabies..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "436bcf024bcc3e3ac6a583178bd6ea78"
+    },
+    {
+      "url": "https://www.balipost.com/news/2026/01/05/517679/Ini,Jadwal-Salat-Denpasar-dan...html",
+      "title": "Ini,Jadwal Salat Denpasar Dan..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "56dc11a63b2341c7a063be2e223a0af1"
+    },
+    {
+      "url": "https://www.balipost.com/news/2025/12/30/516807/Ancam-Keberadaan-Pura,Pengembangan-Perumahan...html",
+      "title": "Ancam Keberadaan Pura,Pengembangan Perumahan..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "c96925a8734bc75c0ca31681ddeb53c6"
+    },
+    {
+      "url": "https://www.balipost.com/news/2026/01/04/517603/Jaga-Keamanan-Wisatawan,Polsek-Blahbatuh...html",
+      "title": "Jaga Keamanan Wisatawan,Polsek Blahbatuh..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "96bd51f3493b7d174d0fd8c6aa87a693"
+    },
+    {
+      "url": "https://www.balipost.com/news/2026/01/05/517696/Jasad-Pelatih-Valencia-Ditemukan,Pencarian...html",
+      "title": "Jasad Pelatih Valencia Ditemukan,Pencarian..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "810c964642881c92f1568adece2ed906"
+    },
+    {
+      "url": "https://www.balipost.com/news/2026/01/03/517436/Sepanjang-2025-Bali-Dilanda-2.644...html",
+      "title": "Sepanjang 2025 Bali Dilanda 2.644..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "b4e2a7083e55b1620f7d5d7e09f48637"
+    },
+    {
+      "url": "https://www.balipost.com/news/2025/07/28/475650/Jadwal-FSBJ-28-Juli-2025...html",
+      "title": "Jadwal Fsbj 28 Juli 2025..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "b4b0c7553200c9b5644e1cf857c3d8e3"
+    },
+    {
+      "url": "https://www.balipost.com/news/2026/01/04/517588/PSEL-Ditolak-Warga-Pesanggaran,Koster...html",
+      "title": "Psel Ditolak Warga Pesanggaran,Koster..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "c119b956bee4b3f6efa7a221db24ab53"
+    },
+    {
+      "url": "https://www.balipost.com/news/2025/11/29/509431/Dampak-Proyek-Gorong-gorong,Diprediksi-Picu...html",
+      "title": "Dampak Proyek Gorong Gorong,Diprediksi Picu..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "e2272786d056ad66272bf50415ca6e58"
+    },
+    {
+      "url": "https://www.balipost.com/news/2026/01/04/517642/Empat-Pejabat-Utama-Polres-Buleleng...html",
+      "title": "Empat Pejabat Utama Polres Buleleng..",
+      "source_name": "Bali Post",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "0834bde0962a6827d217a9d21a001d7e"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/209585/john-herdman-resmi-latih-timnas-indonesia",
+      "title": "John Herdman Resmi Latih Timnas Indonesia",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "345d92772037b6c2f228cd465a41fcba"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/209293/jelang-akhir-tahun-sejumlah-komoditi-alami-kenaikan-harga",
+      "title": "Jelang Akhir Tahun Sejumlah Komoditi Alami Kenaikan Harga",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "adb73937868e1e588cba5861fb8dcc29"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/209485/senderan-tukad-badung-di-jalan-sulawesi-ambles",
+      "title": "Senderan Tukad Badung Di Jalan Sulawesi Ambles",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "ddc46c172cc49b86f04f565d74caf2d8"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/209623/abdi-pertiwi-mandala-gelar-keramas-run-2026",
+      "title": "Abdi Pertiwi Mandala Gelar Keramas Run 2026",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "0fa4a91323aedfda89efdf20f43b33eb"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/208596/tampil-spontan-putri-koster-bikin-heboh-denfes-2025",
+      "title": "Tampil Spontan Putri Koster Bikin Heboh Denfes 2025",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "303c325d286bac0dbfed7ba16a344062"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/209596/3-sdn-di-jembrana-resmi-diregrouping",
+      "title": "3 Sdn Di Jembrana Resmi Diregrouping",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "d438cc02ce1e59f2459319aa99954697"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/151199/merchant-qris-bank-bpd-bali-bisa-diterima-transaksi-dari-pembayaran-mobile-malaysia",
+      "title": "Merchant Qris Bank Bpd Bali Bisa Diterima Transaksi Dari Pembayaran Mobile Malaysia",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "6fa3c647047c5fe02773acc49d172904"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/144961/tanda-cinta-bank-bpd-bali-beli-emas-tanpa-cemas",
+      "title": "Tanda Cinta Bank Bpd Bali Beli Emas Tanpa Cemas",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "c53f422d23d1b7eb3ee94bf08f8d68d8"
+    },
+    {
+      "url": "https://www.nusabali.com/berita/209590/pasar-modal-catat-kinerja-solid-di-2025",
+      "title": "Pasar Modal Catat Kinerja Solid Di 2025",
+      "source_name": "Nusa Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "b44c282d03975b0cb788b88bb8e1bfeb"
+    },
+    {
+      "url": "https://bali.tribunnews.com/jembrana/588897/95-ribu-orang-tinggalkan-bali-dalam-3-hari-rata-rata-31-ribu-per-hari-arus-balik-nataru-2025-2026",
+      "title": "95 Ribu Orang Tinggalkan Bali Dalam 3 Hari Rata Rata 31 Ribu Per Hari Arus Balik Nataru 2025 2026",
+      "source_name": "Tribun Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "51a146b5fc1d25679fdc7a2ae2d294e1"
+    },
+    {
+      "url": "https://bali.tribunnews.com/tag/galeri24-singaraja",
+      "title": "Galeri24 Singaraja",
+      "source_name": "Tribun Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "6a3d2fb596813a83afc4e47cf829523e"
+    },
+    {
+      "url": "https://bali.tribunnews.com/jembrana/588920/targetkan-vaksinasi-80-persen-dari-total-populasi-mendoyo-tertinggi-kasus-positif-rabies-2025",
+      "title": "Targetkan Vaksinasi 80 Persen Dari Total Populasi Mendoyo Tertinggi Kasus Positif Rabies 2025",
+      "source_name": "Tribun Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "022eb9e0dcb627401b75d16aa90db189"
+    },
+    {
+      "url": "https://bali.tribunnews.com/buleleng/588904/kunjungan-kapal-pesiar-ke-buleleng-bali-tahun-2026-melonjak-50-persendorong-ekonomi-desa-penyangga",
+      "title": "Kunjungan Kapal Pesiar Ke Buleleng Bali Tahun 2026 Melonjak 50 Persendorong Ekonomi Desa Penyangga",
+      "source_name": "Tribun Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "b90dc42db1b0e8638542c86a86b32879"
+    },
+    {
+      "url": "https://bali.tribunnews.com/superball/588900/target-pribadi-rahmat-arjuna-di-tahun-2026-ingin-akhiri-paceklik-goldi-bali-united",
+      "title": "Target Pribadi Rahmat Arjuna Di Tahun 2026 Ingin Akhiri Paceklik Goldi Bali United",
+      "source_name": "Tribun Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "28a231cebfa0e777afb0e56604a9dd14"
+    },
+    {
+      "url": "https://bali.tribunnews.com/tag/akbp-kadek-citra",
+      "title": "Akbp Kadek Citra",
+      "source_name": "Tribun Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "2a01032f2021884b704e7ef81dadc9d6"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/peristiwa/707024634/euforia-kembang-api-tahun-baru-2026-di-jalanan-bali-picu-rentetan-kebakaran-ini-lokasi-kejadiannya",
+      "title": "Euforia Kembang Api Tahun Baru 2026 Di Jalanan Bali Picu Rentetan Kebakaran Ini Lokasi Kejadiannya",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "25f3624996d0380217f24068332b0c25"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/kesehatan/707030401/waspada-kasus-dbd-di-karangasem-melonjak-tajam-sepanjang-2025-satu-pasien-meninggal-dunia",
+      "title": "Waspada Kasus Dbd Di Karangasem Melonjak Tajam Sepanjang 2025 Satu Pasien Meninggal Dunia",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "f951f5b4b047a01a9bc16268ba003eec"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/buleleng/707027086/mengaku-sepanjang-2025-pelanggaran-personel-polres-buleleng-turun-drastis-hingga-90-persen-begini-keterangan-kapolres",
+      "title": "Mengaku Sepanjang 2025 Pelanggaran Personel Polres Buleleng Turun Drastis Hingga 90 Persen Begini Keterangan Kapolres",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "b717c97584ffcc8ac7210939619e1977"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/tag/Bu-Guru-Salsa-5-Menit-Link-Download",
+      "title": "Bu Guru Salsa 5 Menit Link Download",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "9247c9147f56fe0bb15897a5e9ebac6c"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/tag/Bu-Guru-Salsa-5-Menit-Link",
+      "title": "Bu Guru Salsa 5 Menit Link",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "1316af4ae47cc4c36f791170a1f07bcc"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/karangasem/707015221/nah-efek-tren-unik-2025-petugas-damkartan-karangasem-lebih-sibuk-berburu-ular-daripada-padamkan-api",
+      "title": "Nah Efek Tren Unik 2025 Petugas Damkartan Karangasem Lebih Sibuk Berburu Ular Daripada Padamkan Api",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "1f7d935653c0b00d356a2802ba549363"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/opini/706983285/refleksi-hari-ibu-2025-ibu-adalah-nakhoda-bahtera-rumah-tangga",
+      "title": "Refleksi Hari Ibu 2025 Ibu Adalah Nakhoda Bahtera Rumah Tangga",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "87de8d20a0fe3707afc88a377a41abe9"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/tag/Link-Bu-Guru-Salsa-Joget-Tanpa-Busana",
+      "title": "Link Bu Guru Salsa Joget Tanpa Busana",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "b82e2e2acb91cab3efbc919419c0bc97"
+    },
+    {
+      "url": "https://radarbali.jawapos.com/video/detail/146205/pesona-penjor-serangan-2025-merangkai-budaya-merayakan-harmoni-karya-yadnya",
+      "title": "Pesona Penjor Serangan 2025 Merangkai Budaya Merayakan Harmoni Karya Yadnya",
+      "source_name": "Radar Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "f32c47b75fe597b3e91cb52260c188b7"
+    },
+    {
+      "url": "https://bali.suara.com/read/2026/01/04/211658/bmkg-547-gempa-bumi-terjadi-di-bali-selama-tahun-2025",
+      "title": "Bmkg 547 Gempa Bumi Terjadi Di Bali Selama Tahun 2025",
+      "source_name": "Suara.com Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "a319d31d09884b374eb5eff77ad2d024"
+    },
+    {
+      "url": "https://bali.suara.com/read/2026/01/02/150825/sambut-2026-dirut-yakin-bri-mampu-bertransformasi-dan-tumbuh-dalam-jangka-panjang",
+      "title": "Sambut 2026 Dirut Yakin Bri Mampu Bertransformasi Dan Tumbuh Dalam Jangka Panjang",
+      "source_name": "Suara.com Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "e9e6a82aec33ef2982d807a4c6b61d69"
+    },
+    {
+      "url": "https://bali.suara.com/read/2025/12/30/135426/sarapan-di-atas-air-intip-5-tempat-instagramable-floating-breakfast-di-bali-mulai-rp-200-ribuan",
+      "title": "Sarapan Di Atas Air Intip 5 Tempat Instagramable Floating Breakfast Di Bali Mulai Rp 200 Ribuan",
+      "source_name": "Suara.com Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "34e2786a8cf6f94982491003f0c37197"
+    },
+    {
+      "url": "https://bali.suara.com/read/2026/01/04/141558/ini-5-warna-baju-lebaran-2026-diprediksi-jadi-tren-terpanas",
+      "title": "Ini 5 Warna Baju Lebaran 2026 Diprediksi Jadi Tren Terpanas",
+      "source_name": "Suara.com Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "e3c252435ff2fcda764fb80f041a0de9"
+    },
+    {
+      "url": "https://bali.suara.com/read/2025/12/31/165656/dari-rebranding-hingga-bantu-bencana-berikut-capaian-bri-selama-tahun-2025",
+      "title": "Dari Rebranding Hingga Bantu Bencana Berikut Capaian Bri Selama Tahun 2025",
+      "source_name": "Suara.com Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "ee15aaef7e7b49cf072ec3dc34d4f317"
+    },
+    {
+      "url": "https://bali.suara.com/read/2026/01/04/111608/ini-4-smartphone-paling-diburu-di-awal-januari-2026",
+      "title": "Ini 4 Smartphone Paling Diburu Di Awal Januari 2026",
+      "source_name": "Suara.com Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "4acf806c10f15010af7e02fdaee3aad2"
+    },
+    {
+      "url": "https://www.baliadvertiser.biz/category/current_columns/garden-doctor/",
+      "title": "Garden Doctor",
+      "source_name": "Bali Advertiser",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "d848a711bebfa983e0439fdc185ea2db"
+    },
+    {
+      "url": "https://www.baliadvertiser.biz/category/mail-order-brides/",
+      "title": "Mail Order Brides",
+      "source_name": "Bali Advertiser",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "a0c235391a169364b0ca05430e57d3f1"
+    },
+    {
+      "url": "https://www.nowbali.co.id/category/offers/dining-offers/",
+      "title": "Dining Offers",
+      "source_name": "Now Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "5e2b4bca24cc4c64442726fc9818f1d6"
+    },
+    {
+      "url": "https://www.nowbali.co.id/category/restaurants-bars/dining-reviews/",
+      "title": "Dining Reviews",
+      "source_name": "Now Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "71d809e34331c97c71aa8cb4a72fa37f"
+    },
+    {
+      "url": "https://www.nowbali.co.id/category/explore-bali/destinations/",
+      "title": "Destinations",
+      "source_name": "Now Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "201376a014eb6075e874622eab261986"
+    },
+    {
+      "url": "https://www.nowbali.co.id/category/culture/balinese-ceremonies/",
+      "title": "Balinese Ceremonies",
+      "source_name": "Now Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "53237101db7f3833b7030383b8467a08"
+    },
+    {
+      "url": "https://www.nowbali.co.id/category/offers/experience-offers/",
+      "title": "Experience Offers",
+      "source_name": "Now Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "f5cdde0dff0e084a8c5a88a631faac06"
+    },
+    {
+      "url": "https://www.nowbali.co.id/category/restaurants-bars/dining-news/",
+      "title": "Dining News",
+      "source_name": "Now Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "1d0e453a649942c80aecfe56751a0bda"
+    },
+    {
+      "url": "https://www.detik.com/bali/berita/d-8291493/panduan-hari-baik-kalender-bali-senin-5-januari-2026-cek-ala-ayuning-dewasa",
+      "title": "Panduan Hari Baik Kalender Bali Senin 5 Januari 2026 Cek Ala Ayuning Dewasa",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "6cc3056a10c7fba731bf9040ecb5fe31"
+    },
+    {
+      "url": "https://www.detik.com/tag/puputan-margarana",
+      "title": "Puputan Margarana",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "c01f7c871f2d69afa8482db3b71774fd"
+    },
+    {
+      "url": "https://www.detik.com/bali/berita/d-8291828/koster-akan-masif-keliling-bali-bertemu-warga-pada-2026",
+      "title": "Koster Akan Masif Keliling Bali Bertemu Warga Pada 2026",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "f0ed73f055ad77b707833b7eff8a6d95"
+    },
+    {
+      "url": "https://www.detik.com/bali/berita/d-8291972/kuta-beach-skatepark-jadi-rumah-aman-bagi-skater-pemula",
+      "title": "Kuta Beach Skatepark Jadi Rumah Aman Bagi Skater Pemula",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "0df9dc4a4d925c73df712b3d5642a816"
+    },
+    {
+      "url": "https://www.detik.com/bali/berita/d-8291867/koster-segera-panggil-pengusaha-online-travel-agent-soal-pajak-termasuk-airbnb",
+      "title": "Koster Segera Panggil Pengusaha Online Travel Agent Soal Pajak Termasuk Airbnb",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "2bdccb1d57ac99d2d49ac50de4fe2dca"
+    },
+    {
+      "url": "https://www.detik.com/bali/nusra/d-8291676/pencarian-keluarga-pelatih-valencia-tenggelam-diperpanjang-lagi",
+      "title": "Pencarian Keluarga Pelatih Valencia Tenggelam Diperpanjang Lagi",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "63bad0f6ecd3b4b429b9711c12ef79c7"
+    },
+    {
+      "url": "https://www.detik.com/tag/bali-united",
+      "title": "Bali United",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "7c5e1e4f7b5c5eb7d63ae984e8a32c8d"
+    },
+    {
+      "url": "https://www.detik.com/bali/budaya/d-8288071/ada-tradisi-cium-hidung-di-ntt-apa-maknanya",
+      "title": "Ada Tradisi Cium Hidung Di Ntt Apa Maknanya",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "4a973e2a6fd9a4b5128e055a08e0a741"
+    },
+    {
+      "url": "https://www.detik.com/bali/nusra/d-8291271/polda-ntt-pastikan-jenazah-yang-ditemukan-di-labuan-bajo-pelatih-valencia",
+      "title": "Polda Ntt Pastikan Jenazah Yang Ditemukan Di Labuan Bajo Pelatih Valencia",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "7d62f59b93120c5b77832b206fd36258"
+    },
+    {
+      "url": "https://www.detik.com/bali/wisata/d-8291977/pemprov-bali-terus-dorong-wisatawan-berlibur-di-luar-kawasan-sarbagita",
+      "title": "Pemprov Bali Terus Dorong Wisatawan Berlibur Di Luar Kawasan Sarbagita",
+      "source_name": "Detik Bali",
+      "source_tier": "T2",
+      "category": "bali_news",
+      "content_hash": "90565b5b8a06fa062404d6c8db8aec5e"
+    }
+  ]
+}

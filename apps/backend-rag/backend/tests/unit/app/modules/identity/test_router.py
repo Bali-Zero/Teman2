@@ -154,3 +154,4 @@ class TestLoginModels:
         )
         assert response.success is True
         assert response.sessionId == "session_123"
+

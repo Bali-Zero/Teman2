@@ -494,7 +494,7 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
             </span>
             <button
               onClick={handleCopy}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded"
+              className="transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded opacity-70 hover:opacity-100"
               aria-label="Copy message"
             >
               {copied ? (

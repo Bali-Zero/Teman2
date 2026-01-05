@@ -302,3 +302,4 @@ class TestCRMAutoRouter:
         assert data["clients_created"] == 0
         assert data["clients_updated"] == 0
         assert data["practices_created"] == 0
+

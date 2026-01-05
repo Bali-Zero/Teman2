@@ -44,6 +44,7 @@ from app.routers import (
     portal,
     portal_invite,
     session,
+    team,
     team_activity,
     team_analytics,
     team_drive,
@@ -142,6 +143,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(knowledge_visa.router)
 
     # Additional routers (included directly on app instance)
+    api.include_router(team.router)  # Team member visibility management
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
     api.include_router(media.router)

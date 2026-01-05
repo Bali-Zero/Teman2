@@ -124,3 +124,4 @@ class TestClientSegmentationService:
 
         should_nurture, reason = client_segmentation_service.should_nurture(client_data)
         assert should_nurture is False
+

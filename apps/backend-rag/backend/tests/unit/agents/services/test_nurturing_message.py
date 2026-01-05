@@ -165,3 +165,4 @@ class TestNurturingMessageService:
         message = service._generate_fallback_message(client_data)
         assert isinstance(message, str)
         assert len(message) > 0
+

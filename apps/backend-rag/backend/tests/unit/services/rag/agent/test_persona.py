@@ -116,3 +116,4 @@ class TestOutOfDomainResponses:
     def test_identity_response(self):
         """Test identity response contains company name"""
         assert "zantara" in OUT_OF_DOMAIN_RESPONSES["identity"].lower()
+

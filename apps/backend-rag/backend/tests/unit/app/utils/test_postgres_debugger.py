@@ -240,3 +240,4 @@ class TestPostgreSQLDebuggerInit:
             mock_settings.database_url = "postgresql://from-settings"
             debugger = PostgreSQLDebugger()
             assert debugger.database_url == "postgresql://from-settings"
+

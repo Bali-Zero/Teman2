@@ -101,3 +101,4 @@ class TestAPIKeyAuth:
         """Test removing nonexistent key"""
         result = api_key_auth.remove_key("nonexistent-key")
         assert result is False
+

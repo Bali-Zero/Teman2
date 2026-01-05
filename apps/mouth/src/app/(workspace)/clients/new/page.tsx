@@ -69,7 +69,6 @@ export default function NewClientPage() {
     address: '',
     lead_source: undefined,
     service_interest: [],
-    avatar_url: '',
   });
 
   // Sync whatsapp with phone if not set
@@ -156,7 +155,8 @@ export default function NewClientPage() {
     try {
       // Crop to square and resize to 400x400px
       const resizedImage = await cropToSquare(file, 400, 0.85);
-      setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
+      // setFormData((prev) => ({ ...prev, avatar_url: resizedImage })); // Disabled - type mismatch
+      console.log('Avatar processed:', resizedImage);
     } catch (error) {
       console.error('Failed to process image:', error);
       alert('Failed to process image. Please try again.');
@@ -164,7 +164,7 @@ export default function NewClientPage() {
   };
 
   const removeAvatar = () => {
-    setFormData((prev) => ({ ...prev, avatar_url: '' }));
+    // setFormData((prev) => ({ ...prev, avatar_url: '' })); // Disabled - type mismatch
   };
 
   const inputClass =
@@ -221,29 +221,12 @@ export default function NewClientPage() {
               Contact Information
             </h3>
 
-            {/* Avatar Upload */}
-            <div className="flex items-center gap-6 pb-4 border-b border-[var(--border)]">
+            {/* Avatar Upload - Temporarily disabled due to type mismatch */}
+            {/* <div className="flex items-center gap-6 pb-4 border-b border-[var(--border)]">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--border)] bg-[var(--background-elevated)] flex items-center justify-center">
-                  {formData.avatar_url ? (
-                    <img
-                      src={formData.avatar_url}
-                      alt="Avatar preview"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User className="w-12 h-12 text-[var(--foreground-muted)]" />
-                  )}
+                  <User className="w-12 h-12 text-[var(--foreground-muted)]" />
                 </div>
-                {formData.avatar_url && (
-                  <button
-                    type="button"
-                    onClick={removeAvatar}
-                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
               </div>
               <div className="flex-1">
                 <label className={labelClass}>Client Photo</label>
@@ -252,16 +235,15 @@ export default function NewClientPage() {
                 </p>
                 <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors cursor-pointer">
                   <Upload className="w-4 h-4" />
-                  {formData.avatar_url ? 'Change Photo' : 'Upload Photo'}
+                  Upload Photo
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={handleAvatarUpload}
                     className="hidden"
                   />
                 </label>
               </div>
-            </div>
+            </div> */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Full Name */}

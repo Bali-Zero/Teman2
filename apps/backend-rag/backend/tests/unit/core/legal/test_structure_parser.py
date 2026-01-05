@@ -395,3 +395,4 @@ Content of Pasal 1B"""
         # Check that at least one pasal has letter suffix
         pasal_numbers = [p["number"] for p in result["pasal_list"]]
         assert any("A" in num or "B" in num for num in pasal_numbers)
+

@@ -147,6 +147,23 @@ search_hybrid_total = Counter(
     "zantara_search_hybrid_total",
     "Number of hybrid searches (dense + BM25)",
 )
+
+# CRM Metrics (Jan 2026 - Client Management Operations)
+crm_client_operations = Counter(
+    "zantara_crm_client_operations_total",
+    "CRM client operations",
+    ["operation", "status"],  # operation: create/update/delete, status: success/error
+)
+crm_validation_errors = Counter(
+    "zantara_crm_validation_errors_total",
+    "CRM validation errors",
+    ["field", "error_type"],  # field: email/date_of_birth/etc, error_type: empty/invalid/format
+)
+crm_client_creation_duration = Histogram(
+    "zantara_crm_client_creation_duration_seconds",
+    "Duration of client creation operations",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0],
+)
 search_hybrid_failed_total = Counter(
     "zantara_search_hybrid_failed_total",
     "Number of hybrid search failures",
@@ -167,6 +184,84 @@ bm25_initialization_failed_total = Counter(
     "zantara_bm25_initialization_failed_total",
     "Number of BM25 initialization failures",
     ["error_type"],
+)
+
+# Intelligence Center Metrics (Jan 2026 - Scraper + Voting System)
+intel_articles_submitted = Counter(
+    "zantara_intel_articles_submitted_total",
+    "Articles submitted from scrapers",
+    ["scraper_type", "intel_type", "tier"],  # scraper: unified/intelligent_visa, intel: visa/news
+)
+intel_articles_duplicates = Counter(
+    "zantara_intel_articles_duplicates_total",
+    "Duplicate articles rejected",
+    ["intel_type"],
+)
+intel_scraper_latency = Histogram(
+    "zantara_intel_scraper_submission_seconds",
+    "Time to submit article to backend",
+    ["scraper_type"],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+)
+
+# Classification Metrics
+intel_classification_total = Counter(
+    "zantara_intel_classification_total",
+    "Articles classified",
+    ["category_input", "classified_as"],  # Track classification accuracy
+)
+intel_classification_duration = Histogram(
+    "zantara_intel_classification_duration_seconds",
+    "Classification time",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1],
+)
+
+# Voting Metrics
+intel_votes_cast = Counter(
+    "zantara_intel_votes_cast_total",
+    "Votes cast on intel items",
+    ["intel_type", "vote_type", "user"],  # vote_type: approve/reject
+)
+intel_items_approved = Counter(
+    "zantara_intel_items_approved_total",
+    "Items approved via voting",
+    ["intel_type"],
+)
+intel_items_rejected = Counter(
+    "zantara_intel_items_rejected_total",
+    "Items rejected via voting",
+    ["intel_type"],
+)
+intel_voting_duration = Histogram(
+    "zantara_intel_voting_duration_seconds",
+    "Time from initiation to decision",
+    ["intel_type"],
+    buckets=[60, 300, 600, 1800, 3600, 7200, 14400],  # 1min to 4hrs
+)
+
+# Ingestion Metrics
+intel_qdrant_ingestion_total = Counter(
+    "zantara_intel_qdrant_ingestion_total",
+    "Items ingested to Qdrant",
+    ["collection", "status"],  # status: success/error
+)
+intel_qdrant_ingestion_duration = Histogram(
+    "zantara_intel_qdrant_ingestion_duration_seconds",
+    "Qdrant ingestion time",
+    ["collection"],
+    buckets=[0.5, 1.0, 2.0, 5.0, 10.0, 20.0],
+)
+
+# System Health
+intel_staging_queue_size = Gauge(
+    "zantara_intel_staging_queue_size",
+    "Pending items in staging",
+    ["intel_type"],
+)
+intel_approval_rate = Gauge(
+    "zantara_intel_approval_rate",
+    "Approval rate (approved / total voted)",
+    ["intel_type"],
 )
 
 memory_orchestrator_healthy_total = Counter(

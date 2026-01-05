@@ -50,15 +50,24 @@ Flow:
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│  6. TELEGRAM APPROVAL                                           │
-│     - Generate HTML preview                                     │
-│     - Send notification to Telegram                             │
-│     - Wait for manual approval/rejection                        │
+│  6. SUBMIT FOR APPROVAL (parallel)                              │
+│     6a. News Room UI → zantara.balizero.com/intelligence        │
+│     6b. Telegram → voting via bot (2/3 majority)                │
 └─────────────────────────────────────────────────────────────────┘
                               ↓ (only approved)
 ┌─────────────────────────────────────────────────────────────────┐
-│  7. PUBLISH TO API                                              │
+│  7. PUBLISH TO API (⏳ TO BE IMPLEMENTED)                       │
 │     - Article + cover image + SEO metadata → BaliZero API       │
+│                                                                 │
+│     TODO: After successful publish, register article:           │
+│     from claude_validator import ClaudeValidator                │
+│     ClaudeValidator.add_published_article(                      │
+│         title=article.title,                                    │
+│         url=published_url,                                      │
+│         category=article.final_category,                        │
+│         published_at=datetime.now().isoformat()                 │
+│     )                                                           │
+│     See: ANTI_DUPLICATE_INTEGRATION.md for details              │
 └─────────────────────────────────────────────────────────────────┘
 
 Cost breakdown:
@@ -70,11 +79,13 @@ Cost breakdown:
 """
 
 import asyncio
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 from loguru import logger
+import httpx
 
 # Import pipeline components
 from professional_scorer import score_article
@@ -213,6 +224,59 @@ class IntelPipeline:
         logger.info(f"   Require approval: {require_approval}")
         logger.info(f"   Dry run: {dry_run}")
         logger.info("=" * 70)
+
+    async def send_to_news_room(self, article: PipelineArticle) -> bool:
+        """
+        Send article to backend Intelligence Center News Room.
+
+        This populates https://zantara.balizero.com/intelligence/news-room
+        with articles for team review in parallel with Telegram notifications.
+        """
+        backend_url = os.getenv(
+            "BACKEND_API_URL", "https://nuzantara-rag.fly.dev"
+        )
+        endpoint = f"{backend_url}/api/intel/scraper/submit"
+
+        # Get enriched content if available
+        enriched = article.enriched_article
+        content = enriched.executive_brief if enriched else article.summary
+        title = enriched.headline if enriched else article.title
+
+        payload = {
+            "title": title,
+            "content": content,
+            "source_url": article.url,
+            "source_name": article.source,
+            "category": article.final_category,
+            "relevance_score": article.llama_score,
+            "published_at": article.published_at,
+            "extraction_method": "intel_pipeline",
+            "tier": "T2",  # Default tier for pipeline articles
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(endpoint, json=payload)
+                response.raise_for_status()
+                result = response.json()
+
+                if result.get("duplicate"):
+                    logger.debug(
+                        f"News Room: Article already in staging - {title[:50]}"
+                    )
+                    return False
+                else:
+                    logger.info(
+                        f"✅ Sent to News Room: {result.get('intel_type')} - {title[:50]}"
+                    )
+                    return True
+
+        except httpx.HTTPError as e:
+            logger.warning(f"Failed to send to News Room: {e}")
+            return False
+        except Exception as e:
+            logger.warning(f"News Room send error: {e}")
+            return False
 
     async def process_article(self, article: PipelineArticle) -> PipelineArticle:
         """
@@ -415,45 +479,56 @@ class IntelPipeline:
                 self.stats.errors += 1
 
         # ═══════════════════════════════════════════════════════════════
-        # STEP 6: SUBMIT FOR APPROVAL (Telegram notification)
+        # STEP 6: SUBMIT FOR APPROVAL (Telegram + News Room)
         # ═══════════════════════════════════════════════════════════════
-        if article.seo_optimized and self.require_approval and self.approval_system:
+        if article.seo_optimized:
             logger.info("\n📨 Step 6: Submitting for Approval...")
 
-            try:
-                enriched = article.enriched_article
-                article_data = {
-                    "title": enriched.headline,
-                    "content": enriched.executive_brief,
-                    "enriched_content": enriched.executive_brief,
-                    "category": enriched.category,
-                    "source": article.source,
-                    "source_url": article.url,
-                    "image_url": article.image_path or "",
-                }
+            # 6a. Send to News Room (zantara.balizero.com/intelligence/news-room)
+            if not self.dry_run:
+                try:
+                    news_room_sent = await self.send_to_news_room(article)
+                    if news_room_sent:
+                        logger.info("   📰 Sent to News Room UI")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ News Room submission failed: {e}")
 
-                pending = await self.approval_system.submit_for_approval(
-                    article=article_data,
-                    seo_metadata=article.seo_metadata,
-                    enriched_content=enriched.executive_brief,
-                )
+            # 6b. Send to Telegram for voting
+            if self.require_approval and self.approval_system:
+                try:
+                    enriched = article.enriched_article
+                    article_data = {
+                        "title": enriched.headline,
+                        "content": enriched.executive_brief,
+                        "enriched_content": enriched.executive_brief,
+                        "category": enriched.category,
+                        "source": article.source,
+                        "source_url": article.url,
+                        "image_url": article.image_path or "",
+                    }
 
-                article.pending_approval = True
-                article.approval_id = pending.article_id
-                article.approval_status = "pending"
-                self.stats.pending_approval += 1
+                    pending = await self.approval_system.submit_for_approval(
+                        article=article_data,
+                        seo_metadata=article.seo_metadata,
+                        enriched_content=enriched.executive_brief,
+                    )
 
-                logger.success("   ✅ Submitted for approval")
-                logger.info(f"   Article ID: {pending.article_id}")
-                logger.info(f"   HTML Preview: {pending.preview_html}")
-                if pending.telegram_message_id:
-                    logger.info("   Telegram notification sent!")
-                else:
-                    logger.warning("   ⚠️ Telegram notification not sent (check config)")
+                    article.pending_approval = True
+                    article.approval_id = pending.article_id
+                    article.approval_status = "pending"
+                    self.stats.pending_approval += 1
 
-            except Exception as e:
-                logger.error(f"   ❌ Approval submission failed: {e}")
-                self.stats.errors += 1
+                    logger.success("   ✅ Submitted for approval")
+                    logger.info(f"   Article ID: {pending.article_id}")
+                    logger.info(f"   HTML Preview: {pending.preview_html}")
+                    if pending.telegram_message_id:
+                        logger.info("   📱 Telegram notification sent!")
+                    else:
+                        logger.warning("   ⚠️ Telegram notification not sent (check config)")
+
+                except Exception as e:
+                    logger.error(f"   ❌ Approval submission failed: {e}")
+                    self.stats.errors += 1
 
         return article
 

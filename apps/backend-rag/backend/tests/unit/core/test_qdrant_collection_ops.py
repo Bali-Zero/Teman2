@@ -241,3 +241,4 @@ class TestQdrantClientUpsertDocuments:
 
             assert result["success"] is False
             assert result["documents_added"] == 1  # One batch succeeded
+

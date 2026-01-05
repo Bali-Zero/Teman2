@@ -265,3 +265,4 @@ class TestAuthDecorators:
         assert exc.status_code == 403
         assert exc.detail == "Forbidden"
         assert str(exc) == "Forbidden"
+

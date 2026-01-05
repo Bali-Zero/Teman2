@@ -4,14 +4,19 @@ BALIZERO INTEL FEED - Complete Pipeline
 =========================================
 Unified script that runs the complete news intelligence pipeline:
 
-1. Fetch RSS from Google News (16 topic queries)
-2. Score with Professional 5-Dimension System
-3. Deep Enrich with Claude Max (fetch full article + write BaliZero article)
-4. Send enriched articles to BaliZero API
+1. Fetch articles from sources (RSS, Web Scraping, or Both)
+2. Score with Professional 5-Dimension System + LLAMA
+3. Validate with Claude
+4. Deep Enrich with Claude Max (fetch full article + write BaliZero article)
+5. Generate cover images with Gemini (via browser automation)
+6. SEO/AEO Optimization
+7. Telegram Approval
+8. Publish to BaliZero API
 
 Usage:
-    python run_intel_feed.py --mode full        # Complete pipeline with deep enrichment
-    python run_intel_feed.py --mode quick       # Quick mode (RSS + score only, no deep enrichment)
+    python run_intel_feed.py --mode massive     # 790+ sources web scraping + full pipeline
+    python run_intel_feed.py --mode full        # Google News RSS + deep enrichment
+    python run_intel_feed.py --mode quick       # RSS + score only, no deep enrichment
     python run_intel_feed.py --mode enrich-only # Only enrich pending articles in DB
 """
 
@@ -20,11 +25,13 @@ import argparse
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from loguru import logger
 
 # Import our modules
 from rss_fetcher import GoogleNewsRSSFetcher, send_to_balizero
+from unified_scraper import BaliZeroScraperV2
+from intel_pipeline import IntelPipeline, PipelineArticle
 
 # Configure logging
 Path("logs").mkdir(exist_ok=True)
@@ -217,6 +224,171 @@ async def run_enrich_only(
         return {"mode": "enrich-only", "error": str(e)}
 
 
+async def run_massive_mode(
+    categories: Optional[List[str]] = None,
+    tiers: Optional[List[str]] = None,
+    limit_per_source: int = 5,
+    min_score: int = 40,
+    generate_images: bool = True,
+    require_approval: bool = True,
+    dry_run: bool = False,
+) -> Dict:
+    """
+    MASSIVE MODE: Scrape 790+ sources + full intel pipeline.
+
+    This is the COMPLETE pipeline:
+    1. BaliZeroScraperV2 → Fetch from 790+ configured sources
+    2. LLAMA Scorer → Fast local scoring (filter noise)
+    3. Claude Validator → Intelligent gate (approve/reject)
+    4. Claude Max Enrichment → Full executive brief
+    5. Gemini Image → Browser automation for cover images
+    6. SEO/AEO → Optimize for search engines + AI
+    7. Telegram Approval → Human review
+    8. Publish → Send to BaliZero API
+    """
+    logger.info("=" * 70)
+    logger.info("🚀 BALIZERO INTEL FEED - MASSIVE MODE")
+    logger.info(f"📅 {datetime.now().isoformat()}")
+    logger.info("=" * 70)
+    logger.info("📊 Sources: 790+ web sources (unified_sources.json + extended_sources.json)")
+    logger.info(f"🎯 Categories: {categories or 'ALL'}")
+    logger.info(f"📈 Tiers: {tiers or ['T1', 'T2']}")
+    logger.info(f"🔢 Min Score: {min_score}")
+    logger.info(f"🖼️  Generate Images: {generate_images}")
+    logger.info(f"✅ Require Approval: {require_approval}")
+    logger.info(f"🔍 Dry Run: {dry_run}")
+    logger.info("=" * 70)
+
+    # ═══════════════════════════════════════════════════════════════════
+    # STEP 1: MASSIVE WEB SCRAPING (790+ sources)
+    # ═══════════════════════════════════════════════════════════════════
+    logger.info("\n" + "=" * 70)
+    logger.info("📰 STEP 1: MASSIVE WEB SCRAPING")
+    logger.info("=" * 70)
+
+    # Get config path relative to this script
+    script_dir = Path(__file__).parent
+    config_path = script_dir.parent / "config" / "unified_sources.json"
+
+    scraper = BaliZeroScraperV2(
+        config_path=str(config_path),
+        min_score=min_score,
+    )
+
+    # Initialize scraper components (SmartExtractor, OllamaScorer, SemanticDeduplicator)
+    await scraper.initialize()
+
+    # Scrape all sources
+    scrape_results = await scraper.scrape_all(
+        limit=limit_per_source,
+        categories=categories,
+    )
+
+    logger.info(f"\n📊 Scraping Results:")
+    logger.info(f"   Total Found: {scrape_results.get('stats', {}).get('total_found', 0)}")
+    logger.info(f"   Saved: {scrape_results.get('stats', {}).get('saved', 0)}")
+    logger.info(f"   Filtered (low score): {scrape_results.get('stats', {}).get('filtered_low_score', 0)}")
+    logger.info(f"   Filtered (duplicate): {scrape_results.get('stats', {}).get('filtered_duplicate', 0)}")
+
+    # Get scraped articles from data/raw directory
+    scraped_articles = []
+    raw_dir = Path("data/raw")
+
+    if raw_dir.exists():
+        for category_dir in raw_dir.iterdir():
+            if category_dir.is_dir():
+                for md_file in category_dir.glob("*.md"):
+                    try:
+                        # Parse markdown frontmatter
+                        content = md_file.read_text(encoding="utf-8")
+                        lines = content.split("\n")
+
+                        # Extract frontmatter
+                        article = {"content": ""}
+                        in_frontmatter = False
+                        content_lines = []
+
+                        for line in lines:
+                            if line.strip() == "---":
+                                in_frontmatter = not in_frontmatter
+                                continue
+                            if in_frontmatter and ":" in line:
+                                key, val = line.split(":", 1)
+                                article[key.strip()] = val.strip()
+                            elif not in_frontmatter:
+                                content_lines.append(line)
+
+                        article["content"] = "\n".join(content_lines)
+                        article["summary"] = article["content"][:500] if article["content"] else ""
+
+                        if article.get("title") and article.get("url"):
+                            scraped_articles.append(article)
+                    except Exception as e:
+                        logger.debug(f"Error parsing {md_file}: {e}")
+
+    logger.info(f"\n📋 Loaded {len(scraped_articles)} articles for pipeline processing")
+
+    if not scraped_articles:
+        logger.warning("❌ No articles to process")
+        return {
+            "mode": "massive",
+            "scrape_results": scrape_results,
+            "pipeline_results": None,
+            "total_scraped": 0,
+            "total_processed": 0,
+        }
+
+    # ═══════════════════════════════════════════════════════════════════
+    # STEP 2-7: INTEL PIPELINE (Scoring → Validation → Enrichment → etc.)
+    # ═══════════════════════════════════════════════════════════════════
+    logger.info("\n" + "=" * 70)
+    logger.info("🔬 STEPS 2-7: INTEL PIPELINE")
+    logger.info("=" * 70)
+
+    pipeline = IntelPipeline(
+        min_llama_score=min_score,
+        auto_approve_threshold=75,
+        generate_images=generate_images,
+        require_approval=require_approval,
+        dry_run=dry_run,
+    )
+
+    # Process through pipeline
+    processed_articles, stats = await pipeline.process_batch(scraped_articles)
+
+    # ═══════════════════════════════════════════════════════════════════
+    # SUMMARY
+    # ═══════════════════════════════════════════════════════════════════
+    logger.info("\n" + "=" * 70)
+    logger.info("✅ MASSIVE MODE COMPLETE")
+    logger.info("=" * 70)
+    logger.info(f"📰 Scraped: {len(scraped_articles)}")
+    logger.info(f"📊 LLAMA Scored: {stats.llama_scored}")
+    logger.info(f"❌ LLAMA Filtered: {stats.llama_filtered}")
+    logger.info(f"🔍 Claude Validated: {stats.claude_validated}")
+    logger.info(f"✅ Claude Approved: {stats.claude_approved}")
+    logger.info(f"❌ Claude Rejected: {stats.claude_rejected}")
+    logger.info(f"✍️  Enriched: {stats.enriched}")
+    logger.info(f"🖼️  Images: {stats.images_generated}")
+    logger.info(f"🔎 SEO Optimized: {stats.seo_optimized}")
+    logger.info(f"📨 Pending Approval: {stats.pending_approval}")
+    logger.info(f"📤 Published: {stats.published}")
+    logger.info(f"⏱️  Duration: {stats.duration_seconds:.1f}s")
+    logger.info("=" * 70)
+
+    return {
+        "mode": "massive",
+        "scrape_results": scrape_results,
+        "total_scraped": len(scraped_articles),
+        "total_processed": stats.llama_scored,
+        "approved": stats.claude_approved,
+        "enriched": stats.enriched,
+        "pending_approval": stats.pending_approval,
+        "published": stats.published,
+        "duration_seconds": stats.duration_seconds,
+    }
+
+
 async def main():
     parser = argparse.ArgumentParser(
         description="BaliZero Intel Feed - Complete News Intelligence Pipeline"
@@ -225,9 +397,9 @@ async def main():
     # Mode selection
     parser.add_argument(
         "--mode",
-        choices=["full", "quick", "enrich-only"],
+        choices=["massive", "full", "quick", "enrich-only"],
         default="quick",
-        help="Pipeline mode: full (deep enrichment), quick (RSS+score only), enrich-only (enrich DB articles)",
+        help="Pipeline mode: massive (790+ sources), full (RSS + deep enrichment), quick (RSS+score only), enrich-only (enrich DB articles)",
     )
 
     # Common options
@@ -254,6 +426,23 @@ async def main():
         "--max-enrich", type=int, default=5, help="Max items to deep enrich"
     )
 
+    # Massive mode options
+    parser.add_argument(
+        "--categories",
+        nargs="+",
+        help="Categories to scrape (e.g., immigration tax_bkpm property)",
+    )
+    parser.add_argument(
+        "--no-images",
+        action="store_true",
+        help="Skip image generation",
+    )
+    parser.add_argument(
+        "--no-approval",
+        action="store_true",
+        help="Skip Telegram approval (auto-publish)",
+    )
+
     args = parser.parse_args()
 
     # Get API key
@@ -263,7 +452,16 @@ async def main():
         logger.warning("No API key provided. Use --api-key or set BALIZERO_API_KEY")
 
     # Run selected mode
-    if args.mode == "full":
+    if args.mode == "massive":
+        result = await run_massive_mode(
+            categories=args.categories,
+            limit_per_source=args.limit,
+            min_score=args.min_score,
+            generate_images=not args.no_images,
+            require_approval=not args.no_approval,
+            dry_run=args.dry_run,
+        )
+    elif args.mode == "full":
         result = await run_full_mode(
             max_age=args.max_age,
             limit_per_topic=args.limit,

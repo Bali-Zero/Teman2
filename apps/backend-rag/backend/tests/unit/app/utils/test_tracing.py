@@ -110,3 +110,4 @@ class TestTracingUtilities:
         """Test set_span_status when OpenTelemetry not available"""
         # Should not raise exception
         set_span_status("ok")
+

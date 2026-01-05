@@ -150,3 +150,4 @@ class TestAuthValidation:
             )
             assert result is not None
             assert result["id"] == "user123"  # Bearer token takes priority
+

@@ -114,3 +114,101 @@ def test_download_pdf_handles_exception():
     with patch("services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
         assert service.download_pdf_from_drive("boom.pdf") is None
+
+
+def test_download_pdf_found_on_second_query():
+    """Test finding PDF on second search query (covers alternative query paths)"""
+    service = DocumentRetrievalService()
+    # First query returns no results, second query finds it
+    results = [
+        {"files": []},  # First query (exact match)
+        {"files": [{"id": "456", "name": "sample document.pdf"}]},  # Second query (with spaces)
+    ]
+    files = DummyFiles(results)
+    drive_service = DummyDriveService(files)
+
+    with patch("services.oracle.document_retrieval.google_services") as gs:
+        gs.drive_service = drive_service
+        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+            with patch("builtins.open", mock_open()):
+                path = service.download_pdf_from_drive("sample_document.pdf")
+
+    assert path == "/tmp/sample document.pdf"
+
+
+def test_download_pdf_found_on_third_query():
+    """Test finding PDF on third search query"""
+    service = DocumentRetrievalService()
+    results = [
+        {"files": []},  # First query
+        {"files": []},  # Second query
+        {"files": [{"id": "789", "name": "sample-doc.pdf"}]},  # Third query (with dash)
+    ]
+    files = DummyFiles(results)
+    drive_service = DummyDriveService(files)
+
+    with patch("services.oracle.document_retrieval.google_services") as gs:
+        gs.drive_service = drive_service
+        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+            with patch("builtins.open", mock_open()):
+                path = service.download_pdf_from_drive("sample-doc.pdf")
+
+    assert path == "/tmp/sample-doc.pdf"
+
+
+def test_download_pdf_found_on_fourth_query():
+    """Test finding PDF on fourth search query"""
+    service = DocumentRetrievalService()
+    results = [
+        {"files": []},  # First query
+        {"files": []},  # Second query
+        {"files": []},  # Third query
+        {"files": [{"id": "999", "name": "sampledoc.pdf"}]},  # Fourth query (no separators)
+    ]
+    files = DummyFiles(results)
+    drive_service = DummyDriveService(files)
+
+    with patch("services.oracle.document_retrieval.google_services") as gs:
+        gs.drive_service = drive_service
+        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+            with patch("builtins.open", mock_open()):
+                path = service.download_pdf_from_drive("sample_doc.pdf")
+
+    assert path == "/tmp/sampledoc.pdf"
+
+
+def test_download_pdf_filename_with_path():
+    """Test download_pdf with filename containing path (tests basename extraction)"""
+    service = DocumentRetrievalService()
+    results = [
+        {"files": [{"id": "path123", "name": "document.pdf"}]},
+    ]
+    files = DummyFiles(results)
+    drive_service = DummyDriveService(files)
+
+    with patch("services.oracle.document_retrieval.google_services") as gs:
+        gs.drive_service = drive_service
+        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+            with patch("builtins.open", mock_open()):
+                # Filename with path - should extract basename
+                path = service.download_pdf_from_drive("/some/path/to/document.pdf")
+
+    assert path == "/tmp/document.pdf"
+
+
+def test_download_pdf_filename_without_extension():
+    """Test download_pdf with filename without extension"""
+    service = DocumentRetrievalService()
+    results = [
+        {"files": [{"id": "noext123", "name": "document.pdf"}]},
+    ]
+    files = DummyFiles(results)
+    drive_service = DummyDriveService(files)
+
+    with patch("services.oracle.document_retrieval.google_services") as gs:
+        gs.drive_service = drive_service
+        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+            with patch("builtins.open", mock_open()):
+                path = service.download_pdf_from_drive("document")
+
+    assert path == "/tmp/document.pdf"

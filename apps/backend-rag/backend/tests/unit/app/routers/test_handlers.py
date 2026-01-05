@@ -107,3 +107,4 @@ class TestHandlersRouter:
         """Test getting handlers by non-existent category"""
         response = client.get("/api/handlers/category/nonexistent")
         assert response.status_code == 404
+

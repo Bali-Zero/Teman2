@@ -228,3 +228,4 @@ class TestServiceRegistry:
         """Test that service_registry is a singleton"""
         assert service_registry is not None
         assert isinstance(service_registry, ServiceRegistry)
+

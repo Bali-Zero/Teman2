@@ -432,3 +432,4 @@ class TestSearchOptions:
         """Test OPTIONS endpoint for CORS preflight"""
         response = await search_options()
         assert response == {"status": "ok"}
+

@@ -24,6 +24,16 @@ export interface ApproveResponse {
   id: string;
 }
 
+export interface PublishResponse {
+  success: boolean;
+  message: string;
+  id: string;
+  title: string;
+  published_url: string;
+  published_at: string;
+  collection: string;
+}
+
 export const intelligenceApi = {
   /**
    * Get pending items from staging
@@ -130,6 +140,39 @@ export const intelligenceApi = {
       return response;
     } catch (error) {
       logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'reject' });
+      throw error;
+    }
+  },
+
+  /**
+   * Publish item to knowledge base and register in anti-duplicate system
+   */
+  publishItem: async (type: "visa" | "news", id: string): Promise<PublishResponse> => {
+    const endpoint = `/api/intel/staging/publish/${type}/${id}`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'POST', { itemType: type, itemId: id, action: 'publish' });
+
+    try {
+      const response = await api.request<PublishResponse>(endpoint, { method: "POST" });
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        itemType: type,
+        itemId: id,
+        action: 'publish',
+        metadata: {
+          success: response.success,
+          published_url: response.published_url,
+          collection: response.collection,
+        },
+      });
+
+      logger.userAction('publish_item', type, id);
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'publish' });
       throw error;
     }
   },

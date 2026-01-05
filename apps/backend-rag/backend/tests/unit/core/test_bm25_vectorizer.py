@@ -257,3 +257,4 @@ class TestBM25Vectorizer:
         with patch("core.bm25_vectorizer._bm25_vectorizer", None):
             vectorizer = get_bm25_vectorizer()
             assert isinstance(vectorizer, BM25Vectorizer)
+

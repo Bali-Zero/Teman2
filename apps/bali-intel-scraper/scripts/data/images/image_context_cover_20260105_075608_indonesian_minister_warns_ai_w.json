@@ -1,0 +1,117 @@
+{
+  "action": "generate_image_with_reasoning",
+  "article": {
+    "title": "Indonesian Minister Warns AI Without Ethics Could Harm Society",
+    "summary": "Indonesian minister warns about AI risks, but no specific regulations or timeline announced. Low immediate relevance for expats/investors—no action required.",
+    "category": "tech",
+    "content_preview": "Indonesian Minister Warns Unguided AI Risks Dehumanization&nbsp;&nbsp;Tempo.co English"
+  },
+  "output_path": "data/images/cover_20260105_075608_indonesian_minister_warns_ai_w.png",
+  "reasoning_framework": "\n═══════════════════════════════════════════════════════════════════════════════\nARTICLE TO CREATE IMAGE FOR:\n═══════════════════════════════════════════════════════════════════════════════\n\nTITLE: Indonesian Minister Warns AI Without Ethics Could Harm Society\nCATEGORY: tech\nSUMMARY: Indonesian minister warns about AI risks, but no specific regulations or timeline announced. Low immediate relevance for expats/investors—no action required.\n\nFULL CONTENT:\nIndonesian Minister Warns Unguided AI Risks Dehumanization&nbsp;&nbsp;Tempo.co English\n\n═══════════════════════════════════════════════════════════════════════════════\nREASONING FRAMEWORK - Answer these before creating the prompt:\n═══════════════════════════════════════════════════════════════════════════════\n\n\n    BEFORE creating an image prompt, answer these questions:\n\n    1. CENTRAL THEME\n       - What is the ONE thing this article is about?\n       - Is it a PROBLEM, a SOLUTION, or INFORMATION?\n       - What would a headline writer summarize this as?\n\n    2. EMOTIONAL CORE\n       - How should the reader FEEL looking at this image?\n       - Frustrated? Relieved? Curious? Warned? Inspired?\n       - What's the emotional journey of the article?\n\n    3. THE MOMENT\n       - Is there a SPECIFIC moment in the article that captures everything?\n       - A scene described? A situation mentioned? A workaround suggested?\n       - What would a photojournalist shoot if they were covering this story?\n\n    4. UNIVERSAL vs SPECIFIC\n       - Is this a universal experience (anyone can relate)?\n       - Or Indonesia-specific (needs local context)?\n       - Balance: Bali setting visible but topic clear to anyone\n\n    5. THE 2-SECOND TEST\n       - If someone sees ONLY the image, will they understand the topic?\n       - No cryptic metaphors. No \"only Nostradamus understands\" imagery.\n       - Clear. Beautiful. But CLEAR first.\n    \n\n═══════════════════════════════════════════════════════════════════════════════\nCATEGORY GUIDELINES (TECH):\n═══════════════════════════════════════════════════════════════════════════════\n\nTypical themes: digital nomad, connectivity, startups, remote work, apps\nEmotional range: possibility → productivity, anywhere → here, global → local\nSetting options: coworking with view, home office setup, video call, tech setup, starlink installation\nFORBIDDEN: circuit boards, Matrix code, robots, sterile labs, generic tech stock\nREMEMBER: Tech in Bali is about FREEDOM - work from paradise. Show the lifestyle integration, not just the tech.\n\n═══════════════════════════════════════════════════════════════════════════════\nSTYLE REQUIREMENTS:\n═══════════════════════════════════════════════════════════════════════════════\n\n\n    ALWAYS APPLY:\n    - Ultra-realistic photography (magazine quality, not AI-looking)\n    - Bali/Indonesia setting visible but not overwhelming\n    - Warm, natural lighting (Bali's golden hour aesthetic)\n    - 16:9 landscape format\n    - 8K detail, sharp focus on subject\n    - Space in upper area for potential text overlay\n    - No text, watermarks, or logos in image\n    - Real people in realistic situations (if people included)\n    - Cinematic composition (rule of thirds, leading lines)\n    \n\n\n    NEVER INCLUDE (regardless of category):\n    - Stock photo aesthetic (posed, fake smiles, generic)\n    - Graphs, charts, arrows pointing up\n    - Abstract metaphors that require explanation\n    - Cryptic symbolism (\"only Nostradamus understands\")\n    - Western corporate imagery in Bali context\n    - Tourist clichés (cocktails, infinity pool selfies)\n    - Depressing, dark, or dystopian mood\n    - Text or readable documents with specific info\n    \n\n═══════════════════════════════════════════════════════════════════════════════\nNOW CREATE THE IMAGE PROMPT:\n═══════════════════════════════════════════════════════════════════════════════\n\nBased on your reasoning above, create a detailed image prompt for Gemini/Imagen.\nThe prompt should describe ONE specific scene that:\n1. Immediately communicates the article topic (2-second test)\n2. Captures the emotional core\n3. Is beautiful but CLEAR, not cryptic\n4. Shows a real moment, not an abstract concept\n\nWrite the prompt in English, be specific about composition, lighting, and mood.\n",
+  "category_guidelines": {
+    "typical_themes": [
+      "digital nomad",
+      "connectivity",
+      "startups",
+      "remote work",
+      "apps"
+    ],
+    "emotional_range": [
+      "possibility → productivity",
+      "anywhere → here",
+      "global → local"
+    ],
+    "setting_options": [
+      "coworking with view",
+      "home office setup",
+      "video call",
+      "tech setup",
+      "starlink installation"
+    ],
+    "forbidden": [
+      "circuit boards",
+      "Matrix code",
+      "robots",
+      "sterile labs",
+      "generic tech stock"
+    ],
+    "remember": "Tech in Bali is about FREEDOM - work from paradise. Show the lifestyle integration, not just the tech."
+  },
+  "instructions_for_claude": "\nIMPORTANT: Do NOT use a predefined image prompt.\n\nYou (Claude) must:\n1. READ the article content above\n2. ANSWER the 5 reasoning questions:\n   - Central theme (problem/solution/info?)\n   - Emotional core (how should reader feel?)\n   - The moment (what scene captures this?)\n   - Universal vs specific\n   - 2-second test (will viewers understand immediately?)\n\n3. DECIDE on a specific scene based on your reasoning\n\n4. CREATE a unique Gemini prompt using:\n   generator.create_gemini_prompt(\n       scene_description=\"<your decided scene>\",\n       mood=\"<emotional tone>\",\n       category=\"<category>\",\n       key_details=[\"<detail1>\", \"<detail2>\", ...]\n   )\n\n5. EXECUTE browser automation with that prompt\n\nEach article deserves a UNIQUE, REASONED image - not a random selection.\n",
+  "browser_automation_sequence": {
+    "description": "Generate cover image via Gemini Imagen 3",
+    "output_path": "data/images/cover_20260105_075608_indonesian_minister_warns_ai_w.png",
+    "steps": [
+      {
+        "step": 1,
+        "tool": "mcp__claude-in-chrome__tabs_context_mcp",
+        "params": {
+          "createIfEmpty": true
+        }
+      },
+      {
+        "step": 2,
+        "tool": "mcp__claude-in-chrome__tabs_create_mcp",
+        "params": {}
+      },
+      {
+        "step": 3,
+        "tool": "mcp__claude-in-chrome__navigate",
+        "params": {
+          "url": "https://gemini.google.com/app"
+        }
+      },
+      {
+        "step": 4,
+        "tool": "mcp__claude-in-chrome__computer",
+        "params": {
+          "action": "wait",
+          "duration": 3
+        }
+      },
+      {
+        "step": 5,
+        "tool": "mcp__claude-in-chrome__read_page",
+        "params": {
+          "filter": "interactive"
+        }
+      },
+      {
+        "step": 6,
+        "tool": "mcp__claude-in-chrome__find",
+        "params": {
+          "query": "message input"
+        }
+      },
+      {
+        "step": 7,
+        "tool": "mcp__claude-in-chrome__form_input",
+        "note": "Enter prompt here"
+      },
+      {
+        "step": 8,
+        "tool": "mcp__claude-in-chrome__computer",
+        "params": {
+          "action": "key",
+          "text": "Enter"
+        }
+      },
+      {
+        "step": 9,
+        "tool": "mcp__claude-in-chrome__computer",
+        "params": {
+          "action": "wait",
+          "duration": 45
+        }
+      },
+      {
+        "step": 10,
+        "tool": "mcp__claude-in-chrome__computer",
+        "params": {
+          "action": "screenshot"
+        }
+      }
+    ],
+    "prompt": "<TO BE CREATED BY CLAUDE AFTER REASONING>"
+  }
+}

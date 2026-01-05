@@ -5,13 +5,33 @@ Intel News API - Search and manage Bali intelligence news
 import json
 import logging
 import shutil
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from app.core.intel_approvers import get_chat_ids, get_required_votes, get_team_config
+from app.metrics import (
+    intel_articles_duplicates,
+    intel_articles_submitted,
+    intel_classification_duration,
+    intel_classification_total,
+    intel_scraper_latency,
+    intel_staging_queue_size,
+)
 from core.embeddings import create_embeddings_generator
 from core.qdrant_db import QdrantClient
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from services.integrations.telegram_bot_service import telegram_bot
+
+# Import for duplicate detection integration
+import sys
+from pathlib import Path as PathLib
+
+# Add scraper scripts to path for ClaudeValidator import
+scraper_scripts_path = PathLib(__file__).parent.parent.parent.parent.parent / "bali-intel-scraper" / "scripts"
+if scraper_scripts_path.exists():
+    sys.path.insert(0, str(scraper_scripts_path))
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -27,6 +47,10 @@ NEWS_STAGING_DIR = BASE_STAGING_DIR / "news"
 VISA_STAGING_DIR.mkdir(parents=True, exist_ok=True)
 NEWS_STAGING_DIR.mkdir(parents=True, exist_ok=True)
 
+# Voting storage for Telegram approval
+PENDING_INTEL_PATH = Path("/tmp/pending_intel")
+PENDING_INTEL_PATH.mkdir(exist_ok=True)
+
 # Qdrant collections for intel
 INTEL_COLLECTIONS = {
     "visa": "visa_oracle",
@@ -40,6 +64,315 @@ INTEL_COLLECTIONS = {
     "bali_news": "bali_intel_bali_news",
     "roundup": "bali_intel_roundup",
 }
+
+# --- PYDANTIC MODELS ---
+
+
+class ScraperSubmission(BaseModel):
+    """Article submission from bali-intel-scraper"""
+
+    title: str = Field(..., min_length=1, description="Article title (cannot be empty)")
+    content: str = Field(..., min_length=1, description="Article content (cannot be empty)")
+    source_url: str
+    source_name: str
+    category: str  # visa, immigration, news, etc.
+    relevance_score: int  # 0-100
+    published_at: str | None = None
+    extraction_method: str | None = "css"
+    tier: str = "T2"  # T1, T2, T3
+
+
+# --- HELPER FUNCTIONS ---
+
+
+def classify_intel_type(category: str, title: str, content: str) -> str:
+    """
+    Classify article as 'visa' or 'news' for routing to correct staging folder.
+
+    Args:
+        category: Original category from scraper
+        title: Article title
+        content: Article content
+
+    Returns:
+        str: "visa" or "news"
+    """
+    # Direct category mapping
+    visa_categories = {"visa", "immigration", "visa_regulations"}
+    if category.lower() in visa_categories:
+        return "visa"
+
+    # Keyword-based classification
+    visa_keywords = [
+        "visa",
+        "kitas",
+        "kitap",
+        "voa",
+        "immigration",
+        "imigrasi",
+        "permit",
+        "stay permit",
+        "residence",
+        "b211",
+        "e33",
+    ]
+
+    text_lower = f"{title} {content}".lower()
+    visa_mentions = sum(1 for keyword in visa_keywords if keyword in text_lower)
+
+    # If >3 visa keywords, classify as visa
+    if visa_mentions >= 3:
+        return "visa"
+
+    # Default to news
+    return "news"
+
+
+async def send_intel_approval_notification(
+    intel_type: str, item_id: str, item_data: dict
+) -> bool:
+    """
+    Send Telegram notification to approval team with voting buttons.
+
+    Args:
+        intel_type: "news" or "visa"
+        item_id: Unique item identifier
+        item_data: Full item data from staging file
+
+    Returns:
+        bool: True if notification sent successfully
+    """
+    # Get team configuration
+    team_config = get_team_config(intel_type)
+    if not team_config or not team_config["approvers"]:
+        logger.warning(
+            f"No approvers configured for {intel_type}",
+            extra={"intel_type": intel_type, "item_id": item_id},
+        )
+        return False
+
+    chat_ids = get_chat_ids(intel_type)
+    if not chat_ids:
+        logger.warning(
+            f"No chat IDs found for {intel_type}",
+            extra={"intel_type": intel_type, "item_id": item_id},
+        )
+        return False
+
+    # Format message
+    title = item_data.get("title", "Untitled")
+    source = item_data.get("url", item_data.get("source", "Unknown"))
+    detected_at = item_data.get("detected_at", "Unknown")
+    detection_type = item_data.get("detection_type", "NEW")
+
+    emoji_map = {"visa": "🛂", "news": "📰"}
+    emoji = emoji_map.get(intel_type, "📋")
+
+    message = f"""{emoji} *New {intel_type.title()} Update Detected*
+
+*Title:* {title}
+
+*Type:* {detection_type}
+*Source:* {source}
+*Detected:* {detected_at}
+
+🗳️ *Votazione {team_config['required_votes']}/{len(team_config['approvers'])}* per approvare/rifiutare
+
+_Item ID: `{item_id}`_"""
+
+    # Inline keyboard
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "✅ APPROVE",
+                    "callback_data": f"intel:approve:{intel_type}:{item_id}",
+                },
+                {
+                    "text": "❌ REJECT",
+                    "callback_data": f"intel:reject:{intel_type}:{item_id}",
+                },
+            ],
+        ]
+    }
+
+    # Initialize voting status
+    voting_status = {
+        "item_id": item_id,
+        "intel_type": intel_type,
+        "status": "voting",
+        "votes": {"approve": [], "reject": []},
+        "created_at": datetime.now().isoformat(),
+        "item_data": item_data,
+    }
+
+    # Save voting status
+    status_file = PENDING_INTEL_PATH / f"{item_id}.json"
+    status_file.write_text(json.dumps(voting_status, indent=2))
+
+    # Send to all approvers
+    success_count = 0
+    for chat_id in chat_ids:
+        try:
+            await telegram_bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode="Markdown",
+                reply_markup=keyboard,
+            )
+            success_count += 1
+            logger.info(
+                f"Notification sent to {chat_id}",
+                extra={"intel_type": intel_type, "item_id": item_id, "chat_id": chat_id},
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to send notification to {chat_id}: {e}",
+                extra={"intel_type": intel_type, "item_id": item_id, "chat_id": chat_id},
+            )
+
+    logger.info(
+        f"Sent {success_count}/{len(chat_ids)} notifications",
+        extra={"intel_type": intel_type, "item_id": item_id},
+    )
+
+    return success_count > 0
+
+
+# --- SCRAPER INTEGRATION ENDPOINTS ---
+
+
+@router.post("/api/intel/scraper/submit")
+async def submit_from_scraper(submission: ScraperSubmission):
+    """
+    Receive article from bali-intel-scraper and save to staging.
+
+    This endpoint acts as the bridge between the scraper and Intelligence Center.
+    Articles are classified as 'visa' or 'news' and saved to the appropriate
+    staging folder for team approval.
+
+    Flow:
+    1. Scraper POSTs article here
+    2. Backend classifies type (visa/news)
+    3. Saves to data/staging/{type}/{item_id}.json
+    4. Intelligence Center UI shows for manual approval
+    5. Team votes via Telegram
+    6. If approved → ingested to Qdrant
+    """
+    start_time = time.time()
+
+    try:
+        # Classify intel type (with timing)
+        classification_start = time.time()
+        intel_type = classify_intel_type(
+            submission.category, submission.title, submission.content
+        )
+        intel_classification_duration.observe(time.time() - classification_start)
+        intel_classification_total.labels(
+            category_input=submission.category,
+            classified_as=intel_type
+        ).inc()
+
+        # Generate unique item ID
+        import hashlib
+
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        content_hash = hashlib.sha256(
+            f"{submission.title}{submission.source_url}".encode()
+        ).hexdigest()[:8]
+        item_id = f"{intel_type}_{timestamp}_{content_hash}"
+
+        # Prepare staging data
+        staging_data = {
+            "item_id": item_id,
+            "title": submission.title,
+            "content": submission.content,
+            "source_url": submission.source_url,
+            "source_name": submission.source_name,
+            "category": submission.category,
+            "relevance_score": submission.relevance_score,
+            "published_at": submission.published_at or "unknown",
+            "extraction_method": submission.extraction_method,
+            "tier": submission.tier,
+            "intel_type": intel_type,
+            "status": "pending",
+            "detection_type": "scraper_auto",
+            "detected_at": datetime.utcnow().isoformat(),
+        }
+
+        # Determine staging directory
+        staging_dir = VISA_STAGING_DIR if intel_type == "visa" else NEWS_STAGING_DIR
+        staging_file = staging_dir / f"{item_id}.json"
+
+        # Check for duplicates (same source_url in last 7 days)
+        existing_files = list(staging_dir.glob("*.json"))
+        for existing_file in existing_files:
+            try:
+                with open(existing_file) as f:
+                    existing_data = json.load(f)
+                    if existing_data.get("source_url") == submission.source_url:
+                        logger.info(
+                            f"Duplicate article detected (same URL): {submission.source_url}",
+                            extra={"item_id": item_id, "existing_id": existing_data.get("item_id")},
+                        )
+
+                        # Metrics: Duplicate detected
+                        intel_articles_duplicates.labels(intel_type=intel_type).inc()
+                        intel_scraper_latency.labels(scraper_type=submission.source_name).observe(
+                            time.time() - start_time
+                        )
+
+                        return {
+                            "success": True,
+                            "message": "Article already exists in staging",
+                            "item_id": existing_data.get("item_id"),
+                            "intel_type": intel_type,
+                            "duplicate": True,
+                        }
+            except Exception:
+                continue
+
+        # Save to staging
+        staging_file.write_text(json.dumps(staging_data, indent=2))
+
+        # Metrics: Article submitted successfully
+        intel_articles_submitted.labels(
+            scraper_type=submission.source_name,
+            intel_type=intel_type,
+            tier=submission.tier
+        ).inc()
+
+        intel_scraper_latency.labels(scraper_type=submission.source_name).observe(
+            time.time() - start_time
+        )
+
+        # Update staging queue size gauge
+        _update_staging_queue_size()
+
+        logger.info(
+            f"Article submitted from scraper",
+            extra={
+                "item_id": item_id,
+                "intel_type": intel_type,
+                "title": submission.title[:50],
+                "source": submission.source_name,
+                "score": submission.relevance_score,
+            },
+        )
+
+        return {
+            "success": True,
+            "message": f"Article saved to {intel_type} staging",
+            "item_id": item_id,
+            "intel_type": intel_type,
+            "staging_path": str(staging_file),
+            "duplicate": False,
+        }
+
+    except Exception as e:
+        logger.exception(f"Failed to submit article from scraper: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # --- STAGING ENDPOINTS ---
 
@@ -73,7 +406,7 @@ async def list_pending_items(type: str = "all"):
                             "title": data.get("title", "Untitled"),
                             "status": data.get("status", "pending"),
                             "detected_at": data.get("detected_at"),
-                            "source": data.get("url", ""),
+                            "source": data.get("source_url", data.get("url", "")),  # Fix: try source_url first, fallback to url
                             "detection_type": data.get("detection_type", "NEW"),
                         }
                     )
@@ -111,14 +444,25 @@ async def preview_staging_item(type: str, item_id: str):
 
 @router.post("/api/intel/staging/approve/{type}/{item_id}")
 async def approve_staging_item(type: str, item_id: str):
-    """Approve item and ingest into Qdrant"""
-    logger.info(f"Approval started", extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/approve"})
+    """
+    Initiate approval process by sending Telegram notification to team.
+
+    This endpoint triggers the voting process. The actual ingestion happens
+    when the team reaches majority (2/3) via Telegram callback.
+    """
+    logger.info(
+        f"Approval request received - initiating Telegram voting",
+        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/approve"},
+    )
 
     directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
     file_path = directory / f"{item_id}.json"
 
     if not file_path.exists():
-        logger.warning(f"Approval failed - item not found", extra={"type": type, "item_id": item_id, "file_path": str(file_path)})
+        logger.warning(
+            f"Approval failed - item not found",
+            extra={"type": type, "item_id": item_id, "file_path": str(file_path)},
+        )
         raise HTTPException(status_code=404, detail="Item not found")
 
     try:
@@ -126,59 +470,35 @@ async def approve_staging_item(type: str, item_id: str):
             data = json.load(f)
 
         title = data.get("title", "Untitled")
-        logger.info(f"Loaded staging item for approval", extra={"type": type, "item_id": item_id, "title": title})
-
-        # 1. Generate Embedding
-        content = data.get("content", "")
-        if not content:
-            logger.error(f"No content to ingest", extra={"type": type, "item_id": item_id, "title": title})
-            raise ValueError("No content to ingest")
-
-        logger.info(f"Generating embedding", extra={"type": type, "item_id": item_id, "content_length": len(content)})
-        # Generate embedding for the full content (or chunk it here if needed)
-        # For simplicity, we assume content is chunk-able or small enough
-        # Ideally, we should use the SemanticChunker here
-        embedding = embedder.generate_single_embedding(content[:8000])  # Limit for embedding model
-        logger.info(f"Embedding generated", extra={"type": type, "item_id": item_id, "embedding_dim": len(embedding)})
-
-        # 2. Ingest to Qdrant
-        target_collection = "visa_oracle" if type == "visa" else "bali_intel_bali_news"
-        logger.info(f"Ingesting to Qdrant", extra={"type": type, "item_id": item_id, "collection": target_collection})
-
-        client = QdrantClient(collection_name=target_collection)
-
-        metadata = {
-            "title": data.get("title"),
-            "url": data.get("url"),
-            "source": "intelligent_agent",
-            "ingested_at": datetime.now().isoformat(),
-            "approved_by": "admin",  # TODO: Get from auth context
-            "original_id": item_id,
-        }
-
-        await client.upsert_documents(
-            chunks=[content],
-            embeddings=[embedding],
-            metadatas=[metadata],
-            ids=[item_id],  # Use same ID for consistency
+        logger.info(
+            f"Loaded staging item for approval",
+            extra={"type": type, "item_id": item_id, "title": title},
         )
 
-        logger.info(f"Qdrant ingestion completed", extra={"type": type, "item_id": item_id, "collection": target_collection})
+        # Send Telegram notification to approval team
+        notification_sent = await send_intel_approval_notification(type, item_id, data)
 
-        # 3. Archive file
-        archive_dir = directory / "archived" / "approved"
-        archive_dir.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(file_path), str(archive_dir / file_path.name))
+        if not notification_sent:
+            logger.error(
+                f"Failed to send Telegram notification",
+                extra={"type": type, "item_id": item_id, "title": title},
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to send approval notification. Check team configuration.",
+            )
 
-        logger.info(f"Approval completed successfully", extra={
-            "type": type,
-            "item_id": item_id,
-            "title": title,
-            "collection": target_collection,
-            "archive_path": str(archive_dir / file_path.name)
-        })
+        logger.info(
+            f"Telegram voting initiated successfully",
+            extra={"type": type, "item_id": item_id, "title": title},
+        )
 
-        return {"success": True, "message": "Item approved and ingested", "id": item_id}
+        return {
+            "success": True,
+            "message": f"Approval voting initiated. Team notified via Telegram.",
+            "id": item_id,
+            "voting_status": "pending",
+        }
 
     except Exception as e:
         logger.error(f"Approval failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id})
@@ -221,6 +541,143 @@ async def reject_staging_item(type: str, item_id: str):
         return {"success": True, "message": "Item rejected and archived", "id": item_id}
     except Exception as e:
         logger.error(f"Rejection failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id})
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/intel/staging/publish/{type}/{item_id}")
+async def publish_staging_item(type: str, item_id: str):
+    """
+    Publish approved item to Qdrant knowledge base and register in anti-duplicate system.
+
+    This endpoint:
+    1. Ingests article to Qdrant (knowledge base)
+    2. Registers article in anti-duplicate system
+    3. Archives to published folder
+
+    Should be called after team approval (manual or via Telegram).
+    """
+    logger.info(
+        f"Publish request received",
+        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/publish"}
+    )
+
+    directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
+    file_path = directory / f"{item_id}.json"
+
+    if not file_path.exists():
+        logger.warning(
+            f"Publish failed - item not found",
+            extra={"type": type, "item_id": item_id, "file_path": str(file_path)}
+        )
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    try:
+        # Load article data
+        with open(file_path) as f:
+            data = json.load(f)
+
+        title = data.get("title", "Untitled")
+        source_url = data.get("source_url", data.get("url", ""))
+        category = data.get("category", type)
+
+        logger.info(
+            f"Publishing article",
+            extra={"type": type, "item_id": item_id, "title": title}
+        )
+
+        # Step 1: Ingest to Qdrant (knowledge base)
+        from app.routers.telegram import ingest_intel_to_qdrant
+
+        ingestion_success = await ingest_intel_to_qdrant(item_id, type)
+
+        if not ingestion_success:
+            logger.error(
+                f"Publish failed - Qdrant ingestion error",
+                extra={"type": type, "item_id": item_id, "title": title}
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to ingest article to knowledge base"
+            )
+
+        logger.info(
+            f"✅ Article ingested to Qdrant",
+            extra={"type": type, "item_id": item_id, "title": title}
+        )
+
+        # Step 2: Register in anti-duplicate system
+        try:
+            from claude_validator import ClaudeValidator
+
+            # Generate published URL (will be on balizero.com in the future)
+            published_url = f"https://balizero.com/{category}/{item_id}"
+
+            ClaudeValidator.add_published_article(
+                title=title,
+                url=published_url,
+                category=category,
+                published_at=datetime.utcnow().isoformat()
+            )
+
+            logger.info(
+                f"✅ Article registered in anti-duplicate system",
+                extra={
+                    "type": type,
+                    "item_id": item_id,
+                    "title": title,
+                    "url": published_url
+                }
+            )
+
+        except ImportError:
+            logger.warning(
+                f"⚠️ ClaudeValidator not available - skipping duplicate registration",
+                extra={"type": type, "item_id": item_id}
+            )
+        except Exception as e:
+            logger.error(
+                f"⚠️ Failed to register in anti-duplicate system: {e}",
+                exc_info=True,
+                extra={"type": type, "item_id": item_id}
+            )
+            # Don't fail the publish if duplicate registration fails
+
+        # Step 3: Update staging file with publish timestamp
+        data["published_at"] = datetime.utcnow().isoformat()
+        data["published_url"] = f"https://balizero.com/{category}/{item_id}"
+        data["status"] = "published"
+
+        # Note: The file has already been moved to archived/approved by ingest_intel_to_qdrant
+        # We don't need to move it again
+
+        logger.info(
+            f"✅ Publish completed successfully",
+            extra={
+                "type": type,
+                "item_id": item_id,
+                "title": title,
+                "published_url": data["published_url"]
+            }
+        )
+
+        return {
+            "success": True,
+            "message": "Article published successfully",
+            "id": item_id,
+            "title": title,
+            "published_url": data["published_url"],
+            "published_at": data["published_at"],
+            "collection": "visa_oracle" if type == "visa" else "bali_intel_bali_news"
+        }
+
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        logger.error(
+            f"Publish failed: {e}",
+            exc_info=True,
+            extra={"type": type, "item_id": item_id}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -577,3 +1034,17 @@ async def get_collection_stats(collection: str):
     except Exception as e:
         logger.error(f"Get stats error: {e}")
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+# --- HELPER FUNCTIONS FOR METRICS ---
+
+def _update_staging_queue_size():
+    """Update Prometheus gauge for staging queue sizes"""
+    try:
+        visa_count = len(list(VISA_STAGING_DIR.glob("*.json"))) if VISA_STAGING_DIR.exists() else 0
+        news_count = len(list(NEWS_STAGING_DIR.glob("*.json"))) if NEWS_STAGING_DIR.exists() else 0
+
+        intel_staging_queue_size.labels(intel_type="visa").set(visa_count)
+        intel_staging_queue_size.labels(intel_type="news").set(news_count)
+    except Exception as e:
+        logger.warning(f"Failed to update staging queue size metrics: {e}")

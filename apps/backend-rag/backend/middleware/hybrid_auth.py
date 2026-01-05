@@ -109,6 +109,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/legal/parent-documents",  # Internal ingestion endpoint (no auth)
             "/api/portal/invite/validate/",  # Client invitation validation (public)
             "/api/portal/invite/complete",  # Client registration completion (public)
+            "/api/intel/scraper/submit",  # Scraper → Intelligence Center bridge (public)
             "/api/integrations/zoho/callback",  # Zoho OAuth callback (public)
             "/api/integrations/google-drive/callback",  # Google Drive OAuth callback (public)
             "/api/integrations/google-drive/system/status",  # System OAuth status check (public)

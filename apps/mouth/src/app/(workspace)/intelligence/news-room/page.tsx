@@ -12,6 +12,7 @@ import { logger } from "@/lib/logger";
 export default function NewsRoomPage() {
   const [items, setItems] = useState<StagingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const toast = useToast();
 
   useEffect(() => {
@@ -45,6 +46,52 @@ export default function NewsRoomPage() {
       toast.error("Error", "Failed to load news drafts");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePublish = async (item: StagingItem) => {
+    logger.info('Publishing item', {
+      component: 'NewsRoomPage',
+      action: 'publish_item',
+      itemId: item.id,
+      metadata: { title: item.title },
+    });
+
+    // Add to publishing set
+    setPublishingIds(prev => new Set(prev).add(item.id));
+
+    try {
+      const response = await intelligenceApi.publishItem(item.type, item.id);
+
+      logger.info('Item published successfully', {
+        component: 'NewsRoomPage',
+        action: 'publish_success',
+        itemId: item.id,
+        metadata: { published_url: response.published_url },
+      });
+
+      toast.success(
+        "Published!",
+        `"${response.title}" has been published to the knowledge base`
+      );
+
+      // Reload news list to remove published item
+      loadNews();
+    } catch (error) {
+      logger.error('Failed to publish item', {
+        component: 'NewsRoomPage',
+        action: 'publish_error',
+        itemId: item.id,
+      }, error as Error);
+
+      toast.error("Error", "Failed to publish article");
+    } finally {
+      // Remove from publishing set
+      setPublishingIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     }
   };
 
@@ -147,10 +194,22 @@ export default function NewsRoomPage() {
               <CardFooter className="p-5 pt-0 mt-auto">
                 <div className="flex gap-2 w-full">
                   <Button
-                    className="flex-1 gap-2 group-hover:bg-[var(--accent)] group-hover:text-white transition-colors"
+                    className="flex-1 gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
                     size="sm"
+                    onClick={() => handlePublish(item)}
+                    disabled={publishingIds.has(item.id)}
                   >
-                    Open Editor
+                    {publishingIds.has(item.id) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Publish
+                      </>
+                    )}
                   </Button>
                   <Button
                     size="sm"

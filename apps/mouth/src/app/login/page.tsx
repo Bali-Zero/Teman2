@@ -21,41 +21,58 @@ export default function LoginPage() {
     e.preventDefault();
     if (loginStage !== 'idle') return;
 
+    console.log('[LOGIN PAGE] 🚀 Login process started');
+    console.log('[LOGIN PAGE] 📧 Email:', email);
+    console.log('[LOGIN PAGE] 🌐 Current URL:', window.location.href);
+    console.log('[LOGIN PAGE] 🍪 Cookies enabled:', navigator.cookieEnabled);
+    console.log('[LOGIN PAGE] 💾 LocalStorage available:', typeof localStorage !== 'undefined');
+
     // 1. Sound: Authenticate Start
     play('auth_start');
     setLoginStage('authenticating');
+    console.log('[LOGIN PAGE] 🎵 Auth sound played, stage set to authenticating');
 
     try {
       // 2. Real API call
+      console.log('[LOGIN PAGE] 📞 Calling api.login()...');
       const loginResponse = await api.login(email, pin);
+      console.log('[LOGIN PAGE] ✅ api.login() returned:', {
+        hasUser: !!loginResponse.user,
+        userRole: loginResponse.user?.role,
+        hasToken: !!loginResponse.access_token,
+      });
 
-      // 3. Success
+      // 3. Success - Backend returned 200 OK with valid user data
       setLoginStage('success');
       play('access_granted');
-
-      // Verify token is saved immediately after login
-      // Read directly from localStorage to ensure we have the latest token
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-      if (!token || token.length === 0) {
-        throw new Error('Token not saved after login');
-      }
+      console.log('[LOGIN PAGE] 🎉 Login successful! Backend authenticated via httpOnly cookies');
 
       // Get redirect path based on user role
       // Clients go to /portal, team members go to /dashboard
       const redirectTo = loginResponse.user?.role === 'client' ? '/portal' : '/dashboard';
+      console.log('[LOGIN PAGE] 🔀 Redirect path determined:', redirectTo);
 
       // Use window.location.replace for a clean redirect without history entry
       // This ensures a full page reload so the layout can properly read the token
+      console.log('[LOGIN PAGE] ⏳ Setting 1.5s timeout for redirect...');
       setTimeout(() => {
+        console.log('[LOGIN PAGE] 🚪 Redirecting to:', redirectTo);
         window.location.replace(redirectTo);
       }, 1500);
     } catch (error) {
       // 4. Failure
-      console.error('Login failed:', error);
+      console.error('[LOGIN PAGE] 💥 Login failed with error:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined,
+      });
       setLoginStage('denied');
       play('access_denied');
+      console.log('[LOGIN PAGE] ❌ Stage set to denied, access_denied sound played');
       // Reset after delay
       setTimeout(() => {
+        console.log('[LOGIN PAGE] 🔄 Resetting to idle state');
         setLoginStage('idle');
       }, 2000);
     }

@@ -118,38 +118,107 @@ class BackendReporter:
         })
 
     async def save_to_staging(self):
-        """Save all items to staging directory (backend will pick them up)."""
+        """
+        Send all items to backend API for centralized staging.
+
+        Flow:
+        1. IntelligentVisaAgent detects changes
+        2. Sends to /api/intel/scraper/submit
+        3. Backend classifies, deduplicates, saves to staging
+        4. Intelligence Center UI shows for approval
+        5. Team votes via Telegram
+        6. If approved → Qdrant ingestion
+        """
+        endpoint = f"{BACKEND_API_URL}/api/intel/scraper/submit"
         saved_count = 0
+        duplicate_count = 0
 
-        # Save visa items
-        for item in self.visa_items:
-            staging_file = STAGING_DIR / "visa" / f"{item['id']}.json"
-            try:
-                with open(staging_file, "w", encoding="utf-8") as f:
-                    json.dump(item, f, indent=2, ensure_ascii=False)
-                logger.info(f"✅ Saved to staging: {item['title']}")
-                saved_count += 1
-            except Exception as e:
-                logger.error(f"Failed to save {item['id']}: {e}")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            # Process visa items
+            for item in self.visa_items:
+                try:
+                    payload = {
+                        "title": item["title"],
+                        "content": item["content"],
+                        "source_url": item["url"],
+                        "source_name": item.get("source", "intelligent_visa_agent"),
+                        "category": "visa",
+                        "relevance_score": 100,  # Official source = max relevance
+                        "published_at": item["detected_at"],
+                        "extraction_method": "playwright+gemini",
+                        "tier": "T1",  # Official government source = Tier 1
+                    }
 
-        # Save news items
-        for item in self.news_items:
-            staging_file = STAGING_DIR / "news" / f"{item['id']}.json"
-            try:
-                with open(staging_file, "w", encoding="utf-8") as f:
-                    json.dump(item, f, indent=2, ensure_ascii=False)
-                logger.info(f"✅ Saved to staging: {item['title']}")
-                saved_count += 1
-            except Exception as e:
-                logger.error(f"Failed to save {item['id']}: {e}")
+                    response = await client.post(endpoint, json=payload)
+                    result = response.json()
+
+                    if result.get("duplicate"):
+                        logger.debug(f"   Duplicate: {item['title'][:60]}")
+                        duplicate_count += 1
+                    else:
+                        logger.info(f"✅ Sent to backend: {item['title'][:60]}")
+                        saved_count += 1
+
+                except httpx.HTTPError as e:
+                    logger.error(f"Failed to send visa item to backend: {e}")
+                    # Fallback to filesystem for critical items
+                    await self._fallback_save(item, "visa")
+                except Exception as e:
+                    logger.error(f"Unexpected error sending visa item: {e}")
+
+            # Process news items
+            for item in self.news_items:
+                try:
+                    payload = {
+                        "title": item["title"],
+                        "content": item["content"],
+                        "source_url": item.get("url", f"https://www.imigrasi.go.id/news/{item['id']}"),
+                        "source_name": item.get("source", "imigrasi_news"),
+                        "category": "immigration",  # Immigration news
+                        "relevance_score": 95 if item.get("is_critical") else 75,
+                        "published_at": item["detected_at"],
+                        "extraction_method": "playwright+gemini",
+                        "tier": "T1" if item.get("is_critical") else "T2",
+                    }
+
+                    response = await client.post(endpoint, json=payload)
+                    result = response.json()
+
+                    if result.get("duplicate"):
+                        logger.debug(f"   Duplicate: {item['title'][:60]}")
+                        duplicate_count += 1
+                    else:
+                        logger.info(f"✅ Sent to backend: {item['title'][:60]}")
+                        saved_count += 1
+
+                except httpx.HTTPError as e:
+                    logger.error(f"Failed to send news item to backend: {e}")
+                    await self._fallback_save(item, "news")
+                except Exception as e:
+                    logger.error(f"Unexpected error sending news item: {e}")
 
         if saved_count > 0:
-            logger.info(f"📦 Total items saved to staging: {saved_count}")
+            logger.info(f"📦 Total items sent to backend: {saved_count}")
+            if duplicate_count > 0:
+                logger.info(f"   ({duplicate_count} duplicates skipped)")
             logger.info("👁️ Review at: https://zantara.balizero.com/intelligence/visa-oracle")
         else:
-            logger.info("ℹ️ No new changes detected.")
+            if duplicate_count > 0:
+                logger.info(f"ℹ️ No new changes. {duplicate_count} items already in staging.")
+            else:
+                logger.info("ℹ️ No new changes detected.")
 
         return saved_count
+
+    async def _fallback_save(self, item, item_type):
+        """Fallback to filesystem if API fails (ensures no data loss)."""
+        staging_file = STAGING_DIR / item_type / f"{item['id']}_fallback.json"
+        try:
+            with open(staging_file, "w", encoding="utf-8") as f:
+                json.dump(item, f, indent=2, ensure_ascii=False)
+            logger.warning(f"⚠️ Fallback save: {item['title'][:60]}")
+        except Exception as e:
+            logger.error(f"Fallback save failed: {e}")
 
 
 class IntelligentVisaAgent:

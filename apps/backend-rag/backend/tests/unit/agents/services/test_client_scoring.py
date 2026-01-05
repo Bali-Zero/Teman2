@@ -160,3 +160,4 @@ class TestClientScoringService:
         """Test calculating scores batch with empty list"""
         result = await client_scoring_service.calculate_scores_batch([])
         assert result == {}
+

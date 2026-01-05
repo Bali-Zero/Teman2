@@ -22,6 +22,7 @@ import json
 import httpx
 import asyncio
 import time
+import os
 from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
@@ -421,8 +422,21 @@ class BaliZeroScraperV2:
                 return []
 
             # Step 2: Extract article links from index
+            # Use default generic selectors if not specified
+            default_selectors = [
+                "article",
+                ".article",
+                ".news-item",
+                ".post",
+                ".entry",
+                "div.item",
+                ".card",
+                "li.result",
+                ".search-result",
+            ]
+            selectors = source.get("selectors", default_selectors)
             articles = self._extract_links_from_index(
-                html, source["url"], source["selectors"]
+                html, source["url"], selectors
             )
 
             logger.info(f"[{source['name']}] Found {len(articles)} article links")
@@ -524,7 +538,7 @@ class BaliZeroScraperV2:
             source_items = await self.scrape_source(source, category_key)
 
             for item in source_items:
-                self.save_item(item, category_key)
+                await self.save_item(item, category_key)
                 total_items += 1
 
                 if total_items >= limit:
@@ -536,8 +550,8 @@ class BaliZeroScraperV2:
         logger.success(f"[{category_key}] Scraped {total_items} items")
         return total_items
 
-    def save_item(self, item: Dict, category: str):
-        """Save scraped item to markdown file"""
+    async def save_item(self, item: Dict, category: str):
+        """Save scraped item to markdown file and send to backend"""
 
         try:
             validated = ScrapedItem(**item)
@@ -587,6 +601,62 @@ extraction_method: {item["extraction_method"]}
             f.write(content)
 
         logger.debug(f"Saved: {filepath}")
+
+        # Send to backend Intelligence Center
+        await self.send_to_backend(item)
+
+    async def send_to_backend(self, item: Dict):
+        """
+        Send scraped article to backend Intelligence Center.
+
+        Articles are sent to /api/intel/scraper/submit where they are:
+        1. Classified as visa or news
+        2. Saved to staging folder
+        3. Made available for team approval in Intelligence Center UI
+        4. Voted on via Telegram
+        5. Ingested to Qdrant if approved
+        """
+        backend_url = os.getenv(
+            "BACKEND_API_URL", "https://nuzantara-rag.fly.dev"
+        )
+        endpoint = f"{backend_url}/api/intel/scraper/submit"
+
+        payload = {
+            "title": item["title"],
+            "content": item["content"],
+            "source_url": str(item["url"]),
+            "source_name": item["source"],
+            "category": item["category"],
+            "relevance_score": item["relevance_score"],
+            "published_at": item.get("published_at"),
+            "extraction_method": item.get("extraction_method", "css"),
+            "tier": item["tier"],
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(endpoint, json=payload)
+                response.raise_for_status()
+                result = response.json()
+
+                if result.get("duplicate"):
+                    logger.debug(
+                        f"Backend: Article already in staging - {item['title'][:50]}"
+                    )
+                else:
+                    logger.info(
+                        f"✅ Sent to backend: {result.get('intel_type')} - {item['title'][:50]}"
+                    )
+
+        except httpx.HTTPError as e:
+            logger.warning(
+                f"Failed to send to backend: {e} - {item['title'][:50]}"
+            )
+            # Don't raise - local save is already done, backend is optional
+        except Exception as e:
+            logger.warning(
+                f"Backend send error: {e} - {item['title'][:50]}"
+            )
 
     async def scrape_all(self, limit: int = 10, categories: List[str] = None):
         """Scrape all categories"""

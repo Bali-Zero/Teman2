@@ -100,6 +100,34 @@ class TestClientCreateValidation:
         assert client.tags == []
         assert client.custom_fields == {}
 
+    def test_client_create_empty_email_to_none(self):
+        """Test empty email string is converted to None"""
+        from app.routers.crm_clients import ClientCreate
+
+        client = ClientCreate(full_name="John Doe", email="")
+        assert client.email is None
+
+    def test_client_create_whitespace_email_to_none(self):
+        """Test whitespace-only email is converted to None"""
+        from app.routers.crm_clients import ClientCreate
+
+        client = ClientCreate(full_name="John Doe", email="   ")
+        assert client.email is None
+
+    def test_client_create_empty_passport_expiry_to_none(self):
+        """Test empty passport_expiry string is converted to None"""
+        from app.routers.crm_clients import ClientCreate
+
+        client = ClientCreate(full_name="John Doe", passport_expiry="")
+        assert client.passport_expiry is None
+
+    def test_client_create_empty_date_of_birth_to_none(self):
+        """Test empty date_of_birth string is converted to None"""
+        from app.routers.crm_clients import ClientCreate
+
+        client = ClientCreate(full_name="John Doe", date_of_birth="")
+        assert client.date_of_birth is None
+
 
 class TestClientUpdateValidation:
     """Tests for ClientUpdate model validation"""

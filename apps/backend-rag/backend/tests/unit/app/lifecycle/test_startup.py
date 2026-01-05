@@ -197,3 +197,4 @@ class TestStartupHandlersDirect:
             # Execute should raise the error
             with pytest.raises(Exception, match="Service init failed"):
                 await startup_handler()
+

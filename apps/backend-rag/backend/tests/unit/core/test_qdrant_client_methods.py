@@ -394,3 +394,4 @@ class TestQdrantClientUpsertDocumentsWithSparse:
 
             assert result["success"] is False
             assert "error" in result
+

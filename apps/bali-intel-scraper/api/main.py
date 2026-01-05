@@ -383,12 +383,16 @@ async def _run_intel_job(job_id: str, request: IntelRequest):
 
         logger.info(f"[{job_id}] Pipeline complete")
         logger.info(f"  - Input: {stats.total_input}")
-        logger.info(f"  - Passed LLAMA: {stats.passed_llama}")
-        logger.info(f"  - Validated: {stats.validated}")
+        logger.info(f"  - LLAMA Scored: {stats.llama_scored}")
+        logger.info(f"  - LLAMA Filtered: {stats.llama_filtered}")
+        logger.info(f"  - Claude Validated: {stats.claude_validated}")
+        logger.info(f"  - Claude Approved: {stats.claude_approved}")
         logger.info(f"  - Enriched: {stats.enriched}")
         logger.info(f"  - Images: {stats.images_generated}")
         logger.info(f"  - SEO Optimized: {stats.seo_optimized}")
+        logger.info(f"  - Pending Approval: {stats.pending_approval}")
         logger.info(f"  - Published: {stats.published}")
+        logger.info(f"  - Errors: {stats.errors}")
 
         # Success
         jobs[job_id]["status"] = "completed"
@@ -396,12 +400,17 @@ async def _run_intel_job(job_id: str, request: IntelRequest):
         jobs[job_id]["results"] = {
             "total_fetched": len(raw_articles),
             "total_input": stats.total_input,
-            "passed_llama": stats.passed_llama,
-            "validated": stats.validated,
+            "llama_scored": stats.llama_scored,
+            "llama_filtered": stats.llama_filtered,
+            "claude_validated": stats.claude_validated,
+            "claude_approved": stats.claude_approved,
             "enriched": stats.enriched,
             "images_generated": stats.images_generated,
             "seo_optimized": stats.seo_optimized,
+            "pending_approval": stats.pending_approval,
             "published": stats.published,
+            "errors": stats.errors,
+            "duration_seconds": stats.duration_seconds,
         }
         logger.info(f"[{job_id}] Job completed successfully")
 

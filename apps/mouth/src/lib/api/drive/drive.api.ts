@@ -270,10 +270,23 @@ export class DriveApi {
       const baseUrl = (this.client as unknown as { baseUrl: string }).baseUrl || '';
       xhr.open('POST', `${baseUrl}/api/drive/files/upload`);
 
+      // Set Authorization header
+      const token = this.client.getToken();
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
       // Copy auth headers if available
       if (typeof document !== 'undefined') {
         // Browser: cookies will be sent automatically with credentials
         xhr.withCredentials = true;
+
+        // CRITICAL: Add CSRF token for cookie-based auth (required by backend middleware)
+        const csrfCookie = document.cookie.split('; ').find(row => row.startsWith('nz_csrf_token='));
+        if (csrfCookie) {
+          const csrfToken = csrfCookie.split('=')[1];
+          xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+        }
       }
 
       xhr.send(formData);

@@ -236,3 +236,4 @@ class TestRetryWithBackoff:
         assert result == "success"
         # Should have one delay (after first failure)
         assert len(delays) >= 1
+

@@ -181,3 +181,4 @@ class TestTeamAnalyticsRouter:
         )
         response = client.get("/api/team-analytics/workload-balance")
         assert response.status_code == 500
+
