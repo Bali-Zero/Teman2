@@ -70,6 +70,15 @@ export default function CategoryPage() {
   const [articles, setArticles] = React.useState<ArticleListItem[]>([]);
   const [loading, setLoading] = React.useState(true);
 
+  // Reserved workspace paths - redirect to workspace if accessed
+  const RESERVED_PATHS = ['cases', 'clients', 'dashboard', 'documents', 'knowledge', 'team', 'analytics', 'intelligence', 'whatsapp', 'email', 'chat'];
+
+  React.useEffect(() => {
+    if (RESERVED_PATHS.includes(category)) {
+      window.location.href = `/${category}`;
+    }
+  }, [category]);
+
   const meta = CATEGORY_META[category];
   const Icon = meta?.icon || Plane;
 

@@ -171,13 +171,11 @@ export class EmailApi {
    * Delete emails (move to trash)
    */
   async deleteEmails(messageIds: string[]): Promise<OperationResponse> {
-    const queryParams = new URLSearchParams();
-    messageIds.forEach(id => queryParams.append('message_ids', id));
-
     return this.client.request<OperationResponse>(
-      `${API_PREFIX}/emails?${queryParams.toString()}`,
+      `${API_PREFIX}/emails`,
       {
         method: 'DELETE',
+        body: JSON.stringify({ message_ids: messageIds }),
       }
     );
   }

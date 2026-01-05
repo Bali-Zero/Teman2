@@ -16,6 +16,8 @@ import {
   GrafanaWidget,
 } from '@/components/dashboard';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { dashboardMetrics } from '@/lib/metrics/dashboard-metrics';
 import type {
   PracticeStats,
   InteractionStats,
@@ -53,6 +55,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadDashboardData = async () => {
       setIsLoading(true);
+      dashboardMetrics.startPerformanceMark('dashboard_load');
 
       try {
         const user = await api.getProfile();
@@ -61,75 +64,108 @@ export default function DashboardPage() {
 
         const isZero = email === 'zero@balizero.com';
 
-        // Fetch real data in parallel with error tracking
         const results = await Promise.allSettled([
-          api.crm.getPracticeStats().catch(
-            () =>
-              ({
-                total_practices: 0,
-                active_practices: 0,
-                by_status: {},
-                by_type: [],
-                revenue: { total_revenue: 0, paid_revenue: 0, outstanding_revenue: 0 },
-              }) as PracticeStats
-          ),
-          api.crm.getInteractionStats().catch(
-            () =>
-              ({
-                total_interactions: 0,
-                last_7_days: 0,
-                by_type: {},
-                by_sentiment: {},
-                by_team_member: [],
-              }) as InteractionStats
-          ),
-          api.crm.getPractices({ status: 'in_progress', limit: 5 }).catch(() => [] as Practice[]),
+          api.crm.getPracticeStats().catch((error) => {
+            logger.error('Failed to load practice stats', {
+              component: 'DashboardPage',
+              action: 'loadDashboardData',
+            }, error instanceof Error ? error : new Error(String(error)));
+            return {
+              total_practices: 0,
+              active_practices: 0,
+              by_status: {},
+              by_type: [],
+              revenue: { total_revenue: 0, paid_revenue: 0, outstanding_revenue: 0 },
+            } as PracticeStats;
+          }),
+          api.crm.getInteractionStats().catch((error) => {
+            logger.error('Failed to load interaction stats', {
+              component: 'DashboardPage',
+              action: 'loadDashboardData',
+            }, error instanceof Error ? error : new Error(String(error)));
+            return {
+              total_interactions: 0,
+              last_7_days: 0,
+              by_type: {},
+              by_sentiment: {},
+              by_team_member: [],
+            } as InteractionStats;
+          }),
+          api.crm.getPractices({ status: 'in_progress', limit: 5 }).catch((error) => {
+            logger.error('Failed to load practices', {
+              component: 'DashboardPage',
+              action: 'loadDashboardData',
+            }, error instanceof Error ? error : new Error(String(error)));
+            return [] as Practice[];
+          }),
           api.crm
             .getInteractions({ interaction_type: 'whatsapp', limit: 5 })
-            .catch(() => [] as Interaction[]),
-          api.crm.getUpcomingRenewals(30).catch(() => [] as RenewalAlert[]),
-          api.getClockStatus().catch(() => ({ today_hours: 0 })),
-          isZero ? api.crm.getRevenueGrowth().catch(() => null) : Promise.resolve(null),
+            .catch((error) => {
+              logger.error('Failed to load interactions', {
+                component: 'DashboardPage',
+                action: 'loadDashboardData',
+              }, error instanceof Error ? error : new Error(String(error)));
+              return [] as Interaction[];
+            }),
+          api.crm.getUpcomingRenewals(30).catch((error) => {
+            logger.error('Failed to load renewals', {
+              component: 'DashboardPage',
+              action: 'loadDashboardData',
+            }, error instanceof Error ? error : new Error(String(error)));
+            return [] as RenewalAlert[];
+          }),
+          api.getClockStatus().catch((error) => {
+            logger.error('Failed to load clock status', {
+              component: 'DashboardPage',
+              action: 'loadDashboardData',
+            }, error instanceof Error ? error : new Error(String(error)));
+            return { today_hours: 0 };
+          }),
+          isZero ? api.crm.getRevenueGrowth().catch((error) => {
+            logger.error('Failed to load revenue growth', {
+              component: 'DashboardPage',
+              action: 'loadDashboardData',
+            }, error instanceof Error ? error : new Error(String(error)));
+            return null;
+          }) : Promise.resolve(null),
         ]);
 
         // Check for failures to determine system status
         const hasFailures = results.some((r) => r.status === 'rejected');
         setSystemStatus(hasFailures ? 'degraded' : 'healthy');
 
-        const practiceStats =
-          results[0].status === 'fulfilled'
-            ? (results[0].value as PracticeStats)
-            : ({
-                total_practices: 0,
-                active_practices: 0,
-                by_status: {},
-                by_type: [],
-                revenue: { total_revenue: 0, paid_revenue: 0, outstanding_revenue: 0 },
-              } as PracticeStats);
-        const interactionStats =
-          results[1].status === 'fulfilled'
-            ? (results[1].value as InteractionStats)
-            : ({
-                total_interactions: 0,
-                last_7_days: 0,
-                by_type: {},
-                by_sentiment: {},
-                by_team_member: [],
-              } as InteractionStats);
-        const activePractices =
-          results[2].status === 'fulfilled' ? (results[2].value as Practice[]) : [];
-        const recentInteractions =
-          results[3].status === 'fulfilled' ? (results[3].value as Interaction[]) : [];
-        const renewals =
-          results[4].status === 'fulfilled' ? (results[4].value as RenewalAlert[]) : [];
-        const clockStatus =
-          results[5].status === 'fulfilled' ? results[5].value : { today_hours: 0 };
+        const defaultPracticeStats: PracticeStats = {
+          total_practices: 0,
+          active_practices: 0,
+          by_status: {},
+          by_type: [],
+          revenue: { total_revenue: 0, paid_revenue: 0, outstanding_revenue: 0 },
+        };
+
+        const defaultInteractionStats: InteractionStats = {
+          total_interactions: 0,
+          last_7_days: 0,
+          by_type: {},
+          by_sentiment: {},
+          by_team_member: [],
+        };
+
+        const practiceStats = results[0].status === 'fulfilled' 
+          ? (results[0].value as PracticeStats) 
+          : defaultPracticeStats;
+        
+        const interactionStats = results[1].status === 'fulfilled'
+          ? (results[1].value as InteractionStats)
+          : defaultInteractionStats;
+        const activePractices = results[2].status === 'fulfilled' ? (results[2].value as Practice[]) : [];
+        const recentInteractions = results[3].status === 'fulfilled' ? (results[3].value as Interaction[]) : [];
+        const renewals = results[4].status === 'fulfilled' ? (results[4].value as RenewalAlert[]) : [];
+        const clockStatus = results[5].status === 'fulfilled' ? results[5].value : { today_hours: 0 };
         const revenueGrowth = results[6].status === 'fulfilled' ? results[6].value : null;
 
-        // Transform Practices for UI
         const mappedCases: PraticaPreview[] = activePractices.map((p) => ({
           id: p.id,
-          title: p.practice_type_code?.toUpperCase().replace(/_/g, ' ') || 'Case',
+          title: p.practice_type_code?.toUpperCase().replaceAll('_', ' ') || 'Case',
           client: p.client_name || 'Unknown Client',
           status: p.status as PraticaPreview['status'],
           daysRemaining: p.expiry_date
@@ -137,7 +173,6 @@ export default function DashboardPage() {
             : undefined,
         }));
 
-        // Transform Interactions for UI
         const mappedMessages: WhatsAppMessage[] = recentInteractions.map((i) => ({
           id: i.id.toString(),
           contactName: i.client_name || 'Anonymous',
@@ -146,7 +181,7 @@ export default function DashboardPage() {
             hour: '2-digit',
             minute: '2-digit',
           }),
-          isRead: i.read_receipt === true, // Use real read_receipt field from database
+          isRead: i.read_receipt === true,
           hasAiSuggestion: !!i.conversation_id,
           practiceId: i.practice_id,
         }));
@@ -162,10 +197,27 @@ export default function DashboardPage() {
 
         setCases(mappedCases);
         setWhatsappMessages(mappedMessages);
+        
+        const loadTime = dashboardMetrics.endPerformanceMark('dashboard_load', email);
+        dashboardMetrics.trackPageView(email);
+        
+        logger.info('Dashboard loaded successfully', {
+          component: 'DashboardPage',
+          action: 'loadDashboardData',
+          user: email,
+          metadata: { loadTime, systemStatus },
+        });
       } catch (error) {
-        console.error('Failed to load dashboard data', error);
+        logger.error('Critical error loading dashboard data', {
+          component: 'DashboardPage',
+          action: 'loadDashboardData',
+          user: userEmail,
+        }, error instanceof Error ? error : new Error(String(error)));
+        setSystemStatus('degraded');
+        dashboardMetrics.trackError('dashboard_load_failed', error instanceof Error ? error.message : 'Unknown error', userEmail);
       } finally {
         setIsLoading(false);
+        dashboardMetrics.endPerformanceMark('dashboard_load', userEmail);
       }
     };
 
@@ -176,7 +228,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* System Status Banner */}
       {systemStatus === 'degraded' && (
         <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-yellow-500" />
@@ -189,14 +240,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Zero-Only Command Deck Widgets */}
       {isZero && !isLoading && (
         <>
-          {/* Analytics, Zantara v6.0, and Auto CRM - Layout Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
-            {/* Left Column: Analytics Dashboard + Zantara v6.0 stacked */}
             <div className="flex flex-col gap-6">
-              {/* Analytics Dashboard - Square */}
               <Link
                 href="/dashboard/analytics"
                 className="group aspect-square flex flex-col items-center justify-center p-6 rounded-xl border-2 border-sky-500/40 bg-sky-500/10 hover:border-sky-400 hover:bg-sky-500/15 transition-all duration-300"
@@ -213,7 +260,6 @@ export default function DashboardPage() {
                 </div>
               </Link>
 
-              {/* Zantara v6.0 - Below Analytics */}
               <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1">
                 <AiPulseWidget
                   systemAppStatus={systemStatus}
@@ -222,35 +268,28 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Right Column: Auto CRM */}
             <div className="rounded-xl border-2 border-sky-500/40 bg-sky-500/10 p-1 h-fit">
               <AutoCRMWidget />
             </div>
           </div>
 
-          {/* Financial Reality Widget */}
           {stats.revenue && (
             <div className="animate-in fade-in slide-in-from-top-4 duration-700 delay-100">
               <FinancialRealityWidget revenue={stats.revenue} growth={stats.growth || 0} />
             </div>
           )}
 
-          {/* Nusantara System Health Map */}
           <NusantaraHealthWidget className="animate-in fade-in slide-in-from-top-4 duration-700 delay-150" />
-
-          {/* Grafana Observability Widget */}
           <GrafanaWidget className="animate-in fade-in slide-in-from-top-4 duration-700 delay-200" />
         </>
       )}
 
-      {/* AUTO CRM Widget for non-zero users */}
       {!isZero && !isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-700">
           <AutoCRMWidget />
         </div>
       )}
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Active Cases"
@@ -284,21 +323,26 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Pratiche Preview */}
         <PratichePreview pratiche={cases} isLoading={isLoading} />
-
-        {/* WhatsApp Preview */}
         <WhatsAppPreview
           messages={whatsappMessages}
           isLoading={isLoading}
           onDelete={async (id) => {
             try {
-              await api.crm.deleteInteraction(parseInt(id), userEmail);
+              await api.crm.deleteInteraction(Number.parseInt(id, 10), userEmail);
               setWhatsappMessages(prev => prev.filter(m => m.id !== id));
+              setStats(prev => ({
+                ...prev,
+                whatsappUnread: Math.max(0, prev.whatsappUnread - 1),
+              }));
             } catch (error) {
-              console.error('Failed to delete interaction:', error);
+              logger.error('Failed to delete interaction', {
+                component: 'DashboardPage',
+                action: 'deleteInteraction',
+                user: userEmail,
+                metadata: { interactionId: id },
+              }, error instanceof Error ? error : new Error(String(error)));
             }
           }}
         />

@@ -14,7 +14,6 @@ Uses Claude/Gemini for intelligent content transformation.
 
 from typing import Dict, Any, Optional
 from loguru import logger
-import anthropic
 import os
 
 
@@ -22,9 +21,8 @@ class ArticleEnrichmentService:
     """Enriches raw articles for Bali Zero Intelligence Center"""
 
     def __init__(self):
-        self.anthropic_client = anthropic.Anthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY")
-        )
+        # TODO: Implement Claude Max browser automation for enrichment
+        logger.info("ArticleEnrichmentService initialized (using fallback mode)")
 
     async def enrich_article(
         self, raw_article: Dict[str, Any]
@@ -58,53 +56,21 @@ class ArticleEnrichmentService:
         source_name = raw_article.get("source_name", "Unknown")
 
         logger.info(
-            f"Enriching article: {title[:50]}...",
+            f"Processing article (fallback mode): {title[:50]}...",
             extra={"category": category, "source": source_name}
         )
 
-        # Build enrichment prompt
-        prompt = self._build_enrichment_prompt(
-            title, content, category, source_name
-        )
-
-        try:
-            # Call Claude for enrichment
-            response = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-5-20250929",
-                max_tokens=2000,
-                temperature=0.7,
-                messages=[{"role": "user", "content": prompt}]
-            )
-
-            # Parse response
-            enriched_text = response.content[0].text
-
-            # Extract structured data from Claude's response
-            enriched_data = self._parse_enrichment_response(enriched_text)
-
-            logger.success(
-                f"Article enriched successfully",
-                extra={
-                    "original_title": title,
-                    "enriched_title": enriched_data.get("enriched_title", ""),
-                    "key_points_count": len(enriched_data.get("key_points", []))
-                }
-            )
-
-            return enriched_data
-
-        except Exception as e:
-            logger.error(f"Enrichment failed: {e}", exc_info=True)
-            # Fallback to minimal enrichment
-            return {
-                "enriched_title": title,
-                "enriched_summary": content[:200] + "...",
-                "key_points": [],
-                "faq_items": [],
-                "seo_keywords": [category],
-                "reading_time_minutes": max(1, len(content.split()) // 200),
-                "image_prompt": f"{category} related news image"
-            }
+        # TODO: Implement Claude Max browser automation here
+        # For now, return minimal enrichment
+        return {
+            "enriched_title": title,
+            "enriched_summary": content[:200] + "...",
+            "key_points": [],
+            "faq_items": [],
+            "seo_keywords": [category],
+            "reading_time_minutes": max(1, len(content.split()) // 200),
+            "image_prompt": f"{category} related news image"
+        }
 
     def _build_enrichment_prompt(
         self, title: str, content: str, category: str, source: str

@@ -55,7 +55,6 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold text-[var(--foreground)]">
@@ -76,7 +75,6 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
         </Link>
       </div>
 
-      {/* Messages List */}
       <div className="space-y-2">
         {messages.length === 0 ? (
           <div className="text-center py-8">
@@ -98,7 +96,6 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
             >
               <Link href="/whatsapp" className="block">
                 <div className="flex items-start gap-3">
-                  {/* Status Indicator */}
                   <div className="relative mt-0.5">
                     <span
                       className={cn(
@@ -108,7 +105,6 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
                     />
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-[var(--foreground)] truncate">
@@ -122,7 +118,6 @@ export function WhatsAppPreview({ messages, isLoading, onDelete }: WhatsAppPrevi
                       {msg.message}
                     </p>
 
-                    {/* Tags */}
                     <div className="flex items-center gap-2 mt-1.5">
                       {msg.practiceId && (
                         <span className="text-xs text-[var(--accent)] bg-[var(--accent)]/10 px-1.5 py-0.5 rounded">

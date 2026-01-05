@@ -70,7 +70,6 @@ export function StatsCard({
         accent?.border
       )}
     >
-      {/* Icon */}
       <div className="flex items-center justify-between mb-3">
         <div
           className={cn(
@@ -94,13 +93,9 @@ export function StatsCard({
         )}
       </div>
 
-      {/* Title */}
       <p className="text-sm text-[var(--foreground-muted)] mb-1">{title}</p>
-
-      {/* Value */}
       <p className={cn('text-2xl font-bold', styles.value)}>{value}</p>
-
-      {/* Subtitle */}
+      
       {subtitle && (
         <p className="text-xs text-[var(--foreground-muted)] mt-1">{subtitle}</p>
       )}

@@ -1,12 +1,15 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useSystemSound } from '@/hooks/useSystemSound';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-// Using regular img tag for static assets to avoid Next.js Image Optimization issues
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+
+// Configuration
+const REDIRECT_DELAY_MS = 1500;
+const ERROR_RESET_DELAY_MS = 2000;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,67 +17,91 @@ export default function LoginPage() {
   const [loginStage, setLoginStage] = useState<'idle' | 'authenticating' | 'success' | 'denied'>(
     'idle'
   );
-  const router = useRouter();
   const { play } = useSystemSound();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loginStage !== 'idle') return;
 
-    console.log('[LOGIN PAGE] 🚀 Login process started');
-    console.log('[LOGIN PAGE] 📧 Email:', email);
-    console.log('[LOGIN PAGE] 🌐 Current URL:', window.location.href);
-    console.log('[LOGIN PAGE] 🍪 Cookies enabled:', navigator.cookieEnabled);
-    console.log('[LOGIN PAGE] 💾 LocalStorage available:', typeof localStorage !== 'undefined');
+    logger.info('Login process started', {
+      component: 'LoginPage',
+      action: 'handleLogin',
+      metadata: {
+        email,
+        currentUrl: globalThis.location.href,
+        cookiesEnabled: navigator.cookieEnabled,
+        localStorageAvailable: typeof localStorage !== 'undefined',
+      },
+    });
 
     // 1. Sound: Authenticate Start
     play('auth_start');
     setLoginStage('authenticating');
-    console.log('[LOGIN PAGE] 🎵 Auth sound played, stage set to authenticating');
+    logger.debug('Auth sound played, stage set to authenticating', {
+      component: 'LoginPage',
+      action: 'handleLogin',
+    });
 
     try {
       // 2. Real API call
-      console.log('[LOGIN PAGE] 📞 Calling api.login()...');
+      logger.debug('Calling api.login()', { component: 'LoginPage', action: 'handleLogin' });
       const loginResponse = await api.login(email, pin);
-      console.log('[LOGIN PAGE] ✅ api.login() returned:', {
-        hasUser: !!loginResponse.user,
-        userRole: loginResponse.user?.role,
-        hasToken: !!loginResponse.access_token,
+      logger.info('Login API call successful', {
+        component: 'LoginPage',
+        action: 'handleLogin',
+        metadata: {
+          hasUser: !!loginResponse.user,
+          userRole: loginResponse.user?.role,
+          hasToken: !!loginResponse.access_token,
+        },
       });
 
       // 3. Success - Backend returned 200 OK with valid user data
       setLoginStage('success');
       play('access_granted');
-      console.log('[LOGIN PAGE] 🎉 Login successful! Backend authenticated via httpOnly cookies');
+      logger.info('Login successful! Backend authenticated via httpOnly cookies', {
+        component: 'LoginPage',
+        action: 'handleLogin',
+      });
 
       // Get redirect path based on user role
       // Clients go to /portal, team members go to /dashboard
       const redirectTo = loginResponse.user?.role === 'client' ? '/portal' : '/dashboard';
-      console.log('[LOGIN PAGE] 🔀 Redirect path determined:', redirectTo);
+      logger.info('Redirect path determined', {
+        component: 'LoginPage',
+        action: 'handleLogin',
+        metadata: { redirectTo, userRole: loginResponse.user?.role },
+      });
 
-      // Use window.location.replace for a clean redirect without history entry
+      // Use globalThis.location.replace for a clean redirect without history entry
       // This ensures a full page reload so the layout can properly read the token
-      console.log('[LOGIN PAGE] ⏳ Setting 1.5s timeout for redirect...');
       setTimeout(() => {
-        console.log('[LOGIN PAGE] 🚪 Redirecting to:', redirectTo);
-        window.location.replace(redirectTo);
-      }, 1500);
+        logger.debug('Redirecting user', {
+          component: 'LoginPage',
+          action: 'handleLogin',
+          metadata: { redirectTo },
+        });
+        globalThis.location.replace(redirectTo);
+      }, REDIRECT_DELAY_MS);
     } catch (error) {
       // 4. Failure
-      console.error('[LOGIN PAGE] 💥 Login failed with error:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : undefined,
-      });
+      logger.error('Login failed', {
+        component: 'LoginPage',
+        action: 'handleLogin',
+        metadata: { email },
+      }, error instanceof Error ? error : new Error(String(error)));
+      
       setLoginStage('denied');
       play('access_denied');
-      console.log('[LOGIN PAGE] ❌ Stage set to denied, access_denied sound played');
+      
       // Reset after delay
       setTimeout(() => {
-        console.log('[LOGIN PAGE] 🔄 Resetting to idle state');
+        logger.debug('Resetting to idle state', {
+          component: 'LoginPage',
+          action: 'handleLogin',
+        });
         setLoginStage('idle');
-      }, 2000);
+      }, ERROR_RESET_DELAY_MS);
     }
   };
 

@@ -58,6 +58,15 @@ export function ArticleClient({ category, slug }: ArticleClientProps) {
   const [loading, setLoading] = React.useState(true);
   const [copied, setCopied] = React.useState(false);
 
+  // Reserved workspace paths - redirect to workspace if accessed
+  const RESERVED_PATHS = ['cases', 'clients', 'dashboard', 'documents', 'knowledge', 'team', 'analytics', 'intelligence', 'whatsapp', 'email', 'chat'];
+
+  React.useEffect(() => {
+    if (RESERVED_PATHS.includes(category)) {
+      window.location.href = `/${category}/${slug}`;
+    }
+  }, [category, slug]);
+
   // Fetch article
   React.useEffect(() => {
     async function fetchArticle() {

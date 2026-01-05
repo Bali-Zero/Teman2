@@ -1151,8 +1151,6 @@ export default function ChatPage() {
     });
     
     setSidebarOpen(true);
-    
-    trackEvent('chat_sidebar_opened', {}, api.getUserProfile()?.email);
   }, []);
 
   const handleSidebarClose = useCallback(() => {
@@ -1162,8 +1160,6 @@ export default function ChatPage() {
     });
     
     setSidebarOpen(false);
-    
-    trackEvent('chat_sidebar_closed', {}, api.getUserProfile()?.email);
   }, []);
 
   const handleSearchDocsOpen = useCallback(() => {
@@ -1174,11 +1170,6 @@ export default function ChatPage() {
     });
     
     setIsSearchDocsOpen(true);
-    
-    trackEvent('chat_search_docs_opened', {
-      hasInput: !!input,
-      inputLength: input.length,
-    }, api.getUserProfile()?.email);
   }, [input]);
 
   const handleSearchDocsClose = useCallback(() => {
@@ -1188,8 +1179,6 @@ export default function ChatPage() {
     });
     
     setIsSearchDocsOpen(false);
-    
-    trackEvent('chat_search_docs_closed', {}, api.getUserProfile()?.email);
   }, []);
 
   // Cleanup audio and URLs on unmount
@@ -1374,8 +1363,15 @@ export default function ChatPage() {
       {/* Search Docs Modal */}
       <SearchDocsModal
         open={isSearchDocsOpen}
-        onClose={() => setIsSearchDocsOpen(false)}
-        onInsert={(text) => setInput((prev) => (prev ? `${prev}\n${text}` : text))}
+        onClose={handleSearchDocsClose}
+        onInsert={(text) => {
+          logger.debug('Text inserted from search docs', {
+            component: 'ChatPage',
+            action: 'searchDocsInsert',
+            metadata: { textLength: text.length },
+          });
+          setInput((prev) => (prev ? `${prev}\n${text}` : text));
+        }}
         initialQuery={input}
       />
 
@@ -1539,7 +1535,7 @@ export default function ChatPage() {
                     key={q}
                     onClick={() => {
                       if (i === 2) {
-                        setIsSearchDocsOpen(true);
+                        handleSearchDocsOpen();
                       } else {
                         setInput(q);
                         setTimeout(() => handleSend(), 10);

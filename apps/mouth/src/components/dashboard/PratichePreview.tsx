@@ -74,7 +74,6 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] p-5">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-semibold text-[var(--foreground)]">
           My Cases
@@ -88,7 +87,6 @@ export function PratichePreview({ pratiche, isLoading }: PratichePreviewProps) {
         </Link>
       </div>
 
-      {/* Pratiche List */}
       <div className="space-y-2">
         {pratiche.length === 0 ? (
           <div className="text-center py-8">
