@@ -40,6 +40,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
+        statusText: 'Bad Request',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Bad request' }),
       });
 
@@ -50,6 +57,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
+        statusText: 'Unauthorized',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Unauthorized' }),
       });
 
@@ -60,6 +74,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 403,
+        statusText: 'Forbidden',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Forbidden' }),
       });
 
@@ -70,6 +91,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
+        statusText: 'Not Found',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Not found' }),
       });
 
@@ -80,6 +108,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        statusText: 'Internal Server Error',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Internal server error' }),
       });
 
@@ -90,6 +125,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 429,
+        statusText: 'Too Many Requests',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Too many requests' }),
       });
 
@@ -100,6 +142,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        statusText: 'Internal Server Error',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ message: 'Error message' }),
       });
 
@@ -110,6 +159,13 @@ describe('Error Handling Unit Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        statusText: 'Internal Server Error',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'text/plain';
+            return null;
+          }),
+        },
         json: async () => {
           throw new Error('Not JSON');
         },

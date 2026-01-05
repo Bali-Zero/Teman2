@@ -558,6 +558,13 @@ describe('ApiClient Integration Tests', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
+        statusText: 'Unauthorized',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Unauthorized' }),
       });
 

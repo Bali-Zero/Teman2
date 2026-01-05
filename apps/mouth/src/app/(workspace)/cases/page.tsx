@@ -393,10 +393,11 @@ export default function PratichePage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Status Filter */}
               <div>
-                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                <label htmlFor="status-filter" className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
                   Status
                 </label>
                 <select
+                  id="status-filter"
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
@@ -411,10 +412,11 @@ export default function PratichePage() {
 
               {/* Type Filter */}
               <div>
-                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                <label htmlFor="type-filter" className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
                   Case Type
                 </label>
                 <select
+                  id="type-filter"
                   value={filters.type}
                   onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
@@ -429,10 +431,11 @@ export default function PratichePage() {
 
               {/* Assigned To Filter */}
               <div>
-                <label className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
+                <label htmlFor="assigned-to-filter" className="block text-sm font-medium text-[var(--foreground-muted)] mb-1.5">
                   Assigned To
                 </label>
                 <select
+                  id="assigned-to-filter"
                   value={filters.assigned_to}
                   onChange={(e) => setFilters({ ...filters, assigned_to: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
@@ -485,11 +488,11 @@ export default function PratichePage() {
 
                 <div className="flex-1 space-y-3">
                   {isLoading ? (
-                    <>
+                    <div data-testid="loading-skeleton">
                       <SkeletonCard />
                       <SkeletonCard />
                       <SkeletonCard />
-                    </>
+                    </div>
                   ) : columnPractices.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-32 border border-dashed border-[var(--border)] rounded-lg bg-[var(--background-elevated)]/30">
                       <FolderKanban className="w-8 h-8 text-[var(--foreground-muted)] opacity-20 mb-2" />
@@ -579,10 +582,10 @@ export default function PratichePage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              router.push(`/clients/${practice.client_id}`);
+                              router.push(`/clients/${practice.client_id}?tab=documents`);
                             }}
                             className="p-1.5 rounded hover:bg-orange-500/20 text-orange-500 transition-colors ml-auto"
-                            title="View Client"
+                            title="View Documents"
                           >
                             <FileText className="w-3.5 h-3.5" />
                           </button>

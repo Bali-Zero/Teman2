@@ -148,6 +148,13 @@ describe('ApiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
+        statusText: 'Unauthorized',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: () => Promise.resolve({ detail: 'Unauthorized' }),
       });
 
@@ -1078,6 +1085,13 @@ describe('ApiClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
+        statusText: 'Internal Server Error',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: () => Promise.reject(new Error('Invalid JSON')),
       });
 

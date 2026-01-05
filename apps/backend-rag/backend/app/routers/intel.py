@@ -195,19 +195,24 @@ async def send_intel_approval_notification(
 <b>{title}</b>
 
 {summary}
+"""
 
-<b>📌 Key Points:</b>"""
+    # Add key points only if available (max 3)
+    if key_points:
+        caption += "\n<b>📌 Key Points:</b>\n"
+        for i, point in enumerate(key_points[:3], 1):
+            caption += f"  {i}. {point}\n"
 
-    # Add key points (max 3)
-    for i, point in enumerate(key_points[:3], 1):
-        caption += f"\n  {i}. {point}"
+    # Add metadata
+    caption += f"""
+<b>📰 Source:</b> <a href="{source_url}">{source}</a>
+<b>📅 Detected:</b> {detected_at}"""
+
+    # Add tags only if available
+    if keywords:
+        caption += f"\n<b>🏷️ Tags:</b> {', '.join(keywords[:5])}"
 
     caption += f"""
-
-<b>📰 Source:</b> <a href="{source_url}">{source}</a>
-<b>📅 Detected:</b> {detected_at}
-<b>⏱️ Read time:</b> {reading_time} min
-<b>🏷️ Tags:</b> {", ".join(keywords[:5])}
 
 🗳️ <b>Votazione {team_config['required_votes']}/{len(team_config['approvers'])}</b> per approvare/rifiutare
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
   User,
@@ -135,6 +135,7 @@ type ModalType = 'none' | 'edit_client' | 'add_family' | 'add_document';
 export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const clientId = Number(params.id);
 
@@ -181,6 +182,14 @@ export default function ClientDetailPage() {
       loadData();
     }
   }, [clientId]);
+
+  // Read tab from URL params and set active tab
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['overview', 'family', 'documents', 'cases', 'timeline'].includes(tabParam)) {
+      setActiveTab(tabParam as TabType);
+    }
+  }, [searchParams]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';

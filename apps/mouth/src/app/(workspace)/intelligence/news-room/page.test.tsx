@@ -166,12 +166,12 @@ describe('NewsRoomPage', () => {
     });
   });
 
-  it('should display "Open Editor" buttons for each item', async () => {
+  it('should display "Publish" buttons for each item', async () => {
     render(<NewsRoomPage />);
 
     await waitFor(() => {
-      const editorButtons = screen.getAllByText('Open Editor');
-      expect(editorButtons.length).toBe(3);
+      const publishButtons = screen.getAllByText('Publish');
+      expect(publishButtons.length).toBe(3);
     });
   });
 

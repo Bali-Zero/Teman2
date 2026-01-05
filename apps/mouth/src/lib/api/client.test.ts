@@ -232,6 +232,13 @@ describe('ApiClientBase', () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 404,
+        statusText: 'Not Found',
+        headers: {
+          get: vi.fn((name: string) => {
+            if (name === 'content-type') return 'application/json';
+            return null;
+          }),
+        },
         json: async () => ({ detail: 'Not found' }),
       });
 

@@ -443,10 +443,12 @@ class IntelPipeline:
             try:
                 # Build article dict for SEO optimizer
                 enriched = article.enriched_article
+                # Combine article sections for SEO content
+                full_content = f"{enriched.facts}\n\n{enriched.bali_zero_take}"
                 article_data = {
                     "title": enriched.headline,
-                    "content": enriched.executive_brief,
-                    "enriched_content": enriched.executive_brief,
+                    "content": full_content,
+                    "enriched_content": full_content,
                     "category": enriched.category,
                     "source_url": article.url,
                     "image_url": article.image_path or "",

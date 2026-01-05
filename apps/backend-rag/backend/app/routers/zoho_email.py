@@ -14,7 +14,7 @@ import secrets
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, Body
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 
@@ -27,6 +27,11 @@ from services.integrations.zoho_oauth_service import ZohoOAuthService
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/integrations/zoho", tags=["zoho-email"])
+
+
+class DeleteEmailsRequest(BaseModel):
+    """Request model for deleting emails."""
+    message_ids: list[str] = Field(..., min_length=1, description="Message IDs to delete")
 
 
 # ================================================
@@ -549,7 +554,7 @@ async def toggle_flag(
 
 @router.delete("/emails")
 async def delete_emails(
-    message_ids: list[str] = Query(..., description="Message IDs to delete"),
+    request: DeleteEmailsRequest = Body(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> dict[str, bool]:
@@ -564,7 +569,7 @@ async def delete_emails(
 
         success = await email_service.delete_emails(
             user_id=user_id,
-            message_ids=message_ids,
+            message_ids=request.message_ids,
         )
         return {"success": success}
     except ValueError as e:
@@ -639,3 +644,9 @@ async def get_unread_count(
     except Exception as e:
         logger.warning(f"Failed to get unread count: {e}")
         return {"unread_count": 0}
+
+
+@router.options("/emails")
+async def options_emails():
+    """Handle OPTIONS requests for DELETE /emails endpoint."""
+    return {"detail": "Method allowed"}
