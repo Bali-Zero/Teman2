@@ -323,22 +323,26 @@ async def list_clients(
         current_user_email = current_user.get("email", "") if current_user else ""
         current_user_name = current_user_email.lower().split("@")[0] if current_user_email else ""
 
+        # SECURITY: Require authentication for client list
+        if not current_user_email:
+            raise HTTPException(
+                status_code=401,
+                detail="Authentication required to view clients"
+            )
+
         # ============================================
         # ACCESS CONTROL RULES
         # ============================================
-        # ZERO: can see ALL contacts
-        # RUSLANA: can see own + Anton, Rina, Dea's contacts + unassigned
-        # OTHER MEMBERS: can only see their OWN contacts
+        # ZERO (zero@balizero.com): Full admin - sees ALL clients
+        # OTHER MEMBERS: See only clients assigned to them
         # ============================================
         SUPER_ADMINS = ["zero"]
-        RUSLANA_CAN_SEE = ["ruslana", "anton", "rina", "dea"]
 
         is_super_admin = current_user_name in SUPER_ADMINS
-        is_ruslana = current_user_name == "ruslana"
 
         logger.info(
             f"📋 [CRM Clients] User {current_user_email} ({current_user_name}) requesting clients list "
-            f"(super_admin={is_super_admin}, ruslana={is_ruslana}, assigned_to_filter={assigned_to})"
+            f"(super_admin={is_super_admin}, assigned_to_filter={assigned_to})"
         )
 
         async with db_pool.acquire() as conn:
@@ -372,34 +376,20 @@ async def list_clients(
 
             # Access control based on user role
             if is_super_admin:
-                # Zero can see all clients
+                # Zero can see ALL clients (no filter)
                 if assigned_to:
-                    # Admin can optionally filter by assigned_to
+                    # Admin can optionally filter by assigned_to using query param
                     query_parts.append(f" AND c.assigned_to = ${param_index}")
                     params.append(assigned_to)
                     param_index += 1
-                logger.info("🔓 [CRM Clients] Super admin - no filter applied")
-            elif is_ruslana:
-                # Ruslana sees her own + Anton, Rina, Dea + unassigned
-                ruslana_emails = [f"{name}@balizero.com" for name in RUSLANA_CAN_SEE]
-                placeholders = ", ".join(
-                    [f"${param_index + i}" for i in range(len(ruslana_emails))]
-                )
-                query_parts.append(
-                    f" AND (c.assigned_to IN ({placeholders}) OR c.assigned_to IS NULL)"
-                )
-                params.extend(ruslana_emails)
-                param_index += len(ruslana_emails)
-                logger.info(
-                    f"🔒 [CRM Clients] Ruslana access - can see: {RUSLANA_CAN_SEE} + unassigned"
-                )
+                logger.info("🔓 [CRM Clients] Super admin (Zero) - viewing all clients")
             else:
-                # Other members can only see their own clients
+                # Regular members can ONLY see clients assigned to them
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
                 params.append(current_user_email)
                 param_index += 1
                 logger.info(
-                    f"🔒 [CRM Clients] Member access - filtered to assigned_to={current_user_email}"
+                    f"🔒 [CRM Clients] Regular member - filtered to assigned_to={current_user_email}"
                 )
 
             if search:
