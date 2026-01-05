@@ -249,7 +249,7 @@ export function EmailViewer({
               </div>
             ) : senderClient ? (
               <a
-                href={`/clienti/${senderClient.id}`}
+                href={`/clients/${senderClient.id}`}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20 transition-colors text-sm font-medium"
               >
                 {senderClient.client_type === 'company' ? (

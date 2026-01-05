@@ -38,8 +38,8 @@ logger = logging.getLogger(__name__)
 
 embedder = create_embeddings_generator()
 
-# Staging Directories
-BASE_STAGING_DIR = Path("data/staging")
+# Staging Directories (mounted Fly volume)
+BASE_STAGING_DIR = Path("/data/staging")
 VISA_STAGING_DIR = BASE_STAGING_DIR / "visa"
 NEWS_STAGING_DIR = BASE_STAGING_DIR / "news"
 
