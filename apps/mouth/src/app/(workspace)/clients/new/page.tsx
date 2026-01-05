@@ -21,6 +21,8 @@ import {
   ChevronDown,
   Check,
   X,
+  Camera,
+  Upload,
 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -31,14 +33,18 @@ import {
   LEAD_SOURCES,
   SERVICE_INTERESTS,
 } from '@/lib/api/crm/crm.types';
+import { cropToSquare } from '@/lib/utils/imageResize';
 
 // Team members - ideally fetch from API
 const TEAM_MEMBERS = [
   { value: 'ruslana@balizero.com', label: 'Ruslana' },
-  { value: 'krisna@balizero.com', label: 'Krisna' },
+  { value: 'krisna@balizero.com', label: 'Krisna', avatar: '/avatars/team/krisna.png' },
   { value: 'veronika@balizero.com', label: 'Veronika' },
-  { value: 'adit@balizero.com', label: 'Adit' },
+  { value: 'adit@balizero.com', label: 'Adit', avatar: '/avatars/team/adit.png' },
   { value: 'zero@balizero.com', label: 'Antonello' },
+  { value: 'ari@balizero.com', label: 'Ari', avatar: '/avatars/team/ari.png' },
+  { value: 'dea@balizero.com', label: 'Dea', avatar: '/avatars/team/dea.png' },
+  { value: 'sahira@balizero.com', label: 'Sahira', avatar: '/avatars/team/sahira.png' },
 ];
 
 export default function NewClientPage() {
@@ -63,6 +69,7 @@ export default function NewClientPage() {
     address: '',
     lead_source: undefined,
     service_interest: [],
+    avatar_url: '',
   });
 
   // Sync whatsapp with phone if not set
@@ -130,6 +137,36 @@ export default function NewClientPage() {
     }));
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB');
+      return;
+    }
+
+    try {
+      // Crop to square and resize to 400x400px
+      const resizedImage = await cropToSquare(file, 400, 0.85);
+      setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
+    } catch (error) {
+      console.error('Failed to process image:', error);
+      alert('Failed to process image. Please try again.');
+    }
+  };
+
+  const removeAvatar = () => {
+    setFormData((prev) => ({ ...prev, avatar_url: '' }));
+  };
+
   const inputClass =
     'w-full pl-10 pr-4 py-2.5 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50 transition-all';
   const selectClass =
@@ -183,6 +220,48 @@ export default function NewClientPage() {
               <User className="w-5 h-5 text-[var(--accent)]" />
               Contact Information
             </h3>
+
+            {/* Avatar Upload */}
+            <div className="flex items-center gap-6 pb-4 border-b border-[var(--border)]">
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--border)] bg-[var(--background-elevated)] flex items-center justify-center">
+                  {formData.avatar_url ? (
+                    <img
+                      src={formData.avatar_url}
+                      alt="Avatar preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-12 h-12 text-[var(--foreground-muted)]" />
+                  )}
+                </div>
+                {formData.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="flex-1">
+                <label className={labelClass}>Client Photo</label>
+                <p className="text-xs text-[var(--foreground-muted)] mb-2">
+                  Upload a profile picture (max 2MB)
+                </p>
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  {formData.avatar_url ? 'Change Photo' : 'Upload Photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Full Name */}

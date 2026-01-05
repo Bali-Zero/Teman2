@@ -49,6 +49,7 @@ import {
   COMMON_NATIONALITIES,
   CLIENT_STATUSES,
 } from '@/lib/api/crm/crm.types';
+import { cropToSquare } from '@/lib/utils/imageResize';
 
 // Status badge colors
 const STATUS_COLORS: Record<string, string> = {
@@ -216,6 +217,10 @@ export default function ClientDetailPage() {
           <div className="w-16 h-16 rounded-full bg-[var(--accent)]/20 flex items-center justify-center overflow-hidden">
             {client.avatar_url ? (
               <img src={client.avatar_url} alt={client.full_name} className="w-full h-full object-cover" />
+            ) : client.status === 'lead' ? (
+              <img src="/avatars/default-lead.svg" alt="Lead" className="w-full h-full object-cover" />
+            ) : client.status === 'active' ? (
+              <img src="/avatars/default-active.svg" alt="Active" className="w-full h-full object-cover" />
             ) : (
               <User className="w-8 h-8 text-[var(--accent)]" />
             )}
@@ -506,7 +511,17 @@ function OverviewTab({
             {/* Lead - Changed label to Consultant/Advisor */}
             {client.assigned_to && (
               <div className="flex items-center gap-3 text-sm">
-                <User className="w-4 h-4 text-[var(--accent)]" />
+                {getTeamMemberAvatar(client.assigned_to) ? (
+                  <img
+                    src={getTeamMemberAvatar(client.assigned_to)}
+                    alt={client.assigned_to.split('@')[0]}
+                    className="w-8 h-8 rounded-full object-cover ring-2 ring-[var(--accent)]/30"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-[var(--accent)]/20 flex items-center justify-center">
+                    <User className="w-4 h-4 text-[var(--accent)]" />
+                  </div>
+                )}
                 <span className="text-[var(--foreground)]">
                   <span className="text-[var(--foreground-muted)]">Consultant:</span>{' '}
                   <span className="font-medium text-[var(--accent)]">{client.assigned_to.split('@')[0]}</span>
@@ -1322,11 +1337,19 @@ function Modal({
 // TEAM MEMBERS - Should fetch from API but hardcoded for now as per NewClientPage
 const TEAM_MEMBERS = [
   { value: 'ruslana@balizero.com', label: 'Ruslana' },
-  { value: 'krisna@balizero.com', label: 'Krisna' },
+  { value: 'krisna@balizero.com', label: 'Krisna', avatar: '/avatars/team/krisna.png' },
   { value: 'veronika@balizero.com', label: 'Veronika' },
-  { value: 'adit@balizero.com', label: 'Adit' },
+  { value: 'adit@balizero.com', label: 'Adit', avatar: '/avatars/team/adit.png' },
   { value: 'zero@balizero.com', label: 'Antonello' },
+  { value: 'ari@balizero.com', label: 'Ari', avatar: '/avatars/team/ari.png' },
+  { value: 'dea@balizero.com', label: 'Dea', avatar: '/avatars/team/dea.png' },
+  { value: 'sahira@balizero.com', label: 'Sahira', avatar: '/avatars/team/sahira.png' },
 ];
+
+// Helper to get team member avatar
+const getTeamMemberAvatar = (email: string): string | undefined => {
+  return TEAM_MEMBERS.find(m => m.value === email)?.avatar;
+};
 
 function EditClientModal({ client, onClose, onSave }: { client: Client; onClose: () => void; onSave: () => void }) {
   const [isSaving, setIsSaving] = useState(false);
@@ -1345,7 +1368,38 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
     status: client.status || 'lead',
     client_type: client.client_type || 'individual',
     assigned_to: client.assigned_to || '',
+    avatar_url: client.avatar_url || '',
   });
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB');
+      return;
+    }
+
+    try {
+      // Crop to square and resize to 400x400px
+      const resizedImage = await cropToSquare(file, 400, 0.85);
+      setFormData((prev) => ({ ...prev, avatar_url: resizedImage }));
+    } catch (error) {
+      console.error('Failed to process image:', error);
+      alert('Failed to process image. Please try again.');
+    }
+  };
+
+  const removeAvatar = () => {
+    setFormData((prev) => ({ ...prev, avatar_url: '' }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1372,6 +1426,52 @@ function EditClientModal({ client, onClose, onSave }: { client: Client; onClose:
 
   return (
     <Modal title="Edit Client" onClose={onClose} isSaving={isSaving} onSave={handleSubmit}>
+      {/* Avatar Upload */}
+      <div className="flex items-center gap-6 pb-6 border-b border-[var(--border)]">
+        <div className="relative">
+          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--border)] bg-[var(--background-secondary)] flex items-center justify-center">
+            {formData.avatar_url ? (
+              <img
+                src={formData.avatar_url}
+                alt="Avatar preview"
+                className="w-full h-full object-cover"
+              />
+            ) : formData.status === 'lead' ? (
+              <img src="/avatars/default-lead.svg" alt="Default Lead" className="w-full h-full object-cover" />
+            ) : formData.status === 'active' ? (
+              <img src="/avatars/default-active.svg" alt="Default Active" className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-12 h-12 text-[var(--foreground-muted)]" />
+            )}
+          </div>
+          {formData.avatar_url && (
+            <button
+              type="button"
+              onClick={removeAvatar}
+              className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium mb-1">Client Photo</label>
+          <p className="text-xs text-[var(--foreground-muted)] mb-2">
+            Upload a profile picture (max 2MB)
+          </p>
+          <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors cursor-pointer">
+            <Upload className="w-4 h-4" />
+            {formData.avatar_url ? 'Change Photo' : 'Upload Photo'}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="md:col-span-2">
           <label className="block text-sm font-medium mb-1.5">Full Name *</label>

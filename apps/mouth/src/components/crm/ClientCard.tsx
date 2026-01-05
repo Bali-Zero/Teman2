@@ -35,13 +35,25 @@ const SENTIMENT_BG = {
   none: 'bg-gray-100 dark:bg-gray-800 text-gray-500'
 };
 
+// Helper to get default avatar based on client status
+const getDefaultAvatar = (status: string): string => {
+  const statusLower = status.toLowerCase();
+  if (statusLower === 'lead') return '/avatars/default-lead.svg';
+  if (statusLower === 'active') return '/avatars/default-active.svg';
+  // Fallback: show first letter in colored circle (handled in render)
+  return '';
+};
+
 export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
   const router = useRouter();
-  
+
   // Determine sentiment aura
   const sentiment = (client.last_sentiment || 'none').toLowerCase() as keyof typeof SENTIMENT_COLORS;
   const ringColor = SENTIMENT_COLORS[sentiment] || SENTIMENT_COLORS.none;
   const badgeStyle = SENTIMENT_BG[sentiment] || SENTIMENT_BG.none;
+
+  // Get avatar URL: use client's avatar or fallback to default
+  const avatarUrl = client.avatar_url || getDefaultAvatar(client.status);
 
   return (
     <div className="relative group perspective-1000">
@@ -57,10 +69,10 @@ export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
         {/* Header with Avatar & Name */}
         <div className="flex items-start gap-3 mb-3">
           <div className={`relative w-10 h-10 rounded-full ${ringColor} ring-2 ring-offset-2 ring-offset-[var(--background-secondary)]`}>
-            {client.avatar_url ? (
-              <img 
-                src={client.avatar_url} 
-                alt={client.full_name} 
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={client.full_name}
                 className="w-full h-full rounded-full object-cover"
               />
             ) : (
@@ -68,11 +80,11 @@ export const ClientCard = ({ client, isDragging }: ClientCardProps) => {
                 {client.full_name.charAt(0)}
               </div>
             )}
-            
+
             {/* Status Dot */}
             <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-[var(--background-secondary)]
-              ${client.status === 'active' ? 'bg-green-500' : 
-                client.status === 'lead' ? 'bg-blue-500' : 'bg-gray-400'}`} 
+              ${client.status === 'active' ? 'bg-green-500' :
+                client.status === 'lead' ? 'bg-blue-500' : 'bg-gray-400'}`}
             />
           </div>
 
