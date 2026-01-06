@@ -487,7 +487,7 @@ async def process_telegram_message(
 
         # 3. Send placeholder message
         logger.info(
-            f"Processing Telegram message from {user_name} ({chat_id}): {message_text[:50]}..."
+            f"📱 [Telegram] Processing message from {user_name} ({chat_id}): {message_text[:50]}..."
         )
         placeholder_msg = await telegram_bot.send_message(
             chat_id=chat_id,
@@ -495,6 +495,7 @@ async def process_telegram_message(
             reply_to_message_id=message_id,
         )
         placeholder_id = placeholder_msg.get("result", {}).get("message_id")
+        logger.info(f"📱 [Telegram] Placeholder message sent: chat_id={chat_id}, placeholder_id={placeholder_id}")
         
         if not placeholder_id:
             logger.error("Failed to get placeholder message ID")
@@ -521,6 +522,10 @@ async def process_telegram_message(
         last_update_time = time.time()
         update_interval = 2.0  # Aggiorna ogni 2 secondi
         sources_found = []
+        event_count = 0
+        update_count = 0
+        
+        logger.info(f"📱 [Telegram Streaming] Starting stream for chat_id={chat_id}, placeholder_id={placeholder_id}")
         
         try:
             async with asyncio.timeout(45.0):  # 45s max (webhook timeout è 60s)
@@ -529,9 +534,17 @@ async def process_telegram_message(
                     user_id=telegram_user_id,
                     session_id=f"telegram_session_{chat_id}",
                 ):
+                    event_count += 1
+                    event_type = event.get("type", "unknown")
+                    
+                    # Log ogni evento (DEBUG level per non intasare)
+                    logger.debug(f"📱 [Telegram Streaming] Event #{event_count}: type={event_type}, chat_id={chat_id}")
+                    
                     # Gestisci diversi tipi di eventi
                     if event.get("type") == "token":
-                        accumulated_text += event.get("data", "")
+                        token_data = event.get("data", "")
+                        accumulated_text += token_data
+                        logger.debug(f"📱 [Telegram Streaming] Token received: {len(token_data)} chars, total={len(accumulated_text)}")
                     
                     elif event.get("type") == "status":
                         status_data = event.get("data", "")
@@ -545,14 +558,17 @@ async def process_telegram_message(
                             status_msg = str(status_data) if status_data else ""
                         if status_msg:
                             current_status = status_msg
+                            logger.info(f"📱 [Telegram Streaming] Status update: {status_msg}, chat_id={chat_id}")
                     
                     elif event.get("type") == "sources":
                         sources_found = event.get("data", [])
+                        logger.info(f"📱 [Telegram Streaming] Sources found: {len(sources_found)}, chat_id={chat_id}")
                     
                     # Aggiorna messaggio periodicamente (rate limiting)
                     current_time = time.time()
                     if current_time - last_update_time >= update_interval:
                         if accumulated_text and len(accumulated_text) > 50:
+                            update_count += 1
                             # Costruisci testo da mostrare
                             display_text = _format_telegram_message(
                                 accumulated_text,
@@ -564,6 +580,12 @@ async def process_telegram_message(
                             if len(display_text) > 3900:
                                 display_text = display_text[:3850] + "\n\n_...continua..._"
                             
+                            logger.info(
+                                f"📱 [Telegram Streaming] Updating message #{update_count}: "
+                                f"chat_id={chat_id}, placeholder_id={placeholder_id}, "
+                                f"text_length={len(display_text)}, accumulated={len(accumulated_text)}"
+                            )
+                            
                             try:
                                 await telegram_bot.edit_message_text(
                                     chat_id=chat_id,
@@ -572,9 +594,12 @@ async def process_telegram_message(
                                     parse_mode="Markdown",
                                 )
                                 last_update_time = current_time
+                                logger.info(f"📱 [Telegram Streaming] ✅ Message updated successfully #{update_count}, chat_id={chat_id}")
                             except Exception as e:
-                                logger.warning(f"Failed to update Telegram message: {e}")
+                                logger.warning(f"📱 [Telegram Streaming] ❌ Failed to update message #{update_count}: {e}, chat_id={chat_id}")
                                 # Continua comunque, non bloccare lo stream
+                        else:
+                            logger.debug(f"📱 [Telegram Streaming] Skipping update: text too short ({len(accumulated_text)} chars), chat_id={chat_id}")
         except asyncio.TimeoutError:
             logger.warning(f"⏱️ Telegram query timeout for {chat_id}")
             if placeholder_id:
@@ -586,6 +611,12 @@ async def process_telegram_message(
             return
 
         # 5. Final update con risposta completa
+        logger.info(
+            f"📱 [Telegram Streaming] Stream completed: chat_id={chat_id}, "
+            f"events={event_count}, updates={update_count}, "
+            f"final_text_length={len(accumulated_text)}"
+        )
+        
         final_text = _format_telegram_message(
             accumulated_text,
             current_status,
@@ -596,6 +627,8 @@ async def process_telegram_message(
         if len(final_text) > 4000:
             final_text = final_text[:3950] + "\n\n_...risposta troncata_"
         
+        logger.info(f"📱 [Telegram Streaming] Sending final update: chat_id={chat_id}, text_length={len(final_text)}")
+        
         await telegram_bot.edit_message_text(
             chat_id=chat_id,
             message_id=placeholder_id,
@@ -603,7 +636,7 @@ async def process_telegram_message(
             parse_mode="Markdown",
         )
         
-        logger.info(f"✅ Telegram streaming response completed for {chat_id}")
+        logger.info(f"📱 [Telegram Streaming] ✅ Final response sent successfully for chat_id={chat_id}")
 
     except Exception as e:
         logger.exception(f"❌ Error processing Telegram message: {e}")
