@@ -15,6 +15,7 @@ echo ""
 echo "Premi Ctrl+C per uscire"
 echo ""
 
-# Mostra log in tempo reale filtrati per Telegram
-flyctl logs --app "$APP_NAME" --follow | grep --line-buffered -E "📱|Telegram|telegram|streaming|Streaming"
+# flyctl logs fa streaming di default (non serve --follow)
+# Usa grep con --line-buffered per output in tempo reale
+flyctl logs --app "$APP_NAME" 2>&1 | grep --line-buffered -E "📱|Telegram|telegram|streaming|Streaming"
 
