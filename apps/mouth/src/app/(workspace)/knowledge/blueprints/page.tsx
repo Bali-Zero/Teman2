@@ -41,6 +41,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Blueprint Data
@@ -1555,10 +1556,30 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Log download action
+      logger.userAction('blueprint_download', undefined, blueprint.id, {
+        component: 'BlueprintsPage',
+        action: 'download',
+        metadata: {
+          blueprintId: blueprint.id,
+          blueprintName: blueprint.name,
+          filename: pdfFilename,
+          url: pdfUrl,
+        },
+      });
     } else {
-      // Fallback to Google Drive folder
-      const driveFolder = 'https://drive.google.com/drive/folders/1DOBzlToHhYrq_qZb5hAVdTsBOKBCCCti';
-      window.open(driveFolder, '_blank');
+      // No PDF available - log warning but don't redirect to Google Drive
+      logger.warn('Download attempted but no PDF URL available', {
+        component: 'BlueprintsPage',
+        action: 'download_failed',
+        metadata: {
+          blueprintId: blueprint.id,
+          blueprintName: blueprint.name,
+        },
+      });
+      // Show user-friendly message instead of redirecting
+      alert('PDF download is not available for this blueprint at the moment.');
     }
   };
 
