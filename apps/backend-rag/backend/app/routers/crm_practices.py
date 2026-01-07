@@ -11,10 +11,11 @@ from typing import Any
 
 import asyncpg
 from core.cache import cached
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, field_validator
 
 from app.dependencies import get_current_user, get_database_pool
+from app.utils.crm_utils import is_crm_admin
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_database_operation, log_success
 
@@ -24,9 +25,6 @@ router = APIRouter(prefix="/api/crm/practices", tags=["crm-practices"])
 
 # Constants
 MAX_LIMIT = 200
-
-# Admin emails that can see all practices (full CRM access)
-ADMIN_EMAILS = {"zero@balizero.com", "admin@balizero.com"}
 
 
 DEFAULT_LIMIT = 50
@@ -51,14 +49,6 @@ STATUS_VALUES = {
     "completed",
     "cancelled",
 }
-
-
-def is_admin_user(user: dict) -> bool:
-    """Check if user has admin access to see all CRM data"""
-    email = user.get("email", "").lower()
-    role = user.get("role", "").lower()
-    return email in ADMIN_EMAILS or role == "admin"
-
 
 # ================================================
 # PYDANTIC MODELS
@@ -173,9 +163,9 @@ class PracticeResponse(BaseModel):
 
 @router.post("/", response_model=PracticeResponse)
 async def create_practice(
+    request: Request,
     practice: PracticeCreate,
     created_by: str = Query(..., description="Team member creating this practice"),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -277,6 +267,7 @@ async def create_practice(
 
 @router.get("/", response_model=list[dict])
 async def list_practices(
+    request: Any = None,
     client_id: int | None = Query(None, description="Filter by client ID"),
     status: str | None = Query(None, description="Filter by status"),
     assigned_to: str | None = Query(None, description="Filter by assigned team member"),
@@ -284,9 +275,11 @@ async def list_practices(
     priority: str | None = Query(None, description="Filter by priority"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
+    # Support for direct calls from dashboard_summary.py
+    user_id: str | None = None,
+    pool: Any | None = None,
 ):
     """
     List practices with optional filtering.
@@ -297,9 +290,28 @@ async def list_practices(
 
     Returns practices with client and practice type information joined
     """
+    # Use provided pool if called directly
+    if pool:
+        db_pool = pool
+
     try:
-        user_email = current_user.get("email", "").lower()
-        user_is_admin = is_admin_user(current_user)
+        # If called directly, we might not have current_user, but we have user_id
+        # If called directly with user_id, we use that (ignoring current_user which might be a Depends object)
+        if user_id:
+            # We assume user_id is the email in this context or we don't have enough info
+            # For backward compatibility with dashboard_summary, we'll try to use it
+            user_email = user_id.lower()
+            # We don't know if they are admin, so we assume not-admin for safety unless it's a known admin
+            user_is_admin = user_email in ["zero@balizero.com", "admin@zantara.io"]
+        elif isinstance(current_user, dict):
+            # API Call: current_user is properly injected as a dict
+            user_email = current_user.get("email", "").lower()
+            user_is_admin = is_crm_admin(current_user)
+        else:
+            # Fallback (e.g. direct call without user_id)
+            logger.warning("list_practices called without valid user context")
+            user_email = ""
+            user_is_admin = False
 
         async with db_pool.acquire() as conn:
             # Build query dynamically
@@ -373,8 +385,8 @@ async def list_practices(
 
 @router.get("/active")
 async def get_active_practices(
+    request: Request,
     assigned_to: str | None = Query(None),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -404,13 +416,13 @@ async def get_active_practices(
 
 @router.get("/renewals/upcoming")
 async def get_upcoming_renewals(
+    request: Request,
     days: int = Query(
         DEFAULT_EXPIRY_LOOKAHEAD_DAYS,
         ge=1,
         le=MAX_EXPIRY_LOOKAHEAD_DAYS,
         description="Days to look ahead",
     ),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -429,8 +441,8 @@ async def get_upcoming_renewals(
 
 @router.get("/{practice_id}")
 async def get_practice(
+    request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -443,7 +455,7 @@ async def get_practice(
     """
     try:
         user_email = current_user.get("email", "").lower()
-        user_is_admin = is_admin_user(current_user)
+        user_is_admin = is_crm_admin(current_user)
 
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -490,10 +502,10 @@ async def get_practice(
 
 @router.patch("/{practice_id}")
 async def update_practice(
+    request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-    updates: PracticeUpdate = ...,
+    updates: PracticeUpdate = Body(...),
     updated_by: str = Query(..., description="Team member making the update"),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -517,7 +529,7 @@ async def update_practice(
     """
     try:
         user_email = current_user.get("email", "").lower()
-        user_is_admin = is_admin_user(current_user)
+        user_is_admin = is_crm_admin(current_user)
 
         async with db_pool.acquire() as conn:
             # RBAC: First check if user has access to this practice
@@ -653,9 +665,9 @@ async def update_practice(
 
 @router.delete("/{practice_id}")
 async def delete_practice(
+    request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
     deleted_by: str = Query(..., description="Team member deleting the practice"),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -670,7 +682,7 @@ async def delete_practice(
     """
     try:
         user_email = current_user.get("email", "").lower()
-        user_is_admin = is_admin_user(current_user)
+        user_is_admin = is_crm_admin(current_user)
 
         async with db_pool.acquire() as conn:
             # RBAC: First check if user has access to this practice
@@ -739,11 +751,11 @@ async def delete_practice(
 
 @router.post("/{practice_id}/documents/add")
 async def add_document_to_practice(
+    request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
     document_name: str = Query(...),
     drive_file_id: str = Query(...),
     uploaded_by: str = Query(...),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -803,8 +815,12 @@ async def add_document_to_practice(
 @router.get("/stats/overview")
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_practices_stats")
 async def get_practices_stats(
-    request: Request = ...,
+    request: Any = None,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+    # Support for direct calls from dashboard_summary.py
+    user_id: str | None = None,
+    pool: Any | None = None,
 ):
     """
     Get overall practice statistics
@@ -815,8 +831,28 @@ async def get_practices_stats(
 
     Performance: Cached for 5 minutes to reduce database load.
     """
+    # Use provided pool if called directly
+    if pool:
+        db_pool = pool
+
     try:
+        # If called directly with user_id, we use that (ignoring current_user which might be a Depends object)
+        if user_id:
+            user_email = user_id.lower()
+            user_is_admin = user_email in ["zero@balizero.com", "admin@zantara.io"]
+        elif isinstance(current_user, dict):
+            # API Call
+            user_email = current_user.get("email", "").lower()
+            user_is_admin = is_crm_admin(current_user)
+        else:
+            # Fallback
+            logger.warning("get_practices_stats called without valid user context")
+            user_email = ""
+            user_is_admin = False
+
         async with db_pool.acquire() as conn:
+            # Stats are currently global but we could filter by team_member
+            # For now, following existing logic but with pool support
             # By status
             by_status_rows = await conn.fetch(
                 """
