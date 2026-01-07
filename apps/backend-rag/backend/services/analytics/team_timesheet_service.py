@@ -105,12 +105,26 @@ class TeamTimesheetService:
 
             if current_status and current_status["is_online"]:
                 bali_time = current_status["last_action_bali"]
-                return {
-                    "success": False,
-                    "error": "already_clocked_in",
-                    "message": f"Already clocked in at {bali_time.strftime('%H:%M')} Bali time",
-                    "clocked_in_at": bali_time.isoformat(),
-                }
+                now = datetime.now(BALI_TZ)
+                
+                # Check if last_action was today. If it was yesterday or earlier, allow clock-in.
+                # Use strict date comparison.
+                # If bali_time is naive (it should be tz-aware from DB or updated view), handle it.
+                # The view team_online_status returns timestamp without timezone in Bali time? 
+                # Let's ensure comparison works.
+                
+                last_action_date = bali_time.date() if isinstance(bali_time, datetime) else None
+                current_date = now.date()
+
+                if last_action_date == current_date:
+                  return {
+                      "success": False,
+                      "error": "already_clocked_in",
+                      "message": f"Already clocked in at {bali_time.strftime('%H:%M')} Bali time",
+                      "clocked_in_at": bali_time.isoformat(),
+                  }
+                else:
+                   logger.info(f"🔄 Stale session detected for {email}. Last action: {last_action_date}. Allowing new clock-in.")
 
             # Insert clock-in
             now = datetime.now(BALI_TZ)

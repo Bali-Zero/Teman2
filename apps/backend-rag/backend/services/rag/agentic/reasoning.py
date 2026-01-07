@@ -439,7 +439,13 @@ class ReasoningEngine:
                         )
 
                         logger.info(
-                            f"🔧 [Agent] Calling tool: {tool_call.tool_name} with {tool_call.arguments}"
+                            f"🔧 [Agent] Calling tool: {tool_call.tool_name}",
+                            extra={
+                                "tool": tool_call.tool_name,
+                                "args": tool_call.arguments,
+                                "step": state.current_step,
+                                "user_id": user_id,
+                            },
                         )
                         tool_result, tool_duration = await execute_tool(
                             self.tool_map,
@@ -656,6 +662,7 @@ class ReasoningEngine:
             "search_team_member",
             "get_team_members_list",
             "team_knowledge",
+            "timesheet",
         }
         for step in state.steps:
             if step.action and hasattr(step.action, "tool_name"):

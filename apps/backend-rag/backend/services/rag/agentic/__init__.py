@@ -52,6 +52,7 @@ from .tools import (
     ImageGenerationTool,
     PricingTool,
     TeamKnowledgeTool,
+    TimeSheetTool,
     VectorSearchTool,
     VisionTool,
     WebSearchTool,
@@ -63,6 +64,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "AgenticRAGOrchestrator",
     "create_agentic_rag",
+    "TimeSheetTool",
     "VectorSearchTool",
     "CalculatorTool",
     "VisionTool",
@@ -136,6 +138,7 @@ def create_agentic_rag(
         VisionTool(),  # SIXTH: Document analysis
         ImageGenerationTool(),  # SEVENTH: Image generation (Imagen)
         WebSearchTool(),  # EIGHTH: Web search for out-of-KB queries (Brave)
+        TimeSheetTool(),  # NINTH: Timesheet Management
     ]
     logger.debug("create_agentic_rag: Tools list created")
 
