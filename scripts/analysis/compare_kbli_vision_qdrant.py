@@ -268,7 +268,10 @@ async def main():
 
     # 2. Recupera campione KBLI da Qdrant
     print("\n📊 Recupero campione KBLI da Qdrant...")
-    sample_codes = get_random_kbli_sample_from_qdrant(sample_size=10)  # Ridotto per test veloce
+    # Usa KBLI noti per test (agricoltura, che sappiamo essere nel PDF)
+    known_codes = ["01111", "01138", "01271", "01272", "01273", "01279", "01133", "01112", "01116", "01117"]
+    sample_codes = known_codes[:10]  # Usa KBLI noti invece di casuali
+    print(f"   Usando KBLI noti: {sample_codes}")
     if not sample_codes:
         print("❌ Nessun KBLI trovato in Qdrant")
         return
