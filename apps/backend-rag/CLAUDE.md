@@ -1,5 +1,87 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-09 03:30-04:45 UTC)
+
+### GitHub Repo Sync + Test Cleanup - COMPLETED
+
+**Obiettivo:** Sincronizzare repo locale con remote GitHub e pulire test duplicati.
+
+---
+
+### 1. Merge Remote → Local
+
+**Branch:** `auto/prompt-improvement-20260109-0411`
+
+| Fase | Commit | Descrizione |
+|------|--------|-------------|
+| Backup | - | `nuzantara-backup-20260109-0342.zip` (2.1GB) |
+| Fase 1 | `a0cb9cc1` | 70 files: docs, tests, lampiran PDFs |
+| Fase 2-6 | `fed6af3d` | Merge origin/main (1 file nuovo) |
+| Fix | `a4081bc2` | Local dev compatibility |
+| Cleanup | `287566d4` | Remove 30 duplicate tests |
+
+**File nuovo dal merge:**
+- `scripts/run_kg_extraction_all_collections.py` (+405 linee)
+
+---
+
+### 2. Fix Applicati
+
+| File | Fix |
+|------|-----|
+| `backend/app/routers/intel.py` | Staging dir fallback `/data` → `/tmp` per local dev |
+| `tests/api/test_complete_api_coverage.py` | Import `app.main` → `app.main_cloud` |
+
+---
+
+### 3. Test Cleanup
+
+**Rimossi 30 file test duplicati/debug:**
+- 19 duplicati (`*_95.py`, `*_100.py` con versione base)
+- 8 verify/debug (`test_verify_*.py`)
+- 3 con errori import permanenti
+
+**Risultato:**
+| Metrica | Prima | Dopo |
+|---------|-------|------|
+| Failed | 891 | 780 |
+| Errors | 142 | 101 |
+| Pass rate | 87.2% | 87.8% |
+
+---
+
+### 4. Lista 300 Test per Fix
+
+**File:** `apps/backend-rag/300_failing_tests.txt`
+
+Distribuzione:
+- CRM Routers: ~80 (27%)
+- LLM Gateway: ~40 (13%)
+- Team Activity: ~35 (12%)
+- Memory: ~30 (10%)
+- Identity/Auth: ~25 (8%)
+- Reasoning: ~15 (5%)
+- Altri: ~75 (25%)
+
+**Causa comune:** Mock incompleti (Pydantic Settings, AsyncMock transaction, redis_url)
+
+---
+
+### 5. Comandi Utili
+
+```bash
+# Run tests
+PYTHONPATH=backend pytest tests/unit/ -q --tb=no
+
+# Run single test file
+PYTHONPATH=backend pytest tests/unit/rag/test_reasoning.py -v
+
+# Count failures
+PYTHONPATH=backend pytest tests/unit/ -q --tb=no 2>&1 | tail -3
+```
+
+---
+
 ## Session Update (2026-01-04 21:00-21:30 UTC)
 
 ### Telegram Article Approval - Majority Voting System - COMPLETED
