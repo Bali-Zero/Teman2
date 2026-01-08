@@ -459,7 +459,7 @@ class ZohoEmailService:
         content: str,
         cc: list[str] | None = None,
         bcc: list[str] | None = None,
-        attachments: list[str] | None = None,
+        attachments: list[dict[str, str]] | None = None,
         is_html: bool = True,
     ) -> dict[str, Any]:
         """
@@ -472,7 +472,7 @@ class ZohoEmailService:
             content: Email body content
             cc: CC recipients
             bcc: BCC recipients
-            attachments: List of attachment IDs (from upload_attachment)
+            attachments: List of attachment objects (from upload_attachment)
             is_html: Whether content is HTML
 
         Returns:
@@ -501,7 +501,17 @@ class ZohoEmailService:
             if bcc:
                 payload["bccAddress"] = ",".join(bcc)
             if attachments:
-                payload["attachments"] = attachments
+                # payload["attachments"] expects list of objects with storeName, attachmentPath, attachmentName
+                formatted_attachments = []
+                for att in attachments:
+                    formatted_attachments.append(
+                        {
+                            "storeName": att.get("store_name"),
+                            "attachmentPath": att.get("attachment_path"),
+                            "attachmentName": att.get("attachment_name"),
+                        }
+                    )
+                payload["attachments"] = formatted_attachments
 
             response = await self._request(user_id, "POST", "/messages", json_data=payload)
 
@@ -717,8 +727,12 @@ class ZohoEmailService:
         await self._request(
             user_id,
             "PUT",
-            "/messages/move",
-            json_data={"messageId": message_ids, "destfolderId": folder_id},
+            "/updatemessage",
+            json_data={
+                "messageId": message_ids,
+                "destfolderId": folder_id,
+                "mode": "moveMessage",
+            },
         )
 
         return True
@@ -730,6 +744,10 @@ class ZohoEmailService:
     ) -> bool:
         """
         Move emails to trash.
+
+        Refactored to find Trash folder and move messages there, as
+        PUT /messages with mode=moveToTrash is deprecated/unsupported if expunge is not set.
+        Using move_to_folder is safer and more consistent.
 
         Args:
             user_id: User ID
@@ -743,12 +761,32 @@ class ZohoEmailService:
             f"[Email] Deleting {len(message_ids)} emails user={user_id} message_ids={message_ids}"
         )
         try:
-            await self._request(
-                user_id,
-                "PUT",
-                "/messages",
-                json_data={"messageId": message_ids, "mode": "moveToTrash"},
-            )
+            # Step 1: Find Trash Folder
+            folders = await self.list_folders(user_id)
+            trash_folder_id = None
+
+            # Try to find folder with type 'trash' (normalized) or name 'Trash'
+            for f in folders:
+                if f.get("folder_type") == "trash":
+                    trash_folder_id = f.get("folder_id")
+                    break
+
+            if not trash_folder_id:
+                # Fallback: check by name
+                for f in folders:
+                    if f.get("folder_name", "").lower() in ("trash", "bin", "cestino"):
+                        trash_folder_id = f.get("folder_id")
+                        break
+
+            if not trash_folder_id:
+                # Critical failure if we can't find trash
+                logger.error(f"[Email] Could not find Trash folder for user={user_id}")
+                raise ValueError("Trash folder not found. Cannot delete emails.")
+
+            # Step 2: Move to Trash
+            logger.info(f"[Email] Moving messages to Trash folder_id={trash_folder_id}")
+            await self.move_to_folder(user_id, message_ids, trash_folder_id)
+
             duration = time.time() - start_time
             metrics_collector.record_email_operation(
                 operation="delete", user_id=user_id, status="success", duration_seconds=duration
@@ -820,9 +858,9 @@ class ZohoEmailService:
         filename: str,
         content: bytes,
         content_type: str,
-    ) -> str:
+    ) -> dict[str, str]:
         """
-        Upload attachment and get ID for use in send.
+        Upload attachment and get details for use in send.
 
         Args:
             user_id: User ID
@@ -831,7 +869,7 @@ class ZohoEmailService:
             content_type: MIME type
 
         Returns:
-            Attachment ID
+            Dictionary with attachment details (id, store_name, path, name)
         """
         logger.info(
             f"[Email] Uploading attachment user={user_id} "
@@ -854,9 +892,18 @@ class ZohoEmailService:
                 raise ValueError(f"Failed to upload attachment: {response.status_code}")
 
             data = response.json()
-            attachment_id = data.get("data", {}).get("attachmentId", "")
-            logger.info(f"[Email] Attachment uploaded successfully attachment_id={attachment_id}")
-            return attachment_id
+            # Zoho returns these fields in the 'data' object
+            attachment_data = data.get("data", {})
+
+            result = {
+                "attachment_id": attachment_data.get("attachmentId", ""),
+                "store_name": attachment_data.get("storeName", ""),
+                "attachment_path": attachment_data.get("attachmentPath", ""),
+                "attachment_name": attachment_data.get("attachmentName", filename),
+            }
+
+            logger.info(f"[Email] Attachment uploaded successfully id={result['attachment_id']}")
+            return result
 
     # ═══════════════════════════════════════════
     # DRAFT OPERATIONS
@@ -870,6 +917,7 @@ class ZohoEmailService:
         content: str = "",
         cc: list[str] | None = None,
         bcc: list[str] | None = None,
+        attachments: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         """
         Save email as draft.
@@ -902,6 +950,17 @@ class ZohoEmailService:
             payload["ccAddress"] = ",".join(cc)
         if bcc:
             payload["bccAddress"] = ",".join(bcc)
+        if attachments:
+            formatted_attachments = []
+            for att in attachments:
+                formatted_attachments.append(
+                    {
+                        "storeName": att.get("store_name"),
+                        "attachmentPath": att.get("attachment_path"),
+                        "attachmentName": att.get("attachment_name"),
+                    }
+                )
+            payload["attachments"] = formatted_attachments
 
         response = await self._request(user_id, "POST", "/messages", json_data=payload)
 

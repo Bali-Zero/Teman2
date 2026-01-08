@@ -79,6 +79,7 @@ Cost breakdown:
 """
 
 import asyncio
+import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -232,9 +233,7 @@ class IntelPipeline:
         This populates https://zantara.balizero.com/intelligence/news-room
         with articles for team review in parallel with Telegram notifications.
         """
-        backend_url = os.getenv(
-            "BACKEND_API_URL", "https://nuzantara-rag.fly.dev"
-        )
+        backend_url = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
         endpoint = f"{backend_url}/api/intel/scraper/submit"
 
         # Get enriched content if available
@@ -317,9 +316,16 @@ class IntelPipeline:
             self.stats.llama_scored += 1
 
             logger.info(f"   Score: {article.llama_score}/100")
-            logger.info(f"   Category: {article.llama_category}")
-            logger.info(f"   Priority: {article.llama_priority}")
-            logger.info(f"   Keywords: {', '.join(article.llama_keywords[:5])}")
+            logger.info(
+                "📊 LLAMA Scoring Results",
+                extra={
+                    "score": article.llama_score,
+                    "category": article.llama_category,
+                    "priority": article.llama_priority,
+                    "keywords": article.llama_keywords[:10],
+                    "source": article.source,
+                },
+            )
 
         except Exception as e:
             logger.error(f"   LLAMA scoring failed: {e}")
@@ -364,11 +370,25 @@ class IntelPipeline:
             if validation.approved:
                 self.stats.claude_approved += 1
                 logger.success(f"   ✅ Approved (confidence: {validation.confidence})")
-                logger.info(f"   Reason: {validation.reason}")
+                logger.info(
+                    "🔍 Claude Validation Success",
+                    extra={
+                        "confidence": validation.confidence,
+                        "category_override": validation.category_override,
+                        "priority_override": validation.priority_override,
+                        "reason": validation.reason,
+                    },
+                )
             else:
                 self.stats.claude_rejected += 1
                 logger.info(f"   ❌ Rejected (confidence: {validation.confidence})")
-                logger.info(f"   Reason: {validation.reason}")
+                logger.info(
+                    "🔍 Claude Validation Rejected",
+                    extra={
+                        "confidence": validation.confidence,
+                        "reason": validation.reason,
+                    },
+                )
                 return article
 
             if validation.category_override:
@@ -414,9 +434,18 @@ class IntelPipeline:
                 self.stats.enriched += 1
 
                 logger.success(f"   ✅ Enriched: {enriched.headline[:50]}...")
-                logger.info(f"   Category: {enriched.category}")
-                logger.info(f"   Priority: {enriched.priority}")
-                logger.info(f"   Relevance: {enriched.relevance_score}")
+                logger.info(
+                    "✍️ Article Enrichment Results",
+                    extra={
+                        "headline": enriched.headline,
+                        "category": enriched.category,
+                        "priority": enriched.priority,
+                        "relevance_score": enriched.relevance_score,
+                        "fact_count": len(enriched.facts.split("\n"))
+                        if enriched.facts
+                        else 0,
+                    },
+                )
             else:
                 logger.error("   ❌ Enrichment failed")
                 self.stats.errors += 1
@@ -526,7 +555,9 @@ class IntelPipeline:
                     if pending.telegram_message_id:
                         logger.info("   📱 Telegram notification sent!")
                     else:
-                        logger.warning("   ⚠️ Telegram notification not sent (check config)")
+                        logger.warning(
+                            "   ⚠️ Telegram notification not sent (check config)"
+                        )
 
                 except Exception as e:
                     logger.error(f"   ❌ Approval submission failed: {e}")
@@ -584,6 +615,27 @@ class IntelPipeline:
 
         # Print summary
         self._print_summary()
+
+        # Save batch run audit log
+        try:
+            audit_dir = Path("logs/audit")
+            audit_dir.mkdir(exist_ok=True, parents=True)
+            audit_file = (
+                audit_dir / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
+            with open(audit_file, "w") as f:
+                json.dump(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "stats": asdict(self.stats),
+                        "results_count": len(results),
+                    },
+                    f,
+                    indent=2,
+                )
+            logger.info(f"📁 Run audit saved to {audit_file}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to save run audit: {e}")
 
         return results, self.stats
 

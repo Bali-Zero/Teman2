@@ -51,6 +51,8 @@ class PendingArticle:
     enriched_content: str
     image_url: str
     created_at: str
+    relevance_score: int = 0
+    published_at: Optional[str] = None
     status: str = "pending"  # pending, approved, rejected
     approved_at: Optional[str] = None
     telegram_message_id: Optional[int] = None
@@ -68,7 +70,7 @@ class TelegramApproval:
         self,
         bot_token: Optional[str] = None,
         chat_ids: Optional[list[str]] = None,
-        preview_base_url: str = "https://balizero.com/preview",
+        preview_base_url: str = "https://nuzantara-rag.fly.dev/preview",
     ):
         self.bot_token = bot_token or os.environ.get("TELEGRAM_BOT_TOKEN")
 
@@ -487,6 +489,63 @@ class TelegramApproval:
 
         return html
 
+    async def upload_preview_to_backend(
+        self,
+        article_id: str,
+        html_content: str,
+        backend_url: str = "https://nuzantara-rag.fly.dev",
+    ) -> Optional[str]:
+        """
+        Upload HTML preview to backend server.
+
+        Called BEFORE sending Telegram message, so the preview link
+        is ready when team clicks it.
+
+        Returns preview URL if successful, None otherwise.
+        """
+        try:
+            import aiohttp
+
+            upload_url = f"{backend_url}/preview/upload"
+            payload = {
+                "article_id": article_id,
+                "html_content": html_content,
+            }
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    upload_url, json=payload, timeout=aiohttp.ClientTimeout(total=30)
+                ) as resp:
+                    if resp.status == 201:
+                        result = await resp.json()
+                        preview_url = result.get("preview_url")
+                        logger.success(f"Preview uploaded to backend: {preview_url}")
+                        return preview_url
+                    else:
+                        error = await resp.text()
+                        logger.error(f"Failed to upload preview to backend: {error}")
+                        return None
+        except Exception as e:
+            logger.error(f"Error uploading preview to backend: {e}")
+            return None
+
+    def escape_markdown(self, text: str) -> str:
+        """
+        Escape special Markdown characters for Telegram.
+
+        Telegram MarkdownV2 requires escaping: _*[]()~`>#+-=|{}.!
+        We use simpler Markdown mode which requires escaping: _*[]()
+        """
+        if not text:
+            return ""
+
+        # Escape special characters that break Telegram Markdown parsing
+        escape_chars = ["_", "*", "[", "]", "(", ")"]
+        for char in escape_chars:
+            text = text.replace(char, f"\\{char}")
+
+        return text
+
     async def send_telegram_notification(
         self, article: PendingArticle
     ) -> Optional[int]:
@@ -500,19 +559,53 @@ class TelegramApproval:
             logger.warning("Telegram not configured, skipping notification")
             return None
 
+        # Format published date
+        pub_date = "Unknown"
+        if article.published_at:
+            try:
+                from datetime import datetime
+
+                dt = datetime.fromisoformat(article.published_at.replace("Z", "+00:00"))
+                pub_date = dt.strftime("%Y-%m-%d")
+            except:
+                pub_date = (
+                    article.published_at[:10] if article.published_at else "Unknown"
+                )
+
+        # Full enriched content (Telegram limit: 4096 chars, leave room for formatting)
+        max_content_length = 3500
+        if len(article.enriched_content) > max_content_length:
+            content_preview = (
+                article.enriched_content[:max_content_length]
+                + "\n\n[...continua su Intelligence/News Room]"
+            )
+        else:
+            content_preview = article.enriched_content
+
+        # Escape content for Telegram Markdown
+        escaped_content = self.escape_markdown(content_preview)
+        escaped_title = self.escape_markdown(article.title)
+        escaped_keywords = self.escape_markdown(
+            ", ".join(article.seo_metadata.get("keywords", [])[:5])
+        )
+        escaped_entities = self.escape_markdown(
+            ", ".join(article.seo_metadata.get("key_entities", [])[:5])
+        )
+
         # Format message (English)
         message = f"""📰 *New Article Ready for Review*
 
-*Title:* {article.title}
+*{escaped_title}*
 
-*Category:* `{article.category.upper()}`
-*Source:* [{article.source}]({article.source_url})
+📊 *Score:* `{article.relevance_score}/100` | 📅 *Published:* {pub_date}
+📂 *Category:* `{article.category.upper()}`
+📰 *Source:* [{article.source}]({article.source_url})
 
-🔑 *Keywords:* {", ".join(article.seo_metadata.get("keywords", [])[:5])}
-🏷️ *Entities:* {", ".join(article.seo_metadata.get("key_entities", [])[:5])}
-❓ *FAQs:* {len(article.seo_metadata.get("faq_items", []))} items generated
+✨ *Claude Enriched Preview:*
+{escaped_content}
 
-📄 [View Full HTML Preview]({article.preview_url})
+🔑 *Keywords:* {escaped_keywords}
+🏷️ *Entities:* {escaped_entities}
 
 _Article ID: `{article.article_id}`_"""
 
@@ -535,7 +628,7 @@ _Article ID: `{article.article_id}`_"""
                         "callback_data": f"changes:{article.article_id}",
                     }
                 ],
-                [{"text": "📄 View Full Article", "url": article.preview_url}],
+                [{"text": "🔗 View Source", "url": article.source_url}],
             ]
         }
 
@@ -543,30 +636,74 @@ _Article ID: `{article.article_id}`_"""
 
         try:
             async with aiohttp.ClientSession() as session:
-                url = TELEGRAM_API.format(token=self.bot_token, method="sendMessage")
-
                 # Send to all configured chat IDs
                 for chat_id in self.chat_ids:
-                    payload = {
-                        "chat_id": chat_id,
-                        "text": message,
-                        "parse_mode": "Markdown",
-                        "disable_web_page_preview": False,
-                        "reply_markup": json.dumps(keyboard),
-                    }
+                    # Check if we have a cover image to send
+                    if article.image_url and Path(article.image_url).exists():
+                        # Send as photo with caption
+                        url = TELEGRAM_API.format(
+                            token=self.bot_token, method="sendPhoto"
+                        )
 
-                    async with session.post(url, json=payload) as resp:
-                        if resp.status == 200:
-                            result = await resp.json()
-                            message_id = result.get("result", {}).get("message_id")
-                            logger.success(
-                                f"Telegram notification sent to {chat_id}: message_id={message_id}"
+                        # Prepare multipart form data
+                        data = aiohttp.FormData()
+                        data.add_field("chat_id", str(chat_id))
+                        data.add_field("caption", message)
+                        data.add_field("parse_mode", "Markdown")
+                        data.add_field("reply_markup", json.dumps(keyboard))
+
+                        # Add image file
+                        with open(article.image_url, "rb") as img_file:
+                            data.add_field(
+                                "photo",
+                                img_file,
+                                filename=Path(article.image_url).name,
+                                content_type="image/png",
                             )
-                            if first_message_id is None:
-                                first_message_id = message_id
-                        else:
-                            error = await resp.text()
-                            logger.error(f"Telegram API error for {chat_id}: {error}")
+
+                            async with session.post(url, data=data) as resp:
+                                if resp.status == 200:
+                                    result = await resp.json()
+                                    message_id = result.get("result", {}).get(
+                                        "message_id"
+                                    )
+                                    logger.success(
+                                        f"Telegram notification sent to {chat_id}: message_id={message_id} (with image)"
+                                    )
+                                    if first_message_id is None:
+                                        first_message_id = message_id
+                                else:
+                                    error = await resp.text()
+                                    logger.error(
+                                        f"Telegram API error for {chat_id}: {error}"
+                                    )
+                    else:
+                        # Send as text message (no image)
+                        url = TELEGRAM_API.format(
+                            token=self.bot_token, method="sendMessage"
+                        )
+                        payload = {
+                            "chat_id": chat_id,
+                            "text": message,
+                            "parse_mode": "Markdown",
+                            "disable_web_page_preview": False,
+                            "reply_markup": json.dumps(keyboard),
+                        }
+
+                        async with session.post(url, json=payload) as resp:
+                            if resp.status == 200:
+                                result = await resp.json()
+                                message_id = result.get("result", {}).get("message_id")
+                                logger.success(
+                                    f"Telegram notification sent to {chat_id}: message_id={message_id}"
+                                )
+                                if first_message_id is None:
+                                    first_message_id = message_id
+                            else:
+                                error = await resp.text()
+                                logger.error(
+                                    f"Telegram API error for {chat_id}: {error}"
+                                )
 
         except Exception as e:
             logger.error(f"Failed to send Telegram notification: {e}")
@@ -594,13 +731,18 @@ _Article ID: `{article.article_id}`_"""
         # Generate HTML preview
         html_preview = self.generate_html_preview(article, seo_metadata)
 
-        # Save HTML file
+        # Save HTML file locally
         preview_filename = f"{article_id}.html"
         preview_path = self.preview_dir / preview_filename
         preview_path.write_text(html_preview, encoding="utf-8")
 
-        # Preview URL (you'll need to serve this or upload somewhere)
-        preview_url = f"{self.preview_base_url}/{preview_filename}"
+        # Upload HTML preview to backend (so link is ready for Telegram)
+        uploaded_preview_url = await self.upload_preview_to_backend(
+            article_id, html_preview
+        )
+        preview_url = (
+            uploaded_preview_url or f"{self.preview_base_url}/{preview_filename}"
+        )
 
         # Create pending article
         pending = PendingArticle(
@@ -615,6 +757,8 @@ _Article ID: `{article.article_id}`_"""
             enriched_content=enriched_content,
             image_url=article.get("image_url", ""),
             created_at=datetime.now(timezone.utc).isoformat(),
+            relevance_score=article.get("relevance_score", 0),
+            published_at=article.get("published_at"),
         )
 
         # Save pending article JSON

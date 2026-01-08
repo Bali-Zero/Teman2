@@ -99,4 +99,3 @@ class TestDatabaseConstants:
         assert DatabaseConstants.POOL_MIN_SIZE == 2
         assert DatabaseConstants.POOL_MAX_SIZE == 10
         assert DatabaseConstants.COMMAND_TIMEOUT == 60
-

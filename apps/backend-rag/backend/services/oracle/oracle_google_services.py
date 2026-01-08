@@ -58,10 +58,27 @@ class GoogleServices:
     def _initialize_drive_service(self) -> None:
         """Initialize Google Drive service using service account"""
         try:
-            creds_dict = json.loads(oracle_config.google_credentials_json)
-            credentials = service_account.Credentials.from_service_account_info(
-                creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"]
-            )
+            try:
+                creds_dict = json.loads(oracle_config.google_credentials_json)
+                credentials = service_account.Credentials.from_service_account_info(
+                    creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+                )
+            except (json.JSONDecodeError, ValueError) as e:
+                # Fallback to file if env var is invalid/missing
+                # This fixes the crash where GOOGLE_CREDENTIALS_JSON is partial/invalid
+                import os
+
+                if os.path.exists("google_credentials.json"):
+                    logger.warning(
+                        f"⚠️ Failed to load credentials from env: {e}. Falling back to google_credentials.json file."
+                    )
+                    credentials = service_account.Credentials.from_service_account_file(
+                        "google_credentials.json",
+                        scopes=["https://www.googleapis.com/auth/drive.readonly"],
+                    )
+                else:
+                    raise e
+
             self._drive_service = build("drive", "v3", credentials=credentials)
             logger.info("✅ Google Drive service initialized successfully")
 

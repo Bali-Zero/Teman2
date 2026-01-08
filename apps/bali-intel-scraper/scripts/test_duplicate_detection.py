@@ -62,7 +62,9 @@ async def test_duplicate_detection():
     with open(test_registry, "w") as f:
         json.dump(test_data, f, indent=2, ensure_ascii=False)
 
-    logger.success(f"✅ Created test registry with {len(test_data['articles'])} published articles")
+    logger.success(
+        f"✅ Created test registry with {len(test_data['articles'])} published articles"
+    )
 
     # Temporarily replace registry file
     original_file = ClaudeValidator.__dict__.get("PUBLISHED_ARTICLES_FILE")
@@ -123,11 +125,15 @@ async def test_duplicate_detection():
             )
             quick_check_failed += 1
 
-    logger.info(f"\n📊 Quick Check Results: {quick_check_passed}/{len(test_cases_quick)} passed")
+    logger.info(
+        f"\n📊 Quick Check Results: {quick_check_passed}/{len(test_cases_quick)} passed"
+    )
 
     # Step 3: Test Claude Semantic Validation (requires API)
     logger.info("\n🤖 Step 3: Testing Claude semantic duplicate detection...")
-    logger.warning("⚠️  This requires Claude Desktop CLI and may take 20-30 seconds per test")
+    logger.warning(
+        "⚠️  This requires Claude Desktop CLI and may take 20-30 seconds per test"
+    )
 
     # Ask user if they want to run Claude tests
     import sys
@@ -197,7 +203,9 @@ async def test_duplicate_detection():
                 logger.error(f"      Claude reason: {result.reason}")
                 claude_check_failed += 1
 
-        logger.info(f"\n📊 Claude Check Results: {claude_check_passed}/{len(test_cases_claude)} passed")
+        logger.info(
+            f"\n📊 Claude Check Results: {claude_check_passed}/{len(test_cases_claude)} passed"
+        )
 
     # Step 4: Test Registry Auto-Update
     logger.info("\n💾 Step 4: Testing registry auto-update...")
@@ -227,10 +235,14 @@ async def test_duplicate_detection():
     logger.info("\n" + "=" * 70)
     logger.info("📊 FINAL TEST SUMMARY")
     logger.info("=" * 70)
-    logger.info(f"Quick Keyword Check:  {quick_check_passed}/{len(test_cases_quick)} passed")
+    logger.info(
+        f"Quick Keyword Check:  {quick_check_passed}/{len(test_cases_quick)} passed"
+    )
 
     if claude_tests_run:
-        logger.info(f"Claude Semantic Check: {claude_check_passed}/{len(test_cases_claude)} passed")
+        logger.info(
+            f"Claude Semantic Check: {claude_check_passed}/{len(test_cases_claude)} passed"
+        )
         total_passed = quick_check_passed + claude_check_passed
         total_tests = len(test_cases_quick) + len(test_cases_claude)
     else:
@@ -245,7 +257,9 @@ async def test_duplicate_detection():
     pass_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
 
     if pass_rate == 100:
-        logger.success(f"\n🎉 ALL TESTS PASSED ({total_passed}/{total_tests}) - Duplicate detection is working!")
+        logger.success(
+            f"\n🎉 ALL TESTS PASSED ({total_passed}/{total_tests}) - Duplicate detection is working!"
+        )
     elif pass_rate >= 80:
         logger.warning(
             f"\n⚠️  MOSTLY PASSING ({total_passed}/{total_tests}) - {pass_rate:.1f}% pass rate"
@@ -262,8 +276,6 @@ async def test_duplicate_detection():
 
 
 if __name__ == "__main__":
-    import sys
-
     logger.info("Anti-Duplicate Detection Test Suite")
     logger.info("Pass --skip-claude to skip Claude API tests (faster)")
     logger.info("")

@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException, Request, Response
+from fastapi import HTTPException, Response
 from fastapi.responses import RedirectResponse
 
 # Add backend to path
@@ -33,14 +33,18 @@ def mock_current_user():
 def mock_oauth_service():
     """Mock ZohoOAuthService"""
     service = MagicMock()
-    service.get_authorization_url = MagicMock(return_value="https://accounts.zoho.com/oauth/v2/auth?state=test")
+    service.get_authorization_url = MagicMock(
+        return_value="https://accounts.zoho.com/oauth/v2/auth?state=test"
+    )
     service.exchange_code = AsyncMock()
-    service.get_connection_status = AsyncMock(return_value={
-        "connected": True,
-        "email": "test@zoho.com",
-        "account_id": "acc_123",
-        "expires_at": "2024-12-31T00:00:00Z"
-    })
+    service.get_connection_status = AsyncMock(
+        return_value={
+            "connected": True,
+            "email": "test@zoho.com",
+            "account_id": "acc_123",
+            "expires_at": "2024-12-31T00:00:00Z",
+        }
+    )
     service.disconnect = AsyncMock()
     return service
 
@@ -49,27 +53,38 @@ def mock_oauth_service():
 def mock_email_service():
     """Mock ZohoEmailService"""
     service = MagicMock()
-    service.list_folders = AsyncMock(return_value=[
-        {"id": "inbox", "name": "Inbox", "path": "/Inbox", "type": "user", "unread_count": 5, "total_count": 100}
-    ])
-    service.list_emails = AsyncMock(return_value={
-        "emails": [
-            {"id": "msg_1", "subject": "Test", "sender_email": "sender@example.com"}
-        ],
-        "total": 1,
-        "limit": 50,
-        "start": 0
-    })
-    service.get_email = AsyncMock(return_value={
-        "id": "msg_1",
-        "subject": "Test",
-        "body": "Test body",
-        "sender_email": "sender@example.com"
-    })
+    service.list_folders = AsyncMock(
+        return_value=[
+            {
+                "id": "inbox",
+                "name": "Inbox",
+                "path": "/Inbox",
+                "type": "user",
+                "unread_count": 5,
+                "total_count": 100,
+            }
+        ]
+    )
+    service.list_emails = AsyncMock(
+        return_value={
+            "emails": [{"id": "msg_1", "subject": "Test", "sender_email": "sender@example.com"}],
+            "total": 1,
+            "limit": 50,
+            "start": 0,
+        }
+    )
+    service.get_email = AsyncMock(
+        return_value={
+            "id": "msg_1",
+            "subject": "Test",
+            "body": "Test body",
+            "sender_email": "sender@example.com",
+        }
+    )
     service.send_email = AsyncMock(return_value={"success": True, "message_id": "msg_new"})
-    service.search_emails = AsyncMock(return_value=[
-        {"id": "msg_1", "subject": "Test", "sender_email": "sender@example.com"}
-    ])
+    service.search_emails = AsyncMock(
+        return_value=[{"id": "msg_1", "subject": "Test", "sender_email": "sender@example.com"}]
+    )
     service.reply_email = AsyncMock(return_value={"success": True, "message_id": "msg_reply"})
     service.forward_email = AsyncMock(return_value={"success": True, "message_id": "msg_forward"})
     service.mark_read = AsyncMock(return_value=True)
@@ -125,11 +140,15 @@ class TestZohoEmailOAuth:
         """Test OAuth callback success"""
         from app.routers.zoho_email import oauth_callback
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
-             patch("app.routers.zoho_email.settings") as mock_settings:
+        with (
+            patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service),
+            patch("app.routers.zoho_email.settings") as mock_settings,
+        ):
             mock_settings.frontend_url = "http://localhost:3000"
-            
-            response = await oauth_callback(code="auth_code_123", state="user_123:state_token", error=None, db_pool=mock_db_pool)
+
+            response = await oauth_callback(
+                code="auth_code_123", state="user_123:state_token", error=None, db_pool=mock_db_pool
+            )
 
             assert isinstance(response, RedirectResponse)
             assert "connected=true" in response.headers["location"]
@@ -142,8 +161,10 @@ class TestZohoEmailOAuth:
 
         with patch("app.routers.zoho_email.settings") as mock_settings:
             mock_settings.frontend_url = "http://localhost:3000"
-            
-            response = await oauth_callback(code=None, state=None, error="access_denied", db_pool=mock_db_pool)
+
+            response = await oauth_callback(
+                code=None, state=None, error="access_denied", db_pool=mock_db_pool
+            )
 
             assert isinstance(response, RedirectResponse)
             assert "error=oauth_denied" in response.headers["location"]
@@ -155,7 +176,7 @@ class TestZohoEmailOAuth:
 
         with patch("app.routers.zoho_email.settings") as mock_settings:
             mock_settings.frontend_url = "http://localhost:3000"
-            
+
             response = await oauth_callback(code=None, state=None, error=None, db_pool=mock_db_pool)
 
             assert isinstance(response, RedirectResponse)
@@ -166,11 +187,15 @@ class TestZohoEmailOAuth:
         """Test OAuth callback invalid state format"""
         from app.routers.zoho_email import oauth_callback
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
-             patch("app.routers.zoho_email.settings") as mock_settings:
+        with (
+            patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service),
+            patch("app.routers.zoho_email.settings") as mock_settings,
+        ):
             mock_settings.frontend_url = "http://localhost:3000"
-            
-            response = await oauth_callback(code="auth_code", state="invalid_state", error=None, db_pool=mock_db_pool)
+
+            response = await oauth_callback(
+                code="auth_code", state="invalid_state", error=None, db_pool=mock_db_pool
+            )
 
             assert isinstance(response, RedirectResponse)
             assert "error=invalid_state" in response.headers["location"]
@@ -182,17 +207,23 @@ class TestZohoEmailOAuth:
 
         mock_oauth_service.exchange_code = AsyncMock(side_effect=RuntimeError("Network error"))
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
-             patch("app.routers.zoho_email.settings") as mock_settings:
+        with (
+            patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service),
+            patch("app.routers.zoho_email.settings") as mock_settings,
+        ):
             mock_settings.frontend_url = "http://localhost:3000"
-            
-            response = await oauth_callback(code="auth_code", state="user_123:token", error=None, db_pool=mock_db_pool)
+
+            response = await oauth_callback(
+                code="auth_code", state="user_123:token", error=None, db_pool=mock_db_pool
+            )
 
             assert isinstance(response, RedirectResponse)
             assert "error=connection_failed" in response.headers["location"]
 
     @pytest.mark.asyncio
-    async def test_get_connection_status_connected(self, mock_db_pool, mock_current_user, mock_oauth_service):
+    async def test_get_connection_status_connected(
+        self, mock_db_pool, mock_current_user, mock_oauth_service
+    ):
         """Test get connection status - connected"""
         from app.routers.zoho_email import get_connection_status
 
@@ -204,7 +235,9 @@ class TestZohoEmailOAuth:
             mock_oauth_service.get_connection_status.assert_called_once_with("user_123")
 
     @pytest.mark.asyncio
-    async def test_get_connection_status_not_connected(self, mock_db_pool, mock_current_user, mock_oauth_service):
+    async def test_get_connection_status_not_connected(
+        self, mock_db_pool, mock_current_user, mock_oauth_service
+    ):
         """Test get connection status - not connected"""
         from app.routers.zoho_email import get_connection_status
 
@@ -216,7 +249,9 @@ class TestZohoEmailOAuth:
             assert response.connected is False
 
     @pytest.mark.asyncio
-    async def test_get_connection_status_error(self, mock_db_pool, mock_current_user, mock_oauth_service):
+    async def test_get_connection_status_error(
+        self, mock_db_pool, mock_current_user, mock_oauth_service
+    ):
         """Test get connection status error handling"""
         from app.routers.zoho_email import get_connection_status
 
@@ -229,7 +264,9 @@ class TestZohoEmailOAuth:
             assert response.email is None
 
     @pytest.mark.asyncio
-    async def test_disconnect_account_success(self, mock_db_pool, mock_current_user, mock_oauth_service):
+    async def test_disconnect_account_success(
+        self, mock_db_pool, mock_current_user, mock_oauth_service
+    ):
         """Test disconnect account"""
         from app.routers.zoho_email import disconnect_account
 
@@ -240,7 +277,9 @@ class TestZohoEmailOAuth:
             mock_oauth_service.disconnect.assert_called_once_with("user_123")
 
     @pytest.mark.asyncio
-    async def test_disconnect_account_error(self, mock_db_pool, mock_current_user, mock_oauth_service):
+    async def test_disconnect_account_error(
+        self, mock_db_pool, mock_current_user, mock_oauth_service
+    ):
         """Test disconnect account error"""
         from app.routers.zoho_email import disconnect_account
 
@@ -281,7 +320,9 @@ class TestZohoEmailFolders:
             assert exc.value.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_list_folders_exception(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_list_folders_exception(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test list folders generic exception (line 314)"""
         from app.routers.zoho_email import list_folders
 
@@ -310,7 +351,7 @@ class TestZohoEmailOperations:
                 search=None,
                 is_unread=None,
                 current_user=mock_current_user,
-                db_pool=mock_db_pool
+                db_pool=mock_db_pool,
             )
 
             assert "emails" in response
@@ -318,7 +359,9 @@ class TestZohoEmailOperations:
             mock_email_service.list_emails.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_list_emails_with_filters(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_list_emails_with_filters(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test list emails with search and unread filter"""
         from app.routers.zoho_email import list_emails
 
@@ -330,7 +373,7 @@ class TestZohoEmailOperations:
                 search="test query",
                 is_unread=True,
                 current_user=mock_current_user,
-                db_pool=mock_db_pool
+                db_pool=mock_db_pool,
             )
 
             assert "emails" in response
@@ -351,7 +394,7 @@ class TestZohoEmailOperations:
                     search=None,
                     is_unread=None,
                     current_user=mock_current_user,
-                    db_pool=mock_db_pool
+                    db_pool=mock_db_pool,
                 )
             assert exc.value.status_code == 500
 
@@ -365,7 +408,7 @@ class TestZohoEmailOperations:
                 message_id="msg_1",
                 folder_id="inbox",
                 current_user=mock_current_user,
-                db_pool=mock_db_pool
+                db_pool=mock_db_pool,
             )
 
             assert response["id"] == "msg_1"
@@ -385,7 +428,7 @@ class TestZohoEmailOperations:
                     message_id="msg_1",
                     folder_id="inbox",
                     current_user=mock_current_user,
-                    db_pool=mock_db_pool
+                    db_pool=mock_db_pool,
                 )
             assert exc.value.status_code == 500
 
@@ -407,7 +450,9 @@ class TestZohoEmailOperations:
             mock_email_service.send_email.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_send_email_with_cc_bcc(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_send_email_with_cc_bcc(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test send email with CC and BCC"""
         from app.routers.zoho_email import SendEmailRequest, send_email
 
@@ -467,10 +512,7 @@ class TestZohoEmailOperations:
 
         with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await search_emails(
-                query="test query",
-                limit=50,
-                current_user=mock_current_user,
-                db_pool=mock_db_pool
+                query="test query", limit=50, current_user=mock_current_user, db_pool=mock_db_pool
             )
 
             assert isinstance(response, list)
@@ -478,7 +520,9 @@ class TestZohoEmailOperations:
             mock_email_service.search_emails.assert_called_once_with("user_123", "test query", 50)
 
     @pytest.mark.asyncio
-    async def test_search_emails_exception(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_search_emails_exception(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test search emails generic exception (line 432)"""
         from app.routers.zoho_email import search_emails
 
@@ -490,7 +534,7 @@ class TestZohoEmailOperations:
                     query="test query",
                     limit=50,
                     current_user=mock_current_user,
-                    db_pool=mock_db_pool
+                    db_pool=mock_db_pool,
                 )
             assert exc.value.status_code == 500
 
@@ -547,7 +591,9 @@ class TestZohoEmailOperations:
             mock_email_service.forward_email.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_forward_email_exception(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_forward_email_exception(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test forward email generic exception (line 490)"""
         from app.routers.zoho_email import ForwardEmailRequest, forward_email
 
@@ -561,7 +607,9 @@ class TestZohoEmailOperations:
             assert exc.value.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_mark_emails_read_success(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_mark_emails_read_success(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test mark emails as read"""
         from app.routers.zoho_email import MarkReadRequest, mark_emails_read
 
@@ -586,7 +634,9 @@ class TestZohoEmailOperations:
             assert response["success"] is True
 
     @pytest.mark.asyncio
-    async def test_mark_emails_read_exception(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_mark_emails_read_exception(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test mark emails read generic exception (line 518)"""
         from app.routers.zoho_email import MarkReadRequest, mark_emails_read
 
@@ -635,7 +685,9 @@ class TestZohoEmailOperations:
             mock_email_service.delete_emails.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_delete_emails_exception(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_delete_emails_exception(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test delete emails generic exception (line 572)"""
         from app.routers.zoho_email import delete_emails
 
@@ -647,7 +699,9 @@ class TestZohoEmailOperations:
             assert exc.value.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_download_attachment_success(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_download_attachment_success(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test download attachment"""
         from app.routers.zoho_email import download_attachment
 
@@ -660,7 +714,9 @@ class TestZohoEmailOperations:
             mock_email_service.get_attachment.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_download_attachment_exception(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_download_attachment_exception(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test download attachment generic exception (line 611)"""
         from app.routers.zoho_email import download_attachment
 
@@ -672,7 +728,9 @@ class TestZohoEmailOperations:
             assert exc.value.status_code == 500
 
     @pytest.mark.asyncio
-    async def test_get_unread_count_success(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_get_unread_count_success(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test get unread count"""
         from app.routers.zoho_email import get_unread_count
 
@@ -683,7 +741,9 @@ class TestZohoEmailOperations:
             mock_email_service.get_unread_count.assert_called_once_with("user_123")
 
     @pytest.mark.asyncio
-    async def test_get_unread_count_not_connected(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_get_unread_count_not_connected(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test get unread count - not connected"""
         from app.routers.zoho_email import get_unread_count
 
@@ -695,7 +755,9 @@ class TestZohoEmailOperations:
             assert response["unread_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_get_unread_count_error(self, mock_db_pool, mock_current_user, mock_email_service):
+    async def test_get_unread_count_error(
+        self, mock_db_pool, mock_current_user, mock_email_service
+    ):
         """Test get unread count error handling"""
         from app.routers.zoho_email import get_unread_count
 

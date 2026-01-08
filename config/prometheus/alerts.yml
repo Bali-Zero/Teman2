@@ -276,6 +276,25 @@ groups:
           description: 'Conversation persistence is failing due to cache-DB inconsistencies. Rate: {{ $value }} errors/second - immediate action required'
           runbook_url: 'https://docs.nuzantara.com/runbooks/critical-cache-db-consistency-errors'
 
+  - name: knowledge_gaps
+    interval: 30s
+    rules:
+      # Low Evidence Score (Knowledge Gap)
+      # Trigger if average evidence score over 1h is < 0.4
+      - alert: LowRagEvidenceScore
+        expr: |
+          rate(zantara_rag_evidence_score_sum[1h]) / rate(zantara_rag_evidence_score_count[1h]) < 0.4
+        for: 15m
+        labels:
+          severity: warning
+          component: rag
+          subsystem: intelligence
+        annotations:
+          summary: 'Knowledge Gap Detected (Low Evidence Score)'
+          description: 'The AI is struggling to find verified information. Average evidence score is {{ $value | humanize }} over the last hour (< 0.4 threshold).'
+          runbook_url: 'https://docs.nuzantara.com/runbooks/knowledge-gaps'
+
+
 
 
 

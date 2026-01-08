@@ -12,6 +12,11 @@ try:
 except ImportError:
     from pypdf import PdfReader
 
+try:
+    from docx import Document
+except ImportError:
+    Document = None
+
 import ebooklib
 from bs4 import BeautifulSoup
 from ebooklib import epub
@@ -63,6 +68,55 @@ def extract_text_from_pdf(file_path: str) -> str:
 
     except Exception as e:
         raise DocumentParseError(f"Failed to parse PDF {file_path}: {str(e)}") from e
+
+
+def extract_text_from_docx(file_path: str) -> str:
+    """
+    Extract text content from DOCX file.
+
+    Args:
+        file_path: Path to DOCX file
+
+    Returns:
+        Extracted text as string
+
+    Raises:
+        DocumentParseError: If parsing fails
+    """
+    if Document is None:
+        raise DocumentParseError("python-docx not installed. Install with: pip install python-docx")
+
+    try:
+        logger.info(f"Parsing DOCX: {file_path}")
+
+        doc = Document(file_path)
+        text_parts = []
+
+        # Extract text from paragraphs
+        for paragraph in doc.paragraphs:
+            if paragraph.text.strip():
+                text_parts.append(paragraph.text)
+
+        # Extract text from tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = []
+                for cell in row.cells:
+                    if cell.text.strip():
+                        row_text.append(cell.text.strip())
+                if row_text:
+                    text_parts.append(" | ".join(row_text))
+
+        full_text = "\n\n".join(text_parts)
+
+        if not full_text.strip():
+            raise DocumentParseError(f"No text extracted from DOCX: {file_path}")
+
+        logger.info(f"Successfully extracted {len(full_text)} characters from DOCX")
+        return full_text
+
+    except Exception as e:
+        raise DocumentParseError(f"Failed to parse DOCX {file_path}: {str(e)}") from e
 
 
 def extract_text_from_epub(file_path: str) -> str:
@@ -158,6 +212,8 @@ def auto_detect_and_parse(file_path: str) -> str:
 
     if file_ext == ".pdf":
         return extract_text_from_pdf(file_path)
+    elif file_ext == ".docx":
+        return extract_text_from_docx(file_path)
     elif file_ext == ".epub":
         return extract_text_from_epub(file_path)
     elif file_ext == ".txt":
@@ -166,7 +222,7 @@ def auto_detect_and_parse(file_path: str) -> str:
         return extract_text_from_txt(file_path)  # Markdown is plain text
     else:
         raise DocumentParseError(
-            f"Unsupported file type: {file_ext}. Supported formats: .pdf, .epub, .txt, .md"
+            f"Unsupported file type: {file_ext}. Supported formats: .pdf, .docx, .epub, .txt, .md"
         )
 
 
@@ -196,6 +252,17 @@ def get_document_info(file_path: str) -> dict:
             if reader.metadata:
                 info["title"] = reader.metadata.get("/Title", "")
                 info["author"] = reader.metadata.get("/Author", "")
+
+        elif info["file_type"] == ".docx":
+            if Document is None:
+                logger.warning("python-docx not available for DOCX metadata extraction")
+            else:
+                doc = Document(file_path)
+                # Try to get document properties
+                props = doc.core_properties
+                info["title"] = props.title or ""
+                info["author"] = props.author or ""
+                info["pages"] = len(doc.paragraphs)  # Approximate page count
 
         elif info["file_type"] == ".epub":
             book = epub.read_epub(file_path)

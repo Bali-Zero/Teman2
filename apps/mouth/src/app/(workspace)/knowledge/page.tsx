@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookOpen, Search, Filter, Plus, FileText, FolderOpen, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
+import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 import type { KnowledgeSearchResult } from '@/lib/api/knowledge/knowledge.types';
 
 export default function KnowledgePage() {
@@ -13,24 +15,65 @@ export default function KnowledgePage() {
   const [searchResults, setSearchResults] = useState<KnowledgeSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const pageLoadStartTime = useRef<number>(performance.now());
+  const { trackPageView, trackUserInteraction, trackPerformance, trackEvent } = useEnhancedAnalytics();
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setHasSearched(false);
+      logger.debug('Search cleared', { component: 'KnowledgePage', action: 'clearSearch' });
       return;
     }
 
+    const searchStartTime = performance.now();
     setIsSearching(true);
     setHasSearched(true);
+    
+    logger.info('Knowledge search initiated', {
+      component: 'KnowledgePage',
+      action: 'search',
+      metadata: { query: searchQuery, queryLength: searchQuery.length },
+    });
+    
+    trackUserInteraction('search', 'knowledge_search', searchQuery);
+    trackEvent('knowledge_search', 'knowledge', searchQuery);
+
     try {
       const response = await api.knowledge.searchDocs({
         query: searchQuery,
         limit: 20,
       });
+      
+      const searchDuration = performance.now() - searchStartTime;
+      const resultCount = response.results?.length || 0;
+      
       setSearchResults(response.results || []);
+      
+      logger.info('Knowledge search completed', {
+        component: 'KnowledgePage',
+        action: 'search_success',
+        metadata: {
+          query: searchQuery,
+          resultCount,
+          executionTime: response.execution_time_ms,
+          searchDuration: Math.round(searchDuration),
+        },
+      });
+      
+      trackPerformance({ apiCallTime: searchDuration });
+      trackEvent('knowledge_search_success', 'knowledge', searchQuery, resultCount);
     } catch (error) {
-      console.error('Search failed:', error);
+      const searchDuration = performance.now() - searchStartTime;
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      logger.error('Knowledge search failed', {
+        component: 'KnowledgePage',
+        action: 'search_error',
+        metadata: { query: searchQuery, error: errorMessage },
+      }, error instanceof Error ? error : new Error(errorMessage));
+      
+      trackEvent('knowledge_search_error', 'knowledge', searchQuery);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -48,11 +91,37 @@ export default function KnowledgePage() {
     }, 500);
 
     return () => clearTimeout(debounceTimer);
-     
   }, [searchQuery]);
 
+  // Track page load and performance
+  useEffect(() => {
+    const loadTime = performance.now() - pageLoadStartTime.current;
+    
+    logger.componentMount('KnowledgePage', {
+      component: 'KnowledgePage',
+      action: 'mount',
+      metadata: { loadTime: Math.round(loadTime) },
+    });
+    
+    trackPageView('/knowledge', 'Knowledge Base');
+    trackPerformance({ loadTime });
+    trackEvent('knowledge_page_view', 'navigation', 'knowledge_base');
+
+    return () => {
+      logger.componentUnmount('KnowledgePage', {
+        component: 'KnowledgePage',
+        action: 'unmount',
+      });
+    };
+  }, []);
+
   const handleNewDocument = () => {
-    // Navigate to document upload/create page
+    logger.userAction('new_document_click', undefined, undefined, {
+      component: 'KnowledgePage',
+      action: 'new_document',
+    });
+    trackUserInteraction('click', 'new_document_button', 'knowledge_page');
+    trackEvent('knowledge_new_document_click', 'knowledge', 'new_document');
     router.push('/knowledge/upload');
   };
 
@@ -93,16 +162,16 @@ export default function KnowledgePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { name: 'KITAS & Visa', icon: FileText, key: 'kitas', href: '/knowledge/kitas', hasPage: true },
-          { name: 'Company & KBLI', icon: FolderOpen, key: 'pma', href: '/knowledge/blueprints', hasPage: true },
+          { name: 'Company & Licenses', icon: FolderOpen, key: 'pma', href: '/knowledge/company-licenses', hasPage: true },
           { name: 'Tax & NPWP', icon: FileText, key: 'tax', href: '/knowledge/tax', hasPage: true },
-          { name: 'Licenses', icon: Tag, key: 'licenses', href: '/knowledge/licenses', hasPage: true },
+          { name: 'Our Journey', icon: Tag, key: 'journey', href: '/knowledge/our-journey', hasPage: true },
         ].map((category) => {
           const count = searchResults.filter((r) => {
             const collection = r.metadata?.collection?.toLowerCase() || '';
             if (category.key === 'kitas') return collection.includes('kitas') || collection.includes('visa');
             if (category.key === 'pma') return collection.includes('pma') || collection.includes('company');
             if (category.key === 'tax') return collection.includes('tax') || collection.includes('npwp');
-            if (category.key === 'licenses') return collection.includes('license') || collection.includes('slhs') || collection.includes('npbbkc') || collection.includes('halal');
+            if (category.key === 'journey') return false; // Our Journey is empty for now
             return false;
           }).length;
 
@@ -110,10 +179,19 @@ export default function KnowledgePage() {
             <div
               key={category.name}
               onClick={() => {
+                logger.userAction('category_click', undefined, undefined, {
+                  component: 'KnowledgePage',
+                  action: 'category_click',
+                  metadata: { category: category.key, categoryName: category.name },
+                });
+                trackUserInteraction('click', `category_${category.key}`, category.name);
+                trackEvent('knowledge_category_click', 'knowledge', category.key);
+                
                 if (category.hasPage && category.href) {
                   router.push(category.href);
                 } else {
-                  setSearchQuery(category.key === 'kitas' ? 'KITAS visa' : category.key === 'pma' ? 'PT PMA company' : category.key === 'tax' ? 'tax NPWP' : category.key === 'licenses' ? 'SLHS NPBBKC alcohol halal license' : 'procedure process');
+                  const searchTerm = category.key === 'kitas' ? 'KITAS visa' : category.key === 'pma' ? 'PT PMA company' : category.key === 'tax' ? 'tax NPWP' : 'procedure process';
+                  setSearchQuery(searchTerm);
                   handleSearch();
                 }
               }}
@@ -127,7 +205,7 @@ export default function KnowledgePage() {
               <h3 className="text-sm font-medium text-[var(--foreground)]">{category.name}</h3>
               <p className="text-[10px] text-[var(--foreground-muted)]">
                 {category.hasPage
-                  ? (category.key === 'kitas' ? 'View visa guides' : category.key === 'pma' ? 'View KBLI blueprints' : category.key === 'tax' ? 'NPWP, SPT, BPJS, LKPM' : 'SLHS, Alcohol, Halal')
+                  ? (category.key === 'kitas' ? 'View visa guides' : category.key === 'pma' ? 'Company & Licenses' : category.key === 'tax' ? 'NPWP, SPT, BPJS, LKPM' : category.key === 'journey' ? 'Coming soon' : '')
                   : ((category as any).subtitle || `${count} documents`)}
               </p>
             </div>
@@ -154,8 +232,20 @@ export default function KnowledgePage() {
                   key={idx}
                   className="p-4 hover:bg-[var(--background-elevated)]/50 transition-colors cursor-pointer"
                   onClick={() => {
-                    if (result.metadata?.document_id) {
-                      router.push(`/knowledge/${result.metadata.document_id}`);
+                    const docId = result.metadata?.document_id;
+                    if (docId) {
+                      logger.userAction('document_click', undefined, docId, {
+                        component: 'KnowledgePage',
+                        action: 'document_click',
+                        metadata: {
+                          documentId: docId,
+                          title: result.metadata?.title,
+                          collection: (result.metadata as any)?.collection,
+                        },
+                      });
+                      trackUserInteraction('click', 'search_result', docId);
+                      trackEvent('knowledge_document_view', 'knowledge', docId);
+                      router.push(`/knowledge/${docId}`);
                     }
                   }}
                 >

@@ -8,9 +8,10 @@ Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 
 import asyncpg
 from core.cache import cached
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
-from app.dependencies import get_database_pool
+from app.dependencies import get_current_user, get_database_pool
+from app.utils.crm_utils import is_crm_admin
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger
 
@@ -58,7 +59,7 @@ async def _get_practice_codes(conn: asyncpg.Connection) -> list[str]:
 async def search_shared_memory(
     q: str = Query(..., description="Natural language query"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -73,6 +74,8 @@ async def search_shared_memory(
 
     Returns relevant results from clients, practices, and interactions
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             query_lower = q.lower()
@@ -109,6 +112,7 @@ async def search_shared_memory(
                     AND p.expiry_date > CURRENT_DATE
                     AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $2
                     AND p.status = 'completed'
+                    {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
                     ORDER BY p.expiry_date ASC
                     LIMIT $1
                     """,
@@ -140,7 +144,8 @@ async def search_shared_memory(
                             COUNT(DISTINCT CASE WHEN p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov') THEN p.id END) as active_practices
                         FROM clients c
                         LEFT JOIN practices p ON c.id = p.client_id
-                        WHERE c.full_name ILIKE $1 OR c.email ILIKE $2
+                        WHERE (c.full_name ILIKE $1 OR c.email ILIKE $2)
+                        {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
                         GROUP BY c.id
                         LIMIT $3
                         """,
@@ -223,6 +228,7 @@ async def search_shared_memory(
                     JOIN clients c ON p.client_id = c.id
                     WHERE pt.code = $1
                     AND p.status = ANY($2)
+                    {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
                     ORDER BY p.created_at DESC
                     LIMIT $3
                     """,
@@ -249,6 +255,7 @@ async def search_shared_memory(
                     JOIN clients c ON p.client_id = c.id
                     WHERE p.priority IN ('high', 'urgent')
                     AND p.status IN ('inquiry', 'in_progress', 'waiting_documents', 'submitted_to_gov')
+                    {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
                     ORDER BY
                         CASE p.priority
                             WHEN 'urgent' THEN 1
@@ -288,6 +295,7 @@ async def search_shared_memory(
                     FROM interactions i
                     JOIN clients c ON i.client_id = c.id
                     WHERE i.interaction_date >= NOW() - INTERVAL '1 day' * $1
+                    {"" if user_is_admin else f"AND (LOWER(c.assigned_to) = '{user_email}' OR LOWER(i.team_member) = '{user_email}')"}
                     ORDER BY i.interaction_date DESC
                     LIMIT $2
                     """,
@@ -321,7 +329,7 @@ async def get_upcoming_renewals(
         le=MAX_RENEWAL_LOOKAHEAD_DAYS,
         description="Look ahead days",
     ),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -331,6 +339,8 @@ async def get_upcoming_renewals(
 
     Performance: Cached for 10 minutes to reduce database load.
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -353,6 +363,7 @@ async def get_upcoming_renewals(
                 WHERE p.expiry_date IS NOT NULL
                 AND p.expiry_date > CURRENT_DATE
                 AND p.expiry_date <= CURRENT_DATE + INTERVAL '1 day' * $1
+                {"" if user_is_admin else f"AND LOWER(c.assigned_to) = '{user_email}'"}
                 ORDER BY p.expiry_date ASC
                 """,
                 days,
@@ -371,7 +382,7 @@ async def get_upcoming_renewals(
 @router.get("/client/{client_id}/full-context")
 async def get_client_full_context(
     client_id: int = Path(..., gt=0, description="Client ID"),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -385,6 +396,8 @@ async def get_client_full_context(
     - Upcoming renewals
     - Action items
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             # Client info
@@ -399,6 +412,10 @@ async def get_client_full_context(
                 raise HTTPException(status_code=404, detail="Client not found")
 
             client = dict(client_row)
+
+            # RBAC Check
+            if not user_is_admin and (client["assigned_to"] or "").lower() != user_email:
+                raise HTTPException(status_code=403, detail="You don't have access to this client")
 
             # Practices
             practice_rows = await conn.fetch(
@@ -490,7 +507,7 @@ async def get_client_full_context(
 @router.get("/team-overview")
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_team_overview")
 async def get_team_overview(
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -503,6 +520,8 @@ async def get_team_overview(
 
     Performance: Cached for 5 minutes to reduce database load.
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             overview = {}
@@ -516,13 +535,18 @@ async def get_team_overview(
             )
 
             # Total practices by status
-            status_rows = await conn.fetch(
-                """
-                SELECT status, COUNT(*) as count
-                FROM practices
-                GROUP BY status
-                """
-            )
+            status_query = """
+                SELECT p.status, COUNT(*) as count
+                FROM practices p
+                JOIN clients c ON p.client_id = c.id
+            """
+            params = []
+            if not user_is_admin:
+                status_query += " WHERE LOWER(c.assigned_to) = $1"
+                params.append(user_email)
+
+            status_query += " GROUP BY p.status"
+            status_rows = await conn.fetch(status_query, *params)
             overview["practices_by_status"] = {row["status"]: row["count"] for row in status_rows}
 
             # Practices by team member

@@ -7,10 +7,9 @@ import asyncio
 import importlib.util
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 
 # Load module directly to avoid import issues
 module_path = (
@@ -38,6 +37,7 @@ def scheduler():
 @pytest.fixture
 def dummy_task_func():
     """Create a dummy async task function"""
+
     async def task_func():
         pass
 
@@ -200,18 +200,18 @@ async def test_run_task_loop_success(scheduler):
         task_executed = True
 
     scheduler.register_task("test_task", task_func, interval_seconds=60, enabled=True)
-    
+
     # Use a task name that gives small hash (for shorter initial delay)
     task = scheduler.tasks["test_task"]
     task.name = "aa"  # Small hash
-    
+
     await scheduler.start()
-    
+
     # Wait a bit longer to ensure task runs (initial delay + execution)
     await asyncio.sleep(0.2)
-    
+
     await scheduler.stop()
-    
+
     # Task should have executed
     assert task_executed or scheduler.tasks["test_task"].run_count > 0
 
@@ -219,16 +219,17 @@ async def test_run_task_loop_success(scheduler):
 @pytest.mark.asyncio
 async def test_run_task_loop_timeout(scheduler):
     """Test _run_task_loop with timeout error (covers line 103-106)"""
+
     async def slow_task_func():
         await asyncio.sleep(2000)  # Longer than timeout (30 min)
 
     scheduler.register_task("test_task", slow_task_func, interval_seconds=60, enabled=True)
     task = scheduler.tasks["test_task"]
     task.name = "aa"  # Small hash for shorter delay
-    
+
     # Patch wait_for to simulate timeout on task execution (timeout=1800)
     original_wait_for = asyncio.wait_for
-    
+
     async def mock_wait_for(coro, timeout=None):
         # Task execution call with timeout=1800 should timeout
         if timeout == 1800:
@@ -240,7 +241,7 @@ async def test_run_task_loop_timeout(scheduler):
         await scheduler.start()
         await asyncio.sleep(0.15)  # Wait for timeout to be caught
         await scheduler.stop()
-    
+
     assert task.error_count > 0
     assert task.last_error == "Task timed out after 30 minutes"
 
@@ -248,6 +249,7 @@ async def test_run_task_loop_timeout(scheduler):
 @pytest.mark.asyncio
 async def test_run_task_loop_cancelled(scheduler):
     """Test _run_task_loop with CancelledError (covers line 108-110)"""
+
     async def task_func():
         await asyncio.sleep(1)
 
@@ -276,17 +278,18 @@ async def test_run_task_loop_cancelled(scheduler):
 @pytest.mark.asyncio
 async def test_run_task_loop_exception(scheduler):
     """Test _run_task_loop with generic exception (covers line 112-115)"""
+
     async def failing_task_func():
         raise RuntimeError("Task failed")
 
     scheduler.register_task("test_task", failing_task_func, interval_seconds=60, enabled=True)
     task = scheduler.tasks["test_task"]
     task.name = "aa"  # Small hash for shorter delay
-    
+
     await scheduler.start()
     await asyncio.sleep(0.15)  # Wait for task to execute and fail
     await scheduler.stop()
-    
+
     assert task.error_count > 0
     assert "Task failed" in task.last_error
 
@@ -294,6 +297,7 @@ async def test_run_task_loop_exception(scheduler):
 @pytest.mark.asyncio
 async def test_run_task_loop_disabled(scheduler):
     """Test _run_task_loop with disabled task (covers line 89-91)"""
+
     async def task_func():
         pass
 
@@ -323,6 +327,7 @@ async def test_run_task_loop_disabled(scheduler):
 @pytest.mark.asyncio
 async def test_run_task_loop_shutdown_during_wait(scheduler):
     """Test _run_task_loop with shutdown during wait (covers line 118-121)"""
+
     async def task_func():
         pass
 
@@ -356,6 +361,7 @@ async def test_run_task_loop_shutdown_during_wait(scheduler):
 @pytest.mark.asyncio
 async def test_run_task_loop_timeout_during_wait(scheduler):
     """Test _run_task_loop with timeout during wait (covers line 122-124)"""
+
     async def task_func():
         pass
 
@@ -399,6 +405,7 @@ async def test_stop_cancels_tasks(scheduler, dummy_task_func):
 @pytest.mark.asyncio
 async def test_stop_task_timeout(scheduler, dummy_task_func):
     """Test stop with task that times out during cancellation"""
+
     async def slow_task():
         await asyncio.sleep(100)  # Very long task
 
@@ -484,4 +491,3 @@ async def test_create_and_start_scheduler_with_import_errors():
         assert scheduler is not None
 
         await scheduler.stop()
-

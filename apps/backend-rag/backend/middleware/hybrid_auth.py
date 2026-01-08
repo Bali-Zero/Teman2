@@ -122,6 +122,11 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             "/api/blog/newsletter/unsubscribe",  # Newsletter unsubscribe (public)
             "/api/blog/ask",  # AskZantara widget on blog articles (public)
             "/api/telegram/webhook",  # Telegram bot webhook (public, verified by secret token)
+            "/preview/",  # Article preview pages for Telegram approval (public, no indexing)
+            "/preview/upload",  # Preview upload from local scraper (public)
+            "/api/fix/users-auth",  # TEMPORARY: Fix user authentication endpoint (remove after fixing)
+            "/api/fix/check-user/",  # TEMPORARY: Check user endpoint (remove after fixing)
+            "/api/fix/test-login",  # TEMPORARY: Test login endpoint (remove after fixing)
         ]
 
         logger.info(

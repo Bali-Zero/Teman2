@@ -864,11 +864,40 @@ class AgenticRAGOrchestrator:
         # 📊 Record RAG query metrics for Prometheus/Grafana
         primary_collection = next(iter(collections_used), "unknown")
         route_used = "agentic" if tool_execution_counter["count"] > 0 else "direct"
+        evidence_score = getattr(state, "evidence_score", 0.0)
+
         metrics_collector.record_rag_query(
             collection=primary_collection,
             route_used=route_used,
             status="success",
             context_tokens=context_used,
+        )
+
+        # Record detailed histogram metrics
+        metrics_collector.record_rag_detailed_metrics(
+            duration_seconds=execution_time,
+            evidence_score=evidence_score,
+            documents_count=len(sources),
+            collection=primary_collection,
+            route_used=route_used,
+        )
+
+        # 📝 Structured Logging for Query Completion
+        logger.info(
+            "✅ [AgenticRAG] Query completed successfully",
+            extra={
+                "user_id": user_id or "anonymous",
+                "query_hash": str(hash(query))[:8],
+                "model_used": model_used_name,
+                "duration_s": round(execution_time, 3),
+                "evidence_score": round(evidence_score, 2),
+                "doc_count": len(sources),
+                "steps": len(state.steps),
+                "tokens_total": token_usage.total_tokens,
+                "cost_usd": round(token_usage.cost_usd, 6),
+                "route": route_used,
+                "tools": list(collections_used) if collections_used else [],
+            },
         )
 
         # Record token usage metrics for Prometheus

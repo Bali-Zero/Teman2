@@ -435,9 +435,7 @@ class BaliZeroScraperV2:
                 ".search-result",
             ]
             selectors = source.get("selectors", default_selectors)
-            articles = self._extract_links_from_index(
-                html, source["url"], selectors
-            )
+            articles = self._extract_links_from_index(html, source["url"], selectors)
 
             logger.info(f"[{source['name']}] Found {len(articles)} article links")
 
@@ -616,9 +614,7 @@ extraction_method: {item["extraction_method"]}
         4. Voted on via Telegram
         5. Ingested to Qdrant if approved
         """
-        backend_url = os.getenv(
-            "BACKEND_API_URL", "https://nuzantara-rag.fly.dev"
-        )
+        backend_url = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
         endpoint = f"{backend_url}/api/intel/scraper/submit"
 
         payload = {
@@ -649,14 +645,10 @@ extraction_method: {item["extraction_method"]}
                     )
 
         except httpx.HTTPError as e:
-            logger.warning(
-                f"Failed to send to backend: {e} - {item['title'][:50]}"
-            )
+            logger.warning(f"Failed to send to backend: {e} - {item['title'][:50]}")
             # Don't raise - local save is already done, backend is optional
         except Exception as e:
-            logger.warning(
-                f"Backend send error: {e} - {item['title'][:50]}"
-            )
+            logger.warning(f"Backend send error: {e} - {item['title'][:50]}")
 
     async def scrape_all(self, limit: int = 10, categories: List[str] = None):
         """Scrape all categories"""

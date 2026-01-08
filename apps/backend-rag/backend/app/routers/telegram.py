@@ -57,7 +57,6 @@ class TelegramUpdate(BaseModel):
 
 # Storage for article approval status (in production, use Redis or DB)
 import json
-from datetime import datetime
 from pathlib import Path
 
 PENDING_ARTICLES_PATH = Path("/tmp/pending_articles")
@@ -239,11 +238,7 @@ def add_intel_vote(item_id: str, intel_type: str, vote_type: str, user: dict) ->
     data["votes"][vote_type].append(vote_record)
 
     # Metrics: Vote cast
-    intel_votes_cast.labels(
-        intel_type=intel_type,
-        vote_type=vote_type,
-        user=user_name
-    ).inc()
+    intel_votes_cast.labels(intel_type=intel_type, vote_type=vote_type, user=user_name).inc()
 
     # Check for majority
     required_votes = get_required_votes(intel_type)
@@ -261,8 +256,10 @@ def add_intel_vote(item_id: str, intel_type: str, vote_type: str, user: dict) ->
         # Metrics: Voting duration
         if "created_at" in data:
             try:
-                created_dt = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
-                duration_seconds = (datetime.utcnow() - created_dt.replace(tzinfo=None)).total_seconds()
+                created_dt = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
+                duration_seconds = (
+                    datetime.utcnow() - created_dt.replace(tzinfo=None)
+                ).total_seconds()
                 intel_voting_duration.labels(intel_type=intel_type).observe(duration_seconds)
             except Exception:
                 pass  # Skip if timestamp parsing fails
@@ -280,8 +277,10 @@ def add_intel_vote(item_id: str, intel_type: str, vote_type: str, user: dict) ->
         # Metrics: Voting duration
         if "created_at" in data:
             try:
-                created_dt = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
-                duration_seconds = (datetime.utcnow() - created_dt.replace(tzinfo=None)).total_seconds()
+                created_dt = datetime.fromisoformat(data["created_at"].replace("Z", "+00:00"))
+                duration_seconds = (
+                    datetime.utcnow() - created_dt.replace(tzinfo=None)
+                ).total_seconds()
                 intel_voting_duration.labels(intel_type=intel_type).observe(duration_seconds)
             except Exception:
                 pass
@@ -341,10 +340,10 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
 
     try:
         # Import here to avoid circular dependency
-        from pathlib import Path as P
-        import json as j
         import hashlib
+        import json as j
         from datetime import datetime as dt
+        from pathlib import Path as P
 
         # Read staged file
         staging_base = P("data/staging")
@@ -355,16 +354,15 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
             logger.error(f"Staging file not found: {staging_file}")
             # Metrics: Ingestion failed
             intel_qdrant_ingestion_total.labels(
-                collection=collection_name,
-                status="error_file_not_found"
+                collection=collection_name, status="error_file_not_found"
             ).inc()
             return False
 
         data = j.loads(staging_file.read_text())
 
         # Import ingestion services
-        from core.qdrant_db import qdrant_client
         from core.embeddings import embedding_service
+        from core.qdrant_db import qdrant_client
 
         # Extract content
         title = data.get("title", "Untitled")
@@ -411,14 +409,11 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
         logger.info(f"✅ Successfully ingested {intel_type} item {item_id} to {collection_name}")
 
         # Metrics: Ingestion success
-        intel_qdrant_ingestion_total.labels(
-            collection=collection_name,
-            status="success"
-        ).inc()
+        intel_qdrant_ingestion_total.labels(collection=collection_name, status="success").inc()
 
-        intel_qdrant_ingestion_duration.labels(
-            collection=collection_name
-        ).observe(time.time() - ingestion_start)
+        intel_qdrant_ingestion_duration.labels(collection=collection_name).observe(
+            time.time() - ingestion_start
+        )
 
         # Update staging file with ingestion timestamp
         data["ingested_at"] = dt.utcnow().isoformat()
@@ -441,8 +436,7 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
 
         # Metrics: Ingestion error
         intel_qdrant_ingestion_total.labels(
-            collection=collection_name,
-            status="error_exception"
+            collection=collection_name, status="error_exception"
         ).inc()
 
         return False
@@ -463,7 +457,7 @@ async def process_telegram_message(
 ):
     """
     Background task con streaming progressivo per Telegram.
-    
+
     Implementa streaming progressivo con aggiornamenti in tempo reale usando
     edit_message_text per migliorare la latenza percepita.
 
@@ -495,8 +489,10 @@ async def process_telegram_message(
             reply_to_message_id=message_id,
         )
         placeholder_id = placeholder_msg.get("result", {}).get("message_id")
-        logger.info(f"📱 [Telegram] Placeholder message sent: chat_id={chat_id}, placeholder_id={placeholder_id}")
-        
+        logger.info(
+            f"📱 [Telegram] Placeholder message sent: chat_id={chat_id}, placeholder_id={placeholder_id}"
+        )
+
         if not placeholder_id:
             logger.error("Failed to get placeholder message ID")
             # Fallback to old method
@@ -512,7 +508,7 @@ async def process_telegram_message(
                 chat_id=chat_id,
                 text=response_text,
                 reply_to_message_id=message_id,
-                parse_mode="Markdown",
+                # No parse_mode - use plain text to avoid Markdown parsing errors
             )
             return
 
@@ -524,9 +520,11 @@ async def process_telegram_message(
         sources_found = []
         event_count = 0
         update_count = 0
-        
-        logger.info(f"📱 [Telegram Streaming] Starting stream for chat_id={chat_id}, placeholder_id={placeholder_id}")
-        
+
+        logger.info(
+            f"📱 [Telegram Streaming] Starting stream for chat_id={chat_id}, placeholder_id={placeholder_id}"
+        )
+
         try:
             async with asyncio.timeout(45.0):  # 45s max (webhook timeout è 60s)
                 async for event in orchestrator.stream_query(
@@ -536,16 +534,20 @@ async def process_telegram_message(
                 ):
                     event_count += 1
                     event_type = event.get("type", "unknown")
-                    
+
                     # Log ogni evento (DEBUG level per non intasare)
-                    logger.debug(f"📱 [Telegram Streaming] Event #{event_count}: type={event_type}, chat_id={chat_id}")
-                    
+                    logger.debug(
+                        f"📱 [Telegram Streaming] Event #{event_count}: type={event_type}, chat_id={chat_id}"
+                    )
+
                     # Gestisci diversi tipi di eventi
                     if event.get("type") == "token":
                         token_data = event.get("data", "")
                         accumulated_text += token_data
-                        logger.debug(f"📱 [Telegram Streaming] Token received: {len(token_data)} chars, total={len(accumulated_text)}")
-                    
+                        logger.debug(
+                            f"📱 [Telegram Streaming] Token received: {len(token_data)} chars, total={len(accumulated_text)}"
+                        )
+
                     elif event.get("type") == "status":
                         status_data = event.get("data", "")
                         if isinstance(status_data, dict):
@@ -558,12 +560,16 @@ async def process_telegram_message(
                             status_msg = str(status_data) if status_data else ""
                         if status_msg:
                             current_status = status_msg
-                            logger.info(f"📱 [Telegram Streaming] Status update: {status_msg}, chat_id={chat_id}")
-                    
+                            logger.info(
+                                f"📱 [Telegram Streaming] Status update: {status_msg}, chat_id={chat_id}"
+                            )
+
                     elif event.get("type") == "sources":
                         sources_found = event.get("data", [])
-                        logger.info(f"📱 [Telegram Streaming] Sources found: {len(sources_found)}, chat_id={chat_id}")
-                    
+                        logger.info(
+                            f"📱 [Telegram Streaming] Sources found: {len(sources_found)}, chat_id={chat_id}"
+                        )
+
                     # Aggiorna messaggio periodicamente (rate limiting)
                     current_time = time.time()
                     if current_time - last_update_time >= update_interval:
@@ -571,35 +577,39 @@ async def process_telegram_message(
                             update_count += 1
                             # Costruisci testo da mostrare
                             display_text = _format_telegram_message(
-                                accumulated_text,
-                                current_status,
-                                sources_found
+                                accumulated_text, current_status, sources_found
                             )
-                            
+
                             # Truncate se troppo lungo
                             if len(display_text) > 3900:
                                 display_text = display_text[:3850] + "\n\n_...continua..._"
-                            
+
                             logger.info(
                                 f"📱 [Telegram Streaming] Updating message #{update_count}: "
                                 f"chat_id={chat_id}, placeholder_id={placeholder_id}, "
                                 f"text_length={len(display_text)}, accumulated={len(accumulated_text)}"
                             )
-                            
+
                             try:
                                 await telegram_bot.edit_message_text(
                                     chat_id=chat_id,
                                     message_id=placeholder_id,
                                     text=display_text,
-                                    parse_mode="Markdown",
+                                    # No parse_mode - use plain text to avoid Markdown parsing errors
                                 )
                                 last_update_time = current_time
-                                logger.info(f"📱 [Telegram Streaming] ✅ Message updated successfully #{update_count}, chat_id={chat_id}")
+                                logger.info(
+                                    f"📱 [Telegram Streaming] ✅ Message updated successfully #{update_count}, chat_id={chat_id}"
+                                )
                             except Exception as e:
-                                logger.warning(f"📱 [Telegram Streaming] ❌ Failed to update message #{update_count}: {e}, chat_id={chat_id}")
+                                logger.warning(
+                                    f"📱 [Telegram Streaming] ❌ Failed to update message #{update_count}: {e}, chat_id={chat_id}"
+                                )
                                 # Continua comunque, non bloccare lo stream
                         else:
-                            logger.debug(f"📱 [Telegram Streaming] Skipping update: text too short ({len(accumulated_text)} chars), chat_id={chat_id}")
+                            logger.debug(
+                                f"📱 [Telegram Streaming] Skipping update: text too short ({len(accumulated_text)} chars), chat_id={chat_id}"
+                            )
         except asyncio.TimeoutError:
             logger.warning(f"⏱️ Telegram query timeout for {chat_id}")
             if placeholder_id:
@@ -616,27 +626,27 @@ async def process_telegram_message(
             f"events={event_count}, updates={update_count}, "
             f"final_text_length={len(accumulated_text)}"
         )
-        
-        final_text = _format_telegram_message(
-            accumulated_text,
-            current_status,
-            sources_found
-        )
-        
+
+        final_text = _format_telegram_message(accumulated_text, current_status, sources_found)
+
         # Truncate se necessario (limite Telegram: 4096 chars)
         if len(final_text) > 4000:
             final_text = final_text[:3950] + "\n\n_...risposta troncata_"
-        
-        logger.info(f"📱 [Telegram Streaming] Sending final update: chat_id={chat_id}, text_length={len(final_text)}")
-        
+
+        logger.info(
+            f"📱 [Telegram Streaming] Sending final update: chat_id={chat_id}, text_length={len(final_text)}"
+        )
+
         await telegram_bot.edit_message_text(
             chat_id=chat_id,
             message_id=placeholder_id,
             text=final_text,
-            parse_mode="Markdown",
+            # No parse_mode - use plain text to avoid Markdown parsing errors
         )
-        
-        logger.info(f"📱 [Telegram Streaming] ✅ Final response sent successfully for chat_id={chat_id}")
+
+        logger.info(
+            f"📱 [Telegram Streaming] ✅ Final response sent successfully for chat_id={chat_id}"
+        )
 
     except Exception as e:
         logger.exception(f"❌ Error processing Telegram message: {e}")
@@ -658,24 +668,68 @@ async def process_telegram_message(
             logger.error("Failed to send error message to Telegram")
 
 
-def _format_telegram_message(
-    text: str,
-    status: str = "",
-    sources: list = None
-) -> str:
+def _escape_markdown_v2(text: str) -> str:
+    """
+    Escape special characters for Telegram MarkdownV2 format.
+
+    Telegram MarkdownV2 requires escaping these characters:
+    _ * [ ] ( ) ~ ` > # + - = | { } . !
+
+    Args:
+        text: Text to escape
+
+    Returns:
+        Escaped text safe for Telegram MarkdownV2
+    """
+    if not text:
+        return text
+
+    # Characters that need escaping in MarkdownV2
+    special_chars = [
+        "_",
+        "*",
+        "[",
+        "]",
+        "(",
+        ")",
+        "~",
+        "`",
+        ">",
+        "#",
+        "+",
+        "-",
+        "=",
+        "|",
+        "{",
+        "}",
+        ".",
+        "!",
+    ]
+
+    escaped = text
+    for char in special_chars:
+        escaped = escaped.replace(char, f"\\{char}")
+
+    return escaped
+
+
+def _format_telegram_message(text: str, status: str = "", sources: list = None) -> str:
     """
     Formatta il messaggio Telegram con status e fonti.
-    
+
+    NOTA: Telegram Markdown è fragile. Per evitare errori di parsing,
+    usiamo solo testo semplice senza formattazione Markdown complessa.
+
     Args:
         text: Testo accumulato
         status: Messaggio di stato corrente
         sources: Lista di fonti trovate (può essere None)
-    
+
     Returns:
-        Testo formattato per Telegram
+        Testo formattato per Telegram (plain text, no Markdown)
     """
     parts = []
-    
+
     # Status prefix (se presente)
     if status:
         status_emoji = {
@@ -687,25 +741,38 @@ def _format_telegram_message(
         }.get(status.lower(), "⏳")
         parts.append(f"{status_emoji} {status}")
         parts.append("")  # Linea vuota
-    
-    # Testo principale
+
+    # Testo principale - rimuoviamo Markdown problematico
     if text:
-        parts.append(text)
+        # Rimuoviamo caratteri Markdown che causano problemi
+        # Manteniamo solo testo semplice
+        cleaned_text = text
+        # Rimuoviamo markdown headers
+        import re
+
+        cleaned_text = re.sub(r"^#{1,6}\s+", "", cleaned_text, flags=re.MULTILINE)
+        # Rimuoviamo bold/italic non bilanciati
+        cleaned_text = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned_text)  # **bold**
+        cleaned_text = re.sub(r"\*([^*]+)\*", r"\1", cleaned_text)  # *italic*
+        cleaned_text = re.sub(r"_([^_]+)_", r"\1", cleaned_text)  # _italic_
+        # Rimuoviamo link markdown malformati
+        cleaned_text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", cleaned_text)  # [text](url)
+        parts.append(cleaned_text)
     elif not status:
         # Se non c'è né testo né status, mostra messaggio di attesa
         parts.append("⏳ Elaborazione in corso...")
-    
+
     # Fonti (opzionale, solo se breve)
     if sources and isinstance(sources, list) and len(sources) <= 3:
         parts.append("")
-        parts.append("📚 _Fonti:_")
+        parts.append("📚 Fonti:")
         for i, source in enumerate(sources[:3], 1):
             if isinstance(source, dict):
                 title = source.get("title", "Documento")[:50]
             else:
                 title = str(source)[:50]
             parts.append(f"  {i}. {title}")
-    
+
     return "\n".join(parts) if parts else "⏳ Elaborazione in corso..."
 
 
@@ -826,8 +893,14 @@ async def telegram_webhook(
                         reply_markup={
                             "inline_keyboard": [
                                 [
-                                    {"text": "✅ APPROVE", "callback_data": f"intel:approve:{intel_type}:{item_id}"},
-                                    {"text": "❌ REJECT", "callback_data": f"intel:reject:{intel_type}:{item_id}"},
+                                    {
+                                        "text": "✅ APPROVE",
+                                        "callback_data": f"intel:approve:{intel_type}:{item_id}",
+                                    },
+                                    {
+                                        "text": "❌ REJECT",
+                                        "callback_data": f"intel:reject:{intel_type}:{item_id}",
+                                    },
                                 ]
                             ]
                         },
@@ -882,8 +955,14 @@ async def telegram_webhook(
                         reply_markup={
                             "inline_keyboard": [
                                 [
-                                    {"text": "✅ APPROVE", "callback_data": f"intel:approve:{intel_type}:{item_id}"},
-                                    {"text": "❌ REJECT", "callback_data": f"intel:reject:{intel_type}:{item_id}"},
+                                    {
+                                        "text": "✅ APPROVE",
+                                        "callback_data": f"intel:approve:{intel_type}:{item_id}",
+                                    },
+                                    {
+                                        "text": "❌ REJECT",
+                                        "callback_data": f"intel:reject:{intel_type}:{item_id}",
+                                    },
                                 ]
                             ]
                         },
@@ -1067,33 +1146,33 @@ async def telegram_webhook(
             # Handle /start command
             if text.strip() == "/start":
                 welcome_text = (
-                    "👋 Hi! I'm *Zantara*, your AI assistant for visas, "
+                    "👋 Hi! I'm Zantara, your AI assistant for visas, "
                     "business setup, and legal matters in Indonesia.\n\n"
                     "Ask me anything - I'll respond in your language! 🇮🇩\n\n"
-                    "_Powered by Bali Zero_"
+                    "Powered by Bali Zero"
                 )
                 await telegram_bot.send_message(
                     chat_id=chat_id,
                     text=welcome_text,
-                    parse_mode="Markdown",
+                    # No parse_mode - use plain text to avoid Markdown parsing errors
                 )
                 return {"ok": True}
 
             # Handle /help command
             if text.strip() == "/help":
                 help_text = (
-                    "🆘 *How can I help you:*\n\n"
+                    "🆘 How can I help you:\n\n"
                     "• Visa questions (KITAS, KITAP, VOA, B211)\n"
                     "• PT PMA / company setup\n"
                     "• Indonesia tax matters\n"
                     "• Work permits (IMTA)\n"
                     "• Bali Zero pricing & procedures\n\n"
-                    "_Ask in any language - I'll adapt!_"
+                    "Ask in any language - I'll adapt!"
                 )
                 await telegram_bot.send_message(
                     chat_id=chat_id,
                     text=help_text,
-                    parse_mode="Markdown",
+                    # No parse_mode - use plain text to avoid Markdown parsing errors
                 )
                 return {"ok": True}
 

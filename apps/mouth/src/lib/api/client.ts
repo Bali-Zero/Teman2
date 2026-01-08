@@ -218,6 +218,11 @@ export class ApiClientBase implements IApiClient {
           throw new Error(`Validation error: ${validationErrors}`);
         }
 
+        // Handle 405 Method Not Allowed - convert to INVALID_METHOD for consistency
+        if (response.status === 405) {
+          throw new Error('INVALID_METHOD');
+        }
+
         throw new Error(error.detail || `HTTP ${response.status}`);
       }
 

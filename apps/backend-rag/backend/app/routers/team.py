@@ -2,10 +2,10 @@
 Team Management Router
 Handles team member listing with visibility rules
 """
-from typing import List, Optional
+
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-import asyncpg
 
 from app.dependencies import get_current_user, get_database_pool
 
@@ -14,16 +14,17 @@ router = APIRouter(prefix="/api/team", tags=["team"])
 
 class TeamMember(BaseModel):
     """Team member model"""
+
     email: str
     name: str
-    full_name: Optional[str] = None
-    role: Optional[str] = None
-    department: Optional[str] = None
+    full_name: str | None = None
+    role: str | None = None
+    department: str | None = None
     active: bool = True
-    avatar: Optional[str] = None
+    avatar: str | None = None
 
 
-@router.get("/members", response_model=List[TeamMember])
+@router.get("/members", response_model=list[TeamMember])
 async def get_team_members(
     current_user: dict = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
@@ -44,8 +45,7 @@ async def get_team_members(
     async with pool.acquire() as conn:
         # Get current user's department
         user_dept = await conn.fetchval(
-            "SELECT department FROM team_members WHERE email = $1",
-            user_email
+            "SELECT department FROM team_members WHERE email = $1", user_email
         )
 
         # Check if user has specific visibility rules
@@ -53,21 +53,21 @@ async def get_team_members(
             """SELECT visible_member_email
                FROM team_member_visibility_rules
                WHERE viewer_email = $1 AND active = TRUE""",
-            user_email
+            user_email,
         )
 
         if visibility_rules:
             # User has specific visibility rules - use them
-            visible_emails = [rule['visible_member_email'] for rule in visibility_rules]
+            visible_emails = [rule["visible_member_email"] for rule in visibility_rules]
 
             members = await conn.fetch(
                 """SELECT email, name, full_name, role, department, active, avatar
                    FROM team_members
                    WHERE email = ANY($1::text[]) AND active = TRUE
                    ORDER BY name""",
-                visible_emails
+                visible_emails,
             )
-        elif user_dept in ['board', 'founders']:
+        elif user_dept in ["board", "founders"]:
             # Board and founders see everyone
             members = await conn.fetch(
                 """SELECT email, name, full_name, role, department, active, avatar
@@ -82,18 +82,18 @@ async def get_team_members(
                    FROM team_members
                    WHERE department = $1 AND active = TRUE
                    ORDER BY name""",
-                user_dept
+                user_dept,
             )
 
         return [
             TeamMember(
-                email=m['email'],
-                name=m['name'],
-                full_name=m['full_name'],
-                role=m['role'],
-                department=m['department'],
-                active=m['active'],
-                avatar=m['avatar']
+                email=m["email"],
+                name=m["name"],
+                full_name=m["full_name"],
+                role=m["role"],
+                department=m["department"],
+                active=m["active"],
+                avatar=m["avatar"],
             )
             for m in members
         ]

@@ -4,25 +4,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
-import { 
-  ArrowLeft, 
-  FolderKanban, 
-  Loader2, 
-  User, 
-  Search, 
-  Check, 
-  Briefcase 
+import {
+  ArrowLeft,
+  FolderKanban,
+  Loader2,
+  User,
+  Search,
+  Check,
+  Briefcase
 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CreatePracticeParams, Client } from '@/lib/api/crm/crm.types';
-import { SERVICE_INTERESTS } from '@/lib/api/crm/crm.types';
+import { casesMetrics } from '@/lib/metrics/cases-metrics';
 
 export default function NewPracticePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '', // Maps to notes
@@ -37,6 +37,25 @@ export default function NewPracticePage() {
   const [isSearchingClients, setIsSearchingClients] = useState(false);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Metrics tracking
+  const startTime = useRef(performance.now());
+  const userEmail = useRef<string | null>(null);
+
+  // Initialize metrics tracking on mount
+  useEffect(() => {
+    const initMetrics = async () => {
+      try {
+        const user = await api.getProfile();
+        userEmail.current = user.email;
+        casesMetrics.trackPageView('new', undefined, user.email);
+      } catch (err) {
+        console.error('Failed to init metrics:', err);
+      }
+    };
+
+    initMetrics();
+  }, []);
 
   // Load initial client if provided in URL
   useEffect(() => {
@@ -57,10 +76,18 @@ export default function NewPracticePage() {
         return;
       }
       setIsSearchingClients(true);
+      const apiStart = performance.now();
+
       try {
         const results = await api.crm.getClients({ search: clientSearch, limit: 5 });
+        const apiDuration = performance.now() - apiStart;
+        casesMetrics.trackApiCall('/api/crm/clients/search', 'GET', true, apiDuration, undefined, userEmail.current || undefined);
+        casesMetrics.trackClientSearch(clientSearch, results.length, userEmail.current || undefined);
         setClients(results);
       } catch (error) {
+        const apiDuration = performance.now() - apiStart;
+        casesMetrics.trackApiCall('/api/crm/clients/search', 'GET', false, apiDuration, undefined, userEmail.current || undefined);
+        casesMetrics.trackError('Client Search Failed', (error as Error).message, 'CasesNewPage', undefined, userEmail.current || undefined);
         console.error('Failed to search clients:', error);
       } finally {
         setIsSearchingClients(false);
@@ -87,10 +114,15 @@ export default function NewPracticePage() {
 
     if (!formData.client_id) {
       toast.error('Missing Client', 'Please select a client to create this case for.');
+      casesMetrics.trackError('Validation Error', 'Missing client_id', 'CasesNewPage', undefined, userEmail.current || undefined);
       return;
     }
 
     setIsLoading(true);
+    casesMetrics.trackButtonClick('Create Case', 'CasesNewPage', undefined, undefined, userEmail.current || undefined);
+    casesMetrics.startPerformanceMark('case_creation');
+    const apiStart = performance.now();
+
     try {
       const user = await api.getProfile();
       const backendData: CreatePracticeParams = {
@@ -100,10 +132,23 @@ export default function NewPracticePage() {
         priority: 'normal',
         notes: formData.title,
       };
-      await api.crm.createPractice(backendData, user.email);
+
+      const createdPractice = await api.crm.createPractice(backendData, user.email);
+      const apiDuration = performance.now() - apiStart;
+      casesMetrics.trackApiCall('/api/crm/practices/create', 'POST', true, apiDuration, undefined, user.email);
+
+      // Track case creation
+      const caseId = (createdPractice as any)?.id || 0;
+      casesMetrics.trackCaseCreation(caseId, formData.practice_type_code, formData.client_id, user.email);
+      casesMetrics.endPerformanceMark('case_creation', caseId, user.email);
+
       toast.success('Case Created', 'Successfully created new practice.');
       router.push('/cases');
     } catch (error) {
+      const apiDuration = performance.now() - apiStart;
+      casesMetrics.trackApiCall('/api/crm/practices/create', 'POST', false, apiDuration, undefined, userEmail.current || undefined);
+      casesMetrics.trackError('Create Case Failed', (error as Error).message, 'CasesNewPage', undefined, userEmail.current || undefined);
+
       console.error('Failed to create case', error);
       toast.error('Error', (error as Error).message);
     } finally {
@@ -228,11 +273,11 @@ export default function NewPracticePage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, practice_type_code: e.target.value }))}
                 className={`${inputClass} appearance-none cursor-pointer`}
               >
-                {SERVICE_INTERESTS.map(service => (
-                  <option key={service.value} value={service.value}>
-                    {service.label}
-                  </option>
-                ))}
+                <option value="kitas_application">KITAS Work Permit</option>
+                <option value="kitap_application">KITAP Permanent Permit</option>
+                <option value="pt_pma_setup">PT PMA Company Setup</option>
+                <option value="property_purchase">Property Purchase</option>
+                <option value="tax_consulting">Tax Consulting</option>
               </select>
             </div>
           </div>

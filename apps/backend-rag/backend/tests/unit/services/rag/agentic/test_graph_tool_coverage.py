@@ -350,4 +350,3 @@ class TestGraphTraversalToolExecute:
         assert "Complex Entity" in result
         assert "ComplexType" in result
         assert "Related Entity" in result
-

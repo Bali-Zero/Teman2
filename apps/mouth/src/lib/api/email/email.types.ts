@@ -52,6 +52,13 @@ export interface EmailAttachment {
   mime_type: string;
 }
 
+export interface AttachmentObject {
+  attachment_id: string;
+  store_name: string;
+  attachment_path: string;
+  attachment_name: string;
+}
+
 export interface EmailSummary {
   message_id: string;
   subject: string;
@@ -95,7 +102,7 @@ export interface SendEmailParams {
   subject: string;
   html_content?: string;
   text_content?: string;
-  attachment_ids?: string[];
+  attachment_ids?: AttachmentObject[];
   reply_to?: string;
 }
 
@@ -138,7 +145,7 @@ export interface SaveDraftParams {
   subject?: string;
   html_content?: string;
   text_content?: string;
-  attachment_ids?: string[];
+  attachment_ids?: AttachmentObject[];
 }
 
 export interface SaveDraftResponse {
@@ -151,10 +158,10 @@ export interface SaveDraftResponse {
 // ============================================================================
 
 export interface UploadAttachmentResponse {
-  success: boolean;
   attachment_id: string;
-  filename: string;
-  size: number;
+  store_name: string;
+  attachment_path: string;
+  attachment_name: string;
 }
 
 // ============================================================================

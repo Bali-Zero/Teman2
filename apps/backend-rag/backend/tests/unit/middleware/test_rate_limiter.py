@@ -248,4 +248,3 @@ class TestRateLimitStats:
 
             assert stats["backend"] == "memory"
             assert stats["connected"] is False
-

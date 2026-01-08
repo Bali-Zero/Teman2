@@ -174,3 +174,36 @@ coverage.json
 apps/mouth/coverage/
 lint_*.txt
 *.py[cod]
+
+# ========================================
+# LOCAL DEVELOPMENT & TEMP FILES
+# ========================================
+
+# Cursor IDE
+.cursorignore
+
+# Backup directories
+backups/
+
+# Deployment logs and scripts (local only)
+deployment_logs.txt
+verification_logs_final.txt
+verify_logs.txt
+DEPLOYMENT.md
+QUICK_DEPLOY.md
+EMERGENCY-CLEANUP.sh
+deploy.sh
+nuzantara_full_context.txt
+
+# Intel scraper temp data
+apps/bali-intel-scraper/data/pending_articles/
+apps/bali-intel-scraper/data/previews/
+apps/bali-intel-scraper/data/images/image_context_*.json
+apps/bali-intel-scraper/scripts/data/
+
+# Session docs (local development)
+docs/sessions/
+
+# Railway migration leftovers
+railway_ignore/
+env.production

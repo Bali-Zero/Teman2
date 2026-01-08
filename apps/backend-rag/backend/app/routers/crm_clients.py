@@ -5,19 +5,21 @@ Endpoints for managing client data (anagrafica clienti)
 Refactored: Migrated to asyncpg with connection pooling (2025-12-07)
 """
 
+import time
 from datetime import datetime
 from typing import Any
-import time
 
 import asyncpg
 from core.cache import cached
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, EmailStr, field_validator
 
-from app.dependencies import get_database_pool
+from app.dependencies import get_current_user, get_database_pool
+from app.services.crm.audit_logger import audit_change, audit_logger
+from app.services.crm.metrics import crm_metrics, metrics_collector, track_client_creation
+from app.utils.crm_utils import is_crm_admin
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_database_operation, log_success
-from app.metrics import crm_client_operations, crm_validation_errors, crm_client_creation_duration
 
 logger = get_logger(__name__)
 
@@ -132,6 +134,14 @@ class ClientUpdate(BaseModel):
             raise ValueError(f"client_type must be one of {allowed_types}, got '{v}'")
         return v
 
+    @field_validator("email", "passport_expiry", "date_of_birth", mode="before")
+    @classmethod
+    def validate_optional_fields(cls, v):
+        """Convert empty strings to None for optional fields"""
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
     @field_validator("full_name")
     @classmethod
     def validate_full_name(cls, v: str | None) -> str | None:
@@ -149,22 +159,22 @@ class ClientResponse(BaseModel):
     id: int
     uuid: str
     full_name: str
-    email: str | None
-    phone: str | None
-    whatsapp: str | None
+    email: str | None = None
+    phone: str | None = None
+    whatsapp: str | None = None
     company_name: str | None = None
-    nationality: str | None
+    nationality: str | None = None
     passport_number: str | None = None
     passport_expiry: str | None = None
     date_of_birth: str | None = None
     status: str
     client_type: str
-    assigned_to: str | None
-    avatar_url: str | None
+    assigned_to: str | None = None
+    avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
-    first_contact_date: datetime | None
-    last_interaction_date: datetime | None
+    first_contact_date: datetime | None = None
+    last_interaction_date: datetime | None = None
     last_sentiment: str | None = None
     last_interaction_summary: str | None = None
     tags: list[str] = []  # Default to empty list if None
@@ -198,11 +208,15 @@ class ClientResponse(BaseModel):
 
 
 @router.post("/", response_model=ClientResponse)
+@track_client_creation()
+@audit_change(entity_type="client", change_type="create")
 async def create_client(
     client: ClientCreate,
-    created_by: str = Query(..., description="Team member email creating this client"),
-    request: Request = ...,
+    user_email: str = Query(
+        ..., description="Team member email creating this client", alias="created_by"
+    ),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Create a new client
@@ -231,7 +245,7 @@ async def create_client(
                     nationality, passport_number, passport_expiry, date_of_birth,
                     status, client_type, assigned_to, avatar_url, address, notes,
                     tags, lead_source, service_interest, custom_fields,
-                    first_contact_date, created_by
+                    first_contact_date, user_email
                 ) VALUES (
                     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
                     $16, $17, $18, $19, $20, $21
@@ -258,7 +272,7 @@ async def create_client(
                 client.service_interest,
                 client.custom_fields,
                 datetime.now(),
-                created_by,
+                user_email,
             )
 
             if not row:
@@ -268,24 +282,25 @@ async def create_client(
             log_success(logger, f"Created client: {client.full_name}", client_id=new_client["id"])
             log_database_operation(logger, "CREATE", "clients", record_id=new_client["id"])
 
-            # Track metrics
-            crm_client_operations.labels(operation="create", status="success").inc()
-            crm_client_creation_duration.observe(time.time() - start_time)
+            # Track metrics (Legacy - keeping for backward metrics compatibility)
+            # crm_client_operations.labels(operation="create", status="success").inc()
+            # crm_client_creation_duration.observe(time.time() - start_time)
+
+            # Use Enhanced Metrics
+            crm_metrics.client_status_changes.labels(
+                from_status="none", to_status=client.status, changed_by=user_email
+            ).inc()
 
             return ClientResponse(**new_client)
 
     except asyncpg.UniqueViolationError as e:
-        crm_client_operations.labels(operation="create", status="error").inc()
-        crm_validation_errors.labels(field="email_or_phone", error_type="duplicate").inc()
         logger.warning(f"Integrity error creating client: {e}")
         raise HTTPException(
             status_code=400, detail="Client with this email or phone already exists"
         ) from e
     except HTTPException:
-        crm_client_operations.labels(operation="create", status="error").inc()
         raise
     except Exception as e:
-        crm_client_operations.labels(operation="create", status="error").inc()
         raise handle_database_error(e)
 
 
@@ -294,21 +309,21 @@ async def list_clients(
     status: str | None = Query(
         None,
         description="Filter by status: active, inactive, prospect",
-        regex="^(active|inactive|prospect)$",
+        pattern="^(active|inactive|prospect)$",
     ),
     assigned_to: str | None = Query(None, description="Filter by assigned team member email"),
     search: str | None = Query(None, description="Search by name, email, or phone"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    List clients with role-based access control.
+    List clients with pagination and search.
 
-    ACCESS CONTROL:
-    - zero@balizero.com: Can see ALL clients (admin access)
-    - Other team members: Can only see clients assigned to them
+    Access Control:
+    - Admin users: See ALL clients
+    - Team members: See only clients assigned to them (assigned_to = email)
 
     FILTERS:
     - **status**: Filter by client status
@@ -318,31 +333,25 @@ async def list_clients(
     - **offset**: For pagination
     """
     try:
-        # Get current user from authentication middleware
-        current_user = getattr(request.state, "user", None)
+        # Get current user from dependency
         current_user_email = current_user.get("email", "") if current_user else ""
         current_user_name = current_user_email.lower().split("@")[0] if current_user_email else ""
 
         # SECURITY: Require authentication for client list
         if not current_user_email:
-            raise HTTPException(
-                status_code=401,
-                detail="Authentication required to view clients"
-            )
+            raise HTTPException(status_code=401, detail="Authentication required to view clients")
 
         # ============================================
         # ACCESS CONTROL RULES
         # ============================================
-        # ZERO (zero@balizero.com): Full admin - sees ALL clients
-        # OTHER MEMBERS: See only clients assigned to them
+        # Use centralized CRM RBAC logic
+        # is_crm_admin covers 'zero@balizero.com' and users with 'admin' role
         # ============================================
-        SUPER_ADMINS = ["zero"]
-
-        is_super_admin = current_user_name in SUPER_ADMINS
+        is_admin = is_crm_admin(current_user)
 
         logger.info(
-            f"📋 [CRM Clients] User {current_user_email} ({current_user_name}) requesting clients list "
-            f"(super_admin={is_super_admin}, assigned_to_filter={assigned_to})"
+            f"📋 [CRM Clients] User {current_user_email} requesting clients list "
+            f"(is_admin={is_admin}, assigned_to_filter={assigned_to})"
         )
 
         async with db_pool.acquire() as conn:
@@ -375,14 +384,16 @@ async def list_clients(
                 param_index += 1
 
             # Access control based on user role
-            if is_super_admin:
-                # Zero can see ALL clients (no filter)
+            if is_admin:
+                # Admins can see ALL clients (no filter)
                 if assigned_to:
                     # Admin can optionally filter by assigned_to using query param
                     query_parts.append(f" AND c.assigned_to = ${param_index}")
                     params.append(assigned_to)
                     param_index += 1
-                logger.info("🔓 [CRM Clients] Super admin (Zero) - viewing all clients")
+                logger.info(
+                    f"🔓 [CRM Clients] CRM Admin ({current_user_email}) - viewing all clients"
+                )
             else:
                 # Regular members can ONLY see clients assigned to them
                 query_parts.append(f" AND c.assigned_to = ${param_index}")
@@ -422,12 +433,21 @@ async def list_clients(
 
 @router.get("/{client_id}", response_model=ClientResponse)
 async def get_client(
-    client_id: int = Path(..., gt=0, description="Client ID"),
-    request: Request = ...,
+    client_id: int = Path(..., gt=0),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Get client by ID"""
+    """
+    Get client by ID
+
+    Access Control:
+    - Admin users: Can view any client
+    - Team members: Can only view clients assigned to them
+    """
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
@@ -450,11 +470,20 @@ async def get_client(
 @router.get("/by-email/{email}", response_model=ClientResponse)
 async def get_client_by_email(
     email: EmailStr = Path(..., description="Client email address"),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
-    """Get client by email address"""
+    """
+    Get client by email address
+
+    Access Control:
+    - Admin users: Can view any client
+    - Team members: Can only view clients assigned to them
+    """
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """SELECT id, uuid, full_name, email, phone, whatsapp, nationality, status,
@@ -466,6 +495,10 @@ async def get_client_by_email(
             if not row:
                 raise HTTPException(status_code=404, detail="Client not found")
 
+            # RBAC: Check if non-admin user has access to this client
+            if not user_is_admin and (row["assigned_to"] or "").lower() != user_email:
+                raise HTTPException(status_code=403, detail="Access denied to this client")
+
             return ClientResponse(**dict(row))
 
     except HTTPException:
@@ -475,21 +508,43 @@ async def get_client_by_email(
 
 
 @router.patch("/{client_id}", response_model=ClientResponse)
+@audit_change(entity_type="client", change_type="update")
 async def update_client(
+    updates: ClientUpdate = Body(...),
     client_id: int = Path(..., gt=0, description="Client ID"),
-    updates: ClientUpdate = ...,
-    updated_by: str = Query(..., description="Team member making the update"),
-    request: Request = ...,
+    user_email: str = Query(..., description="Team member making the update", alias="updated_by"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Update client information
 
     Only provided fields will be updated. Other fields remain unchanged.
+
+    Access Control:
+    - Admin users: Can update any client
+    - Team members: Can only update clients assigned to them
     """
     start_time = time.time()
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
+            # RBAC: First check if user has access to this client
+            if not user_is_admin:
+                check_row = await conn.fetchrow(
+                    "SELECT assigned_to FROM clients WHERE id = $1", client_id
+                )
+                if not check_row:
+                    raise HTTPException(status_code=404, detail="Client not found")
+
+                if (check_row["assigned_to"] or "").lower() != user_email:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Access denied: You can only update your assigned clients",
+                    )
+
             # Build update query dynamically
             update_fields: list[str] = []
             params: list[Any] = []
@@ -565,7 +620,7 @@ async def update_client(
                 "client",
                 client_id,
                 "updated",
-                updated_by,
+                user_email,
                 f"Updated fields: {updated_fields}",
             )
 
@@ -573,38 +628,57 @@ async def update_client(
                 logger,
                 "Updated client",
                 client_id=client_id,
-                updated_by=updated_by,
+                updated_by=user_email,
             )
 
             # Track metrics
-            crm_client_operations.labels(operation="update", status="success").inc()
+            # crm_client_operations.labels(operation="update", status="success").inc()
 
             return ClientResponse(**dict(row))
 
     except HTTPException:
-        crm_client_operations.labels(operation="update", status="error").inc()
         raise
     except Exception as e:
-        crm_client_operations.labels(operation="update", status="error").inc()
         raise handle_database_error(e)
 
 
 @router.delete("/{client_id}")
+@audit_change(entity_type="client", change_type="delete")
 async def delete_client(
     client_id: int = Path(..., gt=0, description="Client ID"),
-    deleted_by: str = Query(..., description="Team member deleting the client"),
-    request: Request = ...,
+    user_email: str = Query(..., description="Team member deleting the client", alias="deleted_by"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Delete a client (soft delete - marks as inactive)
 
     This doesn't permanently delete the client, just marks them as inactive.
-    Use with caution as this will also affect related practices and interactions.
+
+    Access Control:
+    - Admin users: Can delete any client
+    - Team members: Can only delete clients assigned to them
     """
     start_time = time.time()
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
+            # RBAC Check
+            if not user_is_admin:
+                check_row = await conn.fetchrow(
+                    "SELECT assigned_to FROM clients WHERE id = $1", client_id
+                )
+                if not check_row:
+                    raise HTTPException(status_code=404, detail="Client not found")
+
+                if (check_row["assigned_to"] or "").lower() != user_email:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Access denied: You can only delete your assigned clients",
+                    )
+
             # Soft delete (mark as inactive)
             row = await conn.fetchrow(
                 """
@@ -628,7 +702,7 @@ async def delete_client(
                 "client",
                 client_id,
                 "deleted",
-                deleted_by,
+                user_email,
                 "Client marked as inactive",
             )
 
@@ -636,27 +710,25 @@ async def delete_client(
                 logger,
                 "Deleted (soft) client",
                 client_id=client_id,
-                deleted_by=deleted_by,
+                deleted_by=user_email,
             )
 
             # Track metrics
-            crm_client_operations.labels(operation="delete", status="success").inc()
+            # crm_client_operations.labels(operation="delete", status="success").inc()
 
             return {"success": True, "message": "Client marked as inactive"}
 
     except HTTPException:
-        crm_client_operations.labels(operation="delete", status="error").inc()
         raise
     except Exception as e:
-        crm_client_operations.labels(operation="delete", status="error").inc()
         raise handle_database_error(e)
 
 
 @router.get("/{client_id}/summary")
 async def get_client_summary(
     client_id: int = Path(..., gt=0, description="Client ID"),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Get comprehensive client summary including:
@@ -667,6 +739,9 @@ async def get_client_summary(
     - Upcoming renewals
     """
     try:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_crm_admin(current_user)
+
         async with db_pool.acquire() as conn:
             # Get client basic info
             client_row = await conn.fetchrow(
@@ -678,6 +753,10 @@ async def get_client_summary(
 
             if not client_row:
                 raise HTTPException(status_code=404, detail="Client not found")
+
+            # RBAC: Check if non-admin user has access to this client
+            if not user_is_admin and (client_row["assigned_to"] or "").lower() != user_email:
+                raise HTTPException(status_code=403, detail="Access denied to this client summary")
 
             # Get practices
             practices_rows = await conn.fetch(
@@ -748,8 +827,9 @@ async def get_client_summary(
 @router.get("/stats/overview")
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_clients_stats")
 async def get_clients_stats(
-    request: Request = ...,
+    request: Request,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Get overall client statistics
@@ -801,5 +881,107 @@ async def get_clients_stats(
                 "new_last_30_days": new_last_30_days,
             }
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise handle_database_error(e)
+
+
+@router.get("/{client_id}/audit-trail")
+async def get_client_audit_trail(
+    request: Request,
+    client_id: int = Path(..., gt=0, description="Client ID"),
+    limit: int = Query(50, ge=1, le=200, description="Max audit entries to return"),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get audit trail for a specific client
+    """
+    try:
+        user_email = current_user.get("email", "")
+        user_is_admin = is_crm_admin(current_user)
+
+        async with db_pool.acquire() as conn:
+            client = await conn.fetchrow(
+                "SELECT id, full_name, assigned_to FROM clients WHERE id = $1", client_id
+            )
+
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+            # Check access permissions
+            if not user_is_admin and (client["assigned_to"] or "").lower() != user_email.lower():
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied: You can only view audit trails for your assigned clients",
+                )
+
+        # Get audit trail
+        trail = await audit_logger.get_audit_trail(
+            entity_type="client", entity_id=client_id, limit=limit
+        )
+
+        return {
+            "client": {
+                "id": client["id"],
+                "full_name": client["full_name"],
+                "assigned_to": client["assigned_to"],
+            },
+            "audit_trail": trail,
+            "total_entries": len(trail),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise handle_database_error(e)
+
+
+@router.get("/metrics/summary")
+async def get_crm_metrics_summary(
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """
+    Get CRM metrics summary for dashboard
+    """
+    try:
+        user_email = current_user.get("email", "")
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Authentication required")
+
+        summary = await metrics_collector.get_metrics_summary()
+        return summary
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise handle_database_error(e)
+
+
+@router.post("/metrics/refresh")
+async def refresh_crm_metrics(
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+):
+    """
+    Force refresh of CRM metrics (Admin only)
+    """
+    try:
+        if not is_crm_admin(current_user):
+            raise HTTPException(status_code=403, detail="Admin access required")
+
+        results = await metrics_collector.update_all_metrics()
+
+        return {
+            "message": "CRM metrics refreshed successfully",
+            "timestamp": results.get("timestamp"),
+            "metrics_updated": results.get("metrics_updated", []),
+            "errors": results.get("errors", []),
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise handle_database_error(e)

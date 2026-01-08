@@ -25,13 +25,11 @@ Usage:
 
 import asyncio
 import json
-import os
-from pathlib import Path
 from datetime import datetime
-from typing import List, Dict
-from loguru import logger
-import httpx
+from pathlib import Path
 
+import httpx
+from loguru import logger
 
 # Staging directories (on Fly.io persistent volume)
 STAGING_BASE = Path("/data/staging")
@@ -53,7 +51,7 @@ class StagingProcessor:
             "visa_found": 0,
             "sent_to_telegram": 0,
             "errors": 0,
-            "skipped": 0
+            "skipped": 0,
         }
 
     async def process_all_pending(self):
@@ -80,7 +78,7 @@ class StagingProcessor:
         # Summary
         logger.info("=" * 70)
         logger.info("✅ AUTO-APPROVE COMPLETE")
-        logger.info(f"📊 Stats:")
+        logger.info("📊 Stats:")
         logger.info(f"   News found: {self.stats['news_found']}")
         logger.info(f"   Visa found: {self.stats['visa_found']}")
         logger.info(f"   Sent to Telegram: {self.stats['sent_to_telegram']}")
@@ -120,7 +118,7 @@ class StagingProcessor:
 
         # Read article to get metadata for logging
         try:
-            with open(json_file, "r") as f:
+            with open(json_file) as f:
                 data = json.load(f)
 
             title = data.get("title", "Untitled")
@@ -143,7 +141,9 @@ class StagingProcessor:
             return
 
         if self.dry_run:
-            logger.info(f"      🧪 DRY RUN - Would call /api/intel/staging/approve/{intel_type}/{item_id}")
+            logger.info(
+                f"      🧪 DRY RUN - Would call /api/intel/staging/approve/{intel_type}/{item_id}"
+            )
             return
 
         # Call backend approval endpoint
@@ -155,7 +155,7 @@ class StagingProcessor:
 
                 if response.status_code == 200:
                     result = response.json()
-                    logger.success(f"      ✅ Sent to Telegram for voting")
+                    logger.success("      ✅ Sent to Telegram for voting")
                     logger.info(f"      📱 Voting status: {result.get('voting_status', 'pending')}")
                     self.stats["sent_to_telegram"] += 1
                 else:
@@ -165,7 +165,7 @@ class StagingProcessor:
                     self.stats["errors"] += 1
 
         except httpx.TimeoutException:
-            logger.error(f"      ❌ Timeout calling approval endpoint")
+            logger.error("      ❌ Timeout calling approval endpoint")
             self.stats["errors"] += 1
         except Exception as e:
             logger.error(f"      ❌ Approval request failed: {e}")
@@ -182,21 +182,18 @@ async def main():
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Dry run - show what would be processed without sending"
+        help="Dry run - show what would be processed without sending",
     )
     parser.add_argument(
         "--type",
         choices=["all", "news", "visa"],
         default="all",
-        help="Process only specific type (default: all)"
+        help="Process only specific type (default: all)",
     )
 
     args = parser.parse_args()
 
-    processor = StagingProcessor(
-        dry_run=args.dry_run,
-        type_filter=args.type
-    )
+    processor = StagingProcessor(dry_run=args.dry_run, type_filter=args.type)
 
     await processor.process_all_pending()
 
@@ -207,7 +204,7 @@ if __name__ == "__main__":
     logger.add(
         lambda msg: print(msg, end=""),
         format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | {message}",
-        level="INFO"
+        level="INFO",
     )
 
     asyncio.run(main())

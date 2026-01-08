@@ -98,4 +98,3 @@ class TestReasoningHelpers:
         """Test validating empty context quality"""
         score = _validate_context_quality(query="test query", context_items=[])
         assert 0.0 <= score <= 1.0
-

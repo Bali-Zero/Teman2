@@ -100,6 +100,33 @@ rag_context_length = Histogram(
     buckets=[100, 500, 1000, 2000, 4000, 8000, 16000, 32000],
 )
 
+rag_evidence_score = Histogram(
+    "zantara_rag_evidence_score",
+    "Evidence score of RAG responses (0.0-1.0)",
+    ["route_used"],
+    buckets=[0.1, 0.3, 0.5, 0.7, 0.9, 1.0],
+)
+
+rag_documents_retrieved = Histogram(
+    "zantara_rag_documents_retrieved_count",
+    "Number of documents retrieved per query",
+    ["collection"],
+    buckets=[0, 1, 3, 5, 10, 20, 50],
+)
+
+# Knowledge Graph Metrics
+kg_extraction_total = Counter(
+    "zantara_kg_extraction_total",
+    "Total entities/relationships extracted",
+    ["type", "method"],  # type: entity/relationship, method: llm/regex
+)
+
+kg_relationship_density = Histogram(
+    "zantara_kg_relationship_density",
+    "Number of relationships per entity extracted",
+    buckets=[0, 1, 2, 5, 10, 20],
+)
+
 # Race Condition Metrics (Dec 2025 - Lock Contention Monitoring)
 memory_lock_timeout_total = Counter(
     "zantara_memory_lock_timeout_total", "Number of memory lock timeouts", ["user_id"]
@@ -176,6 +203,20 @@ search_failed_total = Counter(
     "zantara_search_failed_total",
     "Number of complete search failures",
 )
+
+# Memory Extraction Metrics (Jan 2026 - Fact Extraction Quality)
+memory_facts_extracted_total = Counter(
+    "zantara_memory_facts_extracted_total",
+    "Total memory facts extracted",
+    ["fact_type", "source", "confidence_level"],  # confidence_level: high (>0.8), medium, low
+)
+
+memory_extraction_duration_seconds = Histogram(
+    "zantara_memory_extraction_duration_seconds",
+    "Time spent extracting memory facts",
+    buckets=[0.001, 0.005, 0.01, 0.05, 0.1],
+)
+
 bm25_initialization_success_total = Counter(
     "zantara_bm25_initialization_success_total",
     "Number of successful BM25 initializations",
@@ -239,7 +280,88 @@ intel_voting_duration = Histogram(
     buckets=[60, 300, 600, 1800, 3600, 7200, 14400],  # 1min to 4hrs
 )
 
-# Ingestion Metrics
+# Ingestion Metrics (Data Processing - "The Mouth")
+documents_ingested_total = Counter(
+    "zantara_documents_ingested_total",
+    "Total documents ingested into the system",
+    [
+        "source",
+        "file_type",
+        "collection",
+        "status",
+    ],  # source: file_upload, scraper, api; status: success, error
+)
+ingestion_failure_rate = Gauge(
+    "zantara_ingestion_failure_rate",
+    "Current ingestion failure rate (percentage)",
+    ["source", "file_type"],  # Track failure rate by source and file type
+)
+parsing_duration_seconds = Histogram(
+    "zantara_parsing_duration_seconds",
+    "Time spent parsing documents",
+    ["file_type", "source"],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],  # 100ms to 1 minute
+)
+document_processing_duration_seconds = Histogram(
+    "zantara_document_processing_duration_seconds",
+    "Total time to process documents from upload to storage",
+    ["source", "collection"],
+    buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 300.0, 900.0],  # 1s to 15 minutes
+)
+chunks_created_total = Counter(
+    "zantara_chunks_created_total",
+    "Total chunks created during ingestion",
+    ["collection", "source"],
+)
+parsing_errors_total = Counter(
+    "zantara_parsing_errors_total",
+    "Total parsing errors encountered",
+    ["file_type", "error_type", "source"],
+)
+metadata_extraction_duration_seconds = Histogram(
+    "zantara_metadata_extraction_duration_seconds",
+    "Time spent extracting metadata from documents",
+    ["document_type", "source"],
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0],  # 10ms to 2s
+)
+chunking_duration_seconds = Histogram(
+    "zantara_chunking_duration_seconds",
+    "Time spent chunking documents",
+    ["file_type", "chunk_strategy"],
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0],  # 10ms to 2s
+)
+embedding_generation_duration_seconds = Histogram(
+    "zantara_embedding_generation_duration_seconds",
+    "Time spent generating embeddings",
+    ["model", "batch_size"],
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],  # 100ms to 10s
+)
+vector_storage_duration_seconds = Histogram(
+    "zantara_vector_storage_duration_seconds",
+    "Time spent storing embeddings in vector database",
+    ["collection", "operation"],  # operation: upsert, update, delete
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0],
+)
+
+# Scraper Data Normalization Metrics
+scraper_data_normalized_total = Counter(
+    "zantara_scraper_data_normalized_total",
+    "Total scraper data items normalized",
+    ["scraper_type", "source", "status"],
+)
+scraper_normalization_duration_seconds = Histogram(
+    "zantara_scraper_normalization_duration_seconds",
+    "Time spent normalizing scraper data",
+    ["scraper_type", "data_complexity"],
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 2.0],
+)
+scraper_normalization_errors_total = Counter(
+    "zantara_scraper_normalization_errors_total",
+    "Total errors during scraper data normalization",
+    ["scraper_type", "error_type"],
+)
+
+# Ingestion Pipeline Metrics
 intel_qdrant_ingestion_total = Counter(
     "zantara_intel_qdrant_ingestion_total",
     "Items ingested to Qdrant",
@@ -611,6 +733,53 @@ class MetricsCollector:
         if context_tokens > 0:
             rag_context_length.labels(collection=collection).observe(context_tokens)
 
+    def record_rag_detailed_metrics(
+        self,
+        duration_seconds: float,
+        evidence_score: float,
+        documents_count: int,
+        collection: str = "unknown",
+        route_used: str = "agentic",
+    ):
+        """Record detailed RAG performance metrics.
+
+        Args:
+            duration_seconds: Total pipeline duration
+            evidence_score: Calculated evidence score (0.0-1.0)
+            documents_count: Number of documents used/retrieved
+            collection: Primary collection used
+            route_used: Routing strategy
+        """
+        rag_pipeline_duration.observe(duration_seconds)
+        rag_evidence_score.labels(route_used=route_used).observe(evidence_score)
+        rag_documents_retrieved.labels(collection=collection).observe(documents_count)
+
+    def record_memory_extraction(
+        self,
+        duration_seconds: float,
+        fact_types: list[str],
+    ):
+        """Record memory fact extraction metrics.
+
+        Args:
+            duration_seconds: Extraction time
+            fact_types: List of fact types found
+        """
+        memory_extraction_duration_seconds.observe(duration_seconds)
+        for f_type in fact_types:
+            memory_facts_extracted_total.labels(
+                fact_type=f_type, source="regex", confidence_level="medium"
+            ).inc()
+
+    def record_kg_metrics(self, entity_count: int, relationship_count: int, method: str):
+        """Record Knowledge Graph extraction metrics."""
+        kg_extraction_total.labels(type="entity", method=method).inc(entity_count)
+        kg_extraction_total.labels(type="relationship", method=method).inc(relationship_count)
+
+        if entity_count > 0:
+            density = relationship_count / entity_count
+            kg_relationship_density.observe(density)
+
     def record_tool_call(self, tool_name: str, status: str):
         """Record a tool call in agentic RAG.
 
@@ -808,6 +977,166 @@ class MetricsCollector:
             count: Number of active email users
         """
         email_active_users.set(count)
+
+    # Ingestion Metrics Methods
+    def record_document_ingested(
+        self,
+        source: str,
+        file_type: str,
+        collection: str,
+        status: str,
+        chunks_created: int = 0,
+    ):
+        """Record a document ingestion event.
+
+        Args:
+            source: Source of ingestion (file_upload, scraper, api)
+            file_type: Type of file (.pdf, .docx, .txt, etc.)
+            collection: Target collection name
+            status: Ingestion status (success, error)
+            chunks_created: Number of chunks created from the document
+        """
+        documents_ingested_total.labels(
+            source=source, file_type=file_type, collection=collection, status=status
+        ).inc()
+
+        if chunks_created > 0:
+            chunks_created_total.labels(collection=collection, source=source).inc(chunks_created)
+
+    def record_parsing_duration(self, file_type: str, source: str, duration_seconds: float):
+        """Record document parsing duration.
+
+        Args:
+            file_type: Type of file being parsed
+            source: Source of the document
+            duration_seconds: Time taken to parse the document
+        """
+        parsing_duration_seconds.labels(file_type=file_type, source=source).observe(
+            duration_seconds
+        )
+
+    def record_parsing_error(self, file_type: str, error_type: str, source: str):
+        """Record a parsing error.
+
+        Args:
+            file_type: Type of file that failed to parse
+            error_type: Type of parsing error
+            source: Source of the document
+        """
+        parsing_errors_total.labels(file_type=file_type, error_type=error_type, source=source).inc()
+
+    def record_document_processing_duration(
+        self, source: str, collection: str, duration_seconds: float
+    ):
+        """Record total document processing duration.
+
+        Args:
+            source: Source of ingestion
+            collection: Target collection
+            duration_seconds: Total processing time from upload to storage
+        """
+        document_processing_duration_seconds.labels(source=source, collection=collection).observe(
+            duration_seconds
+        )
+
+    def record_metadata_extraction_duration(
+        self, document_type: str, source: str, duration_seconds: float
+    ):
+        """Record metadata extraction duration.
+
+        Args:
+            document_type: Type of document (legal, general, etc.)
+            source: Source of the document
+            duration_seconds: Time taken to extract metadata
+        """
+        metadata_extraction_duration_seconds.labels(
+            document_type=document_type, source=source
+        ).observe(duration_seconds)
+
+    def record_chunking_duration(
+        self, file_type: str, chunk_strategy: str, duration_seconds: float
+    ):
+        """Record chunking duration.
+
+        Args:
+            file_type: Type of file being chunked
+            chunk_strategy: Strategy used for chunking
+            duration_seconds: Time taken to chunk the document
+        """
+        chunking_duration_seconds.labels(
+            file_type=file_type, chunk_strategy=chunk_strategy
+        ).observe(duration_seconds)
+
+    def record_embedding_generation_duration(
+        self, model: str, batch_size: int, duration_seconds: float
+    ):
+        """Record embedding generation duration.
+
+        Args:
+            model: Embedding model used
+            batch_size: Size of the batch processed
+            duration_seconds: Time taken to generate embeddings
+        """
+        embedding_generation_duration_seconds.labels(
+            model=model, batch_size=str(batch_size)
+        ).observe(duration_seconds)
+
+    def record_vector_storage_duration(
+        self, collection: str, operation: str, duration_seconds: float
+    ):
+        """Record vector storage duration.
+
+        Args:
+            collection: Target collection
+            operation: Type of storage operation (upsert, update, delete)
+            duration_seconds: Time taken to store vectors
+        """
+        vector_storage_duration_seconds.labels(collection=collection, operation=operation).observe(
+            duration_seconds
+        )
+
+    def update_ingestion_failure_rate(self, source: str, file_type: str, failure_rate: float):
+        """Update the ingestion failure rate gauge.
+
+        Args:
+            source: Source of ingestion
+            file_type: Type of file
+            failure_rate: Failure rate as percentage (0-100)
+        """
+        ingestion_failure_rate.labels(source=source, file_type=file_type).set(failure_rate)
+
+    def record_scraper_data_normalized(
+        self, scraper_type: str, source: str, status: str, duration_seconds: float = 0
+    ):
+        """Record scraper data normalization.
+
+        Args:
+            scraper_type: Type of scraper (rss, web, api)
+            source: Data source URL or identifier
+            status: Normalization status (success, error)
+            duration_seconds: Time taken for normalization
+        """
+        scraper_data_normalized_total.labels(
+            scraper_type=scraper_type, source=source, status=status
+        ).inc()
+
+        if duration_seconds > 0:
+            # Determine data complexity based on duration (simple heuristic)
+            complexity = "simple" if duration_seconds < 0.1 else "complex"
+            scraper_normalization_duration_seconds.labels(
+                scraper_type=scraper_type, data_complexity=complexity
+            ).observe(duration_seconds)
+
+    def record_scraper_normalization_error(self, scraper_type: str, error_type: str):
+        """Record a scraper normalization error.
+
+        Args:
+            scraper_type: Type of scraper
+            error_type: Type of error encountered
+        """
+        scraper_normalization_errors_total.labels(
+            scraper_type=scraper_type, error_type=error_type
+        ).inc()
 
 
 # Global metrics collector instance

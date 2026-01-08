@@ -133,4 +133,3 @@ class TestDebugContext:
             assert ctx.request_id == "test-abc"
             assert ctx.enable_verbose_logging is False
             assert ctx.capture_api_calls is False
-

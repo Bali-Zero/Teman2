@@ -263,4 +263,3 @@ class TestProcessZantaraResponse:
         response = "Business information here."
         result = process_zantara_response(response, "business", add_contact=False)
         assert "whatsapp" not in result.lower()
-

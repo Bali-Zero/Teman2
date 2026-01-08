@@ -387,4 +387,3 @@ class TestGetExtractor:
             pytest.raises(Exception),
         ):
             get_extractor()
-

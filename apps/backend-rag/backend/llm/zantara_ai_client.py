@@ -564,7 +564,7 @@ class ZantaraAIClient:
                 if not stream_active:
                     logger.warning("⚠️ [ZantaraAI] No content received in stream")
                     raise ValueError("No content received from stream")
-                
+
                 logger.info(f"✅ [ZantaraAI] Stream completed successfully for user {user_id}")
                 return
 
@@ -595,10 +595,10 @@ class ZantaraAIClient:
                         yield word + " "
                         await asyncio.sleep(ZantaraAIClientConstants.FALLBACK_STREAM_DELAY)
                     return
-                
+
                 # Check if retryable (using RetryHandler logic implicitly via similar checks)
                 # But here we just retry all exceptions except auth ones caught above
-                
+
             # Retry logic
             if attempt < self.retry_handler.max_retries - 1:
                 delay = self.retry_handler.base_delay * (self.retry_handler.backoff_factor**attempt)
@@ -607,8 +607,10 @@ class ZantaraAIClient:
                 )
                 await asyncio.sleep(delay)
             else:
-                logger.error(f"❌ [ZantaraAI] All streaming attempts failed for user {user_id}: {last_exception}")
-                
+                logger.error(
+                    f"❌ [ZantaraAI] All streaming attempts failed for user {user_id}: {last_exception}"
+                )
+
         # If all retries failed, send fallback
         fallback_response = get_fallback_message("connection_error", language)
         words = fallback_response.split()

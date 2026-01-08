@@ -126,9 +126,30 @@ export default function ChatPage() {
   const {
     isClockIn,
     isLoading: isClockLoading,
-    toggleClock,
+    toggleClock: originalToggleClock,
     loadClockStatus,
   } = useTeamStatus();
+
+  const toggleClock = useCallback(async () => {
+    logger.info('Clock status toggle started', {
+      component: 'ChatPage',
+      action: 'toggleClock',
+      metadata: { currentStatus: isClockIn ? 'online' : 'offline' },
+    });
+    try {
+      await originalToggleClock();
+      logger.info('Clock status toggle successful', {
+        component: 'ChatPage',
+        action: 'toggleClock',
+        metadata: { newStatus: !isClockIn ? 'online' : 'offline' },
+      });
+    } catch (error) {
+      logger.error('Clock status toggle failed', {
+        component: 'ChatPage',
+        action: 'toggleClock',
+      }, error instanceof Error ? error : new Error(String(error)));
+    }
+  }, [isClockIn, originalToggleClock]);
 
   const { isRecording, startRecording, stopRecording, audioBlob, recordingTime, audioMimeType } =
     useAudioRecorder();
@@ -614,6 +635,17 @@ export default function ChatPage() {
             },
           });
 
+          // Track metric for received message
+          const { trackEvent } = require('@/lib/analytics');
+          trackEvent('chat_message_received', {
+            sessionId,
+            responseLength: fullResponse.length,
+            executionTime,
+            routeUsed: typedMeta?.route_used,
+            hasSources: (sources?.length || 0) > 0,
+            sourceCount: sources?.length || 0,
+            hasGeneratedImage: !!imageUrl,
+          }, userId);
 
           setMessages(prev =>
             prev.map(m =>
@@ -658,6 +690,11 @@ export default function ChatPage() {
                 action: 'saveConversation',
                 metadata: { sessionId, messageCount: newMessages.length },
               });
+
+              trackEvent('chat_conversation_saved', {
+                sessionId,
+                messageCount: newMessages.length
+              }, userId);
               
             } catch (error) {
               logger.error('Failed to save conversation', {
@@ -766,6 +803,10 @@ export default function ChatPage() {
       metadata: { previousSessionId: sessionId },
     });
     
+    const { trackEvent } = require('@/lib/analytics');
+    const userProfile = api.getUserProfile();
+    trackEvent('chat_new_conversation', { previousSessionId: sessionId }, userProfile?.email);
+
     const newSessionId = generateSessionId();
     setMessages([]);
     setCurrentStatus('');
@@ -805,6 +846,10 @@ export default function ChatPage() {
             action: 'handleConversationClick',
             metadata: { conversationId: id, messageCount: conv.messages.length, sessionId: conv.session_id },
           });
+
+          const { trackEvent } = require('@/lib/analytics');
+          const userProfile = api.getUserProfile();
+          trackEvent('chat_conversation_loaded', { conversationId: id, messageCount: conv.messages.length }, userProfile?.email);
           
         }
       } catch (error) {
@@ -845,7 +890,10 @@ export default function ChatPage() {
           action: 'handleDeleteConversation',
           metadata: { conversationId: id },
         });
-        
+
+        const { trackEvent } = require('@/lib/analytics');
+        const userProfile = api.getUserProfile();
+        trackEvent('chat_conversation_deleted', { conversationId: id }, userProfile?.email);
         
         if (currentConversationId === id) handleNewChat();
       } catch (error) {
@@ -871,6 +919,10 @@ export default function ChatPage() {
         metadata: { recordingTime, mimeType: audioMimeType },
       });
       
+      const { trackEvent } = require('@/lib/analytics');
+      const userProfile = api.getUserProfile();
+      trackEvent('chat_audio_recording_stopped', { duration: recordingTime, mimeType: audioMimeType }, userProfile?.email);
+
       stopRecording();
       
     } else {
@@ -878,6 +930,10 @@ export default function ChatPage() {
         component: 'ChatPage',
         action: 'handleMicClick',
       });
+
+      const { trackEvent } = require('@/lib/analytics');
+      const userProfile = api.getUserProfile();
+      trackEvent('chat_audio_recording_started', {}, userProfile?.email);
       
       try {
         await startRecording();
@@ -953,7 +1009,15 @@ export default function ChatPage() {
               },
             });
             
-            
+            const { trackEvent } = require('@/lib/analytics');
+            const userProfile = api.getUserProfile();
+            trackEvent('chat_audio_transcribed', {
+              blobSize: audioBlob.size,
+              textLength: text.length,
+              duration: transcriptionDuration,
+              success: true
+            }, userProfile?.email);
+
             setInput(text);
           } else {
             logger.warn('No speech detected in audio', {
@@ -1069,6 +1133,10 @@ export default function ChatPage() {
             metadata: { messageId, duration: ttsDuration },
           });
 
+          const { trackEvent } = require('@/lib/analytics');
+          const userProfile = api.getUserProfile();
+          trackEvent('chat_tts_completed', { messageId, duration: ttsDuration }, userProfile?.email);
+
           setPlayingMessageId(null);
           URL.revokeObjectURL(audioUrl);
           audioUrlRef.current = null;
@@ -1077,13 +1145,18 @@ export default function ChatPage() {
       };
 
       audio.onerror = (e) => {
+        const errorMessage = e instanceof Error ? e.message : 'Unknown playback error';
         logger.error('TTS audio playback error', {
           component: 'ChatPage',
           action: 'handleTTS',
-          metadata: { messageId },
+          metadata: { messageId, errorMessage },
         }, e instanceof Error ? e : new Error(String(e)));
 
         if (audioUrlRef.current === audioUrl) {
+          const { trackEvent } = require('@/lib/analytics');
+          const userProfile = api.getUserProfile();
+          trackEvent('chat_tts_error', { messageId, errorType: 'playback', errorMessage }, userProfile?.email);
+
           showToast('Audio playback failed', 'error');
           setPlayingMessageId(null);
           URL.revokeObjectURL(audioUrl);
@@ -1097,12 +1170,21 @@ export default function ChatPage() {
         setTtsLoading(null);
         setPlayingMessageId(messageId);
         await audio.play();
+        
+        const { trackEvent } = require('@/lib/analytics');
+        const userProfile = api.getUserProfile();
+        trackEvent('chat_tts_started', { messageId, textLength: text.length }, userProfile?.email);
       } catch (playError) {
+        const errorMessage = playError instanceof Error ? playError.message : 'Unknown play error';
         logger.error('TTS audio play error', {
           component: 'ChatPage',
           action: 'handleTTS',
           metadata: { messageId, errorType: playError instanceof Error ? playError.name : 'Unknown' },
         }, playError instanceof Error ? playError : new Error(String(playError)));
+
+        const { trackEvent } = require('@/lib/analytics');
+        const userProfile = api.getUserProfile();
+        trackEvent('chat_tts_error', { messageId, errorType: 'play', errorMessage }, userProfile?.email);
 
         // Cleanup on play failure
         URL.revokeObjectURL(audioUrl);
@@ -1150,6 +1232,10 @@ export default function ChatPage() {
       action: 'handleSidebarOpen',
     });
     
+    const { trackEvent } = require('@/lib/analytics');
+    const userProfile = api.getUserProfile();
+    trackEvent('chat_sidebar_opened', {}, userProfile?.email);
+
     setSidebarOpen(true);
   }, []);
 
@@ -1159,6 +1245,10 @@ export default function ChatPage() {
       action: 'handleSidebarClose',
     });
     
+    const { trackEvent } = require('@/lib/analytics');
+    const userProfile = api.getUserProfile();
+    trackEvent('chat_sidebar_closed', {}, userProfile?.email);
+
     setSidebarOpen(false);
   }, []);
 
@@ -1169,6 +1259,10 @@ export default function ChatPage() {
       metadata: { hasInput: !!input, inputLength: input.length },
     });
     
+    const { trackEvent } = require('@/lib/analytics');
+    const userProfile = api.getUserProfile();
+    trackEvent('chat_search_docs_opened', { inputLength: input.length }, userProfile?.email);
+
     setIsSearchDocsOpen(true);
   }, [input]);
 

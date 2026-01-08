@@ -15,6 +15,7 @@ alerting:
 # Load alerting rules
 rule_files:
   - 'alerts.yml'
+  - 'ingestion-alerts.yml'
 
 scrape_configs:
   # Backend FastAPI application metrics

@@ -187,4 +187,3 @@ class TestRAGPipelineDebugger:
         debugger.add_fallback("model_fallback")
 
         assert "model_fallback" in debugger.trace.fallbacks_activated
-

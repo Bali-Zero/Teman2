@@ -83,3 +83,4 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 # - fake-useragent (not needed)
 # - pre-commit, ruff, pytest (dev tools)
 # - pandas (large, optional for this app)
+structlog==23.2.0

@@ -4,13 +4,22 @@ Intel News API - Search and manage Bali intelligence news
 
 import json
 import logging
+import os
 import shutil
+
+# Import for duplicate detection integration
+import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
+from pathlib import Path as PathLib
 
-from app.core.intel_approvers import get_chat_ids, get_required_votes, get_team_config
+from core.embeddings import create_embeddings_generator
+from core.qdrant_db import QdrantClient
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from app.core.intel_approvers import get_chat_ids, get_team_config
 from app.metrics import (
     intel_articles_duplicates,
     intel_articles_submitted,
@@ -19,25 +28,19 @@ from app.metrics import (
     intel_scraper_latency,
     intel_staging_queue_size,
 )
-from core.embeddings import create_embeddings_generator
-from core.qdrant_db import QdrantClient
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
 from services.integrations.telegram_bot_service import telegram_bot
 
-# Import for duplicate detection integration
-import sys
-from pathlib import Path as PathLib
-
 # Add scraper scripts to path for ClaudeValidator import
-scraper_scripts_path = PathLib(__file__).parent.parent.parent.parent.parent / "bali-intel-scraper" / "scripts"
+scraper_scripts_path = (
+    PathLib(__file__).parent.parent.parent.parent.parent / "bali-intel-scraper" / "scripts"
+)
 if scraper_scripts_path.exists():
     sys.path.insert(0, str(scraper_scripts_path))
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-embedder = create_embeddings_generator()
+embedder = create_embeddings_generator(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Staging Directories (mounted Fly volume)
 BASE_STAGING_DIR = Path("/data/staging")
@@ -134,7 +137,7 @@ async def send_intel_approval_notification(
     item_id: str,
     item_data: dict,
     enriched_data: dict = None,
-    image_path: str = None
+    image_path: str = None,
 ) -> bool:
     """
     Send Telegram notification to approval team with voting buttons.
@@ -214,7 +217,7 @@ async def send_intel_approval_notification(
 
     caption += f"""
 
-🗳️ <b>Votazione {team_config['required_votes']}/{len(team_config['approvers'])}</b> per approvare/rifiutare
+🗳️ <b>Votazione {team_config["required_votes"]}/{len(team_config["approvers"])}</b> per approvare/rifiutare
 
 <code>ID: {item_id}</code>"""
 
@@ -257,7 +260,7 @@ async def send_intel_approval_notification(
             # If we have an image, send as photo with caption
             # Otherwise, send as text message
             if image_path and Path(image_path).exists():
-                with open(image_path, 'rb') as photo:
+                with open(image_path, "rb") as photo:
                     await telegram_bot.send_photo(
                         chat_id=chat_id,
                         photo=photo,
@@ -282,7 +285,7 @@ async def send_intel_approval_notification(
                     "item_id": item_id,
                     "chat_id": chat_id,
                     "has_image": bool(image_path),
-                    "enriched": bool(enriched_data)
+                    "enriched": bool(enriched_data),
                 },
             )
         except Exception as e:
@@ -324,13 +327,10 @@ async def submit_from_scraper(submission: ScraperSubmission):
     try:
         # Classify intel type (with timing)
         classification_start = time.time()
-        intel_type = classify_intel_type(
-            submission.category, submission.title, submission.content
-        )
+        intel_type = classify_intel_type(submission.category, submission.title, submission.content)
         intel_classification_duration.observe(time.time() - classification_start)
         intel_classification_total.labels(
-            category_input=submission.category,
-            classified_as=intel_type
+            category_input=submission.category, classified_as=intel_type
         ).inc()
 
         # Generate unique item ID
@@ -397,9 +397,7 @@ async def submit_from_scraper(submission: ScraperSubmission):
 
         # Metrics: Article submitted successfully
         intel_articles_submitted.labels(
-            scraper_type=submission.source_name,
-            intel_type=intel_type,
-            tier=submission.tier
+            scraper_type=submission.source_name, intel_type=intel_type, tier=submission.tier
         ).inc()
 
         intel_scraper_latency.labels(scraper_type=submission.source_name).observe(
@@ -410,7 +408,7 @@ async def submit_from_scraper(submission: ScraperSubmission):
         _update_staging_queue_size()
 
         logger.info(
-            f"Article submitted from scraper",
+            "Article submitted from scraper",
             extra={
                 "item_id": item_id,
                 "intel_type": intel_type,
@@ -440,7 +438,9 @@ async def submit_from_scraper(submission: ScraperSubmission):
 @router.get("/api/intel/staging/pending")
 async def list_pending_items(type: str = "all"):
     """List items pending approval in staging area"""
-    logger.info(f"Listing pending items", extra={"type": type, "endpoint": "/api/intel/staging/pending"})
+    logger.info(
+        "Listing pending items", extra={"type": type, "endpoint": "/api/intel/staging/pending"}
+    )
     items = []
 
     dirs_to_check = []
@@ -466,57 +466,76 @@ async def list_pending_items(type: str = "all"):
                             "title": data.get("title", "Untitled"),
                             "status": data.get("status", "pending"),
                             "detected_at": data.get("detected_at"),
-                            "source": data.get("source_url", data.get("url", "")),  # Fix: try source_url first, fallback to url
+                            "source": data.get(
+                                "source_url", data.get("url", "")
+                            ),  # Fix: try source_url first, fallback to url
                             "detection_type": data.get("detection_type", "NEW"),
                         }
                     )
             except Exception as e:
-                logger.error(f"Error reading staging file {file_path}: {e}", exc_info=True, extra={"file": str(file_path), "category": category})
+                logger.error(
+                    f"Error reading staging file {file_path}: {e}",
+                    exc_info=True,
+                    extra={"file": str(file_path), "category": category},
+                )
 
     # Sort by date (newest first)
     items.sort(key=lambda x: x.get("detected_at", ""), reverse=True)
 
-    logger.info(f"Listed {len(items)} pending items", extra={"type": type, "count": len(items), "categories": [cat for cat, _ in dirs_to_check]})
+    logger.info(
+        f"Listed {len(items)} pending items",
+        extra={"type": type, "count": len(items), "categories": [cat for cat, _ in dirs_to_check]},
+    )
     return {"items": items, "count": len(items)}
 
 
 @router.get("/api/intel/staging/preview/{type}/{item_id}")
 async def preview_staging_item(type: str, item_id: str):
     """Get full content of a staging item"""
-    logger.info(f"Preview staging item requested", extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/preview"})
+    logger.info(
+        "Preview staging item requested",
+        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/preview"},
+    )
 
     directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
     file_path = directory / f"{item_id}.json"
 
     if not file_path.exists():
-        logger.warning(f"Preview item not found", extra={"type": type, "item_id": item_id, "file_path": str(file_path)})
+        logger.warning(
+            "Preview item not found",
+            extra={"type": type, "item_id": item_id, "file_path": str(file_path)},
+        )
         raise HTTPException(status_code=404, detail="Item not found")
 
     try:
         with open(file_path) as f:
             data = json.load(f)
-            logger.info(f"Preview loaded successfully", extra={"type": type, "item_id": item_id, "title": data.get("title", "Untitled")})
+            logger.info(
+                "Preview loaded successfully",
+                extra={"type": type, "item_id": item_id, "title": data.get("title", "Untitled")},
+            )
             return data
     except Exception as e:
-        logger.error(f"Error reading preview file: {e}", exc_info=True, extra={"type": type, "item_id": item_id, "file_path": str(file_path)})
+        logger.error(
+            f"Error reading preview file: {e}",
+            exc_info=True,
+            extra={"type": type, "item_id": item_id, "file_path": str(file_path)},
+        )
         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
 
 
 class ApprovalRequest(BaseModel):
     """Request body for staging approval with optional enrichment data"""
-    intel_type: Optional[str] = None
-    item_id: Optional[str] = None
-    item_data: Optional[dict] = None
-    enriched_data: Optional[dict] = None
-    image_path: Optional[str] = None
+
+    intel_type: str | None = None
+    item_id: str | None = None
+    item_data: dict | None = None
+    enriched_data: dict | None = None
+    image_path: str | None = None
 
 
 @router.post("/api/intel/staging/approve/{type}/{item_id}")
-async def approve_staging_item(
-    type: str,
-    item_id: str,
-    request: Optional[ApprovalRequest] = None
-):
+async def approve_staging_item(type: str, item_id: str, request: ApprovalRequest | None = None):
     """
     Initiate approval process by sending Telegram notification to team.
 
@@ -532,13 +551,13 @@ async def approve_staging_item(
     }
     """
     logger.info(
-        f"Approval request received - initiating Telegram voting",
+        "Approval request received - initiating Telegram voting",
         extra={
             "type": type,
             "item_id": item_id,
             "endpoint": "/api/intel/staging/approve",
             "has_enrichment": bool(request and request.enriched_data),
-            "has_image": bool(request and request.image_path)
+            "has_image": bool(request and request.image_path),
         },
     )
 
@@ -547,7 +566,7 @@ async def approve_staging_item(
 
     if not file_path.exists():
         logger.warning(
-            f"Approval failed - item not found",
+            "Approval failed - item not found",
             extra={"type": type, "item_id": item_id, "file_path": str(file_path)},
         )
         raise HTTPException(status_code=404, detail="Item not found")
@@ -558,7 +577,7 @@ async def approve_staging_item(
 
         title = data.get("title", "Untitled")
         logger.info(
-            f"Loaded staging item for approval",
+            "Loaded staging item for approval",
             extra={"type": type, "item_id": item_id, "title": title},
         )
 
@@ -573,7 +592,7 @@ async def approve_staging_item(
 
         if not notification_sent:
             logger.error(
-                f"Failed to send Telegram notification",
+                "Failed to send Telegram notification",
                 extra={"type": type, "item_id": item_id, "title": title},
             )
             raise HTTPException(
@@ -582,32 +601,40 @@ async def approve_staging_item(
             )
 
         logger.info(
-            f"Telegram voting initiated successfully",
+            "Telegram voting initiated successfully",
             extra={"type": type, "item_id": item_id, "title": title},
         )
 
         return {
             "success": True,
-            "message": f"Approval voting initiated. Team notified via Telegram.",
+            "message": "Approval voting initiated. Team notified via Telegram.",
             "id": item_id,
             "voting_status": "pending",
         }
 
     except Exception as e:
-        logger.error(f"Approval failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id})
+        logger.error(
+            f"Approval failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/api/intel/staging/reject/{type}/{item_id}")
 async def reject_staging_item(type: str, item_id: str):
     """Reject item and move to archive"""
-    logger.info(f"Rejection started", extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/reject"})
+    logger.info(
+        "Rejection started",
+        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/reject"},
+    )
 
     directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
     file_path = directory / f"{item_id}.json"
 
     if not file_path.exists():
-        logger.warning(f"Rejection failed - item not found", extra={"type": type, "item_id": item_id, "file_path": str(file_path)})
+        logger.warning(
+            "Rejection failed - item not found",
+            extra={"type": type, "item_id": item_id, "file_path": str(file_path)},
+        )
         raise HTTPException(status_code=404, detail="Item not found")
 
     try:
@@ -624,16 +651,21 @@ async def reject_staging_item(type: str, item_id: str):
         archive_dir.mkdir(parents=True, exist_ok=True)
         shutil.move(str(file_path), str(archive_dir / file_path.name))
 
-        logger.info(f"Rejection completed successfully", extra={
-            "type": type,
-            "item_id": item_id,
-            "title": title,
-            "archive_path": str(archive_dir / file_path.name)
-        })
+        logger.info(
+            "Rejection completed successfully",
+            extra={
+                "type": type,
+                "item_id": item_id,
+                "title": title,
+                "archive_path": str(archive_dir / file_path.name),
+            },
+        )
 
         return {"success": True, "message": "Item rejected and archived", "id": item_id}
     except Exception as e:
-        logger.error(f"Rejection failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id})
+        logger.error(
+            f"Rejection failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -650,8 +682,8 @@ async def publish_staging_item(type: str, item_id: str):
     Should be called after team approval (manual or via Telegram).
     """
     logger.info(
-        f"Publish request received",
-        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/publish"}
+        "Publish request received",
+        extra={"type": type, "item_id": item_id, "endpoint": "/api/intel/staging/publish"},
     )
 
     directory = VISA_STAGING_DIR if type == "visa" else NEWS_STAGING_DIR
@@ -659,8 +691,8 @@ async def publish_staging_item(type: str, item_id: str):
 
     if not file_path.exists():
         logger.warning(
-            f"Publish failed - item not found",
-            extra={"type": type, "item_id": item_id, "file_path": str(file_path)}
+            "Publish failed - item not found",
+            extra={"type": type, "item_id": item_id, "file_path": str(file_path)},
         )
         raise HTTPException(status_code=404, detail="Item not found")
 
@@ -673,10 +705,7 @@ async def publish_staging_item(type: str, item_id: str):
         source_url = data.get("source_url", data.get("url", ""))
         category = data.get("category", type)
 
-        logger.info(
-            f"Publishing article",
-            extra={"type": type, "item_id": item_id, "title": title}
-        )
+        logger.info("Publishing article", extra={"type": type, "item_id": item_id, "title": title})
 
         # Step 1: Ingest to Qdrant (knowledge base)
         from app.routers.telegram import ingest_intel_to_qdrant
@@ -685,17 +714,16 @@ async def publish_staging_item(type: str, item_id: str):
 
         if not ingestion_success:
             logger.error(
-                f"Publish failed - Qdrant ingestion error",
-                extra={"type": type, "item_id": item_id, "title": title}
+                "Publish failed - Qdrant ingestion error",
+                extra={"type": type, "item_id": item_id, "title": title},
             )
             raise HTTPException(
-                status_code=500,
-                detail="Failed to ingest article to knowledge base"
+                status_code=500, detail="Failed to ingest article to knowledge base"
             )
 
         logger.info(
-            f"✅ Article ingested to Qdrant",
-            extra={"type": type, "item_id": item_id, "title": title}
+            "✅ Article ingested to Qdrant",
+            extra={"type": type, "item_id": item_id, "title": title},
         )
 
         # Step 2: Register in anti-duplicate system
@@ -709,29 +737,24 @@ async def publish_staging_item(type: str, item_id: str):
                 title=title,
                 url=published_url,
                 category=category,
-                published_at=datetime.utcnow().isoformat()
+                published_at=datetime.utcnow().isoformat(),
             )
 
             logger.info(
-                f"✅ Article registered in anti-duplicate system",
-                extra={
-                    "type": type,
-                    "item_id": item_id,
-                    "title": title,
-                    "url": published_url
-                }
+                "✅ Article registered in anti-duplicate system",
+                extra={"type": type, "item_id": item_id, "title": title, "url": published_url},
             )
 
         except ImportError:
             logger.warning(
-                f"⚠️ ClaudeValidator not available - skipping duplicate registration",
-                extra={"type": type, "item_id": item_id}
+                "⚠️ ClaudeValidator not available - skipping duplicate registration",
+                extra={"type": type, "item_id": item_id},
             )
         except Exception as e:
             logger.error(
                 f"⚠️ Failed to register in anti-duplicate system: {e}",
                 exc_info=True,
-                extra={"type": type, "item_id": item_id}
+                extra={"type": type, "item_id": item_id},
             )
             # Don't fail the publish if duplicate registration fails
 
@@ -744,13 +767,13 @@ async def publish_staging_item(type: str, item_id: str):
         # We don't need to move it again
 
         logger.info(
-            f"✅ Publish completed successfully",
+            "✅ Publish completed successfully",
             extra={
                 "type": type,
                 "item_id": item_id,
                 "title": title,
-                "published_url": data["published_url"]
-            }
+                "published_url": data["published_url"],
+            },
         )
 
         return {
@@ -760,16 +783,14 @@ async def publish_staging_item(type: str, item_id: str):
             "title": title,
             "published_url": data["published_url"],
             "published_at": data["published_at"],
-            "collection": "visa_oracle" if type == "visa" else "bali_intel_bali_news"
+            "collection": "visa_oracle" if type == "visa" else "bali_intel_bali_news",
         }
 
     except HTTPException:
         raise  # Re-raise HTTP exceptions
     except Exception as e:
         logger.error(
-            f"Publish failed: {e}",
-            exc_info=True,
-            extra={"type": type, "item_id": item_id}
+            f"Publish failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id}
         )
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -799,9 +820,15 @@ async def get_system_metrics():
         # Check last processed item (most recent archive)
         last_approved = None
         for archive_type in ["visa", "news"]:
-            archive_dir = (VISA_STAGING_DIR if archive_type == "visa" else NEWS_STAGING_DIR) / "archived" / "approved"
+            archive_dir = (
+                (VISA_STAGING_DIR if archive_type == "visa" else NEWS_STAGING_DIR)
+                / "archived"
+                / "approved"
+            )
             if archive_dir.exists():
-                for file_path in sorted(archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+                for file_path in sorted(
+                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+                ):
                     try:
                         with open(file_path) as f:
                             data = json.load(f)
@@ -830,7 +857,8 @@ async def get_system_metrics():
         if last_approved:
             try:
                 from datetime import datetime, timedelta
-                last_dt = datetime.fromisoformat(last_approved.replace('Z', '+00:00'))
+
+                last_dt = datetime.fromisoformat(last_approved.replace("Z", "+00:00"))
                 next_run = last_dt + timedelta(hours=2)
                 metrics["next_scheduled_run"] = next_run.isoformat()
             except Exception:
@@ -839,9 +867,15 @@ async def get_system_metrics():
         # Calculate average response time based on recent approvals
         response_times = []
         for archive_type in ["visa", "news"]:
-            archive_dir = (VISA_STAGING_DIR if archive_type == "visa" else NEWS_STAGING_DIR) / "archived" / "approved"
+            archive_dir = (
+                (VISA_STAGING_DIR if archive_type == "visa" else NEWS_STAGING_DIR)
+                / "archived"
+                / "approved"
+            )
             if archive_dir.exists():
-                for file_path in sorted(archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:10]:
+                for file_path in sorted(
+                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+                )[:10]:
                     try:
                         with open(file_path) as f:
                             data = json.load(f)
@@ -856,11 +890,14 @@ async def get_system_metrics():
         else:
             metrics["avg_response_time_ms"] = 1250  # Default
 
-        logger.info(f"System metrics calculated", extra={
-            "agent_status": metrics["agent_status"],
-            "qdrant_health": metrics["qdrant_health"],
-            "items_processed": metrics["items_processed_today"]
-        })
+        logger.info(
+            "System metrics calculated",
+            extra={
+                "agent_status": metrics["agent_status"],
+                "qdrant_health": metrics["qdrant_health"],
+                "items_processed": metrics["items_processed_today"],
+            },
+        )
 
         return metrics
 
@@ -1130,6 +1167,7 @@ async def get_collection_stats(collection: str):
 
 
 # --- HELPER FUNCTIONS FOR METRICS ---
+
 
 def _update_staging_queue_size():
     """Update Prometheus gauge for staging queue sizes"""

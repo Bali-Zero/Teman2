@@ -13,9 +13,9 @@ Coverage:
 """
 
 import json
+from unittest.mock import patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -34,21 +34,21 @@ def mock_staging_dir(tmp_path):
 def client(mock_staging_dir):
     """Create FastAPI test client with mocked staging directories"""
     import sys
-    import importlib
 
     # Remove cached module if it exists
-    if 'app.routers.intel' in sys.modules:
-        del sys.modules['app.routers.intel']
+    if "app.routers.intel" in sys.modules:
+        del sys.modules["app.routers.intel"]
 
-    with patch("app.routers.intel.VISA_STAGING_DIR", mock_staging_dir / "visa"), \
-         patch("app.routers.intel.NEWS_STAGING_DIR", mock_staging_dir / "news"), \
-         patch("app.routers.intel.BASE_STAGING_DIR", mock_staging_dir):
-
+    with (
+        patch("app.routers.intel.VISA_STAGING_DIR", mock_staging_dir / "visa"),
+        patch("app.routers.intel.NEWS_STAGING_DIR", mock_staging_dir / "news"),
+        patch("app.routers.intel.BASE_STAGING_DIR", mock_staging_dir),
+    ):
         # Import router after patches are applied
-        from app.routers.intel import router
-
         # Manually update the module's global variables
         import app.routers.intel as intel_module
+        from app.routers.intel import router
+
         intel_module.VISA_STAGING_DIR = mock_staging_dir / "visa"
         intel_module.NEWS_STAGING_DIR = mock_staging_dir / "news"
 
@@ -57,11 +57,12 @@ def client(mock_staging_dir):
         yield TestClient(app)
 
         # Cleanup: remove module again so next test gets fresh import
-        if 'app.routers.intel' in sys.modules:
-            del sys.modules['app.routers.intel']
+        if "app.routers.intel" in sys.modules:
+            del sys.modules["app.routers.intel"]
 
 
 # --- SUCCESSFUL SUBMISSION TESTS ---
+
 
 def test_submit_visa_article_success(client, mock_staging_dir):
     """Test successful submission of visa article from intelligent_visa_agent"""
@@ -74,7 +75,7 @@ def test_submit_visa_article_success(client, mock_staging_dir):
         "relevance_score": 100,
         "published_at": "2026-01-05T10:00:00Z",
         "extraction_method": "playwright+gemini",
-        "tier": "T1"
+        "tier": "T1",
     }
 
     response = client.post("/api/intel/scraper/submit", json=payload)
@@ -112,7 +113,7 @@ def test_submit_news_article_success(client, mock_staging_dir):
         "relevance_score": 85,
         "published_at": "2026-01-05T09:30:00Z",
         "extraction_method": "css",
-        "tier": "T2"
+        "tier": "T2",
     }
 
     response = client.post("/api/intel/scraper/submit", json=payload)
@@ -134,6 +135,7 @@ def test_submit_news_article_success(client, mock_staging_dir):
 
 # --- DUPLICATE DETECTION TESTS ---
 
+
 def test_submit_duplicate_article(client, mock_staging_dir):
     """Test duplicate detection by source_url"""
     payload = {
@@ -143,7 +145,7 @@ def test_submit_duplicate_article(client, mock_staging_dir):
         "source_name": "test_scraper",
         "category": "news",
         "relevance_score": 80,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     # First submission - should succeed
@@ -168,6 +170,7 @@ def test_submit_duplicate_article(client, mock_staging_dir):
 
 # --- CLASSIFICATION TESTS ---
 
+
 def test_classification_visa_by_category(client):
     """Test classification: category='visa' → intel_type='visa'"""
     payload = {
@@ -177,7 +180,7 @@ def test_classification_visa_by_category(client):
         "source_name": "test",
         "category": "visa",  # Direct category match
         "relevance_score": 90,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     response = client.post("/api/intel/scraper/submit", json=payload)
@@ -193,7 +196,7 @@ def test_classification_visa_by_immigration_category(client):
         "source_name": "test",
         "category": "immigration",  # Should map to visa
         "relevance_score": 90,
-        "tier": "T1"
+        "tier": "T1",
     }
 
     response = client.post("/api/intel/scraper/submit", json=payload)
@@ -209,7 +212,7 @@ def test_classification_visa_by_keywords(client):
         "source_name": "test",
         "category": "business",  # Not visa category
         "relevance_score": 85,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     # Title contains: KITAS, B211, visa, permit, residence = 5 keywords
@@ -226,7 +229,7 @@ def test_classification_news_default(client):
         "source_name": "test",
         "category": "tourism",
         "relevance_score": 70,
-        "tier": "T3"
+        "tier": "T3",
     }
 
     # No visa keywords, generic category → should classify as news
@@ -243,7 +246,7 @@ def test_classification_visa_by_content_keywords(client):
         "source_name": "test",
         "category": "policy",
         "relevance_score": 90,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     # Content contains: KITAS, KITAP, stay permit, VOA = 4 keywords
@@ -252,6 +255,7 @@ def test_classification_visa_by_content_keywords(client):
 
 
 # --- PAYLOAD VALIDATION TESTS ---
+
 
 def test_invalid_payload_missing_required_field(client):
     """Test validation: missing required field"""
@@ -262,7 +266,7 @@ def test_invalid_payload_missing_required_field(client):
         "source_name": "test",
         "category": "news",
         "relevance_score": 80,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     response = client.post("/api/intel/scraper/submit", json=payload)
@@ -278,7 +282,7 @@ def test_invalid_payload_empty_title(client):
         "source_name": "test",
         "category": "news",
         "relevance_score": 80,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     response = client.post("/api/intel/scraper/submit", json=payload)
@@ -296,7 +300,7 @@ def test_payload_with_optional_fields(client, mock_staging_dir):
         "relevance_score": 95,
         "published_at": "2026-01-05T12:00:00Z",
         "extraction_method": "playwright+gemini",
-        "tier": "T1"
+        "tier": "T1",
     }
 
     response = client.post("/api/intel/scraper/submit", json=payload)
@@ -314,6 +318,7 @@ def test_payload_with_optional_fields(client, mock_staging_dir):
 
 # --- EDGE CASES ---
 
+
 def test_classification_boundary_2_keywords(client):
     """Test classification: 2 visa keywords (below threshold) → news"""
     payload = {
@@ -323,7 +328,7 @@ def test_classification_boundary_2_keywords(client):
         "source_name": "test",
         "category": "travel",
         "relevance_score": 70,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     # Only 2 keywords (threshold is 3) → should be news
@@ -340,7 +345,7 @@ def test_classification_boundary_3_keywords_exact(client):
         "source_name": "test",
         "category": "policy",
         "relevance_score": 85,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     # Exactly 3 keywords (threshold met) → should be visa
@@ -357,7 +362,7 @@ def test_item_id_uniqueness(client, mock_staging_dir):
         "source_name": "test",
         "category": "news",
         "relevance_score": 80,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     payload2 = {
@@ -367,7 +372,7 @@ def test_item_id_uniqueness(client, mock_staging_dir):
         "source_name": "test",
         "category": "news",
         "relevance_score": 80,
-        "tier": "T2"
+        "tier": "T2",
     }
 
     response1 = client.post("/api/intel/scraper/submit", json=payload1)

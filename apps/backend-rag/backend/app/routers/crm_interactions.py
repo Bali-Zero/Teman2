@@ -10,10 +10,11 @@ from typing import Any
 
 import asyncpg
 from core.cache import cached
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, field_validator
 
-from app.dependencies import get_database_pool
+from app.dependencies import get_current_user, get_database_pool
+from app.utils.crm_utils import is_crm_admin
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger, log_database_operation, log_success
 
@@ -128,7 +129,7 @@ class InteractionResponse(BaseModel):
 @router.post("/", response_model=InteractionResponse)
 async def create_interaction(
     interaction: InteractionCreate,
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -149,6 +150,19 @@ async def create_interaction(
     - phone: Phone call
     - in_person: Face-to-face meeting
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
+    # RBAC: If client_id provided, check access
+    if interaction.client_id:
+        async with db_pool.acquire() as conn:
+            check = await conn.fetchrow(
+                "SELECT assigned_to FROM clients WHERE id = $1", interaction.client_id
+            )
+            if not check:
+                raise HTTPException(status_code=404, detail="Client not found")
+            if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+                raise HTTPException(status_code=403, detail="You don't have access to this client")
     try:
         async with db_pool.acquire() as conn:
             # Insert interaction
@@ -223,23 +237,47 @@ async def list_interactions(
     sentiment: str | None = Query(None, description="Filter by sentiment"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
     offset: int = Query(0, ge=0),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    # Support for direct calls from dashboard_summary.py
+    user_id: str | None = None,
+    pool: Any | None = None,
 ):
     """
     List interactions with optional filtering
     """
+    # Use provided pool if called directly
+    if pool:
+        db_pool = pool
+
+    # If called directly, we might not have current_user, but we have user_id
+    if user_id and not current_user:
+        user_email = user_id.lower()
+        user_is_admin = user_email in ["zero@balizero.com", "admin@zantara.io"]
+    else:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             # Build query dynamically with explicit columns
             query_parts = [
-                """SELECT id, client_id, practice_id, conversation_id, interaction_type, channel,
-                   subject, summary, full_content, sentiment, team_member, direction,
-                   duration_minutes, extracted_entities, action_items, interaction_date, created_at
-                   FROM interactions WHERE 1=1"""
+                """SELECT i.id, i.client_id, i.practice_id, i.conversation_id, i.interaction_type, i.channel,
+                   i.subject, i.summary, i.full_content, i.sentiment, i.team_member, i.direction,
+                   i.duration_minutes, i.extracted_entities, i.action_items, i.interaction_date, i.created_at
+                   FROM interactions i
+                   LEFT JOIN clients c ON i.client_id = c.id
+                   WHERE 1=1"""
             ]
             params: list[Any] = []
             param_index = 1
+
+            # RBAC: Non-admins can only see interactions for their assigned clients or their own interactions
+            if not user_is_admin:
+                query_parts.append(
+                    f" AND (LOWER(c.assigned_to) = ${param_index} OR LOWER(i.team_member) = ${param_index})"
+                )
+                params.append(user_email)
+                param_index += 1
 
             if client_id:
                 query_parts.append(f" AND client_id = ${param_index}")
@@ -285,10 +323,12 @@ async def list_interactions(
 @router.get("/{interaction_id}")
 async def get_interaction(
     interaction_id: int = Path(..., gt=0, description="Interaction ID"),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """Get full interaction details by ID"""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
     try:
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -307,6 +347,15 @@ async def get_interaction(
             if not row:
                 raise HTTPException(status_code=404, detail="Interaction not found")
 
+            # RBAC check
+            if not user_is_admin:
+                if (row["assigned_to"] or "").lower() != user_email and (
+                    row["team_member"] or ""
+                ).lower() != user_email:
+                    raise HTTPException(
+                        status_code=403, detail="You don't have access to this interaction"
+                    )
+
             return dict(row)
 
     except HTTPException:
@@ -319,16 +368,27 @@ async def get_interaction(
 async def get_client_timeline(
     client_id: int = Path(..., gt=0, description="Client ID"),
     limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Get complete interaction timeline for a client
-
-    Returns all interactions sorted by date (newest first)
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     try:
         async with db_pool.acquire() as conn:
+            # Check access to client
+            check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+            if not check:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+            if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+                raise HTTPException(
+                    status_code=403, detail="You don't have access to this client's timeline"
+                )
+
             rows = await conn.fetch(
                 """
                 SELECT
@@ -352,7 +412,6 @@ async def get_client_timeline(
                 "total_interactions": len(rows),
                 "timeline": [dict(row) for row in rows],
             }
-
     except HTTPException:
         raise
     except Exception as e:
@@ -362,16 +421,36 @@ async def get_client_timeline(
 @router.get("/practice/{practice_id}/history")
 async def get_practice_history(
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
     Get all interactions related to a specific practice
-
-    Useful for tracking communication history for a KITAS, PT PMA, etc.
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     try:
         async with db_pool.acquire() as conn:
+            # Check access to practice via client
+            check = await conn.fetchrow(
+                """
+                SELECT c.assigned_to 
+                FROM practices p 
+                JOIN clients c ON p.client_id = c.id 
+                WHERE p.id = $1
+            """,
+                practice_id,
+            )
+
+            if not check:
+                raise HTTPException(status_code=404, detail="Practice not found")
+
+            if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+                raise HTTPException(
+                    status_code=403, detail="You don't have access to this practice history"
+                )
+
             rows = await conn.fetch(
                 """
                 SELECT id, client_id, practice_id, conversation_id, interaction_type, channel,
@@ -400,8 +479,11 @@ async def get_practice_history(
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_interactions_stats")
 async def get_interactions_stats(
     team_member: str | None = Query(None, description="Stats for specific team member"),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    # Support for direct calls from dashboard_summary.py
+    user_id: str | None = None,
+    pool: Any | None = None,
 ):
     """
     Get interaction statistics
@@ -413,15 +495,51 @@ async def get_interactions_stats(
 
     Performance: Cached for 5 minutes to reduce database load.
     """
+    # Use provided pool if called directly
+    if pool:
+        db_pool = pool
+
+    # If called directly from dashboard_summary, user_id is passed as the first positional arg (team_member)
+    # or as a keyword arg. We prioritize it if provided.
+    if user_id and not team_member:
+        team_member = user_id
+
+    # If called directly, current_user might be None
+    if not current_user and team_member:
+        # Construct a minimal current_user for is_crm_admin check
+        current_user = {"email": team_member}
+
+    # Extract user info for RBAC
+    if current_user:
+        user_email = current_user.get("email", "").lower()
+        user_is_admin = is_crm_admin(current_user)
+    else:
+        user_email = ""
+        user_is_admin = False
     try:
         async with db_pool.acquire() as conn:
             # Build base conditions
-            base_where = ""
+            base_where = "WHERE 1=1"
             params: list[Any] = []
+            param_index = 1
+
+            # RBAC: Non-admins only see their own interactions or those for their assigned clients
+            # This requires a JOIN or a subquery. For stats, let's keep it simple: just their own team_member or assigned clients
+            if not user_is_admin:
+                base_where += f" AND (LOWER(team_member) = ${param_index} OR client_id IN (SELECT id FROM clients WHERE LOWER(assigned_to) = ${param_index}))"
+                params.append(user_email)
+                param_index += 1
 
             if team_member:
-                base_where = "WHERE team_member = $1"
-                params.append(team_member)
+                # If non-admin tries to see someone else's stats, limit to what they can see
+                if not user_is_admin and team_member.lower() != user_email:
+                    base_where += (
+                        f" AND LOWER(team_member) = ${param_index} AND FALSE"  # Effectively denied
+                    )
+                else:
+                    base_where += f" AND LOWER(team_member) = ${param_index}"
+                params.append(team_member.lower())
+                param_index += 1
 
             # By type - base_where is built internally, values are parameterized
             # nosemgrep: sqlalchemy-execute-raw-query
@@ -499,7 +617,7 @@ async def create_interaction_from_conversation(
     client_email: str = Query(...),
     team_member: str = Query(...),
     summary: str | None = Query(None, description="AI-generated summary"),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """
@@ -507,6 +625,12 @@ async def create_interaction_from_conversation(
 
     This is called automatically when a chat session ends or at intervals
     """
+    user_email_from_token = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
+    # RBAC: Only allow if team_member matches current_user or is admin
+    if not user_is_admin and team_member.lower() != user_email_from_token:
+        raise HTTPException(status_code=403, detail="You can only create interactions for yourself")
     try:
         async with db_pool.acquire() as conn:
             # Get or create client by email
@@ -624,12 +748,17 @@ async def create_interaction_from_conversation(
 async def delete_interaction(
     interaction_id: int,
     deleted_by: str = Query(..., description="Email of user deleting"),
+    current_user: dict = Depends(get_current_user),
     pool=Depends(get_database_pool),
 ):
     """
     Delete an interaction (soft delete - marks as archived).
-    Only allows deletion of interactions, not system-generated records.
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
+    if not user_is_admin and deleted_by.lower() != user_email:
+        raise HTTPException(status_code=403, detail="You can only delete your own interactions")
     try:
         async with pool.acquire() as conn:
             # Check if interaction exists
