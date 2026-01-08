@@ -42,14 +42,22 @@ logger = logging.getLogger(__name__)
 
 embedder = create_embeddings_generator(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Staging Directories (mounted Fly volume)
-BASE_STAGING_DIR = Path("/data/staging")
+# Staging Directories (mounted Fly volume in production, /tmp locally)
+BASE_STAGING_DIR = Path("/data/staging") if Path("/data").exists() else Path("/tmp/staging")
 VISA_STAGING_DIR = BASE_STAGING_DIR / "visa"
 NEWS_STAGING_DIR = BASE_STAGING_DIR / "news"
 
-# Ensure directories exist
-VISA_STAGING_DIR.mkdir(parents=True, exist_ok=True)
-NEWS_STAGING_DIR.mkdir(parents=True, exist_ok=True)
+# Ensure directories exist (safe for local dev)
+try:
+    VISA_STAGING_DIR.mkdir(parents=True, exist_ok=True)
+    NEWS_STAGING_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    # Fallback to /tmp if /data is not writable (local dev)
+    BASE_STAGING_DIR = Path("/tmp/staging")
+    VISA_STAGING_DIR = BASE_STAGING_DIR / "visa"
+    NEWS_STAGING_DIR = BASE_STAGING_DIR / "news"
+    VISA_STAGING_DIR.mkdir(parents=True, exist_ok=True)
+    NEWS_STAGING_DIR.mkdir(parents=True, exist_ok=True)
 
 # Voting storage for Telegram approval
 PENDING_INTEL_PATH = Path("/tmp/pending_intel")
