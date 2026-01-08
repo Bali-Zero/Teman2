@@ -4,7 +4,6 @@ Test coverage for reasoning_engine.py - 100% coverage target.
 This test module uses dynamic imports but coverage can still track the source file.
 Run with: pytest --cov=services/oracle/reasoning_engine --cov-report=term-missing
 """
-
 import importlib.util
 import sys
 import types
@@ -163,12 +162,8 @@ def test_build_context_long_content_truncated():
         use_full_docs=False,
     )
     assert "..." in context  # Should be truncated
-    assert (
-        len([line for line in context.split("\n") if "x" * 600 in line]) == 0
-    )  # Full content not present
-    assert (
-        len([line for line in context.split("\n") if "x" * 500 in line]) > 0
-    )  # Truncated content present
+    assert len([line for line in context.split("\n") if "x" * 600 in line]) == 0  # Full content not present
+    assert len([line for line in context.split("\n") if "x" * 500 in line]) > 0  # Truncated content present
 
 
 @pytest.mark.asyncio

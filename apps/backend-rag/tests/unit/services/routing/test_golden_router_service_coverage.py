@@ -115,7 +115,6 @@ def test_init_with_params():
 @pytest.mark.asyncio
 async def test_get_db_pool():
     """Test getting database pool"""
-
     async def create_pool_mock(*args, **kwargs):
         return AsyncMock()
 
@@ -129,7 +128,6 @@ async def test_get_db_pool():
 @pytest.mark.asyncio
 async def test_get_db_pool_cached():
     """Test getting database pool uses cache"""
-
     async def create_pool_mock(*args, **kwargs):
         return AsyncMock()
 
@@ -144,7 +142,6 @@ async def test_get_db_pool_cached():
 @pytest.mark.asyncio
 async def test_get_db_pool_error():
     """Test getting database pool handles errors"""
-
     async def create_pool_mock(*args, **kwargs):
         raise Exception("Connection failed")
 
@@ -161,11 +158,11 @@ async def test_initialize_empty_routes():
     mock_pool = AsyncMock()
     mock_conn = AsyncMock()
     mock_conn.fetch = AsyncMock(return_value=[])
-
+    
     # Create async context manager
     async def acquire():
         return mock_conn
-
+    
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_context_manager.__aexit__ = AsyncMock(return_value=None)
@@ -196,7 +193,7 @@ async def test_initialize_with_routes():
         "routing_hints": '{"hint": "value"}',
     }[key]
     mock_conn.fetch = AsyncMock(return_value=[mock_row])
-
+    
     # Create async context manager
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -229,7 +226,7 @@ async def test_initialize_routing_hints_not_string():
         "routing_hints": {"hint": "value"},  # Already a dict
     }[key]
     mock_conn.fetch = AsyncMock(return_value=[mock_row])
-
+    
     # Create async context manager
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -414,9 +411,7 @@ async def test_generate_embeddings_background_cache_mismatch():
     with patch("os.path.exists", return_value=True):
         with patch("builtins.open", mock_open(read_data=str(cache_data))):
             with patch("json.load", return_value=cache_data):
-                with patch.object(
-                    embeddings, "generate_embeddings_async", new_callable=AsyncMock
-                ) as mock_gen:
+                with patch.object(embeddings, "generate_embeddings_async", new_callable=AsyncMock) as mock_gen:
                     mock_gen.return_value = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
                     await service._generate_embeddings_background(queries)
 
@@ -434,9 +429,7 @@ async def test_generate_embeddings_background_cache_invalid_json():
     with patch("os.path.exists", return_value=True):
         with patch("builtins.open", mock_open(read_data="invalid json")):
             with patch("json.load", side_effect=ValueError("Invalid JSON")):
-                with patch.object(
-                    embeddings, "generate_embeddings_async", new_callable=AsyncMock
-                ) as mock_gen:
+                with patch.object(embeddings, "generate_embeddings_async", new_callable=AsyncMock) as mock_gen:
                     mock_gen.return_value = [[0.1, 0.2, 0.3]]
                     await service._generate_embeddings_background(queries)
 
@@ -456,9 +449,7 @@ async def test_generate_embeddings_background_cache_generic_exception():
         # Use json.load to raise a generic Exception (not ValueError/TypeError/JSONDecodeError)
         with patch("builtins.open", mock_open(read_data="test")):
             with patch("json.load", side_effect=Exception("Generic error")):
-                with patch.object(
-                    embeddings, "generate_embeddings_async", new_callable=AsyncMock
-                ) as mock_gen:
+                with patch.object(embeddings, "generate_embeddings_async", new_callable=AsyncMock) as mock_gen:
                     mock_gen.return_value = [[0.1, 0.2, 0.3]]
                     with patch("json.dump"):
                         await service._generate_embeddings_background(queries)
@@ -475,9 +466,7 @@ async def test_generate_embeddings_background_fresh():
     queries = ["query1", "query2"]
 
     with patch("os.path.exists", return_value=False):
-        with patch.object(
-            embeddings, "generate_embeddings_async", new_callable=AsyncMock
-        ) as mock_gen:
+        with patch.object(embeddings, "generate_embeddings_async", new_callable=AsyncMock) as mock_gen:
             mock_gen.return_value = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
             with patch("builtins.open", mock_open()):
                 with patch("json.dump"):
@@ -495,9 +484,7 @@ async def test_generate_embeddings_background_sync_fallback():
     queries = ["query1"]
 
     with patch("os.path.exists", return_value=False):
-        with patch.object(
-            embeddings, "generate_embeddings_async", new_callable=AsyncMock
-        ) as mock_async:
+        with patch.object(embeddings, "generate_embeddings_async", new_callable=AsyncMock) as mock_async:
             mock_async.return_value = None  # Returns None
             with patch.object(embeddings, "generate_embeddings", return_value=[[0.1, 0.2, 0.3]]):
                 with patch("asyncio.get_running_loop") as mock_loop:
@@ -519,9 +506,7 @@ async def test_generate_embeddings_background_save_cache_error():
     queries = ["query1"]
 
     with patch("os.path.exists", return_value=False):
-        with patch.object(
-            embeddings, "generate_embeddings_async", new_callable=AsyncMock
-        ) as mock_gen:
+        with patch.object(embeddings, "generate_embeddings_async", new_callable=AsyncMock) as mock_gen:
             mock_gen.return_value = [[0.1, 0.2, 0.3]]
             # json.dump raises a generic Exception (not TypeError/ValueError)
             with patch("builtins.open", mock_open()):
@@ -540,9 +525,7 @@ async def test_generate_embeddings_background_save_cache_type_error():
     queries = ["query1"]
 
     with patch("os.path.exists", return_value=False):
-        with patch.object(
-            embeddings, "generate_embeddings_async", new_callable=AsyncMock
-        ) as mock_gen:
+        with patch.object(embeddings, "generate_embeddings_async", new_callable=AsyncMock) as mock_gen:
             mock_gen.return_value = [[0.1, 0.2, 0.3]]
             with patch("builtins.open", mock_open()):
                 with patch("json.dump", side_effect=TypeError("Not serializable")):
@@ -560,9 +543,7 @@ async def test_generate_embeddings_background_exception():
     queries = ["query1"]
 
     with patch("os.path.exists", return_value=False):
-        with patch.object(
-            embeddings, "generate_embeddings_async", side_effect=RuntimeError("boom")
-        ):
+        with patch.object(embeddings, "generate_embeddings_async", side_effect=RuntimeError("boom")):
             # Should not raise, just log error
             await service._generate_embeddings_background(queries)
 
@@ -576,7 +557,7 @@ async def test_update_usage_stats():
     mock_pool = AsyncMock()
     mock_conn = AsyncMock()
     mock_conn.execute = AsyncMock()
-
+    
     # Create async context manager
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -599,7 +580,7 @@ async def test_update_usage_stats_error():
     mock_pool = AsyncMock()
     mock_conn = AsyncMock()
     mock_conn.execute = AsyncMock(side_effect=Exception("DB error"))
-
+    
     # Create async context manager
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -618,7 +599,7 @@ async def test_add_route():
     mock_pool = AsyncMock()
     mock_conn = AsyncMock()
     mock_conn.execute = AsyncMock()
-
+    
     # Create async context manager
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -647,7 +628,7 @@ async def test_add_route_with_defaults():
     mock_pool = AsyncMock()
     mock_conn = AsyncMock()
     mock_conn.execute = AsyncMock()
-
+    
     # Create async context manager
     mock_context_manager = MagicMock()
     mock_context_manager.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -694,3 +675,4 @@ async def test_close_no_pool():
 
     # Should not raise
     await service.close()
+

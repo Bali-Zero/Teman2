@@ -25,10 +25,10 @@ import type { Practice } from '@/lib/api/crm/crm.types';
 const mockPush = vi.fn();
 const mockRouter = {
   push: mockPush,
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    replace: vi.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+  refresh: vi.fn(),
+  replace: vi.fn(),
 };
 
 vi.mock('next/navigation', () => ({

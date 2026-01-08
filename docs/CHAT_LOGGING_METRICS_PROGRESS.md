@@ -1,37 +1,56 @@
 # Chat Page - Logging & Metrics Progress
 
-**Data**: 2026-01-06  
+**Data**: 2025-01-05  
 **File**: `apps/mouth/src/app/chat/page.tsx`  
-**Righe totali**: ~1800
+**Righe totali**: 1667
 
 ---
 
-## ✅ COMPLETATO (100%)
+## ✅ COMPLETATO
 
-### Logging Aggiunto:
+### Logging Aggiunto (17 punti):
 
 1. **Component Mount/Unmount** ✅
-2. **User Profile** ✅
-3. **Initial Data Load** ✅
-4. **Avatar** ✅
-5. **Image Attachments** ✅
-6. **Image Generation** ✅
-7. **Message Send (Full Flow)** ✅
-   - Start, Chunk (debug), Done (with metadata), Error, Catch block.
-8. **Conversation Persistence** ✅
-   - Save start, success, error.
-9. **Conversations Management** ✅
-   - New chat, Load chat, Delete chat (with confirmations).
-10. **Audio Recording & Transcription** ✅
-    - Start, Stop, Transcribe success/warn/error.
-11. **TTS (Text-to-Speech)** ✅
-    - Start, Completed, Play error, Generation error.
-12. **UI Interactions** ✅
-    - Sidebar open/close, Search docs open/close.
-13. **Clock/Team Status** ✅
-    - Toggle start, success, error.
+   - `logger.componentMount('ChatPage')`
+   - `logger.componentUnmount('ChatPage')`
 
-### Metriche Aggiunte (25+ eventi):
+2. **User Profile** ✅
+   - `logger.debug('Loading user profile')`
+   - `logger.info('User profile loaded from cache')`
+   - `logger.info('User profile loaded from API')`
+   - `logger.error('Failed to load user profile')`
+
+3. **Initial Data Load** ✅
+   - `logger.debug('Loading initial data')`
+   - `logger.info('Initial data loaded successfully')`
+   - `logger.error('Failed to load initial data')`
+
+4. **Avatar** ✅
+   - `logger.debug('Avatar loaded from localStorage')`
+   - `logger.debug('Avatar upload started')`
+   - `logger.warn('Invalid file type for avatar')`
+   - `logger.warn('Avatar file too large')`
+   - `logger.info('Avatar updated successfully')`
+   - `logger.error('Failed to read avatar file')`
+
+5. **Image Attachments** ✅
+   - `logger.debug('Image attachment started')`
+   - `logger.warn('Invalid file type for image attachment')`
+   - `logger.warn('Image file too large')`
+   - `logger.warn('Maximum images limit reached')`
+   - `logger.info('Image attached successfully')`
+   - `logger.error('Failed to read image file')`
+   - `logger.debug('Removing attached image')`
+
+6. **Image Generation** ✅
+   - `logger.info('Image generation requested')`
+
+7. **Message Send (parziale)** ✅
+   - `logger.info('Message send started')`
+   - `logger.error('Message send error')` (in onError callback)
+   - `logger.error('Message send failed')` (in catch block)
+
+### Metriche Aggiunte (10 eventi):
 
 1. `chat_page_mounted` ✅
 2. `chat_profile_load_error` ✅
@@ -42,30 +61,91 @@
 7. `chat_image_removed` ✅
 8. `chat_image_generation_requested` ✅
 9. `chat_message_sent` ✅
-10. `chat_message_received` (con metadata: latency, route, sources) ✅
-11. `chat_conversation_saved` ✅
-12. `chat_new_conversation` ✅
-13. `chat_conversation_loaded` ✅
-14. `chat_conversation_deleted` ✅
-15. `chat_audio_recording_started` ✅
-16. `chat_audio_recording_stopped` ✅
-17. `chat_audio_transcribed` ✅
-18. `chat_tts_started` ✅
-19. `chat_tts_completed` ✅
-20. `chat_tts_error` ✅
-21. `chat_sidebar_opened` ✅
-22. `chat_sidebar_closed` ✅
-23. `chat_search_docs_opened` ✅
-24. `chat_error` ✅
+10. `chat_error` ✅
 
 ---
 
-## 📊 STATISTICHE FINALI
+## ⚠️ DA COMPLETARE
 
-- **Logging points**: ~65 (100% delle funzioni critiche)
-- **Metriche**: ~25 eventi (100% del journey utente)
-- **Stato**: **PRONTA PER PRODUZIONE**
+### Logging Mancante:
+
+1. **handleSend - onDone callback** ⚠️
+   - `logger.info('Message received successfully')`
+   - `logger.debug('Saving conversation')`
+   - `logger.info('Conversation saved successfully')`
+   - `logger.error('Failed to save conversation')`
+
+2. **Conversations** ❌
+   - `handleNewChat`: logging start/success
+   - `handleConversationClick`: logging start/success/error (parziale - c'è error)
+   - `handleDeleteConversation`: logging start/success/error
+
+3. **Audio Recording** ⚠️
+   - `handleMicClick`: logging start/stop/error (parziale - c'è error handling ma non logging)
+   - Audio transcription: logging già presente (debug/error)
+   - Audio validation: logging aggiunto
+
+4. **TTS** ❌
+   - `handleTTS`: logging start/success/error
+   - TTS cleanup: logging cleanup
+
+5. **UI Interactions** ❌
+   - Sidebar: open/close logging
+   - Search docs: open/close logging
+   - Toast: show (debug)
+
+6. **Clock/Team Status** ❌
+   - Clock status load: logging
+   - Clock toggle: logging
+
+### Metriche Mancanti:
+
+1. **Message Events** ⚠️
+   - `chat_message_received` ❌ (onDone callback)
+   - `chat_conversation_saved` ❌ (saveConversation)
+
+2. **Conversation Events** ❌
+   - `chat_new_conversation`
+   - `chat_conversation_loaded`
+   - `chat_conversation_deleted`
+
+3. **Audio Events** ❌
+   - `chat_audio_recording_started`
+   - `chat_audio_recording_stopped`
+   - `chat_audio_transcribed`
+
+4. **TTS Events** ❌
+   - `chat_tts_started`
+   - `chat_tts_completed`
+   - `chat_tts_error`
+
+5. **UI Events** ❌
+   - `chat_sidebar_opened`
+   - `chat_sidebar_closed`
+   - `chat_search_docs_opened`
+
+---
+
+## 📊 STATISTICHE
+
+- **Logging points aggiunti**: ~17
+- **Logging points totali necessari**: ~60
+- **Coverage logging**: ~28%
+- **Metriche aggiunte**: 10
+- **Metriche totali necessarie**: ~25
+- **Coverage metriche**: ~40%
+
+---
+
+## 🎯 PROSSIMI PASSI
+
+1. Completare `handleSend` onDone callback (logging + metriche)
+2. Aggiungere logging/metriche per conversations
+3. Aggiungere logging/metriche per audio
+4. Aggiungere logging/metriche per TTS
+5. Aggiungere logging/metriche per UI interactions
 
 ---
 
 **Fine Progress Report**
+

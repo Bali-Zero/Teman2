@@ -612,7 +612,9 @@ def test_update_preferences_error(monkeypatch):
             raise Exception("Service error")
 
     client = _make_client(module, client_override={"client_id": 1}, portal_service=_Service(None))
-    response = client.patch("/api/portal/settings", json={"email_notifications": True})
+    response = client.patch(
+        "/api/portal/settings", json={"email_notifications": True}
+    )
     assert response.status_code == 500
 
 

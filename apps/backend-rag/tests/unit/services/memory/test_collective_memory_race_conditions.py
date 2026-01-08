@@ -109,3 +109,4 @@ async def test_concurrent_contribution_same_fact(test_db_pool):
     # - SELECT FOR UPDATE prevented race conditions
     # - All sources added atomically
     # - Promotion happened exactly once
+

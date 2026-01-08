@@ -587,4 +587,3 @@ Per ogni area critica:
 
 
 
-
