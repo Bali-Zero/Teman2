@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -31,7 +32,10 @@ OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "kbli_extraction")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Numero di agenti paralleli (ridotto per evitare rate limits)
-NUM_AGENTS = 5  # Ridotto da 20 a 5 per evitare sovraccarico API
+NUM_AGENTS = 3  # Ridotto a 3 per maggiore stabilità e meno sovraccarico API
+
+# Salvataggio intermedio ogni N pagine processate
+CHECKPOINT_INTERVAL = 50  # Salva checkpoint ogni 50 pagine processate
 
 # File Lampiran I da analizzare (solo quelli con tabelle KBLI)
 LAMPIRAN_I_FILES = [
@@ -215,18 +219,68 @@ async def extract_kbli_from_page(
     return []
 
 
+async def save_checkpoint(
+    results: Dict[str, List],
+    progress: Dict[str, int],
+    all_pages: List[Tuple],
+    checkpoint_type: str = "intermediate"
+):
+    """
+    Salva un checkpoint intermedio dei risultati.
+    """
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        checkpoint_file = os.path.join(OUTPUT_DIR, f"kbli_checkpoint_{checkpoint_type}_{timestamp}.json")
+        
+        # Consolida risultati parziali
+        consolidated = {}
+        for code, entries in results.items():
+            if entries:
+                best_entry = max(entries, key=lambda e: sum(1 for v in e.values() if v))
+                consolidated[code] = best_entry
+        
+        total_processed = sum(stats.get("processed", 0) for stats in progress.values())
+        total_extracted = sum(stats.get("extracted", 0) for stats in progress.values())
+        
+        checkpoint_data = {
+            "checkpoint_type": checkpoint_type,
+            "generated_at": datetime.now().isoformat(),
+            "source": "Lampiran I PP 28/2025",
+            "total_pages": len(all_pages),
+            "total_pages_processed": total_processed,
+            "num_agents": NUM_AGENTS,
+            "total_kbli_extracted": len(consolidated),
+            "total_extractions": sum(len(entries) for entries in results.values()),
+            "progress": progress,
+            "kbli_data": consolidated
+        }
+        
+        with open(checkpoint_file, "w", encoding="utf-8") as f:
+            json.dump(checkpoint_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"💾 Checkpoint salvato: {checkpoint_file} ({len(consolidated)} KBLI, {total_processed}/{len(all_pages)} pagine)", flush=True)
+        return checkpoint_file
+    except Exception as e:
+        print(f"⚠️  Errore salvataggio checkpoint: {e}", flush=True)
+        return None
+
+
 async def agent_worker(
     agent_id: int,
     pages: List[Tuple[str, str, int]],
     vision_service: PDFVisionService,
     results: Dict[str, List],
-    progress: Dict[str, int]
+    progress: Dict[str, int],
+    all_pages: List[Tuple],
+    checkpoint_lock: asyncio.Lock,
+    last_checkpoint: Dict[str, int]
 ):
     """
     Worker per un agente: processa le sue pagine assegnate.
     """
+    start_time = time.time()
     msg = f"🤖 Agent {agent_id} iniziato: {len(pages)} pagine"
-    print(msg, flush=True)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
     
     processed = 0
     extracted = 0
@@ -249,22 +303,47 @@ async def agent_worker(
             
             processed += 1
             
+            # Log ogni 10 pagine
             if processed % 10 == 0:
-                msg = f"  [Agent {agent_id}] Processate {processed}/{len(pages)} pagine, estratti {extracted} KBLI"
+                elapsed = time.time() - start_time
+                rate = processed / elapsed if elapsed > 0 else 0
+                eta_seconds = (len(pages) - processed) / rate if rate > 0 else 0
+                eta_minutes = eta_seconds / 60
+                msg = f"[{datetime.now().strftime('%H:%M:%S')}] [Agent {agent_id}] Processate {processed}/{len(pages)} pagine ({processed*100//len(pages)}%), estratti {extracted} KBLI | Rate: {rate:.2f} pag/min | ETA: {eta_minutes:.1f} min"
                 print(msg, flush=True)
             
+            # Aggiorna progress durante l'esecuzione
+            progress[f"agent_{agent_id}"] = {
+                "processed": processed,
+                "extracted": extracted
+            }
+            
+            # Checkpoint periodico (ogni CHECKPOINT_INTERVAL pagine totali processate)
+            async with checkpoint_lock:
+                total_processed = sum(stats.get("processed", 0) for stats in progress.values())
+                last_total = last_checkpoint.get("total", 0)
+                
+                if total_processed - last_total >= CHECKPOINT_INTERVAL:
+                    await save_checkpoint(results, progress, all_pages, "intermediate")
+                    last_checkpoint["total"] = total_processed
+            
             # Rate limiting: pausa più lunga per evitare sovraccarico API
-            await asyncio.sleep(1.0)  # Aumentato da 0.1s a 1s
+            await asyncio.sleep(1.0)  # 1 secondo tra richieste
             
         except Exception as e:
-            print(f"  [Agent {agent_id}] ❌ Errore pagina {page_num}: {e}")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] [Agent {agent_id}] ❌ Errore pagina {page_num}: {e}", flush=True)
             processed += 1
     
     progress[f"agent_{agent_id}"] = {
         "processed": processed,
-        "extracted": extracted
+        "extracted": extracted,
+        "start_time": start_time,
+        "end_time": time.time(),
+        "duration_seconds": time.time() - start_time
     }
-    msg = f"✅ Agent {agent_id} completato: {processed} pagine, {extracted} KBLI estratti"
+    
+    elapsed_total = time.time() - start_time
+    msg = f"[{datetime.now().strftime('%H:%M:%S')}] ✅ Agent {agent_id} completato: {processed} pagine, {extracted} KBLI estratti in {elapsed_total/60:.1f} minuti"
     print(msg, flush=True)
 
 
@@ -297,9 +376,16 @@ async def main():
     # Risultati condivisi
     results = {}  # {kode: [kbli_entries]}
     progress = {}  # {agent_id: {processed, extracted}}
+    checkpoint_lock = asyncio.Lock()
+    last_checkpoint = {"total": 0}
+    
+    # Salva checkpoint iniziale
+    print("\n💾 Salvataggio checkpoint iniziale...")
+    await save_checkpoint(results, progress, all_pages, "start")
     
     # Avvia agenti
     print(f"\n🚀 Avvio {NUM_AGENTS} agenti paralleli...")
+    start_time = time.time()
     tasks = []
     
     for agent_id in range(NUM_AGENTS):
@@ -309,12 +395,18 @@ async def main():
                 page_chunks[agent_id],
                 vision_service,
                 results,
-                progress
+                progress,
+                all_pages,
+                checkpoint_lock,
+                last_checkpoint
             )
             tasks.append(task)
     
     # Esegui tutti gli agenti in parallelo
     await asyncio.gather(*tasks)
+    
+    elapsed_total = time.time() - start_time
+    print(f"\n⏱️  Tempo totale estrazione: {elapsed_total/60:.1f} minuti ({elapsed_total/3600:.2f} ore)")
     
     # Consolida risultati
     print("\n" + "=" * 70)
@@ -334,9 +426,11 @@ async def main():
     print(f"📊 Totale estrazioni: {total_extracted}")
     print(f"📊 Media estrazioni per KBLI: {total_extracted/len(consolidated):.2f}")
     
-    # Salva risultati
+    # Salva risultati finali
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = os.path.join(OUTPUT_DIR, f"kbli_complete_from_lampiran_{timestamp}.json")
+    
+    total_time = sum(stats.get("duration_seconds", 0) for stats in progress.values())
     
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump({
@@ -346,11 +440,14 @@ async def main():
             "num_agents": NUM_AGENTS,
             "total_kbli_extracted": len(consolidated),
             "total_extractions": total_extracted,
+            "total_time_seconds": elapsed_total,
+            "total_time_minutes": elapsed_total / 60,
             "progress": progress,
             "kbli_data": consolidated
         }, f, indent=2, ensure_ascii=False)
     
-    print(f"\n📁 Risultati salvati in: {output_file}")
+    print(f"\n📁 Risultati finali salvati in: {output_file}")
+    print(f"⏱️  Tempo totale: {elapsed_total/60:.1f} minuti")
     
     # Statistiche per agente
     print("\n📊 Statistiche per agente:")

@@ -38,7 +38,7 @@ class DummyModel:
             raise self._error
         self.last_contents = contents
         self.last_config = generation_config
-        return SimpleNamespace(text=self.text)
+        return SimpleNamespace(text=self.text, redis_url='redis://localhost:6379')
 
 
 class DummyValidator:
@@ -47,7 +47,7 @@ class DummyValidator:
         self.violations = violations or []
 
     def validate(self, raw_answer, context):
-        return SimpleNamespace(validated=self.validated, violations=self.violations)
+        return SimpleNamespace(validated=self.validated, violations=self.violations, redis_url='redis://localhost:6379')
 
 
 # Setup mock modules
@@ -60,7 +60,7 @@ validator_module = types.ModuleType("services.response.validator")
 validator_module.ZantaraResponseValidator = DummyValidator
 
 google_services_module = types.ModuleType("services.oracle.oracle_google_services")
-google_services_module.google_services = SimpleNamespace(get_gemini_model=lambda *_a, **_k: None)
+google_services_module.google_services = SimpleNamespace(get_gemini_model=lambda *_a, **_k: None, redis_url='redis://localhost:6379')
 
 llm_pkg = types.ModuleType("llm")
 llm_adapters_pkg = types.ModuleType("llm.adapters")

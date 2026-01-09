@@ -386,6 +386,44 @@ intel_approval_rate = Gauge(
     ["intel_type"],
 )
 
+# Intelligence Center Advanced Metrics (Jan 2026 - Enhanced Features)
+intel_bulk_operations_total = Counter(
+    "zantara_intel_bulk_operations_total",
+    "Total bulk operations performed",
+    ["intel_type", "operation"],  # operation: approve/reject/publish
+)
+intel_bulk_operation_items = Histogram(
+    "zantara_intel_bulk_operation_items",
+    "Number of items processed in bulk operations",
+    ["intel_type", "operation"],
+    buckets=[1, 5, 10, 25, 50, 100],
+)
+intel_filter_usage_total = Counter(
+    "zantara_intel_filter_usage_total",
+    "Filter usage statistics",
+    ["intel_type", "filter_type"],  # filter_type: all/NEW/UPDATED/critical
+)
+intel_sort_usage_total = Counter(
+    "zantara_intel_sort_usage_total",
+    "Sort usage statistics",
+    ["intel_type", "sort_type"],  # sort_type: date-desc/date-asc/title-asc/title-desc
+)
+intel_search_queries_total = Counter(
+    "zantara_intel_search_queries_total",
+    "Search query usage",
+    ["intel_type"],
+)
+intel_analytics_queries_total = Counter(
+    "zantara_intel_analytics_queries_total",
+    "Analytics dashboard queries",
+    ["period_days"],
+)
+intel_user_actions_total = Counter(
+    "zantara_intel_user_actions_total",
+    "User action tracking",
+    ["intel_type", "action"],  # action: preview/approve/reject/publish/select
+)
+
 memory_orchestrator_healthy_total = Counter(
     "zantara_memory_orchestrator_healthy_total",
     "Number of times memory orchestrator initialized in healthy state",

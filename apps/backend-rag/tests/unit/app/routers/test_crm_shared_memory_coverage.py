@@ -68,19 +68,26 @@ def _load_module(monkeypatch):
         def error(self, *_args, **_kwargs):
             pass
 
-    monkeypatch.setitem(sys.modules, "core.cache", types.SimpleNamespace(cached=cached))
+    monkeypatch.setitem(sys.modules, "core.cache", types.SimpleNamespace(cached=cached, redis_url='redis://localhost:6379'))
     monkeypatch.setitem(
         sys.modules,
         "app.utils.error_handlers",
-        types.SimpleNamespace(handle_database_error=handle_database_error),
+        types.SimpleNamespace(handle_database_error=handle_database_error, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "app.utils.logging_utils",
-        types.SimpleNamespace(get_logger=lambda _name: _Logger()),
+        types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
     )
+    def get_current_user():
+        return {"email": "test@example.com", "role": "admin"}
+    
     monkeypatch.setitem(
-        sys.modules, "app.dependencies", types.SimpleNamespace(get_database_pool=lambda: None)
+        sys.modules, "app.dependencies", types.SimpleNamespace(
+            get_database_pool=lambda: None,
+            get_current_user=get_current_user,
+            redis_url='redis://localhost:6379'
+        )
     )
 
     backend_path = Path(__file__).resolve().parents[4] / "backend"

@@ -47,12 +47,12 @@ def _load_module(monkeypatch, ingest_results=None, ingest_error=None, stats=None
     monkeypatch.setitem(
         sys.modules,
         "services.ingestion.ingestion_service",
-        types.SimpleNamespace(IngestionService=_IngestionService),
+        types.SimpleNamespace(IngestionService=_IngestionService, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "core.qdrant_db",
-        types.SimpleNamespace(QdrantClient=_QdrantClient),
+        types.SimpleNamespace(QdrantClient=_QdrantClient, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

@@ -65,7 +65,7 @@ def _load_module(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "app.dependencies",
-        types.SimpleNamespace(get_database_pool=get_database_pool),
+        types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

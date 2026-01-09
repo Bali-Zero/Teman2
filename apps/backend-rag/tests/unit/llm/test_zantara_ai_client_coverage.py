@@ -29,6 +29,7 @@ class DummyPromptManager:
 class DummyRetryHandler:
     def __init__(self, **_kwargs):
         self.calls = []
+        self.max_retries = 3
 
     async def execute_with_retry(self, func, operation_name=""):
         async for chunk in func():
@@ -74,6 +75,7 @@ def _load_client_module(
         environment=env,
         zantara_ai_cost_input=0.15,
         zantara_ai_cost_output=0.6,
+        redis_url='redis://localhost:6379'
     )
 
     llm_module = types.ModuleType("llm")
@@ -266,6 +268,12 @@ async def test_stream_exception_fallback():
     client = module.ZantaraAIClient(api_key="key")
 
     class DummyRetry(DummyRetryHandler):
+        def __init__(self):
+            super().__init__()
+            self.max_retries = 3
+            self.base_delay = 2.0
+            self.backoff_factor = 2
+
         async def execute_with_retry(self, func, operation_name=""):
             if False:
                 yield ""

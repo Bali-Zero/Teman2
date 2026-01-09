@@ -16,10 +16,10 @@ def _build_module(monkeypatch, embedder_stub, qdrant_stub):
     monkeypatch.setitem(
         sys.modules,
         "core.embeddings",
-        types.SimpleNamespace(create_embeddings_generator=lambda: embedder_stub),
+        types.SimpleNamespace(create_embeddings_generator=lambda: embedder_stub, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
-        sys.modules, "core.qdrant_db", types.SimpleNamespace(QdrantClient=qdrant_stub)
+        sys.modules, "core.qdrant_db", types.SimpleNamespace(QdrantClient=qdrant_stub, redis_url='redis://localhost:6379')
     )
 
     if module_name in sys.modules:

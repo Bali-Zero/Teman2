@@ -84,10 +84,10 @@ def _load_module(monkeypatch):
     backend_path = Path(__file__).resolve().parents[4] / "backend"
 
     monkeypatch.setitem(
-        sys.modules, "services.portal", types.SimpleNamespace(PortalService=_PortalService)
+        sys.modules, "services.portal", types.SimpleNamespace(PortalService=_PortalService, redis_url='redis://localhost:6379')
     )
     monkeypatch.setitem(
-        sys.modules, "app.dependencies", types.SimpleNamespace(get_database_pool=lambda: None)
+        sys.modules, "app.dependencies", types.SimpleNamespace(get_database_pool=lambda: None, redis_url='redis://localhost:6379')
     )
 
     class _Logger:
@@ -97,7 +97,7 @@ def _load_module(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "app.utils.logging_utils",
-        types.SimpleNamespace(get_logger=lambda _name: _Logger()),
+        types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.intel_approvers import get_required_votes, get_team_config
+from app.dependencies import get_orchestrator
 from app.metrics import (
     intel_items_approved,
     intel_items_rejected,
@@ -23,7 +24,7 @@ from app.metrics import (
     intel_voting_duration,
 )
 from services.integrations.telegram_bot_service import telegram_bot
-from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
+from services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +32,6 @@ router = APIRouter(
     prefix="/api/telegram",
     tags=["telegram"],
 )
-
-# Lazy-loaded orchestrator
-_orchestrator: AgenticRAGOrchestrator | None = None
-
-
-async def get_orchestrator(request: Request) -> AgenticRAGOrchestrator:
-    """Get or create the RAG orchestrator."""
-    global _orchestrator
-    if _orchestrator is None:
-        db_pool = getattr(request.app.state, "db_pool", None)
-        search_service = getattr(request.app.state, "search_service", None)
-        _orchestrator = create_agentic_rag(retriever=search_service, db_pool=db_pool)
-    return _orchestrator
 
 
 class TelegramUpdate(BaseModel):
@@ -473,8 +461,8 @@ async def process_telegram_message(
         # 1. Typing indicator
         await telegram_bot.send_chat_action(chat_id, "typing")
 
-        # 2. Get orchestrator
-        orchestrator = await get_orchestrator(request)
+        # 2. Get orchestrator (sync function from app.dependencies)
+        orchestrator = get_orchestrator(request)
 
         # Create unique user_id for Telegram users
         telegram_user_id = f"telegram_{chat_id}"

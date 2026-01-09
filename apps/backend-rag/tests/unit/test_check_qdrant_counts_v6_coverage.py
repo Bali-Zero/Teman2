@@ -8,11 +8,11 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_check_stats_success(capsys):
-    info = SimpleNamespace(points_count=10, status="green")
+    info = SimpleNamespace(points_count=10, status="green", redis_url='redis://localhost:6379')
     client = AsyncMock()
     client.get_collection = AsyncMock(return_value=info)
 
-    settings = SimpleNamespace(QDRANT_URL="http://qdrant", QDRANT_API_KEY="secret")
+    settings = SimpleNamespace(QDRANT_URL="http://qdrant", QDRANT_API_KEY="secret", redis_url='redis://localhost:6379')
     with patch("check_qdrant_counts_v6.settings", settings):
         with patch("check_qdrant_counts_v6.AsyncQdrantClient", return_value=client):
             await checker.check_stats()
@@ -26,7 +26,7 @@ async def test_check_stats_success(capsys):
 
 @pytest.mark.asyncio
 async def test_check_stats_collection_error(capsys):
-    ok_info = SimpleNamespace(points_count=1, status="green")
+    ok_info = SimpleNamespace(points_count=1, status="green", redis_url='redis://localhost:6379')
     side_effects = [
         ok_info,
         RuntimeError("missing"),
@@ -39,7 +39,7 @@ async def test_check_stats_collection_error(capsys):
     client = AsyncMock()
     client.get_collection = AsyncMock(side_effect=side_effects)
 
-    settings = SimpleNamespace(QDRANT_URL="http://qdrant", QDRANT_API_KEY="secret")
+    settings = SimpleNamespace(QDRANT_URL="http://qdrant", QDRANT_API_KEY="secret", redis_url='redis://localhost:6379')
     with patch("check_qdrant_counts_v6.settings", settings):
         with patch("check_qdrant_counts_v6.AsyncQdrantClient", return_value=client):
             await checker.check_stats()
@@ -50,7 +50,7 @@ async def test_check_stats_collection_error(capsys):
 
 @pytest.mark.asyncio
 async def test_check_stats_fatal_error(capsys):
-    settings = SimpleNamespace(QDRANT_URL="http://qdrant", QDRANT_API_KEY="secret")
+    settings = SimpleNamespace(QDRANT_URL="http://qdrant", QDRANT_API_KEY="secret", redis_url='redis://localhost:6379')
     with patch("check_qdrant_counts_v6.settings", settings):
         with patch(
             "check_qdrant_counts_v6.AsyncQdrantClient",

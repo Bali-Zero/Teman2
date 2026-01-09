@@ -34,6 +34,43 @@ export interface PublishResponse {
   collection: string;
 }
 
+export interface SystemMetrics {
+  agent_status: "active" | "idle" | "error";
+  last_run: string | null;
+  items_processed_today: number;
+  avg_response_time_ms: number;
+  qdrant_health: "healthy" | "degraded" | "down";
+  next_scheduled_run: string | null;
+  uptime_percentage: number;
+}
+
+export interface IntelligenceAnalytics {
+  period_days: number;
+  summary: {
+    total_processed: number;
+    total_approved: number;
+    total_rejected: number;
+    total_published: number;
+    approval_rate: number;
+    rejection_rate: number;
+  };
+  daily_trends: Array<{
+    date: string;
+    processed: number;
+    approved: number;
+    rejected: number;
+    published: number;
+  }>;
+  type_breakdown: {
+    visa: { processed: number; approved: number; rejected: number };
+    news: { processed: number; approved: number; rejected: number; published: number };
+  };
+  detection_type_breakdown: {
+    NEW: number;
+    UPDATED: number;
+  };
+}
+
 export const intelligenceApi = {
   /**
    * Get pending items from staging
@@ -173,6 +210,64 @@ export const intelligenceApi = {
       return response;
     } catch (error) {
       logger.apiError(endpoint, error as Error, { itemType: type, itemId: id, action: 'publish' });
+      throw error;
+    }
+  },
+
+  /**
+   * Get system metrics for System Pulse dashboard
+   */
+  getMetrics: async (): Promise<SystemMetrics> => {
+    const endpoint = `/api/intel/metrics`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'GET', { action: 'get_metrics' });
+
+    try {
+      const response = await api.request<SystemMetrics>(endpoint);
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        action: 'get_metrics',
+        metadata: {
+          agent_status: response.agent_status,
+          qdrant_health: response.qdrant_health,
+          items_processed: response.items_processed_today,
+        },
+      });
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { action: 'get_metrics' });
+      throw error;
+    }
+  },
+
+  /**
+   * Get historical analytics and trends
+   */
+  getAnalytics: async (days: number = 30): Promise<IntelligenceAnalytics> => {
+    const endpoint = `/api/intel/analytics?days=${days}`;
+    const startTime = performance.now();
+
+    logger.apiCall(endpoint, 'GET', { action: 'get_analytics', metadata: { days } });
+
+    try {
+      const response = await api.request<IntelligenceAnalytics>(endpoint);
+      const responseTime = performance.now() - startTime;
+
+      logger.apiSuccess(endpoint, responseTime, {
+        action: 'get_analytics',
+        days,
+        metadata: {
+          total_processed: response.summary.total_processed,
+          approval_rate: response.summary.approval_rate,
+        },
+      });
+
+      return response;
+    } catch (error) {
+      logger.apiError(endpoint, error as Error, { action: 'get_analytics', days });
       throw error;
     }
   },

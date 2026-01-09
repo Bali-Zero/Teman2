@@ -1,6 +1,7 @@
 import type { IApiClient } from '../types/api-client.types';
 import { UserProfile } from '@/types';
 import type { BackendLoginResponse, LoginResponse } from './auth.types';
+import { logger } from '@/lib/logger';
 
 /**
  * Authentication API methods
@@ -9,12 +10,17 @@ export class AuthApi {
   constructor(private client: IApiClient) {}
 
   async login(email: string, pin: string): Promise<LoginResponse> {
-    console.log('[AUTH] 🔐 Login attempt started', { email, pinLength: pin.length });
-    console.log('[AUTH] 📱 Device info:', {
-      userAgent: navigator.userAgent,
-      platform: navigator.platform,
-      cookieEnabled: navigator.cookieEnabled,
-      storageAvailable: typeof localStorage !== 'undefined',
+    logger.debug('Login attempt started', {
+      component: 'AuthApi',
+      action: 'login',
+      metadata: {
+        email,
+        pinLength: pin.length,
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        cookieEnabled: navigator.cookieEnabled,
+        storageAvailable: typeof localStorage !== 'undefined',
+      },
     });
 
     try {
@@ -23,30 +29,48 @@ export class AuthApi {
         body: JSON.stringify({ email, pin }),
       });
 
-      console.log('[AUTH] ✅ API response received:', {
-        success: response.success,
-        hasData: !!response.data,
-        hasToken: !!response.data?.token,
-        message: response.message,
+      logger.debug('API response received', {
+        component: 'AuthApi',
+        action: 'login_response',
+        metadata: {
+          success: response.success,
+          hasData: !!response.data,
+          hasToken: !!response.data?.token,
+          message: response.message,
+        },
       });
 
       if (!response.success || !response.data) {
-        console.error('[AUTH] ❌ Login failed - invalid response:', response.message);
+        logger.error('Login failed - invalid response', {
+          component: 'AuthApi',
+          action: 'login_failed',
+          metadata: { message: response.message },
+        });
         throw new Error(response.message || 'Login failed');
       }
 
       // Save CSRF token from response (cookie is also set by backend)
       if (response.data.csrfToken) {
-        console.log('[AUTH] 🔑 Setting CSRF token');
+        logger.debug('Setting CSRF token', {
+          component: 'AuthApi',
+          action: 'set_csrf',
+        });
         this.client.setCsrfToken(response.data.csrfToken);
       }
 
       // Save token to localStorage (optional enhancement - httpOnly cookies are primary auth)
-      console.log('[AUTH] 💾 Attempting to save token to localStorage (optional)');
+      logger.debug('Saving token to localStorage (optional)', {
+        component: 'AuthApi',
+        action: 'save_token',
+      });
       this.client.setToken(response.data.token);
       this.client.setUserProfile(response.data.user);
 
-      console.log('[AUTH] 🎉 Login successful! (Auth via httpOnly cookies)');
+      logger.info('Login successful', {
+        component: 'AuthApi',
+        action: 'login_success',
+        user: response.data.user.email,
+      });
 
       // Return frontend-friendly format
       return {
@@ -55,11 +79,13 @@ export class AuthApi {
         user: response.data.user,
       };
     } catch (error) {
-      console.error('[AUTH] 💥 Login error:', {
-        error,
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+      logger.error('Login error', {
+        component: 'AuthApi',
+        action: 'login_error',
+        metadata: {
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      }, error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }

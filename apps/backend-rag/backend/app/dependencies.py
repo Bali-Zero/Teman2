@@ -306,3 +306,103 @@ def get_cache(request: Request) -> CacheService:
 
     # Fallback to singleton (for backward compatibility)
     return get_cache_service()
+
+
+# ============================================================================
+# ORCHESTRATOR DEPENDENCIES
+# ============================================================================
+
+# Global orchestrator instance (lazy-loaded)
+_agentic_rag_orchestrator = None
+
+
+def get_orchestrator(request: Request):
+    """
+    Dependency injection for AgenticRAGOrchestrator.
+
+    Provides singleton orchestrator instance to all RAG endpoints.
+    Replaces global variable pattern used in agentic_rag.py and telegram.py.
+
+    Args:
+        request: FastAPI Request object to access app.state
+
+    Returns:
+        AgenticRAGOrchestrator: Singleton orchestrator instance
+
+    Note:
+        Uses lazy initialization to avoid circular imports at module load time.
+    """
+    global _agentic_rag_orchestrator
+
+    if _agentic_rag_orchestrator is None:
+        from services.rag.agentic import create_agentic_rag
+
+        db_pool = getattr(request.app.state, "db_pool", None)
+        search_service = getattr(request.app.state, "search_service", None)
+        _agentic_rag_orchestrator = create_agentic_rag(
+            retriever=search_service, db_pool=db_pool
+        )
+
+    return _agentic_rag_orchestrator
+
+
+def get_optional_database_pool(request: Request):
+    """
+    Get database pool with graceful degradation.
+
+    Unlike get_database_pool(), this returns None instead of raising
+    HTTPException when database is unavailable. Use for endpoints that
+    can work with reduced functionality.
+
+    Args:
+        request: FastAPI Request object to access app.state
+
+    Returns:
+        asyncpg.Pool | None: The pool, or None if unavailable
+    """
+    try:
+        return get_database_pool(request)
+    except HTTPException as exc:
+        if exc.status_code == 503:
+            return None
+        raise
+
+
+# ============================================================================
+# QDRANT CLIENT DEPENDENCIES
+# ============================================================================
+
+
+def get_retriever(request: Request):
+    """
+    Dependency injection for Qdrant retriever client.
+
+    Provides access to the shared Qdrant client instance.
+    Replaces direct QdrantClient() instantiation in routers.
+
+    Args:
+        request: FastAPI Request object to access app.state
+
+    Returns:
+        The retriever instance with Qdrant client
+
+    Raises:
+        HTTPException: 503 if Qdrant not available
+    """
+    retriever = getattr(request.app.state, "retriever", None)
+    if retriever is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "Vector database unavailable",
+                "message": "Qdrant retriever not initialized.",
+                "retry_after": 30,
+                "service": "qdrant",
+                "troubleshooting": [
+                    "Verify QDRANT_URL is configured",
+                    "Check Qdrant server is running",
+                    "Review application startup logs",
+                ],
+            },
+        )
+    return retriever

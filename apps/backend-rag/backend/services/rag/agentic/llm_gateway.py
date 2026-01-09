@@ -44,6 +44,7 @@ from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from llm.genai_client import GENAI_AVAILABLE, GenAIClient, get_genai_client, types
 
 from app.core.circuit_breaker import CircuitBreaker
+from app.core.constants import HttpTimeoutConstants
 from app.core.error_classification import ErrorClassifier, get_error_context
 from app.metrics import metrics_collector
 from app.utils.tracing import set_span_attribute, set_span_status, trace_span
@@ -141,7 +142,7 @@ class LLMGateway:
         # Circuit breaker configuration using CircuitBreaker class
         self._circuit_breakers: dict[str, CircuitBreaker] = {}
         self._circuit_breaker_threshold = 5
-        self._circuit_breaker_timeout = 60.0  # seconds
+        self._circuit_breaker_timeout = HttpTimeoutConstants.CIRCUIT_BREAKER_TIMEOUT  # seconds
         self._max_fallback_depth = 3
         self._max_fallback_cost_usd = 0.10  # Max $0.10 per query
 

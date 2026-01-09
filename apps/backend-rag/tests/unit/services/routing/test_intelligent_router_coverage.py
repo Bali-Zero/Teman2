@@ -10,8 +10,8 @@ import pytest
 class DummySuggestion:
     def __init__(self, suggestion_id="id1"):
         self.suggestion_id = suggestion_id
-        self.suggestion_type = SimpleNamespace(value="type")
-        self.priority = SimpleNamespace(value="high")
+        self.suggestion_type = SimpleNamespace(value="type", redis_url='redis://localhost:6379')
+        self.priority = SimpleNamespace(value="high", redis_url='redis://localhost:6379')
         self.title = "Title"
         self.description = "Desc"
         self.action_label = "Act"
@@ -147,7 +147,7 @@ async def test_route_chat_with_dict_and_suggestions():
 
 @pytest.mark.asyncio
 async def test_route_chat_core_result_no_suggestions():
-    result = SimpleNamespace(answer="ok", sources=[], routing_stats=None)
+    result = SimpleNamespace(answer="ok", sources=[], routing_stats=None, redis_url='redis://localhost:6379')
     orchestrator = DummyOrchestrator(result=result)
     suggestion_service = DummyContextSuggestionService()
 

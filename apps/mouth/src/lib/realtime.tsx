@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { logger } from './logger';
 
 interface WebSocketMessage {
   type: 'dashboard_update' | 'user_presence' | 'case_update' | 'email_update' | 'system_alert';
@@ -57,7 +58,10 @@ class RealtimeService {
       this.ws = new WebSocket(`${wsUrl}?userId=${userId}&userName=${encodeURIComponent(userName)}`);
 
       this.ws.onopen = () => {
-        console.log('🔌 WebSocket connected');
+        logger.info('WebSocket connected', {
+          component: 'RealtimeService',
+          action: 'connect',
+        });
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
@@ -69,24 +73,36 @@ class RealtimeService {
           const message: WebSocketMessage = JSON.parse(event.data);
           this.handleMessage(message);
         } catch (error) {
-          console.error('❌ Failed to parse WebSocket message:', error);
+          logger.error('Failed to parse WebSocket message', {
+            component: 'RealtimeService',
+            action: 'parse_message',
+          }, error instanceof Error ? error : new Error(String(error)));
         }
       };
 
       this.ws.onclose = () => {
-        console.log('🔌 WebSocket disconnected');
+        logger.info('WebSocket disconnected', {
+          component: 'RealtimeService',
+          action: 'disconnect',
+        });
         this.isConnecting = false;
         this.stopHeartbeat();
         this.scheduleReconnect();
       };
 
       this.ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
+        logger.error('WebSocket error', {
+          component: 'RealtimeService',
+          action: 'websocket_error',
+        }, error instanceof Error ? error : new Error(String(error)));
         this.isConnecting = false;
       };
 
     } catch (error) {
-      console.error('❌ Failed to connect WebSocket:', error);
+      logger.error('Failed to connect WebSocket', {
+        component: 'RealtimeService',
+        action: 'connect_error',
+      }, error instanceof Error ? error : new Error(String(error)));
       this.isConnecting = false;
       this.scheduleReconnect();
     }
@@ -182,13 +198,26 @@ class RealtimeService {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
       
-      console.log(`🔄 Reconnecting WebSocket in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      logger.debug('Reconnecting WebSocket', {
+        component: 'RealtimeService',
+        action: 'reconnect',
+        metadata: {
+          delay,
+          attempt: this.reconnectAttempts,
+        },
+      });
       
       setTimeout(() => {
         this.connect(this.getCurrentUserId(), this.getCurrentUserName());
       }, delay);
     } else {
-      console.error('❌ Max reconnection attempts reached');
+      logger.error('Max reconnection attempts reached', {
+        component: 'RealtimeService',
+        action: 'max_reconnect',
+        metadata: {
+          maxAttempts: this.maxReconnectAttempts,
+        },
+      });
     }
   }
 
@@ -211,19 +240,31 @@ class RealtimeService {
   // Update user presence in local state
   private updateUserPresence(data: UserPresence): void {
     // This would typically update a global state management store
-    console.log('👥 User presence updated:', data);
+    logger.debug('User presence updated', {
+      component: 'RealtimeService',
+      action: 'presence_update',
+      metadata: data,
+    });
   }
 
   // Handle dashboard updates from other users
   private handleDashboardUpdate(data: DashboardUpdate): void {
-    console.log('🔄 Dashboard update received:', data);
+    logger.debug('Dashboard update received', {
+      component: 'RealtimeService',
+      action: 'dashboard_update',
+      metadata: data,
+    });
     // Trigger refresh of relevant data
     this.notifyDashboardUpdate(data);
   }
 
   // Show system alerts
   private showSystemAlert(data: any): void {
-    console.log('🚨 System alert:', data);
+    logger.info('System alert', {
+      component: 'RealtimeService',
+      action: 'system_alert',
+      metadata: data,
+    });
     // Show toast notification or banner
   }
 

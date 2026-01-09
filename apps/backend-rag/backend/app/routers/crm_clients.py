@@ -233,65 +233,75 @@ async def create_client(
     """
     start_time = time.time()
     try:
-        async with db_pool.acquire() as conn:
-            # Sanitize date fields - convert empty strings to None
-            passport_expiry = client.passport_expiry if client.passport_expiry else None
-            date_of_birth = client.date_of_birth if client.date_of_birth else None
+        # Add timeout for connection acquisition to prevent hanging
+        import asyncio
+        try:
+            async with asyncio.timeout(10.0):
+                async with db_pool.acquire() as conn:
+                    # Sanitize date fields - convert empty strings to None
+                    passport_expiry = client.passport_expiry if client.passport_expiry else None
+                    date_of_birth = client.date_of_birth if client.date_of_birth else None
 
-            row = await conn.fetchrow(
-                """
-                INSERT INTO clients (
-                    full_name, email, phone, whatsapp, company_name,
-                    nationality, passport_number, passport_expiry, date_of_birth,
-                    status, client_type, assigned_to, avatar_url, address, notes,
-                    tags, lead_source, service_interest, custom_fields,
-                    first_contact_date, user_email
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-                    $16, $17, $18, $19, $20, $21
-                )
-                RETURNING *
-                """,
-                client.full_name,
-                client.email,
-                client.phone,
-                client.whatsapp,
-                client.company_name,
-                client.nationality,
-                client.passport_number,
-                passport_expiry,
-                date_of_birth,
-                client.status,  # Use client's status instead of hardcoded "active"
-                client.client_type,
-                client.assigned_to,
-                client.avatar_url,
-                client.address,
-                client.notes,
-                client.tags,
-                client.lead_source,
-                client.service_interest,
-                client.custom_fields,
-                datetime.now(),
-                user_email,
+                    row = await conn.fetchrow(
+                        """
+                        INSERT INTO clients (
+                            full_name, email, phone, whatsapp, company_name,
+                            nationality, passport_number, passport_expiry, date_of_birth,
+                            status, client_type, assigned_to, avatar_url, address, notes,
+                            tags, lead_source, service_interest, custom_fields,
+                            first_contact_date, user_email
+                        ) VALUES (
+                            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                            $16, $17, $18, $19, $20, $21
+                        )
+                        RETURNING *
+                        """,
+                        client.full_name,
+                        client.email,
+                        client.phone,
+                        client.whatsapp,
+                        client.company_name,
+                        client.nationality,
+                        client.passport_number,
+                        passport_expiry,
+                        date_of_birth,
+                        client.status,  # Use client's status instead of hardcoded "active"
+                        client.client_type,
+                        client.assigned_to,
+                        client.avatar_url,
+                        client.address,
+                        client.notes,
+                        client.tags,
+                        client.lead_source,
+                        client.service_interest,
+                        client.custom_fields,
+                        datetime.now(),
+                        user_email,
+                    )
+
+                    if not row:
+                        raise HTTPException(status_code=500, detail="Failed to create client")
+
+                    new_client = dict(row)
+                    log_success(logger, f"Created client: {client.full_name}", client_id=new_client["id"])
+                    log_database_operation(logger, "CREATE", "clients", record_id=new_client["id"])
+
+                    # Track metrics (Legacy - keeping for backward metrics compatibility)
+                    # crm_client_operations.labels(operation="create", status="success").inc()
+                    # crm_client_creation_duration.observe(time.time() - start_time)
+
+                    # Use Enhanced Metrics
+                    crm_metrics.client_status_changes.labels(
+                        from_status="none", to_status=client.status, changed_by=user_email
+                    ).inc()
+
+                    return ClientResponse(**new_client)
+        except asyncio.TimeoutError:
+            logger.error("Database connection acquisition timeout")
+            raise HTTPException(
+                status_code=503,
+                detail="Database connection timeout. Please try again.",
             )
-
-            if not row:
-                raise HTTPException(status_code=500, detail="Failed to create client")
-
-            new_client = dict(row)
-            log_success(logger, f"Created client: {client.full_name}", client_id=new_client["id"])
-            log_database_operation(logger, "CREATE", "clients", record_id=new_client["id"])
-
-            # Track metrics (Legacy - keeping for backward metrics compatibility)
-            # crm_client_operations.labels(operation="create", status="success").inc()
-            # crm_client_creation_duration.observe(time.time() - start_time)
-
-            # Use Enhanced Metrics
-            crm_metrics.client_status_changes.labels(
-                from_status="none", to_status=client.status, changed_by=user_email
-            ).inc()
-
-            return ClientResponse(**new_client)
 
     except asyncpg.UniqueViolationError as e:
         logger.warning(f"Integrity error creating client: {e}")

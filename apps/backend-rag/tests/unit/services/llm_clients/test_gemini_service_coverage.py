@@ -15,28 +15,30 @@ def _load_module(monkeypatch, genai_available=True, genai_client=None):
         pass
 
     google_exceptions = types.SimpleNamespace(
-        ResourceExhausted=ResourceExhausted, ServiceUnavailable=ServiceUnavailable
+        ResourceExhausted=ResourceExhausted,
+        ServiceUnavailable=ServiceUnavailable,
+        redis_url='redis://localhost:6379'
     )
     monkeypatch.setitem(sys.modules, "google.api_core.exceptions", google_exceptions)
 
-    genai_stub = types.SimpleNamespace(
-        GENAI_AVAILABLE=genai_available,
+    genai_stub = types.SimpleNamespace(GENAI_AVAILABLE=genai_available,
         get_genai_client=lambda: genai_client,
+        redis_url='redis://localhost:6379'
     )
     monkeypatch.setitem(sys.modules, "llm.genai_client", genai_stub)
 
-    prompts_stub = types.SimpleNamespace(
-        FEW_SHOT_EXAMPLES=[
+    prompts_stub = types.SimpleNamespace(FEW_SHOT_EXAMPLES=[
             {"role": "user", "content": "hi"},
             {"role": "assistant", "content": "hello"},
         ],
         SYSTEM_INSTRUCTION="system",
+        redis_url='redis://localhost:6379'
     )
     monkeypatch.setitem(sys.modules, "prompts.jaksel_persona", prompts_stub)
 
-    settings_stub = types.SimpleNamespace(google_api_key="key", openrouter_api_key="key")
+    settings_stub = types.SimpleNamespace(google_api_key="key", openrouter_api_key="key", redis_url='redis://localhost:6379')
     monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub)
+        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
     )
 
     backend_path = Path(__file__).resolve().parents[4] / "backend"
