@@ -74,29 +74,28 @@ def _load_module(monkeypatch, invite_service=None, email_service=None):
     monkeypatch.setitem(
         sys.modules,
         "app.core.config",
-        types.SimpleNamespace(settings=types.SimpleNamespace(frontend_url="https://front")),
+        types.SimpleNamespace(settings=types.SimpleNamespace(frontend_url="https://front", redis_url='redis://localhost:6379')),
     )
     monkeypatch.setitem(
         sys.modules,
         "app.dependencies",
-        types.SimpleNamespace(
-            get_current_user=get_current_user, get_database_pool=get_database_pool
-        ),
+        types.SimpleNamespace(get_current_user=get_current_user, get_database_pool=get_database_pool
+        , redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "app.utils.logging_utils",
-        types.SimpleNamespace(get_logger=lambda _name: _Logger()),
+        types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "services.portal",
-        types.SimpleNamespace(InviteService=invite_service),
+        types.SimpleNamespace(InviteService=invite_service, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "services.integrations.zoho_email_service",
-        types.SimpleNamespace(ZohoEmailService=email_service),
+        types.SimpleNamespace(ZohoEmailService=email_service, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

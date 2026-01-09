@@ -23,6 +23,7 @@ import asyncpg
 import httpx
 
 from app.core.config import settings
+from app.core.constants import HttpTimeoutConstants
 from app.metrics import metrics_collector
 from services.integrations.zoho_oauth_service import ZohoOAuthService
 
@@ -155,7 +156,7 @@ class ZohoEmailService:
 
         logger.debug(f"[Email API] {method} {endpoint} for user={user_id}")
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_EMAIL_TIMEOUT) as client:
             response = await client.request(
                 method=method,
                 url=url,
@@ -838,7 +839,7 @@ class ZohoEmailService:
 
         url = f"{self.api_domain}/api/accounts/{account_id}/messages/{message_id}/attachments/{attachment_id}"
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT) as client:
             response = await client.get(url, headers=headers)
 
             if response.status_code != 200:
@@ -880,7 +881,7 @@ class ZohoEmailService:
 
         url = f"{self.api_domain}/api/accounts/{account_id}/messages/attachments"
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_EMAIL_LONG_TIMEOUT) as client:
             response = await client.post(
                 url,
                 headers={"Authorization": f"Zoho-oauthtoken {token}"},

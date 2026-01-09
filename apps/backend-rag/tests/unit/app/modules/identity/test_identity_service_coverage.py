@@ -8,6 +8,7 @@ from jose import jwt
 
 from app.modules.identity.models import User
 from app.modules.identity.service import IdentityService
+from tests.conftest import create_mock_settings
 
 
 class _DummyConn:
@@ -30,34 +31,25 @@ class _DummyConn:
 
 
 def _make_service(monkeypatch, db_url="postgres://test", jwt_secret="secret", jwt_alg="HS256"):
-    monkeypatch.setattr(
-        "app.modules.identity.service.settings",
-        type(
-            "S",
-            (),
-            {
-                "database_url": db_url,
-                "jwt_secret_key": jwt_secret,
-                "jwt_algorithm": jwt_alg,
-            },
-        )(),
+    # Ensure jwt_secret is at least 32 characters
+    if len(jwt_secret) < 32:
+        jwt_secret = jwt_secret + "_" * (32 - len(jwt_secret))
+    mock_settings = create_mock_settings(
+        database_url=db_url,
+        jwt_secret_key=jwt_secret,
+        jwt_algorithm=jwt_alg,
     )
+    monkeypatch.setattr("app.modules.identity.service.settings", mock_settings)
     return IdentityService()
 
 
 def test_init_warns_on_default_secret(monkeypatch, caplog):
-    monkeypatch.setattr(
-        "app.modules.identity.service.settings",
-        type(
-            "S",
-            (),
-            {
-                "database_url": "db",
-                "jwt_secret_key": "zantara_default_secret_key_2025_change_in_production",
-                "jwt_algorithm": "HS256",
-            },
-        )(),
+    mock_settings = create_mock_settings(
+        database_url="db",
+        jwt_secret_key="zantara_default_secret_key_2025_change_in_production",
+        jwt_algorithm="HS256",
     )
+    monkeypatch.setattr("app.modules.identity.service.settings", mock_settings)
 
     IdentityService()
 
@@ -216,7 +208,8 @@ async def test_authenticate_user_exception(monkeypatch):
 
 
 def test_create_access_token(monkeypatch):
-    service = _make_service(monkeypatch, jwt_secret="secret", jwt_alg="HS256")
+    jwt_secret = "secret_at_least_32_chars_long_"
+    service = _make_service(monkeypatch, jwt_secret=jwt_secret, jwt_alg="HS256")
     user = User(
         id="u1",
         name="User",
@@ -235,7 +228,10 @@ def test_create_access_token(monkeypatch):
     )
 
     token = service.create_access_token(user, session_id="s1")
-    payload = jwt.decode(token, "secret", algorithms=["HS256"])
+    # Get the actual secret from the mocked settings module
+    from app.modules.identity import service as identity_service
+    actual_secret = identity_service.settings.jwt_secret_key
+    payload = jwt.decode(token, actual_secret, algorithms=["HS256"])
 
     assert payload["sub"] == "u1"
     assert payload["sessionId"] == "s1"

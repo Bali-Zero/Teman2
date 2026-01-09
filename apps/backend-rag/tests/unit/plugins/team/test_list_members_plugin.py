@@ -649,9 +649,9 @@ async def test_execute_with_empty_string_department(mock_collaborator_service):
     input_data = TeamListInput(department="")
     result = await plugin.execute(input_data)
 
-    # Empty string after strip() becomes empty, but not None
+    # Empty string is falsy, so it becomes None after the if check
     assert result.success is True
-    mock_collaborator_service.list_members.assert_called_once_with("")
+    mock_collaborator_service.list_members.assert_called_once_with(None)
 
 
 @pytest.mark.asyncio

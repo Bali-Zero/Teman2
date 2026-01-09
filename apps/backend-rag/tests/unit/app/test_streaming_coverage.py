@@ -17,7 +17,7 @@ def _load_module(monkeypatch, validate_user=None):
     monkeypatch.setitem(
         sys.modules,
         "app.auth.validation",
-        types.SimpleNamespace(validate_auth_mixed=_validate_auth_mixed),
+        types.SimpleNamespace(validate_auth_mixed=_validate_auth_mixed, redis_url='redis://localhost:6379'),
     )
 
     def get_request_state(state, key, expected_type=None):
@@ -32,7 +32,7 @@ def _load_module(monkeypatch, validate_user=None):
     monkeypatch.setitem(
         sys.modules,
         "app.utils.state_helpers",
-        types.SimpleNamespace(get_app_state=get_app_state, get_request_state=get_request_state),
+        types.SimpleNamespace(get_app_state=get_app_state, get_request_state=get_request_state, redis_url='redis://localhost:6379'),
     )
 
     @contextmanager
@@ -46,13 +46,14 @@ def _load_module(monkeypatch, validate_user=None):
             add_span_event=lambda *_args, **_kwargs: None,
             set_span_status=lambda *_args, **_kwargs: None,
             trace_span=trace_span,
+            redis_url='redis://localhost:6379'
         ),
     )
 
     monkeypatch.setitem(
         sys.modules,
         "services.routing.intelligent_router",
-        types.SimpleNamespace(IntelligentRouter=object),
+        types.SimpleNamespace(IntelligentRouter=object, redis_url='redis://localhost:6379'),
     )
 
     backend_path = Path(__file__).resolve().parents[3] / "backend"
@@ -168,10 +169,8 @@ def test_post_stream_message_required(monkeypatch):
 def test_post_stream_success(monkeypatch):
     module = _load_module(monkeypatch, validate_user=None)
     client = _make_client(module, user={"email": "user@example.com"}, services_initialized=True)
-    client.app.state.conversation_service = types.SimpleNamespace(
-        get_history=AsyncMock(
-            return_value={"messages": [{"role": "user", "content": "hi"}], "source": "db"}
-        ),
+    client.app.state.conversation_service = types.SimpleNamespace(get_history=AsyncMock(
+            return_value={"messages": [{"role": "user", "content": "hi"}], "source": "db"}),
         save_conversation=AsyncMock(),
     )
 

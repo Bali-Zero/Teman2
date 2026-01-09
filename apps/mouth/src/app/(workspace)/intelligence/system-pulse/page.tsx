@@ -16,20 +16,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
-
-interface SystemMetrics {
-  agent_status: "active" | "idle" | "error";
-  last_run: string;
-  items_processed_today: number;
-  avg_response_time_ms: number;
-  qdrant_health: "healthy" | "degraded" | "down";
-  next_scheduled_run: string;
-  uptime_percentage: number;
-}
+import { intelligenceApi, SystemMetrics } from "@/lib/api/intelligence.api";
+import { useToast } from "@/components/ui/toast";
 
 export default function SystemPulsePage() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const toast = useToast();
 
   useEffect(() => {
     logger.componentMount('SystemPulsePage');
@@ -45,12 +38,8 @@ export default function SystemPulsePage() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/intel/metrics');
-      if (!response.ok) {
-        throw new Error(`Metrics API failed: ${response.statusText}`);
-      }
-
-      const metricsData: SystemMetrics = await response.json();
+      // Fetch real-time metrics from backend API
+      const metricsData = await intelligenceApi.getMetrics();
       setMetrics(metricsData);
 
       logger.info('System metrics loaded successfully', {
@@ -68,7 +57,7 @@ export default function SystemPulsePage() {
         action: 'load_metrics_error',
       }, error as Error);
 
-      // Set null to trigger error state
+      toast.error("Failed to load metrics", "Could not fetch system metrics. Please try again.");
       setMetrics(null);
     } finally {
       setLoading(false);
@@ -100,9 +89,14 @@ export default function SystemPulsePage() {
     );
   }
 
-  const formatTime = (isoString: string) => {
-    const date = new Date(isoString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formatTime = (isoString: string | null) => {
+    if (!isoString) return "N/A";
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return "Invalid";
+    }
   };
 
   return (
@@ -125,18 +119,35 @@ export default function SystemPulsePage() {
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Agent Status */}
-        <Card className="border-t-4 border-t-green-500">
+        <Card className={cn(
+          "border-t-4",
+          metrics.agent_status === "active" ? "border-t-green-500" :
+          metrics.agent_status === "idle" ? "border-t-amber-500" :
+          "border-t-red-500"
+        )}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Agent Status
             </CardTitle>
-            <Activity className="h-5 w-5 text-green-500" />
+            <Activity className={cn(
+              "h-5 w-5",
+              metrics.agent_status === "active" ? "text-green-500" :
+              metrics.agent_status === "idle" ? "text-amber-500" :
+              "text-red-500"
+            )} />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-600">
-                <span className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></span>
-                ACTIVE
+              <span className={cn(
+                "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold",
+                metrics.agent_status === "active" ? "bg-green-100 text-green-600" :
+                metrics.agent_status === "idle" ? "bg-amber-100 text-amber-600" :
+                "bg-red-100 text-red-600"
+              )}>
+                {metrics.agent_status === "active" && (
+                  <span className="h-2 w-2 rounded-full bg-green-600 animate-pulse"></span>
+                )}
+                {metrics.agent_status.toUpperCase()}
               </span>
             </div>
             <p className="mt-3 text-xs text-[var(--foreground-muted)]">
@@ -155,10 +166,12 @@ export default function SystemPulsePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--foreground)]">
-              {formatTime(metrics.last_run)}
+              {metrics.last_run ? formatTime(metrics.last_run) : "Never"}
             </div>
             <p className="mt-3 text-xs text-[var(--foreground-muted)]">
-              15 minutes ago
+              {metrics.last_run
+                ? `${Math.round((Date.now() - new Date(metrics.last_run).getTime()) / 60000)} minutes ago`
+                : "No runs recorded"}
             </p>
           </CardContent>
         </Card>
@@ -200,22 +213,45 @@ export default function SystemPulsePage() {
         </Card>
 
         {/* Qdrant Health */}
-        <Card className="border-t-4 border-t-green-500">
+        <Card className={cn(
+          "border-t-4",
+          metrics.qdrant_health === "healthy" ? "border-t-green-500" :
+          metrics.qdrant_health === "degraded" ? "border-t-amber-500" :
+          "border-t-red-500"
+        )}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[var(--foreground-muted)]">
               Qdrant Health
             </CardTitle>
-            <Database className="h-5 w-5 text-green-500" />
+            <Database className={cn(
+              "h-5 w-5",
+              metrics.qdrant_health === "healthy" ? "text-green-500" :
+              metrics.qdrant_health === "degraded" ? "text-amber-500" :
+              "text-red-500"
+            )} />
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <span className="text-2xl font-bold text-green-600">
-                Healthy
+              {metrics.qdrant_health === "healthy" ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : metrics.qdrant_health === "degraded" ? (
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              )}
+              <span className={cn(
+                "text-2xl font-bold",
+                metrics.qdrant_health === "healthy" ? "text-green-600" :
+                metrics.qdrant_health === "degraded" ? "text-amber-600" :
+                "text-red-600"
+              )}>
+                {metrics.qdrant_health.charAt(0).toUpperCase() + metrics.qdrant_health.slice(1)}
               </span>
             </div>
             <p className="mt-3 text-xs text-[var(--foreground-muted)]">
-              All collections operational
+              {metrics.qdrant_health === "healthy" ? "All collections operational" :
+               metrics.qdrant_health === "degraded" ? "Some collections degraded" :
+               "Collections unavailable"}
             </p>
           </CardContent>
         </Card>
@@ -230,10 +266,10 @@ export default function SystemPulsePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-[var(--foreground)]">
-              {formatTime(metrics.next_scheduled_run)}
+              {metrics.next_scheduled_run ? formatTime(metrics.next_scheduled_run) : "N/A"}
             </div>
             <p className="mt-3 text-xs text-[var(--foreground-muted)]">
-              Every 2 hours
+              {metrics.next_scheduled_run ? "Every 2 hours" : "Schedule pending"}
             </p>
           </CardContent>
         </Card>

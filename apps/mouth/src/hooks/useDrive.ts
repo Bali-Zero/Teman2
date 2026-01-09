@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { FileItem, CreateFolderRequest, DocType } from '@/lib/api/drive/drive.types';
+import type { FileItem, CreateFolderRequest, DocType, FileListResponse, BreadcrumbItem } from '@/lib/api/drive/drive.types';
+
+/** Type for drive file list query data */
+interface DriveFilesData {
+  files: FileItem[];
+  breadcrumb: BreadcrumbItem[];
+}
 
 export function useDriveFiles(folderId: string | null, searchQuery: string = '') {
   return useQuery({
@@ -51,11 +57,11 @@ export function useDriveMutations() {
       await queryClient.cancelQueries({ queryKey: ['drive', 'files'] });
       const previousData = queryClient.getQueriesData({ queryKey: ['drive', 'files'] });
 
-      queryClient.setQueriesData({ queryKey: ['drive', 'files'] }, (old: any) => {
+      queryClient.setQueriesData<DriveFilesData>({ queryKey: ['drive', 'files'] }, (old) => {
         if (!old) return old;
         return {
           ...old,
-          files: old.files.filter((f: FileItem) => f.id !== fileId),
+          files: old.files.filter((f) => f.id !== fileId),
         };
       });
 

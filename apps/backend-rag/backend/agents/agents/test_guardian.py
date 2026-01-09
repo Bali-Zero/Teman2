@@ -189,8 +189,12 @@ class TestGuardian:
             context += f"Classes defined: {', '.join(analyzer.classes)}\n"
             context += f"Functions defined: {', '.join(analyzer.functions)}\n"
             return context, code
-        except:
-            return "Context extraction failed", code
+        except SyntaxError as e:
+            logger.warning(f"Failed to parse {file_path_str}: {e}")
+            return "Context extraction failed (syntax error)", code
+        except Exception as e:
+            logger.warning(f"Context extraction failed for {file_path_str}: {e}")
+            return f"Context extraction failed: {type(e).__name__}", code
 
     async def generate_test(self, gap: dict[str, Any]) -> str:
         """Generates a robust test using the LLM."""

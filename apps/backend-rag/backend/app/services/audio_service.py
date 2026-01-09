@@ -154,8 +154,8 @@ class AudioService:
                 try:
                     error_data = response.json()
                     logger.warning(f"Pollinations returned JSON instead of audio: {error_data}")
-                except:
-                    pass
+                except (ValueError, httpx.DecodingError):
+                    logger.debug("Pollinations returned non-audio, non-JSON response")
                 return None
 
             return response.content

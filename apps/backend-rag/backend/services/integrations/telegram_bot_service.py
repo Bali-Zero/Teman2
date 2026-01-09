@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+from app.core.constants import HttpTimeoutConstants
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class TelegramBotService:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=30.0)
+            self._client = httpx.AsyncClient(timeout=HttpTimeoutConstants.TELEGRAM_TIMEOUT)
         return self._client
 
     async def close(self):

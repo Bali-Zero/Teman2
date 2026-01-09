@@ -1,57 +1,10 @@
-from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
-def _convert_schema_to_gemini_format(schema: dict) -> dict:
-    """Convert JSON Schema to Gemini-compatible format.
-
-    Gemini requires:
-    - Type values as uppercase strings (STRING, NUMBER, INTEGER, BOOLEAN, ARRAY, OBJECT)
-    - Nested properties without explicit type when they have sub-properties
-
-    Args:
-        schema: Standard JSON Schema dict
-
-    Returns:
-        Gemini-compatible schema dict
-    """
-    if not isinstance(schema, dict):
-        return schema
-
-    result = {}
-
-    # Convert type to uppercase
-    if "type" in schema:
-        type_value = schema["type"]
-        # Map JSON Schema types to Gemini types
-        type_mapping = {
-            "string": "STRING",
-            "number": "NUMBER",
-            "integer": "INTEGER",
-            "boolean": "BOOLEAN",
-            "array": "ARRAY",
-            "object": "OBJECT",
-        }
-        result["type"] = type_mapping.get(
-            type_value, type_value.upper() if isinstance(type_value, str) else type_value
-        )
-
-    # Recursively convert properties
-    if "properties" in schema:
-        result["properties"] = {
-            key: _convert_schema_to_gemini_format(value)
-            for key, value in schema["properties"].items()
-        }
-
-    # Copy other fields as-is
-    for key in schema:
-        if key not in ("type", "properties"):
-            result[key] = schema[key]
-
-    return result
+# Import BaseTool and helper from definitions to avoid duplication
+from services.tools.definitions import BaseTool, _convert_schema_to_gemini_format
 
 
 class ToolType(str, Enum):
@@ -105,47 +58,15 @@ class AgentState:
     skip_rag: bool = False  # Skip RAG evidence requirements for general tasks
 
 
-class BaseTool(ABC):
-    """Base class per tutti i tool"""
+# BaseTool and _convert_schema_to_gemini_format are imported from services.tools.definitions
+# to avoid code duplication. This maintains backward compatibility for existing imports.
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def description(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def parameters_schema(self) -> dict:
-        pass
-
-    @abstractmethod
-    async def execute(self, **kwargs) -> str:
-        pass
-
-    def to_gemini_function_declaration(self) -> dict:
-        """Convert tool to Gemini function declaration format.
-
-        This method exports the tool definition in the format required by
-        Gemini's native function calling API.
-
-        Returns:
-            Dict with function declaration following Gemini schema
-        """
-        schema = self.parameters_schema
-        # Convert schema to Gemini-compatible format
-        gemini_schema = _convert_schema_to_gemini_format(schema)
-
-        return {
-            "name": self.name,
-            "description": self.description,
-            "parameters": gemini_schema,
-        }
-
-    def to_gemini_tool(self) -> dict:
-        """Legacy method - use to_gemini_function_declaration() instead."""
-        return self.to_gemini_function_declaration()
+__all__ = [
+    "ToolType",
+    "Tool",
+    "ToolCall",
+    "AgentStep",
+    "AgentState",
+    "BaseTool",
+    "_convert_schema_to_gemini_format",
+]

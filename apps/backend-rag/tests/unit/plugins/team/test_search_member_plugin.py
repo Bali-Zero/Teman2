@@ -661,8 +661,9 @@ async def test_plugin_metadata_compatibility():
         # Verify metadata is a PluginMetadata instance
         assert isinstance(metadata, PluginMetadata)
 
-        # Verify category is a valid PluginCategory
-        assert isinstance(metadata.category, PluginCategory)
+        # Verify category is a valid PluginCategory (Pydantic serializes enum as string)
+        assert metadata.category == PluginCategory.AUTH or metadata.category == "auth"
+        assert metadata.category in [cat.value for cat in PluginCategory]
 
         # Verify version format
         assert isinstance(metadata.version, str)

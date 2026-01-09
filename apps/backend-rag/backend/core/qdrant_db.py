@@ -21,6 +21,26 @@ except ImportError:
     settings = None
 
 try:
+    from core.exceptions import (
+        QdrantConnectionError,
+        QdrantServerError,
+        QdrantTimeoutError,
+    )
+except ImportError:
+    # Fallback for standalone execution
+    class QdrantServerError(Exception):
+        def __init__(self, message: str, status_code: int, response_text: str | None = None):
+            super().__init__(message)
+            self.status_code = status_code
+            self.response_text = response_text
+
+    class QdrantConnectionError(Exception):
+        pass
+
+    class QdrantTimeoutError(Exception):
+        pass
+
+try:
     from app.utils.tracing import set_span_attribute, set_span_status, trace_span
 except ImportError:
     # Fallback if tracing not available
@@ -433,7 +453,7 @@ class QdrantClient:
                     qdrant_timeout_total.labels(error_type=error_type.value).inc()
                 except ImportError:
                     pass
-                raise TimeoutError(f"Qdrant request timeout after {self.timeout}s")
+                raise QdrantTimeoutError(f"Qdrant request timeout after {self.timeout}s")
             except httpx.HTTPStatusError as e:
                 error_type, retryable = self._error_classifier.classify(e)
                 error_text = e.response.text if hasattr(e.response, "text") else str(e.response)
@@ -459,7 +479,11 @@ class QdrantClient:
 
                 # Raise exception for retryable server errors to trigger retry
                 if error_type == QdrantErrorType.SERVER_ERROR and retryable:
-                    raise Exception(f"Qdrant server error {e.response.status_code}: {error_text}")
+                    raise QdrantServerError(
+                        f"Qdrant server error {e.response.status_code}",
+                        status_code=e.response.status_code,
+                        response_text=error_text,
+                    )
                 # Auto-retry with named vector if collection uses named vectors
                 if (
                     e.response.status_code == 400
@@ -494,7 +518,7 @@ class QdrantClient:
                 }
             except Exception as e:
                 logger.error(f"Qdrant request error: {e}")
-                raise ConnectionError(f"Qdrant connection error: {e}") from e
+                raise QdrantConnectionError(f"Qdrant connection error: {e}") from e
 
         start_time = time.time()
         # 🔍 TRACING: Span for Qdrant search
@@ -844,7 +868,7 @@ class QdrantClient:
                 return {"success": False, "error": f"HTTP {e.response.status_code}"}
             except Exception as e:
                 logger.error(f"Qdrant delete request error: {e}")
-                raise ConnectionError(f"Qdrant connection error: {e}") from e
+                raise QdrantConnectionError(f"Qdrant connection error: {e}") from e
         except Exception as e:
             logger.error(f"Error deleting from Qdrant: {e}")
             raise
@@ -1010,7 +1034,7 @@ class QdrantClient:
                 }
             except Exception as e:
                 logger.error(f"Qdrant hybrid search request error: {e}")
-                raise ConnectionError(f"Qdrant connection error: {e}") from e
+                raise QdrantConnectionError(f"Qdrant connection error: {e}") from e
 
         start_time = time.time()
         # 🔍 TRACING: Span for Qdrant hybrid search

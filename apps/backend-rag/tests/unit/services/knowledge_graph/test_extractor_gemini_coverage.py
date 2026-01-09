@@ -46,10 +46,10 @@ def _build_module(monkeypatch, client_factory):
         raw_text: str = ""
         metadata: dict = field(default_factory=dict)
 
-    extractor_stub = types.SimpleNamespace(
-        ExtractedEntity=_ExtractedEntity,
+    extractor_stub = types.SimpleNamespace(ExtractedEntity=_ExtractedEntity,
         ExtractedRelation=_ExtractedRelation,
         ExtractionResult=_ExtractionResult,
+        redis_url='redis://localhost:6379'
     )
     monkeypatch.setitem(sys.modules, "services.knowledge_graph.extractor", extractor_stub)
 
@@ -62,8 +62,8 @@ def _build_module(monkeypatch, client_factory):
         assert ontology_spec and ontology_spec.loader
         ontology_spec.loader.exec_module(ontology_module)
 
-    google_genai = types.SimpleNamespace(Client=client_factory)
-    google_module = types.SimpleNamespace(genai=google_genai)
+    google_genai = types.SimpleNamespace(Client=client_factory, redis_url='redis://localhost:6379')
+    google_module = types.SimpleNamespace(genai=google_genai, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "google", google_module)
     monkeypatch.setitem(sys.modules, "google.genai", google_genai)
 
@@ -84,12 +84,12 @@ def _client_factory(response_text=None, error=None, call_counter=None):
             call_counter["count"] += 1
         if error:
             raise error
-        return types.SimpleNamespace(text=response_text)
+        return types.SimpleNamespace(text=response_text, redis_url='redis://localhost:6379')
 
     class _Client:
         def __init__(self, api_key):
             self.api_key = api_key
-            self.models = types.SimpleNamespace(generate_content=_generate_content)
+            self.models = types.SimpleNamespace(generate_content=_generate_content, redis_url='redis://localhost:6379')
 
     return _Client
 

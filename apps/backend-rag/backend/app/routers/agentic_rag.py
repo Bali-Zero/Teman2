@@ -13,9 +13,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.dependencies import get_current_user, get_database_pool
+from app.dependencies import (
+    get_current_user,
+    get_database_pool,
+    get_orchestrator,
+    get_optional_database_pool,
+)
 from app.utils.tracing import add_span_event, set_span_status, trace_span
-from services.rag.agentic import AgenticRAGOrchestrator, create_agentic_rag
+from services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -73,28 +78,6 @@ router = APIRouter(
     tags=["agentic-rag"],
     responses={404: {"description": "Not found"}},
 )
-
-
-# Global orchestrator instance (lazy loaded)
-_orchestrator: AgenticRAGOrchestrator | None = None
-
-
-async def get_orchestrator(request: Request):
-    global _orchestrator
-    if _orchestrator is None:
-        db_pool = getattr(request.app.state, "db_pool", None)
-        search_service = getattr(request.app.state, "search_service", None)
-        _orchestrator = create_agentic_rag(retriever=search_service, db_pool=db_pool)
-    return _orchestrator
-
-
-def get_optional_database_pool(request: Request) -> Any | None:
-    try:
-        return get_database_pool(request)
-    except HTTPException as exc:
-        if exc.status_code == 503:
-            return None
-        raise
 
 
 class ConversationMessageInput(BaseModel):
