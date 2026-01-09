@@ -117,8 +117,9 @@ Questo refactoring ha spostato tutti i valori hardcoded identificati nell'analis
 - **File constants aggiornati:** 1 (`app/core/constants.py`)
 - **File config aggiornati:** 1 (`app/core/config.py`)
 - **File sorgente aggiornati:** 6
-- **Valori hardcoded rimossi:** ~50+
+- **Valori hardcoded rimossi:** ~60+
 - **Constants aggiunte:** 3 classi (`EvidenceScoreConstants`, `IntelConstants`, `HttpTimeoutConstants`)
+- **Nuove constants Intel:** 8 valori aggiunti (scheduling, time ranges, metrics, content limits)
 
 ---
 
@@ -184,4 +185,5 @@ Prima di mergeare, verificare:
 ---
 
 **Ultimo Aggiornamento:** 2026-01-09  
+**Aggiornamento Finale:** 2026-01-09 (valori hardcoded aggiuntivi in intel.py)  
 **Autore:** AI Assistant
