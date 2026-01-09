@@ -523,13 +523,16 @@ fly logs -a nuzantara-rag | grep "Native Function Call"
 |-----|------|-----------------|
 | AI Onboarding | `docs/AI_ONBOARDING.md` | Sempre all'inizio |
 | System Map 4D | `docs/SYSTEM_MAP_4D.md` | Per capire architettura |
+| **Codebase Analysis** | `docs/CODEBASE_ANALYSIS.md` | Per identificare aree da refactorare |
+| **Cleanup Summary** | `docs/CLEANUP_SUMMARY.md` | Per vedere cleanup completati |
 | **Agentic RAG Fixes** | `docs/operations/AGENTIC_RAG_FIXES.md` | Prima di toccare reasoning.py |
 | **Observability Guide** | `docs/operations/OBSERVABILITY_GUIDE.md` | Per debugging e monitoring |
 | AI Handover Protocol | `docs/ai/AI_HANDOVER_PROTOCOL.md` | Per golden rules |
 | Deploy Checklist | `docs/operations/DEPLOY_CHECKLIST.md` | Prima di deploy |
 | Alerts Runbook | `docs/operations/ALERTS_RUNBOOK.md` | Quando scattano alert |
 | **Intel Pipeline** | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | Per scraper news + SEO/AEO + Telegram |
+| **Refactoring Hardcoded Values** | `docs/REFACTORING_HARDCODED_VALUES.md` | Per vedere refactoring costanti |
 
 ---
 
-**Last Updated:** 2026-01-04 | **Deployed Version:** v1180
+**Last Updated:** 2026-01-09 | **Deployed Version:** v1474
