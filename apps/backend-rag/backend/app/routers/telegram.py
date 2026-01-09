@@ -261,8 +261,8 @@ def add_intel_vote(item_id: str, intel_type: str, vote_type: str, user: dict) ->
                     datetime.utcnow() - created_dt.replace(tzinfo=None)
                 ).total_seconds()
                 intel_voting_duration.labels(intel_type=intel_type).observe(duration_seconds)
-            except Exception:
-                pass  # Skip if timestamp parsing fails
+            except (ValueError, TypeError, KeyError) as e:
+                logger.debug(f"Failed to track voting duration metric: {e}")
 
         return data, "approved"
 
@@ -282,8 +282,8 @@ def add_intel_vote(item_id: str, intel_type: str, vote_type: str, user: dict) ->
                     datetime.utcnow() - created_dt.replace(tzinfo=None)
                 ).total_seconds()
                 intel_voting_duration.labels(intel_type=intel_type).observe(duration_seconds)
-            except Exception:
-                pass
+            except (ValueError, TypeError, KeyError) as e:
+                logger.debug(f"Failed to track voting duration metric: {e}")
 
         return data, "rejected"
 
@@ -664,8 +664,8 @@ async def process_telegram_message(
                     text="⚠️ Si è verificato un errore. Riprova tra un momento.",
                     reply_to_message_id=message_id,
                 )
-        except Exception:
-            logger.error("Failed to send error message to Telegram")
+        except Exception as e:
+            logger.error(f"Failed to send error message to Telegram: {e}")
 
 
 def _escape_markdown_v2(text: str) -> str:
