@@ -258,8 +258,8 @@ export const intelligenceApi = {
 
       logger.apiSuccess(endpoint, responseTime, {
         action: 'get_analytics',
-        days,
         metadata: {
+          days,
           total_processed: response.summary.total_processed,
           approval_rate: response.summary.approval_rate,
         },
