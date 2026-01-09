@@ -267,7 +267,7 @@ export const intelligenceApi = {
 
       return response;
     } catch (error) {
-      logger.apiError(endpoint, error as Error, { action: 'get_analytics', days });
+      logger.apiError(endpoint, error as Error, { action: 'get_analytics', metadata: { days } });
       throw error;
     }
   },
