@@ -192,10 +192,10 @@ async def send_intel_approval_notification(
 {summary}
 """
 
-    # Add key points only if available (max 3)
+    # Add key points only if available
     if key_points:
         caption += "\n<b>📌 Key Points:</b>\n"
-        for i, point in enumerate(key_points[:3], 1):
+        for i, point in enumerate(key_points[: IntelConstants.MAX_KEY_POINTS], 1):
             caption += f"  {i}. {point}\n"
 
     # Add metadata
@@ -918,11 +918,14 @@ async def get_system_metrics():
                 pass  # Scheduler not available, use defaults
 
             if autonomous_scheduler and autonomous_scheduler.tasks:
-                # Check if any task has run recently (within last 24h)
+                # Check if any task has run recently
                 from datetime import datetime, timedelta
                 recent_runs = [
-                    task for task in autonomous_scheduler.tasks.values()
-                    if task.last_run and (datetime.now() - task.last_run) < timedelta(hours=24)
+                    task
+                    for task in autonomous_scheduler.tasks.values()
+                    if task.last_run
+                    and (datetime.now() - task.last_run)
+                    < timedelta(hours=IntelConstants.RECENT_TASK_THRESHOLD_HOURS)
                 ]
                 if recent_runs:
                     agent_status = "active"
@@ -992,13 +995,13 @@ async def get_system_metrics():
             logger.warning(f"Qdrant health check failed: {e}", exc_info=True)
             metrics["qdrant_health"] = "degraded"
 
-        # Calculate next scheduled run (every 2 hours from last run)
+        # Calculate next scheduled run
         if last_approved:
             try:
                 from datetime import datetime, timedelta
 
                 last_dt = datetime.fromisoformat(last_approved.replace("Z", "+00:00"))
-                next_run = last_dt + timedelta(hours=2)
+                next_run = last_dt + timedelta(hours=IntelConstants.SCHEDULER_RUN_INTERVAL_HOURS)
                 metrics["next_scheduled_run"] = next_run.isoformat()
             except (ValueError, TypeError) as e:
                 logger.debug(f"Failed to parse last_approved date: {e}")
@@ -1027,7 +1030,7 @@ async def get_system_metrics():
         if response_times:
             metrics["avg_response_time_ms"] = int(sum(response_times) / len(response_times))
         else:
-            metrics["avg_response_time_ms"] = 1250  # Default
+            metrics["avg_response_time_ms"] = IntelConstants.DEFAULT_AVG_RESPONSE_TIME_MS
 
         logger.info(
             "System metrics calculated",
@@ -1096,7 +1099,7 @@ async def search_intel(request: IntelSearchRequest):
                         "last_30_days": 30,
                         "last_90_days": 90,
                     }
-                    days = days_map.get(request.date_range, 7)
+                    days = days_map.get(request.date_range, IntelConstants.DUPLICATE_CHECK_DAYS)
                     cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
                     where_filter["published_date"] = {"$gte": cutoff_date}
 
@@ -1122,7 +1125,7 @@ async def search_intel(request: IntelSearchRequest):
                         {
                             "id": metadata.get("id"),
                             "title": metadata.get("title"),
-                            "summary_english": doc[:300],  # First 300 chars
+                            "summary_english": doc[: IntelConstants.SUMMARY_PREVIEW_LENGTH],
                             "summary_italian": metadata.get("summary_italian", ""),
                             "source": metadata.get("source"),
                             "tier": metadata.get("tier"),
@@ -1179,7 +1182,7 @@ async def store_intel(request: IntelStoreRequest):
 
 
 @router.get("/api/intel/critical")
-async def get_critical_items(category: str | None = None, days: int = 7):
+async def get_critical_items(category: str | None = None, days: int = IntelConstants.DUPLICATE_CHECK_DAYS):
     """Get critical impact items"""
     try:
         if category:
@@ -1278,7 +1281,7 @@ async def get_critical_items(category: str | None = None, days: int = 7):
 
 
 @router.get("/api/intel/trends")
-async def get_trends(category: str | None = None, _days: int = 30):
+async def get_trends(category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS):
     """Get trending topics and keywords"""
     try:
         # This would require more sophisticated analysis
@@ -1323,7 +1326,7 @@ async def get_trends(category: str | None = None, _days: int = 30):
 
 
 @router.get("/api/intel/analytics")
-async def get_intelligence_analytics(days: int = 30):
+async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_DAYS):
     """Get historical analytics and trends for Intelligence Center"""
     logger.info("Analytics requested", extra={"endpoint": "/api/intel/analytics", "days": days})
 
