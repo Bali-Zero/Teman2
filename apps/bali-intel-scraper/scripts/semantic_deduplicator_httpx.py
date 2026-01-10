@@ -1,72 +1,114 @@
 #!/usr/bin/env python3
 """
-SEMANTIC DEDUPLICATOR usando httpx direttamente
-Workaround per problema TLS con qdrant-client
+SEMANTIC DEDUPLICATOR - HTTPX Optimized Version
+=================================================
+Uses httpx directly for Qdrant REST API to avoid TLS issues with qdrant-client.
+
+Benefits:
+- Better TLS handling (no grpc issues)
+- Async HTTP client with connection pooling
+- Configurable timeouts and retry logic
+- More reliable connections to Fly.io hosted Qdrant
 """
 import os
 import hashlib
 import json
 import uuid
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Tuple
 from loguru import logger
 import httpx
 from openai import AsyncOpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-# Configurazione
+# Configuration - Optimized
 COLLECTION_NAME = "balizero_news_history"
-SIMILARITY_THRESHOLD = 0.88
-SEARCH_WINDOW_DAYS = 5
+SIMILARITY_THRESHOLD = 0.88  # 88% similarity = definite duplicate
+SEARCH_WINDOW_DAYS = 5       # Only check recent news
 EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_DIMENSION = 1536
+
+# Connection settings
+CONNECT_TIMEOUT = 10.0
+READ_TIMEOUT = 30.0
+MAX_RETRIES = 3
+
 
 class SemanticDeduplicator:
+    """
+    Semantic deduplication using Qdrant REST API via httpx.
+    Optimized for TLS reliability and async performance.
+    """
+
     def __init__(self):
         self.qdrant_url = os.getenv("QDRANT_URL", "https://nuzantara-qdrant.fly.dev").rstrip("/")
         self.qdrant_key = os.getenv("QDRANT_API_KEY")
         openai_key = os.getenv("OPENAI_API_KEY")
-        
+
         if not openai_key:
             logger.warning("⚠️ OPENAI_API_KEY not set - embedding generation will fail")
-        
+
         self.openai = AsyncOpenAI(api_key=openai_key) if openai_key else None
-        
-        # HTTP client con configurazione ottimizzata
-        # Usa context manager pattern per garantire cleanup
-        self._http_client = None
-        self._client_headers = {"api-key": self.qdrant_key} if self.qdrant_key else {}
-        
+
+        # Async HTTP client (created lazily)
+        self._async_client: Optional[httpx.AsyncClient] = None
+        # Sync HTTP client for backward compatibility
+        self._sync_client: Optional[httpx.Client] = None
+        self._client_headers = {
+            "Content-Type": "application/json",
+            "api-key": self.qdrant_key
+        } if self.qdrant_key else {"Content-Type": "application/json"}
+
         logger.info(f"🧠 Semantic Deduplicator initialized (Threshold: {SIMILARITY_THRESHOLD})")
-    
-    def _get_client(self) -> httpx.Client:
-        """Get or create HTTP client (lazy initialization)"""
-        if self._http_client is None:
-            self._http_client = httpx.Client(
-                timeout=30.0,
+
+    async def _get_async_client(self) -> httpx.AsyncClient:
+        """Get or create async HTTP client with connection pooling."""
+        if self._async_client is None or self._async_client.is_closed:
+            self._async_client = httpx.AsyncClient(
+                timeout=httpx.Timeout(READ_TIMEOUT, connect=CONNECT_TIMEOUT),
                 headers=self._client_headers,
-                http2=False  # Disabilita HTTP/2 per evitare problemi TLS
+                http2=False,  # Disable HTTP/2 for TLS stability
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
             )
-        return self._http_client
+        return self._async_client
+
+    def _get_client(self) -> httpx.Client:
+        """Get or create sync HTTP client (backward compatibility)."""
+        if self._sync_client is None:
+            self._sync_client = httpx.Client(
+                timeout=READ_TIMEOUT,
+                headers=self._client_headers,
+                http2=False
+            )
+        return self._sync_client
 
     def _generate_id(self, url: str) -> str:
         """Genera ID deterministico basato su URL"""
         hash_val = hashlib.md5(url.encode()).hexdigest()
         return str(uuid.UUID(hash_val))
 
+    @retry(
+        stop=stop_after_attempt(MAX_RETRIES),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+        reraise=True
+    )
     async def _get_embedding(self, text: str) -> list[float]:
-        """Genera embedding vettoriale per il testo"""
+        """Generate embedding vector with retry logic."""
         if not self.openai:
             logger.error("OpenAI client not initialized - check OPENAI_API_KEY")
             return []
-        
+
         try:
-            text = text[:8000]
+            text = text[:8000]  # Truncate to avoid token limits
             response = await self.openai.embeddings.create(
                 input=text,
                 model=EMBEDDING_MODEL
             )
             return response.data[0].embedding
         except Exception as e:
-            logger.error(f"Errore generazione embedding: {e}")
+            logger.error(f"Embedding generation failed: {e}")
             return []
 
     async def is_duplicate(self, title: str, summary: str, url: str) -> Tuple[bool, str, float]:
@@ -207,19 +249,35 @@ class SemanticDeduplicator:
             logger.error(f"Errore salvataggio news: {e}")
 
     def close(self):
-        """Explicitly close HTTP client"""
-        if self._http_client:
-            self._http_client.close()
-            self._http_client = None
-    
+        """Explicitly close HTTP clients (sync)."""
+        if self._sync_client:
+            self._sync_client.close()
+            self._sync_client = None
+
+    async def aclose(self):
+        """Explicitly close async HTTP client."""
+        if self._async_client and not self._async_client.is_closed:
+            await self._async_client.aclose()
+            self._async_client = None
+        # Also close sync client
+        self.close()
+
     def __del__(self):
-        """Cleanup HTTP client (fallback)"""
+        """Cleanup HTTP clients (fallback)."""
         self.close()
-    
+
     def __enter__(self):
-        """Context manager entry"""
+        """Context manager entry (sync)."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit"""
+        """Context manager exit (sync)."""
         self.close()
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.aclose()

@@ -11,6 +11,7 @@ Usage:
 import argparse
 import asyncio
 import logging
+import os
 import random
 import sys
 import time
@@ -20,7 +21,13 @@ import httpx
 
 # Configuration Defaults
 DEFAULT_URL = "http://localhost:8080"
-DEFAULT_KEY = "dev_api_key_for_testing_only"
+DEFAULT_KEY = os.getenv("API_KEY")
+
+if not DEFAULT_KEY:
+    print("❌ ERROR: API_KEY environment variable is required")
+    print("   Set it with: export API_KEY=your_api_key")
+    print("   Or use --key argument")
+    sys.exit(1)
 
 # Logging Setup
 logging.basicConfig(

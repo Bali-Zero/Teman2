@@ -415,9 +415,9 @@ class KGIncrementalExtractor:
             return self.stats
 
         # Process chunks in parallel batches
-        logger.info("\nStarting extraction (parallel workers: 5)...")
+        logger.info("\nStarting extraction (parallel workers: 2, Free Tier: 15 RPM)...")
 
-        batch_size = 5  # Process 5 chunks in parallel (gemini-1.5-flash: 60+ RPM)
+        batch_size = 2  # Process 2 chunks in parallel (Free Tier: 15 RPM limit)
 
         for i in range(0, len(chunks_to_process), batch_size):
             batch = chunks_to_process[i : i + batch_size]
@@ -436,8 +436,8 @@ class KGIncrementalExtractor:
                         f"Rate: {rate:.1f} chunks/min"
                     )
 
-                # Rate limit between batches (1s with 5 parallel = ~60 RPM)
-                await asyncio.sleep(1.0)
+                # Rate limit: 2 chunk ogni 8s = 15 RPM (Google AI Studio Free Tier limit)
+                await asyncio.sleep(8.0)
 
             except Exception as e:
                 logger.error(f"Error processing batch at {i}: {e}")

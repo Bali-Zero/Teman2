@@ -132,14 +132,26 @@ KITAS, KITAP, NPWP, PPh, PT PMA, NIB, OSS, HGB, SHM, BKPM, Imigrasi, Kemenkeu, D
         self.image_generator = None
 
         # Load image generator if enabled
+        # Priority: 1. API-based (Imagen 4), 2. Browser automation, 3. Internet fallback
+        self.api_image_generator = None
         if generate_images:
+            # Try API-based generator first (faster, more reliable)
+            try:
+                from gemini_api_image_generator import GeminiAPIImageGenerator
+
+                self.api_image_generator = GeminiAPIImageGenerator()
+                logger.info("✅ Gemini API Image Generator loaded (Imagen 4)")
+            except ImportError:
+                logger.warning("gemini_api_image_generator not available")
+
+            # Also load browser-based as fallback
             try:
                 from gemini_image_generator import GeminiImageGenerator
 
                 self.image_generator = GeminiImageGenerator()
-                logger.info("Gemini Image Generator loaded")
+                logger.info("✅ Browser Image Generator loaded (fallback)")
             except ImportError:
-                logger.warning("gemini_image_generator not found - images disabled")
+                logger.warning("gemini_image_generator not found - browser fallback disabled")
 
         # Load style bible if available
         style_bible_path = Path(__file__).parent.parent / "config" / "style_bible.txt"
@@ -490,59 +502,77 @@ NOTES:
         # Step 5: Generate cover image (MANDATORY with retry and fallback)
         if not self.generate_images:
             raise ValueError("Image generation is mandatory but was disabled")
-        if not self.image_generator:
+        if not self.api_image_generator and not self.image_generator:
             raise ValueError("Image generator is mandatory but not initialized")
-        
+
         logger.info("🎨 Generating cover image (mandatory)...")
-        
-        # Retry logic: try 3 times
-        max_retries = 3
-        image_result = None
-        
-        for attempt in range(1, max_retries + 1):
+
+        # Priority: 1. API-based (Imagen 4), 2. Browser automation, 3. Internet fallback
+        image_generated = False
+
+        # METHOD 1: Try API-based generator (fastest, most reliable)
+        if self.api_image_generator and not image_generated:
+            logger.info("   📡 Trying API-based generator (Imagen 4)...")
             try:
-                logger.info(f"   Attempt {attempt}/{max_retries}...")
-                image_result = await self.generate_cover_image_browser(
+                result = await self.api_image_generator.generate_cover_image(
                     title=enriched.headline,
-                    summary=enriched.ai_summary,
                     category=enriched.category,
-                    full_content=content,  # Pass the FULL article content for reasoning
+                    summary=enriched.ai_summary,
                 )
-                if image_result and image_result.get("image_path"):
-                    enriched.cover_image = image_result.get("image_path")
-                    enriched.image_prompt = image_result.get("prompt", "PENDING_CLAUDE_REASONING")
-                    logger.success(f"   ✅ Cover image generated: {enriched.cover_image}")
-                    if image_result.get("context_file"):
-                        logger.info(f"📋 Image context prepared: {image_result.get('context_file')}")
-                    break  # Success, exit retry loop
+                if result.success and result.image_path:
+                    enriched.cover_image = result.image_path
+                    enriched.image_prompt = result.prompt_used
+                    logger.success(f"   ✅ API image generated: {enriched.cover_image}")
+                    logger.info(f"   ⏱️ Generation time: {result.generation_time_ms}ms")
+                    image_generated = True
                 else:
-                    if attempt < max_retries:
-                        logger.warning(f"   ⚠️ Attempt {attempt} returned no image_path, retrying...")
-                    else:
-                        raise ValueError("Image generation returned no image_path after all retries")
+                    logger.warning(f"   ⚠️ API generator failed: {result.error}")
             except Exception as e:
-                if attempt < max_retries:
-                    logger.warning(f"   ⚠️ Attempt {attempt} failed: {e}, retrying...")
-                    await asyncio.sleep(2)  # Wait 2 seconds before retry
-                else:
-                    logger.error(f"   ❌ All {max_retries} attempts failed: {e}")
-                    # Fallback to internet image search
-                    logger.info("   🔄 Falling back to internet image search...")
-                    try:
-                        fallback_image = await self.fetch_image_from_internet(
-                            title=enriched.headline,
-                            category=enriched.category,
-                            summary=enriched.ai_summary
-                        )
-                        if fallback_image:
-                            enriched.cover_image = fallback_image
-                            enriched.image_prompt = f"Fallback image from internet for: {enriched.headline}"
-                            logger.success(f"   ✅ Fallback image found: {enriched.cover_image}")
-                        else:
-                            raise RuntimeError("Both image generation and internet fallback failed")
-                    except Exception as fallback_error:
-                        logger.error(f"   ❌ Fallback also failed: {fallback_error}")
-                        raise RuntimeError(f"Failed to generate cover image after {max_retries} attempts and fallback: {e}")
+                logger.warning(f"   ⚠️ API generator error: {e}")
+
+        # METHOD 2: Try browser automation as fallback
+        if self.image_generator and not image_generated:
+            logger.info("   🌐 Trying browser automation fallback...")
+            max_retries = 2  # Fewer retries since this is slower
+
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info(f"   Browser attempt {attempt}/{max_retries}...")
+                    image_result = await self.generate_cover_image_browser(
+                        title=enriched.headline,
+                        summary=enriched.ai_summary,
+                        category=enriched.category,
+                        full_content=content,
+                    )
+                    if image_result and image_result.get("image_path"):
+                        enriched.cover_image = image_result.get("image_path")
+                        enriched.image_prompt = image_result.get("prompt", "BROWSER_AUTOMATION")
+                        logger.success(f"   ✅ Browser image generated: {enriched.cover_image}")
+                        image_generated = True
+                        break
+                except Exception as e:
+                    if attempt < max_retries:
+                        logger.warning(f"   ⚠️ Browser attempt {attempt} failed: {e}, retrying...")
+                        await asyncio.sleep(2)
+                    else:
+                        logger.warning(f"   ⚠️ Browser automation failed: {e}")
+
+        # METHOD 3: Internet fallback (Unsplash)
+        if not image_generated:
+            logger.info("   🔄 Falling back to internet image search (Unsplash)...")
+            try:
+                fallback_image = await self.fetch_image_from_internet(
+                    title=enriched.headline,
+                    category=enriched.category,
+                    summary=enriched.ai_summary
+                )
+                if fallback_image:
+                    enriched.cover_image = fallback_image
+                    enriched.image_prompt = f"Fallback image from internet for: {enriched.headline}"
+                    logger.success(f"   ✅ Fallback image found: {enriched.cover_image}")
+                    image_generated = True
+            except Exception as fallback_error:
+                logger.error(f"   ❌ Internet fallback also failed: {fallback_error}")
         
         if not enriched.cover_image:
             raise RuntimeError("Cover image is mandatory but was not generated")
@@ -890,8 +920,14 @@ async def enrich_rss_batch(
         else:
             failed += 1
 
-        # Rate limit
-        await asyncio.sleep(3)  # Be gentle with Claude CLI
+        # Adaptive rate limiting - Claude CLI handles its own queuing
+        # Shorter delays since we're not hitting API rate limits
+        if result.get("duplicate"):
+            await asyncio.sleep(0.3)  # Duplicates need minimal delay
+        elif result.get("success"):
+            await asyncio.sleep(1.0)  # Success: brief pause between articles
+        else:
+            await asyncio.sleep(2.0)  # Failures: longer pause to recover
 
     return {"sent": sent, "skipped": skipped, "failed": failed}
 

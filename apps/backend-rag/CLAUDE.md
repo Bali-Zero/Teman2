@@ -1,5 +1,96 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-10 11:00-12:00 UTC)
+
+### Database Activation + Scheduler Tasks - COMPLETED
+
+**Obiettivo:** Attivare funzionalità database esistenti ma vuote (revenue, renewal_alerts, golden_routes).
+
+---
+
+### 1. Revenue Data Population
+
+**Problema:** Dashboard mostrava `revenue: 0` perché `actual_price` era NULL.
+
+**Soluzione:** Popolato `actual_price = quoted_price` per pratiche completate.
+
+```sql
+UPDATE practices
+SET actual_price = quoted_price, payment_status = 'paid', paid_amount = quoted_price
+WHERE status = 'completed' AND actual_price IS NULL
+-- Result: 3 practices updated, total revenue = 6,000
+```
+
+---
+
+### 2. Renewal Alerts Scheduler (Task #6)
+
+**Funzionalità:** Controlla pratiche con scadenza imminente e crea alert automatici.
+
+**Logica:**
+- Esegue ogni 12 ore
+- Crea alert a 90, 60, 30 giorni prima della scadenza
+- Evita duplicati (controlla `alert_type` esistente)
+- Notifica team member assegnato
+
+**Tabella:** `renewal_alerts` (già esistente, ora popolata automaticamente)
+
+---
+
+### 3. Golden Routes Seeder (Task #5)
+
+**Funzionalità:** Pre-popola `golden_routes` con query comuni all'avvio.
+
+**Query Seed (8 patterns):**
+- PT PMA requirements
+- KITAS work permit cost
+- Minimum capital for foreign investment
+- KITAS processing time
+- Company registration documents
+- Tax obligations for foreign companies
+- KITAS extension process
+- Retirement visa age requirement
+
+---
+
+### Files Modified
+
+| File | Tipo | Descrizione |
+|------|------|-------------|
+| `backend/services/misc/autonomous_scheduler.py` | MODIFIED | +Task #5 Golden Routes Seeder, +Task #6 Renewal Alerts |
+
+---
+
+### Scheduler Status (7 tasks)
+
+| # | Task | Interval | Status |
+|---|------|----------|--------|
+| 1 | Auto-Ingestion | 24h | ✅ |
+| 2 | Self-Healing | 5min | ✅ |
+| 3 | Conversation Trainer | 6h | ✅ |
+| 4 | Client Value Predictor | 12h | ✅ |
+| 5 | Golden Routes Seeder | one-time | ✅ NEW |
+| 6 | Renewal Alerts Checker | 12h | ✅ NEW |
+| 7 | Knowledge Graph Builder | 4h | ✅ |
+
+---
+
+### Commit
+
+`26ffc915` - feat(scheduler): add golden_routes seeder and renewal_alerts checker
+
+---
+
+### Verification
+
+```
+✅ Health: https://nuzantara-rag.fly.dev/health (58K docs)
+✅ Scheduler: 6 tasks registered and running
+✅ Revenue: 3 practices with actual_price populated
+```
+
+---
+
 ## Session Update (2026-01-10 04:00-05:30 UTC)
 
 ### Frontend Images Fix + Vercel Migration Cleanup - COMPLETED
