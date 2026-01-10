@@ -9,7 +9,7 @@ uv.lock
 apps/backend-rag/data/
 check_ingest.py
 run_ingest.py
-scripts/*.py
+# scripts/*.py  <-- REMOVED BLANKET IGNORE to allow tracking useful root scripts
 scripts/smoke_test_quick.py
 scripts/verify_json.py
 test_playwright.py
@@ -226,3 +226,13 @@ railway_ignore/
 env.production
 .vercel
 .env*.local
+
+# ========================================
+# SECURITY FIXES (2026-01-11)
+# ========================================
+scripts/data/nuzantara_key.json
+scripts/data/sa_nuzantara.json
+scripts/data/temp_creds.json
+scripts/data/*_key.json
+scripts/data/*_creds.json
+
