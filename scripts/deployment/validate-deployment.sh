@@ -77,7 +77,7 @@ check_file ".env.example"
 check_file "apps/backend-rag/Dockerfile"
 check_file "apps/backend-rag/fly.toml"
 check_file "apps/mouth/Dockerfile"
-check_file "apps/mouth/fly.toml"
+# check_file "apps/mouth/fly.toml" # Migrated to Vercel
 
 echo ""
 echo "==================================="

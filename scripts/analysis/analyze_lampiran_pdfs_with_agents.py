@@ -24,6 +24,13 @@ sys.path.insert(0, os.path.join(backend_path, "backend"))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(backend_path, ".env"))
 
+# Configura Vertex API Key se fornita
+VERTEX_API_KEY = os.getenv("VERTEX_API_KEY")
+if VERTEX_API_KEY:
+    # Usa Vertex API Key come GOOGLE_API_KEY per compatibilità
+    os.environ["GOOGLE_API_KEY"] = VERTEX_API_KEY
+    print(f"✅ Vertex API Key configurata: {VERTEX_API_KEY[:20]}...{VERTEX_API_KEY[-10:]}")
+
 import fitz  # PyMuPDF
 from services.multimodal.pdf_vision_service import PDFVisionService
 
