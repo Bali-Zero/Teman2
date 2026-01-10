@@ -35,7 +35,9 @@ nuzantara/
   - OpenAI (text-embedding-3-small for embeddings)
   - OpenRouter (fallback)
   - ZeroEntropy (zerank-2 reranking)
-- **Deployment**: Docker, Fly.io (Singapore region)
+- **Deployment**: 
+  - **Backend**: Docker, Fly.io (Singapore region)
+  - **Frontend**: Vercel (Next.js Edge, global CDN)
 - **Database**: PostgreSQL, Redis, Qdrant Vector DB
 
 ### 🚀 Agentic RAG v6.5 + Conscious GraphRAG
@@ -247,8 +249,9 @@ Il deploy è **manuale e locale** tramite `flyctl deploy` per garantire il contr
 - [**Code Quality Status**](docs/operations/CODE_QUALITY_STATUS.md) - Linting status and code quality metrics
 - [**Deploy Checklist**](docs/operations/DEPLOY_CHECKLIST.md) - Deployment procedures
 
-### 🦟 Flyctl Management (Crucial)
+### 🦟 Deployment Management
 
+**Backend (Fly.io):**
 To avoid configuration errors, **ALWAYS** use the provided helper scripts to interact with Fly.io. Do not run `flyctl` directly from the root.
 
 ```bash
@@ -256,10 +259,15 @@ To avoid configuration errors, **ALWAYS** use the provided helper scripts to int
 ./scripts/fly-backend.sh status
 ./scripts/fly-backend.sh logs
 ./scripts/fly-backend.sh deploy
+```
 
-# Manage Frontend
-./scripts/fly-frontend.sh status
-./scripts/fly-frontend.sh logs
+**Frontend (Vercel):**
+The frontend is deployed on **Vercel** (not Fly.io). Use Vercel CLI or dashboard:
+
+```bash
+# From apps/mouth directory
+cd apps/mouth
+vercel deploy --prod
 ```
 
 To regenerate documentation:

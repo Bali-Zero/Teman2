@@ -52,6 +52,7 @@ Flow:
 ┌─────────────────────────────────────────────────────────────────┐
 │  6. SUBMIT FOR APPROVAL (parallel)                              │
 │     6a. News Room UI → zantara.balizero.com/intelligence        │
+│         (Frontend deployed on Vercel, custom domain)            │
 │     6b. Telegram → voting via bot (2/3 majority)                │
 └─────────────────────────────────────────────────────────────────┘
                               ↓ (only approved)
@@ -231,7 +232,8 @@ class IntelPipeline:
         Send article to backend Intelligence Center News Room.
 
         This populates https://zantara.balizero.com/intelligence/news-room
-        with articles for team review in parallel with Telegram notifications.
+        (frontend deployed on Vercel, custom domain) with articles for team 
+        review in parallel with Telegram notifications.
         """
         backend_url = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
         endpoint = f"{backend_url}/api/intel/scraper/submit"

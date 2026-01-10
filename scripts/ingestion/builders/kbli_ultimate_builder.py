@@ -166,17 +166,17 @@ class KBLIUltimateBuilder:
             "sektor": kbli_entry.get("sektor"),
             "tingkat_risiko": risk_level,
             "risk_level_en": self._get_risk_level_en(risk_level),
-            "pma": pma_info.dict() if pma_info else None,
-            "skala_usaha": skala_usaha_data.dict() if skala_usaha_data else None,
+            "pma": pma_info.model_dump() if pma_info else None,
+            "skala_usaha": skala_usaha_data.model_dump() if skala_usaha_data else None,
             "ruang_lingkup": kbli_entry.get("ruang_lingkup"),
             "ruang_lingkup_en": self.translation_service.translate(kbli_entry.get("ruang_lingkup", "")) if kbli_entry.get("ruang_lingkup") else None,
-            "timeline": timeline_data.dict() if timeline_data else None,
-            "documenti_necessari": documenti_data.dict() if documenti_data else None,
-            "obblighi_post_apertura": obblighi_data.dict(),
-            "warnings": [w.dict() for w in warnings] if warnings else None,
-            "kbli_correlati": [k.dict() for k in kbli_correlati] if kbli_correlati else None,
-            "faq": [f.dict() for f in faq] if faq else None,
-            "metadata": metadata.dict()
+            "timeline": timeline_data.model_dump() if timeline_data else None,
+            "documenti_necessari": documenti_data.model_dump() if documenti_data else None,
+            "obblighi_post_apertura": obblighi_data.model_dump(),
+            "warnings": [w.model_dump() for w in warnings] if warnings else None,
+            "kbli_correlati": [k.model_dump() for k in kbli_correlati] if kbli_correlati else None,
+            "faq": [f.model_dump() for f in faq] if faq else None,
+            "metadata": metadata.model_dump()
         }
         
         return payload_dict

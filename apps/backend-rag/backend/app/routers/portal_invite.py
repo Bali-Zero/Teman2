@@ -170,7 +170,7 @@ async def send_invitation(
         )
 
         # Build full invite URL
-        base_url = getattr(settings, "frontend_url", "https://nuzantara-mouth.fly.dev")
+        base_url = getattr(settings, "frontend_url", "https://nuzantara-mouth.vercel.app")
         full_invite_url = f"{base_url}{result['invite_url']}"
 
         # Try to send email via Zoho (using current user's connected account)

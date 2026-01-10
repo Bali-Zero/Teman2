@@ -47,7 +47,9 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 
 ### 2.2 Infrastructure
 - **Database:** PostgreSQL (asyncpg with connection pooling, 65+ tables), Qdrant Cloud (Vector, **54,154 documents** across 7 active collections), Redis (Cache/Queue).
-- **Deployment:** Fly.io (Docker-based, multi-region Singapore).
+- **Deployment:** 
+  - **Backend:** Fly.io (Docker-based, Singapore region)
+  - **Frontend:** Vercel (Next.js Edge, global CDN)
 - **Testing & Deployment:** Local testing and manual deployment workflow. All testing and deployment is done locally - no automated CI/CD pipelines. Deploy via `flyctl deploy` from local machine.
 - **Observability:** Prometheus, Grafana, Jaeger, Alertmanager.
 
@@ -102,11 +104,15 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
     -   Run `./sentinel` to verify integrity before requesting review.
 -   **Logs:** Check logs (`fly logs` or local output) to verify behavior.
 
-### 3.4 Fly.io Operations
--   **NEVER run `flyctl` from root.** It will fail due to missing context.
--   **ALWAYS use the helper scripts:**
-    -   `./scripts/fly-backend.sh <command>`
-    -   `./scripts/fly-frontend.sh <command>`
+### 3.4 Deployment Operations
+-   **Backend (Fly.io):**
+    -   **NEVER run `flyctl` from root.** It will fail due to missing context.
+    -   **ALWAYS use the helper script:**
+        -   `./scripts/fly-backend.sh <command>` (status, logs, deploy)
+-   **Frontend (Vercel):**
+    -   Frontend is deployed on **Vercel** (not Fly.io)
+    -   Use Vercel CLI: `vercel deploy --prod` (from `apps/mouth/`)
+    -   Or deploy via Vercel dashboard/GitHub integration
 
 ### 3.5 🚨 SEMI-AUTOMATED CI/CD
 -   **DIVIETO ASSOLUTO:** Non usare MAI CI/CD automatizzati per il deploy in produzione.

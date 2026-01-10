@@ -101,7 +101,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### 2. Test Frontend Dashboard
 
-1. Accedi a `https://nuzantara-mouth.fly.dev/login`
+1. Accedi a `https://nuzantara-mouth.vercel.app/login` (frontend deployed on Vercel)
 2. Login come `zero@balizero.com`
 3. Verifica dashboard carica correttamente
 4. Verifica widget AI Pulse e Financial Reality visibili (solo per zero@balizero.com)

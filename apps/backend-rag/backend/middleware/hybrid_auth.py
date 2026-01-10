@@ -62,7 +62,8 @@ def _allowed_origins() -> set[str]:
     defaults = {
         "https://zantara.balizero.com",
         "https://www.zantara.balizero.com",
-        "https://nuzantara-mouth.fly.dev",
+        "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment (primary)
+        "https://nuzantara-mouth.fly.dev",  # Legacy Fly.io deployment (deprecated)
         "http://localhost:3000",
     }
     origins.update(defaults)
