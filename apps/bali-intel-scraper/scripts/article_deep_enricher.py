@@ -21,11 +21,20 @@ import json
 import asyncio
 import httpx
 import re
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, List
 from dataclasses import dataclass
 from loguru import logger
+
+# Anthropic API support
+try:
+    from anthropic import Anthropic
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+    logger.warning("anthropic package not installed - pip install anthropic")
 
 # For extracting full article content
 try:
@@ -336,6 +345,7 @@ NOTES:
         """
         Call Claude via CLI using Max subscription.
         Uses `claude -p` for prompt mode (no API costs!).
+        Falls back to Anthropic API if CLI not available.
         """
         try:
             logger.info("🤖 Calling Claude Max (via CLI)...")
@@ -349,7 +359,7 @@ NOTES:
 
             if result.returncode != 0:
                 logger.error(f"Claude CLI error: {result.stderr}")
-                return None
+                return self._fallback_to_api(prompt)
 
             response = result.stdout.strip()
 
@@ -367,15 +377,56 @@ NOTES:
             return response
 
         except subprocess.TimeoutExpired:
-            logger.error("Claude CLI timeout")
-            return None
+            logger.error("Claude CLI timeout, falling back to API")
+            return self._fallback_to_api(prompt)
         except FileNotFoundError:
-            logger.error(
-                "Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code"
-            )
-            return None
+            logger.warning("Claude CLI not found, falling back to Anthropic API")
+            return self._fallback_to_api(prompt)
         except Exception as e:
-            logger.error(f"Claude CLI error: {e}")
+            logger.error(f"Claude CLI error: {e}, falling back to API")
+            return self._fallback_to_api(prompt)
+
+    def _fallback_to_api(self, prompt: str) -> Optional[str]:
+        """Fallback to Anthropic API when CLI is not available"""
+        if not ANTHROPIC_AVAILABLE:
+            logger.error("Anthropic package not installed. Install with: pip install anthropic")
+            return None
+        
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            logger.error("ANTHROPIC_API_KEY not set. Cannot use API fallback.")
+            return None
+        
+        try:
+            logger.info("🤖 Calling Claude via Anthropic API...")
+            client = Anthropic(api_key=api_key)
+            
+            response = client.messages.create(
+                model="claude-3-5-sonnet-20241022",  # Use latest Sonnet model
+                max_tokens=4096,
+                system=self.SYSTEM_PROMPT,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            content = response.content[0].text if response.content else ""
+            
+            # Extract JSON from markdown if present
+            if "```json" in content:
+                json_start = content.find("```json") + 7
+                json_end = content.find("```", json_start)
+                content = content[json_start:json_end].strip()
+            elif "```" in content:
+                json_start = content.find("```") + 3
+                json_end = content.find("```", json_start)
+                content = content[json_start:json_end].strip()
+            
+            logger.success("✅ Claude API response received")
+            return content
+            
+        except Exception as e:
+            logger.error(f"Anthropic API error: {e}")
             return None
 
     async def enrich_article(
