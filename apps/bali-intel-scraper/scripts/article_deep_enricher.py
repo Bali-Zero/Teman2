@@ -487,29 +487,32 @@ NOTES:
             f"   Category: {enriched.category} | Priority: {enriched.priority} | Score: {enriched.relevance_score}"
         )
 
-        # Step 5: Prepare cover image generation via Gemini browser automation
-        # NOTE: The actual image prompt must be CREATED BY CLAUDE using the reasoning framework
-        if self.generate_images and self.image_generator:
-            logger.info("🎨 Preparing cover image generation...")
-            try:
-                image_result = await self.generate_cover_image_browser(
-                    title=enriched.headline,
-                    summary=enriched.ai_summary,
-                    category=enriched.category,
-                    full_content=content,  # Pass the FULL article content for reasoning
-                )
-                if image_result:
-                    enriched.cover_image = image_result.get("image_path")
-                    # Note: image_prompt will be set AFTER Claude reasons about the article
-                    enriched.image_prompt = "PENDING_CLAUDE_REASONING"
-                    logger.info(
-                        f"📋 Image context prepared: {image_result.get('context_file')}"
-                    )
-                    logger.info(
-                        "⚠️  Claude must now REASON about the article and create the image prompt"
-                    )
-            except Exception as e:
-                logger.warning(f"Image preparation failed: {e}")
+        # Step 5: Generate cover image (MANDATORY)
+        if not self.generate_images:
+            raise ValueError("Image generation is mandatory but was disabled")
+        if not self.image_generator:
+            raise ValueError("Image generator is mandatory but not initialized")
+        
+        logger.info("🎨 Generating cover image (mandatory)...")
+        try:
+            image_result = await self.generate_cover_image_browser(
+                title=enriched.headline,
+                summary=enriched.ai_summary,
+                category=enriched.category,
+                full_content=content,  # Pass the FULL article content for reasoning
+            )
+            if image_result and image_result.get("image_path"):
+                enriched.cover_image = image_result.get("image_path")
+                # Note: image_prompt will be set AFTER Claude reasons about the article
+                enriched.image_prompt = image_result.get("prompt", "PENDING_CLAUDE_REASONING")
+                logger.success(f"   ✅ Cover image generated: {enriched.cover_image}")
+                if image_result.get("context_file"):
+                    logger.info(f"📋 Image context prepared: {image_result.get('context_file')}")
+            else:
+                raise ValueError("Image generation returned no image_path")
+        except Exception as e:
+            logger.error(f"   ❌ Image generation failed (mandatory): {e}")
+            raise RuntimeError(f"Failed to generate mandatory cover image: {e}")
 
         return enriched
 
