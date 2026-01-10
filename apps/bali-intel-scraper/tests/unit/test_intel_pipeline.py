@@ -188,28 +188,33 @@ class TestIntelPipelineInit:
     def test_custom_params(
         self, mock_ollama, mock_validator, mock_enricher, mock_image_gen
     ):
-        """Test custom initialization params"""
+        """Test custom initialization params - note: images are now mandatory"""
         pipeline = IntelPipeline(
             min_llama_score=50,
             auto_approve_threshold=80,
-            generate_images=False,
+            generate_images=False,  # Ignored - images are mandatory
             dry_run=True,
         )
         assert pipeline.min_llama_score == 50
         assert pipeline.auto_approve_threshold == 80
-        assert pipeline.generate_images is False
+        # Images are now mandatory - always True regardless of parameter
+        assert pipeline.generate_images is True
         assert pipeline.dry_run is True
-        mock_enricher.assert_called_once_with(generate_images=False)
+        # Enricher always gets generate_images=True now
+        mock_enricher.assert_called_once_with(generate_images=True)
 
+    @patch("intel_pipeline.GeminiImageGenerator")
     @patch("intel_pipeline.ArticleDeepEnricher")
     @patch("intel_pipeline.ClaudeValidator")
     @patch("intel_pipeline.OllamaScorer")
-    def test_no_image_generator_when_disabled(
-        self, mock_ollama, mock_validator, mock_enricher
+    def test_image_generator_always_created(
+        self, mock_ollama, mock_validator, mock_enricher, mock_image_gen
     ):
-        """Test image generator is not created when disabled"""
-        pipeline = IntelPipeline(generate_images=False)
-        assert pipeline.image_generator is None
+        """Test image generator is always created (mandatory for E-E-A-T)"""
+        pipeline = IntelPipeline(generate_images=False)  # Ignored
+        # Image generator should always be created - mandatory
+        assert pipeline.image_generator is not None
+        mock_image_gen.assert_called_once()
 
 
 class TestProcessArticleLlamaScoring:

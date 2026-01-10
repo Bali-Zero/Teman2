@@ -24,6 +24,7 @@ import os
 from typing import Optional, Dict
 from bs4 import BeautifulSoup, Comment
 from loguru import logger
+from dateutil import parser as date_parser
 
 # Optional imports
 try:
@@ -67,6 +68,27 @@ class SmartExtractor:
             "failed": 0,
         }
 
+    def get_stats(self) -> dict:
+        """Return extraction statistics with computed totals"""
+        stats = self.stats.copy()
+        # Compute total extractions
+        successes = (
+            stats.get("css_success", 0) +
+            stats.get("trafilatura_success", 0) +
+            stats.get("newspaper_success", 0) +
+            stats.get("llama_success", 0)
+        )
+        failed = stats.get("failed", 0)
+        total = successes + failed
+        stats["total"] = total
+        # Compute success rate
+        if total > 0:
+            rate = (successes / total) * 100
+            stats["success_rate"] = f"{rate:.1f}%"
+        else:
+            stats["success_rate"] = "N/A"
+        return stats
+
     async def check_ollama(self) -> bool:
         """Check if Ollama is running"""
         if self.ollama_available is not None:
@@ -99,6 +121,98 @@ class SmartExtractor:
 
         self.ollama_available = False
         return False
+
+    def extract_date_from_html(self, html: str, url: str) -> Optional[str]:
+        """
+        Extract publication date using multiple strategies (best practices).
+
+        Priority:
+        1. JSON-LD schema.org (datePublished)
+        2. Open Graph meta (article:published_time)
+        3. Standard meta tags (date, DC.date, pubdate)
+        4. HTML5 time element
+        5. URL pattern (e.g., /2025/01/11/)
+
+        Returns ISO format date string or None.
+        """
+        try:
+            soup = BeautifulSoup(html, "html.parser")
+
+            # 1. JSON-LD (most reliable)
+            for script in soup.find_all("script", type="application/ld+json"):
+                try:
+                    data = json.loads(script.string)
+                    # Handle both single object and array
+                    if isinstance(data, list):
+                        data = data[0] if data else {}
+
+                    # Look for datePublished in Article types
+                    date_str = data.get("datePublished") or data.get("dateCreated")
+                    if date_str:
+                        parsed = date_parser.parse(date_str)
+                        logger.debug(f"Date from JSON-LD: {parsed.isoformat()}")
+                        return parsed.isoformat()
+                except (json.JSONDecodeError, ValueError, TypeError):
+                    continue
+
+            # 2. Open Graph meta tags
+            og_date = soup.find("meta", property="article:published_time")
+            if og_date and og_date.get("content"):
+                try:
+                    parsed = date_parser.parse(og_date["content"])
+                    logger.debug(f"Date from Open Graph: {parsed.isoformat()}")
+                    return parsed.isoformat()
+                except (ValueError, TypeError):
+                    pass
+
+            # 3. Standard meta tags
+            meta_names = [
+                "date", "Date", "DC.date", "dc.date", "pubdate", "publication_date",
+                "article:published", "datePublished", "publish-date", "published-date",
+                "sailthru.date", "parsely-pub-date"
+            ]
+            for name in meta_names:
+                meta = soup.find("meta", attrs={"name": name}) or soup.find("meta", attrs={"property": name})
+                if meta and meta.get("content"):
+                    try:
+                        parsed = date_parser.parse(meta["content"], fuzzy=True)
+                        logger.debug(f"Date from meta '{name}': {parsed.isoformat()}")
+                        return parsed.isoformat()
+                    except (ValueError, TypeError):
+                        continue
+
+            # 4. HTML5 time element with datetime attribute
+            time_elem = soup.find("time", datetime=True)
+            if time_elem and time_elem.get("datetime"):
+                try:
+                    parsed = date_parser.parse(time_elem["datetime"])
+                    logger.debug(f"Date from <time>: {parsed.isoformat()}")
+                    return parsed.isoformat()
+                except (ValueError, TypeError):
+                    pass
+
+            # 5. URL pattern (e.g., /2025/01/11/ or /2025-01-11/)
+            url_patterns = [
+                r"/(\d{4})/(\d{2})/(\d{2})/",  # /2025/01/11/
+                r"/(\d{4})-(\d{2})-(\d{2})/",  # /2025-01-11/
+                r"[/-](\d{4})(\d{2})(\d{2})[/-]",  # /20250111/
+            ]
+            for pattern in url_patterns:
+                match = re.search(pattern, url)
+                if match:
+                    try:
+                        year, month, day = match.groups()
+                        from datetime import datetime
+                        dt = datetime(int(year), int(month), int(day))
+                        logger.debug(f"Date from URL: {dt.isoformat()}")
+                        return dt.isoformat()
+                    except (ValueError, TypeError):
+                        continue
+
+        except Exception as e:
+            logger.debug(f"Date extraction failed: {e}")
+
+        return None
 
     def _clean_html_for_llm(self, html: str) -> str:
         """ Aggressively clean HTML to save tokens and reduce noise for LLM """
@@ -344,18 +458,27 @@ OUTPUT FORMAT (JSON ONLY):
         if selectors:
             result = self.extract_with_css(html, selectors, url)
             if result:
+                # Add date extraction (CSS doesn't extract date)
+                if not result.get("date"):
+                    result["date"] = self.extract_date_from_html(html, url)
                 logger.success(f"✅ CSS extraction: {len(result['content'])} chars")
                 return result
 
         # Layer 2: Trafilatura
         result = self.extract_with_trafilatura(html, url)
         if result:
+            # Add date extraction (Trafilatura doesn't extract date)
+            if not result.get("date"):
+                result["date"] = self.extract_date_from_html(html, url)
             logger.success(f"✅ Trafilatura extraction: {len(result['content'])} chars")
             return result
 
-        # Layer 3: Newspaper3k
+        # Layer 3: Newspaper3k (already extracts date)
         result = self.extract_with_newspaper(url)
         if result:
+            # Newspaper extracts date, but fallback to our extractor if it failed
+            if not result.get("date"):
+                result["date"] = self.extract_date_from_html(html, url)
             logger.success(f"✅ Newspaper extraction: {len(result['content'])} chars")
             return result
 
@@ -364,6 +487,9 @@ OUTPUT FORMAT (JSON ONLY):
         result = await self.extract_with_llama(html, url, hint)
         if result:
             result["method"] = "llama"
+            # LLM might extract date, but fallback to our extractor
+            if not result.get("date"):
+                result["date"] = self.extract_date_from_html(html, url)
             return result
 
         self.stats["failed"] += 1

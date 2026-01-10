@@ -65,13 +65,33 @@ class TestCheckOllama:
             assert extractor.ollama_available is True
 
     @pytest.mark.asyncio
-    async def test_check_ollama_not_available(self):
-        """Test check_ollama when not available"""
+    async def test_check_ollama_fallback_to_available_model(self):
+        """Test check_ollama falls back to available model when requested not found"""
         extractor = SmartExtractor()
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"models": [{"name": "mistral:7b"}]}
+
+        with patch("httpx.AsyncClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.get.return_value = mock_response
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await extractor.check_ollama()
+
+            # Code falls back to any available model
+            assert result is True
+            assert extractor.ollama_model == "mistral:7b"
+
+    @pytest.mark.asyncio
+    async def test_check_ollama_no_models_available(self):
+        """Test check_ollama when no models are available"""
+        extractor = SmartExtractor()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"models": []}
 
         with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()

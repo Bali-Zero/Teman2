@@ -6,9 +6,10 @@ Telegram Article Approval System
 Sends article previews to Telegram for manual approval before publishing.
 
 Features:
-- HTML preview generation
+- Dark theme preview matching balizero.com
 - Telegram notification with inline buttons
-- Approval/rejection tracking
+- Preview link to see article exactly as published
+- Approval/rejection tracking with human review
 - Webhook for Telegram callbacks
 
 Setup:
@@ -28,9 +29,22 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from typing import Optional
+from typing import Optional, Dict, List
 import aiohttp
 from loguru import logger
+
+# Import the new preview generator
+try:
+    from preview_generator import (
+        BaliZeroPreviewGenerator,
+        PreviewArticle,
+        generate_article_id,
+        create_preview_from_pipeline,
+    )
+    PREVIEW_GENERATOR_OK = True
+except ImportError:
+    PREVIEW_GENERATOR_OK = False
+    logger.warning("preview_generator not available, using legacy HTML preview")
 
 # Telegram API base URL
 TELEGRAM_API = "https://api.telegram.org/bot{token}/{method}"
@@ -592,8 +606,10 @@ class TelegramApproval:
             ", ".join(article.seo_metadata.get("key_entities", [])[:5])
         )
 
-        # Format message (English)
+        # Format message (English) - Emphasize preview link for E-E-A-T review
         message = f"""📰 *New Article Ready for Review*
+
+🖼️ *PREVIEW:* [View Article as Published]({article.preview_url})
 
 *{escaped_title}*
 
@@ -607,11 +623,22 @@ class TelegramApproval:
 🔑 *Keywords:* {escaped_keywords}
 🏷️ *Entities:* {escaped_entities}
 
+👆 *Click "VIEW FULL PREVIEW" to see exactly how the article will appear on balizero.com*
+
 _Article ID: `{article.article_id}`_"""
 
         # Inline keyboard for approve/reject/changes
+        # IMPORTANT: Preview button FIRST for E-E-A-T human review
         keyboard = {
             "inline_keyboard": [
+                # Row 1: PREVIEW LINK (most important - see article as it will appear)
+                [
+                    {
+                        "text": "🖼️ VIEW FULL PREVIEW",
+                        "url": article.preview_url,
+                    }
+                ],
+                # Row 2: Approve/Reject actions
                 [
                     {
                         "text": "✅ Approve",
@@ -622,12 +649,14 @@ _Article ID: `{article.article_id}`_"""
                         "callback_data": f"reject:{article.article_id}",
                     },
                 ],
+                # Row 3: Request changes
                 [
                     {
                         "text": "✏️ Request Changes",
                         "callback_data": f"changes:{article.article_id}",
                     }
                 ],
+                # Row 4: View original source
                 [{"text": "🔗 View Source", "url": article.source_url}],
             ]
         }
@@ -711,14 +740,16 @@ _Article ID: `{article.article_id}`_"""
         return first_message_id
 
     async def submit_for_approval(
-        self, article: dict, seo_metadata: dict, enriched_content: str
+        self, article: dict, seo_metadata: dict, enriched_content: str,
+        reviewed_by: str = None
     ) -> PendingArticle:
         """
         Submit an article for approval.
 
-        1. Generate HTML preview
-        2. Save pending article
-        3. Send Telegram notification
+        1. Generate dark-theme HTML preview (matching balizero.com)
+        2. Upload preview to scraper API
+        3. Save pending article
+        4. Send Telegram notification with preview link
 
         Returns the PendingArticle object.
         """
@@ -728,21 +759,47 @@ _Article ID: `{article.article_id}`_"""
         # Generate article ID
         article_id = self._generate_article_id(title, source_url)
 
-        # Generate HTML preview
-        html_preview = self.generate_html_preview(article, seo_metadata)
+        # Generate HTML preview using new dark-theme generator
+        if PREVIEW_GENERATOR_OK:
+            # Use the new BaliZero-style preview
+            preview_article = PreviewArticle(
+                article_id=article_id,
+                title=title,
+                subtitle=seo_metadata.get("meta_description", ""),
+                content=enriched_content,
+                category=article.get("category", "general"),
+                source=article.get("source", "Unknown"),
+                source_url=source_url,
+                cover_image=article.get("image_url", ""),
+                published_at=article.get("published_at") or datetime.now(timezone.utc).isoformat(),
+                reading_time=seo_metadata.get("reading_time_minutes", 5),
+                keywords=seo_metadata.get("keywords", []),
+                key_entities=seo_metadata.get("key_entities", []),
+                faq_items=seo_metadata.get("faq_items", []),
+                tldr_summary=seo_metadata.get("tldr_summary", ""),
+                schema_json_ld=seo_metadata.get("schema_json_ld", "{}"),
+                relevance_score=article.get("relevance_score", 0),
+                reviewed_by=reviewed_by,
+            )
+
+            generator = BaliZeroPreviewGenerator(output_dir=str(self.preview_dir))
+            html_preview = generator.generate_preview(preview_article)
+            logger.info(f"Generated dark-theme preview for {article_id}")
+        else:
+            # Fallback to legacy light-theme preview
+            html_preview = self.generate_html_preview(article, seo_metadata)
 
         # Save HTML file locally
         preview_filename = f"{article_id}.html"
         preview_path = self.preview_dir / preview_filename
         preview_path.write_text(html_preview, encoding="utf-8")
 
-        # Upload HTML preview to backend (so link is ready for Telegram)
+        # Upload HTML preview to scraper API (so link is ready for Telegram)
+        scraper_base_url = os.getenv("SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev")
         uploaded_preview_url = await self.upload_preview_to_backend(
-            article_id, html_preview
+            article_id, html_preview, backend_url=scraper_base_url
         )
-        preview_url = (
-            uploaded_preview_url or f"{self.preview_base_url}/{preview_filename}"
-        )
+        preview_url = uploaded_preview_url or f"{scraper_base_url}/preview/{article_id}"
 
         # Create pending article
         pending = PendingArticle(
@@ -962,17 +1019,17 @@ Applications can be submitted through Indonesian embassies worldwide or converte
             enriched_content=test_article["enriched_content"],
         )
 
-        print("\n✅ Article submitted for approval!")
-        print(f"   ID: {pending.article_id}")
-        print(f"   HTML Preview: {pending.preview_html}")
-        print(f"   Preview URL: {pending.preview_url}")
+        logger.success("Article submitted for approval!")
+        logger.info(f"   ID: {pending.article_id}")
+        logger.info(f"   HTML Preview: {pending.preview_html}")
+        logger.info(f"   Preview URL: {pending.preview_url}")
 
         if pending.telegram_message_id:
-            print(f"   Telegram Message ID: {pending.telegram_message_id}")
+            logger.info(f"   Telegram Message ID: {pending.telegram_message_id}")
         else:
-            print("   ⚠️ Telegram notification not sent (check bot token)")
+            logger.warning("   Telegram notification not sent (check bot token)")
 
         # List pending
-        print(f"\n📋 Pending articles: {len(approval.list_pending())}")
+        logger.info(f"Pending articles: {len(approval.list_pending())}")
 
     asyncio.run(test_approval())

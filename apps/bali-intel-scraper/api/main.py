@@ -590,6 +590,223 @@ async def get_source_stats():
 
 
 # ============================================================================
+# PREVIEW & APPROVAL ENDPOINTS
+# ============================================================================
+
+from fastapi.responses import HTMLResponse, FileResponse
+import json as json_module
+
+# Preview storage directory
+PREVIEW_DIR = Path(__file__).parent.parent / "scripts" / "data" / "previews"
+PENDING_DIR = Path(__file__).parent.parent / "scripts" / "data" / "pending_articles"
+
+
+class PreviewUploadRequest(BaseModel):
+    """Request to upload a preview HTML."""
+    article_id: str
+    html_content: str
+
+
+class ApprovalAction(BaseModel):
+    """Approval action with optional reason."""
+    reason: Optional[str] = None
+    reviewed_by: Optional[str] = None
+
+
+@app.get("/preview/{article_id}", response_class=HTMLResponse)
+async def get_preview(article_id: str):
+    """
+    Serve article preview page.
+
+    This renders the article exactly as it would appear on balizero.com,
+    allowing approvers to see the final result before publishing.
+
+    Preview URL: https://bali-intel-scraper.fly.dev/preview/{article_id}
+    """
+    PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+
+    preview_path = PREVIEW_DIR / f"{article_id}.html"
+
+    if not preview_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Preview not found for article {article_id}"
+        )
+
+    html_content = preview_path.read_text(encoding="utf-8")
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/preview/upload", status_code=201)
+async def upload_preview(request: PreviewUploadRequest):
+    """
+    Upload HTML preview for an article.
+
+    Called by the pipeline before sending Telegram notification,
+    so the preview link is ready when team clicks it.
+    """
+    PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+
+    preview_path = PREVIEW_DIR / f"{request.article_id}.html"
+    preview_path.write_text(request.html_content, encoding="utf-8")
+
+    # Build preview URL based on environment
+    base_url = os.getenv("SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev")
+    preview_url = f"{base_url}/preview/{request.article_id}"
+
+    logger.info(f"Preview uploaded: {request.article_id} -> {preview_url}")
+
+    return {
+        "success": True,
+        "article_id": request.article_id,
+        "preview_url": preview_url,
+        "preview_path": str(preview_path),
+    }
+
+
+@app.get("/api/v1/approval/pending")
+async def list_pending_approvals():
+    """
+    List all articles pending approval.
+
+    Returns articles submitted for Telegram approval that haven't been
+    approved or rejected yet.
+    """
+    PENDING_DIR.mkdir(parents=True, exist_ok=True)
+
+    pending = []
+    for path in PENDING_DIR.glob("*.json"):
+        try:
+            data = json_module.loads(path.read_text())
+            if data.get("status") == "pending":
+                # Add preview URL
+                base_url = os.getenv("SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev")
+                data["preview_url"] = f"{base_url}/preview/{data.get('article_id')}"
+                pending.append(data)
+        except Exception as e:
+            logger.warning(f"Error reading pending article {path}: {e}")
+
+    # Sort by created_at descending
+    pending.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    return {
+        "total": len(pending),
+        "articles": pending,
+    }
+
+
+@app.post("/api/v1/approval/{article_id}/approve")
+async def approve_article(article_id: str, action: ApprovalAction = None):
+    """
+    Approve an article for publication.
+
+    This marks the article as approved and triggers publishing to BaliZero API.
+    Called from the preview page approve button or Telegram callback.
+    """
+    PENDING_DIR.mkdir(parents=True, exist_ok=True)
+
+    pending_path = PENDING_DIR / f"{article_id}.json"
+
+    if not pending_path.exists():
+        raise HTTPException(status_code=404, detail=f"Article {article_id} not found")
+
+    try:
+        data = json_module.loads(pending_path.read_text())
+
+        if data.get("status") == "approved":
+            return {"success": True, "message": "Article already approved", "article_id": article_id}
+
+        # Update status
+        data["status"] = "approved"
+        data["approved_at"] = datetime.utcnow().isoformat()
+        if action and action.reviewed_by:
+            data["reviewed_by"] = action.reviewed_by
+
+        pending_path.write_text(json_module.dumps(data, indent=2, ensure_ascii=False))
+
+        logger.success(f"Article approved: {article_id}")
+
+        # TODO: Trigger publishing to BaliZero API
+        # This would call the actual publish function
+
+        return {
+            "success": True,
+            "message": "Article approved for publication",
+            "article_id": article_id,
+            "approved_at": data["approved_at"],
+            "reviewed_by": data.get("reviewed_by"),
+        }
+
+    except Exception as e:
+        logger.error(f"Error approving article {article_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/v1/approval/{article_id}/reject")
+async def reject_article(article_id: str, action: ApprovalAction = None):
+    """
+    Reject an article.
+
+    This marks the article as rejected with an optional reason.
+    The article will not be published.
+    """
+    PENDING_DIR.mkdir(parents=True, exist_ok=True)
+
+    pending_path = PENDING_DIR / f"{article_id}.json"
+
+    if not pending_path.exists():
+        raise HTTPException(status_code=404, detail=f"Article {article_id} not found")
+
+    try:
+        data = json_module.loads(pending_path.read_text())
+
+        # Update status
+        data["status"] = "rejected"
+        data["rejected_at"] = datetime.utcnow().isoformat()
+        if action and action.reason:
+            data["rejection_reason"] = action.reason
+        if action and action.reviewed_by:
+            data["reviewed_by"] = action.reviewed_by
+
+        pending_path.write_text(json_module.dumps(data, indent=2, ensure_ascii=False))
+
+        logger.info(f"Article rejected: {article_id} - Reason: {action.reason if action else 'None'}")
+
+        return {
+            "success": True,
+            "message": "Article rejected",
+            "article_id": article_id,
+            "rejected_at": data["rejected_at"],
+            "reason": data.get("rejection_reason"),
+        }
+
+    except Exception as e:
+        logger.error(f"Error rejecting article {article_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/v1/approval/{article_id}")
+async def get_approval_status(article_id: str):
+    """
+    Get approval status for an article.
+    """
+    PENDING_DIR.mkdir(parents=True, exist_ok=True)
+
+    pending_path = PENDING_DIR / f"{article_id}.json"
+
+    if not pending_path.exists():
+        raise HTTPException(status_code=404, detail=f"Article {article_id} not found")
+
+    data = json_module.loads(pending_path.read_text())
+
+    # Add preview URL
+    base_url = os.getenv("SCRAPER_BASE_URL", "https://bali-intel-scraper.fly.dev")
+    data["preview_url"] = f"{base_url}/preview/{article_id}"
+
+    return data
+
+
+# ============================================================================
 # ROOT
 # ============================================================================
 

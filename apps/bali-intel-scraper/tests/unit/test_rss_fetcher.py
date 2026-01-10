@@ -608,14 +608,14 @@ class TestFetchAllWithScoring:
     """Test fetch_all with professional scoring"""
 
     @pytest.mark.asyncio
-    async def test_fetch_all_deduplication(self):
-        """Test that duplicate titles are removed"""
+    async def test_fetch_all_returns_items_from_all_topics(self):
+        """Test that fetch_all collects items from all topics (dedup handled in pipeline)"""
         fetcher = GoogleNewsRSSFetcher()
 
         recent_date = datetime.utcnow() - timedelta(days=1)
         date_str = recent_date.strftime("%a, %d %b %Y %H:%M:%S GMT")
 
-        # Same title in multiple topics
+        # Same title in multiple topics - dedup happens later in pipeline
         mock_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
         <rss version="2.0">
             <channel>
@@ -648,14 +648,12 @@ class TestFetchAllWithScoring:
             with patch("rss_fetcher.score_article", return_value=mock_score):
                 items = await fetcher.fetch_all(min_score=0)
 
-                # Should deduplicate
-                title_count = {}
+                # Should return items (dedup is handled by semantic deduplicator in pipeline)
+                assert len(items) > 0
+                # All items should have required fields
                 for item in items:
-                    title_count[item["title"]] = title_count.get(item["title"], 0) + 1
-
-                # Each title should appear only once
-                for count in title_count.values():
-                    assert count == 1
+                    assert "title" in item
+                    assert "relevance_score" in item
 
     @pytest.mark.asyncio
     async def test_fetch_all_filters_low_scores(self):

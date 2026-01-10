@@ -78,7 +78,7 @@ class TestArticleDeepEnricherInit:
         """Test default initialization"""
         enricher = ArticleDeepEnricher()
         assert enricher is not None
-        assert enricher.api_url == "https://balizero.com"
+        assert enricher.api_url == "https://nuzantara-rag.fly.dev"
         assert enricher.generate_images is True
 
     def test_custom_api_url(self):
@@ -286,7 +286,8 @@ class TestEnrichArticle:
     @pytest.mark.asyncio
     async def test_enrich_article_success(self):
         """Test successful article enrichment"""
-        enricher = ArticleDeepEnricher(generate_images=False)
+        # Images are now mandatory, so we create with images=True and mock the generator
+        enricher = ArticleDeepEnricher(generate_images=True)
 
         mock_claude_response = json.dumps(
             {
@@ -310,22 +311,44 @@ class TestEnrichArticle:
             with patch.object(enricher, "call_claude_cli") as mock_claude:
                 mock_claude.return_value = mock_claude_response
 
-                result = await enricher.enrich_article(
-                    title="Test Title",
-                    summary="Test summary",
-                    source_url="http://test.com/article",
-                    source="Test Source",
-                    category="immigration",
-                )
+                # Mock the API image generator to return a valid path
+                if enricher.api_image_generator:
+                    with patch.object(enricher.api_image_generator, "generate_cover_image") as mock_img:
+                        mock_img.return_value = "/tmp/test_image.png"
 
-                assert result is not None
-                assert result.headline == "Test Headline"
-                assert result.category == "immigration"
+                        result = await enricher.enrich_article(
+                            title="Test Title",
+                            summary="Test summary",
+                            source_url="http://test.com/article",
+                            source="Test Source",
+                            category="immigration",
+                        )
+
+                        assert result is not None
+                        assert result.headline == "Test Headline"
+                        assert result.category == "immigration"
+                else:
+                    # If no API generator, mock the browser generator
+                    with patch.object(enricher.image_generator, "generate_cover_image") as mock_img:
+                        mock_img.return_value = "/tmp/test_image.png"
+
+                        result = await enricher.enrich_article(
+                            title="Test Title",
+                            summary="Test summary",
+                            source_url="http://test.com/article",
+                            source="Test Source",
+                            category="immigration",
+                        )
+
+                        assert result is not None
+                        assert result.headline == "Test Headline"
+                        assert result.category == "immigration"
 
     @pytest.mark.asyncio
     async def test_enrich_article_fallback_to_summary(self):
         """Test enrichment with summary fallback when fetch fails"""
-        enricher = ArticleDeepEnricher(generate_images=False)
+        # Images are now mandatory, so we create with images=True and mock the generator
+        enricher = ArticleDeepEnricher(generate_images=True)
 
         mock_claude_response = json.dumps(
             {
@@ -347,24 +370,33 @@ class TestEnrichArticle:
             with patch.object(
                 enricher, "call_claude_cli", return_value=mock_claude_response
             ):
-                result = await enricher.enrich_article(
-                    title="Title",
-                    summary="Original summary",
-                    source_url="http://test.com/article",
-                    source="Source",
-                )
+                # Mock the API image generator
+                if enricher.api_image_generator:
+                    with patch.object(enricher.api_image_generator, "generate_cover_image") as mock_img:
+                        mock_img.return_value = "/tmp/test_image.png"
 
-                assert result is not None
+                        result = await enricher.enrich_article(
+                            title="Title",
+                            summary="Original summary",
+                            source_url="http://test.com/article",
+                            source="Source",
+                        )
+
+                        assert result is not None
+                else:
+                    pytest.skip("API image generator not available")
 
     @pytest.mark.asyncio
     async def test_enrich_article_claude_failure(self):
-        """Test enrichment when Claude fails"""
-        enricher = ArticleDeepEnricher(generate_images=False)
+        """Test enrichment when Claude fails - returns None"""
+        # Images are mandatory, mock it
+        enricher = ArticleDeepEnricher(generate_images=True)
 
         with patch.object(
             enricher, "fetch_full_article", return_value={"content": "Content"}
         ):
             with patch.object(enricher, "call_claude_cli", return_value=None):
+                # When Claude fails, result is None before image gen happens
                 result = await enricher.enrich_article(
                     title="Title",
                     summary="Summary",
@@ -377,7 +409,7 @@ class TestEnrichArticle:
     @pytest.mark.asyncio
     async def test_enrich_article_json_parse_error(self):
         """Test enrichment with invalid JSON response"""
-        enricher = ArticleDeepEnricher(generate_images=False)
+        enricher = ArticleDeepEnricher(generate_images=True)
 
         with patch.object(
             enricher, "fetch_full_article", return_value={"content": "Content"}

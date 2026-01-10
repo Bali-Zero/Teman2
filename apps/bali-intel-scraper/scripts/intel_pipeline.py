@@ -83,7 +83,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
-from loguru import logger
 import httpx
 
 # Import pipeline components
@@ -94,6 +93,8 @@ from article_deep_enricher import ArticleDeepEnricher, EnrichedArticle
 from gemini_image_generator import GeminiImageGenerator
 from seo_aeo_optimizer import SEOAEOOptimizer, optimize_article as seo_optimize
 from telegram_approval import TelegramApproval
+from metrics import MetricsCollector, track_latency, StructuredLogger
+from logging_config import setup_logging, get_logger, log_context, correlation_context, PerformanceLogger
 # Usa versione httpx per evitare problemi TLS con qdrant-client
 try:
     from semantic_deduplicator_httpx import SemanticDeduplicator
@@ -101,9 +102,9 @@ except ImportError:
     # Fallback alla versione originale se httpx non disponibile
     from semantic_deduplicator import SemanticDeduplicator
 
-# Configure logging
-Path("logs").mkdir(exist_ok=True)
-logger.add("logs/intel_pipeline_{time}.log", rotation="1 day", retention="7 days")
+# Configure logging with centralized config
+setup_logging(app_name="intel_pipeline", log_dir="logs")
+logger = get_logger("intel_pipeline")
 
 
 @dataclass
@@ -155,6 +156,12 @@ class PipelineArticle:
     pending_approval: bool = False
     approval_id: str = ""
     approval_status: str = ""  # pending, approved, rejected
+    preview_url: str = ""  # URL to dark-theme preview page
+
+    # E-E-A-T Human Review tracking
+    requires_human_review: bool = True  # Default: all articles require human review
+    reviewed_by: str = ""  # Name/email of reviewer (for E-E-A-T compliance)
+    reviewed_at: Optional[str] = None  # ISO timestamp of review
 
     # Final status
     published: bool = False
@@ -186,6 +193,7 @@ class PipelineStats:
     images_generated: int = 0
     seo_optimized: int = 0
     pending_approval: int = 0
+    pending_human_review: int = 0  # E-E-A-T: articles awaiting human review
     published: int = 0
     errors: int = 0
     duration_seconds: float = 0
@@ -209,12 +217,14 @@ class IntelPipeline:
         auto_approve_threshold: int = 75,
         generate_images: bool = True,  # Always True - images are mandatory
         require_approval: bool = True,
+        require_human_review: bool = True,  # E-E-A-T: human must review before publish
         dry_run: bool = False,
     ):
         self.min_llama_score = min_llama_score
         self.auto_approve_threshold = auto_approve_threshold
         self.generate_images = generate_images
         self.require_approval = require_approval
+        self.require_human_review = require_human_review  # E-E-A-T compliance
         self.dry_run = dry_run
 
         # Initialize components
@@ -234,18 +244,23 @@ class IntelPipeline:
         self.seo_optimizer = SEOAEOOptimizer()
         self.approval_system = TelegramApproval() if require_approval else None
 
-        # Stats
+        # Stats (legacy)
         self.stats = PipelineStats()
-        
+
+        # Enhanced Metrics (Prometheus-compatible)
+        self.metrics = MetricsCollector(app_name="bali_intel_pipeline")
+        self.metrics_logger = StructuredLogger("pipeline", metrics=self.metrics)
+
         # Verify critical dependencies
         self._verify_dependencies()
 
         logger.info("=" * 70)
-        logger.info("🚀 BALIZERO INTEL PIPELINE INITIALIZED (v6.5 - Semantic Ready)")
+        logger.info("🚀 BALIZERO INTEL PIPELINE INITIALIZED (v6.6 - E-E-A-T Ready)")
         logger.info(f"   Min LLAMA score: {min_llama_score}")
         logger.info(f"   Auto-approve threshold: {auto_approve_threshold}")
         logger.info(f"   Generate images: {generate_images}")
         logger.info(f"   Require approval: {require_approval}")
+        logger.info(f"   Require human review: {require_human_review} (E-E-A-T)")
         logger.info(f"   Dry run: {dry_run}")
         logger.info("=" * 70)
     
@@ -265,13 +280,17 @@ class IntelPipeline:
         backend_url = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
         logger.debug(f"Backend URL: {backend_url}")
 
-    async def send_to_news_room(self, article: PipelineArticle) -> bool:
+    async def send_to_news_room(self, article: PipelineArticle, preview_url: str = None) -> bool:
         """
         Send article to backend Intelligence Center News Room.
 
         This populates https://zantara.balizero.com/intelligence/news-room
-        (frontend deployed on Vercel, custom domain) with articles for team 
+        (frontend deployed on Vercel, custom domain) with articles for team
         review in parallel with Telegram notifications.
+
+        Args:
+            article: PipelineArticle to send
+            preview_url: Optional URL to the dark-theme preview page (for E-E-A-T review)
         """
         backend_url = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
         endpoint = f"{backend_url}/api/intel/scraper/submit"
@@ -291,7 +310,7 @@ class IntelPipeline:
             if enriched.next_steps:
                 next_steps_str = "\n".join([f"- {k}: {v}" for k, v in enriched.next_steps.items()])
                 content_parts.append(f"## Next Steps\n{next_steps_str}")
-            
+
             content = "\n\n".join(content_parts) if content_parts else article.summary
             title = enriched.headline or article.title
         else:
@@ -309,7 +328,17 @@ class IntelPipeline:
             "extraction_method": "intel_pipeline",
             "tier": "T2",  # Default tier for pipeline articles
         }
-        
+
+        # Add preview URL for E-E-A-T human review (balizero.com dark-theme preview)
+        if preview_url:
+            payload["preview_url"] = preview_url
+            logger.info(f"   🖼️ Preview URL included: {preview_url}")
+
+        # Add SEO metadata if available
+        if article.seo_metadata:
+            payload["seo_metadata"] = article.seo_metadata
+            logger.info("   🔍 SEO metadata included")
+
         # Cover image is mandatory for enriched articles
         if enriched:
             if not enriched.cover_image:
@@ -622,36 +651,29 @@ class IntelPipeline:
                 self.stats.errors += 1
 
         # ═══════════════════════════════════════════════════════════════
-        # STEP 6: SUBMIT FOR APPROVAL (Telegram + News Room)
+        # STEP 6: SUBMIT FOR APPROVAL (Preview + Telegram + News Room)
         # ═══════════════════════════════════════════════════════════════
         # Submit if enriched (SEO is optional, enrichment is required)
         if article.enriched and article.enriched_article:
             logger.info("\n📨 Step 6: Submitting for Approval...")
 
-            # 6a. Send to News Room (zantara.balizero.com/intelligence/news-room)
-            if not self.dry_run:
-                try:
-                    news_room_sent = await self.send_to_news_room(article)
-                    if news_room_sent:
-                        logger.info("   📰 Sent to News Room UI")
-                except Exception as e:
-                    logger.warning(f"   ⚠️ News Room submission failed: {e}")
+            preview_url = None  # Will be set by approval system
 
-            # 6b. Send to Telegram for voting
+            # 6a. Generate preview and submit to Telegram FIRST (to get preview_url)
             if self.require_approval and self.approval_system:
                 try:
                     enriched = article.enriched_article
                     if not enriched:
                         logger.warning("   ⚠️ Cannot submit: enriched_article is None")
                         return article
-                    
+
                     # Build enriched content from available fields
                     enriched_content = enriched.ai_summary or ""
                     if enriched.facts:
                         enriched_content += "\n\n" + enriched.facts
                     if enriched.bali_zero_take:
                         enriched_content += "\n\n" + enriched.bali_zero_take
-                    
+
                     article_data = {
                         "title": enriched.headline or article.title,
                         "content": enriched_content or article.summary,
@@ -659,7 +681,9 @@ class IntelPipeline:
                         "category": enriched.category or article.final_category,
                         "source": article.source,
                         "source_url": article.url,
-                        "image_url": article.image_path or "",
+                        "image_url": enriched.cover_image or article.image_path or "",
+                        "relevance_score": article.llama_score,
+                        "published_at": article.published_at,
                     }
 
                     pending = await self.approval_system.submit_for_approval(
@@ -671,11 +695,18 @@ class IntelPipeline:
                     article.pending_approval = True
                     article.approval_id = pending.article_id
                     article.approval_status = "pending"
+                    article.preview_url = pending.preview_url  # Store on article
+                    article.requires_human_review = self.require_human_review  # E-E-A-T flag
+                    preview_url = pending.preview_url  # Get preview URL for news room
                     self.stats.pending_approval += 1
+                    if self.require_human_review:
+                        self.stats.pending_human_review += 1
 
                     logger.success("   ✅ Submitted for approval")
                     logger.info(f"   Article ID: {pending.article_id}")
-                    logger.info(f"   HTML Preview: {pending.preview_html}")
+                    logger.info(f"   🖼️ Preview URL: {pending.preview_url}")
+                    if self.require_human_review:
+                        logger.info("   👤 E-E-A-T: Human review REQUIRED before publish")
                     if pending.telegram_message_id:
                         logger.info("   📱 Telegram notification sent!")
                     else:
@@ -686,6 +717,15 @@ class IntelPipeline:
                 except Exception as e:
                     logger.error(f"   ❌ Approval submission failed: {e}")
                     self.stats.errors += 1
+
+            # 6b. Send to News Room WITH preview_url (zantara.balizero.com/intelligence/news-room)
+            if not self.dry_run:
+                try:
+                    news_room_sent = await self.send_to_news_room(article, preview_url=preview_url)
+                    if news_room_sent:
+                        logger.info("   📰 Sent to News Room UI (with preview link)")
+                except Exception as e:
+                    logger.warning(f"   ⚠️ News Room submission failed: {e}")
         
         # ═══════════════════════════════════════════════════════════════
         # STEP 7: AUTO-MEMORY (Save to Qdrant)
@@ -735,9 +775,17 @@ class IntelPipeline:
 
         start_time = time.time()
 
+        # Reset and start metrics
+        self.metrics.reset()
+        self.metrics.start_pipeline()
+
         self.stats = PipelineStats()
         self.stats.total_input = len(articles)
 
+        # Track input count in metrics
+        self.metrics.increment("articles_input", len(articles))
+
+        self.metrics_logger.info(f"Processing batch", article_count=len(articles))
         logger.info("=" * 70)
         logger.info(f"🚀 PROCESSING BATCH: {len(articles)} articles")
         logger.info("=" * 70)
@@ -814,10 +862,20 @@ class IntelPipeline:
         except Exception as e:
             logger.warning(f"⚠️ Failed to save run audit: {e}")
 
+        # Finalize metrics
+        self.metrics.end_pipeline()
+
+        # Save metrics to file alongside audit log
+        try:
+            metrics_file = audit_dir / f"metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            self.metrics.save_to_file(str(metrics_file))
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to save metrics: {e}")
+
         # Cleanup resources
         if hasattr(self.deduplicator, 'close'):
             self.deduplicator.close()
-        
+
         return results, self.stats
 
     def _print_summary(self):
@@ -825,21 +883,30 @@ class IntelPipeline:
         logger.info("\n" + "=" * 70)
         logger.info("📊 PIPELINE SUMMARY")
         logger.info("=" * 70)
-        logger.info(f"   Total input:      {self.stats.total_input}")
-        logger.info(f"   Dedup filtered:   {self.stats.dedup_filtered}")
-        logger.info(f"   LLAMA scored:     {self.stats.llama_scored}")
-        logger.info(f"   LLAMA filtered:   {self.stats.llama_filtered}")
-        logger.info(f"   Claude validated: {self.stats.claude_validated}")
-        logger.info(f"   Claude approved:  {self.stats.claude_approved}")
-        logger.info(f"   Claude rejected:  {self.stats.claude_rejected}")
-        logger.info(f"   Enriched:         {self.stats.enriched}")
-        logger.info(f"   Images generated: {self.stats.images_generated}")
-        logger.info(f"   SEO optimized:    {self.stats.seo_optimized}")
-        logger.info(f"   Pending approval: {self.stats.pending_approval}")
-        logger.info(f"   Published:        {self.stats.published}")
-        logger.info(f"   Errors:           {self.stats.errors}")
-        logger.info(f"   Duration:         {self.stats.duration_seconds:.1f}s")
+        logger.info(f"   Total input:         {self.stats.total_input}")
+        logger.info(f"   Dedup filtered:      {self.stats.dedup_filtered}")
+        logger.info(f"   LLAMA scored:        {self.stats.llama_scored}")
+        logger.info(f"   LLAMA filtered:      {self.stats.llama_filtered}")
+        logger.info(f"   Claude validated:    {self.stats.claude_validated}")
+        logger.info(f"   Claude approved:     {self.stats.claude_approved}")
+        logger.info(f"   Claude rejected:     {self.stats.claude_rejected}")
+        logger.info(f"   Enriched:            {self.stats.enriched}")
+        logger.info(f"   Images generated:    {self.stats.images_generated}")
+        logger.info(f"   SEO optimized:       {self.stats.seo_optimized}")
+        logger.info(f"   Pending approval:    {self.stats.pending_approval}")
+        logger.info(f"   👤 Pending review:   {self.stats.pending_human_review} (E-E-A-T)")
+        logger.info(f"   Published:           {self.stats.published}")
+        logger.info(f"   Errors:              {self.stats.errors}")
+        logger.info(f"   Duration:            {self.stats.duration_seconds:.1f}s")
         logger.info("=" * 70)
+
+    def get_metrics(self) -> dict:
+        """Get current metrics as dictionary"""
+        return self.metrics.to_dict()
+
+    def get_prometheus_metrics(self) -> str:
+        """Get metrics in Prometheus format"""
+        return self.metrics.export_prometheus()
 
 
 async def test_pipeline():
@@ -876,30 +943,24 @@ async def test_pipeline():
 
     results, stats = await pipeline.process_batch(test_articles)
 
-    print("\n" + "=" * 70)
-    print("RESULTS")
-    print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("RESULTS")
+    logger.info("=" * 70)
 
     for article in results:
         if article.is_duplicate:
-            print(f"\n🔄 DUPLICATE: {article.title[:50]}...")
-            print(f"   Of: {article.duplicate_of}")
+            logger.info(f"DUPLICATE: {article.title[:50]}... Of: {article.duplicate_of}")
             continue
-            
-        emoji = "✅" if article.validation_approved else "❌"
-        print(f"\n{emoji} {article.title[:50]}...")
-        print(f"   LLAMA: {article.llama_score} ({article.llama_category})")
-        print(f"   Validated: {article.validated}")
-        print(f"   Approved: {article.validation_approved}")
-        print(f"   Reason: {article.validation_reason}")
+
+        status = "APPROVED" if article.validation_approved else "REJECTED"
+        logger.info(f"{status}: {article.title[:50]}...")
+        logger.info(f"   LLAMA: {article.llama_score} ({article.llama_category})")
+        logger.info(f"   Validated: {article.validated}, Approved: {article.validation_approved}")
+        logger.info(f"   Reason: {article.validation_reason}")
         if article.seo_optimized:
-            print("   SEO: ✅ Optimized")
-            print(
-                f"   Keywords: {', '.join(article.seo_metadata.get('keywords', [])[:5])}"
-            )
-            print(
-                f"   Entities: {', '.join(article.seo_metadata.get('key_entities', [])[:3])}"
-            )
+            logger.info("   SEO: Optimized")
+            logger.info(f"   Keywords: {', '.join(article.seo_metadata.get('keywords', [])[:5])}")
+            logger.info(f"   Entities: {', '.join(article.seo_metadata.get('key_entities', [])[:3])}")
 
 
 if __name__ == "__main__":
