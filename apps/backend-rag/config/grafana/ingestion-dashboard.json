@@ -1,0 +1,50 @@
+{
+  "apiVersion": 1,
+  "datasources": [
+    {
+      "name": "Prometheus",
+      "type": "prometheus",
+      "access": "proxy",
+      "url": "http://prometheus:9090",
+      "isDefault": true
+    }
+  ],
+  "dashboards": [
+    {
+      "dashboard": {
+        "id": null,
+        "uid": "ingestion-monitoring",
+        "title": "Zantara Ingestion Services Monitoring",
+        "tags": ["zantara", "ingestion", "monitoring"],
+        "timezone": "browser",
+        "schemaVersion": 27,
+        "version": 1,
+        "panels": [
+          {
+            "id": 1,
+            "title": "Ingestion Overview",
+            "type": "stat",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+            "targets": [
+              {
+                "expr": "sum(rate(zantara_documents_ingested_total[5m]))",
+                "legendFormat": "Documents/sec",
+                "refId": "A"
+              },
+              {
+                "expr": "sum(zantara_ingestion_failure_rate)",
+                "legendFormat": "Failure Rate",
+                "refId": "B"
+              }
+            ]
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }
+  ]
+}

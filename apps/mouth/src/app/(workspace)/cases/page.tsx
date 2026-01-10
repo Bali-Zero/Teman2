@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import {
   FolderKanban, Search, Filter, Plus, LayoutGrid, List,
   ChevronRight, Loader2, User, MessageCircle, Mail, Phone,
-  FileText, MoreVertical, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown
+  FileText, MoreVertical, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
+import { logger } from '@/lib/logger';
 import type { Practice } from '@/lib/api/crm/crm.types';
 import {
   trackViewModeChange,
@@ -310,9 +311,9 @@ export default function PratichePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">Cases</h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">Process</h1>
           <p className="text-sm text-[var(--foreground-muted)]">
-            Manage KITAS, Visa, PT PMA, Tax and other cases
+            Manage KITAS, Visa, PT PMA, Tax and other processes
           </p>
         </div>
         <Button className="gap-2 bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white" onClick={handleNewCase}>

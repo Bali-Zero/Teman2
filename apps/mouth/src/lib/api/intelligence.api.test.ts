@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { intelligenceApi, StagingResponse, StagingItem, ApproveResponse } from './intelligence.api';
+import { intelligenceApi, StagingResponse, StagingItem, ApproveResponse, SystemMetrics, PublishResponse } from './intelligence.api';
 import { api } from '@/lib/api';
 import { logger } from '@/lib/logger';
 
@@ -271,6 +271,216 @@ describe('intelligence.api', () => {
         '/api/intel/staging/reject/news/fail-reject',
         mockError,
         { itemType: 'news', itemId: 'fail-reject', action: 'reject' }
+      );
+    });
+  });
+
+  describe('publishItem', () => {
+    it('should publish visa item successfully', async () => {
+      const mockResponse: PublishResponse = {
+        success: true,
+        message: 'Item published',
+        id: 'visa-123',
+        title: 'Visa Update',
+        published_url: 'https://example.com/visa-123',
+        published_at: '2025-01-01T10:00:00Z',
+        collection: 'visa_oracle',
+      };
+
+      vi.mocked(api.request).mockResolvedValue(mockResponse);
+
+      const result = await intelligenceApi.publishItem('visa', 'visa-123');
+
+      expect(api.request).toHaveBeenCalledWith('/api/intel/staging/publish/visa/visa-123', { method: 'POST' });
+      expect(logger.apiCall).toHaveBeenCalledWith('/api/intel/staging/publish/visa/visa-123', 'POST', { itemType: 'visa', itemId: 'visa-123', action: 'publish' });
+      expect(logger.userAction).toHaveBeenCalledWith('publish_item', 'visa', 'visa-123');
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should publish news item successfully', async () => {
+      const mockResponse: PublishResponse = {
+        success: true,
+        message: 'Item published',
+        id: 'news-456',
+        title: 'News Item',
+        published_url: 'https://example.com/news-456',
+        published_at: '2025-01-02T11:00:00Z',
+        collection: 'news_collection',
+      };
+
+      vi.mocked(api.request).mockResolvedValue(mockResponse);
+
+      const result = await intelligenceApi.publishItem('news', 'news-456');
+
+      expect(api.request).toHaveBeenCalledWith('/api/intel/staging/publish/news/news-456', { method: 'POST' });
+      expect(logger.userAction).toHaveBeenCalledWith('publish_item', 'news', 'news-456');
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle and log errors', async () => {
+      const mockError = new Error('Publish failed');
+      vi.mocked(api.request).mockRejectedValue(mockError);
+
+      await expect(intelligenceApi.publishItem('visa', 'fail-publish')).rejects.toThrow('Publish failed');
+
+      expect(logger.apiError).toHaveBeenCalledWith(
+        '/api/intel/staging/publish/visa/fail-publish',
+        mockError,
+        { itemType: 'visa', itemId: 'fail-publish', action: 'publish' }
+      );
+    });
+  });
+
+  describe('getMetrics', () => {
+    it('should fetch system metrics successfully', async () => {
+      const mockMetrics: SystemMetrics = {
+        agent_status: 'active',
+        last_run: '2025-01-05T10:30:00Z',
+        items_processed_today: 15,
+        avg_response_time_ms: 2500,
+        qdrant_health: 'healthy',
+        next_scheduled_run: '2025-01-05T12:00:00Z',
+        uptime_percentage: 99.8,
+      };
+
+      vi.mocked(api.request).mockResolvedValue(mockMetrics);
+
+      const result = await intelligenceApi.getMetrics();
+
+      expect(api.request).toHaveBeenCalledWith('/api/intel/metrics');
+      expect(logger.apiCall).toHaveBeenCalledWith('/api/intel/metrics', 'GET', { action: 'get_metrics' });
+      expect(logger.apiSuccess).toHaveBeenCalledWith(
+        '/api/intel/metrics',
+        0,
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            agent_status: 'active',
+            qdrant_health: 'healthy',
+            items_processed: 15,
+          }),
+        })
+      );
+      expect(result).toEqual(mockMetrics);
+    });
+
+    it('should handle null values in metrics', async () => {
+      const mockMetrics: SystemMetrics = {
+        agent_status: 'idle',
+        last_run: null,
+        items_processed_today: 0,
+        avg_response_time_ms: 0,
+        qdrant_health: 'degraded',
+        next_scheduled_run: null,
+        uptime_percentage: 0,
+      };
+
+      vi.mocked(api.request).mockResolvedValue(mockMetrics);
+
+      const result = await intelligenceApi.getMetrics();
+
+      expect(result).toEqual(mockMetrics);
+      expect(result.last_run).toBeNull();
+      expect(result.next_scheduled_run).toBeNull();
+    });
+
+    it('should handle and log errors', async () => {
+      const mockError = new Error('Metrics unavailable');
+      vi.mocked(api.request).mockRejectedValue(mockError);
+
+      await expect(intelligenceApi.getMetrics()).rejects.toThrow('Metrics unavailable');
+
+      expect(logger.apiError).toHaveBeenCalledWith(
+        '/api/intel/metrics',
+        mockError,
+        { action: 'get_metrics' }
+      );
+    });
+  });
+
+  describe('getAnalytics', () => {
+    it('should fetch analytics successfully', async () => {
+      const mockAnalytics: IntelligenceAnalytics = {
+        period_days: 30,
+        summary: {
+          total_processed: 150,
+          total_approved: 120,
+          total_rejected: 30,
+          total_published: 45,
+          approval_rate: 80.0,
+          rejection_rate: 20.0,
+        },
+        daily_trends: [
+          { date: '2025-01-01', processed: 5, approved: 4, rejected: 1, published: 2 },
+        ],
+        type_breakdown: {
+          visa: { processed: 100, approved: 80, rejected: 20 },
+          news: { processed: 50, approved: 40, rejected: 10, published: 45 },
+        },
+        detection_type_breakdown: {
+          NEW: 90,
+          UPDATED: 60,
+        },
+      };
+
+      vi.mocked(api.request).mockResolvedValue(mockAnalytics);
+
+      const result = await intelligenceApi.getAnalytics(30);
+
+      expect(api.request).toHaveBeenCalledWith('/api/intel/analytics?days=30');
+      expect(logger.apiCall).toHaveBeenCalledWith('/api/intel/analytics?days=30', 'GET', { action: 'get_analytics', days: 30 });
+      expect(logger.apiSuccess).toHaveBeenCalledWith(
+        '/api/intel/analytics?days=30',
+        0,
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            total_processed: 150,
+            approval_rate: 80.0,
+          }),
+        })
+      );
+      expect(result).toEqual(mockAnalytics);
+    });
+
+    it('should handle different period days', async () => {
+      const mockAnalytics: IntelligenceAnalytics = {
+        period_days: 7,
+        summary: {
+          total_processed: 50,
+          total_approved: 40,
+          total_rejected: 10,
+          total_published: 15,
+          approval_rate: 80.0,
+          rejection_rate: 20.0,
+        },
+        daily_trends: [],
+        type_breakdown: {
+          visa: { processed: 30, approved: 25, rejected: 5 },
+          news: { processed: 20, approved: 15, rejected: 5, published: 15 },
+        },
+        detection_type_breakdown: {
+          NEW: 30,
+          UPDATED: 20,
+        },
+      };
+
+      vi.mocked(api.request).mockResolvedValue(mockAnalytics);
+
+      const result = await intelligenceApi.getAnalytics(7);
+
+      expect(api.request).toHaveBeenCalledWith('/api/intel/analytics?days=7');
+      expect(result.period_days).toBe(7);
+    });
+
+    it('should handle and log errors', async () => {
+      const mockError = new Error('Analytics unavailable');
+      vi.mocked(api.request).mockRejectedValue(mockError);
+
+      await expect(intelligenceApi.getAnalytics(30)).rejects.toThrow('Analytics unavailable');
+
+      expect(logger.apiError).toHaveBeenCalledWith(
+        '/api/intel/analytics?days=30',
+        mockError,
+        { action: 'get_analytics', days: 30 }
       );
     });
   });

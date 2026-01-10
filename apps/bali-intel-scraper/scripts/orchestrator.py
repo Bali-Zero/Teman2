@@ -74,9 +74,7 @@ class BaliZeroOrchestrator:
             return {"success": True, "dry_run": True}
 
         # Use await instead of asyncio.run() to work within existing event loop
-        results = await self.scraper.scrape_all(
-            limit=limit, categories=categories
-        )
+        results = await self.scraper.scrape_all(limit=limit, categories=categories)
 
         logger.success(f"✅ Stage 1 complete: {results['total_scraped']} items scraped")
 
@@ -102,6 +100,7 @@ class BaliZeroOrchestrator:
         # Lazy load AIJournalGenerator when needed
         if self.generator is None:
             from ai_journal_generator import AIJournalGenerator
+
             self.generator = AIJournalGenerator()
             logger.info("📚 Loaded AIJournalGenerator from archive")
 

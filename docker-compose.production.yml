@@ -1,0 +1,211 @@
+services:
+  # Backend RAG Service con Ingestion Monitoring
+  backend-rag:
+    build:
+      context: ./apps/backend-rag
+      dockerfile: Dockerfile
+    container_name: zantara-backend-rag
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - PROMETHEUS_ENABLED=true
+      - STRUCTURED_LOGGING=true
+      - PERFORMANCE_MONITORING=true
+      - JWT_SECRET_KEY=zantara_production_jwt_secret_key_change_me_in_production_2024
+      - API_KEYS=zantara_api_key_1,zantara_api_key_2,zantara_api_key_3
+      - WHATSAPP_VERIFY_TOKEN=zantara_whatsapp_production_token_2024
+      - INSTAGRAM_VERIFY_TOKEN=zantara_instagram_production_token_2024
+      - INGESTION_WORKERS=4
+      - MAX_MEMORY_MB=4096
+      - OPENAI_API_KEY=sk-test-key-for-deployment-only
+      - DATABASE_URL=postgresql://zantara:password@postgres:5432/zantara
+      - GOOGLE_API_KEY=test-google-api-key-for-deployment
+      - AI_PROVIDER=openai
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      - prometheus
+      - grafana
+      - qdrant
+      - postgres
+      - redis
+    networks:
+      - zantara-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:v1.7.0
+    container_name: zantara-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    networks:
+      - zantara-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: zantara-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - zantara-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Grafana Visualization
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: zantara-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=zantara123
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    networks:
+      - zantara-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AlertManager for Alerting
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: zantara-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./config/alertmanager:/etc/alertmanager
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - zantara-network
+    restart: unless-stopped
+
+  # Redis per Cache
+  redis:
+    image: redis:7.2-alpine
+    container_name: zantara-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    networks:
+      - zantara-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: zantara-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=zantara
+      - POSTGRES_USER=zantara
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    networks:
+      - zantara-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zantara -d zantara"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:1.24-alpine
+    container_name: zantara-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./config/nginx/ssl:/etc/nginx/ssl
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - backend-rag
+      - grafana
+      - prometheus
+    networks:
+      - zantara-network
+    restart: unless-stopped
+
+volumes:
+  qdrant_storage:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  zantara-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

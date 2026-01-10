@@ -219,4 +219,3 @@ class TestReRanker:
             result = await reranker.rerank("query", documents, top_k=1)
 
             assert len(result) == 1
-

@@ -42,13 +42,14 @@ def _load_module(monkeypatch, settings_overrides=None):
     settings_stub = types.SimpleNamespace(
         qdrant_url="http://qdrant.local",
         qdrant_api_key="",
+        redis_url='redis://localhost:6379'
     )
     if settings_overrides:
         for key, value in settings_overrides.items():
             setattr(settings_stub, key, value)
 
     monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub)
+        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
     )
 
     app_pkg = types.ModuleType("app")
@@ -357,7 +358,7 @@ def test_qdrant_metrics_success(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "core.qdrant_db",
-        types.SimpleNamespace(get_qdrant_metrics=lambda: {"search_count": 1}),
+        types.SimpleNamespace(get_qdrant_metrics=lambda: {"search_count": 1}, redis_url='redis://localhost:6379'),
     )
 
     response = client.get("/health/metrics/qdrant")
@@ -376,7 +377,7 @@ def test_qdrant_metrics_error(monkeypatch):
         raise RuntimeError("metrics fail")
 
     monkeypatch.setitem(
-        sys.modules, "core.qdrant_db", types.SimpleNamespace(get_qdrant_metrics=_raise)
+        sys.modules, "core.qdrant_db", types.SimpleNamespace(get_qdrant_metrics=_raise, redis_url='redis://localhost:6379')
     )
 
     response = client.get("/health/metrics/qdrant")

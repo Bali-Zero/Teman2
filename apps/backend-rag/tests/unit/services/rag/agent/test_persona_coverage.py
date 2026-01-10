@@ -9,7 +9,7 @@ def _load_persona_module(company_name="Bali Zero"):
     app_module = types.ModuleType("app")
     app_core_module = types.ModuleType("app.core")
     app_config_module = types.ModuleType("app.core.config")
-    app_config_module.settings = SimpleNamespace(COMPANY_NAME=company_name)
+    app_config_module.settings = SimpleNamespace(COMPANY_NAME=company_name, redis_url='redis://localhost:6379')
 
     services_module = types.ModuleType("services")
     comms_module = types.ModuleType("services.communication")
@@ -69,7 +69,7 @@ def test_build_system_prompt_with_profile_and_query(monkeypatch):
     class DummyDatetime:
         @classmethod
         def now(cls):
-            return SimpleNamespace(strftime=lambda fmt: "09:00")
+            return SimpleNamespace(strftime=lambda fmt: "09:00", redis_url='redis://localhost:6379')
 
     monkeypatch.setattr(module.datetime, "datetime", DummyDatetime)
 
@@ -101,7 +101,7 @@ def test_build_system_prompt_with_entities_and_history(monkeypatch):
     class DummyDatetime:
         @classmethod
         def now(cls):
-            return SimpleNamespace(strftime=lambda fmt: "20:30")
+            return SimpleNamespace(strftime=lambda fmt: "20:30", redis_url='redis://localhost:6379')
 
     monkeypatch.setattr(module.datetime, "datetime", DummyDatetime)
 

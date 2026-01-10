@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, DollarSign,
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import type { Practice } from '@/lib/api/crm/crm.types';
+import { casesMetrics } from '@/lib/metrics/cases-metrics';
 
 // Status mapping for display
 const STATUS_INFO: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -34,32 +35,77 @@ export default function CaseDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Edit modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    status: '',
+    priority: '',
+    payment_status: '',
+    quoted_price: '',
+    actual_price: '',
+  });
+
+  // Performance tracking
+  const startTime = useRef(performance.now());
+  const userEmail = useRef<string | null>(null);
+
+  // Track page view and performance on mount
+  useEffect(() => {
+    const initMetrics = async () => {
+      try {
+        const user = await api.getProfile();
+        userEmail.current = user.email;
+
+        if (caseId) {
+          casesMetrics.trackPageView('detail', caseId, user.email);
+        }
+      } catch (err) {
+        console.error('Failed to init metrics:', err);
+      }
+    };
+
+    initMetrics();
+  }, [caseId]);
+
   useEffect(() => {
     const loadPractice = async () => {
       if (!caseId) {
         setError('Invalid case ID');
         setIsLoading(false);
+        casesMetrics.trackError('Invalid Case ID', 'No case ID provided', 'CasesDetailPage', undefined, userEmail.current || undefined);
         return;
       }
 
       setIsLoading(true);
       setError(null);
+      casesMetrics.startPerformanceMark('case_detail_load');
+      const apiStart = performance.now();
 
       try {
         // TODO: Replace with dedicated getPractice(id) API endpoint
         const allPractices = await api.crm.getPractices({ limit: 200 });
+        const apiDuration = performance.now() - apiStart;
+        casesMetrics.trackApiCall('/api/crm/practices', 'GET', true, apiDuration, caseId, userEmail.current || undefined);
+
         const foundPractice = allPractices.find(p => p.id === caseId);
 
         if (!foundPractice) {
           setError('Case not found');
           toast.error('Error', `Case #${caseId} not found`);
+          casesMetrics.trackError('Case Not Found', `Case #${caseId} not found`, 'CasesDetailPage', caseId, userEmail.current || undefined);
         } else {
           setPractice(foundPractice);
+          casesMetrics.endPerformanceMark('case_detail_load', caseId, userEmail.current || undefined);
         }
       } catch (err) {
+        const apiDuration = performance.now() - apiStart;
+        casesMetrics.trackApiCall('/api/crm/practices', 'GET', false, apiDuration, caseId, userEmail.current || undefined);
+
         console.error('Failed to load case:', err);
         setError('Failed to load case details');
         toast.error('Error', 'Failed to load case details');
+        casesMetrics.trackError('API Error', (err as Error).message, 'CasesDetailPage', caseId, userEmail.current || undefined);
       } finally {
         setIsLoading(false);
       }
@@ -83,6 +129,78 @@ export default function CaseDetailPage() {
       style: 'currency',
       currency: 'USD',
     }).format(amount);
+  };
+
+  const handleEditClick = () => {
+    if (!practice) return;
+
+    casesMetrics.trackButtonClick('Edit', 'CasesDetailPage', caseId || undefined, undefined, userEmail.current || undefined);
+    casesMetrics.trackModal('edit', 'open', caseId || undefined, userEmail.current || undefined);
+
+    setEditForm({
+      status: practice.status || '',
+      priority: practice.priority || 'normal',
+      payment_status: practice.payment_status || 'unpaid',
+      quoted_price: practice.quoted_price?.toString() || '',
+      actual_price: practice.actual_price?.toString() || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!practice || !caseId) return;
+    setIsSaving(true);
+
+    const apiStart = performance.now();
+
+    try {
+      const user = await api.getProfile();
+      const updates: any = {};
+
+      if (editForm.status && editForm.status !== practice.status) updates.status = editForm.status;
+      if (editForm.priority && editForm.priority !== practice.priority) updates.priority = editForm.priority;
+      if (editForm.payment_status && editForm.payment_status !== practice.payment_status) updates.payment_status = editForm.payment_status;
+      if (editForm.quoted_price && Number(editForm.quoted_price) !== practice.quoted_price) updates.quoted_price = Number(editForm.quoted_price);
+      if (editForm.actual_price && Number(editForm.actual_price) !== practice.actual_price) updates.actual_price = Number(editForm.actual_price);
+
+      if (Object.keys(updates).length === 0) {
+        toast.error('No Changes', 'No fields were modified.');
+        casesMetrics.trackModal('edit', 'close', caseId, user.email);
+        setIsEditModalOpen(false);
+        setIsSaving(false);
+        return;
+      }
+
+      const fieldsUpdated = Object.keys(updates);
+      const updateType = updates.status ? 'status' : updates.payment_status ? 'payment' : 'details';
+
+      await api.crm.updatePractice(caseId, updates, user.email);
+      const apiDuration = performance.now() - apiStart;
+      casesMetrics.trackApiCall('/api/crm/practices/update', 'PATCH', true, apiDuration, caseId, user.email);
+
+      // Reload practice data
+      const allPractices = await api.crm.getPractices({ limit: 200 });
+      const updatedPractice = allPractices.find(p => p.id === caseId);
+      if (updatedPractice) {
+        setPractice(updatedPractice);
+      }
+
+      // Track case update
+      casesMetrics.trackCaseUpdate(caseId, fieldsUpdated, updateType, user.email);
+      casesMetrics.trackModal('edit', 'submit', caseId, user.email);
+
+      toast.success('Case Updated', 'Successfully updated case details.');
+      setIsEditModalOpen(false);
+    } catch (err) {
+      const apiDuration = performance.now() - apiStart;
+      casesMetrics.trackApiCall('/api/crm/practices/update', 'PATCH', false, apiDuration, caseId, userEmail.current || undefined);
+      casesMetrics.trackError('Update Failed', (err as Error).message, 'CasesDetailPage', caseId, userEmail.current || undefined);
+
+      console.error('Failed to update case:', err);
+      toast.error('Error', 'Failed to update case details.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -127,7 +245,10 @@ export default function CaseDetailPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/cases')}
+          onClick={() => {
+            casesMetrics.trackButtonClick('Back to Cases', 'CasesDetailPage', caseId || undefined, '/cases', userEmail.current || undefined);
+            router.push('/cases');
+          }}
           className="flex items-center gap-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -151,7 +272,7 @@ export default function CaseDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleEditClick}>
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
@@ -181,7 +302,10 @@ export default function CaseDetailPage() {
               <div>
                 <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Client ID</label>
                 <button
-                  onClick={() => router.push(`/clients/${practice.client_id}`)}
+                  onClick={() => {
+                    casesMetrics.trackButtonClick('Client ID Link', 'CasesDetailPage', caseId || undefined, `/clients/${practice.client_id}`, userEmail.current || undefined);
+                    router.push(`/clients/${practice.client_id}`);
+                  }}
                   className="text-[var(--accent)] hover:underline font-medium"
                 >
                   #{practice.client_id}
@@ -193,6 +317,7 @@ export default function CaseDetailPage() {
                   <label className="text-sm text-[var(--foreground-muted)] mb-1 block">Email</label>
                   <a
                     href={`mailto:${practice.client_email}`}
+                    onClick={() => casesMetrics.trackQuickAction('email', caseId || 0, 'CasesDetailPage', userEmail.current || undefined)}
                     className="text-[var(--foreground)] hover:text-[var(--accent)] transition-colors flex items-center gap-2"
                   >
                     <Mail className="w-4 h-4" />
@@ -208,7 +333,8 @@ export default function CaseDetailPage() {
                     href={`https://wa.me/${practice.client_phone.replace(/\D/g, '')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[var(--foreground)] hover:text-[var(--accent)] transition-colors flex items-center gap-2"
+                    onClick={() => casesMetrics.trackQuickAction('whatsapp', caseId || 0, 'CasesDetailPage', userEmail.current || undefined)}
+                    className="text-[var(--foreground)] hover:text-[var(--foreground-accent)] transition-colors flex items-center gap-2"
                   >
                     <Phone className="w-4 h-4" />
                     {practice.client_phone}
@@ -311,6 +437,7 @@ export default function CaseDetailPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => {
+                    casesMetrics.trackQuickAction('whatsapp', caseId || 0, 'CasesDetailPage', userEmail.current || undefined);
                     const phone = practice.client_phone?.replace(/\D/g, '');
                     window.open(`https://wa.me/${phone}?text=Hi ${practice.client_name}, regarding your case...`, '_blank');
                   }}
@@ -324,7 +451,10 @@ export default function CaseDetailPage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => window.open(`mailto:${practice.client_email}`, '_blank')}
+                  onClick={() => {
+                    casesMetrics.trackQuickAction('email', caseId || 0, 'CasesDetailPage', userEmail.current || undefined);
+                    window.open(`mailto:${practice.client_email}`, '_blank');
+                  }}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Email Client
@@ -334,7 +464,10 @@ export default function CaseDetailPage() {
               <Button
                 variant="outline"
                 className="w-full justify-start"
-                onClick={() => router.push(`/clients/${practice.client_id}`)}
+                onClick={() => {
+                  casesMetrics.trackButtonClick('View Client Profile', 'CasesDetailPage', caseId || undefined, `/clients/${practice.client_id}`, userEmail.current || undefined);
+                  router.push(`/clients/${practice.client_id}`);
+                }}
               >
                 <User className="w-4 h-4 mr-2" />
                 View Client Profile
@@ -354,6 +487,124 @@ export default function CaseDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--background-secondary)] z-10">
+              <h2 className="text-xl font-bold text-[var(--foreground)]">Edit Case #{practice.id}</h2>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Status */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[var(--foreground)]">Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                >
+                  <option value="inquiry">Inquiry</option>
+                  <option value="quotation_sent">Quotation Sent</option>
+                  <option value="payment_pending">Payment Pending</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="waiting_documents">Waiting Documents</option>
+                  <option value="submitted_to_gov">Submitted to Gov</option>
+                  <option value="approved">Approved</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              {/* Priority */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[var(--foreground)]">Priority</label>
+                <select
+                  value={editForm.priority}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                >
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+
+              {/* Payment Status */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[var(--foreground)]">Payment Status</label>
+                <select
+                  value={editForm.payment_status}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, payment_status: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                >
+                  <option value="unpaid">Unpaid</option>
+                  <option value="partial">Partial</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </div>
+
+              {/* Quoted Price */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[var(--foreground)]">Quoted Price (USD)</label>
+                <input
+                  type="number"
+                  value={editForm.quoted_price}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, quoted_price: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+
+              {/* Actual Price */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[var(--foreground)]">Actual Price (USD)</label>
+                <input
+                  type="number"
+                  value={editForm.actual_price}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, actual_price: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background-elevated)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/50"
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-[var(--border)] flex justify-end gap-3 sticky bottom-0 bg-[var(--background-secondary)]">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} disabled={isSaving}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+                onClick={handleSaveChanges}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

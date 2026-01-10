@@ -23,6 +23,7 @@ from typing import Any
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 from app.core.config import settings
+from app.core.constants import EvidenceScoreConstants
 from app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
 from services.llm_clients.pricing import TokenUsage
 from services.tools.definitions import AgentState, AgentStep
@@ -85,22 +86,25 @@ def calculate_evidence_score(
     """
     base_score = 0.0
 
-    # Check for high-quality sources (score > 0.3, lowered because re-ranker gives low scores)
+    # Check for high-quality sources (lowered because re-ranker gives low scores)
     if sources:
         high_quality_sources = [
-            s for s in sources if isinstance(s, dict) and s.get("score", 0.0) > 0.3
+            s
+            for s in sources
+            if isinstance(s, dict)
+            and s.get("score", 0.0) > EvidenceScoreConstants.HIGH_QUALITY_SOURCE_THRESHOLD
         ]
         if len(high_quality_sources) >= 1:
-            base_score += 0.5
+            base_score += EvidenceScoreConstants.HIGH_QUALITY_SOURCE_BONUS
 
-        # Check for multiple sources (> 3)
-        if len(sources) > 3:
-            base_score += 0.2
+        # Check for multiple sources
+        if len(sources) > EvidenceScoreConstants.MIN_SOURCES_FOR_BONUS:
+            base_score += EvidenceScoreConstants.MULTIPLE_SOURCES_BONUS
     elif context_gathered:
         # Fallback: if no sources but we have context, check if context is substantial
         total_context_length = sum(len(ctx) for ctx in context_gathered)
-        if total_context_length > 500:  # Substantial context
-            base_score += 0.3
+        if total_context_length > EvidenceScoreConstants.SUBSTANTIAL_CONTEXT_LENGTH:
+            base_score += EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS
 
     # Check if context contains query keywords
     if context_gathered:
@@ -206,12 +210,12 @@ def calculate_evidence_score(
         if query_keywords:
             context_text = " ".join(context_gathered).lower()
             matching_keywords = sum(1 for kw in query_keywords if kw in context_text)
-            # If at least 30% of keywords match, add score
-            if matching_keywords / len(query_keywords) >= 0.3:
-                base_score += 0.3
+            # If at least threshold% of keywords match, add score
+            if matching_keywords / len(query_keywords) >= EvidenceScoreConstants.KEYWORD_MATCH_THRESHOLD:
+                base_score += EvidenceScoreConstants.CONTEXT_KEYWORD_BONUS
 
-    # Cap at 1.0
-    return min(base_score, 1.0)
+    # Cap at maximum score
+    return min(base_score, EvidenceScoreConstants.MAX_SCORE)
 
 
 def _validate_context_quality(
@@ -249,11 +253,16 @@ def _validate_context_quality(
     avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
 
     # Penalize if too few items
-    item_count_penalty = min(len(context_items) / 5.0, 1.0)  # Prefer 5+ items
+    item_count_penalty = min(
+        len(context_items) / EvidenceScoreConstants.PREFERRED_CONTEXT_ITEMS, 1.0
+    )
 
-    final_score = avg_quality * 0.7 + item_count_penalty * 0.3
+    final_score = (
+        avg_quality * EvidenceScoreConstants.CONTEXT_QUALITY_KEYWORD_WEIGHT
+        + item_count_penalty * EvidenceScoreConstants.CONTEXT_QUALITY_COUNT_WEIGHT
+    )
 
-    return min(final_score, 1.0)
+    return min(final_score, EvidenceScoreConstants.MAX_SCORE)
 
 
 class ReasoningEngine:
@@ -289,7 +298,7 @@ class ReasoningEngine:
         """
         self.tool_map = tool_map
         self.response_pipeline = response_pipeline
-        self._min_context_quality_score = 0.3
+        self._min_context_quality_score = EvidenceScoreConstants.ABSTAIN_THRESHOLD
         self._min_context_items = 1
 
     def _validate_context_quality(
@@ -681,7 +690,7 @@ class ReasoningEngine:
         # Also skip if trusted tools were used successfully
         if (
             state.final_answer
-            and evidence_score < 0.3
+            and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
             and not state.skip_rag
             and not trusted_tools_used
         ):
@@ -1111,7 +1120,7 @@ Do not invent information. If the context is insufficient, admit it.
             "get_team_members_list",
             "team_knowledge",
         }
-        logger.info(f"🔍 [Trusted Tools Debug] Checking {len(state.steps)} steps for trusted tools")
+        logger.debug(f"Checking {len(state.steps)} steps for trusted tools")
         for step in state.steps:
             tool_name = (
                 step.action.tool_name
@@ -1119,14 +1128,14 @@ Do not invent information. If the context is insufficient, admit it.
                 else "no_action"
             )
             obs_preview = step.observation[:50] if step.observation else "None"
-            logger.info(f"🔍 [Step Debug] tool={tool_name}, obs={obs_preview}")
+            logger.debug(f"Step debug: tool={tool_name}, obs={obs_preview}")
             if step.action and hasattr(step.action, "tool_name"):
                 if step.action.tool_name in trusted_tool_names and step.observation:
                     # Tool was used and produced output
                     if "error" not in step.observation.lower():
                         trusted_tools_used = True
                         logger.info(
-                            f"🧮 [Trusted Tool Stream] {step.action.tool_name} used successfully, bypassing evidence check"
+                            f"Trusted tool {step.action.tool_name} used successfully, bypassing evidence check"
                         )
                         break
 
@@ -1136,7 +1145,7 @@ Do not invent information. If the context is insufficient, admit it.
         # Also skip if trusted tools were used successfully
         if (
             state.final_answer
-            and evidence_score < 0.3
+            and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
             and not state.skip_rag
             and not trusted_tools_used
         ):

@@ -3,18 +3,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SystemPulsePage from './page';
 import { logger } from '@/lib/logger';
+import { intelligenceApi, SystemMetrics } from '@/lib/api/intelligence.api';
 
 vi.mock('@/lib/logger');
-
-interface SystemMetrics {
-  agent_status: "active" | "idle" | "error";
-  last_run: string;
-  items_processed_today: number;
-  avg_response_time_ms: number;
-  qdrant_health: "healthy" | "degraded" | "down";
-  next_scheduled_run: string;
-  uptime_percentage: number;
-}
+vi.mock('@/lib/api/intelligence.api');
+vi.mock('@/components/ui/toast', () => ({
+  useToast: () => ({
+    success: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
 
 const mockMetrics: SystemMetrics = {
   agent_status: 'active',
@@ -29,7 +27,7 @@ const mockMetrics: SystemMetrics = {
 describe('SystemPulsePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn();
+    vi.mocked(intelligenceApi.getMetrics).mockResolvedValue(mockMetrics);
   });
 
   afterEach(() => {
@@ -37,11 +35,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should log component mount', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -50,11 +43,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should log component unmount', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     const { unmount } = render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -67,32 +55,22 @@ describe('SystemPulsePage', () => {
   });
 
   it('should show loading state initially', () => {
-    vi.mocked(fetch).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(intelligenceApi.getMetrics).mockImplementation(() => new Promise(() => {}));
 
     render(<SystemPulsePage />);
 
     expect(screen.getByText('Loading System Metrics...')).toBeInTheDocument();
   });
 
-  it('should fetch metrics from /api/intel/metrics on mount', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
+  it('should fetch metrics using intelligenceApi on mount', async () => {
     render(<SystemPulsePage />);
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/intel/metrics');
+      expect(intelligenceApi.getMetrics).toHaveBeenCalled();
     });
   });
 
   it('should display agent status as ACTIVE', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -103,11 +81,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should display last scan time formatted', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -117,11 +90,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should display items processed today', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -132,11 +100,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should display average response time in seconds', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -147,11 +110,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should display Qdrant health as Healthy', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -161,12 +119,85 @@ describe('SystemPulsePage', () => {
     expect(screen.getByText('All collections operational')).toBeInTheDocument();
   });
 
-  it('should display next scheduled run time', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
+  it('should display Qdrant health as Degraded when degraded', async () => {
+    vi.mocked(intelligenceApi.getMetrics).mockResolvedValueOnce({
+      ...mockMetrics,
+      qdrant_health: 'degraded',
+    });
 
+    render(<SystemPulsePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Degraded')).toBeInTheDocument();
+    });
+  });
+
+  it('should display Qdrant health as Down when down', async () => {
+    vi.mocked(intelligenceApi.getMetrics).mockResolvedValueOnce({
+      ...mockMetrics,
+      qdrant_health: 'down',
+    });
+
+    render(<SystemPulsePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Down')).toBeInTheDocument();
+    });
+  });
+
+  it('should display agent status as IDLE when idle', async () => {
+    vi.mocked(intelligenceApi.getMetrics).mockResolvedValueOnce({
+      ...mockMetrics,
+      agent_status: 'idle',
+    });
+
+    render(<SystemPulsePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('IDLE')).toBeInTheDocument();
+    });
+  });
+
+  it('should display agent status as ERROR when error', async () => {
+    vi.mocked(intelligenceApi.getMetrics).mockResolvedValueOnce({
+      ...mockMetrics,
+      agent_status: 'error',
+    });
+
+    render(<SystemPulsePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('ERROR')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle null last_run gracefully', async () => {
+    vi.mocked(intelligenceApi.getMetrics).mockResolvedValueOnce({
+      ...mockMetrics,
+      last_run: null,
+    });
+
+    render(<SystemPulsePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Never')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle null next_scheduled_run gracefully', async () => {
+    vi.mocked(intelligenceApi.getMetrics).mockResolvedValueOnce({
+      ...mockMetrics,
+      next_scheduled_run: null,
+    });
+
+    render(<SystemPulsePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('N/A')).toBeInTheDocument();
+    });
+  });
+
+  it('should display next scheduled run time', async () => {
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -175,11 +206,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should display all 6 metric cards', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -194,11 +220,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should display agent configuration', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -211,11 +232,9 @@ describe('SystemPulsePage', () => {
     expect(screen.getByText('MD5 Hash + Vision Analysis')).toBeInTheDocument();
   });
 
-  it('should handle fetch errors and show error state', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: false,
-      statusText: 'Internal Server Error',
-    } as Response);
+  it('should handle errors and show error state', async () => {
+    const mockError = new Error('Failed to load metrics');
+    vi.mocked(intelligenceApi.getMetrics).mockRejectedValueOnce(mockError);
 
     render(<SystemPulsePage />);
 
@@ -227,10 +246,8 @@ describe('SystemPulsePage', () => {
   });
 
   it('should log error when metrics load fails', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: false,
-      statusText: 'Internal Server Error',
-    } as Response);
+    const mockError = new Error('Failed to load metrics');
+    vi.mocked(intelligenceApi.getMetrics).mockRejectedValueOnce(mockError);
 
     render(<SystemPulsePage />);
 
@@ -238,17 +255,12 @@ describe('SystemPulsePage', () => {
       expect(logger.error).toHaveBeenCalledWith(
         'Failed to load system metrics',
         expect.any(Object),
-        expect.any(Error)
+        mockError
       );
     });
   });
 
   it('should log success when metrics load successfully', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -266,11 +278,6 @@ describe('SystemPulsePage', () => {
   });
 
   it('should refresh metrics when Refresh button is clicked', async () => {
-    vi.mocked(fetch).mockResolvedValue({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
-
     render(<SystemPulsePage />);
 
     await waitFor(() => {
@@ -280,25 +287,20 @@ describe('SystemPulsePage', () => {
     const refreshButton = screen.getByText('Refresh');
     await userEvent.click(refreshButton);
 
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(intelligenceApi.getMetrics).toHaveBeenCalledTimes(2);
   });
 
   it('should retry loading metrics when Retry button is clicked in error state', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: false,
-      statusText: 'Internal Server Error',
-    } as Response);
+    const mockError = new Error('Failed to load metrics');
+    vi.mocked(intelligenceApi.getMetrics)
+      .mockRejectedValueOnce(mockError)
+      .mockResolvedValueOnce(mockMetrics);
 
     render(<SystemPulsePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Metrics Unavailable')).toBeInTheDocument();
     });
-
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockMetrics,
-    } as Response);
 
     const retryButton = screen.getByText('Retry');
     await userEvent.click(retryButton);
@@ -307,6 +309,6 @@ describe('SystemPulsePage', () => {
       expect(screen.getByText('ACTIVE')).toBeInTheDocument();
     });
 
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(intelligenceApi.getMetrics).toHaveBeenCalledTimes(2);
   });
 });

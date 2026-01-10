@@ -89,8 +89,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = ...,
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ):
     """Get current authenticated user from JWT token"""
@@ -157,13 +157,13 @@ async def login(
     try:
         async with db_pool.acquire() as conn:
             # Real database authentication using team_members
-            # Include linked_client_id and portal_access for client users
+            # Use case-insensitive query to handle email case variations
             query = """
                 SELECT id, email, full_name as name, pin_hash as password_hash, role,
                        'active' as status, NULL::jsonb as metadata, language as language_preference,
                        active, linked_client_id, portal_access, avatar
                 FROM team_members
-                WHERE email = $1
+                WHERE LOWER(email) = LOWER($1)
             """
             user = await conn.fetchrow(query, request.email)
 

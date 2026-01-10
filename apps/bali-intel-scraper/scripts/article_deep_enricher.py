@@ -120,7 +120,9 @@ INDONESIAN TERMS TO KEEP:
 KITAS, KITAP, NPWP, PPh, PT PMA, NIB, OSS, HGB, SHM, BKPM, Imigrasi, Kemenkeu, DJP"""
 
     def __init__(
-        self, api_url: str = "https://balizero.com", generate_images: bool = True
+        self,
+        api_url: str = "https://nuzantara-rag.fly.dev",
+        generate_images: bool = True,
     ):
         self.api_url = api_url
         self.generate_images = generate_images
@@ -430,12 +432,27 @@ NOTES:
             return None
 
         # Step 4: Build EnrichedArticle
+
+        # Format bali_zero_take object as readable text
+        bali_zero_take_obj = data.get("bali_zero_take", {})
+        if isinstance(bali_zero_take_obj, dict) and bali_zero_take_obj:
+            bali_zero_take_text = f"""**What They Don't Tell You:**
+{bali_zero_take_obj.get("hidden_insight", "")}
+
+**Our Analysis:**
+{bali_zero_take_obj.get("our_analysis", "")}
+
+**Our Advice:**
+{bali_zero_take_obj.get("our_advice", "")}"""
+        else:
+            bali_zero_take_text = str(bali_zero_take_obj) if bali_zero_take_obj else ""
+
         enriched = EnrichedArticle(
             title=title,
             headline=data.get("headline", title),
             tldr=data.get("tldr", {}),
             facts=data.get("facts", ""),
-            bali_zero_take=json.dumps(data.get("bali_zero_take", {})),
+            bali_zero_take=bali_zero_take_text,
             next_steps=data.get("next_steps", {}),
             category=data.get("category", category),
             priority=data.get("priority", "medium"),
@@ -584,11 +601,8 @@ Each article deserves a UNIQUE, REASONED image - not a random selection.
         """Format enriched article as BaliZero markdown"""
 
         tldr = article.tldr
-        take = (
-            json.loads(article.bali_zero_take)
-            if isinstance(article.bali_zero_take, str)
-            else article.bali_zero_take
-        )
+        # bali_zero_take is now already formatted text, no need to parse
+        take_text = article.bali_zero_take
         steps = article.next_steps
 
         md = f"""# 📰 {article.headline}
@@ -622,13 +636,7 @@ Each article deserves a UNIQUE, REASONED image - not a random selection.
 
 > *"Cosa non dicono i giornali..."*
 
-{take.get("hidden_insight", "")}
-
-**La nostra analisi:**
-{take.get("our_analysis", "")}
-
-**Il nostro consiglio:**
-{take.get("our_advice", "")}
+{take_text}
 
 ---
 
@@ -665,31 +673,25 @@ Each article deserves a UNIQUE, REASONED image - not a random selection.
         api_key: Optional[str] = None,
         dry_run: bool = False,
     ) -> Dict:
-        """Send enriched article to BaliZero API"""
+        """Send enriched article to Intelligence/News Room (Nuzantara backend)"""
 
-        endpoint = f"{self.api_url}/api/news"
+        endpoint = f"{self.api_url}/api/intel/scraper/submit"
 
         if dry_run:
             logger.info(f"🔍 DRY RUN - Would send: {article.headline[:50]}...")
             return {"success": True, "dry_run": True}
 
-        # Build payload
+        # Build payload matching ScraperSubmission schema
         payload = {
             "title": article.headline,
-            "summary": article.ai_summary,
             "content": self.format_as_markdown(article),
-            "source": article.source,
             "source_url": article.source_url,
+            "source_name": article.source,
             "category": article.category,
-            "priority": article.priority,
-            "published_at": article.published_at,
-            "ai_summary": article.ai_summary,
-            "ai_tags": article.ai_tags,
             "relevance_score": article.relevance_score,
-            # Extra BaliZero fields
-            "bali_zero_take": article.bali_zero_take,
-            "tldr": json.dumps(article.tldr),
-            "next_steps": json.dumps(article.next_steps),
+            "published_at": article.published_at,
+            "extraction_method": "claude_max",
+            "tier": "T1",  # Full mode = T1 (highest quality)
             "components": article.components,
         }
 
@@ -726,7 +728,7 @@ Each article deserves a UNIQUE, REASONED image - not a random selection.
 
 async def enrich_rss_batch(
     items: List[Dict],
-    api_url: str = "https://balizero.com",
+    api_url: str = "https://nuzantara-rag.fly.dev",
     api_key: Optional[str] = None,
     min_score: int = 50,
     dry_run: bool = False,

@@ -80,14 +80,38 @@ async function proxy(req: NextRequest): Promise<Response> {
 
   const upstreamStartTime = Date.now();
   try {
+    // Debug logging for DELETE with body
+    if (req.method === 'DELETE' && body) {
+      console.log('🔍 [PROXY] DELETE with body detected:', {
+        method: req.method,
+        path: url.pathname,
+        hasBody: !!body,
+        bodySize: body ? (typeof body === 'string' ? body.length : 'binary') : 'none',
+        contentType: headers.get('content-type'),
+        targetUrl,
+      });
+    }
+
     // Use redirect: 'manual' and handle redirects ourselves to preserve cookies
-    let upstream = await fetch(targetUrl, {
+    // For DELETE with body, ensure body is properly forwarded
+    const requestInit: RequestInit = {
       method: req.method,
       headers,
-      body,
       redirect: 'manual',
       credentials: 'include',
-    });
+    };
+
+    // Only add body if it exists and method supports it
+    if (body && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+      requestInit.body = body;
+      console.log('🔍 [PROXY] Body added to request:', {
+        method: req.method,
+        bodyIncluded: true,
+        bodyLength: typeof body === 'string' ? body.length : 'binary',
+      });
+    }
+
+    let upstream = await fetch(targetUrl, requestInit);
 
     // Handle redirects manually to preserve cookies (fetch doesn't forward cookies on redirects)
     let redirectCount = 0;
@@ -101,9 +125,10 @@ async function proxy(req: NextRequest): Promise<Response> {
         ? location.replace(/^http:/, 'https:') // Force HTTPS
         : `${backendBase}${location.startsWith('/') ? '' : '/'}${location}`;
 
-      // HTTP 307 and 308 preserve the original method (including POST body)
+      // HTTP 307 and 308 preserve the original method (including POST/DELETE body)
       // HTTP 301, 302, 303 convert POST to GET (standard browser behavior)
-      const preserveMethod = upstream.status === 307 || upstream.status === 308;
+      // For DELETE with body, we need to preserve the method and body
+      const preserveMethod = upstream.status === 307 || upstream.status === 308 || req.method === 'DELETE';
       const redirectMethod = preserveMethod ? req.method : (req.method === 'POST' ? 'GET' : req.method);
 
       upstream = await fetch(redirectUrl, {

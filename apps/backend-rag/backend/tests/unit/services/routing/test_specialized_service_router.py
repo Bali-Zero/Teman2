@@ -246,4 +246,3 @@ class TestSpecializedServiceRouter:
         router.client_journey.create_journey.side_effect = Exception("Error")
         result = await router.route_client_journey("start process pt pma", "user123")
         assert result is None
-

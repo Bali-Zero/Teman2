@@ -9,14 +9,18 @@ import {
   Minimize2,
   Maximize2,
   ChevronDown,
+  Save,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { AttachmentObject } from '@/lib/api/email/email.types';
 
 interface EmailComposeProps {
   isOpen: boolean;
   onClose: () => void;
   onSend: (data: ComposeData) => Promise<void>;
-  onSaveDraft: (data: ComposeData) => void;
+  onSaveDraft: (data: ComposeData) => Promise<void>;
   initialData?: Partial<ComposeData>;
   mode?: 'new' | 'reply' | 'replyAll' | 'forward';
   isSending?: boolean;
@@ -28,7 +32,13 @@ export interface ComposeData {
   bcc: string[];
   subject: string;
   htmlContent: string;
-  attachmentIds: string[];
+  attachmentIds: AttachmentObject[];
+}
+
+interface AttachmentItem {
+  file: File;
+  data?: AttachmentObject;
+  isUploading: boolean;
 }
 
 export function EmailCompose({
@@ -47,7 +57,10 @@ export function EmailCompose({
   const [bcc, setBcc] = React.useState(initialData?.bcc?.join(', ') || '');
   const [subject, setSubject] = React.useState(initialData?.subject || '');
   const [content, setContent] = React.useState(initialData?.htmlContent || '');
-  const [attachments, setAttachments] = React.useState<File[]>([]);
+  
+  // Attachments state with upload status
+  const [attachments, setAttachments] = React.useState<AttachmentItem[]>([]);
+  const [isSavingDraft, setIsSavingDraft] = React.useState(false);
 
   React.useEffect(() => {
     if (initialData) {
@@ -59,22 +72,65 @@ export function EmailCompose({
     }
   }, [initialData]);
 
+  const getComposeData = (): ComposeData => ({
+    to: to.split(',').map((e) => e.trim()).filter(Boolean),
+    cc: cc.split(',').map((e) => e.trim()).filter(Boolean),
+    bcc: bcc.split(',').map((e) => e.trim()).filter(Boolean),
+    subject,
+    htmlContent: content,
+    attachmentIds: attachments.map(a => a.data).filter((d): d is AttachmentObject => !!d),
+  });
+
   const handleSend = async () => {
-    const data: ComposeData = {
-      to: to.split(',').map((e) => e.trim()).filter(Boolean),
-      cc: cc.split(',').map((e) => e.trim()).filter(Boolean),
-      bcc: bcc.split(',').map((e) => e.trim()).filter(Boolean),
-      subject,
-      htmlContent: content,
-      attachmentIds: [], // TODO: Handle attachment uploads
-    };
-    await onSend(data);
+    const pendingUploads = attachments.some(a => a.isUploading);
+    if (pendingUploads) {
+      alert('Please wait for files to finish uploading.');
+      return;
+    }
+    await onSend(getComposeData());
   };
 
-  const handleAttachFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSave = async () => {
+    const pendingUploads = attachments.some(a => a.isUploading);
+    if (pendingUploads) {
+      alert('Please wait for files to finish uploading.');
+      return;
+    }
+    
+    setIsSavingDraft(true);
+    try {
+      await onSaveDraft(getComposeData());
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      setAttachments((prev) => [...prev, ...Array.from(files)]);
+    if (!files) return;
+
+    const newAttachments = Array.from(files).map(file => ({
+      file,
+      isUploading: true,
+    }));
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+
+    // Upload each file
+    for (const attachment of newAttachments) {
+      try {
+        const response = await api.email.uploadAttachment(attachment.file);
+        
+        setAttachments(prev => prev.map(item => 
+          item.file === attachment.file 
+            ? { ...item, data: response, isUploading: false }
+            : item
+        ));
+      } catch (error) {
+        console.error(`Failed to upload ${attachment.file.name}:`, error);
+        alert(`Failed to upload ${attachment.file.name}`);
+        setAttachments(prev => prev.filter(item => item.file !== attachment.file));
+      }
     }
   };
 
@@ -90,6 +146,9 @@ export function EmailCompose({
     replyAll: 'Reply All',
     forward: 'Forward',
   };
+
+  const hasPendingUploads = attachments.some(a => a.isUploading);
+  const isActionDisabled = isSending || isSavingDraft || hasPendingUploads || !to.trim();
 
   return (
     <div
@@ -246,15 +305,18 @@ export function EmailCompose({
             {attachments.length > 0 && (
               <div className="px-4 py-2 border-t border-[var(--border)]">
                 <div className="flex flex-wrap gap-2">
-                  {attachments.map((file, index) => (
+                  {attachments.map((item, index) => (
                     <div
                       key={index}
                       className="flex items-center gap-2 px-2 py-1 rounded bg-[var(--background-elevated)] text-sm"
                     >
                       <Paperclip className="w-3 h-3 text-[var(--foreground-muted)]" />
                       <span className="text-[var(--foreground)] truncate max-w-[100px]">
-                        {file.name}
+                        {item.file.name}
                       </span>
+                      {item.isUploading && (
+                        <Loader2 className="w-3 h-3 animate-spin text-[var(--accent)]" />
+                      )}
                       <button
                         onClick={() => removeAttachment(index)}
                         className="text-[var(--foreground-muted)] hover:text-[var(--error)]"
@@ -278,39 +340,60 @@ export function EmailCompose({
                   onChange={handleAttachFile}
                   className="hidden"
                 />
-                <div className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors">
+                <div className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)] transition-colors" title="Attach file">
                   <Paperclip className="w-5 h-5" />
                 </div>
               </label>
+              
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors"
+                title="Discard"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
             </div>
 
-            <button
-              onClick={handleSend}
-              disabled={!to.trim() || isSending}
-              className={cn(
-                'px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
-                'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white',
-                'disabled:opacity-50 disabled:cursor-not-allowed'
-              )}
-            >
-              {isSending ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Send
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSave}
+                disabled={isActionDisabled || !subject}
+                className={cn(
+                  'px-3 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
+                  'text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-elevated)]',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                {isSavingDraft ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                    <Save className="w-4 h-4" />
+                )}
+                Save Draft
+              </button>
+              
+              <button
+                onClick={handleSend}
+                disabled={isActionDisabled}
+                className={cn(
+                  'px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2',
+                  'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Send
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </>
       )}

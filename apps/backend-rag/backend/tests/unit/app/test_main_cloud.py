@@ -160,4 +160,3 @@ class TestMainCloud:
         """Test safe endpoint label with empty string"""
         label = _safe_endpoint_label("")
         assert label == "unknown"
-

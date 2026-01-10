@@ -7,6 +7,7 @@ Handles registration of all middleware components for FastAPI application.
 import logging
 
 from fastapi import FastAPI
+from middleware.activity_logging import ActivityLoggingMiddleware
 from middleware.error_monitoring import ErrorMonitoringMiddleware
 from middleware.hybrid_auth import HybridAuthMiddleware
 from middleware.rate_limiter import RateLimitMiddleware
@@ -47,4 +48,9 @@ def register_middleware(app: FastAPI) -> None:
     # Add Rate Limiting middleware (prevents API abuse, DoS protection)
     app.add_middleware(RateLimitMiddleware)
 
-    logger.info("✅ Middleware registered: CORS + Auth + Tracing + ErrorMonitoring + RateLimiting")
+    # Add Activity Logging middleware (logs all API calls for audit trail)
+    app.add_middleware(ActivityLoggingMiddleware)
+
+    logger.info(
+        "✅ Middleware registered: CORS + Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging"
+    )

@@ -65,12 +65,12 @@ def _load_module(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "app.dependencies",
-        types.SimpleNamespace(get_database_pool=get_database_pool),
+        types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "app.utils.logging_utils",
-        types.SimpleNamespace(get_logger=lambda _name: _Logger()),
+        types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

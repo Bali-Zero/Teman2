@@ -107,4 +107,3 @@ class TestInMemoryConversationCache:
         cache1 = get_memory_cache()
         cache2 = get_memory_cache()
         assert cache1 is cache2
-

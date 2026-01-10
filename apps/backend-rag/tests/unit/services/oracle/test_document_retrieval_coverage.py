@@ -11,7 +11,7 @@ oracle_pkg.__path__ = []
 sys.modules.setdefault("services", services_pkg)
 sys.modules.setdefault("services.oracle", oracle_pkg)
 google_services_module = types.ModuleType("services.oracle.oracle_google_services")
-google_services_module.google_services = types.SimpleNamespace(drive_service=None)
+google_services_module.google_services = types.SimpleNamespace(drive_service=None, redis_url='redis://localhost:6379')
 sys.modules.setdefault("services.oracle.oracle_google_services", google_services_module)
 
 module_path = (

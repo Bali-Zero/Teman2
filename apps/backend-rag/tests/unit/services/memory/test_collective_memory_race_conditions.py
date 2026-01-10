@@ -7,7 +7,7 @@ Tests concurrent fact contributions to ensure atomic promotion.
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import asyncpg
 import pytest
@@ -18,15 +18,16 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 from services.memory.collective_memory_service import CollectiveMemoryService
+from tests.conftest import create_async_cm_mock
 
 
 @pytest.fixture
-async def test_db_pool():
+def test_db_pool():
     """Create test database pool"""
     # Use testcontainers or mock pool
     pool = AsyncMock(spec=asyncpg.Pool)
     conn = AsyncMock()
-    pool.acquire = AsyncMock(return_value=conn.__aenter__())
+    pool.acquire.return_value = create_async_cm_mock(conn)
     return pool
 
 
@@ -38,16 +39,19 @@ async def test_concurrent_fact_promotion(test_db_pool):
 
     # Mock database responses
     conn = AsyncMock()
-    test_db_pool.acquire = AsyncMock(return_value=conn.__aenter__())
+    test_db_pool.acquire.return_value = create_async_cm_mock(conn)
 
     # Mock SELECT FOR UPDATE to return None (new fact)
     conn.fetchrow = AsyncMock(return_value=None)
     conn.fetchval = AsyncMock(return_value=1)  # New memory_id
     conn.execute = AsyncMock()
 
-    # Mock transaction context
-    transaction = AsyncMock()
-    conn.transaction = AsyncMock(return_value=transaction.__aenter__())
+    # Mock transaction context - must return async context manager, not coroutine
+    transaction = MagicMock()
+    transaction.__aenter__ = AsyncMock(return_value=transaction)
+    transaction.__aexit__ = AsyncMock(return_value=None)
+    # transaction() should return the context manager, not be a coroutine
+    conn.transaction = MagicMock(return_value=transaction)
 
     # 5 users contribute simultaneously
     tasks = [
@@ -80,9 +84,12 @@ async def test_concurrent_contribution_same_fact(test_db_pool):
 
     # Mock existing fact
     conn = AsyncMock()
-    test_db_pool.acquire = AsyncMock(return_value=conn.__aenter__())
-    transaction = AsyncMock()
-    conn.transaction = AsyncMock(return_value=transaction.__aenter__())
+    test_db_pool.acquire.return_value = create_async_cm_mock(conn)
+    transaction = MagicMock()
+    transaction.__aenter__ = AsyncMock(return_value=transaction)
+    transaction.__aexit__ = AsyncMock(return_value=None)
+    # transaction() should return the context manager, not be a coroutine
+    conn.transaction = MagicMock(return_value=transaction)
 
     # Mock SELECT FOR UPDATE to return existing fact
     conn.fetchrow = AsyncMock(return_value={"id": 1, "source_count": 2, "is_promoted": False})

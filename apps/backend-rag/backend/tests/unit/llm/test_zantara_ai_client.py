@@ -48,21 +48,26 @@ def test_init_with_service_account(mock_genai_available, mock_genai_client):
 
 
 def test_init_mock_mode_no_creds(mock_genai_available):
-    with patch("app.core.config.settings.environment", "development"), \
-         patch("app.core.config.settings.google_api_key", None), \
-         patch("app.core.config.settings.google_credentials_json", None), \
-         patch("os.environ.get", return_value=None):
+    with (
+        patch("app.core.config.settings.environment", "development"),
+        patch("app.core.config.settings.google_api_key", None),
+        patch("app.core.config.settings.google_credentials_json", None),
+        patch("os.environ.get", return_value=None),
+    ):
         client = ZantaraAIClient(api_key=None)
         assert client.mock_mode is True
         assert client._genai_client is None
 
+
 def test_init_production_no_creds(mock_genai_available):
-    with patch("app.core.config.settings.environment", "production"), \
-         patch("app.core.config.settings.google_api_key", None), \
-         patch("app.core.config.settings.google_credentials_json", None), \
-         patch("os.environ.get", return_value=None):
-        with pytest.raises(ValueError, match="GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required"):
-            ZantaraAIClient(api_key=None)
+    with (
+        patch("app.core.config.settings.environment", "production"),
+        patch("app.core.config.settings.google_api_key", None),
+        patch("app.core.config.settings.google_credentials_json", None),
+        patch("os.environ.get", return_value=None),
+        pytest.raises(ValueError, match="GOOGLE_API_KEY or GOOGLE_CREDENTIALS_JSON is required"),
+    ):
+        ZantaraAIClient(api_key=None)
 
 
 def test_init_genai_client_fail(mock_genai_available, mock_genai_client):

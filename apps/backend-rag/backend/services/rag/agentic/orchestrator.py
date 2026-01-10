@@ -21,7 +21,6 @@ import asyncio
 import logging
 import time
 import uuid
-from collections import defaultdict
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -29,9 +28,11 @@ import asyncpg
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import settings
+from app.core.constants import HttpTimeoutConstants
+from app.metrics import metrics_collector
 from app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
 from services.classification.intent_classifier import IntentClassifier
-from services.memory import MemoryOrchestrator
+from services.llm_clients.pricing import TokenUsage
 from services.misc.clarification_service import ClarificationService
 from services.misc.context_window_manager import ContextWindowManager
 from services.misc.emotional_attunement import EmotionalAttunementService
@@ -39,61 +40,27 @@ from services.misc.followup_service import FollowupService
 from services.misc.golden_answer_service import GoldenAnswerService
 from services.rag.agentic.entity_extractor import EntityExtractionService
 from services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
-from services.response.cleaner import (
-    OUT_OF_DOMAIN_RESPONSES,
-    is_out_of_domain,
-)
+from services.response.cleaner import OUT_OF_DOMAIN_RESPONSES, is_out_of_domain
 from services.search.semantic_cache import SemanticCache
+from services.tools.definitions import AgentState, BaseTool
 
 from .context_manager import get_user_context
 from .llm_gateway import LLMGateway
+from .memory_handler import MemoryHandler
 from .pipeline import create_default_pipeline
 from .prompt_builder import SystemPromptBuilder
+from .query_gates import QueryGates
+from .query_helpers import (
+    TIER_FLASH,
+    TIER_PRO,
+    is_conversation_recall_query,
+    wrap_query_with_language_instruction,
+)
 from .reasoning import ReasoningEngine, detect_team_query
-
-# Conversation recall trigger phrases (multilingual)
-RECALL_TRIGGERS = [
-    # Italian
-    "ti ricordi",
-    "ricordi quando",
-    "di che parlavamo",
-    "di che cliente",
-    "il cliente di cui",
-    "che mi hai detto",
-    "prima hai detto",
-    # English
-    "do you remember",
-    "remember when",
-    "what did i say",
-    "what did you say",
-    "the client we discussed",
-    "earlier you said",
-    "you mentioned before",
-    "recall our conversation",
-    "what we talked about",
-    # Indonesian
-    "ingat tidak",
-    "kamu ingat",
-    "tadi aku bilang",
-    "sebelumnya",
-    "klien yang tadi",
-    "yang kita bahas",
-]
-from app.metrics import metrics_collector
-from services.llm_clients.pricing import TokenUsage
-from services.tools.definitions import AgentState, BaseTool
-
 from .schema import CoreResult
 from .tool_executor import execute_tool
 
 logger = logging.getLogger(__name__)
-
-# Model Tiers
-TIER_FLASH = 0
-TIER_LITE = 1
-TIER_PRO = 2
-TIER_OPENROUTER = 3
-
 
 class StreamEvent(BaseModel):
     """Schema per eventi stream."""
@@ -107,136 +74,9 @@ class StreamEvent(BaseModel):
         arbitrary_types_allowed = True
 
 
-def _wrap_query_with_language_instruction(query: str) -> str:
-    """
-    Wrap non-Indonesian queries with explicit language instruction.
-
-    CRITICAL: When using function calling, Gemini often ignores system prompt
-    language constraints. This function adds the language instruction directly
-    to the query to ensure it's respected.
-
-    Rules:
-    - Indonesian queries → No change (Jaksel style OK)
-    - All other languages → Add instruction to respond in SAME language, NO Jaksel
-    """
-    if not query or len(query.strip()) < 2:
-        return query
-
-    query_lower = query.lower()
-
-    # Indonesian markers - if found, allow Jaksel style
-    indonesian_markers = [
-        "apa",
-        "bagaimana",
-        "siapa",
-        "dimana",
-        "kapan",
-        "mengapa",
-        "yang",
-        "dengan",
-        "untuk",
-        "dari",
-        "saya",
-        "aku",
-        "kamu",
-        "anda",
-        "bisa",
-        "mau",
-        "ingin",
-        "perlu",
-        "tolong",
-        "halo",
-        "selamat",
-        "terima kasih",
-        "gimana",
-        "gue",
-        "gw",
-        "lu",
-        "dong",
-        "nih",
-        "banget",
-        "keren",
-        "mantap",
-        "boleh",
-    ]
-
-    # Check if Indonesian
-    indo_count = sum(1 for marker in indonesian_markers if marker in query_lower)
-    if indo_count >= 1:
-        # Indonesian detected - allow Jaksel, but still add tool instructions
-        tool_instruction = """🛠️ TOOL USAGE:
-Untuk pertanyaan faktual tentang visa, bisnis, pajak, harga, tim, atau regulasi:
-→ SELALU gunakan vector_search tool DULU untuk mengambil informasi terverifikasi
-→ Jangan jawab dari ingatan saja - cari di knowledge base
-→ Jika tanya harga Bali Zero → gunakan pricing_tool
-→ Jika tanya tentang tim → gunakan team_knowledge_tool
-
-Pertanyaan User:
-"""
-        return tool_instruction + query
-
-    # NOT Indonesian - detect the language and add explicit instruction
-    # Detect specific language patterns for clearer instruction
-    detected_lang = "the user's language"
-
-    # Chinese detection (contains Chinese characters)
-    if any("\u4e00" <= char <= "\u9fff" for char in query):
-        detected_lang = "CHINESE (中文)"
-    # Arabic detection
-    elif any("\u0600" <= char <= "\u06ff" for char in query):
-        detected_lang = "ARABIC (العربية)"
-    # Cyrillic (Russian/Ukrainian)
-    elif any("\u0400" <= char <= "\u04ff" for char in query):
-        if any(word in query_lower for word in ["привіт", "як", "справи", "добре", "дякую"]):
-            detected_lang = "UKRAINIAN (Українська)"
-        else:
-            detected_lang = "RUSSIAN (Русский)"
-    # Check for specific language patterns
-    elif any(
-        word in query_lower
-        for word in ["ciao", "come", "cosa", "voglio", "posso", "grazie", "perché"]
-    ):
-        detected_lang = "ITALIAN (Italiano)"
-    elif any(
-        word in query_lower for word in ["bonjour", "comment", "pourquoi", "merci", "s'il vous"]
-    ):
-        detected_lang = "FRENCH (Français)"
-    elif any(word in query_lower for word in ["hola", "cómo", "como estas", "gracias", "por qué"]):
-        detected_lang = "SPANISH (Español)"
-    elif any(word in query_lower for word in ["hallo", "wie geht", "danke", "warum", "können"]):
-        detected_lang = "GERMAN (Deutsch)"
-
-    language_instruction = f"""
-🔴 LANGUAGE: {detected_lang}
-🔴 YOUR ENTIRE RESPONSE MUST BE IN {detected_lang}
-🔴 DO NOT USE SLANG OR INFORMAL LANGUAGE unless specifically requested.
-
-🛠️ TOOL USAGE INSTRUCTION:
-→ ALWAYS use vector_search FIRST to retrieve verified documents from the knowledge base.
-→ For relationship/prerequisite questions, use knowledge_graph_search AFTER vector_search (not instead of it).
-→ Do NOT answer from memory alone - your evidence score depends on vector_search results.
-→ WRONG: knowledge_graph_search only → Evidence=0 → ABSTAIN
-→ RIGHT: vector_search → (optional) knowledge_graph_search → Answer with citations
-
-User Query:
-"""
-
-    return language_instruction + query
-
-
-def _is_conversation_recall_query(query: str) -> bool:
-    """
-    Detect if user is asking to recall something from THIS conversation.
-
-    These questions should NOT trigger RAG search because the information
-    is in the conversation history, not in the knowledge base.
-
-    Examples:
-    - "Ti ricordi il cliente di cui abbiamo parlato?" → True
-    - "Quanto costa un visto E31A?" → False
-    """
-    query_lower = query.lower()
-    return any(trigger in query_lower for trigger in RECALL_TRIGGERS)
+# Alias for backward compatibility (used internally)
+_wrap_query_with_language_instruction = wrap_query_with_language_instruction
+_is_conversation_recall_query = is_conversation_recall_query
 
 
 class AgenticRAGOrchestrator:
@@ -352,12 +192,14 @@ class AgenticRAGOrchestrator:
         self.followup_service = FollowupService()
         self.golden_answer_service = GoldenAnswerService(database_url=settings.database_url)
 
-        # Memory orchestrator for fact extraction and persistence (lazy loaded)
-        self._memory_orchestrator: MemoryOrchestrator | None = None
+        # Memory Handler - manages memory persistence with race condition protection
+        self.memory_handler = MemoryHandler(db_pool=db_pool)
 
-        # Race condition protection: locks per user_id for memory save operations
-        self._memory_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self._lock_timeout = 5.0  # seconds
+        # Query Gates - pre-processing gates that can bypass RAG pipeline
+        self.query_gates = QueryGates(
+            prompt_builder=self.prompt_builder,
+            clarification_service=clarification_service,
+        )
 
         # Stream event validation configuration
         self._event_validation_enabled = True
@@ -372,97 +214,6 @@ class AgenticRAGOrchestrator:
         logger.debug("AgenticRAGOrchestrator: ContextWindowManager initialized")
 
         logger.debug("AgenticRAGOrchestrator.__init__ completed")
-
-    async def _get_memory_orchestrator(self) -> MemoryOrchestrator | None:
-        """Lazy load and initialize memory orchestrator for fact extraction.
-
-        Creates MemoryOrchestrator instance on first use to avoid initialization
-        overhead when memory features are not needed.
-
-        Returns:
-            MemoryOrchestrator instance or None if initialization fails
-
-        Note:
-            - Non-fatal errors: returns None and logs warning
-            - Used for extracting and persisting conversation facts
-            - Requires database pool to be configured
-        """
-        if self._memory_orchestrator is None:
-            try:
-                self._memory_orchestrator = MemoryOrchestrator(db_pool=self.db_pool)
-                await self._memory_orchestrator.initialize()
-                logger.info("✅ MemoryOrchestrator initialized for AgenticRAG")
-            except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
-                logger.warning(f"⚠️ Failed to initialize MemoryOrchestrator: {e}", exc_info=True)
-                return None
-        return self._memory_orchestrator
-
-    async def _save_conversation_memory(self, user_id: str, query: str, answer: str) -> None:
-        """Save memory facts from conversation for future personalization.
-
-        Extracts facts from user messages and AI responses, then persists them
-        to the database for future context enrichment. Called asynchronously
-        after response generation to avoid blocking.
-
-        RACE CONDITION PROTECTION: Uses per-user lock to prevent concurrent
-        memory saves for the same user from corrupting data.
-
-        Args:
-            user_id: User identifier (email or UUID)
-            query: User's original query
-            answer: AI's generated response
-
-        Note:
-            - Skips anonymous users (user_id == "anonymous")
-            - Non-blocking: uses asyncio.create_task() in caller
-            - Logs success metrics (facts extracted/saved, processing time)
-            - Gracefully handles errors without failing the main flow
-            - Lock timeout: 5 seconds (prevents deadlocks)
-        """
-        if not user_id or user_id == "anonymous":
-            return
-
-        lock = self._memory_locks[user_id]
-        lock_start_time = time.time()
-
-        try:
-            # Acquire lock with timeout to prevent deadlocks
-            await asyncio.wait_for(lock.acquire(), timeout=self._lock_timeout)
-            try:
-                orchestrator = await self._get_memory_orchestrator()
-                if not orchestrator:
-                    return
-
-                result = await orchestrator.process_conversation(
-                    user_email=user_id,
-                    user_message=query,
-                    ai_response=answer,
-                )
-
-                if result.success and result.facts_saved > 0:
-                    logger.info(
-                        f"💾 [AgenticRAG] Saved {result.facts_saved}/{result.facts_extracted} "
-                        f"facts for {user_id} ({result.processing_time_ms:.1f}ms)"
-                    )
-
-                # Record lock contention metric
-                lock_wait_time = time.time() - lock_start_time
-                if lock_wait_time > 0.01:  # Only record if waited > 10ms
-                    metrics_collector.record_memory_lock_contention(
-                        operation="save_memory", wait_time_seconds=lock_wait_time
-                    )
-
-            finally:
-                lock.release()
-
-        except asyncio.TimeoutError:
-            logger.warning(
-                f"⚠️ [AgenticRAG] Memory save lock timeout for user {user_id} "
-                f"(timeout: {self._lock_timeout}s)"
-            )
-            metrics_collector.record_memory_lock_timeout(user_id=user_id)
-        except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-            logger.warning(f"⚠️ [AgenticRAG] Failed to save memory: {e}", exc_info=True)
 
     async def process_query(
         self,
@@ -492,7 +243,7 @@ class AgenticRAGOrchestrator:
             effective_user_id = user_id or "anonymous"
             with trace_span("context.load_user", {"user_id": effective_user_id}):
                 try:
-                    memory_orchestrator = await self._get_memory_orchestrator()
+                    memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
                     user_context = await get_user_context(
                         self.db_pool,
                         effective_user_id,
@@ -864,11 +615,40 @@ class AgenticRAGOrchestrator:
         # 📊 Record RAG query metrics for Prometheus/Grafana
         primary_collection = next(iter(collections_used), "unknown")
         route_used = "agentic" if tool_execution_counter["count"] > 0 else "direct"
+        evidence_score = getattr(state, "evidence_score", 0.0)
+
         metrics_collector.record_rag_query(
             collection=primary_collection,
             route_used=route_used,
             status="success",
             context_tokens=context_used,
+        )
+
+        # Record detailed histogram metrics
+        metrics_collector.record_rag_detailed_metrics(
+            duration_seconds=execution_time,
+            evidence_score=evidence_score,
+            documents_count=len(sources),
+            collection=primary_collection,
+            route_used=route_used,
+        )
+
+        # 📝 Structured Logging for Query Completion
+        logger.info(
+            "✅ [AgenticRAG] Query completed successfully",
+            extra={
+                "user_id": user_id or "anonymous",
+                "query_hash": str(hash(query))[:8],
+                "model_used": model_used_name,
+                "duration_s": round(execution_time, 3),
+                "evidence_score": round(evidence_score, 2),
+                "doc_count": len(sources),
+                "steps": len(state.steps),
+                "tokens_total": token_usage.total_tokens,
+                "cost_usd": round(token_usage.cost_usd, 6),
+                "route": route_used,
+                "tools": list(collections_used) if collections_used else [],
+            },
         )
 
         # Record token usage metrics for Prometheus
@@ -957,7 +737,7 @@ class AgenticRAGOrchestrator:
         # UNIVERSAL CONTEXT LOADING (Stream)
         with trace_span("context.load_user_stream", {"user_id": user_id}):
             try:
-                memory_orchestrator = await self._get_memory_orchestrator()
+                memory_orchestrator = await self.memory_handler.get_memory_orchestrator()
                 user_context = await get_user_context(
                     self.db_pool, user_id, memory_orchestrator, query=query, session_id=session_id
                 )
@@ -1478,13 +1258,6 @@ Respond in the SAME language the user is using."""
                 except Exception as followup_err:
                     logger.warning(f"⚠️ [Proactive] Failed to generate follow-ups: {followup_err}")
 
-            # 🧠 MEMORY PERSISTENCE (background)
-            if full_answer and user_id and user_id != "anonymous":
-                try:
-                    asyncio.create_task(self._save_conversation_memory(user_id, query, full_answer))
-                except Exception as mem_err:
-                    logger.warning(f"Failed to trigger memory save: {mem_err}")
-
             yield {
                 "type": "done",
                 "data": {
@@ -1514,18 +1287,12 @@ Respond in the SAME language the user is using."""
             return
 
         # 🧠 MEMORY PERSISTENCE: Save facts in background after stream completes
-        if full_answer and user_id and user_id != "anonymous":
-            task = asyncio.create_task(
-                self._save_conversation_memory(
-                    user_id=user_id,
-                    query=query,
-                    answer=full_answer,
-                )
-            )
-            task.add_done_callback(
-                lambda t: logger.error(f"❌ Memory save failed: {t.exception()}")
-                if t.exception()
-                else None
-            )
+        # Uses MemoryHandler which provides race condition protection via per-user locks
+        self.memory_handler.create_save_task(
+            user_id=user_id,
+            query=query,
+            answer=full_answer,
+            metrics_collector=metrics_collector,
+        )
 
         return

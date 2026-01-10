@@ -372,4 +372,3 @@ TENTANG PERKEP TEST"""
 
         assert result["type"] == "PERATURAN KEPALA"
         assert result["type_abbrev"] == "Perkep"
-

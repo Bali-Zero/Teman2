@@ -670,6 +670,40 @@ class Settings(BaseSettings):
     # ========================================
     service_name: str = "nuzantara-rag"  # Set via SERVICE_NAME env var
 
+    # ========================================
+    # FILE SYSTEM PATHS
+    # ========================================
+    # Intel staging directories
+    # In production (Fly.io), use /data/staging (mounted volume)
+    # In local dev, use /tmp/staging
+    intel_staging_base_dir: str | None = Field(
+        default=None,
+        description="Base directory for Intel staging files. Defaults to /data/staging in production, /tmp/staging locally. Set via INTEL_STAGING_BASE_DIR env var",
+    )
+    intel_pending_path: str | None = Field(
+        default=None,
+        description="Path for pending Intel approval storage. Defaults to /tmp/pending_intel. Set via INTEL_PENDING_PATH env var",
+    )
+
+    @property
+    def get_intel_staging_base_dir(self) -> str:
+        """Get Intel staging base directory with fallback logic."""
+        if self.intel_staging_base_dir:
+            return self.intel_staging_base_dir
+        # Check if /data exists (production Fly.io volume)
+        from pathlib import Path
+
+        if Path("/data").exists():
+            return "/data/staging"
+        return "/tmp/staging"
+
+    @property
+    def get_intel_pending_path(self) -> str:
+        """Get Intel pending path with fallback logic."""
+        if self.intel_pending_path:
+            return self.intel_pending_path
+        return "/tmp/pending_intel"
+
     class Config:
         # Load .env file for local development, but allow env vars to override
         # In production (Fly.io), use environment variables/secrets only

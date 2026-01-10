@@ -28,6 +28,8 @@ from typing import Any
 
 import asyncpg
 
+from app.metrics import metrics_collector
+
 logger = logging.getLogger(__name__)
 
 
@@ -259,6 +261,8 @@ class KnowledgeGraphBuilder:
         relationships = self.infer_relationships_from_text(
             text, entities, source_collection="api_request"
         )
+
+        metrics_collector.record_kg_metrics(len(entities), len(relationships), "regex")
 
         # Save to DB (async)
         for e in entities:
@@ -540,10 +544,23 @@ class KnowledgeGraphBuilder:
                 extracted_relationships.append(rel)
                 await self.add_relationship(rel)
 
-            logger.info(
-                f"🧠 Semantic Extraction: {len(extracted_entities)} entities, {len(extracted_relationships)} relationships"
+            metrics_collector.record_kg_metrics(
+                len(extracted_entities), len(extracted_relationships), "llm"
             )
-            return {"entities": extracted_entities, "relationships": extracted_relationships}
+
+            logger.info(
+                "🧠 Semantic Extraction Results",
+                extra={
+                    "entity_count": len(extracted_entities),
+                    "relationship_count": len(extracted_relationships),
+                    "source_collection": source_collection,
+                    "model_used": response.get("model", "unknown"),
+                },
+            )
+            return {
+                "entities": [asdict(e) for e in extracted_entities],
+                "relationships": [asdict(r) for r in extracted_relationships],
+            }
 
         except Exception as e:
             logger.error(f"Semantic extraction failed: {e}")

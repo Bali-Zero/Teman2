@@ -103,5 +103,12 @@ class OracleAnalyticsService:
                 "routing_stats": routing_stats,
                 "search_time_ms": search_time_ms,
                 "reasoning_time_ms": reasoning_time_ms,
+                "evidence_score": routing_stats.get("evidence_score", 0.0)
+                if routing_stats
+                else 0.0,
+                "verification_status": routing_stats.get("verification_status", "unchecked")
+                if routing_stats
+                else "unchecked",
+                "timings": routing_stats,  # Store full timings dict
             },
         }

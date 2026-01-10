@@ -21,10 +21,14 @@ from app.setup.exception_handlers import (
     http_exception_handler,
     starlette_http_exception_handler,
 )
+from app.setup.logging_config import configure_logging
 from app.setup.middleware_config import register_middleware
 from app.setup.observability import setup_observability
 from app.setup.router_registration import include_routers
 from app.streaming import router as streaming_router
+
+# Configure structured logging FIRST (before any logger is used)
+configure_logging()
 
 logger = logging.getLogger("zantara.backend")
 

@@ -58,12 +58,12 @@ def _load_module(monkeypatch, aggregator_results=None):
     monkeypatch.setitem(
         sys.modules,
         "app.dependencies",
-        types.SimpleNamespace(get_current_user=get_current_user),
+        types.SimpleNamespace(get_current_user=get_current_user, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "services.analytics.analytics_aggregator",
-        types.SimpleNamespace(AnalyticsAggregator=_Aggregator),
+        types.SimpleNamespace(AnalyticsAggregator=_Aggregator, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")
@@ -160,7 +160,7 @@ def test_llm_usage_success(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "prometheus_client",
-        types.SimpleNamespace(REGISTRY=types.SimpleNamespace(collect=lambda: metrics)),
+        types.SimpleNamespace(REGISTRY=types.SimpleNamespace(collect=lambda: metrics, redis_url='redis://localhost:6379')),
     )
 
     response = client.get("/api/analytics/llm-usage")
@@ -184,7 +184,7 @@ def test_llm_usage_registry_error(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "prometheus_client",
-        types.SimpleNamespace(REGISTRY=types.SimpleNamespace(collect=_raise)),
+        types.SimpleNamespace(REGISTRY=types.SimpleNamespace(collect=_raise, redis_url='redis://localhost:6379')),
     )
 
     response = client.get("/api/analytics/llm-usage")

@@ -48,16 +48,17 @@ def _load_module(monkeypatch, pool=None):
         jwt_secret_key="secret",
         jwt_algorithm="HS256",
         jwt_access_token_expire_hours=1,
+        redis_url='redis://localhost:6379'
     )
     monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub)
+        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
     )
 
     async def get_database_pool():
         return pool
 
     monkeypatch.setitem(
-        sys.modules, "app.dependencies", types.SimpleNamespace(get_database_pool=get_database_pool)
+        sys.modules, "app.dependencies", types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379')
     )
 
     cookie_calls = {}
@@ -75,7 +76,9 @@ def _load_module(monkeypatch, pool=None):
         sys.modules,
         "app.utils.cookie_auth",
         types.SimpleNamespace(
-            set_auth_cookies=set_auth_cookies, clear_auth_cookies=clear_auth_cookies
+            set_auth_cookies=set_auth_cookies,
+            clear_auth_cookies=clear_auth_cookies,
+            redis_url='redis://localhost:6379'
         ),
     )
 
@@ -99,16 +102,19 @@ def _load_module(monkeypatch, pool=None):
             get_logger=lambda _name: _Logger(),
             log_error=lambda *_args, **_kwargs: None,
             log_warning=lambda *_args, **_kwargs: None,
+            redis_url='redis://localhost:6379'
         ),
     )
 
     audit_service = types.SimpleNamespace(
-        pool=None, connect=AsyncMock(), log_auth_event=AsyncMock()
+        pool=None,
+        connect=AsyncMock(),
+        log_auth_event=AsyncMock()
     )
     monkeypatch.setitem(
         sys.modules,
         "services.monitoring.audit_service",
-        types.SimpleNamespace(get_audit_service=lambda: audit_service),
+        types.SimpleNamespace(get_audit_service=lambda: audit_service, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

@@ -7,8 +7,11 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr, Field
+
+from app.dependencies import get_current_user
+from app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
@@ -107,40 +110,20 @@ class MonthlySummary(BaseModel):
 # Admin Authorization
 # ============================================================================
 
-ADMIN_EMAILS = ["zero@balizero.com", "admin@zantara.io", "admin@balizero.com"]
 
-
-def verify_admin(email: str) -> bool:
+def verify_admin(user: dict) -> bool:
     """Check if user is admin"""
-    return email.lower() in ADMIN_EMAILS
+    return is_crm_admin(user)
 
 
-async def get_admin_email(
-    _authorization: str | None = Header(None), x_user_email: str | None = Header(None)
-) -> str:
+async def get_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
     """
-    Extract and verify admin email from headers
-
-    Accepts either:
-    - X-User-Email header (for demo/mock auth)
-    - Authorization header (for future JWT implementation)
+    Dependency to verify admin user
     """
-    # Try X-User-Email header first (demo mode)
-    if x_user_email:
-        email = x_user_email.lower()
-        if verify_admin(email):
-            return email
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if verify_admin(current_user):
+        return current_user
 
-    # JWT authentication is handled by middleware
-    #     token = authorization[7:]
-    #     email = decode_jwt_token(token)
-    #     if verify_admin(email):
-    #         return email
-
-    raise HTTPException(
-        status_code=401, detail="Authentication required. Provide X-User-Email header."
-    )
+    raise HTTPException(status_code=403, detail="Admin access required")
 
 
 # ============================================================================
@@ -226,7 +209,7 @@ async def get_my_status(user_id: str = Query(..., description="User ID")):
 
 
 @router.get("/status", response_model=list[TeamMemberStatus])
-async def get_team_status(_admin_email: str = Depends(get_admin_email)):
+async def get_team_status(_admin: dict = Depends(get_admin_user)):
     """
     Get current online status of all team members (ADMIN ONLY)
 
@@ -249,7 +232,7 @@ async def get_team_status(_admin_email: str = Depends(get_admin_email)):
 @router.get("/hours", response_model=list[DailyHours])
 async def get_daily_hours(
     date: str | None = Query(None, description="Date (YYYY-MM-DD, defaults to today)"),
-    _admin_email: str = Depends(get_admin_email),
+    _admin: dict = Depends(get_admin_user),
 ):
     """
     Get work hours for a specific date (ADMIN ONLY)
@@ -279,7 +262,7 @@ async def get_daily_hours(
 @router.get("/activity/weekly", response_model=list[WeeklySummary])
 async def get_weekly_summary(
     week_start: str | None = Query(None, description="Week start date (YYYY-MM-DD)"),
-    _admin_email: str = Depends(get_admin_email),
+    _admin: dict = Depends(get_admin_user),
 ):
     """
     Get weekly work summary (ADMIN ONLY)
@@ -309,7 +292,7 @@ async def get_weekly_summary(
 @router.get("/activity/monthly", response_model=list[MonthlySummary])
 async def get_monthly_summary(
     month_start: str | None = Query(None, description="Month start date (YYYY-MM-DD)"),
-    _admin_email: str = Depends(get_admin_email),
+    _admin: dict = Depends(get_admin_user),
 ):
     """
     Get monthly work summary (ADMIN ONLY)
@@ -341,7 +324,7 @@ async def export_timesheet(
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     format: str = Query("csv", description="Export format (csv only for now)"),
-    _admin_email: str = Depends(get_admin_email),
+    _admin: dict = Depends(get_admin_user),
 ):
     """
     Export timesheet data (ADMIN ONLY)

@@ -8,10 +8,11 @@ from typing import Any
 
 import asyncpg
 from core.cache import cached
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.dependencies import get_database_pool
+from app.dependencies import get_current_user, get_database_pool
+from app.utils.crm_utils import is_crm_admin
 from app.utils.error_handlers import handle_database_error
 from app.utils.logging_utils import get_logger
 
@@ -53,7 +54,7 @@ class AutoCRMStats(BaseModel):
 @cached(ttl=CACHE_TTL_STATS_SECONDS, prefix="crm_auto_stats")
 async def get_auto_crm_stats(
     days: int = Query(7, ge=1, le=30, description="Number of days to analyze"),
-    request: Request = ...,
+    current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
 ) -> AutoCRMStats:
     """
@@ -70,6 +71,8 @@ async def get_auto_crm_stats(
 
     Performance: Cached for 5 minutes.
     """
+    if not is_crm_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required for AUTO CRM statistics")
     try:
         async with db_pool.acquire() as conn:
             # Base time windows

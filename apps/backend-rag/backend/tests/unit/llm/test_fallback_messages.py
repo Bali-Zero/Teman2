@@ -106,4 +106,3 @@ class TestGetFallbackMessage:
         result = get_fallback_message("invalid_type", "invalid_lang")
         assert isinstance(result, str)
         assert result == FALLBACK_MESSAGES["en"]["generic_error"]
-

@@ -398,4 +398,3 @@ class TestCoreResultEdgeCases:
         # This ensures the model_config is properly set
         result = CoreResult(answer="Test")
         assert hasattr(result, "model_config")
-

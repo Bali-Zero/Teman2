@@ -1,9 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { intelligenceApi, StagingItem } from "@/lib/api/intelligence.api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { logger } from "@/lib/logger";
 import {
@@ -16,8 +24,16 @@ import {
   AlertTriangle,
   RefreshCw,
   Eye,
+  Filter,
+  ArrowUpDown,
+  Search,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type FilterType = "all" | "NEW" | "UPDATED";
+type SortType = "date-desc" | "date-asc" | "title-asc" | "title-desc";
 
 export default function VisaOraclePage() {
   const [items, setItems] = useState<StagingItem[]>([]);
@@ -25,7 +41,50 @@ export default function VisaOraclePage() {
   const [processing, setProcessing] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [previewContent, setPreviewContent] = useState<string>("");
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [sortType, setSortType] = useState<SortType>("date-desc");
+  const [searchQuery, setSearchQuery] = useState("");
   const toast = useToast();
+
+  // Filtered and sorted items
+  const filteredAndSortedItems = useMemo(() => {
+    let filtered = items;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (item) =>
+          item.title.toLowerCase().includes(query) ||
+          item.id.toLowerCase().includes(query) ||
+          item.source.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply type filter
+    if (filterType !== "all") {
+      filtered = filtered.filter((item) => item.detection_type === filterType);
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortType) {
+        case "date-desc":
+          return new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime();
+        case "date-asc":
+          return new Date(a.detected_at).getTime() - new Date(b.detected_at).getTime();
+        case "title-asc":
+          return a.title.localeCompare(b.title);
+        case "title-desc":
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [items, filterType, sortType, searchQuery]);
 
   useEffect(() => {
     logger.componentMount('VisaOraclePage');
@@ -137,6 +196,126 @@ export default function VisaOraclePage() {
     }
   };
 
+  const toggleSelectItem = (id: string) => {
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === filteredAndSortedItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(filteredAndSortedItems.map((item) => item.id)));
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedItems.size === 0) {
+      toast.error("No items selected", "Please select items to approve.");
+      return;
+    }
+
+    if (!confirm(`Approve ${selectedItems.size} item(s)? This will ingest them into the Knowledge Base.`)) {
+      return;
+    }
+
+    logger.info('Starting bulk approval', {
+      component: 'VisaOraclePage',
+      action: 'bulk_approve_start',
+      metadata: { count: selectedItems.size },
+    });
+
+    const ids = Array.from(selectedItems);
+    const results = { success: 0, failed: 0 };
+
+    for (const id of ids) {
+      setProcessing(id);
+      try {
+        await intelligenceApi.approveItem("visa", id);
+        results.success++;
+        setItems((prev) => prev.filter((i) => i.id !== id));
+      } catch (error) {
+        results.failed++;
+        logger.error('Bulk approval failed for item', {
+          component: 'VisaOraclePage',
+          action: 'bulk_approve_error',
+          itemId: id,
+        }, error as Error);
+      } finally {
+        setProcessing(null);
+      }
+    }
+
+    setSelectedItems(new Set());
+    toast.success(
+      "Bulk approval completed",
+      `${results.success} approved, ${results.failed} failed.`
+    );
+
+    logger.info('Bulk approval completed', {
+      component: 'VisaOraclePage',
+      action: 'bulk_approve_complete',
+      metadata: results,
+    });
+  };
+
+  const handleBulkReject = async () => {
+    if (selectedItems.size === 0) {
+      toast.error("No items selected", "Please select items to reject.");
+      return;
+    }
+
+    if (!confirm(`Reject ${selectedItems.size} item(s)? They will be archived.`)) {
+      return;
+    }
+
+    logger.info('Starting bulk rejection', {
+      component: 'VisaOraclePage',
+      action: 'bulk_reject_start',
+      metadata: { count: selectedItems.size },
+    });
+
+    const ids = Array.from(selectedItems);
+    const results = { success: 0, failed: 0 };
+
+    for (const id of ids) {
+      setProcessing(id);
+      try {
+        await intelligenceApi.rejectItem("visa", id);
+        results.success++;
+        setItems((prev) => prev.filter((i) => i.id !== id));
+      } catch (error) {
+        results.failed++;
+        logger.error('Bulk rejection failed for item', {
+          component: 'VisaOraclePage',
+          action: 'bulk_reject_error',
+          itemId: id,
+        }, error as Error);
+      } finally {
+        setProcessing(null);
+      }
+    }
+
+    setSelectedItems(new Set());
+    toast.success(
+      "Bulk rejection completed",
+      `${results.success} rejected, ${results.failed} failed.`
+    );
+
+    logger.info('Bulk rejection completed', {
+      component: 'VisaOraclePage',
+      action: 'bulk_reject_complete',
+      metadata: results,
+    });
+  };
+
   const handleReject = async (id: string) => {
     logger.userAction('reject_confirm_prompt', 'visa', id, { component: 'VisaOraclePage' });
 
@@ -179,7 +358,7 @@ export default function VisaOraclePage() {
         itemType: 'visa',
         itemId: id,
       }, error as Error);
-      toast.error("Rejection failed");
+      toast.error("Rejection failed", "Could not archive item. Check backend logs.");
     } finally {
       setProcessing(null);
     }
@@ -196,7 +375,7 @@ export default function VisaOraclePage() {
     );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 || filteredAndSortedItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32 bg-[var(--background-secondary)] rounded-2xl border-2 border-dashed border-[var(--border)]">
         <div className="bg-[var(--accent)]/10 p-6 rounded-full mb-6">
@@ -206,8 +385,9 @@ export default function VisaOraclePage() {
           All Caught Up!
         </h3>
         <p className="text-[var(--foreground-muted)] text-center max-w-md mb-8">
-          No pending visa updates detected. The Intelligent Visa Agent is continuously
-          monitoring imigrasi.go.id for new regulations.
+          {items.length === 0
+            ? "No pending visa updates detected. The Intelligent Visa Agent is continuously monitoring imigrasi.go.id for new regulations."
+            : "No items match your current filters. Try adjusting your search or filters."}
         </p>
         <Button
           variant="outline"
@@ -229,7 +409,7 @@ export default function VisaOraclePage() {
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
             <span className="text-sm font-medium text-[var(--foreground)]">
-              {items.length} {items.length === 1 ? "item" : "items"} pending review
+              {filteredAndSortedItems.length} of {items.length} {items.length === 1 ? "item" : "items"} pending review
             </span>
           </div>
           <div className="h-4 w-px bg-[var(--border)]" />
@@ -237,6 +417,14 @@ export default function VisaOraclePage() {
             {items.filter((i) => i.detection_type === "NEW").length} new ·{" "}
             {items.filter((i) => i.detection_type === "UPDATED").length} updated
           </div>
+          {selectedItems.size > 0 && (
+            <>
+              <div className="h-4 w-px bg-[var(--border)]" />
+              <div className="text-sm font-medium text-[var(--accent)]">
+                {selectedItems.size} selected
+              </div>
+            </>
+          )}
         </div>
         <Button variant="outline" size="sm" onClick={loadItems} className="gap-2">
           <RefreshCw className="w-4 h-4" />
@@ -244,9 +432,95 @@ export default function VisaOraclePage() {
         </Button>
       </div>
 
+      {/* Filters and Bulk Actions */}
+      <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg bg-[var(--background-elevated)] border border-[var(--border)]">
+        {/* Search */}
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--foreground-muted)]" />
+          <Input
+            placeholder="Search by title, ID, or source..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Filters */}
+        <div className="flex gap-2">
+          <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterType)}>
+            <SelectTrigger className="w-[140px]">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="NEW">New Only</SelectItem>
+              <SelectItem value="UPDATED">Updated Only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={sortType} onValueChange={(value) => setSortType(value as SortType)}>
+            <SelectTrigger className="w-[160px]">
+              <ArrowUpDown className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-desc">Newest First</SelectItem>
+              <SelectItem value="date-asc">Oldest First</SelectItem>
+              <SelectItem value="title-asc">Title A-Z</SelectItem>
+              <SelectItem value="title-desc">Title Z-A</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Bulk Actions */}
+        {selectedItems.size > 0 && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSelectAll}
+              className="gap-2"
+            >
+              {selectedItems.size === filteredAndSortedItems.length ? (
+                <>
+                  <CheckSquare className="w-4 h-4" />
+                  Deselect All
+                </>
+              ) : (
+                <>
+                  <Square className="w-4 h-4" />
+                  Select All
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkApprove}
+              className="gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+              disabled={!!processing}
+            >
+              <Check className="w-4 h-4" />
+              Approve ({selectedItems.size})
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkReject}
+              className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              disabled={!!processing}
+            >
+              <X className="w-4 h-4" />
+              Reject ({selectedItems.size})
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* Items Grid */}
       <div className="grid gap-4">
-        {items.map((item) => (
+        {filteredAndSortedItems.map((item) => (
           <Card
             key={item.id}
             className={cn(
@@ -259,7 +533,20 @@ export default function VisaOraclePage() {
           >
             <CardHeader className="bg-[var(--background-secondary)] pb-4">
               <div className="flex justify-between items-start gap-4">
-                <div className="space-y-2 flex-1">
+                <div className="flex items-start gap-3 flex-1">
+                  {/* Checkbox */}
+                  <button
+                    onClick={() => toggleSelectItem(item.id)}
+                    className="mt-1 p-1 rounded hover:bg-[var(--background-elevated)] transition-colors"
+                    aria-label={`Select ${item.title}`}
+                  >
+                    {selectedItems.has(item.id) ? (
+                      <CheckSquare className="w-5 h-5 text-[var(--accent)]" />
+                    ) : (
+                      <Square className="w-5 h-5 text-[var(--foreground-muted)]" />
+                    )}
+                  </button>
+                  <div className="space-y-2 flex-1">
                   {/* Badge */}
                   <div className="flex items-center gap-3">
                     <span
@@ -295,6 +582,7 @@ export default function VisaOraclePage() {
                         year: "numeric",
                       })}
                     </span>
+                  </div>
                   </div>
                 </div>
 

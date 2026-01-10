@@ -46,7 +46,7 @@ export const navigation: NavSection[] = [
     title: 'Work',
     items: [
       { title: 'Clients', href: '/clients', icon: 'Users' },
-      { title: 'Cases', href: '/cases', icon: 'FolderKanban' },
+      { title: 'Process', href: '/cases', icon: 'FolderKanban' },
       { title: 'Documents', href: '/documents', icon: 'FolderOpen' },
       { title: 'Knowledge', href: '/knowledge', icon: 'BookOpen' },
     ],

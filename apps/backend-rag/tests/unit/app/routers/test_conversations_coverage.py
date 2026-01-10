@@ -73,20 +73,23 @@ def _load_module(
             log_error=lambda *_args, **_kwargs: None,
             log_success=lambda *_args, **_kwargs: None,
             log_warning=lambda *_args, **_kwargs: None,
+            redis_url='redis://localhost:6379'
         ),
     )
     monkeypatch.setitem(
         sys.modules,
         "app.utils.error_handlers",
-        types.SimpleNamespace(handle_database_error=handle_database_error),
+        types.SimpleNamespace(handle_database_error=handle_database_error, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
         "app.metrics",
         types.SimpleNamespace(
             metrics_collector=types.SimpleNamespace(
-                record_cache_db_consistency_error=lambda **_kwargs: None
-            )
+                record_cache_db_consistency_error=lambda **_kwargs: None,
+                redis_url='redis://localhost:6379'
+            ),
+            redis_url='redis://localhost:6379'
         ),
     )
 
@@ -100,7 +103,9 @@ def _load_module(
         sys.modules,
         "app.dependencies",
         types.SimpleNamespace(
-            get_current_user=get_current_user, get_database_pool=get_database_pool
+            get_current_user=get_current_user,
+            get_database_pool=get_database_pool,
+            redis_url='redis://localhost:6379'
         ),
     )
 
@@ -135,6 +140,7 @@ def _load_module(
         types.SimpleNamespace(
             MemoryOrchestrator=_MemoryOrchestrator,
             get_memory_cache=lambda: mem_cache,
+            redis_url='redis://localhost:6379'
         ),
     )
 
@@ -146,12 +152,11 @@ def _load_module(
     monkeypatch.setitem(sys.modules, "services.crm", crm_pkg)
 
     if auto_crm_mode == "ok":
-        auto_crm_module = types.SimpleNamespace(get_auto_crm_service=lambda: "auto-crm")
+        auto_crm_module = types.SimpleNamespace(get_auto_crm_service=lambda: "auto-crm", redis_url='redis://localhost:6379')
     elif auto_crm_mode == "missing":
         auto_crm_module = types.ModuleType("services.crm.auto_crm_service")
     else:
-        auto_crm_module = types.SimpleNamespace(
-            get_auto_crm_service=lambda: (_ for _ in ()).throw(RuntimeError("crm error"))
+        auto_crm_module = types.SimpleNamespace(get_auto_crm_service=lambda: (_ for _ in ()).throw(RuntimeError("crm error"))
         )
 
     monkeypatch.setitem(sys.modules, "services.crm.auto_crm_service", auto_crm_module)
@@ -226,8 +231,7 @@ def test_history_falls_back_to_memory_cache(monkeypatch):
 
 def test_list_conversations_formats_title_preview(monkeypatch):
     module, _ = _load_module(monkeypatch)
-    conn = types.SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"total": 2}),
+    conn = types.SimpleNamespace(fetchrow=AsyncMock(return_value={"total": 2}),
         fetch=AsyncMock(
             return_value=[
                 {
@@ -280,8 +284,7 @@ def test_list_conversations_error(monkeypatch):
 
 def test_get_conversation_success(monkeypatch):
     module, _ = _load_module(monkeypatch)
-    conn = types.SimpleNamespace(
-        fetchrow=AsyncMock(
+    conn = types.SimpleNamespace(fetchrow=AsyncMock(
             return_value={
                 "id": 11,
                 "session_id": "s1",
@@ -317,8 +320,7 @@ def test_get_conversation_not_found(monkeypatch):
 
 def test_delete_conversation_success(monkeypatch):
     module, _ = _load_module(monkeypatch)
-    conn = types.SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"id": 7}),
+    conn = types.SimpleNamespace(fetchrow=AsyncMock(return_value={"id": 7}),
         execute=AsyncMock(return_value="DELETE 1"),
     )
     pool = _DummyPool(conn)

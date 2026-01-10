@@ -170,4 +170,3 @@ class TestQdrantClientHelpers:
         # Second call should return same client
         client2 = await client._get_client()
         assert client2 == client1
-

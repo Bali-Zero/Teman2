@@ -10,7 +10,7 @@ import asyncio
 import json
 import hashlib
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
@@ -22,6 +22,7 @@ from loguru import logger
 
 try:
     import trafilatura
+
     HAS_TRAFILATURA = True
 except ImportError:
     HAS_TRAFILATURA = False
@@ -29,6 +30,7 @@ except ImportError:
 
 try:
     from playwright.async_api import async_playwright
+
     HAS_PLAYWRIGHT = True
 except ImportError:
     HAS_PLAYWRIGHT = False
@@ -38,6 +40,7 @@ except ImportError:
 @dataclass
 class ScrapedArticle:
     """Single scraped article"""
+
     url: str
     title: str
     content: str
@@ -57,6 +60,7 @@ class ScrapedArticle:
 @dataclass
 class ScrapeStats:
     """Scraping statistics"""
+
     total_sources: int = 0
     sources_scraped: int = 0
     sources_failed: int = 0
@@ -103,11 +107,9 @@ class MassiveScraper:
                 data = json.load(f)
                 for category, cat_data in data.get("categories", {}).items():
                     for source in cat_data.get("sources", []):
-                        sources.append({
-                            **source,
-                            "category": category,
-                            "config_file": "unified"
-                        })
+                        sources.append(
+                            {**source, "category": category, "config_file": "unified"}
+                        )
 
         # Load extended_sources.json
         extended_path = self.config_dir / "extended_sources.json"
@@ -119,12 +121,14 @@ class MassiveScraper:
                     for subcategory, subsources in cat_data.items():
                         if isinstance(subsources, list):
                             for source in subsources:
-                                sources.append({
-                                    **source,
-                                    "category": category,
-                                    "subcategory": subcategory,
-                                    "config_file": "extended"
-                                })
+                                sources.append(
+                                    {
+                                        **source,
+                                        "category": category,
+                                        "subcategory": subcategory,
+                                        "config_file": "extended",
+                                    }
+                                )
 
         # Deduplicate by URL
         seen_urls = set()
@@ -159,7 +163,7 @@ class MassiveScraper:
                 follow_redirects=True,
                 headers={
                     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-                }
+                },
             ) as client:
                 resp = await client.get(url)
                 if resp.status_code == 200:
@@ -187,7 +191,7 @@ class MassiveScraper:
         base_url: str,
         source_name: str,
         source_tier: str,
-        category: str
+        category: str,
     ) -> list[ScrapedArticle]:
         """Extract articles from page"""
         articles = []
@@ -207,11 +211,20 @@ class MassiveScraper:
         for a in soup.find_all("a", href=True):
             href = a["href"]
             # Common article URL patterns
-            if any(pattern in href for pattern in [
-                "/berita/", "/news/", "/article/", "/post/",
-                "/tag/", "/category/", "/search",
-                "-20", "-202", # date patterns
-            ]):
+            if any(
+                pattern in href
+                for pattern in [
+                    "/berita/",
+                    "/news/",
+                    "/article/",
+                    "/post/",
+                    "/tag/",
+                    "/category/",
+                    "/search",
+                    "-20",
+                    "-202",  # date patterns
+                ]
+            ):
                 article_links.add(href)
 
         # Normalize URLs
@@ -225,17 +238,19 @@ class MassiveScraper:
                 normalized.add(link)
 
         # Extract content from each article (limited)
-        for url in list(normalized)[:self.max_articles_per_source]:
+        for url in list(normalized)[: self.max_articles_per_source]:
             title = self._extract_title_from_url(url)
             if title:
-                articles.append(ScrapedArticle(
-                    url=url,
-                    title=title,
-                    content="",  # Will be enriched later
-                    source_name=source_name,
-                    source_tier=source_tier,
-                    category=category,
-                ))
+                articles.append(
+                    ScrapedArticle(
+                        url=url,
+                        title=title,
+                        content="",  # Will be enriched later
+                        source_name=source_name,
+                        source_tier=source_tier,
+                        category=category,
+                    )
+                )
 
         return articles
 
@@ -247,13 +262,13 @@ class MassiveScraper:
         if segments:
             slug = segments[-1]
             # Remove file extension
-            slug = re.sub(r'\.(html|php|aspx?)$', '', slug)
+            slug = re.sub(r"\.(html|php|aspx?)$", "", slug)
             # Remove common prefixes
-            slug = re.sub(r'^(article|berita|news)-?', '', slug)
+            slug = re.sub(r"^(article|berita|news)-?", "", slug)
             # Replace separators with spaces
-            title = re.sub(r'[-_]', ' ', slug)
+            title = re.sub(r"[-_]", " ", slug)
             # Clean up
-            title = re.sub(r'\d{8,}', '', title)  # Remove date numbers
+            title = re.sub(r"\d{8,}", "", title)  # Remove date numbers
             title = title.strip().title()
             if len(title) > 10:  # Minimum title length
                 return title
@@ -267,17 +282,21 @@ class MassiveScraper:
         category = source.get("category", "general")
 
         # Determine if we need Playwright (JS-heavy sites)
-        needs_js = any(domain in url for domain in [
-            "instagram.com", "facebook.com", "twitter.com",
-            "linkedin.com", "crunchbase.com"
-        ])
+        needs_js = any(
+            domain in url
+            for domain in [
+                "instagram.com",
+                "facebook.com",
+                "twitter.com",
+                "linkedin.com",
+                "crunchbase.com",
+            ]
+        )
 
         try:
             html = await self.fetch_page(url, use_playwright=needs_js)
             if html:
-                articles = self.extract_articles(
-                    html, url, name, tier, category
-                )
+                articles = self.extract_articles(html, url, name, tier, category)
                 self.stats.sources_scraped += 1
                 self.stats.articles_found += len(articles)
                 if articles:
@@ -313,14 +332,10 @@ class MassiveScraper:
         sources_to_scrape = self.sources
         if categories:
             sources_to_scrape = [
-                s for s in sources_to_scrape
-                if s.get("category") in categories
+                s for s in sources_to_scrape if s.get("category") in categories
             ]
         if tiers:
-            sources_to_scrape = [
-                s for s in sources_to_scrape
-                if s.get("tier") in tiers
-            ]
+            sources_to_scrape = [s for s in sources_to_scrape if s.get("tier") in tiers]
 
         logger.info(f"🚀 Scraping {len(sources_to_scrape)} sources...")
 
@@ -355,7 +370,7 @@ class MassiveScraper:
     def export_results(
         self,
         articles: list[ScrapedArticle],
-        output_path: str = "data/scraped_articles.json"
+        output_path: str = "data/scraped_articles.json",
     ):
         """Export results to JSON"""
         output = Path(output_path)
@@ -380,7 +395,7 @@ class MassiveScraper:
                     "content_hash": a.content_hash,
                 }
                 for a in articles
-            ]
+            ],
         }
 
         with open(output, "w") as f:
@@ -394,9 +409,15 @@ async def main():
 
     parser = argparse.ArgumentParser(description="Massive Scraper - 790+ fonti")
     parser.add_argument("--categories", nargs="+", help="Filter by categories")
-    parser.add_argument("--tiers", nargs="+", default=["T1", "T2"], help="Filter by tiers")
-    parser.add_argument("--concurrent", type=int, default=50, help="Max concurrent requests")
-    parser.add_argument("--output", default="data/scraped_articles.json", help="Output file")
+    parser.add_argument(
+        "--tiers", nargs="+", default=["T1", "T2"], help="Filter by tiers"
+    )
+    parser.add_argument(
+        "--concurrent", type=int, default=50, help="Max concurrent requests"
+    )
+    parser.add_argument(
+        "--output", default="data/scraped_articles.json", help="Output file"
+    )
     args = parser.parse_args()
 
     scraper = MassiveScraper(

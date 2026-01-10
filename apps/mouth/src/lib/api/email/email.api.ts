@@ -172,9 +172,9 @@ export class EmailApi {
    */
   async deleteEmails(messageIds: string[]): Promise<OperationResponse> {
     return this.client.request<OperationResponse>(
-      `${API_PREFIX}/emails`,
+      `${API_PREFIX}/emails/delete`,
       {
-        method: 'DELETE',
+        method: 'POST',
         body: JSON.stringify({ message_ids: messageIds }),
       }
     );
