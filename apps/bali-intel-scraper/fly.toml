@@ -30,6 +30,10 @@ primary_region = "sin"  # Singapore (closest to Indonesian sources)
   cpu_kind = "shared"
   cpus = 1
 
+[[mounts]]
+  source = "claude_config"
+  destination = "/home/scraper/.claude"
+
 # Required secrets (set via: fly secrets set KEY=value)
 # - NUZANTARA_API_URL
 # - NUZANTARA_API_KEY
