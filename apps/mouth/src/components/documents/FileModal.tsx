@@ -62,9 +62,6 @@ export function FileModal({
   const [name, setName] = useState(initialName);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const config = modeConfig[mode];
-  const Icon = config.icon;
-
   // Reset and focus on open
   useEffect(() => {
     if (isOpen) {
@@ -88,6 +85,12 @@ export function FileModal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
+  // Early return AFTER all hooks - mode can be null when modal is closed
+  if (!isOpen || !mode) return null;
+
+  const config = modeConfig[mode];
+  const Icon = config.icon;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || loading) return;
@@ -95,8 +98,6 @@ export function FileModal({
     const docType = mode === 'folder' || mode === 'rename' ? undefined : (mode as DocType);
     onSubmit(name.trim(), docType);
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
