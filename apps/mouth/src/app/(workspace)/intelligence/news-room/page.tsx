@@ -525,11 +525,15 @@ export default function NewsRoomPage() {
                     onClick={() => handlePreview(item)}
                     disabled={previewLoading}
                     title="View Full Article"
+                    className="flex items-center justify-center"
                   >
                     {previewLoading && previewItem?.id === item.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <>
+                        <Eye className="h-4 w-4 mr-1" />
+                        <span className="text-xs">View</span>
+                      </>
                     )}
                   </Button>
                   {item.source && item.source.startsWith('http') && (
