@@ -147,6 +147,21 @@ class IntelConstants:
     DEFAULT_EXTRACTION_METHOD = "css"
     DEFAULT_TIER = "T2"  # T1, T2, T3
 
+    # Scheduling intervals (hours)
+    SCHEDULER_RUN_INTERVAL_HOURS = 2  # Interval between scheduled runs
+    RECENT_TASK_THRESHOLD_HOURS = 24  # Consider task "recent" if run within this time
+
+    # Time ranges (days)
+    DUPLICATE_CHECK_DAYS = 7  # Check for duplicates within last N days
+    TRENDS_ANALYSIS_DAYS = 30  # Generate trends for last N days
+
+    # Response metrics defaults
+    DEFAULT_AVG_RESPONSE_TIME_MS = 1250  # Default average response time in milliseconds
+
+    # Content limits
+    MAX_KEY_POINTS = 3  # Maximum key points to extract
+    SUMMARY_PREVIEW_LENGTH = 300  # First N characters for summary preview
+
 
 # ============================================================================
 # HTTP Client Constants

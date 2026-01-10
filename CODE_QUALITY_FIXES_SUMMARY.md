@@ -40,6 +40,28 @@
 
 ---
 
+### ✅ 2.1 Refactoring Magic Numbers → Constants (Evidence Score)
+
+**Problema:** Magic numbers hardcoded nel calcolo dell'evidence score rendevano il codice difficile da mantenere.
+
+**Fix Applicato:**
+- ✅ Creato `EvidenceScoreConstants` in `app.core.constants`
+- ✅ Sostituiti tutti i magic numbers con costanti semantiche:
+  - `0.3` → `EvidenceScoreConstants.ABSTAIN_THRESHOLD`
+  - `0.5` → `EvidenceScoreConstants.HIGH_QUALITY_SOURCE_BONUS`
+  - `0.2` → `EvidenceScoreConstants.MULTIPLE_SOURCES_BONUS`
+  - `500` → `EvidenceScoreConstants.SUBSTANTIAL_CONTEXT_LENGTH`
+  - `1.0` → `EvidenceScoreConstants.MAX_SCORE`
+  - E altri...
+
+**File Modificati:**
+- `apps/backend-rag/backend/app/core/constants.py` (nuovo `EvidenceScoreConstants`)
+- `apps/backend-rag/backend/services/rag/agentic/reasoning.py` (refactoring completo)
+
+**Impatto:** ✅ Codice più manutenibile, valori centralizzati, più facile da testare e modificare
+
+---
+
 ### ✅ 3. Sostituzione console.log con Logger Strutturato (Frontend)
 
 **Problema:** 50+ occorrenze di `console.log/debug/warn/error` invece di logger strutturato.
@@ -87,6 +109,7 @@ Il file `zoho_oauth_service.py` è già stato refactorato e non contiene più lo
 | Debug logging verboso | `logger.info()` | `logger.debug()` | ✅ Risolto |
 | console.log frontend | 50+ occorrenze | 0 (sostituiti) | ✅ Risolto |
 | Logging strutturato | Inconsistente | Standardizzato | ✅ Migliorato |
+| Magic numbers | Hardcoded | Constants class | ✅ Risolto |
 
 ---
 
@@ -95,13 +118,14 @@ Il file `zoho_oauth_service.py` è già stato refactorato e non contiene più lo
 ### Backend
 1. `apps/backend-rag/backend/services/rag/agent/structures.py`
 2. `apps/backend-rag/backend/services/rag/agentic/reasoning.py`
+3. `apps/backend-rag/backend/app/core/constants.py` (nuovo `EvidenceScoreConstants`)
 
 ### Frontend
-3. `apps/mouth/src/lib/api/client.ts`
-4. `apps/mouth/src/lib/api/auth/auth.api.ts`
-5. `apps/mouth/src/lib/realtime.tsx`
+4. `apps/mouth/src/lib/api/client.ts`
+5. `apps/mouth/src/lib/api/auth/auth.api.ts`
+6. `apps/mouth/src/lib/realtime.tsx`
 
-**Totale:** 5 file modificati
+**Totale:** 6 file modificati
 
 ---
 
@@ -147,5 +171,18 @@ I `print()` statements nei file di migrazione e script CLI sono stati **intenzio
 ---
 
 **Completato:** 2026-01-09  
-**Fix Applicati:** 5 file  
+**Fix Applicati:** 6 file  
 **Status:** ✅ Tutti i fix critici completati
+
+---
+
+## 🎉 Bonus: Refactoring Evidence Score Constants
+
+Come bonus aggiuntivo, è stato applicato un refactoring per eliminare i magic numbers nel calcolo dell'evidence score:
+
+- **15+ magic numbers** sostituiti con costanti semantiche
+- **Centralizzazione** di tutti i valori in `EvidenceScoreConstants`
+- **Miglior manutenibilità** - modifiche future più semplici
+- **Testabilità** migliorata - valori facilmente mockabili
+
+Questo miglioramento rende il codice più professionale e allineato alle best practices.
