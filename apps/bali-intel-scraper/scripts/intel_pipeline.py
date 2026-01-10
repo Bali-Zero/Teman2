@@ -314,7 +314,9 @@ class IntelPipeline:
         if enriched:
             if not enriched.cover_image:
                 logger.error(f"   ❌ Cover image missing (mandatory) for article: {title[:50]}")
-                raise ValueError("Cover image is mandatory but missing")
+                # This should not happen if retry/fallback worked, but log as error
+                logger.error("   ⚠️ Article will be skipped - no cover image available")
+                raise ValueError("Cover image is mandatory but missing after all retries and fallback")
             payload["cover_image"] = enriched.cover_image
             logger.info(f"   📷 Cover image included: {enriched.cover_image}")
 
