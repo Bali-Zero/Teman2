@@ -40,32 +40,45 @@ For a complete 4D understanding of the system (Space, Time, Logic, Scale), refer
 
 | Service | Path | Stack | Status | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 38 routers (250 endpoints), 169 services, 32 migrations (65+ tables). Handles Agentic RAG (ReAct pattern), AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
+| **Backend RAG** | `apps/backend-rag` | **Python 3.11+** (FastAPI) | ✅ **PRIMARY** | The central intelligence engine. 51 routers (352+ endpoints), 156 services, 41+ migrations (70 tables). Handles Agentic RAG (ReAct pattern), AI orchestration, Vector DB (Qdrant), CRM, and business logic. |
 | **Frontend** | `apps/mouth` | **Next.js 16** (React 19) | ✅ **PRIMARY** | The modern user interface. Uses Tailwind CSS 4, TypeScript, shadcn/ui components, and lightweight state management. |
 | **Intel Scraper** | `apps/bali-intel-scraper` | **Python 3.11** | ✅ **ACTIVE** | News processing pipeline: RSS → Scoring → Claude Validation → Enrichment → Image Gen → SEO/AEO → Telegram Approval → Publish. Cost: ~$0.06/article. |
 
 
 ### 2.2 Infrastructure
-- **Database:** PostgreSQL (asyncpg with connection pooling, 65+ tables), Qdrant Cloud (Vector, **54,154 documents** across 7 active collections), Redis (Cache/Queue).
+- **Database:** PostgreSQL (asyncpg with connection pooling, 70 tables), Qdrant Cloud (Vector, **54,154 documents** across 7 active collections), Redis (Cache/Queue).
 - **Deployment:** 
   - **Backend:** Fly.io (Docker-based, Singapore region)
   - **Frontend:** Vercel (Next.js Edge, global CDN)
 - **Testing & Deployment:** Local testing and manual deployment workflow. All testing and deployment is done locally - no automated CI/CD pipelines. Deploy via `flyctl deploy` from local machine.
 - **Observability:** Prometheus, Grafana, Jaeger, Alertmanager.
 
-### 2.3 Qdrant Collections (Knowledge Base)
+### 2.3 Qdrant Collections (Knowledge Base) - Aggiornato 2026-01-10
 
 | Collezione | Docs | Scopo | Query Router Keywords |
 |------------|------|-------|----------------------|
-| `visa_oracle` | ~1,612 | Immigration, KITAS, KITAP | visa, kitas, kitap, immigration |
-| `legal_unified_hybrid` | ~5,041 | Laws, regulations (PP, UU) | legal, law, regulation |
-| `kbli_unified` | ~8,886 | Business classification codes | kbli, business code |
-| `tax_genius` | 332 | PPh 21, PPN/VAT, taxes | tax, pajak, pph, ppn |
-| `bali_zero_pricing` | ~29 | Service pricing | price, cost, quanto costa |
-| `bali_zero_team` | ~22 | Team members | team, who, contact |
+| `legal_unified_hybrid` | **47,959** | Laws, regulations (PP, UU) - **PRIMARY** | legal, law, regulation |
+| `training_conversations_hybrid` | 3,525 | Training conversations (hybrid) | - |
+| `training_conversations` | 2,898 | Training conversations (standard) | - |
+| `kbli_unified` | **2,818** | Business classification codes | kbli, business code |
+| `tax_genius_hybrid` | 332 | PPh 21, PPN/VAT, taxes (hybrid) | tax, pajak, pph, ppn |
+| `tax_genius` | 332 | PPh 21, PPN/VAT, taxes (standard) | tax, pajak, pph, ppn |
+| `visa_oracle` | **82** | Immigration, KITAS, KITAP | visa, kitas, kitap, immigration |
+| `bali_zero_pricing` | 70 | Service pricing | price, cost, quanto costa |
+| `balizero_news_history` | 6 | News history | - |
+| `collective_memories` | 0 | Collective memory (vuota) | - |
+
+**⚠️ NOTA:** `bali_zero_team` non esiste più. Il sistema usa `TeamKnowledgeTool` che legge da PostgreSQL.
+
+**Totale:** 58,022 documenti in 11 collezioni (verificato 2026-01-10)
 
 **Routing:** `backend/services/routing/query_router.py` routes queries to collections based on keywords.
 **Ingestion:** Use `scripts/ingest_tax_genius.py` as template for new collections.
+
+**⚠️ IMPORTANTE (2026-01-10):**
+- `legal_unified` non esiste più - usare `legal_unified_hybrid`
+- `bali_zero_team` non esiste più - sistema usa `TeamKnowledgeTool` (database)
+- Alcune collezioni hanno meno documenti del previsto (verificare migrazioni)
 
 ---
 
@@ -350,13 +363,13 @@ PREVIEW_BASE_URL=https://balizero.com/preview
 
 | Directory | Purpose |
 | :--- | :--- |
-| `apps/backend-rag/backend/app/routers/` | **38** API routers (250 endpoints) |
-| `apps/backend-rag/backend/services/` | **169** business services |
+| `apps/backend-rag/backend/app/routers/` | **51** API routers (352+ endpoints) |
+| `apps/backend-rag/backend/services/` | **156** business services |
 | `apps/backend-rag/backend/services/rag/agentic/` | **Core**: Orchestrator, ReAct, LLM Gateway, Tools |
 | `apps/backend-rag/backend/services/memory/` | Memory system (Facts, Episodic, Collective) |
 | `apps/backend-rag/backend/core/` | Core utilities (embeddings, chunking, plugins) |
 | `apps/backend-rag/backend/llm/` | LLM clients: `genai_client.py` (Google) |
-| `apps/backend-rag/backend/migrations/` | **32** database migrations |
+| `apps/backend-rag/backend/migrations/` | **41+** database migrations |
 | `apps/backend-rag/backend/middleware/` | Auth, rate limiting, error monitoring |
 | `apps/mouth/src/app/` | Next.js App Router pages |
 | `apps/mouth/src/components/` | React components (shadcn/ui based) |
@@ -541,4 +554,4 @@ fly logs -a nuzantara-rag | grep "Native Function Call"
 
 ---
 
-**Last Updated:** 2026-01-09 | **Deployed Version:** v1474
+**Last Updated:** 2026-01-XX | **Deployed Version:** v1479+
