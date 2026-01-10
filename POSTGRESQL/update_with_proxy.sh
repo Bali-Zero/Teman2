@@ -40,7 +40,7 @@ fi
 
 # Ottieni DATABASE_URL dal secret di nuzantara-rag
 echo "Fetching DATABASE_URL from $RAG_APP..."
-REMOTE_DB_URL=$(fly ssh console -a $RAG_APP -C "printenv DATABASE_URL" 2>/dev/null || echo "")
+REMOTE_DB_URL=$(fly ssh console -a $RAG_APP -C "printenv DATABASE_URL" 2>&1 | grep "^postgres" || echo "")
 
 if [ -z "$REMOTE_DB_URL" ]; then
     echo "❌ Impossibile ottenere DATABASE_URL. Verifica che la macchina sia attiva."
