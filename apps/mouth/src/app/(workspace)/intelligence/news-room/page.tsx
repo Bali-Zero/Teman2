@@ -529,8 +529,8 @@ export default function NewsRoomPage() {
                     }}
                     disabled={previewLoading}
                     title="View Full Article"
-                    className="flex items-center justify-center min-w-[80px] bg-red-500 border-4 border-yellow-500"
-                    style={{ display: 'flex !important', visibility: 'visible !important', opacity: '1 !important' }}
+                    className="!flex !items-center !justify-center min-w-[80px] bg-red-500 border-4 border-yellow-500"
+                    style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
                   >
                     {previewLoading && previewItem?.id === item.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
