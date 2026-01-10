@@ -152,7 +152,7 @@ export default function AdminPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <Image src="/assets/logo_zan.png" alt="Zantara" width={32} height={32} />
+        <Image src="/assets/logo/logo_zan.png" alt="Zantara" width={32} height={32} />
         <span className="font-semibold text-[var(--foreground)]">Admin Dashboard</span>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={loadAllData} disabled={isLoading}>

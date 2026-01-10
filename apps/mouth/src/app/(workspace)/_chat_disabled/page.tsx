@@ -285,7 +285,7 @@ export default function ZantaraChatPage() {
               >
                 <div className="absolute inset-0 bg-white/20 blur-[50px] rounded-full" />
                 <Image
-                  src="/assets/logo_zan.png"
+                  src="/assets/logo/logo_zan.png"
                   alt="Zantara"
                   width={100}
                   height={100}
