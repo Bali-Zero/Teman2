@@ -266,6 +266,7 @@ YOUR TASK
    - Does it affect visas, taxes, business, property, or lifestyle in Indonesia?
    - Is the information actionable or just noise?
    - Is this news or just clickbait/speculation?
+   - NOTE: If content is incomplete but title/summary suggests visa/tax/business relevance → APPROVE (enrichment will fetch full content)
 
 3. VERIFY: Quick fact-check
    - Does this seem like legitimate news from the title/content?
@@ -300,7 +301,9 @@ DECISION GUIDELINES:
 - REJECT if: DUPLICATE of already published article (check list above!)
 - APPROVE if: NEW topic, directly affects expat/investor life, actionable, from credible source
 - REJECT if: General Indonesia news with no expat angle, speculation, clickbait, outdated
-- When in doubt about relevance, lean toward REJECT (save Claude Max for quality)
+- CONTENT INCOMPLETE: If only title/summary available but title suggests visa/tax/business/property relevance → APPROVE (enrichment will fetch full content)
+- When in doubt about relevance but title suggests expat angle → APPROVE (let enrichment verify)
+- When clearly irrelevant (tech announcements, general news, etc.) → REJECT
 """
 
     def _call_claude_cli(self, prompt: str, timeout: int = 120) -> Optional[str]:
