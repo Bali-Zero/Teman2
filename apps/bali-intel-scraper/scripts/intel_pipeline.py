@@ -300,8 +300,14 @@ class IntelPipeline:
         }
 
         try:
+            # Add API key if available
+            headers = {"Content-Type": "application/json"}
+            api_key = os.getenv("NUZANTARA_API_KEY")
+            if api_key:
+                headers["X-API-Key"] = api_key
+            
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(endpoint, json=payload)
+                response = await client.post(endpoint, json=payload, headers=headers)
                 response.raise_for_status()
                 result = response.json()
 
