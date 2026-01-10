@@ -561,7 +561,7 @@ export default function NewsRoomPage() {
                 <div className="flex items-center gap-4 text-sm text-[var(--foreground-muted)] mt-2">
                   <span>{new Date(previewItem.detected_at).toLocaleDateString()}</span>
                   <span>•</span>
-                  <span>{previewItem.source_name || previewItem.source}</span>
+                  <span>{(previewItem as any).source_name || previewItem.source}</span>
                   <span>•</span>
                   <span className="text-[var(--accent)]">{previewItem.detection_type}</span>
                 </div>
