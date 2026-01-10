@@ -519,22 +519,25 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
-                  {/* View Full Article Button - Always Visible - FORCE RENDER */}
+                  {/* VIEW BUTTON - CRITICAL FIX - MUST BE RENDERED */}
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handlePreview(item)}
+                    onClick={() => {
+                      console.log('VIEW BUTTON CLICKED', item.id);
+                      handlePreview(item);
+                    }}
                     disabled={previewLoading}
                     title="View Full Article"
-                    className="flex items-center justify-center min-w-[80px] border-2 border-blue-500"
-                    style={{ display: 'flex' }}
+                    className="flex items-center justify-center min-w-[80px] bg-red-500 border-4 border-yellow-500"
+                    style={{ display: 'flex !important', visibility: 'visible !important', opacity: '1 !important' }}
                   >
                     {previewLoading && previewItem?.id === item.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
                         <Eye className="h-4 w-4 mr-1.5" />
-                        <span className="text-xs font-medium">View</span>
+                        <span className="text-xs font-medium">VIEW</span>
                       </>
                     )}
                   </Button>
