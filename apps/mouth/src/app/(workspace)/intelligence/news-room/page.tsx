@@ -391,7 +391,7 @@ export default function NewsRoomPage() {
                 </button>
               </div>
 
-              {/* Header Image */}
+              {/* Header Image (Mandatory) */}
               <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
                 {item.cover_image ? (
                   <img
@@ -399,16 +399,21 @@ export default function NewsRoomPage() {
                     alt={item.title}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // Fallback to placeholder on error
+                      // Show error placeholder if image fails to load
                       e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (placeholder) {
+                        placeholder.classList.remove('hidden');
+                        placeholder.innerHTML = '<div class="flex items-center justify-center h-full"><span class="text-red-500 text-sm">Image failed to load</span></div>';
+                      }
                     }}
                   />
-                ) : null}
-                <div className={`absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 opacity-50 ${item.cover_image ? 'hidden' : ''}`} />
-                <div className={`absolute inset-0 flex items-center justify-center ${item.cover_image ? 'hidden' : ''}`}>
-                  <span className="text-5xl">📰</span>
-                </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-red-100">
+                    <span className="text-red-500 text-sm font-medium">⚠️ Image Missing</span>
+                  </div>
+                )}
+                <div className="hidden"></div>
                 {item.is_critical && (
                   <div className="absolute top-3 right-3">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 shadow-sm">
