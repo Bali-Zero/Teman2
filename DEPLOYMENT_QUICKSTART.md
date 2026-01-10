@@ -117,6 +117,8 @@ flyctl scale count 2 --app nuzantara-rag
 flyctl config show --app nuzantara-rag
 ```
 
+> **Note:** Fly.io requires binding to `::` (not just `0.0.0.0`) for optimal proxy routing. Ensure `API_HOST` is set to `::` in `config.py` and Dockerfile.
+
 ## 📁 File Structure
 
 ```

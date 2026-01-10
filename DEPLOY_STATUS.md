@@ -41,6 +41,13 @@ curl -I https://www.balizero.com
 - **Backend logs**: `flyctl logs --app nuzantara-rag`
 - **Frontend**: Use Vercel dashboard (https://vercel.com/dashboard)
 
+## Recent Deployments (2026-01-10)
+
+### Backend Optimization
+- **Port Binding**: Switched from `0.0.0.0` to `::` (IPv6/IPv4 dual stack) to fix Fly.io proxy warnings.
+- **Startup**: Removed `sh -c` wrapper in Dockerfile for faster signal handling and socket binding.
+- **Status**: Deployment verified, health checks passing immediately.
+
 ## Migration Notes (2026-01-10)
 
 Frontend successfully migrated from Fly.io to Vercel:
