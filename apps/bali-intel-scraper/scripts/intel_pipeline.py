@@ -461,6 +461,7 @@ class IntelPipeline:
             else:
                 self.stats.claude_rejected += 1
                 logger.info(f"   ❌ Rejected (confidence: {validation.confidence})")
+                logger.info(f"   Reason: {validation.reason}")
                 logger.info(
                     "🔍 Claude Validation Rejected",
                     extra={

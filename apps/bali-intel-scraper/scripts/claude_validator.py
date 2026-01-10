@@ -308,11 +308,20 @@ DECISION GUIDELINES:
         try:
             logger.debug("Calling Claude for validation...")
 
+            # Prepare environment with OAuth token if available
+            import os
+            env = os.environ.copy()
+            oauth_token = os.getenv("CLAUDE_CODE_OAUTH_TOKEN")
+            if oauth_token:
+                env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
+                logger.debug("Using OAuth token from environment")
+
             result = subprocess.run(
                 ["claude", "-p", "--output-format", "text", prompt],
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                env=env,
             )
 
             if result.returncode != 0:
