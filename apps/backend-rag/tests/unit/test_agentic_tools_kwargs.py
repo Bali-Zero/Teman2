@@ -1,6 +1,6 @@
 import pytest
 
-from services.rag.agentic import CalculatorTool, PricingTool, VectorSearchTool
+from backend.services.rag.agentic import CalculatorTool, PricingTool, VectorSearchTool
 
 
 class MockRetriever:

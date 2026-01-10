@@ -5,7 +5,7 @@ Target: 95%+ coverage
 
 import pytest
 
-from services.misc.clarification_service import AmbiguityType, ClarificationService
+from backend.services.misc.clarification_service import AmbiguityType, ClarificationService
 
 
 class TestClarificationService:
@@ -58,25 +58,31 @@ class TestClarificationService:
         # Should be less ambiguous with context
         assert isinstance(result["is_ambiguous"], bool)
 
-    def test_generate_clarification_message(self, service):
-        """Test generate_clarification_message"""
-        message = service.generate_clarification_message(
-            "Tell me about visas", AmbiguityType.VAGUE.value, language="en"
+    def test_generate_clarification_request(self, service):
+        """Test generate_clarification_request"""
+        query = "Tell me about visas"
+        ambiguity_info = service.detect_ambiguity(query)
+        message = service.generate_clarification_request(
+            query, ambiguity_info, language="en"
         )
         assert isinstance(message, str)
         assert len(message) > 0
 
-    def test_generate_clarification_message_italian(self, service):
-        """Test generate_clarification_message in Italian"""
-        message = service.generate_clarification_message(
-            "Dimmi dei visti", AmbiguityType.VAGUE.value, language="it"
+    def test_generate_clarification_request_italian(self, service):
+        """Test generate_clarification_request in Italian"""
+        query = "Dimmi dei visti"
+        ambiguity_info = service.detect_ambiguity(query)
+        message = service.generate_clarification_request(
+            query, ambiguity_info, language="it"
         )
         assert isinstance(message, str)
 
-    def test_generate_clarification_message_indonesian(self, service):
-        """Test generate_clarification_message in Indonesian"""
-        message = service.generate_clarification_message(
-            "Ceritakan tentang visa", AmbiguityType.VAGUE.value, language="id"
+    def test_generate_clarification_request_indonesian(self, service):
+        """Test generate_clarification_request in Indonesian"""
+        query = "Ceritakan tentang visa"
+        ambiguity_info = service.detect_ambiguity(query)
+        message = service.generate_clarification_request(
+            query, ambiguity_info, language="id"
         )
         assert isinstance(message, str)
 

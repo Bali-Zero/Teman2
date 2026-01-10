@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
-from backend.app.setup.service_initializer import _init_database_services, _is_transient_error
+from backend.app.setup.service_initializer import initialize_database_services, _is_transient_error
 
 
 @pytest.fixture
@@ -94,7 +94,7 @@ async def test_database_init_retries_on_transient_error(mock_app):
                         "backend.app.setup.service_initializer._database_health_check_loop",
                         new_callable=AsyncMock,
                     ):
-                        pool = await _init_database_services(mock_app)
+                        pool = await initialize_database_services(mock_app)
 
                     # Should have retried (with sleep being called for backoff)
                     assert call_count == 3
@@ -108,7 +108,7 @@ async def test_database_init_fails_on_permanent_error(mock_app):
         mock_settings.database_url = "postgresql://test"
 
         with patch("asyncpg.create_pool", side_effect=ValueError("Invalid configuration")):
-            pool = await _init_database_services(mock_app)
+            pool = await initialize_database_services(mock_app)
 
             # Should not retry permanent errors
             assert pool is None
