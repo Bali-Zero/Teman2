@@ -8,6 +8,7 @@ Provides endpoints for:
 """
 
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -384,10 +385,27 @@ async def create_family_member(
         if not user_is_admin and (client["assigned_to"] or "").lower() != user_email:
             raise HTTPException(status_code=403, detail="You don't have access to this client")
 
-        # Sanitize date fields - convert empty strings to None for PostgreSQL DATE columns
-        date_of_birth = data.date_of_birth if data.date_of_birth else None
-        passport_expiry = data.passport_expiry if data.passport_expiry else None
-        visa_expiry = data.visa_expiry if data.visa_expiry else None
+        # Sanitize date fields - convert strings to date objects for asyncpg
+        date_of_birth = None
+        if data.date_of_birth:
+            try:
+                date_of_birth = datetime.strptime(data.date_of_birth, "%Y-%m-%d").date()
+            except ValueError:
+                date_of_birth = None
+
+        passport_expiry = None
+        if data.passport_expiry:
+            try:
+                passport_expiry = datetime.strptime(data.passport_expiry, "%Y-%m-%d").date()
+            except ValueError:
+                passport_expiry = None
+
+        visa_expiry = None
+        if data.visa_expiry:
+            try:
+                visa_expiry = datetime.strptime(data.visa_expiry, "%Y-%m-%d").date()
+            except ValueError:
+                visa_expiry = None
 
         member_id = await conn.fetchval(
             """
@@ -435,7 +453,7 @@ async def update_family_member(
 
         if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
             raise HTTPException(status_code=403, detail="You don't have access to this client")
-    # Date fields that need empty string → None conversion
+    # Date fields that need string → date object conversion for asyncpg
     date_fields = {"date_of_birth", "passport_expiry", "visa_expiry"}
 
     update_fields = []
@@ -443,9 +461,15 @@ async def update_family_member(
     param_num = 1
 
     for field, value in data.model_dump(exclude_unset=True).items():
-        # Convert empty strings to None for date fields
-        if field in date_fields and value == "":
-            value = None
+        # Convert date fields: empty string → None, valid string → date object
+        if field in date_fields:
+            if value == "" or value is None:
+                value = None
+            elif isinstance(value, str):
+                try:
+                    value = datetime.strptime(value, "%Y-%m-%d").date()
+                except ValueError:
+                    value = None
 
         if value is not None:
             update_fields.append(f"{field} = ${param_num}")
@@ -587,8 +611,13 @@ async def create_document(
         if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
             raise HTTPException(status_code=403, detail="You don't have access to this client")
 
-        # Sanitize date field - convert empty string to None for PostgreSQL DATE column
-        expiry_date = data.expiry_date if data.expiry_date else None
+        # Sanitize date field - convert string to date object for asyncpg
+        expiry_date = None
+        if data.expiry_date:
+            try:
+                expiry_date = datetime.strptime(data.expiry_date, "%Y-%m-%d").date()
+            except ValueError:
+                expiry_date = None
 
         doc_id = await conn.fetchval(
             """
@@ -636,7 +665,7 @@ async def update_document(
 
         if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
             raise HTTPException(status_code=403, detail="You don't have access to this client")
-    # Date field that needs empty string → None conversion
+    # Date field that needs string → date object conversion for asyncpg
     date_fields = {"expiry_date"}
 
     update_fields = []
@@ -644,9 +673,15 @@ async def update_document(
     param_num = 1
 
     for field, value in data.model_dump(exclude_unset=True).items():
-        # Convert empty strings to None for date field
-        if field in date_fields and value == "":
-            value = None
+        # Convert date fields: empty string → None, valid string → date object
+        if field in date_fields:
+            if value == "" or value is None:
+                value = None
+            elif isinstance(value, str):
+                try:
+                    value = datetime.strptime(value, "%Y-%m-%d").date()
+                except ValueError:
+                    value = None
 
         if value is not None:
             update_fields.append(f"{field} = ${param_num}")

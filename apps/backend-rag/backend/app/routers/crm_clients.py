@@ -201,6 +201,16 @@ class ClientResponse(BaseModel):
             return []
         return v
 
+    @field_validator("passport_expiry", "date_of_birth", mode="before")
+    @classmethod
+    def convert_date_to_string(cls, v):
+        """Convert date objects to ISO format strings"""
+        if v is None:
+            return None
+        if hasattr(v, "isoformat"):
+            return v.isoformat()
+        return str(v) if v else None
+
 
 # ================================================
 # ENDPOINTS
@@ -238,9 +248,20 @@ async def create_client(
         try:
             async with asyncio.timeout(10.0):
                 async with db_pool.acquire() as conn:
-                    # Sanitize date fields - convert empty strings to None
-                    passport_expiry = client.passport_expiry if client.passport_expiry else None
-                    date_of_birth = client.date_of_birth if client.date_of_birth else None
+                    # Sanitize date fields - convert strings to date objects for asyncpg
+                    passport_expiry = None
+                    if client.passport_expiry:
+                        try:
+                            passport_expiry = datetime.strptime(client.passport_expiry, "%Y-%m-%d").date()
+                        except ValueError:
+                            passport_expiry = None
+
+                    date_of_birth = None
+                    if client.date_of_birth:
+                        try:
+                            date_of_birth = datetime.strptime(client.date_of_birth, "%Y-%m-%d").date()
+                        except ValueError:
+                            date_of_birth = None
 
                     row = await conn.fetchrow(
                         """
@@ -587,9 +608,15 @@ async def update_client(
                 if field not in field_mapping:
                     raise HTTPException(status_code=400, detail=f"Invalid field name: {field}")
 
-                # Convert empty strings to None for date fields
-                if field in date_fields and value == "":
-                    value = None
+                # Convert date fields: empty string → None, valid string → date object
+                if field in date_fields:
+                    if value == "" or value is None:
+                        value = None
+                    elif isinstance(value, str):
+                        try:
+                            value = datetime.strptime(value, "%Y-%m-%d").date()
+                        except ValueError:
+                            value = None
 
                 if value is not None:
                     column_name = field_mapping[field]

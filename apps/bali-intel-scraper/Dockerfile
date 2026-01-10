@@ -6,10 +6,12 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies + Node.js for Claude CLI
 RUN apt-get update && apt-get install -y \
     gcc \
     curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
@@ -17,6 +19,9 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Claude CLI (for Claude Max subscription)
+RUN npm install -g @anthropic-ai/claude-code
 
 # Copy application code
 COPY scripts/ ./scripts/

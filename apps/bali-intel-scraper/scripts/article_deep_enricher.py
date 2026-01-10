@@ -28,13 +28,7 @@ from typing import Dict, Optional, List
 from dataclasses import dataclass
 from loguru import logger
 
-# Anthropic API support
-try:
-    from anthropic import Anthropic
-    ANTHROPIC_AVAILABLE = True
-except ImportError:
-    ANTHROPIC_AVAILABLE = False
-    logger.warning("anthropic package not installed - pip install anthropic")
+# Note: Using Claude CLI for Claude Max subscription (no API key needed)
 
 # For extracting full article content
 try:
@@ -345,7 +339,7 @@ NOTES:
         """
         Call Claude via CLI using Max subscription.
         Uses `claude -p` for prompt mode (no API costs!).
-        Falls back to Anthropic API if CLI not available.
+        Requires Claude CLI to be installed and authenticated.
         """
         try:
             logger.info("🤖 Calling Claude Max (via CLI)...")
@@ -358,8 +352,12 @@ NOTES:
             )
 
             if result.returncode != 0:
-                logger.error(f"Claude CLI error: {result.stderr}")
-                return self._fallback_to_api(prompt)
+                error_msg = result.stderr.strip() if result.stderr else "Unknown error"
+                logger.error(f"Claude CLI error: {error_msg}")
+                # Check if authentication is needed
+                if "auth" in error_msg.lower() or "login" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                    logger.error("Claude CLI authentication required. Set CLAUDE_API_KEY or run: claude auth login")
+                return None
 
             response = result.stdout.strip()
 
@@ -377,57 +375,15 @@ NOTES:
             return response
 
         except subprocess.TimeoutExpired:
-            logger.error("Claude CLI timeout, falling back to API")
-            return self._fallback_to_api(prompt)
+            logger.error("Claude CLI timeout")
+            return None
         except FileNotFoundError:
-            logger.warning("Claude CLI not found, falling back to Anthropic API")
-            return self._fallback_to_api(prompt)
+            logger.error("Claude CLI not found. Install with: npm install -g @anthropic-ai/claude-code")
+            return None
         except Exception as e:
-            logger.error(f"Claude CLI error: {e}, falling back to API")
-            return self._fallback_to_api(prompt)
+            logger.error(f"Claude CLI error: {e}")
+            return None
 
-    def _fallback_to_api(self, prompt: str) -> Optional[str]:
-        """Fallback to Anthropic API when CLI is not available"""
-        if not ANTHROPIC_AVAILABLE:
-            logger.error("Anthropic package not installed. Install with: pip install anthropic")
-            return None
-        
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            logger.error("ANTHROPIC_API_KEY not set. Cannot use API fallback.")
-            return None
-        
-        try:
-            logger.info("🤖 Calling Claude via Anthropic API...")
-            client = Anthropic(api_key=api_key)
-            
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",  # Use latest Sonnet model
-                max_tokens=4096,
-                system=self.SYSTEM_PROMPT,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            content = response.content[0].text if response.content else ""
-            
-            # Extract JSON from markdown if present
-            if "```json" in content:
-                json_start = content.find("```json") + 7
-                json_end = content.find("```", json_start)
-                content = content[json_start:json_end].strip()
-            elif "```" in content:
-                json_start = content.find("```") + 3
-                json_end = content.find("```", json_start)
-                content = content[json_start:json_end].strip()
-            
-            logger.success("✅ Claude API response received")
-            return content
-            
-        except Exception as e:
-            logger.error(f"Anthropic API error: {e}")
-            return None
 
     async def enrich_article(
         self,
