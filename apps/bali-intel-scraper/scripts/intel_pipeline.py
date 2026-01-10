@@ -228,6 +228,9 @@ class IntelPipeline:
 
         # Stats
         self.stats = PipelineStats()
+        
+        # Verify critical dependencies
+        self._verify_dependencies()
 
         logger.info("=" * 70)
         logger.info("🚀 BALIZERO INTEL PIPELINE INITIALIZED (v6.5 - Semantic Ready)")
@@ -237,6 +240,22 @@ class IntelPipeline:
         logger.info(f"   Require approval: {require_approval}")
         logger.info(f"   Dry run: {dry_run}")
         logger.info("=" * 70)
+    
+    def _verify_dependencies(self):
+        """Verify critical dependencies are available"""
+        import os
+        
+        # Check OpenAI API key (required for semantic deduplication)
+        if not os.getenv("OPENAI_API_KEY"):
+            logger.warning("⚠️ OPENAI_API_KEY not set - semantic deduplication will fail")
+        
+        # Check Qdrant credentials
+        if not os.getenv("QDRANT_API_KEY"):
+            logger.warning("⚠️ QDRANT_API_KEY not set - Qdrant operations will fail")
+        
+        # Check backend URL
+        backend_url = os.getenv("BACKEND_API_URL", "https://nuzantara-rag.fly.dev")
+        logger.debug(f"Backend URL: {backend_url}")
 
     async def send_to_news_room(self, article: PipelineArticle) -> bool:
         """
@@ -251,8 +270,13 @@ class IntelPipeline:
 
         # Get enriched content if available
         enriched = article.enriched_article
-        content = enriched.executive_brief if enriched else article.summary
-        title = enriched.headline if enriched else article.title
+        # EnrichedArticle doesn't have executive_brief, use ai_summary or facts
+        if enriched:
+            content = enriched.ai_summary or (enriched.facts + "\n\n" + enriched.bali_zero_take if enriched.facts else article.summary)
+            title = enriched.headline or article.title
+        else:
+            content = article.summary
+            title = article.title
 
         payload = {
             "title": title,
@@ -552,7 +576,8 @@ class IntelPipeline:
         # ═══════════════════════════════════════════════════════════════
         # STEP 6: SUBMIT FOR APPROVAL (Telegram + News Room)
         # ═══════════════════════════════════════════════════════════════
-        if article.seo_optimized:
+        # Submit if enriched (SEO is optional, enrichment is required)
+        if article.enriched and article.enriched_article:
             logger.info("\n📨 Step 6: Submitting for Approval...")
 
             # 6a. Send to News Room (zantara.balizero.com/intelligence/news-room)
@@ -568,11 +593,22 @@ class IntelPipeline:
             if self.require_approval and self.approval_system:
                 try:
                     enriched = article.enriched_article
+                    if not enriched:
+                        logger.warning("   ⚠️ Cannot submit: enriched_article is None")
+                        continue
+                    
+                    # Build enriched content from available fields
+                    enriched_content = enriched.ai_summary or ""
+                    if enriched.facts:
+                        enriched_content += "\n\n" + enriched.facts
+                    if enriched.bali_zero_take:
+                        enriched_content += "\n\n" + enriched.bali_zero_take
+                    
                     article_data = {
-                        "title": enriched.headline,
-                        "content": enriched.executive_brief,
-                        "enriched_content": enriched.executive_brief,
-                        "category": enriched.category,
+                        "title": enriched.headline or article.title,
+                        "content": enriched_content or article.summary,
+                        "enriched_content": enriched_content or article.summary,
+                        "category": enriched.category or article.final_category,
                         "source": article.source,
                         "source_url": article.url,
                         "image_url": article.image_path or "",
@@ -581,7 +617,7 @@ class IntelPipeline:
                     pending = await self.approval_system.submit_for_approval(
                         article=article_data,
                         seo_metadata=article.seo_metadata,
-                        enriched_content=enriched.executive_brief,
+                        enriched_content=enriched_content or article.summary,
                     )
 
                     article.pending_approval = True
@@ -606,16 +642,21 @@ class IntelPipeline:
         # ═══════════════════════════════════════════════════════════════
         # STEP 7: AUTO-MEMORY (Save to Qdrant)
         # ═══════════════════════════════════════════════════════════════
-        if article.pending_approval and not self.dry_run:
+        # Save ALL approved articles to memory, not just pending approval
+        # This ensures future deduplication works even if Telegram fails
+        if article.validation_approved and article.enriched and not self.dry_run:
             logger.info("\n💾 Step 7: Saving to Semantic Memory...")
             try:
                 # Usa il titolo/contenuto arricchito per l'embedding (più preciso)
                 enriched = article.enriched_article
+                if not enriched:
+                    logger.warning("   ⚠️ Cannot save: enriched_article is None")
+                    return article
                 
                 await self.deduplicator.save_article({
-                    "title": enriched.headline,
-                    "summary": enriched.ai_summary, # Short AI summary
-                    "content": enriched.facts,      # Full facts for deeper context
+                    "title": enriched.headline or article.title,
+                    "summary": enriched.ai_summary or article.summary[:500], # Short AI summary
+                    "content": enriched.facts or enriched.ai_summary or article.summary,      # Full facts for deeper context
                     "url": article.url,
                     "source": article.source,
                     "category": article.final_category,
@@ -658,11 +699,18 @@ class IntelPipeline:
         for i, article_dict in enumerate(articles, 1):
             logger.info(f"\n[{i}/{len(articles)}] {'=' * 50}")
 
+            # Validate URL before creating article
+            url = article_dict.get("url", article_dict.get("source_url", ""))
+            if not url or not url.startswith(("http://", "https://")):
+                logger.warning(f"Skipping article with invalid URL: {url}")
+                self.stats.errors += 1
+                continue
+            
             # Create pipeline article
             article = PipelineArticle(
                 title=article_dict.get("title", ""),
                 summary=article_dict.get("summary", ""),
-                url=article_dict.get("url", article_dict.get("source_url", "")),
+                url=url,
                 source=article_dict.get("source", "Unknown"),
                 content=article_dict.get("content", ""),
                 published_at=article_dict.get("published_at"),
@@ -702,6 +750,10 @@ class IntelPipeline:
         except Exception as e:
             logger.warning(f"⚠️ Failed to save run audit: {e}")
 
+        # Cleanup resources
+        if hasattr(self.deduplicator, 'close'):
+            self.deduplicator.close()
+        
         return results, self.stats
 
     def _print_summary(self):

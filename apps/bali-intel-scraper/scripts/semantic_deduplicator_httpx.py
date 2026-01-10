@@ -23,16 +23,29 @@ class SemanticDeduplicator:
     def __init__(self):
         self.qdrant_url = os.getenv("QDRANT_URL", "https://nuzantara-qdrant.fly.dev").rstrip("/")
         self.qdrant_key = os.getenv("QDRANT_API_KEY")
-        self.openai = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        openai_key = os.getenv("OPENAI_API_KEY")
+        
+        if not openai_key:
+            logger.warning("⚠️ OPENAI_API_KEY not set - embedding generation will fail")
+        
+        self.openai = AsyncOpenAI(api_key=openai_key) if openai_key else None
         
         # HTTP client con configurazione ottimizzata
-        self._http_client = httpx.Client(
-            timeout=30.0,
-            headers={"api-key": self.qdrant_key} if self.qdrant_key else {},
-            http2=False  # Disabilita HTTP/2 per evitare problemi TLS
-        )
+        # Usa context manager pattern per garantire cleanup
+        self._http_client = None
+        self._client_headers = {"api-key": self.qdrant_key} if self.qdrant_key else {}
         
         logger.info(f"🧠 Semantic Deduplicator initialized (Threshold: {SIMILARITY_THRESHOLD})")
+    
+    def _get_client(self) -> httpx.Client:
+        """Get or create HTTP client (lazy initialization)"""
+        if self._http_client is None:
+            self._http_client = httpx.Client(
+                timeout=30.0,
+                headers=self._client_headers,
+                http2=False  # Disabilita HTTP/2 per evitare problemi TLS
+            )
+        return self._http_client
 
     def _generate_id(self, url: str) -> str:
         """Genera ID deterministico basato su URL"""
@@ -41,6 +54,10 @@ class SemanticDeduplicator:
 
     async def _get_embedding(self, text: str) -> list[float]:
         """Genera embedding vettoriale per il testo"""
+        if not self.openai:
+            logger.error("OpenAI client not initialized - check OPENAI_API_KEY")
+            return []
+        
         try:
             text = text[:8000]
             response = await self.openai.embeddings.create(
@@ -57,7 +74,8 @@ class SemanticDeduplicator:
         # 1. Check URL esatto
         try:
             doc_id = self._generate_id(url)
-            response = self._http_client.get(
+            client = self._get_client()
+            response = client.get(
                 f"{self.qdrant_url}/collections/{COLLECTION_NAME}/points/{doc_id}"
             )
             if response.status_code == 200:
@@ -101,7 +119,8 @@ class SemanticDeduplicator:
                 "score_threshold": SIMILARITY_THRESHOLD  # Filtra risultati sotto threshold
             }
             
-            response = self._http_client.post(
+            client = self._get_client()
+            response = client.post(
                 f"{self.qdrant_url}/collections/{COLLECTION_NAME}/points/search",
                 json=search_payload
             )
@@ -168,7 +187,8 @@ class SemanticDeduplicator:
             }
             
             # Upsert con wait=true per assicurare che sia completato
-            response = self._http_client.put(
+            client = self._get_client()
+            response = client.put(
                 f"{self.qdrant_url}/collections/{COLLECTION_NAME}/points",
                 json=upsert_payload,
                 params={"wait": "true"}  # Attendi completamento indicizzazione
@@ -186,7 +206,20 @@ class SemanticDeduplicator:
         except Exception as e:
             logger.error(f"Errore salvataggio news: {e}")
 
-    def __del__(self):
-        """Cleanup HTTP client"""
-        if hasattr(self, '_http_client'):
+    def close(self):
+        """Explicitly close HTTP client"""
+        if self._http_client:
             self._http_client.close()
+            self._http_client = None
+    
+    def __del__(self):
+        """Cleanup HTTP client (fallback)"""
+        self.close()
+    
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit"""
+        self.close()

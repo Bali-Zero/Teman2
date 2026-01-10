@@ -65,7 +65,8 @@ class GoogleNewsRSSFetcher:
 
     def _build_rss_url(self, query: str) -> str:
         """Build Google News RSS URL for a query"""
-        encoded_query = query.replace(" ", "+")
+        from urllib.parse import quote_plus
+        encoded_query = quote_plus(query)  # Proper URL encoding
         return f"{self.base_url}?q={encoded_query}&hl=en-ID&gl=ID&ceid=ID:en"
 
     def _parse_date(self, date_str: str) -> Optional[datetime]:
@@ -179,18 +180,13 @@ class GoogleNewsRSSFetcher:
         logger.info("=" * 70)
 
         all_items = []
-        seen_titles = set()
 
         # Fetch from all topics
+        # NOTE: Deduplication is handled by semantic deduplicator in pipeline
+        # Simple title-based dedup here can filter legitimate articles with similar titles
         for query, category in self.TOPICS:
             items = await self.fetch_topic(query, category)
-
-            for item in items:
-                # Deduplicate by title similarity
-                title_key = item["title"].lower()[:50]
-                if title_key not in seen_titles:
-                    seen_titles.add(title_key)
-                    all_items.append(item)
+            all_items.extend(items)
 
                     if (
                         len([i for i in all_items if i["category"] == category])
