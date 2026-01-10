@@ -629,7 +629,7 @@ texture with subtle shadows. 16:9 landscape format. No text, no other elements.
 4. **Deploy 4:** Gemini-generated flag image
 5. **Deploy 5:** Increased spacing (gap-3)
 
-**Final URL:** https://nuzantara-mouth.fly.dev/news
+**Final URL:** https://www.balizero.com/news
 
 ---
 
