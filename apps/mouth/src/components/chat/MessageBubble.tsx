@@ -289,7 +289,7 @@ function MessageBubbleComponent({ message, userAvatar, isLast, onFollowUpClick }
           ) : (
             <div className="relative w-full h-full"> 
               <Image 
-                src="/assets/logo_zan.png" 
+                src="/assets/logo/logo_zan.png" 
                 alt="Zantara" 
                 fill 
                 className="object-contain brightness-110 drop-shadow-[0_0_15px_rgba(100,100,255,0.4)] scale-125" 

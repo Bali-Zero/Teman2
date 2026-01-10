@@ -239,21 +239,6 @@ class KBLIUltimatePayload(BaseModel):
     # Metadata
     metadata: Metadata
     
-    @validator("risk_level_en", always=True)
-    def set_risk_level_en(cls, v, values):
-        """Imposta risk_level_en basato su tingkat_risiko."""
-        if "tingkat_risiko" in values and values["tingkat_risiko"]:
-            risk_map = {
-                RiskLevel.RENDAH: "Low",
-                RiskLevel.MENENGAH_RENDAH: "Low-Medium",
-                RiskLevel.MENENGAH: "Medium",
-                RiskLevel.MENENGAH_TINGGI: "Medium-High",
-                RiskLevel.TINGGI: "High",
-                RiskLevel.TIDAK_DIATUR: "Not regulated"
-            }
-            return risk_map.get(values["tingkat_risiko"], "Unknown")
-        return v
-    
     class Config:
         use_enum_values = True
         json_schema_extra = {

@@ -1366,7 +1366,7 @@ export default function ChatPage() {
           <div className="h-14 border-b border-white/5 flex items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <Image
-                src="/assets/logo_zan.png"
+                src="/assets/logo/logo_zan.png"
                 alt="Zantara"
                 width={32}
                 height={32}
@@ -1562,7 +1562,7 @@ export default function ChatPage() {
 
             <div className="absolute left-1/2 -translate-x-1/2">
               <Image
-                src="/assets/logo_zan.png"
+                src="/assets/logo/logo_zan.png"
                 alt="Zantara"
                 width={44}
                 height={44}
@@ -1601,7 +1601,7 @@ export default function ChatPage() {
               <div className="relative mb-8">
                 <div className="absolute inset-0 bg-white/10 blur-[60px] rounded-full animate-pulse" />
                 <Image
-                  src="/assets/logo_zan.png"
+                  src="/assets/logo/logo_zan.png"
                   alt="Zantara"
                   width={120}
                   height={120}
@@ -1665,7 +1665,7 @@ export default function ChatPage() {
                   {message.role === 'assistant' && (
                     <div className="relative flex-shrink-0">
                       <Image
-                        src="/assets/logo_zan.png"
+                        src="/assets/logo/logo_zan.png"
                         alt="Zantara"
                         width={52}
                         height={52}

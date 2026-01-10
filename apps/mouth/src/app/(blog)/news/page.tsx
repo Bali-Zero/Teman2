@@ -50,7 +50,7 @@ export default function NewsPage() {
                   {/* Indonesian Flag Drape - Actual Image */}
                   <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     <Image
-                      src="/assets/indonesian-flag-drape.jpg"
+                      src="/assets/images/indonesian-flag-drape.jpg"
                       alt=""
                       fill
                       className="object-cover opacity-30"

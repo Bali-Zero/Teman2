@@ -36,7 +36,7 @@ export default function ServicesPage() {
             {/* BALI ZERO Logo */}
             <div className="mb-8">
               <Image
-                src="/assets/balizero-logo.png"
+                src="/assets/logo/balizero-logo.png"
                 alt="Bali Zero"
                 width={80}
                 height={80}
@@ -69,7 +69,7 @@ export default function ServicesPage() {
                 href="/chat"
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"
               >
-                <Image src="/assets/zantara-lotus.png" alt="" width={60} height={60} />
+                <Image src="/assets/logo/zantara-lotus.png" alt="" width={60} height={60} />
                 Ask Zantara AI
               </Link>
             </div>
@@ -291,7 +291,7 @@ export default function ServicesPage() {
           {/* Zantara AI */}
           <div className="flex items-center justify-center gap-4 p-6 rounded-xl bg-gradient-to-r from-[#2251ff]/20 to-[#e85c41]/20 border border-white/10">
             <Image
-              src="/assets/zantara-lotus.png"
+              src="/assets/logo/zantara-lotus.png"
               alt="Zantara AI"
               width={60}
               height={60}
@@ -330,7 +330,7 @@ export default function ServicesPage() {
               {/* BALI ZERO Logo */}
               <div className="mb-6">
                 <Image
-                  src="/assets/balizero-logo.png"
+                  src="/assets/logo/balizero-logo.png"
                   alt="Bali Zero"
                   width={64}
                   height={64}

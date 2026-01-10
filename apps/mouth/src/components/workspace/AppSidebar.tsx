@@ -147,7 +147,7 @@ export function AppSidebar({ user, unreadWhatsApp = 0, onLogout }: AppSidebarPro
       <div className="flex items-center justify-center px-4 py-5 border-b border-[rgba(255,255,255,0.04)]">
         <div className="relative w-12 h-12 rounded-full overflow-hidden">
           <Image
-            src="/assets/balizero-logo-clean.png"
+            src="/assets/logo/balizero-logo-clean.png"
             alt="Bali Zero"
             fill
             className="object-cover scale-110"
