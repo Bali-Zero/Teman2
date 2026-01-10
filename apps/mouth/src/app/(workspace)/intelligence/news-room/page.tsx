@@ -519,20 +519,21 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
+                  {/* View Full Article Button - Always Visible */}
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handlePreview(item)}
                     disabled={previewLoading}
                     title="View Full Article"
-                    className="flex items-center justify-center"
+                    className="flex items-center justify-center min-w-[80px]"
                   >
                     {previewLoading && previewItem?.id === item.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <Eye className="h-4 w-4 mr-1" />
-                        <span className="text-xs">View</span>
+                        <Eye className="h-4 w-4 mr-1.5" />
+                        <span className="text-xs font-medium">View</span>
                       </>
                     )}
                   </Button>
