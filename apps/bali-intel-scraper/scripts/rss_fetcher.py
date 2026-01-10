@@ -188,12 +188,6 @@ class GoogleNewsRSSFetcher:
             items = await self.fetch_topic(query, category)
             all_items.extend(items)
 
-                    if (
-                        len([i for i in all_items if i["category"] == category])
-                        >= limit_per_topic * 2
-                    ):
-                        break
-
         logger.info(f"\n📊 Total unique items before scoring: {len(all_items)}")
 
         # Score all items
