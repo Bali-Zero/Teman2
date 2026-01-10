@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit hooks..."
+
+# Check for print statements in Python files
+echo "🐍 Checking for print() statements in Python files..."
+if git diff --cached --name-only | grep -E '\.py$' | xargs grep -l 'print(' 2>/dev/null; then
+    echo "❌ ERROR: Found print() statements in staged Python files."
+    echo "   Please replace print() with logger.info/debug/error()"
+    echo "   Use logger = logging.getLogger(__name__) at the top of your file"
+    exit 1
+fi
+
+# Check for console.log in TypeScript/JavaScript files
+echo "📜 Checking for console.log statements in TypeScript/JavaScript files..."
+if git diff --cached --name-only | grep -E '\.(ts|tsx|js|jsx)$' | xargs grep -l 'console\.\(log\|debug\|info\|warn\|error\)' 2>/dev/null; then
+    echo "❌ ERROR: Found console statements in staged TypeScript/JavaScript files."
+    echo "   Please replace console.* with logger from src/lib/logger.ts"
+    echo "   Example: import { logger } from '@/lib/logger'; logger.info('message');"
+    exit 1
+fi
+
+# Run linting
+echo "🔧 Running linting..."
+npm run lint:check 2>/dev/null || {
+    echo "❌ Linting failed. Please fix linting issues."
+    exit 1
+}
+
+# Run type checking
+echo "📝 Running type checking..."
+npm run typecheck 2>/dev/null || {
+    echo "❌ Type checking failed. Please fix type errors."
+    exit 1
+}
+
+# Run Python linting
+echo "🐍 Running Python linting..."
+cd apps/backend-rag && ruff check . 2>/dev/null || {
+    echo "❌ Python linting failed. Please fix ruff issues."
+    exit 1
+}
+
+echo "✅ All pre-commit checks passed!"
