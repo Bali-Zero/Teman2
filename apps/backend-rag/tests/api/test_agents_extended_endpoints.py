@@ -30,7 +30,7 @@ class TestAgentsExtended:
 
     def test_create_client_journey(self, authenticated_client):
         """Test POST /api/agents/journey/create"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_journey = MagicMock()
             mock_journey.journey_id = "journey_123"
             mock_journey.steps = [{"step": 1, "name": "Step 1"}]
@@ -48,7 +48,7 @@ class TestAgentsExtended:
 
     def test_get_journey(self, authenticated_client):
         """Test GET /api/agents/journey/{journey_id}"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_journey = MagicMock()
             mock_journey.journey_id = "journey_123"
             mock_orchestrator.get_journey.return_value = mock_journey
@@ -74,7 +74,7 @@ class TestAgentsExtended:
 
     def test_get_next_steps(self, authenticated_client):
         """Test GET /api/agents/journey/{journey_id}/next-steps"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_step = MagicMock()
             mock_step.__dict__ = {"step_id": "step1", "name": "Step 1"}
             mock_orchestrator.get_next_steps.return_value = [mock_step]
@@ -85,7 +85,7 @@ class TestAgentsExtended:
 
     def test_complete_journey_step(self, authenticated_client):
         """Test POST /api/agents/journey/{journey_id}/step/{step_id}/complete"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_journey = MagicMock()
             mock_journey.__dict__ = {"journey_id": "journey_123"}
             mock_orchestrator.complete_step.return_value = None
@@ -100,7 +100,7 @@ class TestAgentsExtended:
 
     def test_add_compliance_tracking(self, authenticated_client):
         """Test POST /api/agents/compliance/track"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_item = MagicMock()
             mock_item.item_id = "item_123"
             mock_monitor.add_compliance_item.return_value = mock_item
@@ -120,7 +120,7 @@ class TestAgentsExtended:
 
     def test_get_compliance_alerts(self, authenticated_client):
         """Test GET /api/agents/compliance/alerts"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.get_upcoming_alerts.return_value = []
 
             response = authenticated_client.get("/api/agents/compliance/alerts")
@@ -129,7 +129,7 @@ class TestAgentsExtended:
 
     def test_get_client_compliance(self, authenticated_client):
         """Test GET /api/agents/compliance/client/{client_id}"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.get_client_compliance.return_value = []
 
             response = authenticated_client.get("/api/agents/compliance/client/client_123")

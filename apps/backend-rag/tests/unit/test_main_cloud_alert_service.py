@@ -4,7 +4,7 @@ Test AlertService initialization in app.state pattern.
 Verifies that AlertService:
 - Is not in app.state before startup
 - Is available in app.state after startup
-- Can be resolved by ErrorMonitoringMiddleware from app.state
+- Can be resolved by ErrorMonitoringMiddleware from backend.app.state
 - Constructor-injected service takes precedence over app.state
 """
 
@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 from fastapi import Request
 from middleware.error_monitoring import ErrorMonitoringMiddleware
 
-from app.main_cloud import app
+from backend.app.main_cloud import app
 
 
 class TestAlertServiceInAppState:
@@ -27,7 +27,7 @@ class TestAlertServiceInAppState:
         pass  # This is more of a documentation test
 
     def test_error_monitoring_middleware_uses_app_state(self):
-        """Test ErrorMonitoringMiddleware can resolve AlertService from app.state."""
+        """Test ErrorMonitoringMiddleware can resolve AlertService from backend.app.state."""
         # Create middleware without alert_service (new pattern)
         middleware = ErrorMonitoringMiddleware(app=app, alert_service=None)
 
@@ -36,7 +36,7 @@ class TestAlertServiceInAppState:
         mock_request.app = MagicMock()
         mock_request.app.state.alert_service = MagicMock()
 
-        # Resolve should return from app.state
+        # Resolve should return from backend.app.state
         resolved = middleware._resolve_alert_service(mock_request)
         assert resolved is not None
         assert resolved == mock_request.app.state.alert_service

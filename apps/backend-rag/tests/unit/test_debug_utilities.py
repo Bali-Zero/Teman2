@@ -14,10 +14,10 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.utils.db_debugger import DatabaseQueryDebugger
-from app.utils.debug_context import DebugContext, debug_mode
-from app.utils.qdrant_debugger import QdrantDebugger
-from app.utils.rag_debugger import RAGPipelineDebugger
+from backend.app.utils.db_debugger import DatabaseQueryDebugger
+from backend.app.utils.debug_context import DebugContext, debug_mode
+from backend.app.utils.qdrant_debugger import QdrantDebugger
+from backend.app.utils.rag_debugger import RAGPipelineDebugger
 
 
 class TestDebugContext:
@@ -203,7 +203,7 @@ class TestDatabaseQueryDebugger:
         debugger = DatabaseQueryDebugger()
 
         # Add many queries
-        from app.utils.db_debugger import MAX_QUERIES_TO_TRACK, _query_log
+        from backend.app.utils.db_debugger import MAX_QUERIES_TO_TRACK, _query_log
 
         DatabaseQueryDebugger.clear_logs()
 
@@ -223,7 +223,7 @@ class TestDatabaseQueryDebugger:
             pass
 
         # Manually add slow query to storage
-        from app.utils.db_debugger import _slow_queries
+        from backend.app.utils.db_debugger import _slow_queries
 
         _slow_queries.append(
             {
@@ -241,7 +241,7 @@ class TestDatabaseQueryDebugger:
         debugger = DatabaseQueryDebugger()
 
         # Add some queries to log
-        from app.utils.db_debugger import _query_log
+        from backend.app.utils.db_debugger import _query_log
 
         _query_log.append(
             {
@@ -260,7 +260,7 @@ class TestDatabaseQueryDebugger:
         debugger = DatabaseQueryDebugger()
 
         # Add some queries
-        from app.utils.db_debugger import _query_log
+        from backend.app.utils.db_debugger import _query_log
 
         _query_log.append({"query": "SELECT 1", "duration_ms": 10.0})
 
@@ -284,7 +284,7 @@ class TestQdrantDebugger:
         """Test getting collection health"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -315,7 +315,7 @@ class TestQdrantDebugger:
         """Test getting collection health with error"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.side_effect = Exception("Connection failed")
 
             health = await debugger.get_collection_health("test_collection")
@@ -328,7 +328,7 @@ class TestQdrantDebugger:
         """Test getting all collections health"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -382,7 +382,7 @@ class TestQdrantDebugger:
         """Test getting all collections health with error"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.side_effect = Exception("Connection failed")
 
             health_statuses = await debugger.get_all_collections_health()
@@ -394,7 +394,7 @@ class TestQdrantDebugger:
         """Test getting collection stats"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -424,7 +424,7 @@ class TestQdrantDebugger:
         """Test getting collection stats with error"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.side_effect = Exception("Connection failed")
 
             stats = await debugger.get_collection_stats("test_collection")
@@ -439,7 +439,7 @@ class TestQdrantDebugger:
 
         query_vector = [0.1] * 1536  # 1536-dim vector
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -465,7 +465,7 @@ class TestQdrantDebugger:
 
         query_vector = [0.1] * 1536
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.side_effect = Exception("Query failed")
 
             performance = await debugger.analyze_query_performance(
@@ -481,7 +481,7 @@ class TestQdrantDebugger:
         """Test inspecting a document"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -511,7 +511,7 @@ class TestQdrantDebugger:
         """Test inspecting non-existent document"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -531,7 +531,7 @@ class TestQdrantDebugger:
         """Test inspecting document with error"""
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.side_effect = Exception("Connection failed")
 
             document = await debugger.inspect_document("test_collection", "doc1")

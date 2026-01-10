@@ -30,7 +30,7 @@ class TestAgenticRAGEndpoints:
     def test_query_agentic_rag(self, authenticated_client):
         """Test POST /api/agentic-rag/query"""
         with patch(
-            "app.routers.agentic_rag.get_orchestrator", new_callable=AsyncMock
+            "backend.app.routers.agentic_rag.get_orchestrator", new_callable=AsyncMock
         ) as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
@@ -57,7 +57,7 @@ class TestAgenticRAGEndpoints:
     def test_query_agentic_rag_with_vision(self, authenticated_client):
         """Test POST /api/agentic-rag/query with vision enabled"""
         with patch(
-            "app.routers.agentic_rag.get_orchestrator", new_callable=AsyncMock
+            "backend.app.routers.agentic_rag.get_orchestrator", new_callable=AsyncMock
         ) as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
@@ -81,7 +81,7 @@ class TestAgenticRAGEndpoints:
     def test_query_agentic_rag_error(self, authenticated_client):
         """Test POST /api/agentic-rag/query when orchestrator fails"""
         with patch(
-            "app.routers.agentic_rag.get_orchestrator", new_callable=AsyncMock
+            "backend.app.routers.agentic_rag.get_orchestrator", new_callable=AsyncMock
         ) as mock_get_orchestrator:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(side_effect=Exception("Orchestrator error"))

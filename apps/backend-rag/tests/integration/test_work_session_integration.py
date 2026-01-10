@@ -29,7 +29,7 @@ class TestWorkSessionIntegration:
         import os
         from unittest.mock import patch
 
-        from services.work_session_service import WorkSessionService
+        from backend.services.work_session_service import WorkSessionService
 
         # Temporarily remove DATABASE_URL
         original_url = os.environ.get("DATABASE_URL")
@@ -38,7 +38,7 @@ class TestWorkSessionIntegration:
 
         try:
             # Mock settings to return None
-            with patch("app.core.config.settings") as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.database_url = None
                 service = WorkSessionService()
                 await service.connect()
@@ -58,7 +58,7 @@ class TestWorkSessionIntegration:
         import os
         from unittest.mock import patch
 
-        from services.work_session_service import WorkSessionService
+        from backend.services.work_session_service import WorkSessionService
 
         database_url = postgres_container
         # Normalize database URL (remove +psycopg2 if present)
@@ -70,7 +70,7 @@ class TestWorkSessionIntegration:
 
         try:
             # Mock settings to use test database URL
-            with patch("app.core.config.settings") as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.database_url = database_url
                 service = WorkSessionService()
                 await service.connect()

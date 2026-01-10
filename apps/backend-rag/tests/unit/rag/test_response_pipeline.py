@@ -29,9 +29,9 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.llm_clients.pricing import TokenUsage
-from services.rag.agentic.reasoning import ReasoningEngine
-from services.tools.definitions import AgentState
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic.reasoning import ReasoningEngine
+from backend.services.tools.definitions import AgentState
 
 
 def mock_token_usage():
@@ -71,7 +71,7 @@ class TestResponsePipeline:
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
+        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None):
             result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
@@ -112,7 +112,7 @@ class TestResponsePipeline:
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
+        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None):
             result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
@@ -156,7 +156,7 @@ class TestResponsePipeline:
         chat = MagicMock()
 
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
+        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None):
             result_state, _, __, ___ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
@@ -200,7 +200,7 @@ class TestResponsePipeline:
 
         events = []
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
+        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None):
             async for event in engine.execute_react_loop_stream(
                 state=state,
                 llm_gateway=llm_gateway,

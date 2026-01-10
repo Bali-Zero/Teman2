@@ -44,7 +44,7 @@ class TestCRMClientsCreate:
 
     def test_create_client_minimal(self, authenticated_client):
         """Test creating client with minimal required fields"""
-        with patch("app.routers.crm_clients.create_client_in_db") as mock_create:
+        with patch("backend.app.routers.crm_clients.create_client_in_db") as mock_create:
             mock_create.return_value = {
                 "id": 1,
                 "full_name": "John Doe",
@@ -60,7 +60,7 @@ class TestCRMClientsCreate:
 
     def test_create_client_complete(self, authenticated_client):
         """Test creating client with all fields"""
-        with patch("app.routers.crm_clients.create_client_in_db") as mock_create:
+        with patch("backend.app.routers.crm_clients.create_client_in_db") as mock_create:
             mock_create.return_value = {
                 "id": 1,
                 "full_name": "John Doe",
@@ -106,7 +106,7 @@ class TestCRMClientsCreate:
 
     def test_create_client_duplicate_email(self, authenticated_client):
         """Test creating client with duplicate email"""
-        with patch("app.routers.crm_clients.create_client_in_db") as mock_create:
+        with patch("backend.app.routers.crm_clients.create_client_in_db") as mock_create:
             mock_create.side_effect = ValueError("Email already exists")
 
             response = authenticated_client.post(
@@ -135,7 +135,7 @@ class TestCRMClientsCreate:
 
     def test_create_client_unicode_name(self, authenticated_client):
         """Test with unicode characters in name"""
-        with patch("app.routers.crm_clients.create_client_in_db") as mock_create:
+        with patch("backend.app.routers.crm_clients.create_client_in_db") as mock_create:
             mock_create.return_value = {"id": 1, "full_name": "李明 🇨🇳"}
 
             response = authenticated_client.post("/api/crm/clients/", json={"full_name": "李明 🇨🇳"})
@@ -149,7 +149,7 @@ class TestCRMClientsList:
 
     def test_list_clients_default(self, authenticated_client):
         """Test listing clients with default parameters"""
-        with patch("app.routers.crm_clients.get_clients_from_db") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_clients_from_db") as mock_get:
             mock_get.return_value = []
 
             response = authenticated_client.get("/api/crm/clients/")
@@ -158,7 +158,7 @@ class TestCRMClientsList:
 
     def test_list_clients_with_filters(self, authenticated_client):
         """Test listing with multiple filters"""
-        with patch("app.routers.crm_clients.get_clients_from_db") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_clients_from_db") as mock_get:
             mock_get.return_value = []
 
             response = authenticated_client.get(
@@ -176,7 +176,7 @@ class TestCRMClientsList:
 
     def test_list_clients_pagination(self, authenticated_client):
         """Test pagination parameters"""
-        with patch("app.routers.crm_clients.get_clients_from_db") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_clients_from_db") as mock_get:
             mock_get.return_value = [{"id": i} for i in range(10)]
 
             response = authenticated_client.get(
@@ -200,7 +200,7 @@ class TestCRMClientsList:
 
     def test_list_clients_search_sql_injection(self, authenticated_client):
         """Test SQL injection in search parameter"""
-        with patch("app.routers.crm_clients.get_clients_from_db") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_clients_from_db") as mock_get:
             mock_get.return_value = []
 
             response = authenticated_client.get(
@@ -217,7 +217,7 @@ class TestCRMClientsGet:
 
     def test_get_client_success(self, authenticated_client):
         """Test getting existing client"""
-        with patch("app.routers.crm_clients.get_client_from_db") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_client_from_db") as mock_get:
             mock_get.return_value = {"id": 1, "full_name": "John Doe", "email": "john@example.com"}
 
             response = authenticated_client.get("/api/crm/clients/1")
@@ -226,7 +226,7 @@ class TestCRMClientsGet:
 
     def test_get_client_not_found(self, authenticated_client):
         """Test getting non-existent client"""
-        with patch("app.routers.crm_clients.get_client_from_db") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_client_from_db") as mock_get:
             mock_get.return_value = None
 
             response = authenticated_client.get("/api/crm/clients/99999")
@@ -252,7 +252,7 @@ class TestCRMClientsByEmail:
 
     def test_get_by_email_success(self, authenticated_client):
         """Test getting client by email"""
-        with patch("app.routers.crm_clients.get_client_by_email") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_client_by_email") as mock_get:
             mock_get.return_value = {"id": 1, "email": "john@example.com", "full_name": "John Doe"}
 
             response = authenticated_client.get("/api/crm/clients/by-email/john@example.com")
@@ -261,7 +261,7 @@ class TestCRMClientsByEmail:
 
     def test_get_by_email_not_found(self, authenticated_client):
         """Test with non-existent email"""
-        with patch("app.routers.crm_clients.get_client_by_email") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_client_by_email") as mock_get:
             mock_get.return_value = None
 
             response = authenticated_client.get("/api/crm/clients/by-email/nonexistent@example.com")
@@ -281,7 +281,7 @@ class TestCRMClientsUpdate:
 
     def test_update_client_single_field(self, authenticated_client):
         """Test updating single field"""
-        with patch("app.routers.crm_clients.update_client_in_db") as mock_update:
+        with patch("backend.app.routers.crm_clients.update_client_in_db") as mock_update:
             mock_update.return_value = {"id": 1, "full_name": "Jane Doe"}
 
             response = authenticated_client.patch(
@@ -292,7 +292,7 @@ class TestCRMClientsUpdate:
 
     def test_update_client_multiple_fields(self, authenticated_client):
         """Test updating multiple fields"""
-        with patch("app.routers.crm_clients.update_client_in_db") as mock_update:
+        with patch("backend.app.routers.crm_clients.update_client_in_db") as mock_update:
             mock_update.return_value = {
                 "id": 1,
                 "email": "newemail@example.com",
@@ -313,7 +313,7 @@ class TestCRMClientsUpdate:
 
     def test_update_client_not_found(self, authenticated_client):
         """Test updating non-existent client"""
-        with patch("app.routers.crm_clients.update_client_in_db") as mock_update:
+        with patch("backend.app.routers.crm_clients.update_client_in_db") as mock_update:
             mock_update.side_effect = ValueError("Client not found")
 
             response = authenticated_client.patch(
@@ -335,7 +335,7 @@ class TestCRMClientsDelete:
 
     def test_delete_client_success(self, authenticated_client):
         """Test soft deleting client"""
-        with patch("app.routers.crm_clients.delete_client_in_db") as mock_delete:
+        with patch("backend.app.routers.crm_clients.delete_client_in_db") as mock_delete:
             mock_delete.return_value = {"success": True}
 
             response = authenticated_client.delete("/api/crm/clients/1")
@@ -344,7 +344,7 @@ class TestCRMClientsDelete:
 
     def test_delete_client_not_found(self, authenticated_client):
         """Test deleting non-existent client"""
-        with patch("app.routers.crm_clients.delete_client_in_db") as mock_delete:
+        with patch("backend.app.routers.crm_clients.delete_client_in_db") as mock_delete:
             mock_delete.side_effect = ValueError("Client not found")
 
             response = authenticated_client.delete("/api/crm/clients/99999")
@@ -358,7 +358,7 @@ class TestCRMClientsSummary:
 
     def test_get_summary_complete(self, authenticated_client):
         """Test getting comprehensive client summary"""
-        with patch("app.routers.crm_clients.get_client_summary") as mock_summary:
+        with patch("backend.app.routers.crm_clients.get_client_summary") as mock_summary:
             mock_summary.return_value = {
                 "client": {"id": 1, "full_name": "John Doe"},
                 "practices": [],
@@ -373,7 +373,7 @@ class TestCRMClientsSummary:
 
     def test_get_summary_not_found(self, authenticated_client):
         """Test summary for non-existent client"""
-        with patch("app.routers.crm_clients.get_client_summary") as mock_summary:
+        with patch("backend.app.routers.crm_clients.get_client_summary") as mock_summary:
             mock_summary.return_value = None
 
             response = authenticated_client.get("/api/crm/clients/99999/summary")
@@ -387,7 +387,7 @@ class TestCRMClientsStats:
 
     def test_get_stats_overview(self, authenticated_client):
         """Test getting client statistics"""
-        with patch("app.routers.crm_clients.get_client_stats") as mock_stats:
+        with patch("backend.app.routers.crm_clients.get_client_stats") as mock_stats:
             mock_stats.return_value = {
                 "total_clients": 100,
                 "by_status": {"lead": 30, "active": 50, "inactive": 20},
@@ -425,7 +425,7 @@ class TestCRMClientsPerformance:
         """Test listing performance with large dataset"""
         import time
 
-        with patch("app.routers.crm_clients.get_clients_from_db") as mock_get:
+        with patch("backend.app.routers.crm_clients.get_clients_from_db") as mock_get:
             mock_get.return_value = [{"id": i} for i in range(200)]
 
             start = time.time()

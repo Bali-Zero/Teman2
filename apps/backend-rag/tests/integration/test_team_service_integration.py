@@ -25,11 +25,11 @@ class TestTeamServiceIntegration:
     @pytest.mark.asyncio
     async def test_team_service_initialization(self, postgres_container):
         """Test team timesheet service initialization"""
-        with patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service:
+        with patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service:
             mock_service = MagicMock()
             mock_get_service.return_value = mock_service
 
-            from services.team_timesheet_service import get_timesheet_service
+            from backend.services.team_timesheet_service import get_timesheet_service
 
             service = get_timesheet_service()
             assert service is not None
@@ -37,7 +37,7 @@ class TestTeamServiceIntegration:
     @pytest.mark.asyncio
     async def test_clock_in_flow(self, postgres_container):
         """Test clock-in flow"""
-        with patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service:
+        with patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.clock_in = AsyncMock(
                 return_value={
@@ -48,7 +48,7 @@ class TestTeamServiceIntegration:
             )
             mock_get_service.return_value = mock_service
 
-            from services.team_timesheet_service import get_timesheet_service
+            from backend.services.team_timesheet_service import get_timesheet_service
 
             service = get_timesheet_service()
             result = await service.clock_in("user123", "test@example.com")

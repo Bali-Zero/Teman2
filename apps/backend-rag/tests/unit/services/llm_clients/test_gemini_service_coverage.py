@@ -2,7 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -25,7 +25,7 @@ def _load_module(monkeypatch, genai_available=True, genai_client=None):
         get_genai_client=lambda: genai_client,
         redis_url='redis://localhost:6379'
     )
-    monkeypatch.setitem(sys.modules, "llm.genai_client", genai_stub)
+    monkeypatch.setitem(sys.modules, "backend.llm.genai_client", genai_stub)
 
     prompts_stub = types.SimpleNamespace(FEW_SHOT_EXAMPLES=[
             {"role": "user", "content": "hi"},
@@ -34,15 +34,16 @@ def _load_module(monkeypatch, genai_available=True, genai_client=None):
         SYSTEM_INSTRUCTION="system",
         redis_url='redis://localhost:6379'
     )
-    monkeypatch.setitem(sys.modules, "prompts.jaksel_persona", prompts_stub)
+    monkeypatch.setitem(sys.modules, "backend.prompts.jaksel_persona", prompts_stub)
 
     settings_stub = types.SimpleNamespace(google_api_key="key", openrouter_api_key="key", redis_url='redis://localhost:6379')
-    monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
-    )
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = settings_stub
+    config_mock.Settings = MagicMock()
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     backend_path = Path(__file__).resolve().parents[4] / "backend"
-    module_name = "services.llm_clients.gemini_service"
+    module_name = "backend.services.llm_clients.gemini_service"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

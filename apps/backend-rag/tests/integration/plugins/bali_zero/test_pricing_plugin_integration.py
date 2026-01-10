@@ -41,7 +41,7 @@ class TestPricingPluginIntegration:
     @pytest_asyncio.fixture
     async def pricing_plugin(self, mock_pricing_service):
         """Create PricingPlugin instance"""
-        from plugins.bali_zero.pricing_plugin import PricingPlugin
+        from backend.plugins.bali_zero.pricing_plugin import PricingPlugin
 
         plugin = PricingPlugin(pricing_service=mock_pricing_service)
         return plugin
@@ -63,20 +63,20 @@ class TestPricingPluginIntegration:
 
     def test_input_schema(self, pricing_plugin):
         """Test input schema"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         assert pricing_plugin.input_schema == PricingQueryInput
 
     def test_output_schema(self, pricing_plugin):
         """Test output schema"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryOutput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryOutput
 
         assert pricing_plugin.output_schema == PricingQueryOutput
 
     @pytest.mark.asyncio
     async def test_execute_all_services(self, pricing_plugin):
         """Test executing plugin with all services"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="all")
         result = await pricing_plugin.execute(input_data)
@@ -87,7 +87,7 @@ class TestPricingPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_visa_service(self, pricing_plugin):
         """Test executing plugin for visa services"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="visa")
         result = await pricing_plugin.execute(input_data)
@@ -97,7 +97,7 @@ class TestPricingPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_kitas_service(self, pricing_plugin):
         """Test executing plugin for KITAS services"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="kitas")
         result = await pricing_plugin.execute(input_data)
@@ -107,7 +107,7 @@ class TestPricingPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_with_query(self, pricing_plugin):
         """Test executing plugin with search query"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="all", query="PT PMA setup")
         result = await pricing_plugin.execute(input_data)
@@ -119,7 +119,7 @@ class TestPricingPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_business_setup(self, pricing_plugin):
         """Test executing plugin for business setup"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="business_setup")
         result = await pricing_plugin.execute(input_data)
@@ -129,7 +129,7 @@ class TestPricingPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_tax_consulting(self, pricing_plugin):
         """Test executing plugin for tax consulting"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="tax_consulting")
         result = await pricing_plugin.execute(input_data)
@@ -139,7 +139,7 @@ class TestPricingPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_legal_service(self, pricing_plugin):
         """Test executing plugin for legal services"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="legal")
         result = await pricing_plugin.execute(input_data)
@@ -149,7 +149,7 @@ class TestPricingPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_error_handling(self, pricing_plugin):
         """Test error handling in plugin execution"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         # Mock service to raise exception
         pricing_plugin.pricing_service.get_pricing = MagicMock(
@@ -164,7 +164,7 @@ class TestPricingPluginIntegration:
 
     def test_pricing_query_input_default(self):
         """Test PricingQueryInput with default values"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput()
         assert input_data.service_type == "all"
@@ -172,7 +172,7 @@ class TestPricingPluginIntegration:
 
     def test_pricing_query_input_custom(self):
         """Test PricingQueryInput with custom values"""
-        from plugins.bali_zero.pricing_plugin import PricingQueryInput
+        from backend.plugins.bali_zero.pricing_plugin import PricingQueryInput
 
         input_data = PricingQueryInput(service_type="visa", query="tourist visa")
         assert input_data.service_type == "visa"

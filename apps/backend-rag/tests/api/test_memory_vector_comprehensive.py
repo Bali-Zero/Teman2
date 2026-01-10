@@ -33,7 +33,7 @@ class TestMemoryEmbed:
 
     def test_generate_embedding_basic(self, authenticated_client):
         """Test basic embedding generation"""
-        with patch("app.routers.memory_vector.embedder") as mock_embedder:
+        with patch("backend.app.routers.memory_vector.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 384)
 
             response = authenticated_client.post(
@@ -45,7 +45,7 @@ class TestMemoryEmbed:
 
     def test_generate_embedding_different_models(self, authenticated_client):
         """Test embedding generation with different models"""
-        with patch("app.routers.memory_vector.embedder") as mock_embedder:
+        with patch("backend.app.routers.memory_vector.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 384)
 
             models = ["sentence-transformers", "openai", "cohere"]
@@ -69,7 +69,7 @@ class TestMemoryEmbed:
 
     def test_generate_embedding_long_text(self, authenticated_client):
         """Test embedding generation with long text"""
-        with patch("app.routers.memory_vector.embedder") as mock_embedder:
+        with patch("backend.app.routers.memory_vector.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 384)
 
             long_text = "A" * 10000
@@ -83,7 +83,7 @@ class TestMemoryEmbed:
 
     def test_generate_embedding_response_structure(self, authenticated_client):
         """Test embedding response structure"""
-        with patch("app.routers.memory_vector.embedder") as mock_embedder:
+        with patch("backend.app.routers.memory_vector.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 384)
 
             response = authenticated_client.post(
@@ -104,7 +104,7 @@ class TestMemoryStore:
 
     def test_store_memory_basic(self, authenticated_client):
         """Test basic memory storage"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.store = AsyncMock(return_value=True)
             mock_get_db.return_value = mock_db
@@ -123,12 +123,12 @@ class TestMemoryStore:
 
     def test_store_memory_without_embedding(self, authenticated_client):
         """Test storing memory without embedding (auto-generate)"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.store = AsyncMock(return_value=True)
             mock_get_db.return_value = mock_db
 
-            with patch("app.routers.memory_vector.embedder") as mock_embedder:
+            with patch("backend.app.routers.memory_vector.embedder") as mock_embedder:
                 mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 384)
 
                 response = authenticated_client.post(
@@ -144,7 +144,7 @@ class TestMemoryStore:
 
     def test_store_memory_duplicate_id(self, authenticated_client):
         """Test storing memory with duplicate ID"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.store = AsyncMock(side_effect=Exception("Duplicate ID"))
             mock_get_db.return_value = mock_db
@@ -163,7 +163,7 @@ class TestMemoryStore:
 
     def test_store_memory_large_metadata(self, authenticated_client):
         """Test storing memory with large metadata"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.store = AsyncMock(return_value=True)
             mock_get_db.return_value = mock_db
@@ -189,7 +189,7 @@ class TestMemorySearch:
 
     def test_search_memories_basic(self, authenticated_client):
         """Test basic memory search"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.search = AsyncMock(
                 return_value={
@@ -209,7 +209,7 @@ class TestMemorySearch:
 
     def test_search_memories_with_limit(self, authenticated_client):
         """Test memory search with limit"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.search = AsyncMock(
                 return_value={
@@ -229,7 +229,7 @@ class TestMemorySearch:
 
     def test_search_memories_with_metadata_filter(self, authenticated_client):
         """Test memory search with metadata filter"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.search = AsyncMock(
                 return_value={
@@ -252,7 +252,7 @@ class TestMemorySearch:
 
     def test_search_memories_response_structure(self, authenticated_client):
         """Test memory search response structure"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.search = AsyncMock(
                 return_value={
@@ -283,7 +283,7 @@ class TestSimilarMemories:
 
     def test_find_similar_memories(self, authenticated_client):
         """Test finding similar memories"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.search_by_id = AsyncMock(
                 return_value={
@@ -303,7 +303,7 @@ class TestSimilarMemories:
 
     def test_find_similar_memories_with_limit(self, authenticated_client):
         """Test finding similar memories with limit"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.search_by_id = AsyncMock(
                 return_value={
@@ -323,7 +323,7 @@ class TestSimilarMemories:
 
     def test_find_similar_memories_not_found(self, authenticated_client):
         """Test finding similar memories for non-existent memory"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.search_by_id = AsyncMock(side_effect=Exception("Not found"))
             mock_get_db.return_value = mock_db
@@ -342,7 +342,7 @@ class TestMemoryStats:
 
     def test_get_memory_stats(self, authenticated_client):
         """Test getting memory statistics"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(
                 return_value={"total_documents": 100, "collection_name": "zantara_memories"}
@@ -355,7 +355,7 @@ class TestMemoryStats:
 
     def test_get_memory_stats_structure(self, authenticated_client):
         """Test memory stats response structure"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(return_value={"total_documents": 100})
             mock_get_db.return_value = mock_db
@@ -373,7 +373,7 @@ class TestMemoryInit:
 
     def test_initialize_memory_db(self, authenticated_client):
         """Test initializing memory vector DB"""
-        with patch("app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
+        with patch("backend.app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(return_value={"total_documents": 0})
             mock_init.return_value = mock_db
@@ -387,7 +387,7 @@ class TestMemoryInit:
 
     def test_initialize_memory_db_default_url(self, authenticated_client):
         """Test initializing memory DB with default URL"""
-        with patch("app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
+        with patch("backend.app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(return_value={"total_documents": 0})
             mock_init.return_value = mock_db
@@ -406,7 +406,7 @@ class TestMemoryDelete:
 
     def test_delete_memory(self, authenticated_client):
         """Test deleting memory"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.delete = AsyncMock(return_value=True)
             mock_get_db.return_value = mock_db
@@ -417,7 +417,7 @@ class TestMemoryDelete:
 
     def test_delete_memory_not_found(self, authenticated_client):
         """Test deleting non-existent memory"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.delete = AsyncMock(side_effect=Exception("Not found"))
             mock_get_db.return_value = mock_db

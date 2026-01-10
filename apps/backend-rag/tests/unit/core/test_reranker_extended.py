@@ -5,13 +5,13 @@ Extended unit tests for core.reranker module to improve coverage
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from core.reranker import ReRanker
+from backend.core.reranker import ReRanker
 
 
 @pytest.fixture
 def mock_settings():
     """Mock settings with API key"""
-    with patch("core.reranker.settings") as mock_settings:
+    with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_api_key"
         mock_settings.zerank_api_url = "https://api.zerank.com/rerank"
         yield mock_settings
@@ -26,7 +26,7 @@ def reranker_enabled(mock_settings):
 @pytest.fixture
 def reranker_disabled():
     """Create ReRanker instance without API key"""
-    with patch("core.reranker.settings") as mock_settings:
+    with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = None
         mock_settings.zerank_api_url = "https://api.zerank.com/rerank"
         return ReRanker()
@@ -44,7 +44,7 @@ class TestReRankerInit:
 
     def test_init_without_api_key(self):
         """Test initialization without API key"""
-        with patch("core.reranker.settings") as mock_settings:
+        with patch("backend.core.reranker.settings") as mock_settings:
             mock_settings.zerank_api_key = None
             mock_settings.zerank_api_url = "https://api.zerank.com/rerank"
             reranker = ReRanker()

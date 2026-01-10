@@ -244,7 +244,7 @@ class TestLRUCache:
 class TestCacheService:
     """Test suite for CacheService class"""
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_init_no_redis(self, mock_settings):
         """Test CacheService initialization without Redis"""
         mock_settings.redis_url = None
@@ -256,7 +256,7 @@ class TestCacheService:
         assert cache.stats == {"hits": 0, "misses": 0, "errors": 0}
         assert isinstance(cache._memory_cache, LRUCache)
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("redis.from_url")
     def test_init_with_redis_success(self, mock_redis_from_url, mock_settings):
         """Test CacheService initialization with Redis"""
@@ -270,7 +270,7 @@ class TestCacheService:
         assert cache.redis_available is True
         assert cache.redis_client == mock_redis_client
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("redis.from_url")
     def test_init_with_redis_failure(self, mock_redis_from_url, mock_settings):
         """Test CacheService falls back when Redis fails"""
@@ -282,7 +282,7 @@ class TestCacheService:
         assert cache.redis_available is False
         assert cache.redis_client is None
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_generate_key(self, mock_settings):
         """Test cache key generation"""
         mock_settings.redis_url = None
@@ -293,7 +293,7 @@ class TestCacheService:
         assert key.startswith("zantara:test:")
         assert len(key.split(":")[-1]) == CACHE_KEY_HASH_LENGTH
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_generate_key_deterministic(self, mock_settings):
         """Test that same args generate same key"""
         mock_settings.redis_url = None
@@ -304,7 +304,7 @@ class TestCacheService:
 
         assert key1 == key2
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_generate_key_different_args(self, mock_settings):
         """Test that different args generate different keys"""
         mock_settings.redis_url = None
@@ -315,7 +315,7 @@ class TestCacheService:
 
         assert key1 != key2
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_get_memory_cache_hit(self, mock_settings):
         """Test get() with memory cache hit"""
         mock_settings.redis_url = None
@@ -328,7 +328,7 @@ class TestCacheService:
         assert cache.stats["hits"] == 1
         assert cache.stats["misses"] == 0
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_get_memory_cache_miss(self, mock_settings):
         """Test get() with memory cache miss"""
         mock_settings.redis_url = None
@@ -340,7 +340,7 @@ class TestCacheService:
         assert cache.stats["hits"] == 0
         assert cache.stats["misses"] == 1
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("redis.from_url")
     def test_get_redis_cache_hit(self, mock_redis_from_url, mock_settings):
         """Test get() with Redis cache hit"""
@@ -356,7 +356,7 @@ class TestCacheService:
         assert result == "value1"
         assert cache.stats["hits"] == 1
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("redis.from_url")
     def test_get_redis_cache_miss(self, mock_redis_from_url, mock_settings):
         """Test get() with Redis cache miss"""
@@ -372,7 +372,7 @@ class TestCacheService:
         assert result is None
         assert cache.stats["misses"] == 1
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_set_memory_cache(self, mock_settings):
         """Test set() with memory cache"""
         mock_settings.redis_url = None
@@ -383,7 +383,7 @@ class TestCacheService:
         assert result is True
         assert cache.get("key1") == "value1"
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("redis.from_url")
     def test_set_redis_cache(self, mock_redis_from_url, mock_settings):
         """Test set() with Redis cache"""
@@ -398,7 +398,7 @@ class TestCacheService:
         assert result is True
         mock_redis_client.setex.assert_called_once()
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_delete_memory_cache(self, mock_settings):
         """Test delete() with memory cache"""
         mock_settings.redis_url = None
@@ -410,7 +410,7 @@ class TestCacheService:
         assert result is True
         assert cache.get("key1") is None
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("redis.from_url")
     def test_delete_redis_cache(self, mock_redis_from_url, mock_settings):
         """Test delete() with Redis cache"""
@@ -425,7 +425,7 @@ class TestCacheService:
         assert result is True
         mock_redis_client.delete.assert_called_once_with("key1")
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_clear_pattern_memory(self, mock_settings):
         """Test clear_pattern() with memory cache"""
         mock_settings.redis_url = None
@@ -439,7 +439,7 @@ class TestCacheService:
 
         assert count == 2
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_get_stats_no_operations(self, mock_settings):
         """Test get_stats() with no operations"""
         mock_settings.redis_url = None
@@ -454,7 +454,7 @@ class TestCacheService:
         assert stats["errors"] == 0
         assert stats["hit_rate"] == "0.0%"
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_get_stats_with_operations(self, mock_settings):
         """Test get_stats() after cache operations"""
         mock_settings.redis_url = None
@@ -470,7 +470,7 @@ class TestCacheService:
         assert stats["misses"] == 1
         assert stats["hit_rate"] == "50.0%"
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_get_error_handling(self, mock_settings):
         """Test get() error handling"""
         mock_settings.redis_url = None
@@ -489,7 +489,7 @@ class TestCacheDecorator:
     """Test suite for @cached decorator"""
 
     @pytest.mark.asyncio
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     async def test_cached_decorator_first_call(self, mock_settings):
         """Test cached decorator on first call (cache miss)"""
         mock_settings.redis_url = None
@@ -508,7 +508,7 @@ class TestCacheDecorator:
         assert call_count == 1
 
     @pytest.mark.asyncio
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     async def test_cached_decorator_second_call(self, mock_settings):
         """Test cached decorator on second call (cache hit)"""
         mock_settings.redis_url = None
@@ -529,7 +529,7 @@ class TestCacheDecorator:
         assert call_count == 1  # Function called only once
 
     @pytest.mark.asyncio
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     async def test_cached_with_different_args(self, mock_settings):
         """Test cached decorator with different arguments"""
         mock_settings.redis_url = None
@@ -555,7 +555,7 @@ class TestCacheDecorator:
 class TestUtilityFunctions:
     """Test suite for utility functions"""
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_get_cache_service_singleton(self, mock_settings):
         """Test get_cache_service returns singleton"""
         mock_settings.redis_url = None
@@ -573,7 +573,7 @@ class TestUtilityFunctions:
         # Cleanup
         cache_module._cache_instance = None
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     def test_invalidate_cache(self, mock_settings):
         """Test invalidate_cache function"""
         mock_settings.redis_url = None

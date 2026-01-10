@@ -25,8 +25,8 @@ class TestCrossOracleSynthesisIntegration:
     @pytest.mark.asyncio
     async def test_cross_oracle_synthesis_init(self):
         """Test CrossOracleSynthesisService initialization"""
-        with patch("services.search_service.SearchService") as mock_search_service:
-            from services.cross_oracle_synthesis_service import CrossOracleSynthesisService
+        with patch("backend.services.search_service.SearchService") as mock_search_service:
+            from backend.services.cross_oracle_synthesis_service import CrossOracleSynthesisService
 
             service = CrossOracleSynthesisService(mock_search_service.return_value)
             assert service is not None
@@ -35,7 +35,7 @@ class TestCrossOracleSynthesisIntegration:
     @pytest.mark.asyncio
     async def test_synthesize_knowledge(self):
         """Test synthesizing knowledge from multiple sources"""
-        with patch("services.search_service.SearchService") as mock_search_service:
+        with patch("backend.services.search_service.SearchService") as mock_search_service:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(
                 return_value={
@@ -50,12 +50,12 @@ class TestCrossOracleSynthesisIntegration:
             )
             mock_search_service.return_value = mock_service
 
-            with patch("services.cross_oracle_synthesis_service.ZantaraAIClient") as mock_ai:
+            with patch("backend.services.cross_oracle_synthesis_service.ZantaraAIClient") as mock_ai:
                 mock_ai_instance = MagicMock()
                 mock_ai_instance.generate_response = AsyncMock(return_value="Synthesized answer")
                 mock_ai.return_value = mock_ai_instance
 
-                from services.cross_oracle_synthesis_service import CrossOracleSynthesisService
+                from backend.services.cross_oracle_synthesis_service import CrossOracleSynthesisService
 
                 service = CrossOracleSynthesisService(mock_service)
                 result = await service.synthesize_knowledge(

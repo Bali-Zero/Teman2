@@ -40,7 +40,7 @@ class TestConversationsSave:
 
     def test_save_conversation_valid_simple(self, authenticated_client):
         """Test saving simple conversation"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {"success": True, "conversation_id": 123, "messages_saved": 2}
 
             response = authenticated_client.post(
@@ -57,7 +57,7 @@ class TestConversationsSave:
 
     def test_save_conversation_with_session_id(self, authenticated_client):
         """Test saving conversation with session ID"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {
                 "success": True,
                 "conversation_id": 456,
@@ -80,7 +80,7 @@ class TestConversationsSave:
 
     def test_save_conversation_with_metadata(self, authenticated_client):
         """Test saving conversation with metadata"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {"success": True, "conversation_id": 789, "messages_saved": 3}
 
             response = authenticated_client.post(
@@ -98,7 +98,7 @@ class TestConversationsSave:
 
     def test_save_conversation_with_crm_integration(self, authenticated_client):
         """Test conversation save with CRM auto-population"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {
                 "success": True,
                 "conversation_id": 111,
@@ -197,7 +197,7 @@ class TestConversationsSave:
 
     def test_save_conversation_special_characters(self, authenticated_client):
         """Test with special characters in content"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {"success": True, "conversation_id": 999}
 
             response = authenticated_client.post(
@@ -214,7 +214,7 @@ class TestConversationsSave:
 
     def test_save_conversation_unicode(self, authenticated_client):
         """Test with unicode characters"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {"success": True, "conversation_id": 888}
 
             response = authenticated_client.post(
@@ -255,7 +255,7 @@ class TestConversationsHistory:
 
     def test_get_history_default(self, authenticated_client):
         """Test getting conversation history with defaults"""
-        with patch("app.routers.conversations.get_conversation_history") as mock_get:
+        with patch("backend.app.routers.conversations.get_conversation_history") as mock_get:
             mock_get.return_value = [
                 {
                     "id": 1,
@@ -271,7 +271,7 @@ class TestConversationsHistory:
 
     def test_get_history_with_limit(self, authenticated_client):
         """Test with custom limit"""
-        with patch("app.routers.conversations.get_conversation_history") as mock_get:
+        with patch("backend.app.routers.conversations.get_conversation_history") as mock_get:
             mock_get.return_value = []
 
             response = authenticated_client.get(
@@ -282,7 +282,7 @@ class TestConversationsHistory:
 
     def test_get_history_with_session_id(self, authenticated_client):
         """Test filtering by session ID"""
-        with patch("app.routers.conversations.get_conversation_history") as mock_get:
+        with patch("backend.app.routers.conversations.get_conversation_history") as mock_get:
             mock_get.return_value = []
 
             response = authenticated_client.get(
@@ -310,7 +310,7 @@ class TestConversationsHistory:
 
     def test_get_history_empty_result(self, authenticated_client):
         """Test when user has no conversation history"""
-        with patch("app.routers.conversations.get_conversation_history") as mock_get:
+        with patch("backend.app.routers.conversations.get_conversation_history") as mock_get:
             mock_get.return_value = []
 
             response = authenticated_client.get("/api/bali-zero/conversations/history")
@@ -333,7 +333,7 @@ class TestConversationsStats:
 
     def test_get_stats_success(self, authenticated_client):
         """Test getting conversation statistics"""
-        with patch("app.routers.conversations.get_conversation_stats") as mock_stats:
+        with patch("backend.app.routers.conversations.get_conversation_stats") as mock_stats:
             mock_stats.return_value = {
                 "total_conversations": 10,
                 "total_messages": 50,
@@ -348,7 +348,7 @@ class TestConversationsStats:
 
     def test_get_stats_no_data(self, authenticated_client):
         """Test stats when user has no conversations"""
-        with patch("app.routers.conversations.get_conversation_stats") as mock_stats:
+        with patch("backend.app.routers.conversations.get_conversation_stats") as mock_stats:
             mock_stats.return_value = {"total_conversations": 0, "total_messages": 0}
 
             response = authenticated_client.get("/api/bali-zero/conversations/stats")
@@ -368,7 +368,7 @@ class TestConversationsClear:
 
     def test_clear_all_conversations(self, authenticated_client):
         """Test clearing all user conversations"""
-        with patch("app.routers.conversations.clear_conversation_history") as mock_clear:
+        with patch("backend.app.routers.conversations.clear_conversation_history") as mock_clear:
             mock_clear.return_value = {"deleted": 10}
 
             response = authenticated_client.delete("/api/bali-zero/conversations/clear")
@@ -377,7 +377,7 @@ class TestConversationsClear:
 
     def test_clear_by_session_id(self, authenticated_client):
         """Test clearing specific session"""
-        with patch("app.routers.conversations.clear_conversation_history") as mock_clear:
+        with patch("backend.app.routers.conversations.clear_conversation_history") as mock_clear:
             mock_clear.return_value = {"deleted": 5}
 
             response = authenticated_client.delete(
@@ -388,7 +388,7 @@ class TestConversationsClear:
 
     def test_clear_no_conversations(self, authenticated_client):
         """Test clearing when no conversations exist"""
-        with patch("app.routers.conversations.clear_conversation_history") as mock_clear:
+        with patch("backend.app.routers.conversations.clear_conversation_history") as mock_clear:
             mock_clear.return_value = {"deleted": 0}
 
             response = authenticated_client.delete("/api/bali-zero/conversations/clear")
@@ -397,7 +397,7 @@ class TestConversationsClear:
 
     def test_clear_invalid_session_id(self, authenticated_client):
         """Test with non-existent session ID"""
-        with patch("app.routers.conversations.clear_conversation_history") as mock_clear:
+        with patch("backend.app.routers.conversations.clear_conversation_history") as mock_clear:
             mock_clear.return_value = {"deleted": 0}
 
             response = authenticated_client.delete(
@@ -415,8 +415,8 @@ class TestConversationsClear:
     def test_clear_is_permanent(self, authenticated_client):
         """Test that clear operation is permanent"""
         with (
-            patch("app.routers.conversations.clear_conversation_history") as mock_clear,
-            patch("app.routers.conversations.get_conversation_history") as mock_get,
+            patch("backend.app.routers.conversations.clear_conversation_history") as mock_clear,
+            patch("backend.app.routers.conversations.get_conversation_history") as mock_get,
         ):
             mock_clear.return_value = {"deleted": 5}
             mock_get.return_value = []
@@ -439,7 +439,7 @@ class TestConversationsSecurity:
 
     def test_user_isolation(self, authenticated_client):
         """Test that users can only access their own conversations"""
-        with patch("app.routers.conversations.get_conversation_history") as mock_get:
+        with patch("backend.app.routers.conversations.get_conversation_history") as mock_get:
             # Should only return current user's data
             mock_get.return_value = []
 
@@ -449,7 +449,7 @@ class TestConversationsSecurity:
 
     def test_pii_sanitization(self, authenticated_client):
         """Test PII is properly handled"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {"success": True, "conversation_id": 777}
 
             response = authenticated_client.post(
@@ -468,7 +468,7 @@ class TestConversationsSecurity:
 
     def test_xss_prevention(self, authenticated_client):
         """Test XSS attack prevention"""
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {"success": True, "conversation_id": 666}
 
             response = authenticated_client.post(
@@ -496,7 +496,7 @@ class TestConversationsPerformance:
                 {"role": "user" if i % 2 == 0 else "assistant", "content": f"Message {i}" * 10}
             )
 
-        with patch("app.routers.conversations.save_conversation_to_db") as mock_save:
+        with patch("backend.app.routers.conversations.save_conversation_to_db") as mock_save:
             mock_save.return_value = {"success": True, "conversation_id": 555}
 
             start = time.time()
@@ -513,7 +513,7 @@ class TestConversationsPerformance:
         """Test history retrieval speed"""
         import time
 
-        with patch("app.routers.conversations.get_conversation_history") as mock_get:
+        with patch("backend.app.routers.conversations.get_conversation_history") as mock_get:
             # Simulate large history
             mock_get.return_value = [
                 {"id": i, "role": "user", "content": f"Message {i}"} for i in range(100)

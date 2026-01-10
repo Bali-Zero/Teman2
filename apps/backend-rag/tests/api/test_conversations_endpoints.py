@@ -33,7 +33,7 @@ class TestConversations:
 
     def test_save_conversation(self, authenticated_client):
         """Test POST /api/bali-zero/conversations/save"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchval = AsyncMock(return_value=1)
@@ -58,7 +58,7 @@ class TestConversations:
 
     def test_get_conversation_history(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/history"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -73,7 +73,7 @@ class TestConversations:
 
     def test_clear_conversation_history(self, authenticated_client):
         """Test DELETE /api/bali-zero/conversations/clear"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value="DELETE 1")
@@ -86,7 +86,7 @@ class TestConversations:
 
     def test_get_conversation_stats(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/stats"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={"total_conversations": 10, "total_messages": 100}
@@ -99,7 +99,7 @@ class TestConversations:
 
     def test_get_conversation_history_with_session_id(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/history with session_id filter"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -119,7 +119,7 @@ class TestConversations:
 
     def test_get_conversation_history_no_conversations(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/history when no conversations exist"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -135,7 +135,7 @@ class TestConversations:
 
     def test_get_conversation_history_database_unavailable(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/history when database is unavailable"""
-        with patch("app.dependencies.get_database_pool", return_value=None):
+        with patch("backend.app.dependencies.get_database_pool", return_value=None):
             response = authenticated_client.get("/api/bali-zero/conversations/history")
 
             assert response.status_code == 200
@@ -145,7 +145,7 @@ class TestConversations:
 
     def test_clear_conversation_history_with_session_id(self, authenticated_client):
         """Test DELETE /api/bali-zero/conversations/clear with session_id filter"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value="DELETE 1")
@@ -160,7 +160,7 @@ class TestConversations:
 
     def test_list_conversations(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/list"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -184,7 +184,7 @@ class TestConversations:
 
     def test_get_conversation_by_id(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/{conversation_id}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -205,7 +205,7 @@ class TestConversations:
 
     def test_get_conversation_not_found(self, authenticated_client):
         """Test GET /api/bali-zero/conversations/{conversation_id} when conversation doesn't exist"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -218,7 +218,7 @@ class TestConversations:
 
     def test_delete_conversation(self, authenticated_client):
         """Test DELETE /api/bali-zero/conversations/{conversation_id}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value="DELETE 1")

@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.core.config import Settings
+from backend.app.core.config import Settings
 
 
 def test_embedding_dimension_openai():
@@ -55,7 +55,7 @@ def test_jwt_secret_key_default_in_development():
 
     with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=False):
         # Create Settings instance - validator will be called automatically
-        from app.core.config import Settings
+        from backend.app.core.config import Settings
 
         # When jwt_secret_key is None and ENVIRONMENT=development, should get default
         settings = Settings(jwt_secret_key=None)
@@ -69,7 +69,7 @@ def test_jwt_secret_key_fails_in_production():
     from unittest.mock import patch
 
     with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=False):
-        from app.core.config import Settings
+        from backend.app.core.config import Settings
 
         with pytest.raises(ValueError, match="JWT_SECRET_KEY must be set"):
             Settings(jwt_secret_key=None)
@@ -81,7 +81,7 @@ def test_api_keys_default_in_development():
     from unittest.mock import patch
 
     with patch.dict(os.environ, {"ENVIRONMENT": "development"}, clear=False):
-        from app.core.config import Settings
+        from backend.app.core.config import Settings
 
         # When api_keys is None and ENVIRONMENT=development, should get default
         settings = Settings(api_keys=None)
@@ -94,7 +94,7 @@ def test_api_keys_fails_in_production():
     from unittest.mock import patch
 
     with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=False):
-        from app.core.config import Settings
+        from backend.app.core.config import Settings
 
         with pytest.raises(ValueError, match="API_KEYS must be set"):
             Settings(api_keys=None)
@@ -107,7 +107,7 @@ def test_openai_api_key_warning_in_production():
     from unittest.mock import patch
 
     with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=False):
-        from app.core.config import Settings
+        from backend.app.core.config import Settings
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -123,7 +123,7 @@ def test_qdrant_url_fails_in_production():
     from unittest.mock import patch
 
     with patch.dict(os.environ, {"ENVIRONMENT": "production"}, clear=False):
-        from app.core.config import Settings
+        from backend.app.core.config import Settings
 
         with pytest.raises(ValueError, match="QDRANT_URL must be set"):
             Settings.validate_qdrant_url(None)

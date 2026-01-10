@@ -24,7 +24,7 @@ class TestCitationServiceIntegration:
     @pytest.fixture
     def service(self):
         """Create CitationService instance"""
-        from services.citation_service import CitationService
+        from backend.services.citation_service import CitationService
 
         return CitationService()
 

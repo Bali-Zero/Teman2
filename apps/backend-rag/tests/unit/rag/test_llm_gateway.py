@@ -24,7 +24,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
-from services.rag.agentic.llm_gateway import (
+from backend.services.rag.agentic.llm_gateway import (
     TIER_FALLBACK,
     TIER_FLASH,
     TIER_LITE,
@@ -54,7 +54,7 @@ def mock_settings():
 
 @pytest.fixture
 def mock_genai_client():
-    """Mock GenAIClient from llm.genai_client."""
+    """Mock GenAIClient from backend.llm.genai_client."""
     mock_client = MagicMock()
     mock_client.is_available = True
 
@@ -84,7 +84,7 @@ def mock_genai_client():
 def mock_trace_span():
     """Mock trace_span to use nullcontext to avoid generator issues."""
     with patch(
-        "services.rag.agentic.llm_gateway.trace_span",
+        "backend.services.rag.agentic.llm_gateway.trace_span",
         side_effect=lambda *args, **kwargs: nullcontext(),
     ):
         yield
@@ -93,10 +93,10 @@ def mock_trace_span():
 @pytest.fixture
 def llm_gateway(mock_settings, mock_genai_client):
     """Create LLMGateway instance with mocked dependencies."""
-    with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+    with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
         # Patch get_genai_client which is called by LLMGateway.__init__
         with patch(
-            "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+            "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
         ):
             gateway = LLMGateway(gemini_tools=[])
             return gateway
@@ -107,9 +107,9 @@ class TestLLMGatewayInitialization:
 
     def test_gateway_initializes_successfully(self, mock_settings, mock_genai_client):
         """Test that LLMGateway initializes with GenAI client."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
             with patch(
-                "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
             ):
                 gateway = LLMGateway()
 
@@ -128,9 +128,9 @@ class TestLLMGatewayInitialization:
     def test_gateway_accepts_gemini_tools(self, mock_settings, mock_genai_client):
         """Test that gateway accepts and stores Gemini tool declarations."""
         fake_tools = [{"name": "test_tool", "description": "Test"}]
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
             with patch(
-                "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
             ):
                 gateway = LLMGateway(gemini_tools=fake_tools)
 
@@ -335,7 +335,7 @@ class TestLLMGatewayOpenRouter:
         assert llm_gateway._openrouter_client is None
 
         # Mock OpenRouterClient
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
             mock_client_instance = MagicMock()
             MockClient.return_value = mock_client_instance
 
@@ -349,7 +349,7 @@ class TestLLMGatewayOpenRouter:
     @pytest.mark.asyncio
     async def test_openrouter_client_cached_after_first_load(self, llm_gateway):
         """Test that OpenRouter client is cached after first initialization."""
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
             mock_client_instance = MagicMock()
             MockClient.return_value = mock_client_instance
 
@@ -560,8 +560,8 @@ class TestLLMGatewayCoverageImprovements:
     @pytest.mark.asyncio
     async def test_genai_client_not_available_init(self, mock_settings):
         """Test initialization when GenAI client is not available (lines 121-123)."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
-            with patch("services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+            with patch("backend.services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
                 mock_client = MagicMock()
                 mock_client.is_available = False  # Client exists but not available
                 mock_get.return_value = mock_client
@@ -572,8 +572,8 @@ class TestLLMGatewayCoverageImprovements:
     @pytest.mark.asyncio
     async def test_genai_client_init_exception(self, mock_settings):
         """Test initialization when get_genai_client raises exception (line 123)."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
-            with patch("services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+            with patch("backend.services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
                 mock_get.side_effect = Exception("Initialization failed")
 
                 gateway = LLMGateway(gemini_tools=[])
@@ -597,7 +597,7 @@ class TestLLMGatewayCoverageImprovements:
         # Reset the cached client
         llm_gateway._openrouter_client = None
 
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
             MockClient.side_effect = httpx.HTTPError("Connection failed")
 
             result = llm_gateway._get_openrouter_client()
@@ -608,7 +608,7 @@ class TestLLMGatewayCoverageImprovements:
         """Test OpenRouter initialization with ValueError."""
         llm_gateway._openrouter_client = None
 
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as MockClient:
             MockClient.side_effect = ValueError("Invalid configuration")
 
             result = llm_gateway._get_openrouter_client()
@@ -617,8 +617,8 @@ class TestLLMGatewayCoverageImprovements:
     @pytest.mark.asyncio
     async def test_send_message_genai_not_available(self, mock_settings):
         """Test send_message when GenAI client is not available (line 328, 454-455)."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
-            with patch("services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+            with patch("backend.services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
                 mock_client = MagicMock()
                 mock_client.is_available = False
                 mock_get.return_value = mock_client
@@ -690,8 +690,8 @@ class TestLLMGatewayCoverageImprovements:
 
     def test_create_chat_client_not_available(self, mock_settings):
         """Test create_chat_with_history when client not available (lines 518-519)."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
-            with patch("services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+            with patch("backend.services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
                 mock_client = MagicMock()
                 mock_client.is_available = False
                 mock_get.return_value = mock_client
@@ -732,8 +732,8 @@ class TestLLMGatewayCoverageImprovements:
     @pytest.mark.asyncio
     async def test_health_check_genai_not_available(self, mock_settings):
         """Test health_check when GenAI client is not available (line 590)."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
-            with patch("services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+            with patch("backend.services.rag.agentic.llm_gateway.get_genai_client") as mock_get:
                 mock_client = MagicMock()
                 mock_client.is_available = False
                 mock_get.return_value = mock_client
@@ -797,7 +797,7 @@ class TestLLMGatewayCoverageImprovements:
         ]
 
         # Mock types to raise exception on ToolConfig
-        with patch("services.rag.agentic.llm_gateway.types") as mock_types:
+        with patch("backend.services.rag.agentic.llm_gateway.types") as mock_types:
             mock_types.GenerateContentConfig = MagicMock()
             mock_types.FunctionDeclaration = MagicMock()
             mock_types.Schema = MagicMock()

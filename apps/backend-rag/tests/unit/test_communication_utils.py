@@ -3,7 +3,7 @@ Unit Tests for Communication Utilities
 Tests for language detection, procedural questions, and emotional content detection
 """
 
-from services.communication import (
+from backend.services.communication import (
     detect_language,
     get_emotional_response_instruction,
     get_language_instruction,

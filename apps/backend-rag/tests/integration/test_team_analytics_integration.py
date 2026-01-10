@@ -33,7 +33,7 @@ class TestTeamAnalyticsIntegration:
     @pytest.mark.asyncio
     async def test_team_analytics_init(self, mock_db_pool):
         """Test TeamAnalyticsService initialization"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         assert service is not None
@@ -53,7 +53,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.analyze_work_patterns(user_email="test@example.com", days=30)
@@ -66,7 +66,7 @@ class TestTeamAnalyticsIntegration:
         """Test analyzing work patterns with no sessions"""
         mock_db_pool.fetch = AsyncMock(return_value=[])
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.analyze_work_patterns(user_email="test@example.com", days=30)
@@ -89,7 +89,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.analyze_workload_balance(days=30)
@@ -109,7 +109,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.identify_optimal_hours(user_email="test@example.com", days=30)
@@ -135,7 +135,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.generate_team_insights(days=30)
@@ -158,7 +158,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.calculate_productivity_scores(days=7)
@@ -186,7 +186,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.detect_burnout_signals(user_email="user1@example.com")
@@ -208,7 +208,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.analyze_performance_trends(user_email="user1@example.com", weeks=4)
@@ -231,7 +231,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.analyze_work_patterns(user_email=None, days=30)
@@ -251,7 +251,7 @@ class TestTeamAnalyticsIntegration:
             ]
         )
 
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=mock_db_pool)
         result = await service.identify_optimal_hours(user_email=None, days=30)

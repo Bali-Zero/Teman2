@@ -41,9 +41,9 @@ class TestMemoryServicePostgresIntegration:
     async def service(self, mock_db_pool):
         """Create MemoryServicePostgres instance"""
         with patch(
-            "services.memory_service_postgres.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.memory_service_postgres.asyncpg.create_pool", return_value=mock_db_pool
         ):
-            from services.memory.memory_service_postgres import MemoryServicePostgres
+            from backend.services.memory.memory_service_postgres import MemoryServicePostgres
 
             service = MemoryServicePostgres()
             service.pool = mock_db_pool
@@ -61,7 +61,7 @@ class TestMemoryServicePostgresIntegration:
     async def test_connect(self, service, mock_db_pool):
         """Test connecting to PostgreSQL"""
         with patch(
-            "services.memory_service_postgres.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.memory_service_postgres.asyncpg.create_pool", return_value=mock_db_pool
         ):
             await service.connect()
 
@@ -72,7 +72,7 @@ class TestMemoryServicePostgresIntegration:
         """Test getting memory from cache"""
         from datetime import datetime
 
-        from services.memory.memory_service_postgres import UserMemory
+        from backend.services.memory.memory_service_postgres import UserMemory
 
         memory = UserMemory(
             user_id="test-user",
@@ -155,7 +155,7 @@ class TestMemoryServicePostgresIntegration:
     @pytest.mark.asyncio
     async def test_get_memory_in_memory_fallback(self):
         """Test getting memory with in-memory fallback"""
-        from services.memory.memory_service_postgres import MemoryServicePostgres
+        from backend.services.memory.memory_service_postgres import MemoryServicePostgres
 
         service = MemoryServicePostgres(database_url=None)
         service.use_postgres = False

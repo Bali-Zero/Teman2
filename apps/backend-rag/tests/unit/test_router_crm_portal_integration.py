@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.crm_portal_integration import (
+from backend.app.routers.crm_portal_integration import (
     SendInviteRequest,
     TeamMessageRequest,
     get_client_messages,

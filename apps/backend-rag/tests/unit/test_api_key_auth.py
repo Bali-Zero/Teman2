@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.services.api_key_auth import APIKeyAuth
+from backend.app.services.api_key_auth import APIKeyAuth
 
 # ============================================================================
 # Fixtures
@@ -25,7 +25,7 @@ from app.services.api_key_auth import APIKeyAuth
 @pytest.fixture
 def api_key_auth():
     """Create APIKeyAuth instance with mocked settings"""
-    with patch("app.services.api_key_auth.settings") as mock_settings:
+    with patch("backend.app.services.api_key_auth.settings") as mock_settings:
         mock_settings.api_keys = "zantara-secret-2024,zantara-test-2024"
         return APIKeyAuth()
 
@@ -33,7 +33,7 @@ def api_key_auth():
 @pytest.fixture
 def fresh_api_key_auth():
     """Create fresh APIKeyAuth instance for tests that need clean state"""
-    with patch("app.services.api_key_auth.settings") as mock_settings:
+    with patch("backend.app.services.api_key_auth.settings") as mock_settings:
         mock_settings.api_keys = "zantara-secret-2024,zantara-test-2024"
         return APIKeyAuth()
 
@@ -91,7 +91,7 @@ def test_init_key_stats_structure(api_key_auth):
 
 def test_init_logs_initialization(fresh_api_key_auth):
     """Test that initialization logs correct message"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         service = APIKeyAuth()
         mock_logger.info.assert_called_once()
         assert "API Key service initialized" in mock_logger.info.call_args[0][0]
@@ -210,7 +210,7 @@ def test_validate_api_key_none_returns_none(api_key_auth):
 
 def test_validate_api_key_logs_no_key_warning(api_key_auth):
     """Test that no API key logs warning"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key(None)
         mock_logger.warning.assert_called_once()
         assert "No API key provided" in mock_logger.warning.call_args[0][0]
@@ -218,7 +218,7 @@ def test_validate_api_key_logs_no_key_warning(api_key_auth):
 
 def test_validate_api_key_logs_invalid_key_warning(api_key_auth):
     """Test that invalid API key logs warning"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key("invalid-key-123")
         mock_logger.warning.assert_called_once()
         assert "Invalid API key provided" in mock_logger.warning.call_args[0][0]
@@ -226,7 +226,7 @@ def test_validate_api_key_logs_invalid_key_warning(api_key_auth):
 
 def test_validate_api_key_logs_valid_key_debug(api_key_auth):
     """Test that valid API key logs debug message"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key("zantara-secret-2024")
         mock_logger.debug.assert_called_once()
         assert "Valid API key used" in mock_logger.debug.call_args[0][0]
@@ -244,7 +244,7 @@ def test_validate_api_key_invalid_does_not_increment_stats(api_key_auth):
 
 def test_validate_api_key_truncates_key_in_log(api_key_auth):
     """Test that invalid API key is truncated in log"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key("very-long-invalid-key-that-should-be-truncated")
         mock_logger.warning.assert_called_once()
         # Should only show first 10 chars
@@ -510,7 +510,7 @@ def test_add_key_duplicate_does_not_modify(api_key_auth):
 
 def test_add_key_duplicate_logs_warning(api_key_auth):
     """Test that adding duplicate key logs warning"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.add_key("zantara-secret-2024", role="developer")
         mock_logger.warning.assert_called_once()
         assert "Attempt to add existing API key" in mock_logger.warning.call_args[0][0]
@@ -518,7 +518,7 @@ def test_add_key_duplicate_logs_warning(api_key_auth):
 
 def test_add_key_success_logs_info(api_key_auth):
     """Test that successfully adding key logs info"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.add_key("new-key-123", role="developer")
         mock_logger.info.assert_called_once()
         assert "Added new API key" in mock_logger.info.call_args[0][0]
@@ -585,7 +585,7 @@ def test_remove_key_nonexistent_returns_false(api_key_auth):
 
 def test_remove_key_nonexistent_logs_warning(api_key_auth):
     """Test that removing nonexistent key logs warning"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.remove_key("nonexistent-key")
         mock_logger.warning.assert_called_once()
         assert "Attempt to remove non-existent API key" in mock_logger.warning.call_args[0][0]
@@ -595,7 +595,7 @@ def test_remove_key_success_logs_info(api_key_auth):
     """Test that successfully removing key logs info"""
     api_key_auth.add_key("temp-key-123", role="temp")
 
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.remove_key("temp-key-123")
         mock_logger.info.assert_called_once()
         assert "Removed API key" in mock_logger.info.call_args[0][0]
@@ -721,7 +721,7 @@ def test_service_stats_match_individual_stats(api_key_auth):
 
 def test_empty_string_api_key_logs_warning(api_key_auth):
     """Test that empty string API key logs warning"""
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key("")
         mock_logger.warning.assert_called_once()
         assert "No API key provided" in mock_logger.warning.call_args[0][0]
@@ -778,7 +778,7 @@ def test_log_truncates_long_keys(api_key_auth):
     """Test that logs truncate long keys for security"""
     long_key = "a" * 50
 
-    with patch("app.services.api_key_auth.logger") as mock_logger:
+    with patch("backend.app.services.api_key_auth.logger") as mock_logger:
         api_key_auth.validate_api_key(long_key)
         # Should log with truncation
         log_message = mock_logger.warning.call_args[0][0]

@@ -21,7 +21,7 @@ if str(backend_path) not in sys.path:
 @pytest_asyncio.fixture(scope="function")
 async def golden_answer_service(db_pool):
     """Create GoldenAnswerService instance with test database"""
-    from services.misc.golden_answer_service import GoldenAnswerService
+    from backend.services.misc.golden_answer_service import GoldenAnswerService
 
     # Get database URL from pool
     database_url = str(db_pool._connection_kwargs["dsn"])

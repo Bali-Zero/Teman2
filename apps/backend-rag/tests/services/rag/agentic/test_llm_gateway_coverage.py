@@ -36,14 +36,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../../../backend"
 with patch.dict(
     "sys.modules",
     {
-        "app.core.config": MagicMock(),
-        "app.core.circuit_breaker": MagicMock(),
-        "app.core.error_classification": MagicMock(),
-        "app.metrics": MagicMock(),
-        "app.utils.tracing": MagicMock(),
-        "llm.genai_client": MagicMock(),
-        "services.llm_clients.openrouter_client": MagicMock(),
-        "services.llm_clients.pricing": MagicMock(),
+        "backend.app.core.config": MagicMock(),
+        "backend.app.core.circuit_breaker": MagicMock(),
+        "backend.app.core.error_classification": MagicMock(),
+        "backend.app.metrics": MagicMock(),
+        "backend.app.utils.tracing": MagicMock(),
+        "backend.llm.genai_client": MagicMock(),
+        "backend.services.llm_clients.openrouter_client": MagicMock(),
+        "backend.services.llm_clients.pricing": MagicMock(),
     },
 ):
     # Import the constants we need
@@ -53,7 +53,7 @@ with patch.dict(
     TIER_FALLBACK = 3
 
     # Now import the class after mocking dependencies
-    from services.rag.agentic.llm_gateway import LLMGateway
+    from backend.services.rag.agentic.llm_gateway import LLMGateway
 
 
 @pytest.fixture
@@ -106,8 +106,8 @@ def sample_images():
 def llm_gateway(mock_genai_client, sample_gemini_tools):
     """Create LLMGateway instance with mocked dependencies."""
     with (
-        patch("services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client),
-        patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
+        patch("backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client),
+        patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
     ):
         gateway = LLMGateway(gemini_tools=sample_gemini_tools)
         gateway._genai_client = mock_genai_client
@@ -122,9 +122,9 @@ class TestLLMGatewayInitialization:
         """Test initialization without Gemini tools."""
         with (
             patch(
-                "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
             ),
-            patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
         ):
             gateway = LLMGateway()
             assert gateway.gemini_tools == []
@@ -138,16 +138,16 @@ class TestLLMGatewayInitialization:
         """Test initialization with Gemini tools."""
         with (
             patch(
-                "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+                "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
             ),
-            patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
         ):
             gateway = LLMGateway(gemini_tools=sample_gemini_tools)
             assert gateway.gemini_tools == sample_gemini_tools
 
     def test_init_genai_unavailable(self):
         """Test initialization when GenAI client is not available."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", False):
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", False):
             gateway = LLMGateway()
             assert gateway._genai_client is None
             assert gateway._available is False
@@ -155,9 +155,9 @@ class TestLLMGatewayInitialization:
     def test_init_genai_exception(self):
         """Test initialization when GenAI client raises exception."""
         with (
-            patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True),
             patch(
-                "services.rag.agentic.llm_gateway.get_genai_client",
+                "backend.services.rag.agentic.llm_gateway.get_genai_client",
                 side_effect=Exception("API key error"),
             ),
         ):
@@ -219,9 +219,9 @@ class TestCircuitBreaker:
             circuit.record_success()
         assert not circuit.is_open()
 
-    @patch("services.rag.agentic.llm_gateway.ErrorClassifier")
-    @patch("services.rag.agentic.llm_gateway.get_error_context")
-    @patch("services.rag.agentic.llm_gateway.logger")
+    @patch("backend.services.rag.agentic.llm_gateway.ErrorClassifier")
+    @patch("backend.services.rag.agentic.llm_gateway.get_error_context")
+    @patch("backend.services.rag.agentic.llm_gateway.logger")
     def test_record_failure(
         self, mock_logger, mock_get_error_context, mock_error_classifier, llm_gateway
     ):
@@ -271,7 +271,7 @@ class TestFallbackChain:
 class TestOpenRouterIntegration:
     """Test OpenRouter client integration."""
 
-    @patch("services.rag.agentic.llm_gateway.OpenRouterClient")
+    @patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient")
     def test_get_openrouter_client_new(self, mock_openrouter_class, llm_gateway):
         """Test lazy loading OpenRouter client."""
         mock_client = MagicMock()
@@ -281,7 +281,7 @@ class TestOpenRouterIntegration:
         assert client == mock_client
         mock_openrouter_class.assert_called_once_with(default_tier=llm_gateway.ModelTier.RAG)
 
-    @patch("services.rag.agentic.llm_gateway.OpenRouterClient")
+    @patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient")
     def test_get_openrouter_client_cached(self, mock_openrouter_class, llm_gateway):
         """Test caching of OpenRouter client."""
         mock_client = MagicMock()
@@ -294,8 +294,8 @@ class TestOpenRouterIntegration:
         assert client1 == client2
         mock_openrouter_class.assert_called_once()
 
-    @patch("services.rag.agentic.llm_gateway.OpenRouterClient")
-    @patch("services.rag.agentic.llm_gateway.logger")
+    @patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient")
+    @patch("backend.services.rag.agentic.llm_gateway.logger")
     def test_get_openrouter_client_error(self, mock_logger, mock_openrouter_class, llm_gateway):
         """Test OpenRouter client initialization error."""
         mock_openrouter_class.side_effect = httpx.HTTPError("Connection failed")
@@ -304,7 +304,7 @@ class TestOpenRouterIntegration:
         assert client is None
         mock_logger.error.assert_called_once()
 
-    @patch("services.rag.agentic.llm_gateway.OpenRouterClient")
+    @patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient")
     async def test_call_openrouter_success(self, mock_openrouter_class, llm_gateway):
         """Test successful OpenRouter call."""
         mock_client = AsyncMock()
@@ -321,7 +321,7 @@ class TestOpenRouterIntegration:
         assert response == "OpenRouter response"
         mock_client.complete.assert_called_once()
 
-    @patch("services.rag.agentic.llm_gateway.OpenRouterClient")
+    @patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient")
     async def test_call_openrouter_unavailable(self, mock_openrouter_class, llm_gateway):
         """Test OpenRouter call when client unavailable."""
         mock_openrouter_class.return_value = None
@@ -333,7 +333,7 @@ class TestOpenRouterIntegration:
 class TestSendMessage:
     """Test main send_message functionality."""
 
-    @patch("services.rag.agentic.llm_gateway.trace_span")
+    @patch("backend.services.rag.agentic.llm_gateway.trace_span")
     async def test_send_message_success(self, mock_trace, llm_gateway, mock_genai_client):
         """Test successful message sending."""
         # Mock the response
@@ -347,7 +347,7 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_token_usage.total_tokens = 30
@@ -362,7 +362,7 @@ class TestSendMessage:
             assert obj == mock_response
             assert usage == mock_token_usage
 
-    @patch("services.rag.agentic.llm_gateway.trace_span")
+    @patch("backend.services.rag.agentic.llm_gateway.trace_span")
     async def test_send_message_with_images(
         self, mock_trace, llm_gateway, mock_genai_client, sample_images
     ):
@@ -377,7 +377,7 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.002
             mock_create_usage.return_value = mock_token_usage
@@ -391,7 +391,7 @@ class TestSendMessage:
             call_args = mock_genai_client._client.aio.models.generate_content.call_args
             assert "contents" in call_args.kwargs
 
-    @patch("services.rag.agentic.llm_gateway.trace_span")
+    @patch("backend.services.rag.agentic.llm_gateway.trace_span")
     async def test_send_message_function_call(
         self, mock_trace, llm_gateway, mock_genai_client, sample_gemini_tools
     ):
@@ -407,7 +407,7 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -433,7 +433,7 @@ class TestSendMessage:
             ]
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -454,7 +454,7 @@ class TestSendMessage:
             ]
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -489,7 +489,7 @@ class TestSendMessage:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 
@@ -503,7 +503,7 @@ class TestSendMessage:
     async def test_send_message_cost_limit_reached(self, llm_gateway, mock_genai_client):
         """Test stopping fallback when cost limit reached."""
         # Mock expensive response
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.20  # Exceeds 0.10 limit
             mock_create_usage.return_value = mock_token_usage
@@ -634,7 +634,7 @@ class TestHealthCheck:
         """Test health check when all services are healthy."""
         mock_genai_client.generate_content = AsyncMock(return_value={"text": "pong"})
 
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
             mock_openrouter.return_value = MagicMock()
 
             status = await llm_gateway.health_check()
@@ -648,7 +648,7 @@ class TestHealthCheck:
         """Test health check when GenAI client unavailable."""
         llm_gateway._available = False
 
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
             mock_openrouter.return_value = MagicMock()
 
             status = await llm_gateway.health_check()
@@ -662,7 +662,7 @@ class TestHealthCheck:
         """Test health check when Gemini models error."""
         mock_genai_client.generate_content = AsyncMock(side_effect=Exception("Service error"))
 
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
             mock_openrouter.return_value = MagicMock()
 
             status = await llm_gateway.health_check()
@@ -676,7 +676,7 @@ class TestHealthCheck:
         """Test health check when OpenRouter unavailable."""
         mock_genai_client.generate_content = AsyncMock(return_value={"text": "pong"})
 
-        with patch("services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
+        with patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient") as mock_openrouter:
             mock_openrouter.side_effect = Exception("OpenRouter error")
 
             status = await llm_gateway.health_check()
@@ -706,8 +706,8 @@ class TestEdgeCases:
 
     def test_build_config_no_genai(self, llm_gateway):
         """Test config building when GenAI not available."""
-        with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", False):
-            with patch("services.rag.agentic.llm_gateway.types", None):
+        with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", False):
+            with patch("backend.services.rag.agentic.llm_gateway.types", None):
                 # This should be tested through _send_with_fallback
                 # but we can test the condition indirectly
                 assert llm_gateway._available is False
@@ -715,7 +715,7 @@ class TestEdgeCases:
     async def test_build_multimodal_content_no_images(self, llm_gateway):
         """Test building content without images."""
         # This is tested indirectly through send_message
-        with patch("services.rag.agentic.llm_gateway.trace_span"):
+        with patch("backend.services.rag.agentic.llm_gateway.trace_span"):
             mock_response = MagicMock()
             mock_response.text = "Plain text response"
             mock_response.usage_metadata = None
@@ -724,7 +724,7 @@ class TestEdgeCases:
                 return_value=mock_response
             )
 
-            with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+            with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
                 mock_token_usage = MagicMock()
                 mock_create_usage.return_value = mock_token_usage
 
@@ -745,7 +745,7 @@ class TestEdgeCases:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 
@@ -766,7 +766,7 @@ class TestEdgeCases:
 class TestMetricsAndLogging:
     """Test metrics collection and logging."""
 
-    @patch("services.rag.agentic.llm_gateway.metrics_collector")
+    @patch("backend.services.rag.agentic.llm_gateway.metrics_collector")
     async def test_metrics_fallback_recorded(self, mock_metrics, llm_gateway, mock_genai_client):
         """Test that fallback metrics are recorded."""
         mock_genai_client._client.aio.models.generate_content = AsyncMock(
@@ -776,7 +776,7 @@ class TestMetricsAndLogging:
             ]
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 
@@ -786,7 +786,7 @@ class TestMetricsAndLogging:
                 llm_gateway.model_name_flash, "next_model"
             )
 
-    @patch("services.rag.agentic.llm_gateway.trace_span")
+    @patch("backend.services.rag.agentic.llm_gateway.trace_span")
     async def test_tracing_attributes_set(self, mock_trace, llm_gateway, mock_genai_client):
         """Test that tracing attributes are properly set."""
         mock_response = MagicMock()
@@ -799,7 +799,7 @@ class TestMetricsAndLogging:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -828,7 +828,7 @@ class TestIntegrationFlows:
         ]
         mock_genai_client._client.aio.models.generate_content = AsyncMock(side_effect=responses)
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -854,7 +854,7 @@ class TestIntegrationFlows:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.001
             mock_create_usage.return_value = mock_token_usage
@@ -885,7 +885,7 @@ class TestIntegrationFlows:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_token_usage.cost_usd = 0.005
             mock_create_usage.return_value = mock_token_usage
@@ -923,7 +923,7 @@ class TestPerformance:
             return_value=mock_response
         )
 
-        with patch("services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
+        with patch("backend.services.rag.agentic.llm_gateway.create_token_usage") as mock_create_usage:
             mock_token_usage = MagicMock()
             mock_create_usage.return_value = mock_token_usage
 

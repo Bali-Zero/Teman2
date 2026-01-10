@@ -3,7 +3,7 @@ import sys
 import types
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -50,15 +50,16 @@ def _load_module(monkeypatch, pool=None):
         jwt_access_token_expire_hours=1,
         redis_url='redis://localhost:6379'
     )
-    monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
-    )
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = settings_stub
+    config_mock.Settings = types.SimpleNamespace() # Dummy Settings class
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     async def get_database_pool():
         return pool
 
     monkeypatch.setitem(
-        sys.modules, "app.dependencies", types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379')
+        sys.modules, "backend.app.dependencies", types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379')
     )
 
     cookie_calls = {}
@@ -74,7 +75,7 @@ def _load_module(monkeypatch, pool=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.cookie_auth",
+        "backend.app.utils.cookie_auth",
         types.SimpleNamespace(
             set_auth_cookies=set_auth_cookies,
             clear_auth_cookies=clear_auth_cookies,
@@ -97,7 +98,7 @@ def _load_module(monkeypatch, pool=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.logging_utils",
+        "backend.app.utils.logging_utils",
         types.SimpleNamespace(
             get_logger=lambda _name: _Logger(),
             log_error=lambda *_args, **_kwargs: None,
@@ -113,18 +114,18 @@ def _load_module(monkeypatch, pool=None):
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.monitoring.audit_service",
+        "backend.services.monitoring.audit_service",
         types.SimpleNamespace(get_audit_service=lambda: audit_service, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.auth"
+    module_name = "backend.app.routers.auth"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

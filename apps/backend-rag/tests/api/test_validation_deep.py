@@ -64,7 +64,7 @@ class TestFieldLevelValidation:
             "",
         ]
 
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -144,7 +144,7 @@ class TestCrossFieldValidation:
 
     def test_price_consistency(self, authenticated_client, test_app):
         """Test price field consistency"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -163,7 +163,7 @@ class TestCrossFieldValidation:
 
     def test_date_consistency(self, authenticated_client, test_app):
         """Test date field consistency"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -182,7 +182,7 @@ class TestCrossFieldValidation:
 
     def test_status_consistency(self, authenticated_client, test_app):
         """Test status field consistency"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={"id": 1, "status": "inquiry", "quoted_price": None}
@@ -220,7 +220,7 @@ class TestBusinessRuleValidation:
 
     def test_practice_type_validation(self, authenticated_client, test_app):
         """Test practice type code validation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate practice type not found
             mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -239,7 +239,7 @@ class TestBusinessRuleValidation:
 
     def test_client_existence_validation(self, authenticated_client, test_app):
         """Test client existence validation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate client not found
             mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -258,7 +258,7 @@ class TestBusinessRuleValidation:
 
     def test_team_member_validation(self, authenticated_client, test_app):
         """Test team member assignment validation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)  # Team member not found
             mock_get_pool.return_value = mock_pool
@@ -317,7 +317,7 @@ class TestConstraintValidation:
 
     def test_array_length_constraints(self, authenticated_client, test_app):
         """Test array length constraints"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 

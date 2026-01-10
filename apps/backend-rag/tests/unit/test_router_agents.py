@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.agents import (
+from backend.app.routers.agents import (
     AddComplianceItemRequest,
     CreateJourneyRequest,
     add_compliance_tracking,
@@ -81,7 +81,7 @@ def mock_compliance_item():
 @pytest.fixture
 def mock_alert():
     """Mock ComplianceAlert object"""
-    from services.misc.proactive_compliance_monitor import AlertSeverity
+    from backend.services.misc.proactive_compliance_monitor import AlertSeverity
 
     alert = MagicMock()
     alert.alert_id = "alert-123"
@@ -130,7 +130,7 @@ async def test_create_client_journey_success(mock_journey):
     """Test successful journey creation"""
     request = CreateJourneyRequest(journey_type="pt_pma_setup", client_id="client-123")
 
-    with patch("app.routers.agents.journey_orchestrator.create_journey", return_value=mock_journey):
+    with patch("backend.app.routers.agents.journey_orchestrator.create_journey", return_value=mock_journey):
         result = await create_client_journey(request)
 
         assert result["success"] is True
@@ -145,7 +145,7 @@ async def test_create_client_journey_error():
     request = CreateJourneyRequest(journey_type="invalid_type", client_id="client-123")
 
     with patch(
-        "app.routers.agents.journey_orchestrator.create_journey",
+        "backend.app.routers.agents.journey_orchestrator.create_journey",
         side_effect=ValueError("Invalid journey type"),
     ):
         with pytest.raises(HTTPException) as exc_info:
@@ -176,9 +176,9 @@ async def test_get_journey_success():
     mock_journey = MockJourney()
     mock_progress = {"completed": 2, "total": 5, "percentage": 40.0}
 
-    with patch("app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey):
+    with patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey):
         with patch(
-            "app.routers.agents.journey_orchestrator.get_progress", return_value=mock_progress
+            "backend.app.routers.agents.journey_orchestrator.get_progress", return_value=mock_progress
         ):
             result = await get_journey("journey-123")
 
@@ -192,7 +192,7 @@ async def test_get_journey_success():
 @pytest.mark.asyncio
 async def test_get_journey_not_found():
     """Test journey not found"""
-    with patch("app.routers.agents.journey_orchestrator.get_journey", return_value=None):
+    with patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=None):
         with pytest.raises(HTTPException) as exc_info:
             await get_journey("nonexistent")
 
@@ -203,8 +203,8 @@ async def test_get_journey_not_found():
 async def test_complete_journey_step_success(mock_journey):
     """Test successful step completion"""
     with (
-        patch("app.routers.agents.journey_orchestrator.complete_step") as mock_complete,
-        patch("app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey),
+        patch("backend.app.routers.agents.journey_orchestrator.complete_step") as mock_complete,
+        patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey),
     ):
         result = await complete_journey_step("journey-123", "step-1", "Notes")
 
@@ -217,7 +217,7 @@ async def test_complete_journey_step_success(mock_journey):
 async def test_complete_journey_step_error():
     """Test step completion error"""
     with patch(
-        "app.routers.agents.journey_orchestrator.complete_step",
+        "backend.app.routers.agents.journey_orchestrator.complete_step",
         side_effect=ValueError("Step not found"),
     ):
         with pytest.raises(HTTPException) as exc_info:
@@ -232,7 +232,7 @@ async def test_get_next_steps():
     mock_step = MagicMock()
     mock_step.__dict__ = {"step_id": "step-2", "title": "Next Step"}
 
-    with patch("app.routers.agents.journey_orchestrator.get_next_steps", return_value=[mock_step]):
+    with patch("backend.app.routers.agents.journey_orchestrator.get_next_steps", return_value=[mock_step]):
         result = await get_next_steps("journey-123")
 
         assert result["success"] is True
@@ -259,7 +259,7 @@ async def test_add_compliance_tracking_success(mock_compliance_item):
     )
 
     with patch(
-        "app.routers.agents.compliance_monitor.add_compliance_item",
+        "backend.app.routers.agents.compliance_monitor.add_compliance_item",
         return_value=mock_compliance_item,
     ):
         result = await add_compliance_tracking(request)
@@ -281,7 +281,7 @@ async def test_add_compliance_tracking_error():
     )
 
     with patch(
-        "app.routers.agents.compliance_monitor.add_compliance_item",
+        "backend.app.routers.agents.compliance_monitor.add_compliance_item",
         side_effect=ValueError("Invalid compliance type"),
     ):
         with pytest.raises(HTTPException) as exc_info:
@@ -294,7 +294,7 @@ async def test_add_compliance_tracking_error():
 async def test_get_compliance_alerts_no_filters(mock_alert):
     """Test get compliance alerts without filters"""
     with patch(
-        "app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
     ):
         result = await get_compliance_alerts()
 
@@ -308,7 +308,7 @@ async def test_get_compliance_alerts_no_filters(mock_alert):
 async def test_get_compliance_alerts_with_client_filter(mock_alert):
     """Test get compliance alerts with client filter"""
     with patch(
-        "app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
     ):
         result = await get_compliance_alerts(client_id="client-123")
 
@@ -320,7 +320,7 @@ async def test_get_compliance_alerts_with_client_filter(mock_alert):
 async def test_get_compliance_alerts_with_severity_filter(mock_alert):
     """Test get compliance alerts with severity filter"""
     with patch(
-        "app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[mock_alert]
     ):
         result = await get_compliance_alerts(severity="critical")
 
@@ -338,7 +338,7 @@ async def test_get_compliance_alerts_with_auto_notify(mock_alert):
 
     with (
         patch(
-            "app.routers.agents.compliance_monitor.check_compliance_items",
+            "backend.app.routers.agents.compliance_monitor.check_compliance_items",
             return_value=[mock_alert],
         ),
     ):
@@ -359,7 +359,7 @@ async def test_get_compliance_alerts_auto_notify_error(mock_alert):
 
     with (
         patch(
-            "app.routers.agents.compliance_monitor.check_compliance_items",
+            "backend.app.routers.agents.compliance_monitor.check_compliance_items",
             return_value=[mock_alert],
         ),
     ):
@@ -376,7 +376,7 @@ async def test_get_compliance_alerts_auto_notify_error(mock_alert):
 @pytest.mark.asyncio
 async def test_get_compliance_alerts_with_dict_alert():
     """Test get compliance alerts with dict-based alert (not object)"""
-    from services.misc.proactive_compliance_monitor import AlertSeverity
+    from backend.services.misc.proactive_compliance_monitor import AlertSeverity
 
     dict_alert = {
         "alert_id": "alert-456",
@@ -389,7 +389,7 @@ async def test_get_compliance_alerts_with_dict_alert():
     }
 
     with patch(
-        "app.routers.agents.compliance_monitor.check_compliance_items", return_value=[dict_alert]
+        "backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[dict_alert]
     ):
         result = await get_compliance_alerts(client_id="client-456")
 
@@ -530,7 +530,7 @@ async def test_get_analytics_summary():
     mock_stats = {"total_journeys": 10, "active_journeys": 5, "completed_journeys": 5}
 
     with patch(
-        "app.routers.agents.journey_orchestrator.get_orchestrator_stats", return_value=mock_stats
+        "backend.app.routers.agents.journey_orchestrator.get_orchestrator_stats", return_value=mock_stats
     ):
         result = await get_analytics_summary()
 
@@ -557,7 +557,7 @@ async def test_create_client_journey_with_custom_steps(mock_journey):
     )
 
     with patch(
-        "app.routers.agents.journey_orchestrator.create_journey", return_value=mock_journey
+        "backend.app.routers.agents.journey_orchestrator.create_journey", return_value=mock_journey
     ) as mock_create:
         result = await create_client_journey(request)
 
@@ -573,7 +573,7 @@ async def test_create_client_journey_empty_client_id():
     request = CreateJourneyRequest(journey_type="pt_pma_setup", client_id="")
 
     with patch(
-        "app.routers.agents.journey_orchestrator.create_journey",
+        "backend.app.routers.agents.journey_orchestrator.create_journey",
         side_effect=ValueError("Client ID cannot be empty"),
     ):
         with pytest.raises(HTTPException) as exc_info:
@@ -585,7 +585,7 @@ async def test_create_client_journey_empty_client_id():
 @pytest.mark.asyncio
 async def test_get_journey_empty_id():
     """Test get journey with empty journey_id"""
-    with patch("app.routers.agents.journey_orchestrator.get_journey", return_value=None):
+    with patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=None):
         with pytest.raises(HTTPException) as exc_info:
             await get_journey("")
 
@@ -596,8 +596,8 @@ async def test_get_journey_empty_id():
 async def test_complete_journey_step_empty_notes(mock_journey):
     """Test step completion with empty notes"""
     with (
-        patch("app.routers.agents.journey_orchestrator.complete_step") as mock_complete,
-        patch("app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey),
+        patch("backend.app.routers.agents.journey_orchestrator.complete_step") as mock_complete,
+        patch("backend.app.routers.agents.journey_orchestrator.get_journey", return_value=mock_journey),
     ):
         result = await complete_journey_step("journey-123", "step-1", None)
 
@@ -608,7 +608,7 @@ async def test_complete_journey_step_empty_notes(mock_journey):
 @pytest.mark.asyncio
 async def test_get_next_steps_empty_list():
     """Test get next steps when no steps available"""
-    with patch("app.routers.agents.journey_orchestrator.get_next_steps", return_value=[]):
+    with patch("backend.app.routers.agents.journey_orchestrator.get_next_steps", return_value=[]):
         result = await get_next_steps("journey-123")
 
         assert result["success"] is True
@@ -628,7 +628,7 @@ async def test_add_compliance_tracking_invalid_deadline_format():
     )
 
     with patch(
-        "app.routers.agents.compliance_monitor.add_compliance_item",
+        "backend.app.routers.agents.compliance_monitor.add_compliance_item",
         side_effect=ValueError("Invalid date format"),
     ):
         with pytest.raises(HTTPException) as exc_info:
@@ -651,7 +651,7 @@ async def test_add_compliance_tracking_negative_cost(mock_compliance_item):
 
     # Should still work (validation might be in service layer)
     with patch(
-        "app.routers.agents.compliance_monitor.add_compliance_item",
+        "backend.app.routers.agents.compliance_monitor.add_compliance_item",
         return_value=mock_compliance_item,
     ):
         result = await add_compliance_tracking(request)
@@ -661,7 +661,7 @@ async def test_add_compliance_tracking_negative_cost(mock_compliance_item):
 @pytest.mark.asyncio
 async def test_get_compliance_alerts_empty_list():
     """Test get compliance alerts when no alerts exist"""
-    with patch("app.routers.agents.compliance_monitor.check_compliance_items", return_value=[]):
+    with patch("backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=[]):
         result = await get_compliance_alerts()
 
         assert result["success"] is True
@@ -674,7 +674,7 @@ async def test_get_compliance_alerts_empty_list():
 @pytest.mark.asyncio
 async def test_get_compliance_alerts_multiple_severities():
     """Test get compliance alerts with multiple severity levels"""
-    from services.misc.proactive_compliance_monitor import AlertSeverity
+    from backend.services.misc.proactive_compliance_monitor import AlertSeverity
 
     # Create simple objects instead of MagicMock to avoid attribute issues
     class MockAlert:
@@ -699,7 +699,7 @@ async def test_get_compliance_alerts_multiple_severities():
         MockAlert("alert-2", "client-2", AlertSeverity.URGENT),
     ]
 
-    with patch("app.routers.agents.compliance_monitor.check_compliance_items", return_value=alerts):
+    with patch("backend.app.routers.agents.compliance_monitor.check_compliance_items", return_value=alerts):
         result = await get_compliance_alerts()
 
         assert result["success"] is True
@@ -736,7 +736,7 @@ async def test_extract_knowledge_graph_very_long_text():
         return_value={"entities": [], "relationships": []}
     )
 
-    with patch("app.routers.agents.knowledge_graph", mock_knowledge_graph):
+    with patch("backend.app.routers.agents.knowledge_graph", mock_knowledge_graph):
         result = await extract_knowledge_graph(request=mock_request, text=long_text)
 
         assert result["success"] is True
@@ -750,7 +750,7 @@ async def test_extract_knowledge_graph_exception():
     mock_knowledge_graph = AsyncMock()
     mock_knowledge_graph.extract_entities = AsyncMock(side_effect=Exception("Service error"))
 
-    with patch("app.routers.agents.knowledge_graph", mock_knowledge_graph):
+    with patch("backend.app.routers.agents.knowledge_graph", mock_knowledge_graph):
         result = await extract_knowledge_graph(request=mock_request, text="Test text")
 
         # Should return fallback response
@@ -868,7 +868,7 @@ async def test_run_autonomous_research_with_services():
     mock_request.app.state = mock_state
 
     with patch(
-        "services.misc.autonomous_research_service.AutonomousResearchService",
+        "backend.services.misc.autonomous_research_service.AutonomousResearchService",
         return_value=mock_research_service,
     ):
         result = await run_autonomous_research(
@@ -908,7 +908,7 @@ async def test_run_autonomous_research_different_depths():
 
     for depth in ["quick", "standard", "deep"]:
         with patch(
-            "services.misc.autonomous_research_service.AutonomousResearchService",
+            "backend.services.misc.autonomous_research_service.AutonomousResearchService",
             return_value=mock_research_service,
         ):
             result = await run_autonomous_research(
@@ -934,7 +934,7 @@ async def test_run_autonomous_research_exception():
     mock_research_service.research = AsyncMock(side_effect=Exception("Research failed"))
 
     with patch(
-        "services.misc.autonomous_research_service.AutonomousResearchService",
+        "backend.services.misc.autonomous_research_service.AutonomousResearchService",
         return_value=mock_research_service,
     ):
         with pytest.raises(HTTPException) as exc_info:

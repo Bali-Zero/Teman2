@@ -6,7 +6,7 @@ Tests the validation logic added to prevent division by zero.
 
 import pytest
 
-from services.misc.result_formatter import format_search_results
+from backend.services.misc.result_formatter import format_search_results
 
 
 class TestResultFormatterDistanceValidation:

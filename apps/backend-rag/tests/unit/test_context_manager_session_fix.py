@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 
-from services.rag.agentic.context_manager import get_user_context
+from backend.services.rag.agentic.context_manager import get_user_context
 
 
 class TestContextManagerSessionFiltering:

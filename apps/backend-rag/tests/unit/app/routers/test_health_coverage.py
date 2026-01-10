@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -48,18 +49,19 @@ def _load_module(monkeypatch, settings_overrides=None):
         for key, value in settings_overrides.items():
             setattr(settings_stub, key, value)
 
-    monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
-    )
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = settings_stub
+    config_mock.Settings = types.SimpleNamespace() # Dummy Settings class
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.health"
+    module_name = "backend.app.routers.health"
     if module_name in sys.modules:
         del sys.modules[module_name]
 
@@ -357,7 +359,7 @@ def test_qdrant_metrics_success(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "core.qdrant_db",
+        "backend.core.qdrant_db",
         types.SimpleNamespace(get_qdrant_metrics=lambda: {"search_count": 1}, redis_url='redis://localhost:6379'),
     )
 
@@ -377,7 +379,7 @@ def test_qdrant_metrics_error(monkeypatch):
         raise RuntimeError("metrics fail")
 
     monkeypatch.setitem(
-        sys.modules, "core.qdrant_db", types.SimpleNamespace(get_qdrant_metrics=_raise, redis_url='redis://localhost:6379')
+        sys.modules, "backend.core.qdrant_db", types.SimpleNamespace(get_qdrant_metrics=_raise, redis_url='redis://localhost:6379')
     )
 
     response = client.get("/health/metrics/qdrant")

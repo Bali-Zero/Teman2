@@ -113,7 +113,7 @@ def mock_redis():
 def create_mock_settings(**kwargs):
     """
     Create a proper Settings instance for testing.
-    Uses actual Settings class from app.core.config, not a dict or SimpleNamespace.
+    Uses actual Settings class from backend.app.core.config, not a dict or SimpleNamespace.
 
     Args:
         **kwargs: Settings attributes to override
@@ -128,7 +128,17 @@ def create_mock_settings(**kwargs):
             jwt_secret_key="test_secret_at_least_32_chars_long"
         )
     """
-    from app.core.config import Settings
+    try:
+        from backend.app.core.config import Settings
+    except ImportError:
+        # Fallback if module was mocked without Settings class
+        # This happens in some legacy coverage tests
+        class Settings:
+            def __init__(self, **kwargs):
+                for k, v in kwargs.items():
+                    setattr(self, k, v)
+            def model_dump(self):
+                return self.__dict__
 
     # Ensure jwt_secret_key is at least 32 characters
     jwt_secret = kwargs.get("jwt_secret_key", "test_jwt_secret_key_for_testing_only_min_32_chars")

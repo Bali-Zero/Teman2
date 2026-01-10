@@ -25,7 +25,7 @@ class TestCRMPracticeEndpoints:
 
     def test_list_practices(self, authenticated_client):
         """Test GET /api/crm/practices/"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -38,7 +38,7 @@ class TestCRMPracticeEndpoints:
 
     def test_get_practice(self, authenticated_client):
         """Test GET /api/crm/practices/{id}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "practice_type": "KITAS"})
@@ -51,7 +51,7 @@ class TestCRMPracticeEndpoints:
 
     def test_create_practice_first(self, authenticated_client):
         """Test POST /api/crm/practices/"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "practice_type": "KITAS"})
@@ -67,7 +67,7 @@ class TestCRMPracticeEndpoints:
 
     def test_create_practice(self, authenticated_client):
         """Test POST /api/crm/practices"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -95,7 +95,7 @@ class TestCRMPracticeEndpoints:
 
     def test_get_active_practices(self, authenticated_client):
         """Test GET /api/crm/practices/active"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -108,7 +108,7 @@ class TestCRMPracticeEndpoints:
 
     def test_get_upcoming_renewals(self, authenticated_client):
         """Test GET /api/crm/practices/renewals/upcoming"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -121,7 +121,7 @@ class TestCRMPracticeEndpoints:
 
     def test_update_practice(self, authenticated_client):
         """Test PATCH /api/crm/practices/{id}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -165,7 +165,7 @@ class TestCRMPracticeEndpoints:
 
     def test_add_document_to_practice(self, authenticated_client):
         """Test POST /api/crm/practices/{id}/documents/add"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"documents": []})
@@ -186,7 +186,7 @@ class TestCRMPracticeEndpoints:
 
     def test_add_document_to_practice_not_found(self, authenticated_client):
         """Test adding document to nonexistent practice"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -206,7 +206,7 @@ class TestCRMPracticeEndpoints:
 
     def test_get_practices_stats(self, authenticated_client):
         """Test GET /api/crm/practices/stats/overview"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -226,7 +226,7 @@ class TestCRMPracticeEndpoints:
 
     def test_list_practices_with_filters(self, authenticated_client):
         """Test listing practices with various filters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -247,7 +247,7 @@ class TestCRMPracticeEndpoints:
 
     def test_get_practice_by_client(self, authenticated_client):
         """Test GET /api/crm/practices/ with client_id filter"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(

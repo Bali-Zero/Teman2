@@ -17,8 +17,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.modules.identity.models import User
-from app.modules.identity.service import IdentityService
+from backend.app.modules.identity.models import User
+from backend.app.modules.identity.service import IdentityService
 
 # ============================================================================
 # Fixtures
@@ -28,7 +28,7 @@ from app.modules.identity.service import IdentityService
 @pytest.fixture
 def mock_settings():
     """Mock settings configuration"""
-    with patch("app.modules.identity.service.settings") as mock:
+    with patch("backend.app.modules.identity.service.settings") as mock:
         mock.database_url = "postgresql://test:test@localhost/test"
         mock.jwt_secret_key = "test_secret_key_for_testing_12345"
         mock.jwt_algorithm = "HS256"
@@ -38,7 +38,7 @@ def mock_settings():
 @pytest.fixture
 def mock_settings_default_secret():
     """Mock settings with default secret key"""
-    with patch("app.modules.identity.service.settings") as mock:
+    with patch("backend.app.modules.identity.service.settings") as mock:
         mock.database_url = "postgresql://test:test@localhost/test"
         mock.jwt_secret_key = "zantara_default_secret_key_2025_change_in_production"
         mock.jwt_algorithm = "HS256"
@@ -119,7 +119,7 @@ def test_init_with_custom_secret(mock_settings):
 
 def test_init_with_default_secret_warning(mock_settings_default_secret):
     """Test initialization with default secret triggers warning"""
-    with patch("app.modules.identity.service.logger") as mock_logger:
+    with patch("backend.app.modules.identity.service.logger") as mock_logger:
         service = IdentityService()
         assert service.jwt_secret == "zantara_default_secret_key_2025_change_in_production"
         mock_logger.warning.assert_called_once()
@@ -128,10 +128,10 @@ def test_init_with_default_secret_warning(mock_settings_default_secret):
 
 def test_init_with_empty_secret_warning():
     """Test initialization with empty secret triggers warning"""
-    with patch("app.modules.identity.service.settings") as mock_settings:
+    with patch("backend.app.modules.identity.service.settings") as mock_settings:
         mock_settings.jwt_secret_key = ""
         mock_settings.jwt_algorithm = "HS256"
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             service = IdentityService()
             assert service.jwt_secret == ""
             mock_logger.warning.assert_called_once()
@@ -217,7 +217,7 @@ def test_verify_password_exception_handling(identity_service):
 
     # Mock bcrypt.checkpw to raise an exception
     with patch("bcrypt.checkpw", side_effect=Exception("Bcrypt error")):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             result = identity_service.verify_password(password, "invalid_hash")
             assert result is False
             mock_logger.error.assert_called_once()
@@ -231,7 +231,7 @@ def test_verify_password_encoding_error(identity_service):
 
     # Mock bcrypt.checkpw to raise an exception (simulating encoding or other errors)
     with patch("bcrypt.checkpw", side_effect=UnicodeEncodeError("utf-8", "", 0, 1, "error")):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             result = identity_service.verify_password(password, "some_hash")
             assert result is False
             mock_logger.error.assert_called_once()
@@ -255,7 +255,7 @@ async def test_get_db_connection_success(mock_settings, identity_service, mock_a
 @pytest.mark.asyncio
 async def test_get_db_connection_no_database_url(identity_service):
     """Test database connection without DATABASE_URL"""
-    with patch("app.modules.identity.service.settings") as mock_settings:
+    with patch("backend.app.modules.identity.service.settings") as mock_settings:
         mock_settings.database_url = None
 
         with pytest.raises(ValueError, match="DATABASE_URL not configured"):
@@ -306,7 +306,7 @@ async def test_authenticate_user_success(
 @pytest.mark.asyncio
 async def test_authenticate_user_invalid_pin_format_non_digit(mock_settings, identity_service):
     """Test authentication with invalid PIN format (non-digit)"""
-    with patch("app.modules.identity.service.logger") as mock_logger:
+    with patch("backend.app.modules.identity.service.logger") as mock_logger:
         user = await identity_service.authenticate_user("test@example.com", "abcd")
 
         assert user is None
@@ -317,7 +317,7 @@ async def test_authenticate_user_invalid_pin_format_non_digit(mock_settings, ide
 @pytest.mark.asyncio
 async def test_authenticate_user_invalid_pin_format_too_short(mock_settings, identity_service):
     """Test authentication with invalid PIN format (too short)"""
-    with patch("app.modules.identity.service.logger") as mock_logger:
+    with patch("backend.app.modules.identity.service.logger") as mock_logger:
         user = await identity_service.authenticate_user("test@example.com", "123")
 
         assert user is None
@@ -327,7 +327,7 @@ async def test_authenticate_user_invalid_pin_format_too_short(mock_settings, ide
 @pytest.mark.asyncio
 async def test_authenticate_user_invalid_pin_format_too_long(mock_settings, identity_service):
     """Test authentication with invalid PIN format (too long)"""
-    with patch("app.modules.identity.service.logger") as mock_logger:
+    with patch("backend.app.modules.identity.service.logger") as mock_logger:
         user = await identity_service.authenticate_user("test@example.com", "123456789")
 
         assert user is None
@@ -337,7 +337,7 @@ async def test_authenticate_user_invalid_pin_format_too_long(mock_settings, iden
 @pytest.mark.asyncio
 async def test_authenticate_user_empty_pin(mock_settings, identity_service):
     """Test authentication with empty PIN"""
-    with patch("app.modules.identity.service.logger") as mock_logger:
+    with patch("backend.app.modules.identity.service.logger") as mock_logger:
         user = await identity_service.authenticate_user("test@example.com", "")
 
         assert user is None
@@ -347,7 +347,7 @@ async def test_authenticate_user_empty_pin(mock_settings, identity_service):
 @pytest.mark.asyncio
 async def test_authenticate_user_none_pin(mock_settings, identity_service):
     """Test authentication with None PIN"""
-    with patch("app.modules.identity.service.logger") as mock_logger:
+    with patch("backend.app.modules.identity.service.logger") as mock_logger:
         user = await identity_service.authenticate_user("test@example.com", None)
 
         assert user is None
@@ -362,7 +362,7 @@ async def test_authenticate_user_not_found(
     mock_asyncpg_connection.fetchrow = AsyncMock(return_value=None)
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             user = await identity_service.authenticate_user("notfound@example.com", "1234")
 
             assert user is None
@@ -382,7 +382,7 @@ async def test_authenticate_user_account_locked(
     mock_asyncpg_connection.fetchrow = AsyncMock(return_value=sample_db_row)
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             user = await identity_service.authenticate_user("test@example.com", "1234")
 
             assert user is None
@@ -423,7 +423,7 @@ async def test_authenticate_user_invalid_pin_hash(
     # Mock password verification to return False
     with patch.object(identity_service, "verify_password", return_value=False):
         with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-            with patch("app.modules.identity.service.logger") as mock_logger:
+            with patch("backend.app.modules.identity.service.logger") as mock_logger:
                 user = await identity_service.authenticate_user("test@example.com", "1234")
 
                 assert user is None
@@ -442,7 +442,7 @@ async def test_authenticate_user_database_error(
     mock_asyncpg_connection.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             user = await identity_service.authenticate_user("test@example.com", "1234")
 
             assert user is None
@@ -455,7 +455,7 @@ async def test_authenticate_user_database_error(
 async def test_authenticate_user_connection_error(mock_settings, identity_service):
     """Test authentication when connection fails"""
     with patch("asyncpg.connect", side_effect=Exception("Connection failed")):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             user = await identity_service.authenticate_user("test@example.com", "1234")
 
             assert user is None
@@ -890,7 +890,7 @@ async def test_authenticate_user_pin_hash_logging(
 
     with patch.object(identity_service, "verify_password", return_value=True):
         with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-            with patch("app.modules.identity.service.logger") as mock_logger:
+            with patch("backend.app.modules.identity.service.logger") as mock_logger:
                 await identity_service.authenticate_user("test@example.com", "1234")
 
                 # Verify logging was called
@@ -910,7 +910,7 @@ async def test_authenticate_user_success_logging(
 
     with patch.object(identity_service, "verify_password", return_value=True):
         with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-            with patch("app.modules.identity.service.logger") as mock_logger:
+            with patch("backend.app.modules.identity.service.logger") as mock_logger:
                 user = await identity_service.authenticate_user("test@example.com", "1234")
 
                 assert user is not None
@@ -939,7 +939,7 @@ async def test_authenticate_user_execute_fails_on_failed_attempt_increment(
     # Mock password verification to return False (triggering failed attempt increment)
     with patch.object(identity_service, "verify_password", return_value=False):
         with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-            with patch("app.modules.identity.service.logger") as mock_logger:
+            with patch("backend.app.modules.identity.service.logger") as mock_logger:
                 user = await identity_service.authenticate_user("test@example.com", "1234")
 
                 assert user is None
@@ -959,7 +959,7 @@ async def test_authenticate_user_execute_fails_on_success_reset(
     # Mock password verification to return True (triggering reset)
     with patch.object(identity_service, "verify_password", return_value=True):
         with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-            with patch("app.modules.identity.service.logger") as mock_logger:
+            with patch("backend.app.modules.identity.service.logger") as mock_logger:
                 user = await identity_service.authenticate_user("test@example.com", "1234")
 
                 # When execute fails, exception is caught and None is returned
@@ -979,7 +979,7 @@ async def test_authenticate_user_pin_hash_none(
     mock_asyncpg_connection.execute = AsyncMock()
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             # verify_password should handle None gracefully
             result = identity_service.verify_password("1234", None)
             assert result is False
@@ -1016,7 +1016,7 @@ async def test_authenticate_user_locked_until_exact_current_time(
     mock_asyncpg_connection.fetchrow = AsyncMock(return_value=sample_db_row)
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             # Mock verify_password to avoid bcrypt issues with invalid hash
             with patch.object(identity_service, "verify_password", return_value=True):
                 user = await identity_service.authenticate_user("test@example.com", "1234")
@@ -1177,7 +1177,7 @@ async def test_authenticate_user_fetchrow_returns_none_after_connection(
     mock_asyncpg_connection.fetchrow = AsyncMock(return_value=None)
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             user = await identity_service.authenticate_user("test@example.com", "1234")
 
             assert user is None
@@ -1213,7 +1213,7 @@ async def test_authenticate_user_pin_hash_logging_with_none(
     mock_asyncpg_connection.execute = AsyncMock()
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.service.logger") as mock_logger:
+        with patch("backend.app.modules.identity.service.logger") as mock_logger:
             # When pin_hash is None, len() will fail, causing exception
             # This is caught by the exception handler
             with patch.object(identity_service, "verify_password", return_value=False):

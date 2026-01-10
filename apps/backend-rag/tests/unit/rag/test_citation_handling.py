@@ -29,9 +29,9 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.llm_clients.pricing import TokenUsage
-from services.rag.agentic.reasoning import ReasoningEngine
-from services.tools.definitions import AgentState, ToolCall
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic.reasoning import ReasoningEngine
+from backend.services.tools.definitions import AgentState, ToolCall
 
 
 def mock_token_usage():
@@ -88,11 +88,11 @@ class TestCitationHandling:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -165,11 +165,11 @@ class TestCitationHandling:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -230,11 +230,11 @@ class TestCitationHandling:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -295,7 +295,7 @@ class TestCitationHandling:
 
         events = []
         tool_execution_counter = {"count": 0}
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
+        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call):
             async for event in engine.execute_react_loop_stream(
                 state=state,
                 llm_gateway=llm_gateway,

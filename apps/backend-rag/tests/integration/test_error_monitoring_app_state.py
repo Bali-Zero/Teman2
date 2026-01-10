@@ -2,7 +2,7 @@
 Integration tests for ErrorMonitoringMiddleware with app.state pattern.
 
 Verifies that ErrorMonitoringMiddleware:
-- Can send alerts using AlertService from app.state
+- Can send alerts using AlertService from backend.app.state
 - Works gracefully when AlertService is not available
 - Handles both constructor-injected and app.state patterns
 """
@@ -13,14 +13,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from middleware.error_monitoring import ErrorMonitoringMiddleware
 
-from services.monitoring.alert_service import AlertService
+from backend.services.monitoring.alert_service import AlertService
 
 
 class TestErrorMonitoringWithAppState:
     """Integration tests for ErrorMonitoringMiddleware using app.state."""
 
     def test_middleware_sends_alert_via_app_state(self):
-        """Test middleware can resolve AlertService from app.state."""
+        """Test middleware can resolve AlertService from backend.app.state."""
         # Create minimal app
         test_app = FastAPI()
 

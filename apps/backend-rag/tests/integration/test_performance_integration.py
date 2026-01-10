@@ -255,7 +255,7 @@ class TestCachingPerformance:
     @pytest.mark.asyncio
     async def test_cache_hit_performance(self):
         """Test cache hit performance improvement"""
-        from core.cache import cached, invalidate_cache
+        from backend.core.cache import cached, invalidate_cache
 
         # Clear cache
         invalidate_cache("test_perf:*")

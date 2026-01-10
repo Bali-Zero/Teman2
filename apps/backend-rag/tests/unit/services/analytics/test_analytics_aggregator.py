@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services.analytics.analytics_aggregator import AnalyticsAggregator
+from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
 
 @pytest.fixture

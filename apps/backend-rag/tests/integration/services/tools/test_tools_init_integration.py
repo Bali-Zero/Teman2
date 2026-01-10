@@ -23,13 +23,13 @@ class TestToolsInitIntegration:
 
     def test_module_imports(self):
         """Test that tools module can be imported"""
-        from services.tools import __all__
+        from backend.services.tools import __all__
 
         assert __all__ == []
 
     def test_module_has_docstring(self):
         """Test that module has documentation"""
-        import services.tools
+        import backend.services.tools
 
         assert services.tools.__doc__ is not None
         assert "Tools" in services.tools.__doc__

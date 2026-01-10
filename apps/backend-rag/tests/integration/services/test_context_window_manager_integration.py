@@ -26,8 +26,8 @@ class TestContextWindowManagerIntegration:
     @pytest.fixture
     def manager(self):
         """Create ContextWindowManager instance"""
-        with patch("services.context_window_manager.ZantaraAIClient") as mock_client:
-            from services.misc.context_window_manager import ContextWindowManager
+        with patch("backend.services.context_window_manager.ZantaraAIClient") as mock_client:
+            from backend.services.misc.context_window_manager import ContextWindowManager
 
             manager = ContextWindowManager(max_messages=10, summary_threshold=15)
             manager.zantara_client = None  # Disable AI for tests

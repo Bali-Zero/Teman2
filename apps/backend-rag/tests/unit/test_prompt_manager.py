@@ -10,7 +10,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.prompt_manager import PromptManager
+from backend.llm.prompt_manager import PromptManager
 
 
 def test_prompt_manager_init():

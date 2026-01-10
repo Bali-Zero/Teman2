@@ -16,13 +16,13 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from plugins.team.search_member_plugin import (
+from backend.plugins.team.search_member_plugin import (
     TeamMemberSearchPlugin,
     TeamSearchInput,
     TeamSearchOutput,
 )
 
-from services.crm.collaborator_service import CollaboratorProfile
+from backend.services.crm.collaborator_service import CollaboratorProfile
 
 # ============================================================================
 # Test Data Fixtures
@@ -150,7 +150,7 @@ def test_team_search_output_optional_fields():
 
 def test_plugin_initialization_default():
     """Test plugin initialization with default collaborator service"""
-    with patch("plugins.team.search_member_plugin.CollaboratorService") as mock_service_class:
+    with patch("backend.plugins.team.search_member_plugin.CollaboratorService") as mock_service_class:
         mock_service_class.return_value = MagicMock()
         plugin = TeamMemberSearchPlugin()
 
@@ -202,7 +202,7 @@ def test_plugin_metadata(plugin_with_mock_service):
 
 def test_plugin_metadata_category(plugin_with_mock_service):
     """Test plugin metadata category"""
-    from core.plugins import PluginCategory
+    from backend.core.plugins import PluginCategory
 
     metadata = plugin_with_mock_service.metadata
     assert metadata.category == PluginCategory.AUTH
@@ -506,7 +506,7 @@ async def test_execute_logs_debug_on_search(plugin_with_mock_service):
     """Test execute logs debug message with query"""
     input_data = TeamSearchInput(query="Dea")
 
-    with patch("plugins.team.search_member_plugin.logger") as mock_logger:
+    with patch("backend.plugins.team.search_member_plugin.logger") as mock_logger:
         await plugin_with_mock_service.execute(input_data)
 
         mock_logger.debug.assert_called_once()
@@ -524,7 +524,7 @@ async def test_execute_logs_error_on_exception(plugin_with_mock_service):
 
     input_data = TeamSearchInput(query="test")
 
-    with patch("plugins.team.search_member_plugin.logger") as mock_logger:
+    with patch("backend.plugins.team.search_member_plugin.logger") as mock_logger:
         await plugin_with_mock_service.execute(input_data)
 
         mock_logger.error.assert_called_once()
@@ -652,9 +652,9 @@ async def test_full_workflow_invalid_input(plugin_with_mock_service):
 @pytest.mark.asyncio
 async def test_plugin_metadata_compatibility():
     """Test plugin metadata is compatible with plugin registry"""
-    from core.plugins import PluginCategory, PluginMetadata
+    from backend.core.plugins import PluginCategory, PluginMetadata
 
-    with patch("plugins.team.search_member_plugin.CollaboratorService"):
+    with patch("backend.plugins.team.search_member_plugin.CollaboratorService"):
         plugin = TeamMemberSearchPlugin()
         metadata = plugin.metadata
 

@@ -2,7 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -34,15 +34,16 @@ def _load_module(monkeypatch):
         validate_ayat_sequence=validate_ayat_sequence,
         redis_url='redis://localhost:6379'
     )
-    monkeypatch.setitem(sys.modules, "core.legal.quality_validators", quality_stub)
+    monkeypatch.setitem(sys.modules, "backend.core.legal.quality_validators", quality_stub)
 
     settings_stub = types.SimpleNamespace(database_url="postgres://test", redis_url='redis://localhost:6379')
-    monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
-    )
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = settings_stub
+    config_mock.Settings = MagicMock()
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     backend_path = Path(__file__).resolve().parents[4] / "backend"
-    module_name = "core.legal.hierarchical_indexer"
+    module_name = "backend.core.legal.hierarchical_indexer"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

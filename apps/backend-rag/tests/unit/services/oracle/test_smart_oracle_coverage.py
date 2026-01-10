@@ -63,8 +63,8 @@ def _load_module(
             setattr(settings, key, value)
 
     app_module = types.ModuleType("app")
-    app_core_module = types.ModuleType("app.core")
-    app_config_module = types.ModuleType("app.core.config")
+    app_core_module = types.ModuleType("backend.app.core")
+    app_config_module = types.ModuleType("backend.app.core.config")
     app_config_module.settings = settings
 
     service_account_module = types.ModuleType("google.oauth2.service_account")
@@ -85,7 +85,7 @@ def _load_module(
     http_module.MediaIoBaseDownload = DummyDownloader
 
     llm_module = types.ModuleType("llm")
-    genai_client_module = types.ModuleType("llm.genai_client")
+    genai_client_module = types.ModuleType("backend.llm.genai_client")
 
     class GenAIClient:
         def __init__(self, api_key=None):
@@ -118,21 +118,21 @@ def _load_module(
     sys.modules.update(
         {
             "app": app_module,
-            "app.core": app_core_module,
-            "app.core.config": app_config_module,
+            "backend.app.core": app_core_module,
+            "backend.app.core.config": app_config_module,
             "google.oauth2": google_oauth2_module,
             "google.oauth2.service_account": service_account_module,
             "googleapiclient.discovery": discovery_module,
             "googleapiclient.http": http_module,
             "llm": llm_module,
-            "llm.genai_client": genai_client_module,
+            "backend.llm.genai_client": genai_client_module,
         }
     )
 
     module_path = (
         Path(__file__).resolve().parents[4] / "backend" / "services" / "oracle" / "smart_oracle.py"
     )
-    spec = importlib.util.spec_from_file_location("services.oracle.smart_oracle", module_path)
+    spec = importlib.util.spec_from_file_location("backend.services.oracle.smart_oracle", module_path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)

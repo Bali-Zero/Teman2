@@ -10,7 +10,7 @@ Tests cover:
 
 import pytest
 
-from services.llm_clients.pricing import (
+from backend.services.llm_clients.pricing import (
     LLM_PRICING,
     TokenUsage,
     calculate_cost,

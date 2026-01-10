@@ -24,7 +24,7 @@ class TestToolsModuleStructure:
 
     def test_module_docstring_exists(self):
         """Test that the tools module has a proper docstring"""
-        import services.tools
+        import backend.services.tools
 
         assert services.tools.__doc__ is not None
         assert "Tools Module" in services.tools.__doc__
@@ -32,36 +32,36 @@ class TestToolsModuleStructure:
 
     def test_all_attribute_defined(self):
         """Test that __all__ is defined in the module"""
-        import services.tools
+        import backend.services.tools
 
         assert hasattr(services.tools, "__all__")
         assert isinstance(services.tools.__all__, list)
 
     def test_all_is_list(self):
         """Test that __all__ is a list type"""
-        import services.tools
+        import backend.services.tools
 
         assert isinstance(services.tools.__all__, list)
 
     def test_module_can_be_imported(self):
         """Test that the tools module can be imported successfully"""
         try:
-            import services.tools
+            import backend.services.tools
 
             assert services.tools is not None
         except ImportError as e:
-            pytest.fail(f"Failed to import services.tools: {e}")
+            pytest.fail(f"Failed to import backend.services.tools: {e}")
 
     def test_module_is_package(self):
         """Test that tools is recognized as a Python package"""
-        import services.tools
+        import backend.services.tools
 
         # Check if it's a module
-        assert services.tools.__name__ == "services.tools"
+        assert services.tools.__name__ == "backend.services.tools"
 
     def test_module_file_path_exists(self):
         """Test that the module __file__ path exists"""
-        import services.tools
+        import backend.services.tools
 
         # Module should have __file__ attribute
         assert hasattr(services.tools, "__file__")
@@ -69,7 +69,7 @@ class TestToolsModuleStructure:
 
     def test_docstring_content_accuracy(self):
         """Test that the docstring accurately describes the module"""
-        import services.tools
+        import backend.services.tools
 
         doc = services.tools.__doc__
         assert doc is not None
@@ -81,7 +81,7 @@ class TestToolsModuleStructure:
 
     def test_module_not_importing_removed_components(self):
         """Test that ToolManager is not being imported (as per comment)"""
-        import services.tools
+        import backend.services.tools
 
         # ToolManager should not be exposed in the module
         # Since __all__ is empty, nothing should be exported
@@ -103,14 +103,14 @@ class TestToolsModulePublicAPI:
 
     def test_no_public_exports(self):
         """Test that __all__ declares no public exports"""
-        import services.tools
+        import backend.services.tools
 
         # The module explicitly exports nothing
         assert services.tools.__all__ == []
 
     def test_module_attributes_accessible(self):
         """Test that standard module attributes are accessible"""
-        import services.tools
+        import backend.services.tools
 
         # Standard Python module attributes
         assert hasattr(services.tools, "__name__")
@@ -121,13 +121,13 @@ class TestToolsModulePublicAPI:
 
     def test_module_name_correct(self):
         """Test that the module name is correctly set"""
-        import services.tools
+        import backend.services.tools
 
-        assert services.tools.__name__ == "services.tools"
+        assert services.tools.__name__ == "backend.services.tools"
 
     def test_no_unexpected_globals(self):
         """Test that module doesn't add unexpected globals"""
-        import services.tools
+        import backend.services.tools
 
         # Get all public attributes (not starting with _)
         public_attrs = [attr for attr in dir(services.tools) if not attr.startswith("_")]
@@ -156,7 +156,7 @@ class TestToolsModuleDocumentation:
 
     def test_module_comments_describe_purpose(self):
         """Test that comments in module describe its purpose"""
-        import services.tools
+        import backend.services.tools
 
         doc = services.tools.__doc__
         assert doc is not None
@@ -188,7 +188,7 @@ class TestToolsModuleIntegration:
         """Test that the module can be reloaded without errors"""
         import importlib
 
-        import services.tools
+        import backend.services.tools
 
         try:
             importlib.reload(services.tools)
@@ -197,24 +197,24 @@ class TestToolsModuleIntegration:
 
     def test_module_import_idempotent(self):
         """Test that importing the module multiple times is safe"""
-        import services.tools as tools1
-        import services.tools as tools2
+        import backend.services.tools as tools1
+        import backend.services.tools as tools2
 
         # Should be the same object
         assert tools1 is tools2
 
     def test_module_in_sys_modules(self):
         """Test that the module is properly registered in sys.modules"""
-        import services.tools
+        import backend.services.tools
 
-        assert "services.tools" in sys.modules
-        assert sys.modules["services.tools"] is services.tools
+        assert "backend.services.tools" in sys.modules
+        assert sys.modules["backend.services.tools"] is services.tools
 
     def test_module_initialization_silent(self):
         """Test that module initialization doesn't produce side effects"""
         # Import fresh and check no exceptions are raised
-        if "services.tools" in sys.modules:
-            del sys.modules["services.tools"]
+        if "backend.services.tools" in sys.modules:
+            del sys.modules["backend.services.tools"]
 
         try:
             # If we got here, no errors occurred
@@ -259,7 +259,7 @@ class TestToolsModuleCoverageCompletion:
 
     def test_docstring_line_by_line(self):
         """Test each line of the docstring for completeness"""
-        import services.tools
+        import backend.services.tools
 
         doc = services.tools.__doc__
         assert doc is not None
@@ -272,7 +272,7 @@ class TestToolsModuleCoverageCompletion:
 
     def test_all_variable_completeness(self):
         """Test that __all__ variable is properly defined"""
-        import services.tools
+        import backend.services.tools
 
         # Should be defined
         assert hasattr(services.tools, "__all__")
@@ -288,7 +288,7 @@ class TestToolsModuleCoverageCompletion:
         Test to ensure all statements in the module are covered.
         This is the primary coverage test for the 1 statement in __init__.py
         """
-        import services.tools
+        import backend.services.tools
 
         # Verify the module loads successfully - this covers the 1 statement (__all__ = [])
         assert hasattr(services.tools, "__all__")
@@ -306,17 +306,17 @@ class TestToolsModuleExecution:
     def test_module_executes_on_import(self):
         """Test that the module executes properly on import"""
         # Re-import to ensure execution
-        if "services.tools" in sys.modules:
-            del sys.modules["services.tools"]
+        if "backend.services.tools" in sys.modules:
+            del sys.modules["backend.services.tools"]
 
-        import services.tools
+        import backend.services.tools
 
         # After import, __all__ should be defined
         assert hasattr(services.tools, "__all__")
 
     def test_module_dict_complete(self):
         """Test that the module's __dict__ contains expected keys"""
-        import services.tools
+        import backend.services.tools
 
         module_dict = services.tools.__dict__
 
@@ -328,7 +328,7 @@ class TestToolsModuleExecution:
 
     def test_getattr_on_module(self):
         """Test that getattr works on the module"""
-        import services.tools
+        import backend.services.tools
 
         # __all__ should be accessible via getattr
         all_attr = getattr(services.tools, "__all__", None)
@@ -346,14 +346,14 @@ class TestToolsModuleEdgeCases:
 
     def test_module_attribute_error_on_nonexistent(self):
         """Test that accessing nonexistent attributes raises AttributeError"""
-        import services.tools
+        import backend.services.tools
 
         with pytest.raises(AttributeError):
             _ = services.tools.nonexistent_attribute
 
     def test_module_has_no_callable_exports(self):
         """Test that the module has no callable (function/class) exports"""
-        import services.tools
+        import backend.services.tools
 
         for name in services.tools.__all__:
             # __all__ is empty, so this should not execute
@@ -363,15 +363,15 @@ class TestToolsModuleEdgeCases:
     def test_module_pickle_support(self):
         """Test that the module can be referenced in pickle context"""
 
-        import services.tools
+        import backend.services.tools
 
         # Modules aren't typically pickled, but verify reference works
         module_name = services.tools.__name__
-        assert module_name == "services.tools"
+        assert module_name == "backend.services.tools"
 
     def test_module_repr_meaningful(self):
         """Test that module repr is meaningful"""
-        import services.tools
+        import backend.services.tools
 
         repr_str = repr(services.tools)
         assert "module" in repr_str.lower() or "tools" in repr_str.lower()
@@ -396,7 +396,7 @@ class TestToolsModuleParameterized:
     )
     def test_required_attributes_present(self, attr_name):
         """Test that all required module attributes are present"""
-        import services.tools
+        import backend.services.tools
 
         assert hasattr(services.tools, attr_name)
 
@@ -410,7 +410,7 @@ class TestToolsModuleParameterized:
     )
     def test_attribute_types(self, attr_name, expected_type):
         """Test that module attributes have correct types"""
-        import services.tools
+        import backend.services.tools
 
         attr = getattr(services.tools, attr_name)
         assert isinstance(attr, expected_type)
@@ -423,7 +423,7 @@ class TestToolsModuleParameterized:
     )
     def test_all_values(self, all_value):
         """Test that __all__ has the expected value"""
-        import services.tools
+        import backend.services.tools
 
         assert services.tools.__all__ == all_value
 
@@ -438,9 +438,9 @@ class TestToolsModuleAccessPatterns:
 
     def test_import_as_alias(self):
         """Test importing the module with an alias"""
-        import services.tools as tools
+        import backend.services.tools as tools
 
-        assert tools.__name__ == "services.tools"
+        assert tools.__name__ == "backend.services.tools"
         assert hasattr(tools, "__all__")
 
     def test_from_import_all(self):
@@ -448,7 +448,7 @@ class TestToolsModuleAccessPatterns:
 
         # Since __all__ is empty, nothing should be imported
         namespace = {}
-        exec("from services.tools import *", namespace)
+        exec("from backend.services.tools import *", namespace)
 
         # __all__ is empty, so only builtins should be present
         imported_items = [k for k in namespace if not k.startswith("_")]
@@ -456,17 +456,17 @@ class TestToolsModuleAccessPatterns:
 
     def test_from_import_all_attribute(self):
         """Test explicitly importing __all__"""
-        from services.tools import __all__
+        from backend.services.tools import __all__
 
         assert isinstance(__all__, list)
         assert __all__ == []
 
     def test_submodule_access(self):
         """Test that submodule access follows Python conventions"""
-        import services.tools
+        import backend.services.tools
 
         # The module should be accessible via sys.modules
-        assert sys.modules.get("services.tools") is services.tools
+        assert sys.modules.get("backend.services.tools") is services.tools
 
 
 # ============================================================================
@@ -482,8 +482,8 @@ class TestToolsModulePerformance:
         import time
 
         # Remove from cache
-        if "services.tools" in sys.modules:
-            del sys.modules["services.tools"]
+        if "backend.services.tools" in sys.modules:
+            del sys.modules["backend.services.tools"]
 
         # Import and measure
         start = time.time()

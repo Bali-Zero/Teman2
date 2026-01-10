@@ -1,7 +1,7 @@
 """
 Unit tests for FastAPI dependency injection functions.
 
-Tests that dependencies are correctly retrieved from app.state via the Request object.
+Tests that dependencies are correctly retrieved from backend.app.state via the Request object.
 """
 
 from unittest.mock import MagicMock, Mock, patch
@@ -205,7 +205,7 @@ class TestGetCache:
     """Tests for get_cache dependency."""
 
     def test_returns_cache_from_state(self, mock_request):
-        """Test that cache is returned from app.state if available."""
+        """Test that cache is returned from backend.app.state if available."""
         mock_cache = MagicMock()
         mock_request.app.state.cache_service = mock_cache
 
@@ -217,7 +217,7 @@ class TestGetCache:
         mock_request.app.state.cache_service = None
 
         # We need to mock get_cache_service since it's imported in the module
-        with patch("app.dependencies.get_cache_service") as mock_get_cache:
+        with patch("backend.app.dependencies.get_cache_service") as mock_get_cache:
             mock_singleton = MagicMock()
             mock_get_cache.return_value = mock_singleton
 

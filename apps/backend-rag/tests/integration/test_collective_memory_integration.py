@@ -33,10 +33,10 @@ class TestCollectiveMemoryWorkflowIntegration:
     async def test_collective_memory_workflow_initialization(self, db_pool):
         """Test CollectiveMemoryWorkflow initialization"""
         with (
-            patch("services.collective_memory_workflow.MemoryServicePostgres") as mock_memory,
-            patch("services.collective_memory_workflow.SearchService") as mock_search,
+            patch("backend.services.collective_memory_workflow.MemoryServicePostgres") as mock_memory,
+            patch("backend.services.collective_memory_workflow.SearchService") as mock_search,
         ):
-            from services.memory.collective_memory_workflow import create_collective_memory_workflow
+            from backend.services.memory.collective_memory_workflow import create_collective_memory_workflow
 
             workflow = create_collective_memory_workflow(
                 memory_service=mock_memory.return_value,
@@ -199,8 +199,8 @@ class TestCollectiveMemoryEmitterIntegration:
     @pytest.mark.asyncio
     async def test_collective_memory_emitter_initialization(self, db_pool):
         """Test CollectiveMemoryEmitter initialization"""
-        with patch("services.collective_memory_emitter.MemoryServicePostgres") as mock_memory:
-            from services.memory.collective_memory_emitter import CollectiveMemoryEmitter
+        with patch("backend.services.collective_memory_emitter.MemoryServicePostgres") as mock_memory:
+            from backend.services.memory.collective_memory_emitter import CollectiveMemoryEmitter
 
             emitter = CollectiveMemoryEmitter(memory_service=mock_memory.return_value)
 

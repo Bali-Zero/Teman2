@@ -615,7 +615,7 @@ def qdrant_client(qdrant_container):
     Yields:
         QdrantClient: Qdrant client connected to test instance
     """
-    from core.qdrant_db import QdrantClient
+    from backend.core.qdrant_db import QdrantClient
 
     client = QdrantClient(qdrant_url=qdrant_container, collection_name="test_collection")
 
@@ -630,7 +630,7 @@ async def memory_orchestrator(postgres_container):
     Yields:
         MemoryOrchestrator: Memory orchestrator connected to test database
     """
-    from services.memory import MemoryOrchestrator
+    from backend.services.memory import MemoryOrchestrator
 
     # Use database URL from postgres_container fixture
     # Normalize URL (remove +psycopg2 if present, asyncpg doesn't support it)
@@ -654,7 +654,7 @@ async def search_service(qdrant_client):
     Yields:
         SearchService: Search service connected to test Qdrant
     """
-    from services.search.search_service import SearchService
+    from backend.services.search.search_service import SearchService
 
     # Override Qdrant URL in settings
     original_url = os.getenv("QDRANT_URL")
@@ -759,7 +759,7 @@ async def cleanup_websocket_connections():
 
     # Post-test cleanup: Clear all WebSocket connections
     try:
-        from app.routers.websocket import manager
+        from backend.app.routers.websocket import manager
 
         # Disconnect all active connections
         user_ids = list(manager.active_connections.keys())

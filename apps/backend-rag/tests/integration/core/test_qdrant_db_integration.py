@@ -26,7 +26,7 @@ class TestQdrantClientIntegration:
     @pytest_asyncio.fixture
     async def qdrant_client(self, qdrant_container):
         """Create QdrantClient instance"""
-        from core.qdrant_db import QdrantClient
+        from backend.core.qdrant_db import QdrantClient
 
         client = QdrantClient(
             qdrant_url=qdrant_container,
@@ -45,7 +45,7 @@ class TestQdrantClientIntegration:
     @pytest.mark.asyncio
     async def test_context_manager(self, qdrant_container):
         """Test using QdrantClient as context manager"""
-        from core.qdrant_db import QdrantClient
+        from backend.core.qdrant_db import QdrantClient
 
         async with QdrantClient(
             qdrant_url=qdrant_container, collection_name="test_collection"
@@ -56,7 +56,7 @@ class TestQdrantClientIntegration:
     @pytest.mark.asyncio
     async def test_get_headers_with_api_key(self, qdrant_container):
         """Test getting headers with API key"""
-        from core.qdrant_db import QdrantClient
+        from backend.core.qdrant_db import QdrantClient
 
         client = QdrantClient(
             qdrant_url=qdrant_container,
@@ -172,7 +172,7 @@ class TestQdrantClientIntegration:
 
     def test_get_qdrant_metrics(self):
         """Test getting Qdrant metrics"""
-        from core.qdrant_db import get_qdrant_metrics
+        from backend.core.qdrant_db import get_qdrant_metrics
 
         metrics = get_qdrant_metrics()
 
@@ -184,7 +184,7 @@ class TestQdrantClientIntegration:
     @pytest.mark.asyncio
     async def test_retry_with_backoff_success(self):
         """Test retry with backoff on success"""
-        from core.qdrant_db import _retry_with_backoff
+        from backend.core.qdrant_db import _retry_with_backoff
 
         async def success_func():
             return "success"
@@ -195,7 +195,7 @@ class TestQdrantClientIntegration:
     @pytest.mark.asyncio
     async def test_retry_with_backoff_failure(self):
         """Test retry with backoff on failure"""
-        from core.qdrant_db import _retry_with_backoff
+        from backend.core.qdrant_db import _retry_with_backoff
 
         async def fail_func():
             raise Exception("Test error")

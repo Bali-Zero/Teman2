@@ -16,13 +16,13 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.modules.identity.models import User
-from app.modules.identity.router import (
+from backend.app.modules.identity.models import User
+from backend.app.modules.identity.router import (
     LoginRequest,
     get_identity_service,
     router,
 )
-from app.modules.identity.service import IdentityService
+from backend.app.modules.identity.service import IdentityService
 
 # ============================================================================
 # Fixtures
@@ -85,7 +85,7 @@ def mock_asyncpg_connection():
 @pytest.fixture
 def reset_identity_service():
     """Reset the global identity service singleton"""
-    import app.modules.identity.router as router_module
+    import backend.app.modules.identity.router as router_module
 
     # Access the module-level variable, not the router instance
     original_service = getattr(router_module, "_identity_service", None)
@@ -127,9 +127,9 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # mock_identity_service.get_permissions_for_role = Mock(return_value=["all", "admin"])
 
     # with patch(
-    # "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+    # "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     # ):
-    # from app.modules.identity.router import team_login
+    # from backend.app.modules.identity.router import team_login
 
     # request = LoginRequest(email="test@example.com", pin="1234")
     # response = await team_login(request)
@@ -158,9 +158,9 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # ):
     # """Test login with invalid PIN format (non-digit) - validation happens in endpoint"""
     # with patch(
-    # "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+    # "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     # ):
-    # from app.modules.identity.router import team_login
+    # from backend.app.modules.identity.router import team_login
 
     # Create request with valid format first, then modify pin to bypass Pydantic validation
     # request = LoginRequest(email="test@example.com", pin="1234")
@@ -179,9 +179,9 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # ):
     # """Test login with invalid PIN format (too short) - validation happens in endpoint"""
     # with patch(
-    # "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+    # "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     # ):
-    # from app.modules.identity.router import team_login
+    # from backend.app.modules.identity.router import team_login
 
     # Create request with valid format first, then modify pin to bypass Pydantic validation
     # request = LoginRequest(email="test@example.com", pin="1234")
@@ -200,9 +200,9 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # ):
     # """Test login with invalid PIN format (too long) - validation happens in endpoint"""
     # with patch(
-    # "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+    # "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     # ):
-    # from app.modules.identity.router import team_login
+    # from backend.app.modules.identity.router import team_login
 
     # Create request with valid format first, then modify pin to bypass Pydantic validation
     # request = LoginRequest(email="test@example.com", pin="1234")
@@ -223,9 +223,9 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # mock_identity_service.authenticate_user = AsyncMock(return_value=None)
 
     # with patch(
-    # "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+    # "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     # ):
-    # from app.modules.identity.router import team_login
+    # from backend.app.modules.identity.router import team_login
 
     # request = LoginRequest(email="test@example.com", pin="1234")
     # with pytest.raises(HTTPException) as exc_info:
@@ -242,9 +242,9 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # mock_identity_service.authenticate_user = AsyncMock(side_effect=Exception("Database error"))
 
     # with patch(
-    # "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+    # "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     # ):
-    # from app.modules.identity.router import team_login
+    # from backend.app.modules.identity.router import team_login
 
     # request = LoginRequest(email="test@example.com", pin="1234")
     # with pytest.raises(HTTPException) as exc_info:
@@ -263,9 +263,9 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # )
 
     # with patch(
-    # "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+    # "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     # ):
-    # from app.modules.identity.router import team_login
+    # from backend.app.modules.identity.router import team_login
 
     # request = LoginRequest(email="test@example.com", pin="1234")
     # with pytest.raises(HTTPException) as exc_info:
@@ -289,7 +289,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     #     mock_asyncpg_connection.fetchval = AsyncMock(return_value=25)  # Total active count
     #
     #     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    #         with patch("app.modules.identity.router.IdentityService") as mock_service_class:
+    #         with patch("backend.app.modules.identity.router.IdentityService") as mock_service_class:
     #             mock_service = MagicMock()
     #             mock_service.get_password_hash = Mock(return_value="$2b$12$hashed")
     #             mock_service_class.return_value = mock_service
@@ -316,7 +316,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     #     mock_asyncpg_connection.fetchval = AsyncMock(return_value=30)
     #
     #     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    #         with patch("app.modules.identity.router.IdentityService") as mock_service_class:
+    #         with patch("backend.app.modules.identity.router.IdentityService") as mock_service_class:
     #             mock_service = MagicMock()
     #             mock_service.get_password_hash = Mock(return_value="$2b$12$hashed")
     #             mock_service_class.return_value = mock_service
@@ -347,7 +347,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     #     mock_asyncpg_connection.execute = AsyncMock(side_effect=Exception("Database error"))
     #
     #     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    #         with patch("app.modules.identity.router.IdentityService") as mock_service_class:
+    #         with patch("backend.app.modules.identity.router.IdentityService") as mock_service_class:
     #             mock_service = MagicMock()
     #             mock_service.get_password_hash = Mock(return_value="$2b$12$hashed")
     #             mock_service_class.return_value = mock_service
@@ -381,7 +381,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     #     mock_asyncpg_connection.fetchval = AsyncMock(return_value=2)
     #
     #     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    #         with patch("app.modules.identity.router.IdentityService") as mock_service_class:
+    #         with patch("backend.app.modules.identity.router.IdentityService") as mock_service_class:
     #             mock_service = MagicMock()
     #             mock_service.get_password_hash = Mock(return_value="$2b$12$hashed")
     #             mock_service_class.return_value = mock_service
@@ -409,7 +409,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # )
 
     # with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    # REMOVED: from app.modules.identity.router import run_migration_010
+    # REMOVED: from backend.app.modules.identity.router import run_migration_010
 
     # REMOVED: await run_migration_010()
 
@@ -424,7 +424,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     #     """Test migration when DATABASE_URL is not configured"""
     #     mock_settings.database_url = None
     #
-    #     # REMOVED: from app.modules.identity.router import run_migration_010
+    #     # REMOVED: from backend.app.modules.identity.router import run_migration_010
     #
     #     with pytest.raises(HTTPException) as exc_info:
     #         # REMOVED: await run_migration_010()
@@ -443,7 +443,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # mock_asyncpg_connection.fetch = AsyncMock(side_effect=Exception("Migration error"))
     #
     # with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    #     # REMOVED: from app.modules.identity.router import run_migration_010
+    #     # REMOVED: from backend.app.modules.identity.router import run_migration_010
     #
     #     with pytest.raises(HTTPException) as exc_info:
     #         # REMOVED: await run_migration_010()
@@ -455,7 +455,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # async def test_run_migration_010_connection_error(mock_settings):
     # """Test migration when connection fails"""
     # with patch("asyncpg.connect", side_effect=Exception("Connection failed")):
-    #     # REMOVED: from app.modules.identity.router import run_migration_010
+    #     # REMOVED: from backend.app.modules.identity.router import run_migration_010
     #
     #     with pytest.raises(HTTPException) as exc_info:
     #         # REMOVED: await run_migration_010()
@@ -483,7 +483,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     mock_asyncpg_connection.fetchrow = AsyncMock(return_value=mock_row)
 
     # with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    #     # REMOVED: from app.modules.identity.router import debug_auth
+    #     # REMOVED: from backend.app.modules.identity.router import debug_auth
     #
     #     # REMOVED: result = await debug_auth()
     #
@@ -500,7 +500,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # mock_asyncpg_connection.fetchrow = AsyncMock(return_value=None)
 
     # with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    # REMOVED: from app.modules.identity.router import debug_auth
+    # REMOVED: from backend.app.modules.identity.router import debug_auth
 
     # REMOVED: await debug_auth()
 
@@ -512,7 +512,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # """Test debug auth when DATABASE_URL is not configured"""
     # mock_settings.database_url = None
 
-    # REMOVED: from app.modules.identity.router import debug_auth
+    # REMOVED: from backend.app.modules.identity.router import debug_auth
 
     # with pytest.raises(HTTPException) as exc_info:
     # REMOVED: await debug_auth()
@@ -527,7 +527,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # mock_asyncpg_connection.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
     # with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-    # REMOVED: from app.modules.identity.router import debug_auth
+    # REMOVED: from backend.app.modules.identity.router import debug_auth
 
     # with pytest.raises(HTTPException) as exc_info:
     # REMOVED: await debug_auth()
@@ -553,12 +553,12 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     mock_asyncpg_connection.fetchrow = AsyncMock(return_value=mock_result)
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.router.get_identity_service") as mock_get_service:
+        with patch("backend.app.modules.identity.router.get_identity_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.get_password_hash = Mock(return_value="$2b$12$hashed")
             mock_get_service.return_value = mock_service
 
-            # REMOVED: from app.modules.identity.router import reset_admin_user
+            # REMOVED: from backend.app.modules.identity.router import reset_admin_user
 
         # REMOVED: await reset_admin_user()
 
@@ -574,7 +574,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # """Test reset admin when DATABASE_URL is not configured"""
     # mock_settings.database_url = None
 
-    # REMOVED: from app.modules.identity.router import reset_admin_user
+    # REMOVED: from backend.app.modules.identity.router import reset_admin_user
 
     # with pytest.raises(HTTPException) as exc_info:
     # REMOVED: await reset_admin_user()
@@ -591,12 +591,12 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # mock_asyncpg_connection.execute = AsyncMock(side_effect=Exception("Database error"))
 
     with patch("asyncpg.connect", return_value=mock_asyncpg_connection):
-        with patch("app.modules.identity.router.get_identity_service") as mock_get_service:
+        with patch("backend.app.modules.identity.router.get_identity_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.get_password_hash = Mock(return_value="$2b$12$hashed")
             mock_get_service.return_value = mock_service
 
-            # REMOVED: from app.modules.identity.router import reset_admin_user
+            # REMOVED: from backend.app.modules.identity.router import reset_admin_user
 
     # with pytest.raises(HTTPException) as exc_info:
     # REMOVED: await reset_admin_user()
@@ -609,7 +609,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
     # async def test_reset_admin_connection_error(mock_settings):
     # """Test reset admin when connection fails"""
     # with patch("asyncpg.connect", side_effect=Exception("Connection failed")):
-    # REMOVED: from app.modules.identity.router import reset_admin_user
+    # REMOVED: from backend.app.modules.identity.router import reset_admin_user
 
     # with pytest.raises(HTTPException) as exc_info:
     # REMOVED: await reset_admin_user()
@@ -637,7 +637,7 @@ def test_get_identity_service_returns_singleton(reset_identity_service):
 #     mock_identity_service.get_permissions_for_role = Mock(return_value=["all"])
 #
 #     with patch(
-#         "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+#         "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
 #     ):
 #         client = TestClient(app)
 #         response = client.post("/team/login", json={"email": "test@example.com", "pin": "1234"})
@@ -678,9 +678,9 @@ async def test_login_with_minimum_pin_length(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     ):
-        from app.modules.identity.router import team_login
+        from backend.app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="1234")
         mock_response = MagicMock(spec=Response)
@@ -701,9 +701,9 @@ async def test_login_with_maximum_pin_length(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     ):
-        from app.modules.identity.router import team_login
+        from backend.app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="12345678")
         mock_response = MagicMock(spec=Response)
@@ -725,9 +725,9 @@ async def test_login_user_without_personalized_response(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     ):
-        from app.modules.identity.router import team_login
+        from backend.app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="1234")
         mock_response = MagicMock(spec=Response)
@@ -749,9 +749,9 @@ async def test_login_user_with_none_language(
     mock_identity_service.get_permissions_for_role = Mock(return_value=[])
 
     with patch(
-        "app.modules.identity.router.get_identity_service", return_value=mock_identity_service
+        "backend.app.modules.identity.router.get_identity_service", return_value=mock_identity_service
     ):
-        from app.modules.identity.router import team_login
+        from backend.app.modules.identity.router import team_login
 
         request = LoginRequest(email="test@example.com", pin="1234")
         mock_response = MagicMock(spec=Response)

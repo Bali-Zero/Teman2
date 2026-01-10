@@ -19,7 +19,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.analytics.team_timesheet_service import (
+from backend.services.analytics.team_timesheet_service import (
     BALI_TZ,
     TeamTimesheetService,
     get_timesheet_service,
@@ -148,7 +148,7 @@ async def test_clock_in_notifies_admin(timesheet_service, mock_db_pool):
     mock_conn.fetchrow = AsyncMock(return_value=None)
     mock_db_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
 
-    with patch("services.compliance.notifications.notification_hub") as mock_hub:
+    with patch("backend.services.compliance.notifications.notification_hub") as mock_hub:
         mock_hub.send = AsyncMock()
 
         await timesheet_service.clock_in("user123", "user@example.com")
@@ -417,10 +417,10 @@ async def test_export_timesheet_csv_success(timesheet_service, mock_db_pool):
 # ============================================================================
 
 
-@pytest.mark.skip(reason="services.team_timesheet_service import path deprecated")
+@pytest.mark.skip(reason="backend.services.team_timesheet_service import path deprecated")
 def test_get_timesheet_service_none():
     """Test get_timesheet_service when not initialized"""
-    import services.team_timesheet_service
+    import backend.services.team_timesheet_service
 
     services.team_timesheet_service._timesheet_service = None
     result = get_timesheet_service()
@@ -596,7 +596,7 @@ async def test_clock_in_notification_failure(timesheet_service, mock_db_pool):
     mock_db_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
 
     # Patch notification_hub import inside the method
-    with patch("services.compliance.notifications.notification_hub") as mock_hub:
+    with patch("backend.services.compliance.notifications.notification_hub") as mock_hub:
         mock_hub.send = AsyncMock(side_effect=Exception("Notification failed"))
 
         # Should still succeed even if notification fails
@@ -679,7 +679,7 @@ async def test_clock_out_notification_failure(timesheet_service, mock_db_pool):
     mock_db_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
 
     # Patch notification_hub import inside the method
-    with patch("services.compliance.notifications.notification_hub") as mock_hub:
+    with patch("backend.services.compliance.notifications.notification_hub") as mock_hub:
         mock_hub.send = AsyncMock(side_effect=Exception("Notification failed"))
 
         # Should still succeed even if notification fails

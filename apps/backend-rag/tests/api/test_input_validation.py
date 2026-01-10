@@ -32,7 +32,7 @@ class TestEmailValidation:
     def test_valid_email_formats(self, test_client, test_app):
         """Test various valid email formats"""
 
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_pool, mock_conn = create_mock_db_pool(fetchrow_return=None)
 
@@ -186,7 +186,7 @@ class TestEnumValidation:
         valid_tiers = ["S", "A", "B", "C", "D"]
 
         with (
-            patch("app.routers.legal_ingest.get_legal_service") as mock_get_service,
+            patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_service = MagicMock()

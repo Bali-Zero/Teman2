@@ -26,7 +26,7 @@ class TestEpisodicMemoryAddEvent:
 
     def test_add_event_success(self, authenticated_client):
         """Test successfully adding an event"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -52,7 +52,7 @@ class TestEpisodicMemoryAddEvent:
 
     def test_add_event_with_all_fields(self, authenticated_client):
         """Test adding an event with all optional fields"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -79,7 +79,7 @@ class TestEpisodicMemoryAddEvent:
 
     def test_add_event_invalid_event_type_defaults_to_general(self, authenticated_client):
         """Test that invalid event_type defaults to general"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -117,7 +117,7 @@ class TestEpisodicMemoryExtract:
 
     def test_extract_with_temporal_reference(self, authenticated_client):
         """Test extraction when message has temporal reference"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -139,7 +139,7 @@ class TestEpisodicMemoryExtract:
 
     def test_extract_without_temporal_reference(self, authenticated_client):
         """Test extraction when message has no temporal reference"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_pool.acquire = MagicMock(return_value=mock_conn)
@@ -159,7 +159,7 @@ class TestEpisodicMemoryExtract:
 
     def test_extract_with_ai_response(self, authenticated_client):
         """Test extraction with AI response context"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -186,7 +186,7 @@ class TestEpisodicMemoryTimeline:
 
     def test_get_timeline(self, authenticated_client):
         """Test getting user's timeline"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -220,7 +220,7 @@ class TestEpisodicMemoryTimeline:
 
     def test_get_timeline_with_event_type_filter(self, authenticated_client):
         """Test filtering timeline by event type"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -237,7 +237,7 @@ class TestEpisodicMemoryTimeline:
 
     def test_get_timeline_with_emotion_filter(self, authenticated_client):
         """Test filtering timeline by emotion"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -252,7 +252,7 @@ class TestEpisodicMemoryTimeline:
 
     def test_get_timeline_with_date_range(self, authenticated_client):
         """Test filtering timeline by date range"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -273,7 +273,7 @@ class TestEpisodicMemoryTimeline:
 
     def test_get_timeline_with_limit(self, authenticated_client):
         """Test limiting timeline results"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -299,7 +299,7 @@ class TestEpisodicMemoryContext:
 
     def test_get_context_summary(self, authenticated_client):
         """Test getting context summary"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -333,7 +333,7 @@ class TestEpisodicMemoryContext:
 
     def test_get_context_with_limit(self, authenticated_client):
         """Test getting context with custom limit"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -353,7 +353,7 @@ class TestEpisodicMemoryStats:
 
     def test_get_stats(self, authenticated_client):
         """Test getting user stats"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -389,7 +389,7 @@ class TestEpisodicMemoryDeleteEvent:
 
     def test_delete_event_success(self, authenticated_client):
         """Test successfully deleting an event"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value="DELETE 1")
@@ -404,7 +404,7 @@ class TestEpisodicMemoryDeleteEvent:
 
     def test_delete_event_not_found(self, authenticated_client):
         """Test deleting non-existent event"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value="DELETE 0")
@@ -443,7 +443,7 @@ class TestEpisodicMemoryEventTypes:
     )
     def test_add_event_valid_event_types(self, authenticated_client, event_type):
         """Test adding events with all valid event types"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -470,7 +470,7 @@ class TestEpisodicMemoryEmotions:
     )
     def test_add_event_valid_emotions(self, authenticated_client, emotion):
         """Test adding events with all valid emotions"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -494,7 +494,7 @@ class TestEpisodicMemoryRelatedEntities:
 
     def test_add_event_with_kg_entities(self, authenticated_client):
         """Test adding event with Knowledge Graph entity links"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)
@@ -525,7 +525,7 @@ class TestEpisodicMemoryMetadata:
 
     def test_add_event_with_custom_metadata(self, authenticated_client):
         """Test adding event with custom metadata"""
-        with patch("app.routers.episodic_memory.get_db_pool") as mock_get_pool:
+        with patch("backend.app.routers.episodic_memory.get_db_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             now = datetime.now(timezone.utc)

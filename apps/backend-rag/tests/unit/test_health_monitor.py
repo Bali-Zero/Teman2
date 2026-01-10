@@ -14,8 +14,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.monitoring.alert_service import AlertLevel, AlertService
-from services.monitoring.health_monitor import (
+from backend.services.monitoring.alert_service import AlertLevel, AlertService
+from backend.services.monitoring.health_monitor import (
     HealthMonitor,
     get_health_monitor,
     init_health_monitor,
@@ -306,7 +306,7 @@ class TestHealthMonitorSingleton:
     def test_get_health_monitor_none(self):
         """Test get_health_monitor when not initialized"""
         # Clear singleton
-        import services.monitoring.health_monitor as health_monitor_module
+        import backend.services.monitoring.health_monitor as health_monitor_module
 
         health_monitor_module._health_monitor = None
 
@@ -318,7 +318,7 @@ class TestHealthMonitorSingleton:
         mock_alert = MagicMock(spec=AlertService)
 
         # Clear singleton
-        import services.monitoring.health_monitor as health_monitor_module
+        import backend.services.monitoring.health_monitor as health_monitor_module
 
         health_monitor_module._health_monitor = None
 

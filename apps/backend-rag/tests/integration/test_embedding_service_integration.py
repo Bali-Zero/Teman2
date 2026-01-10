@@ -24,13 +24,13 @@ class TestEmbeddingServiceIntegration:
 
     def test_embedding_service_initialization(self):
         """Test embedding service initialization"""
-        with patch("core.embeddings.create_embeddings_generator") as mock_create:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
             mock_embedder = MagicMock()
             mock_embedder.model = "text-embedding-3-small"
             mock_embedder.dimensions = 1536
             mock_create.return_value = mock_embedder
 
-            from core.embeddings import create_embeddings_generator
+            from backend.core.embeddings import create_embeddings_generator
 
             embedder = create_embeddings_generator()
             assert embedder is not None
@@ -38,12 +38,12 @@ class TestEmbeddingServiceIntegration:
 
     def test_embedding_generation(self):
         """Test embedding generation"""
-        with patch("core.embeddings.create_embeddings_generator") as mock_create:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
             mock_embedder = MagicMock()
             mock_embedder.generate_single_embedding.return_value = [0.1] * 1536
             mock_create.return_value = mock_embedder
 
-            from core.embeddings import create_embeddings_generator
+            from backend.core.embeddings import create_embeddings_generator
 
             embedder = create_embeddings_generator()
             embedding = embedder.generate_single_embedding("Test text")

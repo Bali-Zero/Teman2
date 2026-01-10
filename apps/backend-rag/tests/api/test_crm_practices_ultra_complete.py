@@ -46,7 +46,7 @@ class TestCRMPracticesCreate:
 
     def test_create_practice_minimal(self, authenticated_client):
         """Test creating practice with minimal required fields"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
 
@@ -74,7 +74,7 @@ class TestCRMPracticesCreate:
 
     def test_create_practice_complete(self, authenticated_client):
         """Test creating practice with all fields"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
 
@@ -151,7 +151,7 @@ class TestCRMPracticesCreate:
 
     def test_create_practice_nonexistent_type(self, authenticated_client):
         """Test with non-existent practice type"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = None  # Type not found
@@ -170,7 +170,7 @@ class TestCRMPracticesList:
 
     def test_list_practices_default(self, authenticated_client):
         """Test listing practices with default parameters"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -181,7 +181,7 @@ class TestCRMPracticesList:
 
     def test_list_practices_with_filters(self, authenticated_client):
         """Test with multiple filters"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -203,7 +203,7 @@ class TestCRMPracticesList:
 
     def test_list_practices_pagination(self, authenticated_client):
         """Test pagination"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = [{"id": i} for i in range(10)]
@@ -233,7 +233,7 @@ class TestCRMPracticesActive:
 
     def test_get_active_practices_all(self, authenticated_client):
         """Test getting all active practices"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -244,7 +244,7 @@ class TestCRMPracticesActive:
 
     def test_get_active_practices_by_team_member(self, authenticated_client):
         """Test filtering active practices by team member"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -262,7 +262,7 @@ class TestCRMPracticesRenewals:
 
     def test_get_upcoming_renewals_default(self, authenticated_client):
         """Test with default 90 days lookahead"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -273,7 +273,7 @@ class TestCRMPracticesRenewals:
 
     def test_get_upcoming_renewals_custom_days(self, authenticated_client):
         """Test with custom days parameter"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -307,7 +307,7 @@ class TestCRMPracticesGet:
 
     def test_get_practice_success(self, authenticated_client):
         """Test getting existing practice"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {
@@ -322,7 +322,7 @@ class TestCRMPracticesGet:
 
     def test_get_practice_not_found(self, authenticated_client):
         """Test getting non-existent practice"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = None
@@ -350,7 +350,7 @@ class TestCRMPracticesUpdate:
 
     def test_update_practice_single_field(self, authenticated_client):
         """Test updating single field"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {"id": 1, "status": "in_progress"}
@@ -363,7 +363,7 @@ class TestCRMPracticesUpdate:
 
     def test_update_practice_multiple_fields(self, authenticated_client):
         """Test updating multiple fields"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {
@@ -386,7 +386,7 @@ class TestCRMPracticesUpdate:
 
     def test_update_practice_with_expiry_date(self, authenticated_client):
         """Test updating with expiry date (creates renewal alert)"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             expiry = (date.today() + timedelta(days=365)).isoformat()
@@ -406,7 +406,7 @@ class TestCRMPracticesUpdate:
 
     def test_update_practice_not_found(self, authenticated_client):
         """Test updating non-existent practice"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = None
@@ -428,7 +428,7 @@ class TestCRMPracticesUpdate:
 
     def test_update_practice_no_fields(self, authenticated_client):
         """Test update with no fields"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
 
@@ -445,7 +445,7 @@ class TestCRMPracticesDocuments:
 
     def test_add_document_success(self, authenticated_client):
         """Test adding document to practice"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {"documents": []}
@@ -463,7 +463,7 @@ class TestCRMPracticesDocuments:
 
     def test_add_document_to_existing_list(self, authenticated_client):
         """Test adding document to practice with existing documents"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {
@@ -483,7 +483,7 @@ class TestCRMPracticesDocuments:
 
     def test_add_document_practice_not_found(self, authenticated_client):
         """Test adding document to non-existent practice"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = None
@@ -506,7 +506,7 @@ class TestCRMPracticesStats:
 
     def test_get_stats_overview(self, authenticated_client):
         """Test getting practice statistics"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
 
@@ -544,7 +544,7 @@ class TestCRMPracticesSecurity:
 
     def test_sql_injection_in_filters(self, authenticated_client):
         """Test SQL injection in filter parameters"""
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -565,7 +565,7 @@ class TestCRMPracticesPerformance:
         """Test listing performance with large dataset"""
         import time
 
-        with patch("app.routers.crm_practices.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_practices.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = [{"id": i} for i in range(200)]

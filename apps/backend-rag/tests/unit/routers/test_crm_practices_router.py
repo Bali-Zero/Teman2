@@ -162,18 +162,25 @@ def mock_db_pool():
 @pytest.fixture
 def client(mock_db_pool):
     """Create test client with mocked dependencies"""
-    from app.routers.crm_practices import router
+    from backend.app.routers.crm_practices import router
 
     app = FastAPI()
     app.include_router(router)
 
-    # Override database dependency
-    from app.dependencies import get_database_pool
+    # Override dependencies
+    from backend.app.dependencies import get_current_user, get_database_pool
+    from backend.app.services.crm.audit_logger import audit_logger
+    from backend.app.services.crm.metrics import metrics_collector
 
-    async def override_db():
-        return mock_db_pool
+    # Initialize with mock pool to avoid 500 errors in decorators
+    audit_logger.initialize(mock_db_pool)
+    metrics_collector.initialize(mock_db_pool)
 
-    app.dependency_overrides[get_database_pool] = override_db
+    app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
+    app.dependency_overrides[get_current_user] = lambda: {
+        "email": "admin@example.com",
+        "role": "admin",
+    }
 
     return TestClient(app)
 
@@ -188,7 +195,7 @@ class TestPracticeCreateValidation:
 
     def test_valid_practice_create(self):
         """Test valid practice creation data"""
-        from app.routers.crm_practices import PracticeCreate
+        from backend.app.routers.crm_practices import PracticeCreate
 
         practice = PracticeCreate(
             client_id=1,
@@ -205,7 +212,7 @@ class TestPracticeCreateValidation:
 
     def test_invalid_status(self):
         """Test validation fails with invalid status"""
-        from app.routers.crm_practices import PracticeCreate
+        from backend.app.routers.crm_practices import PracticeCreate
 
         with pytest.raises(ValueError, match="status must be one of"):
             PracticeCreate(
@@ -214,7 +221,7 @@ class TestPracticeCreateValidation:
 
     def test_invalid_priority(self):
         """Test validation fails with invalid priority"""
-        from app.routers.crm_practices import PracticeCreate
+        from backend.app.routers.crm_practices import PracticeCreate
 
         with pytest.raises(ValueError, match="priority must be one of"):
             PracticeCreate(
@@ -223,28 +230,28 @@ class TestPracticeCreateValidation:
 
     def test_invalid_client_id_zero(self):
         """Test validation fails with zero client_id"""
-        from app.routers.crm_practices import PracticeCreate
+        from backend.app.routers.crm_practices import PracticeCreate
 
         with pytest.raises(ValueError, match="client_id must be positive"):
             PracticeCreate(client_id=0, practice_type_code="KITAS")
 
     def test_invalid_client_id_negative(self):
         """Test validation fails with negative client_id"""
-        from app.routers.crm_practices import PracticeCreate
+        from backend.app.routers.crm_practices import PracticeCreate
 
         with pytest.raises(ValueError, match="client_id must be positive"):
             PracticeCreate(client_id=-1, practice_type_code="KITAS")
 
     def test_invalid_quoted_price_negative(self):
         """Test validation fails with negative quoted_price"""
-        from app.routers.crm_practices import PracticeCreate
+        from backend.app.routers.crm_practices import PracticeCreate
 
         with pytest.raises(ValueError, match="quoted_price must be non-negative"):
             PracticeCreate(client_id=1, practice_type_code="KITAS", quoted_price=Decimal("-100.00"))
 
     def test_quoted_price_none_allowed(self):
         """Test None is allowed for quoted_price"""
-        from app.routers.crm_practices import PracticeCreate
+        from backend.app.routers.crm_practices import PracticeCreate
 
         practice = PracticeCreate(client_id=1, practice_type_code="KITAS", quoted_price=None)
         assert practice.quoted_price is None
@@ -255,7 +262,7 @@ class TestPracticeUpdateValidation:
 
     def test_valid_practice_update(self):
         """Test valid practice update data"""
-        from app.routers.crm_practices import PracticeUpdate
+        from backend.app.routers.crm_practices import PracticeUpdate
 
         update = PracticeUpdate(
             status="in_progress",
@@ -269,21 +276,21 @@ class TestPracticeUpdateValidation:
 
     def test_invalid_status_in_update(self):
         """Test validation fails with invalid status in update"""
-        from app.routers.crm_practices import PracticeUpdate
+        from backend.app.routers.crm_practices import PracticeUpdate
 
         with pytest.raises(ValueError, match="status must be one of"):
             PracticeUpdate(status="bad_status")
 
     def test_invalid_priority_in_update(self):
         """Test validation fails with invalid priority in update"""
-        from app.routers.crm_practices import PracticeUpdate
+        from backend.app.routers.crm_practices import PracticeUpdate
 
         with pytest.raises(ValueError, match="priority must be one of"):
             PracticeUpdate(priority="super_high")
 
     def test_negative_price_fields(self):
         """Test validation fails with negative price fields"""
-        from app.routers.crm_practices import PracticeUpdate
+        from backend.app.routers.crm_practices import PracticeUpdate
 
         with pytest.raises(ValueError, match="Price fields must be non-negative"):
             PracticeUpdate(actual_price=Decimal("-100.00"))
@@ -296,7 +303,7 @@ class TestPracticeUpdateValidation:
 
     def test_all_fields_none_allowed(self):
         """Test all fields can be None"""
-        from app.routers.crm_practices import PracticeUpdate
+        from backend.app.routers.crm_practices import PracticeUpdate
 
         update = PracticeUpdate()
         assert update.status is None
@@ -325,7 +332,7 @@ class TestCreatePracticeEndpoint:
         mock_conn.execute = AsyncMock()
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
@@ -351,7 +358,7 @@ class TestCreatePracticeEndpoint:
         mock_conn.execute = AsyncMock()
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "VISA",
@@ -368,7 +375,7 @@ class TestCreatePracticeEndpoint:
         mock_conn.fetchrow = AsyncMock(return_value=None)
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "INVALID_TYPE",
@@ -388,7 +395,7 @@ class TestCreatePracticeEndpoint:
         mock_conn.execute = AsyncMock()
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
@@ -407,7 +414,7 @@ class TestCreatePracticeEndpoint:
         )
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
@@ -425,7 +432,7 @@ class TestCreatePracticeEndpoint:
     def test_create_practice_invalid_payload(self, client):
         """Test practice creation with invalid payload"""
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": -1,  # Invalid
                 "practice_type_code": "KITAS",
@@ -434,17 +441,7 @@ class TestCreatePracticeEndpoint:
 
         assert response.status_code == 422  # Validation error
 
-    def test_create_practice_missing_created_by(self, client):
-        """Test practice creation fails without created_by"""
-        response = client.post(
-            "/api/crm/practices/",
-            json={
-                "client_id": 1,
-                "practice_type_code": "KITAS",
-            },
-        )
 
-        assert response.status_code == 422
 
 
 # ============================================================================
@@ -822,7 +819,7 @@ class TestUpdatePracticeEndpoint:
         mock_conn.execute = AsyncMock()
 
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={"status": "in_progress"},
         )
 
@@ -844,7 +841,7 @@ class TestUpdatePracticeEndpoint:
         mock_conn.execute = AsyncMock()
 
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={
                 "status": "completed",
                 "priority": "low",
@@ -866,7 +863,7 @@ class TestUpdatePracticeEndpoint:
         mock_conn.execute = AsyncMock()
 
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={
                 "status": "completed",
                 "expiry_date": expiry.isoformat(),
@@ -883,7 +880,7 @@ class TestUpdatePracticeEndpoint:
         mock_conn.fetchrow = AsyncMock(return_value=None)
 
         response = client.patch(
-            "/api/crm/practices/999?updated_by=admin@example.com",
+            "/api/crm/practices/999",
             json={"status": "in_progress"},
         )
 
@@ -894,7 +891,7 @@ class TestUpdatePracticeEndpoint:
     def test_update_practice_no_fields(self, client, mock_db_pool):
         """Test updating practice with no fields"""
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={},
         )
 
@@ -906,21 +903,12 @@ class TestUpdatePracticeEndpoint:
         """Test updating practice with invalid field name"""
         # Note: This might be caught by Pydantic before reaching the endpoint
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={"invalid_field": "value"},
         )
 
         # Pydantic will ignore extra fields by default, so we get "No fields to update"
         assert response.status_code in [400, 422]
-
-    def test_update_practice_missing_updated_by(self, client):
-        """Test updating practice without updated_by"""
-        response = client.patch(
-            "/api/crm/practices/1",
-            json={"status": "in_progress"},
-        )
-
-        assert response.status_code == 422
 
     def test_update_practice_database_error(self, client, mock_db_pool):
         """Test update practice handles database errors"""
@@ -928,7 +916,7 @@ class TestUpdatePracticeEndpoint:
         mock_conn.fetchrow = AsyncMock(side_effect=asyncpg.PostgresError("Error"))
 
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={"status": "in_progress"},
         )
 
@@ -1127,12 +1115,12 @@ class TestGetPracticesStatsEndpoint:
         detail = response.json()["detail"]
         assert isinstance(detail, str) and len(detail) > 0
 
-    @patch("app.routers.crm_practices.cached")
+    @patch("backend.app.routers.crm_practices.cached")
     def test_get_stats_caching(self, mock_cached, client, mock_db_pool):
         """Test that stats endpoint uses caching"""
         # Note: Testing caching behavior requires checking decorator application
         # This test verifies the decorator is present
-        from app.routers.crm_practices import get_practices_stats
+        from backend.app.routers.crm_practices import get_practices_stats
 
         # Check if the function has been wrapped by the cached decorator
         # The actual caching logic is tested in cache tests
@@ -1167,7 +1155,7 @@ class TestErrorHandling:
         mock_conn.fetchrow = AsyncMock(side_effect=mock_fetchrow_with_error)
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
@@ -1196,7 +1184,7 @@ class TestErrorHandling:
         mock_conn.fetchrow = AsyncMock(side_effect=mock_fetchrow_with_error)
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 999,  # Non-existent client
                 "practice_type_code": "KITAS",
@@ -1225,7 +1213,7 @@ class TestErrorHandling:
         mock_conn.fetchrow = AsyncMock(side_effect=mock_fetchrow_with_error)
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
@@ -1262,7 +1250,7 @@ class TestEdgeCases:
         mock_conn.execute = AsyncMock()
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
@@ -1291,7 +1279,7 @@ class TestEdgeCases:
         mock_conn.execute = AsyncMock()
 
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={
                 "quoted_price": "2000.00",
                 "actual_price": "1800.00",
@@ -1313,7 +1301,7 @@ class TestEdgeCases:
         mock_conn.execute = AsyncMock()
 
         response = client.post(
-            "/api/crm/practices/?created_by=admin@example.com",
+            "/api/crm/practices/",
             json={
                 "client_id": 1,
                 "practice_type_code": "KITAS",
@@ -1347,7 +1335,7 @@ class TestEdgeCases:
         mock_conn.execute = AsyncMock()
 
         response = client.patch(
-            "/api/crm/practices/1?updated_by=admin@example.com",
+            "/api/crm/practices/1",
             json={"status": "completed"},
         )
 

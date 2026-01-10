@@ -15,7 +15,7 @@ class TestOracleIngestRouter99Coverage:
     def test_oracle_ingest_router_import(self):
         """Test that oracle ingest router can be imported"""
         try:
-            from app.routers.oracle_ingest import router, DocumentChunk, IngestRequest, IngestResponse
+            from backend.app.routers.oracle_ingest import router, DocumentChunk, IngestRequest, IngestResponse
             
             assert router is not None
             assert DocumentChunk is not None
@@ -28,7 +28,7 @@ class TestOracleIngestRouter99Coverage:
     def test_router_structure(self):
         """Test router structure and configuration"""
         try:
-            from app.routers.oracle_ingest import router
+            from backend.app.routers.oracle_ingest import router
             
             # Test router configuration
             assert router.prefix == "/api/oracle"
@@ -47,7 +47,7 @@ class TestOracleIngestRouter99Coverage:
     def test_document_chunk_model_validation(self):
         """Test DocumentChunk model validation"""
         try:
-            from app.routers.oracle_ingest import DocumentChunk
+            from backend.app.routers.oracle_ingest import DocumentChunk
             
             # Test with valid data
             chunk = DocumentChunk(
@@ -69,7 +69,7 @@ class TestOracleIngestRouter99Coverage:
     def test_document_chunk_model_minimal(self):
         """Test DocumentChunk model with minimal required fields"""
         try:
-            from app.routers.oracle_ingest import DocumentChunk
+            from backend.app.routers.oracle_ingest import DocumentChunk
             
             # Test with minimal required fields
             chunk = DocumentChunk(
@@ -85,7 +85,7 @@ class TestOracleIngestRouter99Coverage:
     def test_document_chunk_model_validation_errors(self):
         """Test DocumentChunk model validation errors"""
         try:
-            from app.routers.oracle_ingest import DocumentChunk
+            from backend.app.routers.oracle_ingest import DocumentChunk
             
             # Test with too short content
             with pytest.raises(ValidationError) as exc_info:
@@ -103,7 +103,7 @@ class TestOracleIngestRouter99Coverage:
     def test_ingest_request_model_validation(self):
         """Test IngestRequest model validation"""
         try:
-            from app.routers.oracle_ingest import IngestRequest, DocumentChunk
+            from backend.app.routers.oracle_ingest import IngestRequest, DocumentChunk
             
             # Test with custom collection
             chunk = DocumentChunk(
@@ -125,7 +125,7 @@ class TestOracleIngestRouter99Coverage:
     def test_ingest_request_model_defaults(self):
         """Test IngestRequest model with default values"""
         try:
-            from app.routers.oracle_ingest import IngestRequest, DocumentChunk
+            from backend.app.routers.oracle_ingest import IngestRequest, DocumentChunk
             
             chunk = DocumentChunk(
                 content="Test content",
@@ -142,7 +142,7 @@ class TestOracleIngestRouter99Coverage:
     def test_ingest_request_model_validation_errors(self):
         """Test IngestRequest model validation errors"""
         try:
-            from app.routers.oracle_ingest import IngestRequest
+            from backend.app.routers.oracle_ingest import IngestRequest
             
             # Test with empty documents list
             with pytest.raises(ValidationError) as exc_info:
@@ -155,7 +155,7 @@ class TestOracleIngestRouter99Coverage:
     def test_ingest_response_model(self):
         """Test IngestResponse model"""
         try:
-            from app.routers.oracle_ingest import IngestResponse
+            from backend.app.routers.oracle_ingest import IngestResponse
             
             # Test with all fields
             response = IngestResponse(
@@ -193,7 +193,7 @@ class TestOracleIngestRouter99Coverage:
     def test_endpoint_functions_exist(self):
         """Test that all endpoint functions exist and are callable"""
         try:
-            from app.routers.oracle_ingest import ingest_documents
+            from backend.app.routers.oracle_ingest import ingest_documents
             
             assert callable(ingest_documents)
             
@@ -208,7 +208,7 @@ class TestOracleIngestRouter99Coverage:
     async def test_ingest_documents_success(self):
         """Test ingest_documents endpoint with successful processing"""
         try:
-            from app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
+            from backend.app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
             
             # Mock search service
             mock_search_service = MagicMock()
@@ -220,7 +220,7 @@ class TestOracleIngestRouter99Coverage:
                 "processing_time": 1.5
             })
             
-            with patch('app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
+            with patch('backend.app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
                 # Create test request
                 chunk = DocumentChunk(
                     content="Test legal document content",
@@ -252,7 +252,7 @@ class TestOracleIngestRouter99Coverage:
     async def test_ingest_documents_with_failures(self):
         """Test ingest_documents endpoint with some failures"""
         try:
-            from app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
+            from backend.app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
             
             # Mock search service with partial failures
             mock_search_service = MagicMock()
@@ -264,7 +264,7 @@ class TestOracleIngestRouter99Coverage:
                 "processing_time": 2.8
             })
             
-            with patch('app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
+            with patch('backend.app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
                 # Create test request with multiple chunks
                 chunks = [
                     DocumentChunk(
@@ -310,14 +310,14 @@ class TestOracleIngestRouter99Coverage:
     async def test_ingest_documents_service_error(self):
         """Test ingest_documents endpoint with service error"""
         try:
-            from app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
+            from backend.app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
             from fastapi import HTTPException
             
             # Mock search service with exception
             mock_search_service = MagicMock()
             mock_search_service.ingest_documents = AsyncMock(side_effect=Exception("Service unavailable"))
             
-            with patch('app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
+            with patch('backend.app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
                 chunk = DocumentChunk(
                     content="Test content",
                     metadata={"category": "test"}
@@ -339,7 +339,7 @@ class TestOracleIngestRouter99Coverage:
     async def test_ingest_documents_empty_request(self):
         """Test ingest_documents with empty request"""
         try:
-            from app.routers.oracle_ingest import ingest_documents, IngestRequest
+            from backend.app.routers.oracle_ingest import ingest_documents, IngestRequest
             
             # Mock search service
             mock_search_service = MagicMock()
@@ -351,7 +351,7 @@ class TestOracleIngestRouter99Coverage:
                 "processing_time": 0.1
             })
             
-            with patch('app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
+            with patch('backend.app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
                 request = IngestRequest(
                     collection="legal_intelligence",
                     documents=[]
@@ -372,7 +372,7 @@ class TestOracleIngestRouter99Coverage:
     async def test_ingest_documents_large_batch(self):
         """Test ingest_documents with large batch of documents"""
         try:
-            from app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
+            from backend.app.routers.oracle_ingest import ingest_documents, IngestRequest, DocumentChunk
             
             # Mock search service
             mock_search_service = MagicMock()
@@ -384,7 +384,7 @@ class TestOracleIngestRouter99Coverage:
                 "processing_time": 15.2
             })
             
-            with patch('app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
+            with patch('backend.app.routers.oracle_ingest.get_search_service', return_value=mock_search_service):
                 # Create large batch of documents
                 chunks = []
                 for i in range(50):
@@ -416,7 +416,7 @@ class TestOracleIngestRouter99Coverage:
         """Test that models inherit from BaseModel"""
         try:
             from pydantic import BaseModel
-            from app.routers.oracle_ingest import DocumentChunk, IngestRequest, IngestResponse
+            from backend.app.routers.oracle_ingest import DocumentChunk, IngestRequest, IngestResponse
             
             assert issubclass(DocumentChunk, BaseModel)
             assert issubclass(IngestRequest, BaseModel)
@@ -428,7 +428,7 @@ class TestOracleIngestRouter99Coverage:
     def test_model_docstrings(self):
         """Test that models have proper docstrings"""
         try:
-            from app.routers.oracle_ingest import DocumentChunk, IngestRequest, IngestResponse
+            from backend.app.routers.oracle_ingest import DocumentChunk, IngestRequest, IngestResponse
             
             assert DocumentChunk.__doc__ is not None
             assert len(DocumentChunk.__doc__.strip()) > 0
@@ -447,7 +447,7 @@ class TestOracleIngestRouter99Coverage:
     def test_model_field_types(self):
         """Test that models have correct field types"""
         try:
-            from app.routers.oracle_ingest import DocumentChunk, IngestRequest, IngestResponse
+            from backend.app.routers.oracle_ingest import DocumentChunk, IngestRequest, IngestResponse
             
             # Test DocumentChunk fields
             chunk = DocumentChunk(
@@ -488,14 +488,14 @@ class TestOracleIngestRouter99Coverage:
     def test_search_service_dependency(self):
         """Test that search service dependency is correctly imported"""
         try:
-            from app.routers.oracle_ingest import get_search_service
-            from services.search.search_service import SearchService
+            from backend.app.routers.oracle_ingest import get_search_service
+            from backend.services.search.search_service import SearchService
             
             # Test that the function exists and returns SearchService
             assert callable(get_search_service)
             
             # Mock the dependency
-            with patch('app.routers.oracle_ingest.SearchService') as MockSearchService:
+            with patch('backend.app.routers.oracle_ingest.SearchService') as MockSearchService:
                 MockSearchService.return_value = MagicMock()
                 service = get_search_service()
                 assert service is not None
@@ -507,10 +507,10 @@ class TestOracleIngestRouter99Coverage:
         """Test that logging is properly configured"""
         try:
             import logging
-            from app.routers.oracle_ingest import logger
+            from backend.app.routers.oracle_ingest import logger
             
             assert isinstance(logger, logging.Logger)
-            assert logger.name == "app.routers.oracle_ingest"
+            assert logger.name == "backend.app.routers.oracle_ingest"
             
         except Exception as e:
             pytest.skip(f"Cannot test logging configuration: {e}")
@@ -518,7 +518,7 @@ class TestOracleIngestRouter99Coverage:
     def test_path_configuration(self):
         """Test that backend path is correctly added"""
         try:
-            from app.routers.oracle_ingest import router
+            from backend.app.routers.oracle_ingest import router
             import sys
             from pathlib import Path
             
@@ -532,7 +532,7 @@ class TestOracleIngestRouter99Coverage:
     def test_router_tags_and_prefix(self):
         """Test router tags and prefix configuration"""
         try:
-            from app.routers.oracle_ingest import router
+            from backend.app.routers.oracle_ingest import router
             
             assert router.prefix == "/api/oracle"
             assert "Oracle INGEST" in router.tags

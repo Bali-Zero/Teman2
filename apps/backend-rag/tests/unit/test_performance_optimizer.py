@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.performance_optimizer import (
+from backend.services.misc.performance_optimizer import (
     AsyncLRUCache,
     BatchProcessor,
     ConnectionPool,
@@ -176,7 +176,7 @@ async def test_async_timed_decorator():
 
     assert result == "result"
     # Verify timing was recorded (check global perf_monitor)
-    from services.misc.performance_optimizer import perf_monitor
+    from backend.services.misc.performance_optimizer import perf_monitor
 
     assert perf_monitor.metrics["embedding_time"] > 0
 
@@ -184,7 +184,7 @@ async def test_async_timed_decorator():
 @pytest.mark.asyncio
 async def test_async_timed_decorator_with_exception():
     """Test async_timed decorator handles exceptions"""
-    from services.misc.performance_optimizer import perf_monitor
+    from backend.services.misc.performance_optimizer import perf_monitor
 
     @async_timed("search_time")  # Use existing component
     async def failing_function():
@@ -217,14 +217,14 @@ def test_timed_decorator():
 
     assert result == "result"
     # Verify timing was recorded
-    from services.misc.performance_optimizer import perf_monitor
+    from backend.services.misc.performance_optimizer import perf_monitor
 
     assert perf_monitor.metrics["llm_time"] > 0
 
 
 def test_timed_decorator_with_exception():
     """Test timed decorator handles exceptions"""
-    from services.misc.performance_optimizer import perf_monitor
+    from backend.services.misc.performance_optimizer import perf_monitor
 
     @timed("embedding_time")  # Use existing component
     def failing_function():

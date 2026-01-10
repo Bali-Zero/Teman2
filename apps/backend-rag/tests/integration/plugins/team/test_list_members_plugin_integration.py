@@ -26,7 +26,7 @@ class TestTeamMembersListPluginIntegration:
     @pytest_asyncio.fixture
     async def mock_collaborator_service(self):
         """Create mock collaborator service"""
-        from services.collaborator_service import CollaboratorProfile
+        from backend.services.collaborator_service import CollaboratorProfile
 
         mock_service = MagicMock()
         mock_service.list_members = MagicMock(
@@ -61,7 +61,7 @@ class TestTeamMembersListPluginIntegration:
     @pytest_asyncio.fixture
     async def plugin(self, mock_collaborator_service):
         """Create TeamMembersListPlugin instance"""
-        from plugins.team.list_members_plugin import TeamMembersListPlugin
+        from backend.plugins.team.list_members_plugin import TeamMembersListPlugin
 
         return TeamMembersListPlugin(collaborator_service=mock_collaborator_service)
 
@@ -82,7 +82,7 @@ class TestTeamMembersListPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_all_members(self, plugin):
         """Test executing plugin to get all members"""
-        from plugins.team.list_members_plugin import TeamListInput
+        from backend.plugins.team.list_members_plugin import TeamListInput
 
         input_data = TeamListInput()
         result = await plugin.execute(input_data)
@@ -96,7 +96,7 @@ class TestTeamMembersListPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_filter_by_department(self, plugin):
         """Test executing plugin filtered by department"""
-        from plugins.team.list_members_plugin import TeamListInput
+        from backend.plugins.team.list_members_plugin import TeamListInput
 
         input_data = TeamListInput(department="technology")
         result = await plugin.execute(input_data)
@@ -108,7 +108,7 @@ class TestTeamMembersListPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_error_handling(self, plugin):
         """Test error handling in plugin execution"""
-        from plugins.team.list_members_plugin import TeamListInput
+        from backend.plugins.team.list_members_plugin import TeamListInput
 
         # Mock service to raise exception
         plugin.collaborator_service.list_members = MagicMock(side_effect=Exception("Service error"))
@@ -122,12 +122,12 @@ class TestTeamMembersListPluginIntegration:
 
     def test_input_schema(self, plugin):
         """Test input schema"""
-        from plugins.team.list_members_plugin import TeamListInput
+        from backend.plugins.team.list_members_plugin import TeamListInput
 
         assert plugin.input_schema == TeamListInput
 
     def test_output_schema(self, plugin):
         """Test output schema"""
-        from plugins.team.list_members_plugin import TeamListOutput
+        from backend.plugins.team.list_members_plugin import TeamListOutput
 
         assert plugin.output_schema == TeamListOutput

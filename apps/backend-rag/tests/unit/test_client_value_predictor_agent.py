@@ -9,7 +9,7 @@ File: backend/agents/agents/client_value_predictor.py
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from agents.agents.client_value_predictor import ClientValuePredictor
+from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
 
 class TestClientValuePredictorInit:
@@ -17,7 +17,7 @@ class TestClientValuePredictorInit:
 
     def test_init_with_db_pool(self):
         """Test: ClientValuePredictor initializes with provided db_pool"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -33,7 +33,7 @@ class TestClientValuePredictorInit:
 
     def test_init_without_db_pool_raises(self):
         """Test: ClientValuePredictor raises RuntimeError without db_pool"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -49,7 +49,7 @@ class TestCalculateClientScore:
     @pytest.mark.asyncio
     async def test_calculate_client_score_success(self):
         """Test: Successfully calculates client score"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -84,7 +84,7 @@ class TestCalculateClientScore:
     @pytest.mark.asyncio
     async def test_calculate_client_score_not_found(self):
         """Test: Returns None when client not found"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -106,7 +106,7 @@ class TestCalculateScoresBatch:
     @pytest.mark.asyncio
     async def test_calculate_scores_batch_success(self):
         """Test: Successfully calculates scores for multiple clients"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -139,7 +139,7 @@ class TestCalculateScoresBatch:
     @pytest.mark.asyncio
     async def test_calculate_scores_batch_empty_list(self):
         """Test: Handles empty client list"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -160,7 +160,7 @@ class TestGenerateNurturingMessage:
     @pytest.mark.asyncio
     async def test_generate_nurturing_message_success(self):
         """Test: Successfully generates nurturing message"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -192,7 +192,7 @@ class TestSendWhatsAppMessage:
     @pytest.mark.asyncio
     async def test_send_whatsapp_message_success(self):
         """Test: Successfully sends WhatsApp message"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -215,7 +215,7 @@ class TestSendWhatsAppMessage:
     @pytest.mark.asyncio
     async def test_send_whatsapp_message_failure(self):
         """Test: Handles WhatsApp send failure"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -237,7 +237,7 @@ class TestRunDailyNurturing:
     @pytest.mark.asyncio
     async def test_run_daily_nurturing_no_clients(self):
         """Test: Handles case with no active clients"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"
@@ -262,7 +262,7 @@ class TestRunDailyNurturing:
     @pytest.mark.asyncio
     async def test_run_daily_nurturing_with_clients(self):
         """Test: Processes clients successfully"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
             mock_settings.twilio_whatsapp_number = "+1234567890"

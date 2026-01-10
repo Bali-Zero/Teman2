@@ -46,7 +46,7 @@ class TestIngestUpload:
 
     def test_upload_pdf_file(self, authenticated_client):
         """Test uploading PDF file"""
-        with patch("services.ingestion_service.IngestionService") as mock_service_class:
+        with patch("backend.services.ingestion_service.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={
@@ -74,7 +74,7 @@ class TestIngestUpload:
 
     def test_upload_epub_file(self, authenticated_client):
         """Test uploading EPUB file"""
-        with patch("services.ingestion_service.IngestionService") as mock_service_class:
+        with patch("backend.services.ingestion_service.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={
@@ -105,7 +105,7 @@ class TestIngestFile:
     def test_ingest_local_file_success(self, authenticated_client):
         """Test ingesting from local file path"""
         with (
-            patch("services.ingestion_service.IngestionService") as mock_service_class,
+            patch("backend.services.ingestion_service.IngestionService") as mock_service_class,
             patch("os.path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -150,7 +150,7 @@ class TestBatchIngest:
     def test_batch_ingest_success(self, authenticated_client):
         """Test batch ingestion"""
         with (
-            patch("services.ingestion_service.IngestionService") as mock_service_class,
+            patch("backend.services.ingestion_service.IngestionService") as mock_service_class,
             patch("os.path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -215,7 +215,7 @@ class TestBatchIngest:
 
     def test_get_ingestion_stats(self, authenticated_client):
         """Test GET /api/ingest/stats"""
-        with patch("app.routers.ingest.QdrantClient") as mock_qdrant_class:
+        with patch("backend.app.routers.ingest.QdrantClient") as mock_qdrant_class:
             mock_qdrant = MagicMock()
             mock_qdrant.get_collection_stats.return_value = {
                 "collection_name": "zantara_books",
@@ -235,7 +235,7 @@ class TestBatchIngest:
 
     def test_get_ingestion_stats_error(self, authenticated_client):
         """Test GET /api/ingest/stats when Qdrant fails"""
-        with patch("app.routers.ingest.QdrantClient") as mock_qdrant_class:
+        with patch("backend.app.routers.ingest.QdrantClient") as mock_qdrant_class:
             mock_qdrant = MagicMock()
             mock_qdrant.get_collection_stats.side_effect = Exception("Qdrant error")
             mock_qdrant_class.return_value = mock_qdrant

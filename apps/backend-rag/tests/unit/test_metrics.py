@@ -19,20 +19,20 @@ class TestMetrics:
 
     def test_metrics_module_imports(self):
         """Test that metrics module can be imported"""
-        from app.metrics import MetricsCollector
+        from backend.app.metrics import MetricsCollector
 
         assert MetricsCollector is not None
 
     def test_metrics_collector_init(self):
         """Test MetricsCollector initialization"""
-        from app.metrics import MetricsCollector
+        from backend.app.metrics import MetricsCollector
 
         collector = MetricsCollector()
         assert collector is not None
 
     def test_metrics_collector_update_session_count(self):
         """Test metrics collector update_session_count method"""
-        from app.metrics import MetricsCollector
+        from backend.app.metrics import MetricsCollector
 
         collector = MetricsCollector()
         collector.update_session_count(5)
@@ -41,7 +41,7 @@ class TestMetrics:
 
     def test_metrics_collector_update_system_metrics(self):
         """Test metrics collector update_system_metrics method"""
-        from app.metrics import MetricsCollector
+        from backend.app.metrics import MetricsCollector
 
         collector = MetricsCollector()
         collector.update_system_metrics()

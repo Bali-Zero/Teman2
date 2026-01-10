@@ -6,13 +6,13 @@ from unittest.mock import mock_open, patch
 
 services_pkg = types.ModuleType("services")
 services_pkg.__path__ = []
-oracle_pkg = types.ModuleType("services.oracle")
+oracle_pkg = types.ModuleType("backend.services.oracle")
 oracle_pkg.__path__ = []
 sys.modules.setdefault("services", services_pkg)
-sys.modules.setdefault("services.oracle", oracle_pkg)
-google_services_module = types.ModuleType("services.oracle.oracle_google_services")
+sys.modules.setdefault("backend.services.oracle", oracle_pkg)
+google_services_module = types.ModuleType("backend.services.oracle.oracle_google_services")
 google_services_module.google_services = types.SimpleNamespace(drive_service=None, redis_url='redis://localhost:6379')
-sys.modules.setdefault("services.oracle.oracle_google_services", google_services_module)
+sys.modules.setdefault("backend.services.oracle.oracle_google_services", google_services_module)
 
 module_path = (
     Path(__file__).resolve().parents[4]
@@ -21,7 +21,7 @@ module_path = (
     / "oracle"
     / "document_retrieval.py"
 )
-spec = importlib.util.spec_from_file_location("services.oracle.document_retrieval", module_path)
+spec = importlib.util.spec_from_file_location("backend.services.oracle.document_retrieval", module_path)
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
@@ -71,7 +71,7 @@ class DummyDriveService:
 
 def test_download_pdf_drive_not_available():
     service = DocumentRetrievalService()
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = None
         assert service.download_pdf_from_drive("sample.pdf") is None
 
@@ -85,9 +85,9 @@ def test_download_pdf_success_writes_file():
     files = DummyFiles(results)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
-        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+        with patch("backend.services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
             with patch("builtins.open", mock_open()) as open_file:
                 path = service.download_pdf_from_drive("sample.pdf")
 
@@ -101,7 +101,7 @@ def test_download_pdf_no_results():
     files = DummyFiles(results)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
         assert service.download_pdf_from_drive("missing.pdf") is None
 
@@ -111,7 +111,7 @@ def test_download_pdf_handles_exception():
     files = DummyFiles([], raise_on_execute=True)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
         assert service.download_pdf_from_drive("boom.pdf") is None
 
@@ -127,9 +127,9 @@ def test_download_pdf_found_on_second_query():
     files = DummyFiles(results)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
-        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+        with patch("backend.services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
             with patch("builtins.open", mock_open()):
                 path = service.download_pdf_from_drive("sample_document.pdf")
 
@@ -147,9 +147,9 @@ def test_download_pdf_found_on_third_query():
     files = DummyFiles(results)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
-        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+        with patch("backend.services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
             with patch("builtins.open", mock_open()):
                 path = service.download_pdf_from_drive("sample-doc.pdf")
 
@@ -168,9 +168,9 @@ def test_download_pdf_found_on_fourth_query():
     files = DummyFiles(results)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
-        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+        with patch("backend.services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
             with patch("builtins.open", mock_open()):
                 path = service.download_pdf_from_drive("sample_doc.pdf")
 
@@ -186,9 +186,9 @@ def test_download_pdf_filename_with_path():
     files = DummyFiles(results)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
-        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+        with patch("backend.services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
             with patch("builtins.open", mock_open()):
                 # Filename with path - should extract basename
                 path = service.download_pdf_from_drive("/some/path/to/document.pdf")
@@ -205,9 +205,9 @@ def test_download_pdf_filename_without_extension():
     files = DummyFiles(results)
     drive_service = DummyDriveService(files)
 
-    with patch("services.oracle.document_retrieval.google_services") as gs:
+    with patch("backend.services.oracle.document_retrieval.google_services") as gs:
         gs.drive_service = drive_service
-        with patch("services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
+        with patch("backend.services.oracle.document_retrieval.MediaIoBaseDownload", DummyDownloader):
             with patch("builtins.open", mock_open()):
                 path = service.download_pdf_from_drive("document")
 

@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.cache import CacheService, cached, invalidate_cache
+from backend.core.cache import CacheService, cached, invalidate_cache
 
 # ============================================================================
 # Fixtures
@@ -24,7 +24,7 @@ from core.cache import CacheService, cached, invalidate_cache
 @pytest.fixture
 def mock_settings():
     """Mock settings configuration"""
-    with patch("app.core.config.settings") as mock:
+    with patch("backend.app.core.config.settings") as mock:
         mock.redis_url = None
         yield mock
 
@@ -44,9 +44,9 @@ def mock_redis_client():
 @pytest.fixture
 def cache_service_no_redis():
     """Create CacheService without Redis"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = None
-        with patch("core.cache.logger"):
+        with patch("backend.core.cache.logger"):
             service = CacheService()
             return service
 
@@ -57,10 +57,10 @@ def cache_service_with_redis(mock_redis_client):
     mock_redis_module = MagicMock()
     mock_redis_module.from_url.return_value = mock_redis_client
 
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = "redis://localhost:6379"
         with patch.dict("sys.modules", {"redis": mock_redis_module}):
-            with patch("core.cache.logger"):
+            with patch("backend.core.cache.logger"):
                 service = CacheService()
                 return service
 
@@ -80,9 +80,9 @@ def clear_memory_cache(cache_service_no_redis):
 
 def test_init_without_redis_url():
     """Test initialization without Redis URL"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = None
-        with patch("core.cache.logger") as mock_logger:
+        with patch("backend.core.cache.logger") as mock_logger:
             service = CacheService()
             assert service.redis_available is False
             assert service.redis_client is None
@@ -95,10 +95,10 @@ def test_init_with_redis_url_success(mock_redis_client):
     mock_redis_module = MagicMock()
     mock_redis_module.from_url.return_value = mock_redis_client
 
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = "redis://localhost:6379"
         with patch.dict("sys.modules", {"redis": mock_redis_module}):
-            with patch("core.cache.logger") as mock_logger:
+            with patch("backend.core.cache.logger") as mock_logger:
                 service = CacheService()
                 assert service.redis_available is True
                 assert service.redis_client == mock_redis_client
@@ -114,10 +114,10 @@ def test_init_with_redis_connection_error():
     mock_redis_module = MagicMock()
     mock_redis_module.from_url.side_effect = Exception("Connection refused")
 
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = "redis://localhost:6379"
         with patch.dict("sys.modules", {"redis": mock_redis_module}):
-            with patch("core.cache.logger") as mock_logger:
+            with patch("backend.core.cache.logger") as mock_logger:
                 service = CacheService()
                 assert service.redis_available is False
                 assert service.redis_client is None
@@ -130,10 +130,10 @@ def test_init_with_redis_ping_error(mock_redis_client):
     mock_redis_module.from_url.return_value = mock_redis_client
     mock_redis_client.ping.side_effect = Exception("Ping failed")
 
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = "redis://localhost:6379"
         with patch.dict("sys.modules", {"redis": mock_redis_module}):
-            with patch("core.cache.logger") as mock_logger:
+            with patch("backend.core.cache.logger") as mock_logger:
                 service = CacheService()
                 assert service.redis_available is False
                 mock_logger.warning.assert_called_once()
@@ -223,7 +223,7 @@ def test_get_from_memory_miss(cache_service_no_redis, clear_memory_cache):
 def test_get_redis_error(cache_service_with_redis, mock_redis_client):
     """Test get when Redis raises exception"""
     mock_redis_client.get.side_effect = Exception("Redis error")
-    with patch("core.cache.logger") as mock_logger:
+    with patch("backend.core.cache.logger") as mock_logger:
         result = cache_service_with_redis.get("test_key")
         assert result is None
         assert cache_service_with_redis.stats["errors"] == 1
@@ -233,7 +233,7 @@ def test_get_redis_error(cache_service_with_redis, mock_redis_client):
 def test_get_invalid_json(cache_service_with_redis, mock_redis_client):
     """Test get with invalid JSON from Redis"""
     mock_redis_client.get.return_value = "invalid json"
-    with patch("core.cache.logger") as mock_logger:
+    with patch("backend.core.cache.logger") as mock_logger:
         result = cache_service_with_redis.get("test_key")
         # Exception should be caught and None returned
         assert result is None
@@ -265,7 +265,7 @@ def test_set_to_memory(cache_service_no_redis, clear_memory_cache):
 def test_set_redis_error(cache_service_with_redis, mock_redis_client):
     """Test set when Redis raises exception"""
     mock_redis_client.setex.side_effect = Exception("Redis error")
-    with patch("core.cache.logger") as mock_logger:
+    with patch("backend.core.cache.logger") as mock_logger:
         result = cache_service_with_redis.set("test_key", {"key": "value"})
         assert result is False
         assert cache_service_with_redis.stats["errors"] == 1
@@ -309,7 +309,7 @@ def test_delete_nonexistent_memory(cache_service_no_redis, clear_memory_cache):
 def test_delete_redis_error(cache_service_with_redis, mock_redis_client):
     """Test delete when Redis raises exception"""
     mock_redis_client.delete.side_effect = Exception("Redis error")
-    with patch("core.cache.logger") as mock_logger:
+    with patch("backend.core.cache.logger") as mock_logger:
         result = cache_service_with_redis.delete("test_key")
         assert result is False
         mock_logger.error.assert_called_once()
@@ -363,7 +363,7 @@ def test_clear_pattern_memory_no_match(cache_service_no_redis, clear_memory_cach
 def test_clear_pattern_redis_error(cache_service_with_redis, mock_redis_client):
     """Test clear_pattern when Redis raises exception"""
     mock_redis_client.keys.side_effect = Exception("Redis error")
-    with patch("core.cache.logger") as mock_logger:
+    with patch("backend.core.cache.logger") as mock_logger:
         result = cache_service_with_redis.clear_pattern("zantara:test:*")
         assert result == 0
         mock_logger.error.assert_called_once()
@@ -462,10 +462,10 @@ async def test_cached_decorator_custom_ttl(mock_redis_client):
     mock_redis_module = MagicMock()
     mock_redis_module.from_url.return_value = mock_redis_client
 
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = "redis://localhost:6379"
         with patch.dict("sys.modules", {"redis": mock_redis_module}):
-            with patch("core.cache.logger"):
+            with patch("backend.core.cache.logger"):
                 # Create cache service with mocked redis
                 cache_service = CacheService()
                 cache_service.redis_available = True
@@ -530,7 +530,7 @@ def test_invalidate_cache_with_pattern(cache_service_no_redis, clear_memory_cach
     cache_service_no_redis._memory_cache.set("zantara:test:key2", "value2", ttl=60)
     cache_service_no_redis._memory_cache.set("zantara:other:key3", "value3", ttl=60)
 
-    with patch("core.cache.logger") as mock_logger:
+    with patch("backend.core.cache.logger") as mock_logger:
         count = invalidate_cache("zantara:test:*", cache_service=cache_service_no_redis)
         assert count == 2
         mock_logger.info.assert_called_once()
@@ -542,7 +542,7 @@ def test_invalidate_cache_default_pattern(cache_service_no_redis, clear_memory_c
     cache_service_no_redis._memory_cache.set("zantara:test:key1", "value1", ttl=60)
     cache_service_no_redis._memory_cache.set("zantara:test:key2", "value2", ttl=60)
 
-    with patch("core.cache.logger"):
+    with patch("backend.core.cache.logger"):
         count = invalidate_cache(cache_service=cache_service_no_redis)
         assert count == 2
 
@@ -552,7 +552,7 @@ def test_invalidate_cache_no_matches(cache_service_no_redis, clear_memory_cache)
     # Use instance-level memory cache
     cache_service_no_redis._memory_cache.set("zantara:other:key", "value", ttl=60)
 
-    with patch("core.cache.logger"):
+    with patch("backend.core.cache.logger"):
         count = invalidate_cache("zantara:test:*", cache_service=cache_service_no_redis)
         assert count == 0
 
@@ -580,9 +580,9 @@ def test_memory_cache_isolation(cache_service_no_redis, clear_memory_cache):
     cache_service_no_redis._memory_cache.set("persistent_key", "persistent_value", ttl=60)
 
     # Create second instance (should be isolated)
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = None
-        with patch("core.cache.logger"):
+        with patch("backend.core.cache.logger"):
             service2 = CacheService()
             result = service2.get("persistent_key")
             # Should be None (isolated instances)
@@ -594,9 +594,9 @@ def test_memory_cache_isolation(cache_service_no_redis, clear_memory_cache):
 
 def test_stats_independence():
     """Test that stats are independent per service instance"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = None
-        with patch("core.cache.logger"):
+        with patch("backend.core.cache.logger"):
             service1 = CacheService()
             service2 = CacheService()
 

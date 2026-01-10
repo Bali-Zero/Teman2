@@ -36,16 +36,16 @@ class TestSpecializedServiceRouterIntegration:
         """Test SpecializedServiceRouter initialization"""
         with (
             patch(
-                "services.routing.specialized_service_router.AutonomousResearchService"
+                "backend.services.routing.specialized_service_router.AutonomousResearchService"
             ) as mock_research,
             patch(
-                "services.routing.specialized_service_router.CrossOracleSynthesisService"
+                "backend.services.routing.specialized_service_router.CrossOracleSynthesisService"
             ) as mock_synthesis,
             patch(
-                "services.routing.specialized_service_router.ClientJourneyOrchestrator"
+                "backend.services.routing.specialized_service_router.ClientJourneyOrchestrator"
             ) as mock_journey,
         ):
-            from services.routing.specialized_service_router import SpecializedServiceRouter
+            from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
             router = SpecializedServiceRouter(
                 autonomous_research_service=mock_research.return_value,
@@ -58,7 +58,7 @@ class TestSpecializedServiceRouterIntegration:
     @pytest.mark.asyncio
     async def test_autonomous_research_detection(self):
         """Test autonomous research query detection"""
-        from services.routing.specialized_service_router import SpecializedServiceRouter
+        from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
         router = SpecializedServiceRouter()
 
@@ -86,7 +86,7 @@ class TestSpecializedServiceRouterIntegration:
     @pytest.mark.asyncio
     async def test_cross_oracle_detection(self):
         """Test cross-oracle synthesis detection"""
-        from services.routing.specialized_service_router import SpecializedServiceRouter
+        from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
         router = SpecializedServiceRouter()
 
@@ -115,7 +115,7 @@ class TestSpecializedServiceRouterIntegration:
     @pytest.mark.asyncio
     async def test_journey_keyword_detection(self):
         """Test client journey keyword detection"""
-        from services.routing.specialized_service_router import SpecializedServiceRouter
+        from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
         router = SpecializedServiceRouter()
 
@@ -144,13 +144,13 @@ class TestSpecializedServiceRouterIntegration:
         """Test routing to autonomous research"""
         with (
             patch(
-                "services.routing.specialized_service_router.AutonomousResearchService"
+                "backend.services.routing.specialized_service_router.AutonomousResearchService"
             ) as mock_research,
             patch(
-                "services.routing.specialized_service_router.CrossOracleSynthesisService"
+                "backend.services.routing.specialized_service_router.CrossOracleSynthesisService"
             ) as mock_synthesis,
             patch(
-                "services.routing.specialized_service_router.ClientJourneyOrchestrator"
+                "backend.services.routing.specialized_service_router.ClientJourneyOrchestrator"
             ) as mock_journey,
         ):
             mock_research_instance = MagicMock()
@@ -164,7 +164,7 @@ class TestSpecializedServiceRouterIntegration:
             )
             mock_research.return_value = mock_research_instance
 
-            from services.routing.specialized_service_router import SpecializedServiceRouter
+            from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
             router = SpecializedServiceRouter(
                 autonomous_research_service=mock_research_instance,
@@ -183,9 +183,9 @@ class TestSpecializedServiceRouterIntegration:
         """Test routing to cross-oracle synthesis"""
         with (
             patch(
-                "services.routing.specialized_service_router.CrossOracleSynthesisService"
+                "backend.services.routing.specialized_service_router.CrossOracleSynthesisService"
             ) as mock_synthesis,
-            patch("services.routing.specialized_service_router.SearchService") as mock_search,
+            patch("backend.services.routing.specialized_service_router.SearchService") as mock_search,
         ):
             mock_synthesis_instance = MagicMock()
             mock_synthesis_instance.synthesize = AsyncMock(
@@ -197,7 +197,7 @@ class TestSpecializedServiceRouterIntegration:
             )
             mock_synthesis.return_value = mock_synthesis_instance
 
-            from services.routing.specialized_service_router import SpecializedServiceRouter
+            from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
             router = SpecializedServiceRouter(
                 cross_oracle_synthesis_service=mock_synthesis_instance,

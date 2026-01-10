@@ -16,12 +16,12 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
+from backend.services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
 
 
 @pytest.fixture
 def mock_genai_client():
-    """Mock GenAIClient from llm.genai_client"""
+    """Mock GenAIClient from backend.llm.genai_client"""
     mock_client = MagicMock()
     mock_client.is_available = True
     mock_client.generate_content = AsyncMock(return_value={"text": "Test response"})
@@ -31,9 +31,9 @@ def mock_genai_client():
 @pytest.fixture
 def service(mock_genai_client):
     """Create VisionRAGService with mocked GenAIClient"""
-    with patch("services.rag.vision_rag.GENAI_AVAILABLE", True):
-        with patch("services.rag.vision_rag.GenAIClient", return_value=mock_genai_client):
-            with patch("services.rag.vision_rag.settings") as mock_settings:
+    with patch("backend.services.rag.vision_rag.GENAI_AVAILABLE", True):
+        with patch("backend.services.rag.vision_rag.GenAIClient", return_value=mock_genai_client):
+            with patch("backend.services.rag.vision_rag.settings") as mock_settings:
                 mock_settings.google_api_key = "test-api-key"
                 svc = VisionRAGService()
                 svc._genai_client = mock_genai_client
@@ -110,7 +110,7 @@ async def test_query_with_vision(service, mock_genai_client):
     mock_genai_client.generate_content.return_value = {"text": "Analysis based on chart"}
 
     # Mock Image.open to avoid actual image processing errors on dummy bytes
-    with patch("services.rag.vision_rag.Image.open"):
+    with patch("backend.services.rag.vision_rag.Image.open"):
         response = await service.query_with_vision("Analyze sales", documents)
 
         assert response["answer"] == "Analysis based on chart"

@@ -13,7 +13,7 @@ import asyncpg
 import pytest
 
 # Import the class to test
-from agents.agents.conversation_trainer import ConversationTrainer
+from backend.agents.agents.conversation_trainer import ConversationTrainer
 
 
 class TestConversationTrainer:
@@ -47,14 +47,14 @@ class TestConversationTrainer:
 
     @pytest.mark.asyncio
     async def test_get_db_pool_from_app_state(self):
-        """Test: _get_db_pool gets pool from app.state when instance pool is None"""
+        """Test: _get_db_pool gets pool from backend.app.state when instance pool is None"""
         mock_pool = MagicMock()
         mock_app = MagicMock()
         mock_app.state.db_pool = mock_pool
 
         trainer = ConversationTrainer(db_pool=None)
 
-        with patch("app.main_cloud.app", mock_app):
+        with patch("backend.app.main_cloud.app", mock_app):
             result = await trainer._get_db_pool()
 
         assert result == mock_pool
@@ -67,7 +67,7 @@ class TestConversationTrainer:
         mock_app = MagicMock()
         mock_app.state.db_pool = None
 
-        with patch("app.main_cloud.app", mock_app):
+        with patch("backend.app.main_cloud.app", mock_app):
             with pytest.raises(RuntimeError) as exc_info:
                 await trainer._get_db_pool()
 
@@ -473,7 +473,7 @@ class TestConversationTrainer:
     @pytest.mark.asyncio
     async def test_analyze_winning_patterns_many_conversations(self):
         """Test: analyze_winning_patterns limits to ANALYSIS_CONVERSATIONS_LIMIT"""
-        from agents.agents.conversation_trainer import ANALYSIS_CONVERSATIONS_LIMIT
+        from backend.agents.agents.conversation_trainer import ANALYSIS_CONVERSATIONS_LIMIT
 
         mock_pool = MagicMock()
         mock_conn = AsyncMock()

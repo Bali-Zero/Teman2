@@ -17,7 +17,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.image_generation_service import ImageGenerationService
+from backend.services.misc.image_generation_service import ImageGenerationService
 
 # ============================================================================
 # Fixtures
@@ -28,8 +28,8 @@ from services.misc.image_generation_service import ImageGenerationService
 def image_service_with_key():
     """Create ImageGenerationService with API key"""
     with (
-        patch("app.core.config.settings") as mock_settings,
-        patch("services.misc.image_generation_service.logger"),
+        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.misc.image_generation_service.logger"),
     ):
         # Mock both google_imagen_api_key and google_api_key (code checks imagen first)
         mock_settings.google_imagen_api_key = None
@@ -42,8 +42,8 @@ def image_service_with_key():
 def image_service_no_key():
     """Create ImageGenerationService without API key"""
     with (
-        patch("app.core.config.settings") as mock_settings,
-        patch("services.misc.image_generation_service.logger"),
+        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.misc.image_generation_service.logger"),
     ):
         # Mock both to ensure None is returned
         mock_settings.google_imagen_api_key = None
@@ -70,8 +70,8 @@ def test_image_service_init_no_key(image_service_no_key):
 def test_image_service_init_with_custom_key():
     """Test ImageGenerationService initialization with custom API key"""
     with (
-        patch("app.core.config.settings") as mock_settings,
-        patch("services.misc.image_generation_service.logger"),
+        patch("backend.app.core.config.settings") as mock_settings,
+        patch("backend.services.misc.image_generation_service.logger"),
     ):
         mock_settings.google_imagen_api_key = None
         mock_settings.google_api_key = None
@@ -138,7 +138,7 @@ async def test_generate_image_url_encoding(image_service_with_key):
 async def test_generate_image_exception(image_service_with_key):
     """Test generating image with exception"""
     # Mock logger to raise exception during logging
-    with patch("services.misc.image_generation_service.logger") as mock_logger:
+    with patch("backend.services.misc.image_generation_service.logger") as mock_logger:
         mock_logger.info.side_effect = Exception("Network error")
 
         result = await image_service_with_key.generate_image("test")

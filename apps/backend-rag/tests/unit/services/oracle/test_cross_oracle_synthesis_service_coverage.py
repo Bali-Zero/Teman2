@@ -8,9 +8,9 @@ import pytest
 
 services_pkg = types.ModuleType("services")
 services_pkg.__path__ = []
-oracle_pkg = types.ModuleType("services.oracle")
+oracle_pkg = types.ModuleType("backend.services.oracle")
 oracle_pkg.__path__ = []
-sys.modules.update({"services": services_pkg, "services.oracle": oracle_pkg})
+sys.modules.update({"services": services_pkg, "backend.services.oracle": oracle_pkg})
 
 module_path = (
     Path(__file__).resolve().parents[4]
@@ -20,7 +20,7 @@ module_path = (
     / "cross_oracle_synthesis_service.py"
 )
 spec = importlib.util.spec_from_file_location(
-    "services.oracle.cross_oracle_synthesis_service", module_path
+    "backend.services.oracle.cross_oracle_synthesis_service", module_path
 )
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module

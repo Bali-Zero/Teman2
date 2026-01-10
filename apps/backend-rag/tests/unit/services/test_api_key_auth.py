@@ -40,10 +40,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_with_single_key(self):
         """Test initialization with single API key"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "single_test_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -54,10 +54,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_with_multiple_keys(self):
         """Test initialization with multiple API keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,key2,key3"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -68,10 +68,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_with_admin_key(self):
         """Test initialization with admin key (contains 'admin' in name)"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "admin_key_test"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -80,10 +80,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_with_secret_key(self):
         """Test initialization with secret key (contains 'secret' in name)"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "my_secret_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -92,10 +92,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_with_whitespace_keys(self):
         """Test initialization handles whitespace in key list"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = " key1 , key2 ,  key3  "
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -106,10 +106,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_with_empty_keys(self):
         """Test initialization with empty API keys string"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = ""
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -118,10 +118,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_with_mixed_empty_keys(self):
         """Test initialization filters out empty strings from key list"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,,key2,  ,key3"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -130,10 +130,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_creates_key_stats(self):
         """Test initialization creates usage statistics for all keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,key2"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -145,10 +145,10 @@ class TestAPIKeyAuthInit:
 
     def test_init_sets_created_at_timestamp(self):
         """Test initialization sets created_at timestamp for keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "test_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -159,23 +159,23 @@ class TestAPIKeyAuthInit:
 
     def test_init_sets_description(self):
         """Test initialization sets description for keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "test_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
             description = service.valid_keys["test_key"]["description"]
             assert description == "API key loaded from environment variable"
 
-    @patch("app.services.api_key_auth.logger")
+    @patch("backend.app.services.api_key_auth.logger")
     def test_init_logs_key_count(self, mock_logger):
         """Test initialization logs the number of loaded keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,key2,key3"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             APIKeyAuth()
 
@@ -195,10 +195,10 @@ class TestValidateAPIKey:
     @pytest.fixture
     def service(self):
         """Create APIKeyAuth service for testing"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "valid_key,admin_key_test"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             return APIKeyAuth()
 
@@ -286,14 +286,14 @@ class TestValidateAPIKey:
 
         assert result["id"] == "api_key_valid_ke"
 
-    @patch("app.services.api_key_auth.logger")
+    @patch("backend.app.services.api_key_auth.logger")
     def test_validate_logs_warning_for_no_key(self, mock_logger, service):
         """Test validation logs warning when no key provided"""
         service.validate_api_key("")
 
         mock_logger.warning.assert_called_once_with("No API key provided")
 
-    @patch("app.services.api_key_auth.logger")
+    @patch("backend.app.services.api_key_auth.logger")
     def test_validate_logs_warning_for_invalid_key(self, mock_logger, service):
         """Test validation logs warning for invalid key"""
         service.validate_api_key("invalid_key_test")
@@ -302,7 +302,7 @@ class TestValidateAPIKey:
         assert "Invalid API key provided" in call_args
         assert "invalid_ke" in call_args  # First 10 chars
 
-    @patch("app.services.api_key_auth.logger")
+    @patch("backend.app.services.api_key_auth.logger")
     def test_validate_logs_debug_for_valid_key(self, mock_logger, service):
         """Test validation logs debug info for valid key"""
         service.validate_api_key("valid_key")
@@ -323,10 +323,10 @@ class TestIsValidKey:
     @pytest.fixture
     def service(self):
         """Create APIKeyAuth service for testing"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "valid_key,another_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             return APIKeyAuth()
 
@@ -359,10 +359,10 @@ class TestGetKeyInfo:
     @pytest.fixture
     def service(self):
         """Create APIKeyAuth service for testing"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "test_key,admin_secret"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             return APIKeyAuth()
 
@@ -409,10 +409,10 @@ class TestGetServiceStats:
     @pytest.fixture
     def service(self):
         """Create APIKeyAuth service for testing"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,key2,key3"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             return APIKeyAuth()
 
@@ -481,10 +481,10 @@ class TestAddKey:
     @pytest.fixture
     def service(self):
         """Create APIKeyAuth service for testing"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "existing_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             return APIKeyAuth()
 
@@ -542,7 +542,7 @@ class TestAddKey:
 
     def test_add_existing_key_logs_warning(self, service):
         """Test adding an existing key logs warning"""
-        with patch("app.services.api_key_auth.logger") as mock_logger:
+        with patch("backend.app.services.api_key_auth.logger") as mock_logger:
             service.add_key("existing_key")
 
             call_args = mock_logger.warning.call_args[0][0]
@@ -550,7 +550,7 @@ class TestAddKey:
 
     def test_add_key_logs_success(self, service):
         """Test adding a key logs success"""
-        with patch("app.services.api_key_auth.logger") as mock_logger:
+        with patch("backend.app.services.api_key_auth.logger") as mock_logger:
             service.add_key("new_key", role="developer")
 
             call_args = mock_logger.info.call_args[0][0]
@@ -581,10 +581,10 @@ class TestRemoveKey:
     @pytest.fixture
     def service(self):
         """Create APIKeyAuth service for testing"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key_to_remove,key_to_keep"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             return APIKeyAuth()
 
@@ -611,7 +611,7 @@ class TestRemoveKey:
 
     def test_remove_nonexistent_key_logs_warning(self, service):
         """Test removing a non-existent key logs warning"""
-        with patch("app.services.api_key_auth.logger") as mock_logger:
+        with patch("backend.app.services.api_key_auth.logger") as mock_logger:
             service.remove_key("nonexistent_key")
 
             call_args = mock_logger.warning.call_args[0][0]
@@ -619,7 +619,7 @@ class TestRemoveKey:
 
     def test_remove_key_logs_success(self, service):
         """Test removing a key logs success"""
-        with patch("app.services.api_key_auth.logger") as mock_logger:
+        with patch("backend.app.services.api_key_auth.logger") as mock_logger:
             service.remove_key("key_to_remove")
 
             call_args = mock_logger.info.call_args[0][0]
@@ -644,10 +644,10 @@ class TestEdgeCases:
 
     def test_add_and_validate_new_key(self):
         """Test adding a key and then validating it"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "initial_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
             service.add_key("dynamic_key", role="dynamic", permissions=["all"])
@@ -660,10 +660,10 @@ class TestEdgeCases:
 
     def test_remove_and_validate_key(self):
         """Test validating a removed key fails"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "temp_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
             service.remove_key("temp_key")
@@ -674,10 +674,10 @@ class TestEdgeCases:
 
     def test_stats_after_add_remove_operations(self):
         """Test service stats reflect add/remove operations"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,key2"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -697,10 +697,10 @@ class TestEdgeCases:
 
     def test_usage_tracking_across_operations(self):
         """Test usage tracking works correctly across operations"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "tracked_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -714,10 +714,10 @@ class TestEdgeCases:
 
     def test_concurrent_key_operations(self):
         """Test multiple operations on different keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,key2,key3"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -732,10 +732,10 @@ class TestEdgeCases:
 
     def test_case_sensitivity_in_admin_detection(self):
         """Test admin role detection is case-insensitive"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "ADMIN_key,Secret_KEY,AdMiN_test"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -746,11 +746,11 @@ class TestEdgeCases:
 
     def test_long_api_key(self):
         """Test handling of very long API keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             long_key = "a" * 100
             mock_settings.api_keys = long_key
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
             result = service.validate_api_key(long_key)
@@ -760,11 +760,11 @@ class TestEdgeCases:
 
     def test_special_characters_in_key(self):
         """Test handling of special characters in API keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             special_key = "test-key_123!@#"
             mock_settings.api_keys = special_key
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
             result = service.validate_api_key(special_key)
@@ -773,10 +773,10 @@ class TestEdgeCases:
 
     def test_get_key_info_vs_validate(self):
         """Test get_key_info returns same info as validate but without side effects"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "test_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
 
@@ -794,10 +794,10 @@ class TestEdgeCases:
 
     def test_empty_service_stats(self):
         """Test service stats with no keys"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = ""
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
             stats = service.get_service_stats()
@@ -808,10 +808,10 @@ class TestEdgeCases:
 
     def test_metadata_structure_completeness(self):
         """Test that metadata includes all expected fields"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "metadata_test_key"
 
-            from app.services.api_key_auth import APIKeyAuth
+            from backend.app.services.api_key_auth import APIKeyAuth
 
             service = APIKeyAuth()
             result = service.validate_api_key("metadata_test_key")

@@ -30,8 +30,8 @@ def test_app():
     """Create FastAPI app for security tests"""
     from unittest.mock import patch
 
-    with patch("services.rag.agentic.AgenticRAGOrchestrator"):
-        from app.main_cloud import app
+    with patch("backend.services.rag.agentic.AgenticRAGOrchestrator"):
+        from backend.app.main_cloud import app
 
         app.state.search_service = MagicMock()
         app.state.search_service.embedder = MagicMock()
@@ -287,7 +287,7 @@ class TestDataIsolation:
 class TestDegradationScenarios:
     """Test system degradation scenarios"""
 
-    @patch("core.qdrant_db.QdrantClient")
+    @patch("backend.core.qdrant_db.QdrantClient")
     def test_qdrant_down_health_check(self, mock_qdrant, test_client):
         """Test health check reports degraded when Qdrant is down"""
         mock_qdrant_instance = MagicMock()
@@ -302,7 +302,7 @@ class TestDegradationScenarios:
             # Should indicate degraded state
             assert "degraded" in str(data).lower() or "qdrant" in str(data).lower()
 
-    @patch("app.dependencies.get_database_pool")
+    @patch("backend.app.dependencies.get_database_pool")
     def test_db_down_error_handling(self, mock_db_pool, test_client):
         """Test endpoints handle database down gracefully"""
         mock_db_pool.side_effect = Exception("Database connection failed")
@@ -311,7 +311,7 @@ class TestDegradationScenarios:
         # Should return error or degraded status
         assert response.status_code in [200, 503, 500]
 
-    @patch("services.search_service.SearchService.search")
+    @patch("backend.services.search_service.SearchService.search")
     def test_search_degraded_mode(self, mock_search, test_client, valid_token):
         """Test search endpoint handles Qdrant failure gracefully"""
         mock_search.side_effect = Exception("Qdrant unavailable")
@@ -323,7 +323,7 @@ class TestDegradationScenarios:
         # Should return error with proper status code
         assert response.status_code in [500, 503, 502]
 
-    @patch("services.rag.agentic.AgenticRAGOrchestrator.stream_query")
+    @patch("backend.services.rag.agentic.AgenticRAGOrchestrator.stream_query")
     def test_rag_degraded_mode(self, mock_stream, test_client, valid_token):
         """Test RAG endpoint handles service failures gracefully"""
         mock_stream.side_effect = Exception("Service unavailable")

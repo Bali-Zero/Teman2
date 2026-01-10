@@ -3,12 +3,12 @@ from collections import deque
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from core.plugins.executor import (
+from backend.core.plugins.executor import (
     CIRCUIT_BREAKER_COOLDOWN_SECONDS,
     CIRCUIT_BREAKER_FAILURE_THRESHOLD,
     PluginExecutor,
 )
-from core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 
 
 class DummyInput(PluginInput):
@@ -68,7 +68,7 @@ class DummyPlugin(Plugin):
 @pytest.mark.asyncio
 async def test_execute_plugin_not_found():
     executor = PluginExecutor()
-    with patch("core.plugins.executor.registry.get", return_value=None):
+    with patch("backend.core.plugins.executor.registry.get", return_value=None):
         result = await executor.execute("missing.plugin", {"value": 1}, user_id="user")
     assert result.success is False
     assert result.error == "Plugin not found"
@@ -82,8 +82,8 @@ async def test_execute_circuit_breaker_open():
         "failures": CIRCUIT_BREAKER_FAILURE_THRESHOLD,
         "last_failure_time": 100.0,
     }
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
-        with patch("core.plugins.executor.time.time", return_value=100.0 + 1):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
+        with patch("backend.core.plugins.executor.time.time", return_value=100.0 + 1):
             result = await executor.execute(plugin.metadata.name, {"value": 1}, user_id="user")
     assert result.success is False
     assert "circuit breaker" in result.error
@@ -93,7 +93,7 @@ async def test_execute_circuit_breaker_open():
 async def test_execute_rate_limit_exceeded():
     executor = PluginExecutor()
     plugin = DummyPlugin(rate_limit=1)
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         with patch.object(executor, "_check_rate_limit", AsyncMock(return_value=False)):
             result = await executor.execute(plugin.metadata.name, {"value": 1}, user_id="user")
     assert result.success is False
@@ -104,7 +104,7 @@ async def test_execute_rate_limit_exceeded():
 async def test_execute_requires_auth():
     executor = PluginExecutor()
     plugin = DummyPlugin(requires_auth=True)
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         result = await executor.execute(plugin.metadata.name, {"value": 1})
     assert result.success is False
     assert result.error == "Authentication required"
@@ -114,7 +114,7 @@ async def test_execute_requires_auth():
 async def test_execute_input_validation_failure():
     executor = PluginExecutor()
     plugin = DummyPlugin()
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         result = await executor.execute(plugin.metadata.name, {"value": "nope"}, user_id="user")
     assert result.success is False
     assert "Input validation failed" in result.error
@@ -125,7 +125,7 @@ async def test_execute_cache_hit_short_circuits():
     executor = PluginExecutor(redis_client=MagicMock())
     plugin = DummyPlugin()
     cached = PluginOutput(success=True, data={"cached": True})
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         with patch.object(executor, "_get_cached", AsyncMock(return_value=cached)):
             with patch.object(executor, "_execute_with_monitoring", AsyncMock()):
                 result = await executor.execute(plugin.metadata.name, {"value": 1}, user_id="user")
@@ -139,7 +139,7 @@ async def test_execute_success_cache_write_and_circuit_reset():
     plugin = DummyPlugin()
     executor._circuit_breakers[plugin.metadata.name] = {"failures": 1, "last_failure_time": 0}
     result_output = PluginOutput(success=True, data={"ok": True})
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         with patch.object(
             executor, "_execute_with_monitoring", AsyncMock(return_value=result_output)
         ):
@@ -154,11 +154,11 @@ async def test_execute_success_cache_write_and_circuit_reset():
 async def test_execute_timeout_retry_exhausted():
     executor = PluginExecutor()
     plugin = DummyPlugin()
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         with patch.object(
             executor, "_execute_with_monitoring", AsyncMock(side_effect=asyncio.TimeoutError)
         ):
-            with patch("core.plugins.executor.asyncio.sleep", AsyncMock()) as sleeper:
+            with patch("backend.core.plugins.executor.asyncio.sleep", AsyncMock()) as sleeper:
                 result = await executor.execute(
                     plugin.metadata.name, {"value": 1}, user_id="user", retry_count=1
                 )
@@ -172,11 +172,11 @@ async def test_execute_timeout_retry_exhausted():
 async def test_execute_failure_retry_exhausted():
     executor = PluginExecutor()
     plugin = DummyPlugin()
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         with patch.object(
             executor, "_execute_with_monitoring", AsyncMock(side_effect=RuntimeError("boom"))
         ):
-            with patch("core.plugins.executor.asyncio.sleep", AsyncMock()) as sleeper:
+            with patch("backend.core.plugins.executor.asyncio.sleep", AsyncMock()) as sleeper:
                 result = await executor.execute(
                     plugin.metadata.name, {"value": 1}, user_id="user", retry_count=1
                 )
@@ -190,7 +190,7 @@ async def test_execute_failure_retry_exhausted():
 async def test_execute_keyboard_interrupt_propagates():
     executor = PluginExecutor()
     plugin = DummyPlugin()
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         with patch.object(
             executor, "_execute_with_monitoring", AsyncMock(side_effect=KeyboardInterrupt)
         ):
@@ -203,7 +203,7 @@ async def test_execute_cache_miss_tracks_metric():
     executor = PluginExecutor(redis_client=MagicMock())
     plugin = DummyPlugin()
     result_output = PluginOutput(success=True, data={"ok": True})
-    with patch("core.plugins.executor.registry.get", return_value=plugin):
+    with patch("backend.core.plugins.executor.registry.get", return_value=plugin):
         with patch.object(executor, "_get_cached", AsyncMock(return_value=None)):
             with patch.object(
                 executor, "_execute_with_monitoring", AsyncMock(return_value=result_output)
@@ -218,7 +218,7 @@ async def test_execute_with_monitoring_success_metadata():
     executor = PluginExecutor()
     plugin = DummyPlugin()
     times = deque([100.0, 101.5, 105.0, 110.0])
-    with patch("core.plugins.executor.time.time", side_effect=lambda: times.popleft()):
+    with patch("backend.core.plugins.executor.time.time", side_effect=lambda: times.popleft()):
         result = await executor._execute_with_monitoring(plugin, DummyInput(value=1))
     assert result.success is True
     assert result.metadata["execution_time"] == 1.5
@@ -244,7 +244,7 @@ async def test_execute_with_monitoring_timeout():
         _coro.close()
         raise asyncio.TimeoutError
 
-    with patch("core.plugins.executor.asyncio.wait_for", fake_wait_for):
+    with patch("backend.core.plugins.executor.asyncio.wait_for", fake_wait_for):
         result = await executor._execute_with_monitoring(plugin, DummyInput(value=1))
     assert result.success is False
     assert "Plugin execution timeout" in result.error
@@ -281,7 +281,7 @@ async def test_check_rate_limit_fallback_to_memory():
     redis = MagicMock()
     redis.incr = AsyncMock(side_effect=RuntimeError("redis down"))
     executor = PluginExecutor(redis_client=redis)
-    with patch("core.plugins.executor.time.time", return_value=100.0):
+    with patch("backend.core.plugins.executor.time.time", return_value=100.0):
         allowed = await executor._check_rate_limit("plugin", 1, user_id=None)
         denied = await executor._check_rate_limit("plugin", 1, user_id=None)
     assert allowed is True
@@ -336,7 +336,7 @@ def test_generate_cache_key_deterministic():
 @pytest.mark.asyncio
 async def test_record_success_failure_and_metrics():
     executor = PluginExecutor()
-    with patch("core.plugins.executor.time.time", return_value=10.0):
+    with patch("backend.core.plugins.executor.time.time", return_value=10.0):
         await executor._record_success("plugin", 2.0)
         await executor._record_failure("plugin", "boom")
 
@@ -353,7 +353,7 @@ async def test_record_success_failure_and_metrics():
     assert empty_metrics["cache_hit_rate"] == 0.0
 
     failure_only = PluginExecutor()
-    with patch("core.plugins.executor.time.time", return_value=20.0):
+    with patch("backend.core.plugins.executor.time.time", return_value=20.0):
         await failure_only._record_failure("fail.plugin", "boom")
     failure_metrics = failure_only.get_metrics("fail.plugin")
     assert failure_metrics["cache_hit_rate"] == 0.0
@@ -369,7 +369,7 @@ def test_is_circuit_broken_reset():
         "last_failure_time": 0.0,
     }
     with patch(
-        "core.plugins.executor.time.time",
+        "backend.core.plugins.executor.time.time",
         return_value=CIRCUIT_BREAKER_COOLDOWN_SECONDS + 1.0,
     ):
         broken = executor._is_circuit_broken("plugin")
@@ -391,7 +391,7 @@ async def test_warm_plugins_handles_missing_and_errors():
             return err_plugin
         return None
 
-    with patch("core.plugins.executor.registry.get", side_effect=get_plugin):
+    with patch("backend.core.plugins.executor.registry.get", side_effect=get_plugin):
         await executor.warm_plugins(
             [ok_plugin.metadata.name, "missing.plugin", err_plugin.metadata.name]
         )

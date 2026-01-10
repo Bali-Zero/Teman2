@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 import httpx
 import pytest
 
-from app.services.audio_service import AudioService, get_audio_service
+from backend.app.services.audio_service import AudioService, get_audio_service
 
 
 class _FakeResponse:
@@ -55,10 +55,10 @@ def _build_service(openai_key="key", http_client=None, openai_client=None):
     if openai_client is None and openai_key:
         openai_client = _make_openai_client()
 
-    with patch("app.services.audio_service.settings") as mock_settings:
+    with patch("backend.app.services.audio_service.settings") as mock_settings:
         mock_settings.openai_api_key = openai_key
-        with patch("app.services.audio_service.httpx.AsyncClient", return_value=http_client):
-            with patch("app.services.audio_service.AsyncOpenAI") as mock_openai:
+        with patch("backend.app.services.audio_service.httpx.AsyncClient", return_value=http_client):
+            with patch("backend.app.services.audio_service.AsyncOpenAI") as mock_openai:
                 mock_openai.return_value = openai_client
                 service = AudioService()
     return service
@@ -220,15 +220,15 @@ async def test_close_closes_http_client():
 
 
 def test_get_audio_service_singleton():
-    with patch("app.services.audio_service.settings") as mock_settings:
+    with patch("backend.app.services.audio_service.settings") as mock_settings:
         mock_settings.openai_api_key = None
-        with patch("app.services.audio_service.httpx.AsyncClient") as mock_http:
+        with patch("backend.app.services.audio_service.httpx.AsyncClient") as mock_http:
             mock_http.return_value = _make_http_client(
                 _FakeResponse(
                     status_code=200, headers={"content-type": "audio/mpeg"}, content=b"tts"
                 )
             )
-            import app.services.audio_service as audio_service
+            import backend.app.services.audio_service as audio_service
 
             audio_service._audio_service = None
             first = get_audio_service()

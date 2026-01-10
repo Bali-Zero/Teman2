@@ -21,7 +21,7 @@ class TestSearchEndpoints:
 
     def test_search_endpoint_basic(self, authenticated_client):
         """Test basic search endpoint"""
-        with patch("app.modules.knowledge.router.get_search_service") as mock_get_service:
+        with patch("backend.app.modules.knowledge.router.get_search_service") as mock_get_service:
             mock_service = AsyncMock()
             mock_service.search = AsyncMock(
                 return_value={
@@ -46,7 +46,7 @@ class TestSearchEndpoints:
 
     def test_search_endpoint_with_filters(self, authenticated_client):
         """Test search endpoint with filters"""
-        with patch("app.modules.knowledge.router.get_search_service") as mock_get_service:
+        with patch("backend.app.modules.knowledge.router.get_search_service") as mock_get_service:
             mock_service = AsyncMock()
             mock_service.search = AsyncMock(
                 return_value={

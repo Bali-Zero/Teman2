@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Import the classes we need to test
-from llm.base import LLMMessage, LLMResponse
+from backend.llm.base import LLMMessage, LLMResponse
 
 
 @pytest.mark.unit
@@ -17,14 +17,14 @@ class TestDeepSeekProvider:
 
     def test_init_default_model(self):
         """Test DeepSeekProvider initialization with default model"""
-        with patch("llm.providers.deepseek.logger") as mock_logger:
+        with patch("backend.llm.providers.deepseek.logger") as mock_logger:
             # Mock the DeepSeekClient from the correct import path
-            with patch("services.llm_clients.deepseek_client.DeepSeekClient") as mock_client_class:
+            with patch("backend.services.llm_clients.deepseek_client.DeepSeekClient") as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.is_available = True
                 mock_client_class.return_value = mock_client
 
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider()
 
@@ -36,13 +36,13 @@ class TestDeepSeekProvider:
 
     def test_init_custom_model(self):
         """Test DeepSeekProvider initialization with custom model"""
-        with patch("llm.providers.deepseek.logger") as mock_logger:
-            with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.logger") as mock_logger:
+            with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.is_available = True
                 mock_client_class.return_value = mock_client
 
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider(model="deepseek-coder")
 
@@ -51,12 +51,12 @@ class TestDeepSeekProvider:
 
     def test_init_client_import_failure(self):
         """Test initialization failure when DeepSeekClient cannot be imported"""
-        with patch("llm.providers.deepseek.logger") as mock_logger:
+        with patch("backend.llm.providers.deepseek.logger") as mock_logger:
             # Force import error
             with patch(
-                "llm.providers.deepseek.DeepSeekClient", side_effect=ImportError("No module")
+                "backend.llm.providers.deepseek.DeepSeekClient", side_effect=ImportError("No module")
             ):
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider()
 
@@ -66,11 +66,11 @@ class TestDeepSeekProvider:
 
     def test_init_client_initialization_failure(self):
         """Test initialization failure when DeepSeekClient raises exception"""
-        with patch("llm.providers.deepseek.logger") as mock_logger:
-            with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.logger") as mock_logger:
+            with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
                 mock_client_class.side_effect = Exception("Client init failed")
 
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider()
 
@@ -80,13 +80,13 @@ class TestDeepSeekProvider:
 
     def test_init_client_not_available(self):
         """Test initialization when DeepSeekClient.is_available is False"""
-        with patch("llm.providers.deepseek.logger") as mock_logger:
-            with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.logger") as mock_logger:
+            with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
                 mock_client = MagicMock()
                 mock_client.is_available = False
                 mock_client_class.return_value = mock_client
 
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider()
 
@@ -95,47 +95,47 @@ class TestDeepSeekProvider:
 
     def test_name_property(self):
         """Test provider name property"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             assert provider.name == "deepseek"
 
     def test_is_available_property_true(self):
         """Test is_available property when client is available"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             assert provider.is_available is True
 
     def test_is_available_property_false(self):
         """Test is_available property when client is not available"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = False
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             assert provider.is_available is False
 
     def test_is_available_property_no_client(self):
         """Test is_available property when client is None"""
-        with patch("llm.providers.deepseek.logger"):
+        with patch("backend.llm.providers.deepseek.logger"):
             with patch(
-                "llm.providers.deepseek.DeepSeekClient", side_effect=Exception("Init failed")
+                "backend.llm.providers.deepseek.DeepSeekClient", side_effect=Exception("Init failed")
             ):
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider()
                 assert provider.is_available is False
@@ -143,7 +143,7 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_generate_success(self):
         """Test successful response generation"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             # Setup mock client
             mock_client = MagicMock()
             mock_client.is_available = True
@@ -156,7 +156,7 @@ class TestDeepSeekProvider:
             mock_client.complete = AsyncMock(return_value=mock_result)
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
 
@@ -189,11 +189,11 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_generate_not_available(self):
         """Test generate when provider is not available"""
-        with patch("llm.providers.deepseek.logger"):
+        with patch("backend.llm.providers.deepseek.logger"):
             with patch(
-                "llm.providers.deepseek.DeepSeekClient", side_effect=Exception("Init failed")
+                "backend.llm.providers.deepseek.DeepSeekClient", side_effect=Exception("Init failed")
             ):
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider()
 
@@ -205,7 +205,7 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_generate_with_default_parameters(self):
         """Test generate with default temperature and max_tokens"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
             mock_result = MagicMock()
@@ -217,7 +217,7 @@ class TestDeepSeekProvider:
             mock_client.complete = AsyncMock(return_value=mock_result)
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             messages = [LLMMessage(role="user", content="Hello")]
@@ -235,7 +235,7 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_stream_success(self):
         """Test successful streaming response"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
 
@@ -249,7 +249,7 @@ class TestDeepSeekProvider:
             mock_client.complete_stream.return_value = mock_stream()
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             messages = [LLMMessage(role="user", content="Say hello")]
@@ -272,11 +272,11 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_stream_not_available(self):
         """Test stream when provider is not available"""
-        with patch("llm.providers.deepseek.logger"):
+        with patch("backend.llm.providers.deepseek.logger"):
             with patch(
-                "llm.providers.deepseek.DeepSeekClient", side_effect=Exception("Init failed")
+                "backend.llm.providers.deepseek.DeepSeekClient", side_effect=Exception("Init failed")
             ):
-                from llm.providers.deepseek import DeepSeekProvider
+                from backend.llm.providers.deepseek import DeepSeekProvider
 
                 provider = DeepSeekProvider()
                 messages = [LLMMessage(role="user", content="Hello")]
@@ -288,7 +288,7 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_stream_with_default_parameters(self):
         """Test stream with default parameters"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
 
@@ -299,7 +299,7 @@ class TestDeepSeekProvider:
             mock_client.complete_stream.return_value = mock_stream()
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             messages = [LLMMessage(role="user", content="Test")]
@@ -319,7 +319,7 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_stream_with_kwargs(self):
         """Test stream with additional kwargs"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
 
@@ -330,7 +330,7 @@ class TestDeepSeekProvider:
             mock_client.complete_stream.return_value = mock_stream()
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             messages = [LLMMessage(role="user", content="Test")]
@@ -350,7 +350,7 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_generate_with_kwargs(self):
         """Test generate with additional kwargs"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
             mock_result = MagicMock()
@@ -362,7 +362,7 @@ class TestDeepSeekProvider:
             mock_client.complete = AsyncMock(return_value=mock_result)
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             messages = [LLMMessage(role="user", content="Test")]
@@ -380,7 +380,7 @@ class TestDeepSeekProvider:
 
     def test_message_conversion(self):
         """Test that LLMMessage objects are correctly converted to OpenAI format"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
             mock_result = MagicMock()
@@ -392,7 +392,7 @@ class TestDeepSeekProvider:
             mock_client.complete = AsyncMock(return_value=mock_result)
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
 
@@ -422,7 +422,7 @@ class TestDeepSeekProvider:
     @pytest.mark.asyncio
     async def test_response_token_calculation(self):
         """Test token calculation in LLMResponse"""
-        with patch("llm.providers.deepseek.DeepSeekClient") as mock_client_class:
+        with patch("backend.llm.providers.deepseek.DeepSeekClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.is_available = True
             mock_result = MagicMock()
@@ -434,7 +434,7 @@ class TestDeepSeekProvider:
             mock_client.complete = AsyncMock(return_value=mock_result)
             mock_client_class.return_value = mock_client
 
-            from llm.providers.deepseek import DeepSeekProvider
+            from backend.llm.providers.deepseek import DeepSeekProvider
 
             provider = DeepSeekProvider()
             messages = [LLMMessage(role="user", content="Test")]

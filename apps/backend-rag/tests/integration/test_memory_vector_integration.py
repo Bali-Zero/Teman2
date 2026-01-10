@@ -27,7 +27,7 @@ class TestMemoryVectorIntegration:
     async def test_memory_vector_initialization(self, qdrant_client):
         """Test memory vector DB initialization"""
         with patch(
-            "app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
         ) as mock_init:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(
@@ -35,7 +35,7 @@ class TestMemoryVectorIntegration:
             )
             mock_init.return_value = mock_db
 
-            from app.routers.memory_vector import initialize_memory_vector_db
+            from backend.app.routers.memory_vector import initialize_memory_vector_db
 
             db = await initialize_memory_vector_db()
             assert db is not None
@@ -44,7 +44,7 @@ class TestMemoryVectorIntegration:
     async def test_memory_vector_store_and_search(self, qdrant_client):
         """Test memory vector store and search flow"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
         ) as mock_get_db:
             mock_db = MagicMock()
             mock_db.upsert_documents = AsyncMock(return_value=None)
@@ -57,7 +57,7 @@ class TestMemoryVectorIntegration:
             )
             mock_get_db.return_value = mock_db
 
-            from app.routers.memory_vector import get_memory_vector_db
+            from backend.app.routers.memory_vector import get_memory_vector_db
 
             db = await get_memory_vector_db()
             await db.upsert_documents(

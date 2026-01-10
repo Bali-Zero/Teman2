@@ -13,13 +13,13 @@ import pytest
 backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
-from services.routing.intelligent_router import IntelligentRouter
+from backend.services.routing.intelligent_router import IntelligentRouter
 
 
 class TestIntelligentRouterInit:
     """Test IntelligentRouter initialization."""
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     def test_init_minimal_params(self, mock_create_agentic_rag):
         """Test initialization with minimal required parameters."""
         # Arrange
@@ -43,7 +43,7 @@ class TestIntelligentRouterInit:
         assert call_kwargs["db_pool"] == mock_db_pool
         assert call_kwargs["web_search_client"] is None
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     def test_init_all_params(self, mock_create_agentic_rag):
         """Test initialization with all parameters."""
         # Arrange
@@ -83,8 +83,8 @@ class TestIntelligentRouterInit:
         assert call_kwargs["db_pool"] == mock_db_pool
         assert call_kwargs["web_search_client"] is None
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
-    @patch("services.routing.intelligent_router.logger")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.logger")
     def test_init_logs_success(self, mock_logger, mock_create_agentic_rag):
         """Test that initialization logs success message."""
         # Arrange
@@ -102,7 +102,7 @@ class TestIntelligentRouterInit:
 class TestIntelligentRouterInitialize:
     """Test async initialize method."""
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_initialize_success(self, mock_create_agentic_rag):
         """Test successful async initialization."""
@@ -119,7 +119,7 @@ class TestIntelligentRouterInitialize:
         # Assert
         mock_orchestrator.initialize.assert_called_once()
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_initialize_propagates_error(self, mock_create_agentic_rag):
         """Test that initialization errors are propagated."""
@@ -138,7 +138,7 @@ class TestIntelligentRouterInitialize:
 class TestIntelligentRouterRouteChat:
     """Test route_chat method."""
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_success_minimal(self, mock_create_agentic_rag):
         """Test successful route_chat with minimal parameters."""
@@ -172,7 +172,7 @@ class TestIntelligentRouterRouteChat:
             query="Hello", user_id="user123", conversation_history=None
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_success_all_params(self, mock_create_agentic_rag):
         """Test successful route_chat with all parameters."""
@@ -218,7 +218,7 @@ class TestIntelligentRouterRouteChat:
             query="What is PT PMA?", user_id="user456", conversation_history=conversation_history
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_empty_sources(self, mock_create_agentic_rag):
         """Test route_chat when orchestrator returns empty sources."""
@@ -240,8 +240,8 @@ class TestIntelligentRouterRouteChat:
         # Assert
         assert result["sources"] == []
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
-    @patch("services.routing.intelligent_router.logger")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
     async def test_route_chat_logs_routing(self, mock_logger, mock_create_agentic_rag):
         """Test that route_chat logs routing information."""
@@ -260,7 +260,7 @@ class TestIntelligentRouterRouteChat:
             "🚦 [Router] Routing message for user test_user via Agentic RAG"
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_orchestrator_exception(self, mock_create_agentic_rag):
         """Test route_chat when orchestrator raises an exception."""
@@ -277,8 +277,8 @@ class TestIntelligentRouterRouteChat:
         with pytest.raises(Exception, match="Routing failed: Database connection failed"):
             await router.route_chat(message="Test", user_id="user123")
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
-    @patch("services.routing.intelligent_router.logger")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
     async def test_route_chat_logs_error(self, mock_logger, mock_create_agentic_rag):
         """Test that route_chat logs errors."""
@@ -297,7 +297,7 @@ class TestIntelligentRouterRouteChat:
         mock_logger.error.assert_called_once()
         assert "❌ [Router] Routing error:" in str(mock_logger.error.call_args)
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_orchestrator_timeout(self, mock_create_agentic_rag):
         """Test route_chat when orchestrator times out."""
@@ -316,7 +316,7 @@ class TestIntelligentRouterRouteChat:
         with pytest.raises(Exception, match="Routing failed: Query timeout"):
             await router.route_chat(message="Test", user_id="user123")
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_none_user_id(self, mock_create_agentic_rag):
         """Test route_chat with None user_id (anonymous)."""
@@ -338,7 +338,7 @@ class TestIntelligentRouterRouteChat:
             query="Test", user_id=None, conversation_history=None
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_preserves_orchestrator_result_structure(
         self, mock_create_agentic_rag
@@ -376,7 +376,7 @@ class TestIntelligentRouterRouteChat:
 class TestIntelligentRouterStreamChat:
     """Test stream_chat method."""
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_success(self, mock_create_agentic_rag):
         """Test successful stream_chat."""
@@ -409,7 +409,7 @@ class TestIntelligentRouterStreamChat:
         assert chunks[3]["type"] == "sources"
         assert chunks[4]["type"] == "done"
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_minimal_params(self, mock_create_agentic_rag):
         """Test stream_chat with minimal parameters."""
@@ -433,7 +433,7 @@ class TestIntelligentRouterStreamChat:
         assert len(chunks) == 1
         assert chunks[0]["data"] == "Response"
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_all_params(self, mock_create_agentic_rag):
         """Test stream_chat with all parameters."""
@@ -466,8 +466,8 @@ class TestIntelligentRouterStreamChat:
         # Assert
         assert len(chunks) == 1
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
-    @patch("services.routing.intelligent_router.logger")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
     async def test_stream_chat_logs_start(self, mock_logger, mock_create_agentic_rag):
         """Test that stream_chat logs start message."""
@@ -491,8 +491,8 @@ class TestIntelligentRouterStreamChat:
             "🚦 [Router Stream] Starting stream for user user789 via Agentic RAG"
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
-    @patch("services.routing.intelligent_router.logger")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
     async def test_stream_chat_logs_completion(self, mock_logger, mock_create_agentic_rag):
         """Test that stream_chat logs completion message."""
@@ -514,7 +514,7 @@ class TestIntelligentRouterStreamChat:
         # Assert
         mock_logger.info.assert_any_call("✅ [Router Stream] Completed")
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_orchestrator_exception(self, mock_create_agentic_rag):
         """Test stream_chat when orchestrator raises an exception."""
@@ -535,8 +535,8 @@ class TestIntelligentRouterStreamChat:
             async for _ in router.stream_chat(message="Test", user_id="user123"):
                 pass
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
-    @patch("services.routing.intelligent_router.logger")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.logger")
     @pytest.mark.asyncio
     async def test_stream_chat_logs_error(self, mock_logger, mock_create_agentic_rag):
         """Test that stream_chat logs errors."""
@@ -560,7 +560,7 @@ class TestIntelligentRouterStreamChat:
         mock_logger.error.assert_called_once()
         assert "❌ [Router Stream] Error:" in str(mock_logger.error.call_args)
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_empty_stream(self, mock_create_agentic_rag):
         """Test stream_chat with empty stream."""
@@ -584,7 +584,7 @@ class TestIntelligentRouterStreamChat:
         # Assert
         assert len(chunks) == 0
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_passes_through_all_chunk_types(self, mock_create_agentic_rag):
         """Test that stream_chat passes through all chunk types correctly."""
@@ -626,7 +626,7 @@ class TestIntelligentRouterStreamChat:
         assert chunks[7]["type"] == "sources"
         assert chunks[9]["type"] == "done"
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_none_conversation_history(self, mock_create_agentic_rag):
         """Test stream_chat with None conversation_history."""
@@ -655,7 +655,7 @@ class TestIntelligentRouterStreamChat:
 class TestIntelligentRouterGetStats:
     """Test get_stats method."""
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     def test_get_stats_returns_correct_structure(self, mock_create_agentic_rag):
         """Test that get_stats returns the correct structure."""
         # Arrange
@@ -673,7 +673,7 @@ class TestIntelligentRouterGetStats:
         assert stats["model"] == "gemini-3-flash-preview"
         assert stats["rag_available"] is True
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     def test_get_stats_returns_dict(self, mock_create_agentic_rag):
         """Test that get_stats returns a dictionary."""
         # Arrange
@@ -686,7 +686,7 @@ class TestIntelligentRouterGetStats:
         # Assert
         assert isinstance(stats, dict)
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     def test_get_stats_values(self, mock_create_agentic_rag):
         """Test get_stats returns expected values."""
         # Arrange
@@ -703,7 +703,7 @@ class TestIntelligentRouterGetStats:
             "rag_available": True,
         }
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     def test_get_stats_immutability(self, mock_create_agentic_rag):
         """Test that get_stats returns a new dict each time."""
         # Arrange
@@ -722,7 +722,7 @@ class TestIntelligentRouterGetStats:
 class TestIntelligentRouterEdgeCases:
     """Test edge cases and error scenarios."""
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_with_empty_message(self, mock_create_agentic_rag):
         """Test route_chat with empty message."""
@@ -744,7 +744,7 @@ class TestIntelligentRouterEdgeCases:
             query="", user_id="user123", conversation_history=None
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_with_very_long_message(self, mock_create_agentic_rag):
         """Test route_chat with very long message."""
@@ -767,7 +767,7 @@ class TestIntelligentRouterEdgeCases:
             query=long_message, user_id="user123", conversation_history=None
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_with_special_characters(self, mock_create_agentic_rag):
         """Test route_chat with special characters in message."""
@@ -787,7 +787,7 @@ class TestIntelligentRouterEdgeCases:
         # Assert
         assert result["response"] == "Safe response"
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_with_empty_user_id(self, mock_create_agentic_rag):
         """Test route_chat with empty user_id string."""
@@ -809,7 +809,7 @@ class TestIntelligentRouterEdgeCases:
             query="Test", user_id="", conversation_history=None
         )
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_stream_chat_with_none_memory(self, mock_create_agentic_rag):
         """Test stream_chat with None memory."""
@@ -832,7 +832,7 @@ class TestIntelligentRouterEdgeCases:
         # Assert
         assert len(chunks) == 1
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     def test_init_with_none_db_pool(self, mock_create_agentic_rag):
         """Test initialization with None db_pool."""
         # Arrange
@@ -850,7 +850,7 @@ class TestIntelligentRouterEdgeCases:
         assert call_args.kwargs["db_pool"] is None
         assert call_args.kwargs["web_search_client"] is None
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_orchestrator_returns_none_answer(self, mock_create_agentic_rag):
         """Test route_chat when orchestrator returns None as answer."""
@@ -867,7 +867,7 @@ class TestIntelligentRouterEdgeCases:
         # Assert
         assert result["response"] is None
 
-    @patch("services.routing.intelligent_router.create_agentic_rag")
+    @patch("backend.services.routing.intelligent_router.create_agentic_rag")
     @pytest.mark.asyncio
     async def test_route_chat_orchestrator_missing_sources_key(self, mock_create_agentic_rag):
         """Test route_chat when orchestrator result doesn't have sources key."""

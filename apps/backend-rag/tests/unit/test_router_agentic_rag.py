@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.agentic_rag import (
+from backend.app.routers.agentic_rag import (
     AgenticQueryRequest,
     get_orchestrator,
     query_agentic_rag,
@@ -32,8 +32,8 @@ def client(mock_orchestrator):
     """Create FastAPI test client with mocked orchestrator and authentication"""
     from fastapi import FastAPI
 
-    from app.dependencies import get_current_user
-    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
+    from backend.app.dependencies import get_current_user
+    from backend.app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)
@@ -151,12 +151,12 @@ def mock_request():
 @pytest.mark.asyncio
 async def test_get_orchestrator_initializes_on_first_call(mock_orchestrator, mock_request):
     """Test that orchestrator is initialized on first call"""
-    from app.routers import agentic_rag
+    from backend.app.routers import agentic_rag
 
     # Reset global orchestrator
     agentic_rag._orchestrator = None
 
-    with patch("app.routers.agentic_rag.create_agentic_rag", return_value=mock_orchestrator):
+    with patch("backend.app.routers.agentic_rag.create_agentic_rag", return_value=mock_orchestrator):
         result = await get_orchestrator(mock_request)
 
         assert result == mock_orchestrator
@@ -165,7 +165,7 @@ async def test_get_orchestrator_initializes_on_first_call(mock_orchestrator, moc
 @pytest.mark.asyncio
 async def test_get_orchestrator_reuses_instance(mock_orchestrator, mock_request):
     """Test that orchestrator instance is reused on subsequent calls"""
-    from app.routers import agentic_rag
+    from backend.app.routers import agentic_rag
 
     # Set global orchestrator
     agentic_rag._orchestrator = mock_orchestrator
@@ -178,11 +178,11 @@ async def test_get_orchestrator_reuses_instance(mock_orchestrator, mock_request)
 @pytest.mark.asyncio
 async def test_get_orchestrator_initialization_error(mock_orchestrator, mock_request):
     """Test get_orchestrator when initialization fails"""
-    from app.routers import agentic_rag
+    from backend.app.routers import agentic_rag
 
     agentic_rag._orchestrator = None
 
-    with patch("app.routers.agentic_rag.create_agentic_rag", side_effect=Exception("Init error")):
+    with patch("backend.app.routers.agentic_rag.create_agentic_rag", side_effect=Exception("Init error")):
         with pytest.raises(Exception, match="Init error"):
             await get_orchestrator(mock_request)
 
@@ -251,8 +251,8 @@ def client_minimal(mock_orchestrator_minimal):
     """Create FastAPI test client with minimal mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.dependencies import get_current_user
-    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
+    from backend.app.dependencies import get_current_user
+    from backend.app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)
@@ -327,8 +327,8 @@ def client_error(mock_orchestrator_error):
     """Create FastAPI test client with error mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.dependencies import get_current_user
-    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
+    from backend.app.dependencies import get_current_user
+    from backend.app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)
@@ -368,8 +368,8 @@ def client_keyerror(mock_orchestrator_keyerror):
     """Create FastAPI test client with keyerror mock orchestrator"""
     from fastapi import FastAPI
 
-    from app.dependencies import get_current_user
-    from app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
+    from backend.app.dependencies import get_current_user
+    from backend.app.routers.agentic_rag import get_optional_database_pool, get_orchestrator
 
     app = FastAPI()
     app.include_router(router)

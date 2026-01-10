@@ -26,7 +26,7 @@ def app():
     """Create FastAPI app with oracle_universal router"""
     from fastapi import FastAPI
 
-    from app.routers.oracle_universal import router
+    from backend.app.routers.oracle_universal import router
 
     app = FastAPI()
     app.include_router(router)
@@ -80,13 +80,13 @@ class TestOracleUniversalIntegration:
     async def test_hybrid_oracle_query_basic(self, client, mock_search_service, mock_current_user):
         """Test basic hybrid oracle query"""
         with patch(
-            "app.routers.oracle_universal.get_search_service", return_value=mock_search_service
+            "backend.app.routers.oracle_universal.get_search_service", return_value=mock_search_service
         ):
             with patch(
-                "app.routers.oracle_universal.get_current_user", return_value=mock_current_user
+                "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
             ):
                 with patch(
-                    "app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
+                    "backend.app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
                 ) as mock_reason:
                     mock_reason.return_value = {
                         "answer": "Test answer",
@@ -95,7 +95,7 @@ class TestOracleUniversalIntegration:
                         "success": True,
                     }
 
-                    with patch("core.embeddings.create_embeddings_generator") as mock_embed:
+                    with patch("backend.core.embeddings.create_embeddings_generator") as mock_embed:
                         mock_embedder = MagicMock()
                         mock_embedder.generate_single_embedding = MagicMock(
                             return_value=[0.1] * 384
@@ -122,13 +122,13 @@ class TestOracleUniversalIntegration:
     ):
         """Test hybrid oracle query with user email"""
         with patch(
-            "app.routers.oracle_universal.get_search_service", return_value=mock_search_service
+            "backend.app.routers.oracle_universal.get_search_service", return_value=mock_search_service
         ):
             with patch(
-                "app.routers.oracle_universal.get_current_user", return_value=mock_current_user
+                "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
             ):
                 with patch(
-                    "app.routers.oracle_universal.db_manager.get_user_profile",
+                    "backend.app.routers.oracle_universal.db_manager.get_user_profile",
                     new_callable=AsyncMock,
                 ) as mock_profile:
                     mock_profile.return_value = {
@@ -138,7 +138,7 @@ class TestOracleUniversalIntegration:
                     }
 
                     with patch(
-                        "app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
+                        "backend.app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
                     ) as mock_reason:
                         mock_reason.return_value = {
                             "answer": "Test answer",
@@ -146,7 +146,7 @@ class TestOracleUniversalIntegration:
                             "success": True,
                         }
 
-                        with patch("core.embeddings.create_embeddings_generator") as mock_embed:
+                        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embed:
                             mock_embedder = MagicMock()
                             mock_embedder.generate_single_embedding = MagicMock(
                                 return_value=[0.1] * 384
@@ -168,12 +168,12 @@ class TestOracleUniversalIntegration:
     ):
         """Test hybrid oracle query when golden answer is found"""
         with patch(
-            "app.routers.oracle_universal.get_search_service", return_value=mock_search_service
+            "backend.app.routers.oracle_universal.get_search_service", return_value=mock_search_service
         ):
             with patch(
-                "app.routers.oracle_universal.get_current_user", return_value=mock_current_user
+                "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
             ):
-                with patch("app.routers.oracle_universal.get_golden_answer_service") as mock_golden:
+                with patch("backend.app.routers.oracle_universal.get_golden_answer_service") as mock_golden:
                     mock_golden_svc = MagicMock()
                     mock_golden_svc.pool = MagicMock()  # Already connected
                     mock_golden_svc.lookup_golden_answer = AsyncMock(
@@ -197,9 +197,9 @@ class TestOracleUniversalIntegration:
     @pytest.mark.asyncio
     async def test_feedback_endpoint(self, client, mock_current_user):
         """Test feedback endpoint"""
-        with patch("app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
+        with patch("backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
             with patch(
-                "app.routers.oracle_universal.db_manager.save_feedback", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.save_feedback", new_callable=AsyncMock
             ):
                 payload = {
                     "query_id": "test-query-123",
@@ -213,7 +213,7 @@ class TestOracleUniversalIntegration:
     @pytest.mark.asyncio
     async def test_feedback_endpoint_invalid_rating(self, client, mock_current_user):
         """Test feedback endpoint with invalid rating"""
-        with patch("app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
+        with patch("backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
             payload = {
                 "query_id": "test-query-123",
                 "rating": 10,  # Invalid (max 5)
@@ -226,9 +226,9 @@ class TestOracleUniversalIntegration:
     @pytest.mark.asyncio
     async def test_user_profile_endpoint(self, client, mock_current_user):
         """Test user profile endpoint"""
-        with patch("app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
+        with patch("backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
             with patch(
-                "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
             ) as mock_profile:
                 mock_profile.return_value = {
                     "name": "Test User",
@@ -242,8 +242,8 @@ class TestOracleUniversalIntegration:
     @pytest.mark.asyncio
     async def test_drive_test_endpoint(self, client, mock_current_user):
         """Test drive test endpoint"""
-        with patch("app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
-            with patch("app.routers.oracle_universal.google_services.drive_service") as mock_drive:
+        with patch("backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
+            with patch("backend.app.routers.oracle_universal.google_services.drive_service") as mock_drive:
                 mock_drive.files.return_value.list.return_value.execute.return_value = {"files": []}
 
                 response = client.get("/api/oracle/drive/test")
@@ -252,14 +252,14 @@ class TestOracleUniversalIntegration:
     @pytest.mark.asyncio
     async def test_gemini_test_endpoint(self, client, mock_current_user):
         """Test gemini test endpoint"""
-        with patch("app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
-            with patch("app.routers.oracle_universal.google_services.gemini_available", True):
+        with patch("backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user):
+            with patch("backend.app.routers.oracle_universal.google_services.gemini_available", True):
                 response = client.get("/api/oracle/gemini/test")
                 assert response.status_code in [200, 503]
 
     def test_generate_query_hash(self):
         """Test query hash generation"""
-        from app.routers.oracle_universal import generate_query_hash
+        from backend.app.routers.oracle_universal import generate_query_hash
 
         hash1 = generate_query_hash("test query")
         hash2 = generate_query_hash("test query")
@@ -275,13 +275,13 @@ class TestOracleUniversalIntegration:
     ):
         """Test hybrid oracle query with conversation history"""
         with patch(
-            "app.routers.oracle_universal.get_search_service", return_value=mock_search_service
+            "backend.app.routers.oracle_universal.get_search_service", return_value=mock_search_service
         ):
             with patch(
-                "app.routers.oracle_universal.get_current_user", return_value=mock_current_user
+                "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
             ):
                 with patch(
-                    "app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
+                    "backend.app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
                 ) as mock_reason:
                     mock_reason.return_value = {
                         "answer": "Test answer",
@@ -289,7 +289,7 @@ class TestOracleUniversalIntegration:
                         "success": True,
                     }
 
-                    with patch("core.embeddings.create_embeddings_generator") as mock_embed:
+                    with patch("backend.core.embeddings.create_embeddings_generator") as mock_embed:
                         mock_embedder = MagicMock()
                         mock_embedder.generate_single_embedding = MagicMock(
                             return_value=[0.1] * 384
@@ -314,13 +314,13 @@ class TestOracleUniversalIntegration:
     ):
         """Test hybrid oracle query with language override"""
         with patch(
-            "app.routers.oracle_universal.get_search_service", return_value=mock_search_service
+            "backend.app.routers.oracle_universal.get_search_service", return_value=mock_search_service
         ):
             with patch(
-                "app.routers.oracle_universal.get_current_user", return_value=mock_current_user
+                "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
             ):
                 with patch(
-                    "app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
+                    "backend.app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
                 ) as mock_reason:
                     mock_reason.return_value = {
                         "answer": "Risposta di test",
@@ -328,7 +328,7 @@ class TestOracleUniversalIntegration:
                         "success": True,
                     }
 
-                    with patch("core.embeddings.create_embeddings_generator") as mock_embed:
+                    with patch("backend.core.embeddings.create_embeddings_generator") as mock_embed:
                         mock_embedder = MagicMock()
                         mock_embedder.generate_single_embedding = MagicMock(
                             return_value=[0.1] * 384
@@ -350,12 +350,12 @@ class TestOracleUniversalIntegration:
     ):
         """Test hybrid oracle query when embedding generation fails"""
         with patch(
-            "app.routers.oracle_universal.get_search_service", return_value=mock_search_service
+            "backend.app.routers.oracle_universal.get_search_service", return_value=mock_search_service
         ):
             with patch(
-                "app.routers.oracle_universal.get_current_user", return_value=mock_current_user
+                "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
             ):
-                with patch("core.embeddings.create_embeddings_generator") as mock_embed:
+                with patch("backend.core.embeddings.create_embeddings_generator") as mock_embed:
                     mock_embed.side_effect = Exception("Embedding service unavailable")
 
                     payload = {
@@ -372,14 +372,14 @@ class TestOracleUniversalIntegration:
     ):
         """Test hybrid oracle query when collection not found"""
         with patch(
-            "app.routers.oracle_universal.get_search_service", return_value=mock_search_service
+            "backend.app.routers.oracle_universal.get_search_service", return_value=mock_search_service
         ):
             with patch(
-                "app.routers.oracle_universal.get_current_user", return_value=mock_current_user
+                "backend.app.routers.oracle_universal.get_current_user", return_value=mock_current_user
             ):
                 mock_search_service.collection_manager.get_collection = MagicMock(return_value=None)
 
-                with patch("core.embeddings.create_embeddings_generator") as mock_embed:
+                with patch("backend.core.embeddings.create_embeddings_generator") as mock_embed:
                     mock_embedder = MagicMock()
                     mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 384)
                     mock_embed.return_value = mock_embedder

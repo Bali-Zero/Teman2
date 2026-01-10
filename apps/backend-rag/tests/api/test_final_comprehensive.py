@@ -54,7 +54,7 @@ class TestFinalEdgeCases:
 
     def test_null_and_none_values(self, authenticated_client, test_app):
         """Test null and None values"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate null values
             mock_conn.fetchrow = AsyncMock(
@@ -74,7 +74,7 @@ class TestFinalEdgeCases:
 
     def test_empty_collections(self, authenticated_client, test_app):
         """Test empty collections"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -109,7 +109,7 @@ class TestFinalCombinations:
 
     def test_all_parameter_combinations_final(self, authenticated_client, test_app):
         """Test all final parameter combinations"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -131,7 +131,7 @@ class TestFinalCombinations:
 
     def test_all_field_combinations_final(self, authenticated_client, test_app):
         """Test all final field combinations"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -216,7 +216,7 @@ class TestFinalScenarios:
 
     def test_final_workflow_completeness(self, authenticated_client, test_app):
         """Test final workflow completeness"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 

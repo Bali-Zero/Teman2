@@ -19,7 +19,7 @@ if str(backend_path) not in sys.path:
 @pytest.fixture(scope="function")
 def fact_extractor():
     """Create MemoryFactExtractor instance"""
-    from services.memory_fact_extractor import MemoryFactExtractor
+    from backend.services.memory_fact_extractor import MemoryFactExtractor
 
     return MemoryFactExtractor()
 

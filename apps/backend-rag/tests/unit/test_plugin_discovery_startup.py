@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.plugins.registry import PluginRegistry
+from backend.core.plugins.registry import PluginRegistry
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ async def test_discover_plugins_returns_results():
         plugin_file = plugins_dir / "test_plugin.py"
         plugin_file.write_text(
             """
-from core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 
 class TestPlugin(Plugin):
     @property
@@ -135,7 +135,7 @@ async def test_discover_plugins_skips_private_files():
         public_file.write_text("# Public file")
 
         # Mock import to avoid actual imports
-        with patch("core.plugins.registry.importlib.import_module") as mock_import:
+        with patch("backend.core.plugins.registry.importlib.import_module") as mock_import:
             mock_import.side_effect = Exception("Should not be called for private files")
 
             result = await registry.discover_plugins(plugins_dir, package_prefix="", strict=False)

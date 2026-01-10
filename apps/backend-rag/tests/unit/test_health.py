@@ -15,7 +15,7 @@ class TestHealthRouterSimple:
     def test_health_router_import(self):
         """Test that health router can be imported"""
         try:
-            from app.routers.health import get_qdrant_stats, router
+            from backend.app.routers.health import get_qdrant_stats, router
 
             assert router is not None
             assert get_qdrant_stats is not None
@@ -26,7 +26,7 @@ class TestHealthRouterSimple:
     def test_router_structure(self):
         """Test that router has expected structure"""
         try:
-            from app.routers.health import router
+            from backend.app.routers.health import router
 
             # Test router configuration
             assert router.prefix == "/health"
@@ -54,7 +54,7 @@ class TestHealthRouterSimple:
     def test_health_response_model_import(self):
         """Test that HealthResponse model can be imported"""
         try:
-            from app.models import HealthResponse
+            from backend.app.models import HealthResponse
 
             assert HealthResponse is not None
 
@@ -75,9 +75,9 @@ class TestHealthRouterSimple:
     async def test_get_qdrant_stats_success(self):
         """Test get_qdrant_stats with successful response"""
         try:
-            from app.routers.health import get_qdrant_stats
+            from backend.app.routers.health import get_qdrant_stats
 
-            with patch("app.routers.health.httpx.AsyncClient") as mock_client_class:
+            with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client_class:
                 # Mock HTTP client
                 mock_client = AsyncMock()
                 mock_response = MagicMock()
@@ -118,11 +118,11 @@ class TestHealthRouterSimple:
     async def test_get_qdrant_stats_with_api_key(self):
         """Test get_qdrant_stats with API key"""
         try:
-            from app.routers.health import get_qdrant_stats
+            from backend.app.routers.health import get_qdrant_stats
 
             with (
-                patch("app.routers.health.httpx.AsyncClient") as mock_client_class,
-                patch("app.routers.health.settings") as mock_settings,
+                patch("backend.app.routers.health.httpx.AsyncClient") as mock_client_class,
+                patch("backend.app.routers.health.settings") as mock_settings,
             ):
                 mock_settings.qdrant_api_key = "test-api-key"
                 mock_settings.qdrant_url = "http://test-qdrant:6333"
@@ -153,9 +153,9 @@ class TestHealthRouterSimple:
     async def test_get_qdrant_stats_connection_error(self):
         """Test get_qdrant_stats with connection error"""
         try:
-            from app.routers.health import get_qdrant_stats
+            from backend.app.routers.health import get_qdrant_stats
 
-            with patch("app.routers.health.httpx.AsyncClient") as mock_client_class:
+            with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client_class:
                 mock_client = AsyncMock()
                 mock_client.get = AsyncMock(side_effect=Exception("Connection failed"))
                 mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -176,9 +176,9 @@ class TestHealthRouterSimple:
     async def test_get_qdrant_stats_collection_error(self):
         """Test get_qdrant_stats with individual collection error"""
         try:
-            from app.routers.health import get_qdrant_stats
+            from backend.app.routers.health import get_qdrant_stats
 
-            with patch("app.routers.health.httpx.AsyncClient") as mock_client_class:
+            with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client_class:
                 mock_client = AsyncMock()
                 mock_response = MagicMock()
                 mock_response.json.return_value = {
@@ -221,7 +221,7 @@ class TestHealthRouterSimple:
     async def test_health_check_initializing(self):
         """Test health_check endpoint when service is initializing"""
         try:
-            from app.routers.health import health_check
+            from backend.app.routers.health import health_check
 
             # Mock request without search_service
             mock_request = MagicMock()
@@ -242,7 +242,7 @@ class TestHealthRouterSimple:
     async def test_health_check_healthy(self):
         """Test health_check endpoint when service is healthy"""
         try:
-            from app.routers.health import health_check
+            from backend.app.routers.health import health_check
 
             # Mock request with healthy search service
             mock_request = MagicMock()
@@ -257,7 +257,7 @@ class TestHealthRouterSimple:
 
             mock_request.app.state.search_service = mock_search_service
 
-            with patch("app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
+            with patch("backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
                 mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
                 result = await health_check(mock_request)
@@ -280,7 +280,7 @@ class TestHealthRouterSimple:
     async def test_health_check_partial_initialization(self):
         """Test health_check when embedder is partially initialized"""
         try:
-            from app.routers.health import health_check
+            from backend.app.routers.health import health_check
 
             # Mock request with partially initialized search service
             mock_request = MagicMock()
@@ -305,7 +305,7 @@ class TestHealthRouterSimple:
     async def test_health_check_degraded(self):
         """Test health_check when service encounters error"""
         try:
-            from app.routers.health import health_check
+            from backend.app.routers.health import health_check
 
             # Mock request that raises exception
             mock_request = MagicMock()
@@ -332,7 +332,7 @@ class TestHealthRouterSimple:
     async def test_detailed_health_all_healthy(self):
         """Test detailed_health when all services are healthy"""
         try:
-            from app.routers.health import detailed_health
+            from backend.app.routers.health import detailed_health
 
             # Mock request with all healthy services
             mock_request = MagicMock()
@@ -389,7 +389,7 @@ class TestHealthRouterSimple:
     async def test_detailed_health_critical_services_down(self):
         """Test detailed_health when critical services are down"""
         try:
-            from app.routers.health import detailed_health
+            from backend.app.routers.health import detailed_health
 
             # Mock request with missing critical services
             mock_request = MagicMock()
@@ -414,7 +414,7 @@ class TestHealthRouterSimple:
     async def test_detailed_health_database_error(self):
         """Test detailed_health when database has error"""
         try:
-            from app.routers.health import detailed_health
+            from backend.app.routers.health import detailed_health
 
             # Mock request with database error
             mock_request = MagicMock()
@@ -443,7 +443,7 @@ class TestHealthRouterSimple:
     async def test_readiness_check_ready(self):
         """Test readiness_check when service is ready"""
         try:
-            from app.routers.health import readiness_check
+            from backend.app.routers.health import readiness_check
 
             # Mock request with all critical services ready
             mock_request = MagicMock()
@@ -466,7 +466,7 @@ class TestHealthRouterSimple:
         try:
             from fastapi import HTTPException
 
-            from app.routers.health import readiness_check
+            from backend.app.routers.health import readiness_check
 
             # Mock request with missing services
             mock_request = MagicMock()
@@ -492,7 +492,7 @@ class TestHealthRouterSimple:
     async def test_liveness_check(self):
         """Test liveness_check endpoint"""
         try:
-            from app.routers.health import liveness_check
+            from backend.app.routers.health import liveness_check
 
             result = await liveness_check()
 
@@ -506,9 +506,9 @@ class TestHealthRouterSimple:
     async def test_qdrant_metrics_success(self):
         """Test qdrant_metrics endpoint with success"""
         try:
-            from app.routers.health import qdrant_metrics
+            from backend.app.routers.health import qdrant_metrics
 
-            with patch("app.routers.health.get_qdrant_metrics") as mock_get_metrics:
+            with patch("backend.app.routers.health.get_qdrant_metrics") as mock_get_metrics:
                 mock_metrics = {
                     "search_ops": 100,
                     "search_latency_avg": 0.5,
@@ -533,9 +533,9 @@ class TestHealthRouterSimple:
     async def test_qdrant_metrics_error(self):
         """Test qdrant_metrics endpoint with error"""
         try:
-            from app.routers.health import qdrant_metrics
+            from backend.app.routers.health import qdrant_metrics
 
-            with patch("app.routers.health.get_qdrant_metrics") as mock_get_metrics:
+            with patch("backend.app.routers.health.get_qdrant_metrics") as mock_get_metrics:
                 mock_get_metrics.side_effect = Exception("Metrics error")
 
                 result = await qdrant_metrics()
@@ -551,7 +551,7 @@ class TestHealthRouterSimple:
     def test_endpoint_functions_exist(self):
         """Test that all endpoint functions exist and are callable"""
         try:
-            from app.routers.health import (
+            from backend.app.routers.health import (
                 detailed_health,
                 health_check,
                 liveness_check,
@@ -581,7 +581,7 @@ class TestHealthRouterSimple:
     def test_constants_and_configuration(self):
         """Test constants and configuration values"""
         try:
-            from app.routers.health import router
+            from backend.app.routers.health import router
 
             # Test router prefix and tags
             assert router.prefix == "/health"
@@ -598,7 +598,7 @@ class TestHealthRouterSimple:
     async def test_health_check_edge_cases(self):
         """Test health_check edge cases"""
         try:
-            from app.routers.health import health_check
+            from backend.app.routers.health import health_check
 
             # Test with search_service but no embedder
             mock_request = MagicMock()
@@ -625,7 +625,7 @@ class TestHealthRouterSimple:
     async def test_detailed_health_service_registry_error(self):
         """Test detailed_health when service registry has error"""
         try:
-            from app.routers.health import detailed_health
+            from backend.app.routers.health import detailed_health
 
             # Mock request with service registry error
             mock_request = MagicMock()

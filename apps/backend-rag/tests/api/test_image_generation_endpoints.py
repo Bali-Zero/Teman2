@@ -33,7 +33,7 @@ class TestImageGeneration:
         from unittest.mock import MagicMock
 
         with (
-            patch("app.routers.image_generation.settings.google_api_key", "test_key"),
+            patch("backend.app.routers.image_generation.settings.google_api_key", "test_key"),
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             mock_response = MagicMock()
@@ -85,7 +85,7 @@ class TestImageGeneration:
 
     def test_generate_image_no_api_key(self, authenticated_client):
         """Test generating image without API key"""
-        with patch("app.core.config.settings.google_api_key", None):
+        with patch("backend.app.core.config.settings.google_api_key", None):
             response = authenticated_client.post(
                 "/api/v1/image/generate",
                 json={
@@ -101,7 +101,7 @@ class TestImageGeneration:
     def test_generate_image_api_forbidden(self, authenticated_client):
         """Test generating image when API returns 403"""
         with (
-            patch("app.routers.image_generation.settings.google_api_key", "test_key"),
+            patch("backend.app.routers.image_generation.settings.google_api_key", "test_key"),
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             mock_response = MagicMock()
@@ -129,7 +129,7 @@ class TestImageGeneration:
     def test_generate_image_custom_parameters(self, authenticated_client):
         """Test generating image with custom parameters"""
         with (
-            patch("app.routers.image_generation.settings.google_api_key", "test_key"),
+            patch("backend.app.routers.image_generation.settings.google_api_key", "test_key"),
             patch("httpx.AsyncClient") as mock_client_class,
         ):
             mock_response = MagicMock()

@@ -26,11 +26,11 @@ class TestMainCloudIntegration:
 
     def test_allowed_origins_function(self):
         """Test _allowed_origins function"""
-        with patch("app.main_cloud.settings") as mock_settings:
+        with patch("backend.app.main_cloud.settings") as mock_settings:
             mock_settings.zantara_allowed_origins = "https://example.com,https://test.com"
             mock_settings.dev_origins = None
 
-            from app.main_cloud import _allowed_origins
+            from backend.app.main_cloud import _allowed_origins
 
             origins = _allowed_origins()
             assert isinstance(origins, list)
@@ -39,7 +39,7 @@ class TestMainCloudIntegration:
 
     def test_safe_endpoint_label(self):
         """Test _safe_endpoint_label function"""
-        from app.main_cloud import _safe_endpoint_label
+        from backend.app.main_cloud import _safe_endpoint_label
 
         # Test with URL
         label = _safe_endpoint_label("https://example.com/path")
@@ -55,7 +55,7 @@ class TestMainCloudIntegration:
 
     def test_parse_history(self):
         """Test _parse_history function"""
-        from app.main_cloud import _parse_history
+        from backend.app.main_cloud import _parse_history
 
         # Test with valid JSON
         history_json = '[{"role": "user", "content": "test"}]'
@@ -75,11 +75,11 @@ class TestMainCloudIntegration:
     async def test_initialize_services_with_mocks(self):
         """Test initialize_services with mocked dependencies"""
         with (
-            patch("app.main_cloud.SearchService") as mock_search,
-            patch("app.main_cloud.ZantaraAIClient") as mock_ai,
-            patch("app.main_cloud.CollectionManager") as mock_collection,
-            patch("app.main_cloud.create_embeddings_generator") as mock_embedder,
-            patch("app.main_cloud.app") as mock_app,
+            patch("backend.app.main_cloud.SearchService") as mock_search,
+            patch("backend.app.main_cloud.ZantaraAIClient") as mock_ai,
+            patch("backend.app.main_cloud.CollectionManager") as mock_collection,
+            patch("backend.app.main_cloud.create_embeddings_generator") as mock_embedder,
+            patch("backend.app.main_cloud.app") as mock_app,
         ):
             mock_app.state = MagicMock()
             mock_app.state.services_initialized = False
@@ -89,7 +89,7 @@ class TestMainCloudIntegration:
             mock_ai_instance = MagicMock()
             mock_ai.return_value = mock_ai_instance
 
-            from app.main_cloud import initialize_services
+            from backend.app.main_cloud import initialize_services
 
             # Should not raise exception with mocks
             try:
@@ -100,8 +100,8 @@ class TestMainCloudIntegration:
 
     def test_app_initialization(self):
         """Test that FastAPI app can be imported and initialized"""
-        with patch("app.main_cloud.initialize_services"), patch("app.main_cloud.include_routers"):
-            from app.main_cloud import app
+        with patch("backend.app.main_cloud.initialize_services"), patch("backend.app.main_cloud.include_routers"):
+            from backend.app.main_cloud import app
 
             assert app is not None
             assert app.title is not None

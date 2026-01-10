@@ -31,12 +31,12 @@ def _load_module(monkeypatch):
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.root_endpoints"
+    module_name = "backend.app.routers.root_endpoints"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

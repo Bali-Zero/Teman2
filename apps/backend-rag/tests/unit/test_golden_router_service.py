@@ -15,21 +15,21 @@ class TestGoldenRouterService:
     @pytest.fixture
     def mock_settings(self):
         """Mock settings"""
-        with patch("services.routing.golden_router_service.settings") as mock:
+        with patch("backend.services.routing.golden_router_service.settings") as mock:
             mock.database_url = "postgresql://test:test@localhost/test"
             yield mock
 
     @pytest.fixture
     def service(self, mock_settings):
         """Create GoldenRouterService instance"""
-        from services.routing.golden_router_service import GoldenRouterService
+        from backend.services.routing.golden_router_service import GoldenRouterService
 
         return GoldenRouterService()
 
     @pytest.fixture
     def service_with_deps(self, mock_settings):
         """Create service with dependencies"""
-        from services.routing.golden_router_service import GoldenRouterService
+        from backend.services.routing.golden_router_service import GoldenRouterService
 
         mock_embeddings = MagicMock()
         mock_golden = MagicMock()
@@ -62,7 +62,7 @@ class TestGoldenRouterService:
         mock_pool = MagicMock()
 
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
 
@@ -85,7 +85,7 @@ class TestGoldenRouterService:
     async def test_get_db_pool_failure(self, service, mock_settings):
         """Test pool creation failure"""
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.side_effect = Exception("Connection failed")
 
@@ -113,7 +113,7 @@ class TestGoldenRouterService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock_create:
             mock_create.return_value = mock_pool
 
@@ -144,7 +144,7 @@ class TestGoldenRouterService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock_create:
             mock_create.return_value = mock_pool
 
@@ -163,7 +163,7 @@ class TestGoldenRouterService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock_create:
             mock_create.return_value = mock_pool
 
@@ -343,7 +343,7 @@ class TestGoldenRouterService:
         mock_embeddings.generate_query_embedding = MagicMock(return_value=[0.1, 0.2, 0.3])
         service.embeddings = mock_embeddings
 
-        with patch("services.routing.golden_router_service.cosine_similarity") as mock_cos:
+        with patch("backend.services.routing.golden_router_service.cosine_similarity") as mock_cos:
             mock_cos.return_value = np.array([[0.9]])
 
             with patch.object(service, "_update_usage_stats", new_callable=AsyncMock):
@@ -365,7 +365,7 @@ class TestGoldenRouterService:
         mock_embeddings.generate_query_embedding = MagicMock(return_value=[0.9, 0.9])
         service.embeddings = mock_embeddings
 
-        with patch("services.routing.golden_router_service.cosine_similarity") as mock_cos:
+        with patch("backend.services.routing.golden_router_service.cosine_similarity") as mock_cos:
             mock_cos.return_value = np.array([[0.5]])  # Below 0.85 threshold
 
             result = await service.route("Different query")
@@ -381,7 +381,7 @@ class TestGoldenRouterService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
 
@@ -406,7 +406,7 @@ class TestGoldenRouterService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
 
@@ -427,7 +427,7 @@ class TestGoldenRouterService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.routing.golden_router_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
 

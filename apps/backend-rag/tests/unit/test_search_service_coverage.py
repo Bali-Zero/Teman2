@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from services.search.search_service import SearchService
+from backend.services.search.search_service import SearchService
 
 # Import Qdrant exceptions the same way as search_service.py
 try:
@@ -152,7 +152,7 @@ class TestSearchServiceCoverage:
         if hasattr(search_service, "_reranker"):
             delattr(search_service, "_reranker")
 
-        with patch("core.reranker.ReRanker") as mock_reranker_class:
+        with patch("backend.core.reranker.ReRanker") as mock_reranker_class:
             mock_reranker = MagicMock()
             mock_reranker_class.return_value = mock_reranker
 
@@ -261,7 +261,7 @@ class TestSearchServiceCoverage:
         mock_manager, _ = mock_collection_manager
         mock_manager.get_collection.return_value = None  # Collection not found
 
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant_client:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant_client:
             mock_client = MagicMock()
             mock_client.search = AsyncMock(
                 return_value={

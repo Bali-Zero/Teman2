@@ -27,7 +27,7 @@ class TestOracleIngest:
 
     def test_ingest_documents_basic(self, authenticated_client):
         """Test basic document ingestion"""
-        with patch("app.routers.oracle_ingest.get_search_service") as mock_get_service:
+        with patch("backend.app.routers.oracle_ingest.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_documents = AsyncMock(return_value={"ingested": 1, "failed": 0})
             mock_get_service.return_value = mock_service
@@ -53,7 +53,7 @@ class TestOracleIngest:
 
     def test_ingest_documents_multiple(self, authenticated_client):
         """Test ingesting multiple documents"""
-        with patch("app.routers.oracle_ingest.get_search_service") as mock_get_service:
+        with patch("backend.app.routers.oracle_ingest.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_documents = AsyncMock(return_value={"ingested": 5, "failed": 0})
             mock_get_service.return_value = mock_service
@@ -82,7 +82,7 @@ class TestOracleIngest:
 
     def test_ingest_documents_with_batch_size(self, authenticated_client):
         """Test ingesting documents with custom batch size"""
-        with patch("app.routers.oracle_ingest.get_search_service") as mock_get_service:
+        with patch("backend.app.routers.oracle_ingest.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_documents = AsyncMock(return_value={"ingested": 10, "failed": 0})
             mock_get_service.return_value = mock_service
@@ -108,7 +108,7 @@ class TestOracleIngest:
 
     def test_ingest_documents_max_batch_size(self, authenticated_client):
         """Test ingesting documents with maximum batch size"""
-        with patch("app.routers.oracle_ingest.get_search_service") as mock_get_service:
+        with patch("backend.app.routers.oracle_ingest.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_documents = AsyncMock(return_value={"ingested": 100, "failed": 0})
             mock_get_service.return_value = mock_service
@@ -215,7 +215,7 @@ class TestOracleIngest:
 
     def test_ingest_documents_different_collection(self, authenticated_client):
         """Test ingesting documents to different collection"""
-        with patch("app.routers.oracle_ingest.get_search_service") as mock_get_service:
+        with patch("backend.app.routers.oracle_ingest.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_documents = AsyncMock(return_value={"ingested": 1, "failed": 0})
             mock_get_service.return_value = mock_service
@@ -240,7 +240,7 @@ class TestOracleIngest:
 
     def test_ingest_documents_response_structure(self, authenticated_client):
         """Test ingest response structure"""
-        with patch("app.routers.oracle_ingest.get_search_service") as mock_get_service:
+        with patch("backend.app.routers.oracle_ingest.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_documents = AsyncMock(return_value={"ingested": 1, "failed": 0})
             mock_get_service.return_value = mock_service
@@ -267,7 +267,7 @@ class TestOracleIngest:
 
     def test_ingest_documents_partial_failure(self, authenticated_client):
         """Test document ingestion with partial failures"""
-        with patch("app.routers.oracle_ingest.get_search_service") as mock_get_service:
+        with patch("backend.app.routers.oracle_ingest.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_documents = AsyncMock(return_value={"ingested": 3, "failed": 2})
             mock_get_service.return_value = mock_service

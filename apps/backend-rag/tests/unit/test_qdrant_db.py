@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.qdrant_db import QdrantClient
+from backend.core.qdrant_db import QdrantClient
 
 # ============================================================================
 # Fixtures
@@ -25,7 +25,7 @@ from core.qdrant_db import QdrantClient
 @pytest.fixture
 def mock_settings():
     """Mock settings configuration"""
-    with patch("core.qdrant_db.settings") as mock:
+    with patch("backend.core.qdrant_db.settings") as mock:
         mock.qdrant_url = "https://test-qdrant.example.com"
         yield mock
 
@@ -60,7 +60,7 @@ def mock_httpx_client():
 @pytest.fixture
 def qdrant_client(mock_settings, mock_httpx_client):
     """Create a QdrantClient instance with mocked httpx"""
-    with patch("core.qdrant_db.httpx.AsyncClient", return_value=mock_httpx_client):
+    with patch("backend.core.qdrant_db.httpx.AsyncClient", return_value=mock_httpx_client):
         client = QdrantClient()
         # Pre-initialize the client to use our mock
         client._http_client = mock_httpx_client
@@ -70,7 +70,7 @@ def qdrant_client(mock_settings, mock_httpx_client):
 @pytest.fixture
 def qdrant_client_custom():
     """Create a QdrantClient with custom parameters"""
-    with patch("core.qdrant_db.settings") as mock_settings:
+    with patch("backend.core.qdrant_db.settings") as mock_settings:
         mock_settings.qdrant_url = "https://custom-qdrant.example.com"
         return QdrantClient(
             qdrant_url="https://custom-qdrant.example.com", collection_name="custom_collection"
@@ -111,7 +111,7 @@ def test_init_with_url_trailing_slash(mock_settings):
 
 def test_init_with_settings_none():
     """Test initialization when settings is None (graceful fallback)"""
-    with patch("core.qdrant_db.settings", None):
+    with patch("backend.core.qdrant_db.settings", None):
         client = QdrantClient()
         # Should use default fallback values
         assert client.qdrant_url == "http://localhost:6333"
@@ -193,7 +193,7 @@ async def test_search_http_error(qdrant_client, mock_httpx_client):
     http_error = httpx.HTTPStatusError("Server Error", request=MagicMock(), response=error_response)
     mock_httpx_client.post.side_effect = http_error
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         # Mock asyncio.sleep to speed up retries
         with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await qdrant_client.search(query_embedding)
@@ -215,7 +215,7 @@ async def test_search_exception(qdrant_client, mock_httpx_client):
         "Connection failed", request=MagicMock()
     )
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         # Mock asyncio.sleep to speed up retries
         with patch("asyncio.sleep", new_callable=AsyncMock):
             result = await qdrant_client.search(query_embedding)
@@ -278,7 +278,7 @@ async def test_search_with_none_filter(qdrant_client, mock_httpx_client):
 
     assert result["total_found"] == 0
     # Verify no warning was logged for None filter
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         await qdrant_client.search(query_embedding, filter=None)
         mock_logger.warning.assert_not_called()
 
@@ -329,7 +329,7 @@ async def test_get_collection_stats_http_error(qdrant_client, mock_httpx_client)
     http_error = httpx.HTTPStatusError("Not Found", request=mock_request, response=mock_response)
     mock_httpx_client.get.side_effect = http_error
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.get_collection_stats()
 
         assert result["collection_name"] == "knowledge_base"
@@ -343,7 +343,7 @@ async def test_get_collection_stats_exception(qdrant_client, mock_httpx_client):
     """Test collection stats when exception occurs"""
     mock_httpx_client.get.side_effect = httpx.Timeout("Timeout")
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.get_collection_stats()
 
         assert result["collection_name"] == "knowledge_base"
@@ -406,7 +406,7 @@ async def test_upsert_documents_success_with_ids(qdrant_client, mock_httpx_clien
     mock_response.status_code = 200
     mock_httpx_client.put.return_value = mock_response
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.upsert_documents(chunks, embeddings, metadatas, ids=ids)
 
         assert result["success"] is True
@@ -474,7 +474,7 @@ async def test_upsert_documents_http_error(qdrant_client, mock_httpx_client):
     )
     mock_httpx_client.put.side_effect = http_error
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.upsert_documents(chunks, embeddings, metadatas)
 
         assert result["success"] is False
@@ -492,7 +492,7 @@ async def test_upsert_documents_exception(qdrant_client, mock_httpx_client):
 
     mock_httpx_client.put.side_effect = httpx.RequestError("Request failed", request=MagicMock())
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         # The implementation catches RequestError and returns error dict
         result = await qdrant_client.upsert_documents(chunks, embeddings, metadatas)
 
@@ -700,7 +700,7 @@ async def test_get_http_error(qdrant_client, mock_httpx_client):
     )
     mock_httpx_client.post.side_effect = http_error
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.get(ids)
 
         assert result["ids"] == []
@@ -716,7 +716,7 @@ async def test_get_exception(qdrant_client, mock_httpx_client):
     ids = ["id1"]
     mock_httpx_client.post.side_effect = httpx.RequestError("Request failed")
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.get(ids)
 
         assert result["ids"] == []
@@ -804,7 +804,7 @@ async def test_delete_success(qdrant_client, mock_httpx_client):
     mock_response.status_code = 200
     mock_httpx_client.post.return_value = mock_response
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.delete(ids)
 
         assert result["success"] is True
@@ -830,7 +830,7 @@ async def test_delete_http_error(qdrant_client, mock_httpx_client):
     )
     mock_httpx_client.post.side_effect = http_error
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.delete(ids)
 
         assert result["success"] is False
@@ -844,7 +844,7 @@ async def test_delete_exception(qdrant_client, mock_httpx_client):
     ids = ["id1"]
     mock_httpx_client.post.side_effect = httpx.RequestError("Request failed", request=MagicMock())
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         with pytest.raises(ConnectionError):
             await qdrant_client.delete(ids)
 
@@ -919,7 +919,7 @@ async def test_peek_http_error(qdrant_client, mock_httpx_client):
     )
     mock_httpx_client.post.side_effect = http_error
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.peek()
 
         assert result["ids"] == []
@@ -933,7 +933,7 @@ async def test_peek_exception(qdrant_client, mock_httpx_client):
     """Test peek when exception occurs"""
     mock_httpx_client.post.side_effect = httpx.RequestError("Request failed")
 
-    with patch("core.qdrant_db.logger") as mock_logger:
+    with patch("backend.core.qdrant_db.logger") as mock_logger:
         result = await qdrant_client.peek()
 
         assert result["ids"] == []

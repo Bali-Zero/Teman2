@@ -26,7 +26,7 @@ class TestTeamMemberSearchPluginIntegration:
     @pytest_asyncio.fixture
     async def mock_collaborator_service(self):
         """Create mock collaborator service"""
-        from services.collaborator_service import CollaboratorProfile
+        from backend.services.collaborator_service import CollaboratorProfile
 
         mock_service = MagicMock()
         mock_service.search_members = MagicMock(
@@ -48,7 +48,7 @@ class TestTeamMemberSearchPluginIntegration:
     @pytest_asyncio.fixture
     async def plugin(self, mock_collaborator_service):
         """Create TeamMemberSearchPlugin instance"""
-        from plugins.team.search_member_plugin import TeamMemberSearchPlugin
+        from backend.plugins.team.search_member_plugin import TeamMemberSearchPlugin
 
         return TeamMemberSearchPlugin(collaborator_service=mock_collaborator_service)
 
@@ -69,7 +69,7 @@ class TestTeamMemberSearchPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_successful_search(self, plugin):
         """Test executing plugin with successful search"""
-        from plugins.team.search_member_plugin import TeamSearchInput
+        from backend.plugins.team.search_member_plugin import TeamSearchInput
 
         input_data = TeamSearchInput(query="John")
         result = await plugin.execute(input_data)
@@ -83,7 +83,7 @@ class TestTeamMemberSearchPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_no_results(self, plugin):
         """Test executing plugin with no results"""
-        from plugins.team.search_member_plugin import TeamSearchInput
+        from backend.plugins.team.search_member_plugin import TeamSearchInput
 
         # Mock service to return empty list
         plugin.collaborator_service.search_members = MagicMock(return_value=[])
@@ -99,7 +99,7 @@ class TestTeamMemberSearchPluginIntegration:
     @pytest.mark.asyncio
     async def test_validate_valid_input(self, plugin):
         """Test validation with valid input"""
-        from plugins.team.search_member_plugin import TeamSearchInput
+        from backend.plugins.team.search_member_plugin import TeamSearchInput
 
         input_data = TeamSearchInput(query="John")
         is_valid = await plugin.validate(input_data)
@@ -109,7 +109,7 @@ class TestTeamMemberSearchPluginIntegration:
     @pytest.mark.asyncio
     async def test_validate_empty_query(self, plugin):
         """Test validation with empty query"""
-        from plugins.team.search_member_plugin import TeamSearchInput
+        from backend.plugins.team.search_member_plugin import TeamSearchInput
 
         input_data = TeamSearchInput(query="   ")
         is_valid = await plugin.validate(input_data)
@@ -119,7 +119,7 @@ class TestTeamMemberSearchPluginIntegration:
     @pytest.mark.asyncio
     async def test_execute_error_handling(self, plugin):
         """Test error handling in plugin execution"""
-        from plugins.team.search_member_plugin import TeamSearchInput
+        from backend.plugins.team.search_member_plugin import TeamSearchInput
 
         # Mock service to raise exception
         plugin.collaborator_service.search_members = MagicMock(
@@ -135,12 +135,12 @@ class TestTeamMemberSearchPluginIntegration:
 
     def test_input_schema(self, plugin):
         """Test input schema"""
-        from plugins.team.search_member_plugin import TeamSearchInput
+        from backend.plugins.team.search_member_plugin import TeamSearchInput
 
         assert plugin.input_schema == TeamSearchInput
 
     def test_output_schema(self, plugin):
         """Test output schema"""
-        from plugins.team.search_member_plugin import TeamSearchOutput
+        from backend.plugins.team.search_member_plugin import TeamSearchOutput
 
         assert plugin.output_schema == TeamSearchOutput

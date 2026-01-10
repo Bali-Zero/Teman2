@@ -21,7 +21,7 @@ class TestToolExecutor:
 
     def test_tool_executor_init(self):
         """Test ToolExecutor initialization"""
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
         assert executor is not None
@@ -31,7 +31,7 @@ class TestToolExecutor:
         """Test ToolExecutor initialization with ZantaraTools"""
         from unittest.mock import MagicMock
 
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         mock_tools = MagicMock()
         executor = ToolExecutor(zantara_tools=mock_tools)
@@ -40,7 +40,7 @@ class TestToolExecutor:
 
     def test_zantara_tool_names(self):
         """Test that zantara_tool_names contains expected tools"""
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
         assert "get_team_logins_today" in executor.zantara_tool_names
@@ -51,7 +51,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_empty_list(self):
         """Test executing empty tool calls list"""
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
         result = await executor.execute_tool_calls([])
@@ -62,7 +62,7 @@ class TestToolExecutor:
         """Test executing ZantaraTools function"""
         from unittest.mock import MagicMock
 
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         mock_tools = MagicMock()
         mock_tools.get_pricing = MagicMock(return_value={"price": 100})
@@ -78,7 +78,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_unknown_tool(self):
         """Test executing unknown tool"""
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
         tool_calls = [{"id": "tool_123", "name": "unknown_tool", "input": {}}]
@@ -93,7 +93,7 @@ class TestToolExecutor:
         """Test executing tool calls with Pydantic ToolUseBlock object"""
         from unittest.mock import MagicMock
 
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         mock_tools = MagicMock()
         mock_tools.get_team_overview = MagicMock(return_value={"members": 5})
@@ -114,7 +114,7 @@ class TestToolExecutor:
         """Test handling tool execution exception"""
         from unittest.mock import AsyncMock, MagicMock
 
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         mock_tools = MagicMock()
         mock_tools.execute_tool = AsyncMock(return_value={"success": False, "error": "Tool error"})
@@ -132,7 +132,7 @@ class TestToolExecutor:
         """Test executing multiple tool calls"""
         from unittest.mock import MagicMock
 
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         mock_tools = MagicMock()
         mock_tools.get_pricing = MagicMock(return_value={"price": 100})
@@ -152,7 +152,7 @@ class TestToolExecutor:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_missing_tool_name(self):
         """Test executing tool call without name"""
-        from services.misc.tool_executor import ToolExecutor
+        from backend.services.misc.tool_executor import ToolExecutor
 
         executor = ToolExecutor()
         tool_calls = [

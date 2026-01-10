@@ -24,7 +24,7 @@ class TestLegalStructureParserIntegration:
     @pytest.fixture
     def parser(self):
         """Create LegalStructureParser instance"""
-        from core.legal.structure_parser import LegalStructureParser
+        from backend.core.legal.structure_parser import LegalStructureParser
 
         return LegalStructureParser()
 

@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.media import router
+from backend.app.routers.media import router
 
 # ============================================================================
 # Fixtures
@@ -56,7 +56,7 @@ def mock_image_generation_service():
 async def test_generate_image_success(client, mock_image_generation_service):
     """Test generate_image successful"""
     with patch(
-        "app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
+        "backend.app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
     ):
         response = client.post("/media/generate-image", json={"prompt": "A beautiful sunset"})
 
@@ -76,7 +76,7 @@ async def test_generate_image_not_configured(client, mock_image_generation_servi
     }
 
     with patch(
-        "app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
+        "backend.app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
     ):
         response = client.post("/media/generate-image", json={"prompt": "Test"})
 
@@ -92,7 +92,7 @@ async def test_generate_image_invalid_prompt(client, mock_image_generation_servi
     }
 
     with patch(
-        "app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
+        "backend.app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
     ):
         response = client.post("/media/generate-image", json={"prompt": ""})
 
@@ -108,7 +108,7 @@ async def test_generate_image_generic_error(client, mock_image_generation_servic
     }
 
     with patch(
-        "app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
+        "backend.app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
     ):
         response = client.post("/media/generate-image", json={"prompt": "Test"})
 
@@ -121,7 +121,7 @@ async def test_generate_image_exception(client, mock_image_generation_service):
     mock_image_generation_service.generate_image.side_effect = Exception("Service error")
 
     with patch(
-        "app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
+        "backend.app.routers.media.ImageGenerationService", return_value=mock_image_generation_service
     ):
         response = client.post("/media/generate-image", json={"prompt": "Test"})
 

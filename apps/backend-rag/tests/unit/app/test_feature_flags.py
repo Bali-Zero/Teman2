@@ -4,7 +4,7 @@ Unit tests for app.feature_flags module
 
 from unittest.mock import MagicMock, patch
 
-from app.feature_flags import (
+from backend.app.feature_flags import (
     ADVANCED_ANALYTICS_ENABLED,
     SKILL_DETECTION_ENABLED,
     TOOL_EXECUTION_ENABLED,
@@ -24,13 +24,13 @@ class TestShouldEnableSkillDetection:
         assert isinstance(result, bool)
         assert result == SKILL_DETECTION_ENABLED
 
-    @patch("app.feature_flags.SKILL_DETECTION_ENABLED", True)
+    @patch("backend.app.feature_flags.SKILL_DETECTION_ENABLED", True)
     def test_returns_true_when_enabled(self):
         """Test that function returns True when skill detection is enabled"""
         result = should_enable_skill_detection()
         assert result is True
 
-    @patch("app.feature_flags.SKILL_DETECTION_ENABLED", False)
+    @patch("backend.app.feature_flags.SKILL_DETECTION_ENABLED", False)
     def test_returns_false_when_disabled(self):
         """Test that function returns False when skill detection is disabled"""
         result = should_enable_skill_detection()
@@ -40,13 +40,13 @@ class TestShouldEnableSkillDetection:
 class TestShouldEnableCollectiveMemory:
     """Tests for should_enable_collective_memory function"""
 
-    @patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", False)
+    @patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", False)
     def test_returns_false_when_disabled(self):
         """Test that function returns False when collective memory is disabled"""
         result = should_enable_collective_memory()
         assert result is False
 
-    @patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True)
+    @patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True)
     @patch("importlib.util.find_spec")
     def test_returns_true_when_enabled_and_langgraph_available(self, mock_find_spec):
         """Test that function returns True when enabled and langgraph is available"""
@@ -55,7 +55,7 @@ class TestShouldEnableCollectiveMemory:
         assert result is True
         mock_find_spec.assert_called_once_with("langgraph")
 
-    @patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True)
+    @patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True)
     @patch("importlib.util.find_spec")
     def test_returns_false_when_enabled_but_langgraph_unavailable(self, mock_find_spec):
         """Test that function returns False when enabled but langgraph is not available"""
@@ -63,7 +63,7 @@ class TestShouldEnableCollectiveMemory:
         result = should_enable_collective_memory()
         assert result is False
 
-    @patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True)
+    @patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True)
     @patch("importlib.util.find_spec")
     def test_returns_false_on_import_error(self, mock_find_spec):
         """Test that function returns False on ImportError"""
@@ -81,13 +81,13 @@ class TestShouldEnableToolExecution:
         assert isinstance(result, bool)
         assert result == TOOL_EXECUTION_ENABLED
 
-    @patch("app.feature_flags.TOOL_EXECUTION_ENABLED", True)
+    @patch("backend.app.feature_flags.TOOL_EXECUTION_ENABLED", True)
     def test_returns_true_when_enabled(self):
         """Test that function returns True when tool execution is enabled"""
         result = should_enable_tool_execution()
         assert result is True
 
-    @patch("app.feature_flags.TOOL_EXECUTION_ENABLED", False)
+    @patch("backend.app.feature_flags.TOOL_EXECUTION_ENABLED", False)
     def test_returns_false_when_disabled(self):
         """Test that function returns False when tool execution is disabled"""
         result = should_enable_tool_execution()
@@ -121,7 +121,7 @@ class TestGetFeatureFlags:
         result = get_feature_flags()
         assert result["tool_execution"] == TOOL_EXECUTION_ENABLED
 
-    @patch("app.feature_flags.should_enable_collective_memory")
+    @patch("backend.app.feature_flags.should_enable_collective_memory")
     def test_collective_memory_flag_calls_helper_function(self, mock_helper):
         """Test that collective_memory flag calls should_enable_collective_memory"""
         mock_helper.return_value = True

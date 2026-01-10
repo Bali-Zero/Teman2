@@ -33,11 +33,11 @@ def test_app():
     from unittest.mock import MagicMock as Mock
     from unittest.mock import patch
 
-    with patch("services.rag.agentic.AgenticRAGOrchestrator"):
+    with patch("backend.services.rag.agentic.AgenticRAGOrchestrator"):
         # Patch API key validation to always accept test key
         from middleware.hybrid_auth import HybridAuthMiddleware
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         # Store original method
         original_authenticate = HybridAuthMiddleware.authenticate_request
@@ -79,8 +79,8 @@ def test_client(test_app):
     """Create TestClient with mocked orchestrator and db_pool"""
     from unittest.mock import AsyncMock, MagicMock
 
-    from app.dependencies import get_database_pool
-    from app.routers.agentic_rag import get_orchestrator
+    from backend.app.dependencies import get_database_pool
+    from backend.app.routers.agentic_rag import get_orchestrator
 
     # Create mock orchestrator with async method
     mock_orchestrator = MagicMock()

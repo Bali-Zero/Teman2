@@ -30,7 +30,7 @@ class TestSearchRouter:
 
     def test_search_endpoint_success(self, test_client):
         """Test successful search"""
-        with patch("app.modules.knowledge.router.get_search_service") as mock_search:
+        with patch("backend.app.modules.knowledge.router.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(
                 return_value={"results": [{"content": "test", "score": 0.9}], "total_found": 1}
@@ -43,7 +43,7 @@ class TestSearchRouter:
 
     def test_search_endpoint_with_collection(self, test_client):
         """Test search with specific collection"""
-        with patch("app.modules.knowledge.router.get_search_service") as mock_search:
+        with patch("backend.app.modules.knowledge.router.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": [], "total_found": 0})
             mock_search.return_value = mock_service

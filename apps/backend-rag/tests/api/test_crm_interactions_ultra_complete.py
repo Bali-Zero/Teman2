@@ -45,7 +45,7 @@ class TestCRMInteractionsCreate:
 
     def test_create_interaction_minimal(self, authenticated_client):
         """Test creating interaction with minimal fields"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {
@@ -67,7 +67,7 @@ class TestCRMInteractionsCreate:
 
     def test_create_interaction_complete(self, authenticated_client):
         """Test creating interaction with all fields"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {
@@ -182,7 +182,7 @@ class TestCRMInteractionsList:
 
     def test_list_interactions_default(self, authenticated_client):
         """Test listing interactions with default parameters"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -193,7 +193,7 @@ class TestCRMInteractionsList:
 
     def test_list_interactions_with_filters(self, authenticated_client):
         """Test with multiple filters"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -215,7 +215,7 @@ class TestCRMInteractionsList:
 
     def test_list_interactions_pagination(self, authenticated_client):
         """Test pagination"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = [{"id": i} for i in range(10)]
@@ -239,7 +239,7 @@ class TestCRMInteractionsGet:
 
     def test_get_interaction_success(self, authenticated_client):
         """Test getting existing interaction"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {
@@ -254,7 +254,7 @@ class TestCRMInteractionsGet:
 
     def test_get_interaction_not_found(self, authenticated_client):
         """Test getting non-existent interaction"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = None
@@ -276,7 +276,7 @@ class TestCRMInteractionsTimeline:
 
     def test_get_client_timeline_success(self, authenticated_client):
         """Test getting client timeline"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -291,7 +291,7 @@ class TestCRMInteractionsTimeline:
 
     def test_get_client_timeline_with_limit(self, authenticated_client):
         """Test timeline with custom limit"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = [{"id": i} for i in range(10)]
@@ -315,7 +315,7 @@ class TestCRMInteractionsPracticeHistory:
 
     def test_get_practice_history_success(self, authenticated_client):
         """Test getting practice history"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -341,7 +341,7 @@ class TestCRMInteractionsStats:
 
     def test_get_stats_overview_all(self, authenticated_client):
         """Test getting all interaction statistics"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -360,7 +360,7 @@ class TestCRMInteractionsStats:
 
     def test_get_stats_by_team_member(self, authenticated_client):
         """Test stats filtered by team member"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -383,7 +383,7 @@ class TestCRMInteractionsFromConversation:
 
     def test_from_conversation_existing_client(self, authenticated_client):
         """Test creating interaction from conversation with existing client"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.side_effect = [
@@ -410,7 +410,7 @@ class TestCRMInteractionsFromConversation:
 
     def test_from_conversation_new_client(self, authenticated_client):
         """Test creating interaction with auto-creating new client"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.side_effect = [
@@ -433,7 +433,7 @@ class TestCRMInteractionsFromConversation:
 
     def test_from_conversation_with_summary(self, authenticated_client):
         """Test with custom AI-generated summary"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.side_effect = [{"id": 1}, {"messages": []}, {"id": 1}]
@@ -458,9 +458,9 @@ class TestCRMInteractionsGmailSync:
     def test_gmail_sync_success(self, authenticated_client):
         """Test successful Gmail sync"""
         with (
-            patch("app.routers.crm_interactions.get_gmail_service") as mock_gmail,
-            patch("app.routers.crm_interactions.get_auto_crm_service") as mock_crm,
-            patch("app.routers.crm_interactions.get_database_pool") as mock_pool,
+            patch("backend.app.routers.crm_interactions.get_gmail_service") as mock_gmail,
+            patch("backend.app.routers.crm_interactions.get_auto_crm_service") as mock_crm,
+            patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool,
         ):
             mock_gmail_instance = MagicMock()
             mock_gmail.return_value = mock_gmail_instance
@@ -488,9 +488,9 @@ class TestCRMInteractionsGmailSync:
     def test_gmail_sync_with_limit(self, authenticated_client):
         """Test Gmail sync with custom limit"""
         with (
-            patch("app.routers.crm_interactions.get_gmail_service") as mock_gmail,
-            patch("app.routers.crm_interactions.get_auto_crm_service") as mock_crm,
-            patch("app.routers.crm_interactions.get_database_pool"),
+            patch("backend.app.routers.crm_interactions.get_gmail_service") as mock_gmail,
+            patch("backend.app.routers.crm_interactions.get_auto_crm_service") as mock_crm,
+            patch("backend.app.routers.crm_interactions.get_database_pool"),
         ):
             mock_gmail_instance = MagicMock()
             mock_gmail.return_value = mock_gmail_instance
@@ -507,7 +507,7 @@ class TestCRMInteractionsGmailSync:
 
     def test_gmail_sync_service_unavailable(self, authenticated_client):
         """Test Gmail sync when service is unavailable"""
-        with patch("app.routers.crm_interactions.get_gmail_service") as mock_gmail:
+        with patch("backend.app.routers.crm_interactions.get_gmail_service") as mock_gmail:
             mock_gmail.side_effect = Exception("Gmail service unavailable")
 
             response = authenticated_client.post("/api/crm/interactions/sync-gmail")
@@ -528,7 +528,7 @@ class TestCRMInteractionsSecurity:
 
     def test_sql_injection_in_filters(self, authenticated_client):
         """Test SQL injection in filter parameters"""
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -549,7 +549,7 @@ class TestCRMInteractionsPerformance:
         """Test listing performance with large dataset"""
         import time
 
-        with patch("app.routers.crm_interactions.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_interactions.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = [{"id": i} for i in range(200)]

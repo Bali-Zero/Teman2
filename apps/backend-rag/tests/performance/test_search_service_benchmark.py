@@ -10,11 +10,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from services.ingestion.collection_manager import CollectionManager
-from services.misc.cultural_insights_service import CulturalInsightsService
-from services.routing.conflict_resolver import ConflictResolver
-from services.routing.query_router_integration import QueryRouterIntegration
-from services.search.search_service import SearchService
+from backend.services.ingestion.collection_manager import CollectionManager
+from backend.services.misc.cultural_insights_service import CulturalInsightsService
+from backend.services.routing.conflict_resolver import ConflictResolver
+from backend.services.routing.query_router_integration import QueryRouterIntegration
+from backend.services.search.search_service import SearchService
 
 
 class TestSearchServicePerformance:
@@ -62,13 +62,13 @@ class TestSearchServicePerformance:
     @pytest.fixture
     def search_service(self, mock_dependencies):
         """Create SearchService with mocked dependencies"""
-        with patch("core.embeddings.create_embeddings_generator") as mock_create:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
             mock_embedder = Mock()
             mock_embedder.generate_query_embedding.return_value = [0.1] * 1536
             mock_embedder.provider = "openai"
             mock_embedder.dimensions = 1536
             mock_create.return_value = mock_embedder
-            with patch("services.collection_health_service.CollectionHealthService"):
+            with patch("backend.services.collection_health_service.CollectionHealthService"):
                 service = SearchService(**mock_dependencies)
                 service.health_monitor = Mock()
                 service.health_monitor.record_query = Mock()

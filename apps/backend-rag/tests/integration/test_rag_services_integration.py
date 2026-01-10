@@ -35,7 +35,7 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_agentic_rag_orchestrator(self, qdrant_client, db_pool):
         """Test AgenticRAGOrchestrator with a greeting (no external LLM calls)."""
-        from services.rag.agentic import create_agentic_rag
+        from backend.services.rag.agentic import create_agentic_rag
 
         retriever = MagicMock()
         orchestrator = create_agentic_rag(retriever=retriever, db_pool=db_pool)
@@ -49,7 +49,7 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_cultural_rag_service(self, qdrant_client):
         """Test CulturalRAGService using mocked CulturalInsightsService."""
-        from services.misc.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         mock_insights = MagicMock()
         mock_insights.query_insights = AsyncMock(
@@ -71,9 +71,9 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_multi_collection_retrieval(self, qdrant_client):
         """Test multi-collection retrieval"""
-        from services.search.search_service import SearchService
+        from backend.services.search.search_service import SearchService
 
-        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
             embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 1536)
             embedder.provider = "openai"
@@ -114,7 +114,7 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_reranking_service(self, qdrant_client):
         """Test reranking service integration"""
-        from core.reranker import ReRanker
+        from backend.core.reranker import ReRanker
 
         reranker = ReRanker()
 
@@ -136,9 +136,9 @@ class TestRAGServicesIntegration:
     @pytest.mark.asyncio
     async def test_hybrid_search(self, qdrant_client):
         """Test hybrid search (vector + keyword)"""
-        from services.search.search_service import SearchService
+        from backend.services.search.search_service import SearchService
 
-        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
             embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 1536)
             embedder.provider = "openai"

@@ -24,21 +24,21 @@ class TestFollowupServiceIntegration:
 
     def test_followup_service_init(self):
         """Test FollowupService initialization"""
-        from services.misc.followup_service import FollowupService
+        from backend.services.misc.followup_service import FollowupService
 
         service = FollowupService()
         assert service is not None
 
     def test_generate_followups(self):
         """Test generating follow-up questions"""
-        with patch("llm.zantara_ai_client.ZantaraAIClient") as mock_zantara:
+        with patch("backend.llm.zantara_ai_client.ZantaraAIClient") as mock_zantara:
             mock_zantara_instance = MagicMock()
             mock_zantara_instance.generate_response = AsyncMock(
                 return_value="Follow-up question 1\nFollow-up question 2"
             )
             mock_zantara.return_value = mock_zantara_instance
 
-            from services.misc.followup_service import FollowupService
+            from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.generate_followups(
@@ -51,7 +51,7 @@ class TestFollowupServiceIntegration:
 
     def test_get_topic_based_followups(self):
         """Test getting topic-based follow-up questions"""
-        from services.misc.followup_service import FollowupService
+        from backend.services.misc.followup_service import FollowupService
 
         service = FollowupService()
         result = service.get_topic_based_followups(
@@ -66,14 +66,14 @@ class TestFollowupServiceIntegration:
     @pytest.mark.asyncio
     async def test_generate_dynamic_followups_with_ai_success(self):
         """Ensure dynamic follow-ups are generated when AI client is available"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client:
+        with patch("backend.services.followup_service.ZantaraAIClient") as mock_client:
             mock_instance = MagicMock()
             mock_instance.chat_async = AsyncMock(
                 return_value={"text": "1. First?\n2. Second?\n3. Third?"}
             )
             mock_client.return_value = mock_instance
 
-            from services.misc.followup_service import FollowupService
+            from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.get_followups(
@@ -90,12 +90,12 @@ class TestFollowupServiceIntegration:
     @pytest.mark.asyncio
     async def test_generate_dynamic_followups_parse_fallback(self):
         """Fallback to topic-based followups when AI output is not parseable"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client:
+        with patch("backend.services.followup_service.ZantaraAIClient") as mock_client:
             mock_instance = MagicMock()
             mock_instance.chat_async = AsyncMock(return_value={"text": "No numbers here"})
             mock_client.return_value = mock_instance
 
-            from services.misc.followup_service import FollowupService
+            from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()
             with patch.object(
@@ -113,8 +113,8 @@ class TestFollowupServiceIntegration:
     @pytest.mark.asyncio
     async def test_followups_without_ai_client(self):
         """Gracefully fall back when AI client cannot be initialized"""
-        with patch("services.followup_service.ZantaraAIClient", side_effect=Exception("boom")):
-            from services.misc.followup_service import FollowupService
+        with patch("backend.services.followup_service.ZantaraAIClient", side_effect=Exception("boom")):
+            from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = await service.get_followups(
@@ -128,8 +128,8 @@ class TestFollowupServiceIntegration:
 
     def test_language_and_topic_detection_integration(self):
         """Detect Italian + tax topic and return localized followups"""
-        with patch("services.followup_service.ZantaraAIClient", side_effect=Exception("skip ai")):
-            from services.misc.followup_service import FollowupService
+        with patch("backend.services.followup_service.ZantaraAIClient", side_effect=Exception("skip ai")):
+            from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()
             result = service.get_topic_based_followups(
@@ -149,11 +149,11 @@ class TestFollowupServiceIntegration:
     @pytest.mark.asyncio
     async def test_health_check_flags_ai_availability(self):
         """health_check should reflect AI availability"""
-        with patch("services.followup_service.ZantaraAIClient") as mock_client:
+        with patch("backend.services.followup_service.ZantaraAIClient") as mock_client:
             mock_instance = MagicMock()
             mock_client.return_value = mock_instance
 
-            from services.misc.followup_service import FollowupService
+            from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService()
             health = await service.health_check()

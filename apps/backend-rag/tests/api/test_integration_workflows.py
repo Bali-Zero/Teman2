@@ -32,7 +32,7 @@ class TestClientOnboardingWorkflow:
     def test_client_onboarding_complete_flow(self, authenticated_client):
         """Test: Create client -> Create journey -> Track compliance"""
         # Step 1: Create client
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -47,7 +47,7 @@ class TestClientOnboardingWorkflow:
 
             # Step 2: Create journey (if client created successfully)
             if client_response.status_code in [200, 201]:
-                with patch("app.routers.agents.journey_orchestrator") as mock_journey:
+                with patch("backend.app.routers.agents.journey_orchestrator") as mock_journey:
                     mock_journey.create_journey = MagicMock(
                         return_value={"journey_id": "journey_123", "status": "active"}
                     )
@@ -62,7 +62,7 @@ class TestClientOnboardingWorkflow:
 
                     # Step 3: Track compliance
                     if journey_response.status_code in [200, 201]:
-                        with patch("app.routers.agents.compliance_monitor") as mock_compliance:
+                        with patch("backend.app.routers.agents.compliance_monitor") as mock_compliance:
                             mock_compliance.track_item = MagicMock(
                                 return_value={"alert_id": "alert_123"}
                             )
@@ -105,7 +105,7 @@ class TestConversationMemoryWorkflow:
     def test_conversation_to_memory_workflow(self, authenticated_client):
         """Test: Save conversation -> Store in memory -> Search memory"""
         # Step 1: Save conversation
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -121,7 +121,7 @@ class TestConversationMemoryWorkflow:
 
             # Step 2: Store in memory (if conversation saved)
             if conversation_response.status_code in [200, 201]:
-                with patch("app.routers.memory_vector.initialize_memory_vector_db") as mock_mem:
+                with patch("backend.app.routers.memory_vector.initialize_memory_vector_db") as mock_mem:
                     mock_db = MagicMock()
                     mock_db.store_memory = AsyncMock(return_value={"memory_id": "mem_123"})
                     mock_mem.return_value = mock_db
@@ -172,7 +172,7 @@ class TestDocumentIngestionWorkflow:
     def test_document_to_query_workflow(self, authenticated_client):
         """Test: Ingest document -> Search -> Query oracle"""
         # Step 1: Ingest document
-        with patch("services.ingestion_service.IngestionService") as mock_ingest:
+        with patch("backend.services.ingestion_service.IngestionService") as mock_ingest:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={
@@ -190,7 +190,7 @@ class TestDocumentIngestionWorkflow:
 
             # Step 2: Search (if ingested successfully)
             if ingest_response.status_code in [200, 201]:
-                with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+                with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                     mock_search_service = MagicMock()
                     mock_search_service.search = AsyncMock(
                         return_value={"results": [], "query": "test"}
@@ -213,7 +213,7 @@ class TestNotificationComplianceWorkflow:
     def test_notification_to_compliance_workflow(self, authenticated_client):
         """Test: Send notification -> Track compliance -> Get alerts"""
         # Step 1: Send notification
-        with patch("services.notification_hub.NotificationHub") as mock_notif:
+        with patch("backend.services.notification_hub.NotificationHub") as mock_notif:
             mock_hub = MagicMock()
             mock_hub.send_notification = AsyncMock(
                 return_value={"success": True, "notification_id": "notif_123"}
@@ -231,7 +231,7 @@ class TestNotificationComplianceWorkflow:
 
             # Step 2: Track compliance (if notification sent)
             if notif_response.status_code in [200, 201]:
-                with patch("app.routers.agents.compliance_monitor") as mock_compliance:
+                with patch("backend.app.routers.agents.compliance_monitor") as mock_compliance:
                     mock_compliance.track_item = MagicMock(return_value={"alert_id": "alert_123"})
 
                     compliance_response = authenticated_client.post(
@@ -262,7 +262,7 @@ class TestMultiEndpointInteractions:
     def test_crm_client_to_conversation_workflow(self, authenticated_client):
         """Test: Create client -> Start conversation -> Save conversation"""
         # This tests the flow of creating a client and then having a conversation
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 

@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.misc.context_window_manager import ContextWindowManager
+from backend.services.misc.context_window_manager import ContextWindowManager
 
 
 class TestContextWindowManager:
@@ -16,19 +16,19 @@ class TestContextWindowManager:
     @pytest.fixture
     def manager(self):
         """Create ContextWindowManager instance"""
-        with patch("llm.zantara_ai_client.ZantaraAIClient"):
+        with patch("backend.llm.zantara_ai_client.ZantaraAIClient"):
             return ContextWindowManager()
 
     @pytest.fixture
     def manager_custom(self):
         """Create ContextWindowManager with custom parameters"""
-        with patch("llm.zantara_ai_client.ZantaraAIClient"):
+        with patch("backend.llm.zantara_ai_client.ZantaraAIClient"):
             return ContextWindowManager(max_messages=5, summary_threshold=10)
 
     @pytest.fixture
     def manager_no_client(self):
         """Create ContextWindowManager without ZantaraAIClient"""
-        with patch("llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception()):
+        with patch("backend.llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception()):
             return ContextWindowManager()
 
     def test_init(self, manager):

@@ -30,7 +30,7 @@ class TestSharedMemorySearch:
 
     def test_search_renewal_query(self, authenticated_client, test_app):
         """Test search for renewal/expiry queries"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -58,7 +58,7 @@ class TestSharedMemorySearch:
 
     def test_search_client_name(self, authenticated_client, test_app):
         """Test search by client name"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -80,7 +80,7 @@ class TestSharedMemorySearch:
 
     def test_search_practice_type(self, authenticated_client, test_app):
         """Test search by practice type"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -98,7 +98,7 @@ class TestSharedMemorySearch:
 
     def test_search_status_queries(self, authenticated_client, test_app):
         """Test search by status"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -116,7 +116,7 @@ class TestSharedMemorySearch:
 
     def test_search_with_limit(self, authenticated_client, test_app):
         """Test search with limit parameter"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -127,7 +127,7 @@ class TestSharedMemorySearch:
 
     def test_search_max_limit(self, authenticated_client, test_app):
         """Test search with maximum limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -157,7 +157,7 @@ class TestSharedMemorySearch:
 
     def test_search_response_structure(self, authenticated_client, test_app):
         """Test search response structure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -195,7 +195,7 @@ class TestUpcomingRenewals:
 
     def test_get_upcoming_renewals_default(self, authenticated_client, test_app):
         """Test getting upcoming renewals with default parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -216,7 +216,7 @@ class TestUpcomingRenewals:
 
     def test_get_upcoming_renewals_with_days(self, authenticated_client, test_app):
         """Test getting upcoming renewals with custom days"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -227,7 +227,7 @@ class TestUpcomingRenewals:
 
     def test_get_upcoming_renewals_max_days(self, authenticated_client, test_app):
         """Test getting upcoming renewals with maximum days"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -245,7 +245,7 @@ class TestUpcomingRenewals:
 
     def test_get_upcoming_renewals_cached(self, authenticated_client, test_app):
         """Test upcoming renewals are cached"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -279,7 +279,7 @@ class TestClientFullContext:
 
     def test_get_client_full_context(self, authenticated_client, test_app):
         """Test getting full client context"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -299,7 +299,7 @@ class TestClientFullContext:
 
     def test_get_client_full_context_not_found(self, authenticated_client, test_app):
         """Test getting full context for non-existent client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -310,7 +310,7 @@ class TestClientFullContext:
 
     def test_get_client_full_context_structure(self, authenticated_client, test_app):
         """Test full context response structure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "full_name": "Test Client"})
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -346,7 +346,7 @@ class TestTeamOverview:
 
     def test_get_team_overview(self, authenticated_client, test_app):
         """Test getting team overview"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -367,7 +367,7 @@ class TestTeamOverview:
 
     def test_get_team_overview_structure(self, authenticated_client, test_app):
         """Test team overview response structure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool

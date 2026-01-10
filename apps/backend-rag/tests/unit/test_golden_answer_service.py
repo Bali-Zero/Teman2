@@ -14,7 +14,7 @@ class TestGoldenAnswerService:
     @pytest.fixture
     def service(self):
         """Create GoldenAnswerService instance"""
-        from services.misc.golden_answer_service import GoldenAnswerService
+        from backend.services.misc.golden_answer_service import GoldenAnswerService
 
         return GoldenAnswerService(database_url="postgresql://test:test@localhost/test")
 
@@ -27,7 +27,7 @@ class TestGoldenAnswerService:
 
     def test_init(self):
         """Test initialization"""
-        from services.misc.golden_answer_service import GoldenAnswerService
+        from backend.services.misc.golden_answer_service import GoldenAnswerService
 
         service = GoldenAnswerService("postgresql://test:test@localhost/test")
 
@@ -42,7 +42,7 @@ class TestGoldenAnswerService:
         mock_pool = MagicMock()
 
         with patch(
-            "services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
             await service.connect()
@@ -53,7 +53,7 @@ class TestGoldenAnswerService:
     async def test_connect_failure(self, service):
         """Test database connection failure"""
         with patch(
-            "services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.side_effect = Exception("Connection failed")
 
@@ -101,7 +101,7 @@ class TestGoldenAnswerService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
 
@@ -238,7 +238,7 @@ class TestGoldenAnswerService:
         mock_model.encode.return_value = np.array([[0.1, 0.2, 0.3]])
         service.model = mock_model
 
-        with patch("services.misc.golden_answer_service.cosine_similarity") as mock_cos:
+        with patch("backend.services.misc.golden_answer_service.cosine_similarity") as mock_cos:
             mock_cos.return_value = np.array([[0.95]])
 
             result = await service._semantic_lookup("What is a PT PMA company?")
@@ -272,7 +272,7 @@ class TestGoldenAnswerService:
         mock_model.encode.return_value = np.array([[0.1, 0.2, 0.3]])
         service.model = mock_model
 
-        with patch("services.misc.golden_answer_service.cosine_similarity") as mock_cos:
+        with patch("backend.services.misc.golden_answer_service.cosine_similarity") as mock_cos:
             mock_cos.return_value = np.array([[0.5]])  # Below threshold
 
             result = await service._semantic_lookup("Random query")
@@ -344,7 +344,7 @@ class TestGoldenAnswerService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
 
@@ -405,7 +405,7 @@ class TestGoldenAnswerService:
         mock_pool.acquire.return_value.__aexit__ = AsyncMock()
 
         with patch(
-            "services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
+            "backend.services.misc.golden_answer_service.asyncpg.create_pool", new_callable=AsyncMock
         ) as mock:
             mock.return_value = mock_pool
 
@@ -444,7 +444,7 @@ class TestGoldenAnswerService:
         with patch.object(service, "_load_model") as mock_load:
             mock_load.side_effect = lambda: setattr(service, "model", mock_model)
 
-            with patch("services.misc.golden_answer_service.cosine_similarity") as mock_cos:
+            with patch("backend.services.misc.golden_answer_service.cosine_similarity") as mock_cos:
                 mock_cos.return_value = np.array([[0.95]])
 
                 result = await service._semantic_lookup("What is PT PMA?")
@@ -478,7 +478,7 @@ class TestGoldenAnswerService:
         mock_model.encode.return_value = np.array([[0.1, 0.2, 0.3]])
         service.model = mock_model
 
-        with patch("services.misc.golden_answer_service.cosine_similarity") as mock_cos:
+        with patch("backend.services.misc.golden_answer_service.cosine_similarity") as mock_cos:
             mock_cos.return_value = np.array([[0.5]])  # Below 0.8 threshold
 
             result = await service._semantic_lookup("Random query")

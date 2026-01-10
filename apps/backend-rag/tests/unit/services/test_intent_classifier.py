@@ -15,7 +15,7 @@ import pytest
 backend_dir = Path(__file__).parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_dir))
 
-from services.classification.intent_classifier import (
+from backend.services.classification.intent_classifier import (
     BUSINESS_KEYWORDS,
     DEVAI_KEYWORDS,
     IDENTITY_KEYWORDS,
@@ -686,14 +686,14 @@ class TestIntentClassifier:
     @pytest.mark.asyncio
     async def test_logging_on_classification(self, classifier):
         """Test: Classification logs appropriate messages"""
-        with patch("services.classification.intent_classifier.logger") as mock_logger:
+        with patch("backend.services.classification.intent_classifier.logger") as mock_logger:
             await classifier.classify_intent("hello")
             # Should log greeting classification
             mock_logger.info.assert_called()
 
     def test_logging_on_init(self):
         """Test: Initialization logs startup message"""
-        with patch("services.classification.intent_classifier.logger") as mock_logger:
+        with patch("backend.services.classification.intent_classifier.logger") as mock_logger:
             IntentClassifier()
             mock_logger.info.assert_called_once()
             call_args = mock_logger.info.call_args[0][0]

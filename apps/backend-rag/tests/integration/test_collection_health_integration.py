@@ -32,8 +32,8 @@ class TestCollectionHealthServiceIntegration:
     @pytest.mark.asyncio
     async def test_collection_health_initialization(self, qdrant_client):
         """Test CollectionHealthService initialization"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
-            from services.collection_health_service import CollectionHealthService
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
+            from backend.services.collection_health_service import CollectionHealthService
 
             service = CollectionHealthService(qdrant_client=mock_qdrant.return_value)
 
@@ -42,7 +42,7 @@ class TestCollectionHealthServiceIntegration:
     @pytest.mark.asyncio
     async def test_collection_health_check(self, qdrant_client):
         """Test collection health check"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.get_collection_info = AsyncMock(
                 return_value={
@@ -53,7 +53,7 @@ class TestCollectionHealthServiceIntegration:
             )
             mock_qdrant.return_value = mock_client
 
-            from services.collection_health_service import CollectionHealthService
+            from backend.services.collection_health_service import CollectionHealthService
 
             service = CollectionHealthService(qdrant_client=mock_client)
 
@@ -65,7 +65,7 @@ class TestCollectionHealthServiceIntegration:
     @pytest.mark.asyncio
     async def test_collection_statistics(self, qdrant_client):
         """Test collection statistics collection"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.get_collection_info = AsyncMock(
                 return_value={
@@ -82,7 +82,7 @@ class TestCollectionHealthServiceIntegration:
             )
             mock_qdrant.return_value = mock_client
 
-            from services.collection_health_service import CollectionHealthService
+            from backend.services.collection_health_service import CollectionHealthService
 
             service = CollectionHealthService(qdrant_client=mock_client)
 

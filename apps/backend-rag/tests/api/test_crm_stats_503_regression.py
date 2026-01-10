@@ -30,7 +30,7 @@ class TestCRMStats503Regression:
 
     def test_practices_stats_overview_with_db_pool(self, authenticated_client, test_app):
         """Test GET /api/crm/practices/stats/overview returns 200 when db_pool is available"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_pool, mock_conn = self._create_mock_pool_with_stats_data()
 
@@ -54,7 +54,7 @@ class TestCRMStats503Regression:
 
     def test_practices_stats_overview_without_db_pool(self, authenticated_client):
         """Test GET /api/crm/practices/stats/overview returns 503 when db_pool is None"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             from fastapi import HTTPException
 
             # Simulate db_pool being None
@@ -87,7 +87,7 @@ class TestCRMStats503Regression:
 
     def test_interactions_stats_overview_with_db_pool(self, authenticated_client, test_app):
         """Test GET /api/crm/interactions/stats/overview returns 200 when db_pool is available"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_pool, mock_conn = self._create_mock_pool_with_interaction_stats()
 
@@ -110,7 +110,7 @@ class TestCRMStats503Regression:
 
     def test_interactions_stats_overview_without_db_pool(self, authenticated_client):
         """Test GET /api/crm/interactions/stats/overview returns 503 when db_pool is None"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             from fastapi import HTTPException
 
             def raise_503(*args, **kwargs):
@@ -166,7 +166,7 @@ class TestCRMStats503Regression:
 
     def test_stats_endpoints_with_db_connection_error(self, authenticated_client):
         """Test stats endpoints handle database connection errors gracefully"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
 

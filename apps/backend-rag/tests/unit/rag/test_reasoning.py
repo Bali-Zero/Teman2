@@ -33,9 +33,9 @@ if str(backend_path) not in sys.path:
 
 from google.api_core.exceptions import ResourceExhausted
 
-from services.llm_clients.pricing import TokenUsage
-from services.rag.agentic.reasoning import ReasoningEngine
-from services.tools.definitions import AgentState, ToolCall
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic.reasoning import ReasoningEngine
+from backend.services.tools.definitions import AgentState, ToolCall
 
 
 def mock_token_usage():
@@ -153,7 +153,7 @@ class TestReActLoopExecution:
         chat = MagicMock()
 
         with patch(
-            "services.rag.agentic.reasoning.parse_tool_call",
+            "backend.services.rag.agentic.reasoning.parse_tool_call",
             side_effect=[
                 ToolCall(
                     tool_name="calculator", arguments={"input": "2+2"}
@@ -164,7 +164,7 @@ class TestReActLoopExecution:
             # Provide context that matches query keywords to avoid ABSTAIN
             tool_result = "Calculation result: 2+2 equals 4. Mathematical operation completed."
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=(tool_result, 0.1)
+                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(tool_result, 0.1)
             ):
                 result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
@@ -207,11 +207,11 @@ class TestReActLoopExecution:
         rich_content = "KITAS is a stay permit for Indonesia. " * 50  # > 500 chars
 
         with patch(
-            "services.rag.agentic.reasoning.parse_tool_call",
+            "backend.services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=(rich_content, 0.15)
+                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(rich_content, 0.15)
             ):
                 result_state, model_name, messages, _ = await engine.execute_react_loop(
                     state=state,
@@ -250,7 +250,7 @@ class TestReActLoopExecution:
         )
         chat = MagicMock()
 
-        with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
+        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None):
             result_state, model_name, messages, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=llm_gateway,
@@ -304,7 +304,7 @@ class TestToolCallParsing:
         tool_call = ToolCall(tool_name="vector_search", arguments={"query": "test"})
 
         with patch(
-            "services.rag.agentic.reasoning.parse_tool_call",
+            "backend.services.rag.agentic.reasoning.parse_tool_call",
             side_effect=[
                 tool_call,
                 None,
@@ -312,7 +312,7 @@ class TestToolCallParsing:
             ],  # First iteration: native returns tool_call, Second iteration: both return None
         ):
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=("result", 0.05)
+                "backend.services.rag.agentic.reasoning.execute_tool", return_value=("result", 0.05)
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -366,11 +366,11 @@ class TestCitationHandling:
         )
 
         with patch(
-            "services.rag.agentic.reasoning.parse_tool_call",
+            "backend.services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
+                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -407,11 +407,11 @@ class TestCitationHandling:
         vector_result = "This is not JSON"
 
         with patch(
-            "services.rag.agentic.reasoning.parse_tool_call",
+            "backend.services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             with patch(
-                "services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
+                "backend.services.rag.agentic.reasoning.execute_tool", return_value=(vector_result, 0.2)
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
                     state=state,
@@ -461,13 +461,13 @@ class TestFinalAnswerGeneration:
         chat = MagicMock()
 
         with patch(
-            "services.rag.agentic.reasoning.parse_tool_call",
+            "backend.services.rag.agentic.reasoning.parse_tool_call",
             return_value=ToolCall(tool_name="vector_search", arguments={"query": "test"}),
         ):
             # Provide substantial context with keywords to avoid ABSTAIN
             substantial_context = "Test information and details about the query. " * 20
             with patch(
-                "services.rag.agentic.reasoning.execute_tool",
+                "backend.services.rag.agentic.reasoning.execute_tool",
                 return_value=(substantial_context, 0.3),
             ):
                 result_state, _, __, ___ = await engine.execute_react_loop(
@@ -677,7 +677,7 @@ class TestErrorHandling:
         chat = MagicMock()
 
         with patch(
-            "services.rag.agentic.reasoning.post_process_response",
+            "backend.services.rag.agentic.reasoning.post_process_response",
             return_value="Fallback processed",
         ):
             result_state, _, __, ___ = await engine.execute_react_loop(

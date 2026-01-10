@@ -24,47 +24,47 @@ class TestFeatureFlagsIntegration:
 
     def test_should_enable_skill_detection(self):
         """Test skill detection flag"""
-        from app.feature_flags import should_enable_skill_detection
+        from backend.app.feature_flags import should_enable_skill_detection
 
         result = should_enable_skill_detection()
         assert isinstance(result, bool)
 
     def test_should_enable_collective_memory_with_langgraph(self):
         """Test collective memory flag when langgraph is available"""
-        from app.feature_flags import should_enable_collective_memory
+        from backend.app.feature_flags import should_enable_collective_memory
 
-        with patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True):
+        with patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True):
             with patch("importlib.util.find_spec", return_value=MagicMock()):
                 result = should_enable_collective_memory()
                 assert isinstance(result, bool)
 
     def test_should_enable_collective_memory_without_langgraph(self):
         """Test collective memory flag when langgraph is not available"""
-        from app.feature_flags import should_enable_collective_memory
+        from backend.app.feature_flags import should_enable_collective_memory
 
-        with patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True):
+        with patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True):
             with patch("importlib.util.find_spec", return_value=None):
                 result = should_enable_collective_memory()
                 assert result is False
 
     def test_should_enable_collective_memory_disabled(self):
         """Test collective memory flag when disabled"""
-        from app.feature_flags import should_enable_collective_memory
+        from backend.app.feature_flags import should_enable_collective_memory
 
-        with patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", False):
+        with patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", False):
             result = should_enable_collective_memory()
             assert result is False
 
     def test_should_enable_tool_execution(self):
         """Test tool execution flag"""
-        from app.feature_flags import should_enable_tool_execution
+        from backend.app.feature_flags import should_enable_tool_execution
 
         result = should_enable_tool_execution()
         assert isinstance(result, bool)
 
     def test_get_feature_flags(self):
         """Test getting all feature flags"""
-        from app.feature_flags import get_feature_flags
+        from backend.app.feature_flags import get_feature_flags
 
         flags = get_feature_flags()
 

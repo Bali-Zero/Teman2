@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.image_generation import router
+from backend.app.routers.image_generation import router
 
 # ============================================================================
 # Fixtures
@@ -52,7 +52,7 @@ async def test_generate_image_success(client):
     mock_response.raise_for_status = MagicMock()
 
     with (
-        patch("app.routers.image_generation.settings") as mock_settings,
+        patch("backend.app.routers.image_generation.settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_class,
     ):
         mock_settings.google_ai_api_key = "test_key"
@@ -76,7 +76,7 @@ async def test_generate_image_success(client):
 @pytest.mark.asyncio
 async def test_generate_image_no_api_key(client):
     """Test generate_image without API key"""
-    with patch("app.routers.image_generation.settings") as mock_settings:
+    with patch("backend.app.routers.image_generation.settings") as mock_settings:
         mock_settings.google_ai_api_key = None
 
         response = client.post("/api/v1/image/generate", json={"prompt": "Test"})
@@ -102,7 +102,7 @@ async def test_generate_image_api_error(client):
     )
 
     with (
-        patch("app.routers.image_generation.settings") as mock_settings,
+        patch("backend.app.routers.image_generation.settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_class,
     ):
         mock_settings.google_ai_api_key = "test_key"
@@ -135,7 +135,7 @@ async def test_generate_image_with_parameters(client):
     mock_response.raise_for_status = MagicMock()
 
     with (
-        patch("app.routers.image_generation.settings") as mock_settings,
+        patch("backend.app.routers.image_generation.settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_class,
     ):
         mock_settings.google_ai_api_key = "test_key"
@@ -165,7 +165,7 @@ async def test_generate_image_with_parameters(client):
 async def test_generate_image_exception(client):
     """Test generate_image handles exception"""
     with (
-        patch("app.routers.image_generation.settings") as mock_settings,
+        patch("backend.app.routers.image_generation.settings") as mock_settings,
         patch("httpx.AsyncClient") as mock_client_class,
     ):
         mock_settings.google_ai_api_key = "test_key"

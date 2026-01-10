@@ -26,14 +26,14 @@ class TestPluginRegistryIntegration:
     @pytest_asyncio.fixture
     async def registry(self):
         """Create PluginRegistry instance"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         return PluginRegistry()
 
     @pytest_asyncio.fixture
     async def mock_plugin_class(self):
         """Create mock plugin class"""
-        from core.plugins.plugin import Plugin, PluginCategory, PluginMetadata
+        from backend.core.plugins.plugin import Plugin, PluginCategory, PluginMetadata
 
         class TestPlugin(Plugin):
             @property
@@ -137,7 +137,7 @@ class TestPluginRegistryIntegration:
     async def test_get_plugin_by_alias(self, registry, mock_plugin_class):
         """Test getting plugin by alias"""
         # Mock plugin with legacy handler key
-        from core.plugins.plugin import PluginCategory, PluginMetadata
+        from backend.core.plugins.plugin import PluginCategory, PluginMetadata
 
         mock_plugin_class.metadata = PropertyMock(
             return_value=PluginMetadata(
@@ -171,7 +171,7 @@ class TestPluginRegistryIntegration:
 
         asyncio.run(registry.register(mock_plugin_class))
 
-        from core.plugins.plugin import PluginCategory
+        from backend.core.plugins.plugin import PluginCategory
 
         plugins = registry.list_plugins(category=PluginCategory.BALI_ZERO)
 

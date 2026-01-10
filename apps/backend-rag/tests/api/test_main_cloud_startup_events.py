@@ -15,8 +15,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.main_cloud import app, on_startup
-from services.monitoring.alert_service import AlertService
+from backend.app.main_cloud import app, on_startup
+from backend.services.monitoring.alert_service import AlertService
 
 
 class TestStartupEvents:
@@ -39,8 +39,8 @@ class TestStartupEvents:
             from unittest.mock import AsyncMock, patch
 
             with (
-                patch("app.main_cloud.initialize_services", new_callable=AsyncMock) as mock_init,
-                patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock) as mock_plugins,
+                patch("backend.app.main_cloud.initialize_services", new_callable=AsyncMock) as mock_init,
+                patch("backend.app.main_cloud.initialize_plugins", new_callable=AsyncMock) as mock_plugins,
             ):
                 # Run startup
                 await on_startup()
@@ -79,8 +79,8 @@ class TestStartupEvents:
 
             # Run startup first time
             with (
-                patch("app.main_cloud.initialize_services", new_callable=AsyncMock),
-                patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock),
+                patch("backend.app.main_cloud.initialize_services", new_callable=AsyncMock),
+                patch("backend.app.main_cloud.initialize_plugins", new_callable=AsyncMock),
             ):
                 await on_startup()
             first_instance = getattr(app.state, "alert_service", None)
@@ -98,8 +98,8 @@ class TestStartupEvents:
 
             # Run startup again (will overwrite alert_service)
             with (
-                patch("app.main_cloud.initialize_services", new_callable=AsyncMock),
-                patch("app.main_cloud.initialize_plugins", new_callable=AsyncMock),
+                patch("backend.app.main_cloud.initialize_services", new_callable=AsyncMock),
+                patch("backend.app.main_cloud.initialize_plugins", new_callable=AsyncMock),
             ):
                 await on_startup()
             second_instance = getattr(app.state, "alert_service", None)

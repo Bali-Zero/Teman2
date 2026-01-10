@@ -30,17 +30,17 @@ class DummyApp:
 async def test_initialize_plugins_success(monkeypatch):
     registry = DummyRegistry()
     core_module = ModuleType("core")
-    plugins_module = ModuleType("core.plugins")
+    plugins_module = ModuleType("backend.core.plugins")
     plugins_module.registry = registry
-    sys.modules["core"] = core_module
-    sys.modules["core.plugins"] = plugins_module
+    monkeypatch.setitem(sys.modules, "core", core_module)
+    monkeypatch.setitem(sys.modules, "backend.core.plugins", plugins_module)
 
     module_path = (
         Path(__file__).resolve().parents[4] / "backend" / "app" / "setup" / "plugin_initializer.py"
     )
-    spec = importlib.util.spec_from_file_location("app.setup.plugin_initializer", module_path)
+    spec = importlib.util.spec_from_file_location("backend.app.setup.plugin_initializer", module_path)
     plugin_initializer = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = plugin_initializer
+    monkeypatch.setitem(sys.modules, spec.name, plugin_initializer)
     spec.loader.exec_module(plugin_initializer)
 
     app = DummyApp()
@@ -63,17 +63,17 @@ async def test_initialize_plugins_success(monkeypatch):
 async def test_initialize_plugins_error(monkeypatch):
     registry = DummyRegistry(error=RuntimeError("boom"))
     core_module = ModuleType("core")
-    plugins_module = ModuleType("core.plugins")
+    plugins_module = ModuleType("backend.core.plugins")
     plugins_module.registry = registry
-    sys.modules["core"] = core_module
-    sys.modules["core.plugins"] = plugins_module
+    monkeypatch.setitem(sys.modules, "core", core_module)
+    monkeypatch.setitem(sys.modules, "backend.core.plugins", plugins_module)
 
     module_path = (
         Path(__file__).resolve().parents[4] / "backend" / "app" / "setup" / "plugin_initializer.py"
     )
-    spec = importlib.util.spec_from_file_location("app.setup.plugin_initializer", module_path)
+    spec = importlib.util.spec_from_file_location("backend.app.setup.plugin_initializer", module_path)
     plugin_initializer = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = plugin_initializer
+    monkeypatch.setitem(sys.modules, spec.name, plugin_initializer)
     spec.loader.exec_module(plugin_initializer)
 
     app = DummyApp()

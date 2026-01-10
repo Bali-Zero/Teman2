@@ -33,7 +33,7 @@ class TestCacheHitMiss:
 
     def test_cached_endpoint_first_request(self, authenticated_client, test_app):
         """Test first request to cached endpoint (cache miss)"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -44,7 +44,7 @@ class TestCacheHitMiss:
 
     def test_cached_endpoint_second_request(self, authenticated_client, test_app):
         """Test second request to cached endpoint (cache hit)"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -103,7 +103,7 @@ class TestCacheTTL:
 
     def test_cache_expiration(self, authenticated_client, test_app):
         """Test cache expiration after TTL"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             call_count = 0
 
@@ -163,7 +163,7 @@ class TestCacheInvalidation:
 
     def test_cache_invalidation_on_update(self, authenticated_client, test_app):
         """Test cache invalidation when data is updated"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -188,7 +188,7 @@ class TestCacheInvalidation:
 
     def test_cache_invalidation_on_create(self, authenticated_client, test_app):
         """Test cache invalidation when new data is created"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -214,7 +214,7 @@ class TestCacheInvalidation:
 
     def test_cache_invalidation_on_delete(self, authenticated_client, test_app):
         """Test cache invalidation when data is deleted"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -275,7 +275,7 @@ class TestCacheConsistency:
 
     def test_cache_key_uniqueness(self, authenticated_client, test_app):
         """Test cache key uniqueness for different parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -338,7 +338,7 @@ class TestCachePerformance:
             call_count += 1
             return {"total": 100}
 
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(side_effect=fetchrow_side_effect)
             mock_get_pool.return_value = mock_pool

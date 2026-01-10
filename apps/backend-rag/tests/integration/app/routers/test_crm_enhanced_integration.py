@@ -20,7 +20,7 @@ if str(backend_path) not in sys.path:
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.crm_enhanced import router
+from backend.app.routers.crm_enhanced import router
 
 
 @pytest.fixture

@@ -20,7 +20,7 @@ if str(backend_path) not in sys.path:
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.crm_portal_integration import router
+from backend.app.routers.crm_portal_integration import router
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ class TestCRMPortalIntegrationIntegration:
             assert data["status"] in ["none", "no_access", "pending"]
 
     @pytest.mark.asyncio
-    @patch("app.routers.crm_portal_integration.send_email")
+    @patch("backend.app.routers.crm_portal_integration.send_email")
     async def test_send_portal_invite(self, mock_send_email, test_client, db_pool):
         """Test sending portal invite"""
         mock_send_email.return_value = True

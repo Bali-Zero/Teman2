@@ -24,7 +24,7 @@ sys.path.insert(0, str(backend_path))
 
 import pytest
 
-from services.routing.conflict_resolver import ConflictResolver
+from backend.services.routing.conflict_resolver import ConflictResolver
 
 
 class TestConflictResolverInitialization:

@@ -56,7 +56,7 @@ class TestTeamAnalytics95Percent:
     @pytest.mark.asyncio
     async def test_analyze_work_patterns_all_branches(self, db_pool):
         """Test all branches of analyze_work_patterns"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -119,7 +119,7 @@ class TestTeamAnalytics95Percent:
     @pytest.mark.asyncio
     async def test_calculate_productivity_scores_all_branches(self, db_pool):
         """Test all branches of calculate_productivity_scores"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -208,7 +208,7 @@ class TestTeamAnalytics95Percent:
     @pytest.mark.asyncio
     async def test_detect_burnout_signals_all_branches(self, db_pool):
         """Test all branches of detect_burnout_signals"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -357,7 +357,7 @@ class TestTeamAnalytics95Percent:
     @pytest.mark.asyncio
     async def test_analyze_performance_trends_all_branches(self, db_pool):
         """Test all branches of analyze_performance_trends"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -425,7 +425,7 @@ class TestTeamAnalytics95Percent:
     @pytest.mark.asyncio
     async def test_analyze_workload_balance_all_branches(self, db_pool):
         """Test all branches of analyze_workload_balance"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -485,7 +485,7 @@ class TestTeamAnalytics95Percent:
     @pytest.mark.asyncio
     async def test_identify_optimal_hours_all_branches(self, db_pool):
         """Test all branches of identify_optimal_hours"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -542,7 +542,7 @@ class TestTeamAnalytics95Percent:
     @pytest.mark.asyncio
     async def test_generate_team_insights_all_branches(self, db_pool):
         """Test all branches of generate_team_insights"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -623,7 +623,7 @@ class TestMemoryService95Percent:
     @pytest.fixture
     async def memory_service(self, postgres_container):
         """Create memory service"""
-        from services.memory.memory_service_postgres import MemoryServicePostgres
+        from backend.services.memory.memory_service_postgres import MemoryServicePostgres
 
         database_url = postgres_container
         if database_url and "+" in database_url:
@@ -638,7 +638,7 @@ class TestMemoryService95Percent:
         """Test all branches of memory service"""
 
         # Test initialization without database_url
-        from services.memory.memory_service_postgres import MemoryServicePostgres
+        from backend.services.memory.memory_service_postgres import MemoryServicePostgres
 
         service_no_db = MemoryServicePostgres(database_url=None)
         assert service_no_db.use_postgres is False
@@ -798,7 +798,7 @@ class TestEmbeddings95Percent:
 
     def test_embeddings_all_branches(self):
         """Test all branches of embeddings"""
-        from core.embeddings import EmbeddingsGenerator
+        from backend.core.embeddings import EmbeddingsGenerator
 
         # Test initialization with provider parameter
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
@@ -838,14 +838,14 @@ class TestEmbeddings95Percent:
             pass
 
         # Test Sentence Transformers ImportError fallback
-        with patch("core.embeddings.SentenceTransformer", side_effect=ImportError("Not available")):
+        with patch("backend.core.embeddings.SentenceTransformer", side_effect=ImportError("Not available")):
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
                 generator = EmbeddingsGenerator(provider="sentence-transformers")
                 # Should fallback to OpenAI
                 assert generator.provider == "openai"
 
         # Test Sentence Transformers general exception fallback
-        with patch("core.embeddings.SentenceTransformer", side_effect=Exception("Error")):
+        with patch("backend.core.embeddings.SentenceTransformer", side_effect=Exception("Error")):
             with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
                 try:
                     generator = EmbeddingsGenerator(provider="sentence-transformers")
@@ -901,7 +901,7 @@ class TestTokenEstimator95Percent:
 
     def test_token_estimator_all_branches(self):
         """Test all branches of token estimator"""
-        from llm.token_estimator import TIKTOKEN_AVAILABLE, TokenEstimator
+        from backend.llm.token_estimator import TIKTOKEN_AVAILABLE, TokenEstimator
 
         # Test initialization with Gemini model
         estimator = TokenEstimator(model="gemini-3-flash-preview")
@@ -1000,8 +1000,8 @@ class TestIdentityService95Percent:
     @pytest.mark.asyncio
     async def test_identity_service_all_branches(self, db_pool):
         """Test all branches of identity service"""
-        from app.modules.identity.models import User
-        from app.modules.identity.service import IdentityService
+        from backend.app.modules.identity.models import User
+        from backend.app.modules.identity.service import IdentityService
 
         service = IdentityService()
 
@@ -1105,7 +1105,7 @@ class TestIdentityService95Percent:
         assert isinstance(permissions3, list)
 
         # Test get_db_connection error
-        with patch("app.modules.identity.service.settings") as mock_settings:
+        with patch("backend.app.modules.identity.service.settings") as mock_settings:
             mock_settings.database_url = None
             with pytest.raises(ValueError):
                 await service.get_db_connection()
@@ -1221,8 +1221,8 @@ class TestDependencies95Percent:
         from fastapi.security import HTTPAuthorizationCredentials
         from jose import jwt
 
-        from app.core.config import settings
-        from app.dependencies import (
+        from backend.app.core.config import settings
+        from backend.app.dependencies import (
             get_ai_client,
             get_cache,
             get_current_user,
@@ -1343,7 +1343,7 @@ class TestDependencies95Percent:
         with pytest.raises(Exception):
             get_current_user(credentials4)
 
-        # Test get_cache from app.state
+        # Test get_cache from backend.app.state
         app9 = MagicMock()
         app9.state.cache_service = MagicMock()
         request9 = Request({"type": "http", "method": "GET", "path": "/"})
@@ -1368,7 +1368,7 @@ class TestServiceHealth95Percent:
 
     def test_service_health_all_branches(self):
         """Test all branches of service health"""
-        from app.core.service_health import ServiceRegistry, ServiceStatus
+        from backend.app.core.service_health import ServiceRegistry, ServiceStatus
 
         registry = ServiceRegistry()
 
@@ -1445,7 +1445,7 @@ class TestResponseHandler95Percent:
 
     def test_response_handler_all_branches(self):
         """Test all branches of response handler"""
-        from services.routing.response_handler import ResponseHandler
+        from backend.services.routing.response_handler import ResponseHandler
 
         handler = ResponseHandler()
 
@@ -1479,7 +1479,7 @@ class TestResponseHandler95Percent:
         assert response3 is not None
 
         # Test sanitize_response error handling
-        with patch("services.routing.response_handler.process_zantara_response") as mock_process:
+        with patch("backend.services.routing.response_handler.process_zantara_response") as mock_process:
             mock_process.side_effect = Exception("Error")
             response4 = handler.sanitize_response("Test", query_type="business")
             assert response4 == "Test"  # Should return original on error

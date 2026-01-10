@@ -35,13 +35,13 @@ class TestOracleComprehensiveIntegration:
     @pytest.mark.asyncio
     async def test_oracle_query_with_qdrant_search(self, qdrant_client, db_pool):
         """Test Oracle query with real Qdrant search"""
-        from services.search.search_service import SearchService
+        from backend.services.search.search_service import SearchService
 
         # Initialize search service with test Qdrant
         search_service = SearchService()
 
         # Mock embedding generation
-        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
             embedder.generate_query_embedding = AsyncMock(
                 return_value=[0.1] * 1536  # Mock 1536-dim embedding
@@ -247,15 +247,15 @@ class TestOracleComprehensiveIntegration:
     @pytest.mark.asyncio
     async def test_oracle_multi_collection_routing(self, qdrant_client):
         """Test Oracle routing across multiple collections"""
-        from services.routing.query_router import QueryRouter
-        from services.search.search_service import SearchService
+        from backend.services.routing.query_router import QueryRouter
+        from backend.services.search.search_service import SearchService
 
         # Initialize services
         search_service = SearchService()
         query_router = QueryRouter()
 
         # Mock embedding
-        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
             embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
             embedder.provider = "openai"

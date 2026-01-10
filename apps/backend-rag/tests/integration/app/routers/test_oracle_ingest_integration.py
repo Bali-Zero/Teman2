@@ -19,7 +19,7 @@ if str(backend_path) not in sys.path:
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.oracle_ingest import router
+from backend.app.routers.oracle_ingest import router
 
 
 @pytest.fixture

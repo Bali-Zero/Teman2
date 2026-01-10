@@ -37,7 +37,7 @@ class TestMultiHopReasoningIntegration:
     @pytest.mark.asyncio
     async def test_multi_hop_reasoning_with_tool_calls(self, qdrant_client, db_pool):
         """Test multi-hop reasoning through tool calls in AgenticRAG"""
-        from services.rag.agentic import AgenticRAGOrchestrator
+        from backend.services.rag.agentic import AgenticRAGOrchestrator
 
         # Simulate multi-hop: first tool call finds PT PMA info, second finds tax info
         call_count = [0]
@@ -51,8 +51,8 @@ class TestMultiHopReasoningIntegration:
             return "Additional information"
 
         with (
-            patch("services.rag.agentic.SearchService") as mock_search,
-            patch("services.rag.agentic.ZantaraAIClient") as mock_ai,
+            patch("backend.services.rag.agentic.SearchService") as mock_search,
+            patch("backend.services.rag.agentic.ZantaraAIClient") as mock_ai,
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
@@ -91,11 +91,11 @@ class TestMultiHopReasoningIntegration:
     @pytest.mark.asyncio
     async def test_multi_hop_reasoning_flow(self, qdrant_client, db_pool):
         """Test complete multi-hop reasoning flow"""
-        from services.rag.agentic import AgenticRAGOrchestrator
+        from backend.services.rag.agentic import AgenticRAGOrchestrator
 
         with (
-            patch("services.rag.agentic.SearchService") as mock_search,
-            patch("services.rag.agentic.ZantaraAIClient") as mock_ai,
+            patch("backend.services.rag.agentic.SearchService") as mock_search,
+            patch("backend.services.rag.agentic.ZantaraAIClient") as mock_ai,
         ):
             # Simulate multi-hop: first query finds PT PMA info, second finds tax info
             call_count = [0]
@@ -144,11 +144,11 @@ class TestStreamingRAGIntegration:
     @pytest.mark.asyncio
     async def test_streaming_rag_response(self, qdrant_client, db_pool):
         """Test streaming RAG response generation"""
-        from services.rag.agentic import AgenticRAGOrchestrator
+        from backend.services.rag.agentic import AgenticRAGOrchestrator
 
         with (
-            patch("services.rag.agentic.SearchService") as mock_search,
-            patch("services.rag.agentic.ZantaraAIClient") as mock_ai,
+            patch("backend.services.rag.agentic.SearchService") as mock_search,
+            patch("backend.services.rag.agentic.ZantaraAIClient") as mock_ai,
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
@@ -184,11 +184,11 @@ class TestStreamingRAGIntegration:
     @pytest.mark.asyncio
     async def test_streaming_with_citations(self, qdrant_client, db_pool):
         """Test streaming response with inline citations"""
-        from services.rag.agentic import AgenticRAGOrchestrator
+        from backend.services.rag.agentic import AgenticRAGOrchestrator
 
         with (
-            patch("services.rag.agentic.SearchService") as mock_search,
-            patch("services.rag.agentic.ZantaraAIClient") as mock_ai,
+            patch("backend.services.rag.agentic.SearchService") as mock_search,
+            patch("backend.services.rag.agentic.ZantaraAIClient") as mock_ai,
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
@@ -234,9 +234,9 @@ class TestParentChildRetrievalIntegration:
     @pytest.mark.asyncio
     async def test_parent_child_retrieval(self, qdrant_client, db_pool):
         """Test hierarchical parent-child document retrieval"""
-        from services.search.search_service import SearchService
+        from backend.services.search.search_service import SearchService
 
-        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             embedder = MagicMock()
             embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
             embedder.provider = "openai"
@@ -281,11 +281,11 @@ class TestGoldenRouterIntegration:
     @pytest.mark.asyncio
     async def test_golden_router_fast_path(self, qdrant_client, db_pool):
         """Test Golden Router fast path for canonical queries"""
-        from services.golden_router_service import GoldenRouterService
+        from backend.services.golden_router_service import GoldenRouterService
 
         with (
-            patch("services.golden_router_service.SearchService") as mock_search,
-            patch("services.golden_router_service.ZantaraAIClient") as mock_ai,
+            patch("backend.services.golden_router_service.SearchService") as mock_search,
+            patch("backend.services.golden_router_service.ZantaraAIClient") as mock_ai,
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
@@ -312,11 +312,11 @@ class TestGoldenRouterIntegration:
     @pytest.mark.asyncio
     async def test_golden_router_fallback(self, qdrant_client, db_pool):
         """Test Golden Router fallback to normal search"""
-        from services.golden_router_service import GoldenRouterService
+        from backend.services.golden_router_service import GoldenRouterService
 
         with (
-            patch("services.golden_router_service.SearchService") as mock_search,
-            patch("services.golden_router_service.ZantaraAIClient") as mock_ai,
+            patch("backend.services.golden_router_service.SearchService") as mock_search,
+            patch("backend.services.golden_router_service.ZantaraAIClient") as mock_ai,
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
@@ -349,7 +349,7 @@ class TestVisionRAGIntegration:
     @pytest.mark.asyncio
     async def test_vision_rag_pdf_processing(self, qdrant_client, db_pool):
         """Test Vision RAG for PDF document processing"""
-        from services.rag.vision_rag import VisionRAGService
+        from backend.services.rag.vision_rag import VisionRAGService
 
         mock_genai_client = MagicMock()
         mock_genai_client.is_available = True
@@ -359,9 +359,9 @@ class TestVisionRAGIntegration:
             }
         )
         with (
-            patch("services.rag.vision_rag.GENAI_AVAILABLE", True),
-            patch("services.rag.vision_rag.GenAIClient", return_value=mock_genai_client),
-            patch("services.rag.vision_rag.settings") as mock_settings,
+            patch("backend.services.rag.vision_rag.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.vision_rag.GenAIClient", return_value=mock_genai_client),
+            patch("backend.services.rag.vision_rag.settings") as mock_settings,
         ):
             mock_settings.google_api_key = "test_key"
 
@@ -391,7 +391,7 @@ class TestVisionRAGIntegration:
     @pytest.mark.asyncio
     async def test_vision_rag_query_with_vision(self, qdrant_client, db_pool):
         """Test Vision RAG query with visual elements"""
-        from services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
+        from backend.services.rag.vision_rag import MultiModalDocument, VisionRAGService, VisualElement
 
         mock_genai_client = MagicMock()
         mock_genai_client.is_available = True
@@ -399,9 +399,9 @@ class TestVisionRAGIntegration:
             return_value={"text": "The table shows KBLI code 56101 for restaurants."}
         )
         with (
-            patch("services.rag.vision_rag.GENAI_AVAILABLE", True),
-            patch("services.rag.vision_rag.GenAIClient", return_value=mock_genai_client),
-            patch("services.rag.vision_rag.settings") as mock_settings,
+            patch("backend.services.rag.vision_rag.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.vision_rag.GenAIClient", return_value=mock_genai_client),
+            patch("backend.services.rag.vision_rag.settings") as mock_settings,
         ):
             mock_settings.google_api_key = "test_key"
 
@@ -445,7 +445,7 @@ class TestRerankerAdvancedIntegration:
     @pytest.mark.asyncio
     async def test_reranker_multi_source(self, qdrant_client):
         """Test reranking documents from multiple sources"""
-        from services.reranker_service import RerankerService
+        from backend.services.reranker_service import RerankerService
 
         with patch("sentence_transformers.CrossEncoder"):
             reranker = RerankerService()
@@ -477,7 +477,7 @@ class TestRerankerAdvancedIntegration:
     @pytest.mark.asyncio
     async def test_reranker_batch_processing(self, qdrant_client):
         """Test batch reranking for multiple queries"""
-        from services.reranker_service import RerankerService
+        from backend.services.reranker_service import RerankerService
 
         with patch("sentence_transformers.CrossEncoder"):
             reranker = RerankerService()
@@ -512,7 +512,7 @@ class TestRerankerAdvancedIntegration:
     @pytest.mark.asyncio
     async def test_reranker_multi_source(self, qdrant_client):
         """Test reranking documents from multiple sources"""
-        from services.reranker_service import RerankerService
+        from backend.services.reranker_service import RerankerService
 
         reranker = RerankerService()
 
@@ -543,7 +543,7 @@ class TestRerankerAdvancedIntegration:
     @pytest.mark.asyncio
     async def test_reranker_batch_processing(self, qdrant_client):
         """Test batch reranking for multiple queries"""
-        from services.reranker_service import RerankerService
+        from backend.services.reranker_service import RerankerService
 
         reranker = RerankerService()
 

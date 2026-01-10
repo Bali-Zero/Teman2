@@ -56,12 +56,12 @@ class DummyOrchestrator:
 
 services_pkg = types.ModuleType("services")
 services_pkg.__path__ = []
-misc_pkg = types.ModuleType("services.misc")
+misc_pkg = types.ModuleType("backend.services.misc")
 misc_pkg.__path__ = []
-rag_pkg = types.ModuleType("services.rag")
+rag_pkg = types.ModuleType("backend.services.rag")
 rag_pkg.__path__ = []
 
-clarification_module = types.ModuleType("services.misc.clarification_service")
+clarification_module = types.ModuleType("backend.services.misc.clarification_service")
 
 
 class ClarificationService:
@@ -71,7 +71,7 @@ class ClarificationService:
 
 clarification_module.ClarificationService = ClarificationService
 
-context_module = types.ModuleType("services.misc.context_suggestion_service")
+context_module = types.ModuleType("backend.services.misc.context_suggestion_service")
 
 
 def get_context_suggestion_service(db_pool=None):
@@ -80,7 +80,7 @@ def get_context_suggestion_service(db_pool=None):
 
 context_module.get_context_suggestion_service = get_context_suggestion_service
 
-agentic_module = types.ModuleType("services.rag.agentic")
+agentic_module = types.ModuleType("backend.services.rag.agentic")
 
 
 def create_agentic_rag(**_kwargs):
@@ -92,11 +92,11 @@ agentic_module.create_agentic_rag = create_agentic_rag
 sys.modules.update(
     {
         "services": services_pkg,
-        "services.misc": misc_pkg,
-        "services.rag": rag_pkg,
-        "services.misc.clarification_service": clarification_module,
-        "services.misc.context_suggestion_service": context_module,
-        "services.rag.agentic": agentic_module,
+        "backend.services.misc": misc_pkg,
+        "backend.services.rag": rag_pkg,
+        "backend.services.misc.clarification_service": clarification_module,
+        "backend.services.misc.context_suggestion_service": context_module,
+        "backend.services.rag.agentic": agentic_module,
     }
 )
 
@@ -107,7 +107,7 @@ module_path = (
     / "routing"
     / "intelligent_router.py"
 )
-spec = importlib.util.spec_from_file_location("services.routing.intelligent_router", module_path)
+spec = importlib.util.spec_from_file_location("backend.services.routing.intelligent_router", module_path)
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)

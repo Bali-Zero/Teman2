@@ -71,8 +71,8 @@ class TestAgentsComprehensiveIntegration:
             )
 
             # Initialize orchestrator with mocked dependencies
-            with patch("services.client_journey_orchestrator.SearchService") as mock_search:
-                from services.client_journey_orchestrator import ClientJourneyOrchestrator
+            with patch("backend.services.client_journey_orchestrator.SearchService") as mock_search:
+                from backend.services.client_journey_orchestrator import ClientJourneyOrchestrator
 
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
@@ -172,8 +172,8 @@ class TestAgentsComprehensiveIntegration:
             )
 
             # Initialize compliance monitor
-            with patch("services.proactive_compliance_monitor.SearchService") as mock_search:
-                from services.proactive_compliance_monitor import (
+            with patch("backend.services.proactive_compliance_monitor.SearchService") as mock_search:
+                from backend.services.proactive_compliance_monitor import (
                     ProactiveComplianceMonitor,
                 )
 
@@ -253,8 +253,8 @@ class TestAgentsComprehensiveIntegration:
             )
 
             # Initialize builder with mocked dependencies
-            with patch("services.knowledge_graph_builder.SearchService") as mock_search:
-                from services.knowledge_graph_builder import KnowledgeGraphBuilder
+            with patch("backend.services.knowledge_graph_builder.SearchService") as mock_search:
+                from backend.services.knowledge_graph_builder import KnowledgeGraphBuilder
 
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
@@ -333,10 +333,10 @@ class TestAgentsComprehensiveIntegration:
 
             # Initialize service with mocked dependencies
             with (
-                patch("services.autonomous_research_service.SearchService") as mock_search,
-                patch("services.autonomous_research_service.ZantaraAIClient") as mock_ai,
+                patch("backend.services.autonomous_research_service.SearchService") as mock_search,
+                patch("backend.services.autonomous_research_service.ZantaraAIClient") as mock_ai,
             ):
-                from services.autonomous_research_service import AutonomousResearchService
+                from backend.services.autonomous_research_service import AutonomousResearchService
 
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance
@@ -401,10 +401,10 @@ class TestAgentsComprehensiveIntegration:
 
             # Initialize service with mocked dependencies
             with (
-                patch("services.cross_oracle_synthesis_service.SearchService") as mock_search,
-                patch("services.cross_oracle_synthesis_service.ZantaraAIClient") as mock_ai,
+                patch("backend.services.cross_oracle_synthesis_service.SearchService") as mock_search,
+                patch("backend.services.cross_oracle_synthesis_service.ZantaraAIClient") as mock_ai,
             ):
-                from services.cross_oracle_synthesis_service import CrossOracleSynthesisService
+                from backend.services.cross_oracle_synthesis_service import CrossOracleSynthesisService
 
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance

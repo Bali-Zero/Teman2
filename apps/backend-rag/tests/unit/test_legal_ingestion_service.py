@@ -15,8 +15,8 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 # Move imports here to satisfy E402 if possible, or ignore E402
-from app.models import TierLevel  # noqa: E402
-from services.ingestion.legal_ingestion_service import LegalIngestionService  # noqa: E402
+from backend.app.models import TierLevel  # noqa: E402
+from backend.services.ingestion.legal_ingestion_service import LegalIngestionService  # noqa: E402
 
 # ============================================================================
 # Fixtures
@@ -43,35 +43,35 @@ def legal_ingestion_service(mock_legal_components):
     """Create LegalIngestionService with mocked components"""
     with (
         patch(
-            "services.ingestion.legal_ingestion_service.LegalCleaner",
+            "backend.services.ingestion.legal_ingestion_service.LegalCleaner",
             return_value=mock_legal_components["cleaner"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalMetadataExtractor",
+            "backend.services.ingestion.legal_ingestion_service.LegalMetadataExtractor",
             return_value=mock_legal_components["metadata_extractor"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalStructureParser",
+            "backend.services.ingestion.legal_ingestion_service.LegalStructureParser",
             return_value=mock_legal_components["structure_parser"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalChunker",
+            "backend.services.ingestion.legal_ingestion_service.LegalChunker",
             return_value=mock_legal_components["chunker"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.create_embeddings_generator",
+            "backend.services.ingestion.legal_ingestion_service.create_embeddings_generator",
             return_value=mock_legal_components["embedder"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.QdrantClient",
+            "backend.services.ingestion.legal_ingestion_service.QdrantClient",
             return_value=mock_legal_components["vector_db"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.TierClassifier",
+            "backend.services.ingestion.legal_ingestion_service.TierClassifier",
             return_value=mock_legal_components["classifier"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.HierarchicalIndexer",
+            "backend.services.ingestion.legal_ingestion_service.HierarchicalIndexer",
             return_value=mock_legal_components["indexer"],
         ),
     ):
@@ -106,31 +106,31 @@ def test_init_default_collection(mock_legal_components):
     """Test initialization with default collection"""
     with (
         patch(
-            "services.ingestion.legal_ingestion_service.LegalCleaner",
+            "backend.services.ingestion.legal_ingestion_service.LegalCleaner",
             return_value=mock_legal_components["cleaner"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalMetadataExtractor",
+            "backend.services.ingestion.legal_ingestion_service.LegalMetadataExtractor",
             return_value=mock_legal_components["metadata_extractor"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalStructureParser",
+            "backend.services.ingestion.legal_ingestion_service.LegalStructureParser",
             return_value=mock_legal_components["structure_parser"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalChunker",
+            "backend.services.ingestion.legal_ingestion_service.LegalChunker",
             return_value=mock_legal_components["chunker"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.create_embeddings_generator",
+            "backend.services.ingestion.legal_ingestion_service.create_embeddings_generator",
             return_value=mock_legal_components["embedder"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.QdrantClient",
+            "backend.services.ingestion.legal_ingestion_service.QdrantClient",
             return_value=mock_legal_components["vector_db"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.TierClassifier",
+            "backend.services.ingestion.legal_ingestion_service.TierClassifier",
             return_value=mock_legal_components["classifier"],
         ),
     ):
@@ -148,35 +148,35 @@ def test_init_custom_collection(mock_legal_components):
     """Test initialization with custom collection name"""
     with (
         patch(
-            "services.ingestion.legal_ingestion_service.LegalCleaner",
+            "backend.services.ingestion.legal_ingestion_service.LegalCleaner",
             return_value=mock_legal_components["cleaner"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalMetadataExtractor",
+            "backend.services.ingestion.legal_ingestion_service.LegalMetadataExtractor",
             return_value=mock_legal_components["metadata_extractor"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalStructureParser",
+            "backend.services.ingestion.legal_ingestion_service.LegalStructureParser",
             return_value=mock_legal_components["structure_parser"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.LegalChunker",
+            "backend.services.ingestion.legal_ingestion_service.LegalChunker",
             return_value=mock_legal_components["chunker"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.create_embeddings_generator",
+            "backend.services.ingestion.legal_ingestion_service.create_embeddings_generator",
             return_value=mock_legal_components["embedder"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.QdrantClient",
+            "backend.services.ingestion.legal_ingestion_service.QdrantClient",
             return_value=mock_legal_components["vector_db"],
         ) as mock_qdrant,
         patch(
-            "services.ingestion.legal_ingestion_service.TierClassifier",
+            "backend.services.ingestion.legal_ingestion_service.TierClassifier",
             return_value=mock_legal_components["classifier"],
         ),
         patch(
-            "services.ingestion.legal_ingestion_service.HierarchicalIndexer",
+            "backend.services.ingestion.legal_ingestion_service.HierarchicalIndexer",
             return_value=mock_legal_components["indexer"],
         ),
     ):
@@ -231,7 +231,7 @@ async def test_ingest_legal_document_success(legal_ingestion_service, sample_leg
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
@@ -268,7 +268,7 @@ async def test_ingest_legal_document_with_title(legal_ingestion_service, sample_
         mocks["classifier"].get_min_access_level.return_value = 0
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path, title="Custom Title")
@@ -306,7 +306,7 @@ async def test_ingest_legal_document_with_tier_override(legal_ingestion_service,
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path, tier_override=TierLevel.A)
@@ -351,15 +351,15 @@ async def test_ingest_legal_document_with_collection_override(
 
         with (
             patch(
-                "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+                "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
                 return_value=sample_legal_text,
             ),
             patch(
-                "services.ingestion.legal_ingestion_service.QdrantClient",
+                "backend.services.ingestion.legal_ingestion_service.QdrantClient",
                 return_value=new_vector_db,
             ),
             patch(
-                "services.ingestion.legal_ingestion_service.HierarchicalIndexer",
+                "backend.services.ingestion.legal_ingestion_service.HierarchicalIndexer",
                 return_value=mocks["indexer"],
             ),
         ):
@@ -407,11 +407,11 @@ async def test_ingest_legal_document_vertex_ai_fallback(legal_ingestion_service,
 
         with (
             patch(
-                "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+                "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
                 return_value=sample_legal_text,
             ),
             patch(
-                "services.llm_clients.vertex_ai_service.VertexAIService",
+                "backend.services.llm_clients.vertex_ai_service.VertexAIService",
                 return_value=mock_vertex_service,
             ),
         ):
@@ -459,14 +459,14 @@ async def test_ingest_legal_document_vertex_ai_fallback_failure(
 
         with (
             patch(
-                "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+                "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
                 return_value=sample_legal_text,
             ),
             patch(
-                "services.llm_clients.vertex_ai_service.VertexAIService",
+                "backend.services.llm_clients.vertex_ai_service.VertexAIService",
                 return_value=mock_vertex_service,
             ),
-            patch("services.ingestion.legal_ingestion_service.logger") as mock_logger,
+            patch("backend.services.ingestion.legal_ingestion_service.logger") as mock_logger,
         ):
             result = await service.ingest_legal_document(tmp_path)
 
@@ -506,7 +506,7 @@ async def test_ingest_legal_document_no_metadata(legal_ingestion_service, sample
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
@@ -544,7 +544,7 @@ async def test_ingest_legal_document_no_chunks(legal_ingestion_service, sample_l
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
@@ -586,7 +586,7 @@ async def test_ingest_legal_document_with_pasal_number(legal_ingestion_service, 
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
@@ -614,7 +614,7 @@ async def test_ingest_legal_document_exception_handling(legal_ingestion_service,
         mocks["cleaner"].clean.side_effect = Exception("Cleaning failed")
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path, title="Test Document")
@@ -660,7 +660,7 @@ async def test_ingest_legal_document_uses_title_from_metadata(
         )
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)
@@ -695,7 +695,7 @@ async def test_ingest_legal_document_uses_filename_when_no_title(
         mocks["classifier"].get_min_access_level.return_value = 0
 
         with patch(
-            "services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
             return_value=sample_legal_text,
         ):
             result = await service.ingest_legal_document(tmp_path)

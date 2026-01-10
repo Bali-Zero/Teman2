@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.legal_ingest import router
+from backend.app.routers.legal_ingest import router
 
 # ============================================================================
 # Fixtures
@@ -57,11 +57,11 @@ def mock_legal_service():
 class TestGetLegalService:
     """Test get_legal_service singleton"""
 
-    @patch("app.routers.legal_ingest._legal_service", None)
-    @patch("app.routers.legal_ingest.LegalIngestionService")
+    @patch("backend.app.routers.legal_ingest._legal_service", None)
+    @patch("backend.app.routers.legal_ingest.LegalIngestionService")
     def test_get_legal_service_creates_instance(self, mock_service_class):
         """Test that get_legal_service creates a new instance if None"""
-        from app.routers.legal_ingest import get_legal_service
+        from backend.app.routers.legal_ingest import get_legal_service
 
         mock_instance = MagicMock()
         mock_service_class.return_value = mock_instance
@@ -71,10 +71,10 @@ class TestGetLegalService:
         assert result == mock_instance
         mock_service_class.assert_called_once()
 
-    @patch("app.routers.legal_ingest._legal_service")
+    @patch("backend.app.routers.legal_ingest._legal_service")
     def test_get_legal_service_returns_existing(self, mock_service):
         """Test that get_legal_service returns existing instance"""
-        from app.routers.legal_ingest import get_legal_service
+        from backend.app.routers.legal_ingest import get_legal_service
 
         result = get_legal_service()
 
@@ -84,8 +84,8 @@ class TestGetLegalService:
 class TestIngestLegalDocument:
     """Test /api/legal/ingest endpoint"""
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_success(
         self, mock_path_class, mock_get_service, client, mock_legal_service
     ):
@@ -116,8 +116,8 @@ class TestIngestLegalDocument:
         assert call_args.kwargs["tier_override"] is not None  # Parsed to TierLevel.S
         assert call_args.kwargs["collection_name"] == "test_collection"
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_file_not_found(self, mock_path_class, mock_get_service, client):
         """Test ingestion fails when file doesn't exist"""
         mock_path = MagicMock()
@@ -132,8 +132,8 @@ class TestIngestLegalDocument:
         assert response.status_code == 404
         assert "File not found" in response.json()["detail"]
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_invalid_tier(self, mock_path_class, mock_get_service, client):
         """Test ingestion fails with invalid tier"""
         mock_path = MagicMock()
@@ -148,8 +148,8 @@ class TestIngestLegalDocument:
         assert response.status_code == 400
         assert "Invalid tier" in response.json()["detail"]
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_service_error(
         self, mock_path_class, mock_get_service, client, mock_legal_service
     ):
@@ -168,8 +168,8 @@ class TestIngestLegalDocument:
         assert response.status_code == 500
         assert "Failed to ingest legal document" in response.json()["detail"]
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_with_tier_override(
         self, mock_path_class, mock_get_service, client, mock_legal_service
     ):
@@ -193,7 +193,7 @@ class TestIngestLegalDocument:
 class TestIngestLegalDocumentsBatch:
     """Test /api/legal/ingest-batch endpoint"""
 
-    @patch("app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
     def test_ingest_batch_success(self, mock_get_service, client, mock_legal_service):
         """Test successful batch ingestion"""
         mock_get_service.return_value = mock_legal_service
@@ -212,7 +212,7 @@ class TestIngestLegalDocumentsBatch:
         assert data["failed"] == 0
         assert len(data["results"]) == 2
 
-    @patch("app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
     def test_ingest_batch_with_failures(self, mock_get_service, client, mock_legal_service):
         """Test batch ingestion with some failures"""
         mock_get_service.return_value = mock_legal_service
@@ -247,7 +247,7 @@ class TestIngestLegalDocumentsBatch:
 class TestGetCollectionStats:
     """Test /api/legal/collections/stats endpoint"""
 
-    @patch("app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
     def test_get_collection_stats_success(self, mock_get_service, client):
         """Test successful collection stats retrieval"""
         response = client.get("/api/legal/collections/stats?collection_name=test_collection")
@@ -257,7 +257,7 @@ class TestGetCollectionStats:
         assert data["collection_name"] == "test_collection"
         assert "message" in data
 
-    @patch("app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
     def test_get_collection_stats_default_collection(self, mock_get_service, client):
         """Test collection stats with default collection name"""
         response = client.get("/api/legal/collections/stats")
@@ -266,7 +266,7 @@ class TestGetCollectionStats:
         data = response.json()
         assert data["collection_name"] == "legal_unified"
 
-    @patch("app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
     def test_get_collection_stats_error(self, mock_get_service, client):
         """Test collection stats handles errors"""
         mock_get_service.side_effect = Exception("Service error")

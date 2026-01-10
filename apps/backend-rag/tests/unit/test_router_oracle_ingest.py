@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.oracle_ingest import (
+from backend.app.routers.oracle_ingest import (
     DocumentChunk,
     IngestRequest,
     ingest_documents,
@@ -65,7 +65,7 @@ async def test_ingest_documents_success(mock_search_service, sample_ingest_reque
         return_value=[[0.1] * 1536]
     )  # Return embeddings
 
-    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(sample_ingest_request, mock_search_service)
 
         assert response.success is True
@@ -96,7 +96,7 @@ async def test_ingest_documents_error_handling(mock_search_service, sample_inges
     mock_embedder = MagicMock()
     mock_embedder.generate_batch_embeddings = MagicMock(side_effect=Exception("Embedding error"))
 
-    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(sample_ingest_request, mock_search_service)
 
         # The function catches exceptions and returns error response
@@ -118,8 +118,8 @@ async def test_ingest_documents_auto_create_collection(mock_search_service, samp
     mock_embedder = MagicMock()
     mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
 
-    with patch("core.qdrant_db.QdrantClient", return_value=mock_qdrant_client) as mock_qdrant:
-        with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.qdrant_db.QdrantClient", return_value=mock_qdrant_client) as mock_qdrant:
+        with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
             response = await ingest_documents(sample_ingest_request, mock_search_service)
 
             # Verify QdrantClient was instantiated with correct collection name
@@ -191,7 +191,7 @@ async def test_ingest_documents_multiple_documents(mock_search_service):
         batch_size=100,
     )
 
-    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(request, mock_search_service)
 
         assert response.success is True
@@ -229,7 +229,7 @@ async def test_ingest_documents_metadata_missing_fields(mock_search_service):
         batch_size=100,
     )
 
-    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(request, mock_search_service)
 
         assert response.success is True
@@ -251,7 +251,7 @@ async def test_ingest_documents_upsert_failure(mock_search_service, sample_inges
     mock_embedder = MagicMock()
     mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
 
-    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(sample_ingest_request, mock_search_service)
 
         assert response.success is False
@@ -273,7 +273,7 @@ async def test_ingest_documents_execution_time(mock_search_service, sample_inges
     mock_embedder = MagicMock()
     mock_embedder.generate_batch_embeddings = MagicMock(return_value=[[0.1] * 1536])
 
-    with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
         response = await ingest_documents(sample_ingest_request, mock_search_service)
 
         assert response.success is True

@@ -15,8 +15,8 @@ import pytest
 def mock_config():
     """Mock all configuration dependencies"""
     with (
-        patch("app.dependencies.get_database_pool"),
-        patch("app.utils.logging_utils.get_logger"),
+        patch("backend.app.dependencies.get_database_pool"),
+        patch("backend.app.utils.logging_utils.get_logger"),
         patch("prometheus_client.Counter"),
         patch("prometheus_client.Histogram"),
         patch("prometheus_client.Gauge"),
@@ -63,7 +63,7 @@ class TestCRMAuditLoggerComplete:
     @pytest.fixture
     def audit_logger_instance(self):
         """Create audit logger instance with proper mocking"""
-        from app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
 
         logger = CRMAuditLogger()
 
@@ -113,7 +113,7 @@ class TestCRMAuditLoggerComplete:
     @pytest.mark.asyncio
     async def test_log_state_change_no_changes_logs_warning(self, audit_logger_instance, caplog):
         logger_instance, mock_conn = audit_logger_instance
-        with patch("app.services.crm.audit_logger.logger") as mock_logger:
+        with patch("backend.app.services.crm.audit_logger.logger") as mock_logger:
             await logger_instance.log_state_change(
                 entity_type="client",
                 entity_id=123,
@@ -134,7 +134,7 @@ class TestCRMAuditLoggerComplete:
 
         async_pool = AsyncMock()
         with patch(
-            "app.services.crm.audit_logger.get_database_pool",
+            "backend.app.services.crm.audit_logger.get_database_pool",
             AsyncMock(return_value=async_pool),
         ) as mock_get_pool:
             pool_result = await logger_instance._get_pool()
@@ -405,7 +405,7 @@ class TestCRMAuditLoggerDecorator:
 
     @pytest.mark.asyncio
     async def test_audit_change_decorator_logs_with_old_state(self):
-        from app.services.crm.audit_logger import (
+        from backend.app.services.crm.audit_logger import (
             audit_change,
             audit_logger,
         )
@@ -419,7 +419,7 @@ class TestCRMAuditLoggerDecorator:
 
         with (
             patch(
-                "app.services.crm.audit_logger.get_database_pool",
+                "backend.app.services.crm.audit_logger.get_database_pool",
                 async_mock_get_pool,
             ),
             patch.object(audit_logger, "log_state_change", AsyncMock()) as mock_log,
@@ -431,7 +431,7 @@ class TestCRMAuditLoggerDecorator:
 
     @pytest.mark.asyncio
     async def test_audit_change_decorator_handles_fetch_failure(self):
-        from app.services.crm.audit_logger import audit_change, audit_logger
+        from backend.app.services.crm.audit_logger import audit_change, audit_logger
 
         async def dummy_handler(client_id: int, user_email: str):
             return {"status": "updated"}
@@ -443,7 +443,7 @@ class TestCRMAuditLoggerDecorator:
 
         with (
             patch(
-                "app.services.crm.audit_logger.get_database_pool",
+                "backend.app.services.crm.audit_logger.get_database_pool",
                 async_mock_failing_pool,
             ),
             patch.object(audit_logger, "log_state_change", AsyncMock()) as mock_log,
@@ -455,14 +455,14 @@ class TestCRMAuditLoggerDecorator:
 
     @pytest.mark.asyncio
     async def test_create_audit_log_table_executes_sql(self):
-        from app.services.crm.audit_logger import create_audit_log_table
+        from backend.app.services.crm.audit_logger import create_audit_log_table
 
         async_pool, async_conn = _make_async_pool()
         async_conn.execute = AsyncMock()
 
         async_mock_pool = AsyncMock(return_value=async_pool)
 
-        with patch("app.services.crm.audit_logger.get_database_pool", async_mock_pool):
+        with patch("backend.app.services.crm.audit_logger.get_database_pool", async_mock_pool):
             await create_audit_log_table()
 
         async_conn.execute.assert_awaited_once()
@@ -474,14 +474,14 @@ class TestCRMMetricsComplete:
     @pytest.fixture
     def metrics_instance(self):
         """Create metrics instance"""
-        from app.services.crm.metrics import CRMMetrics
+        from backend.app.services.crm.metrics import CRMMetrics
 
         return CRMMetrics()
 
     @pytest.fixture
     def collector_instance(self):
         """Create metrics collector with mocked dependencies"""
-        from app.services.crm.metrics import CRMMetricsCollector
+        from backend.app.services.crm.metrics import CRMMetricsCollector
 
         collector = CRMMetricsCollector()
 
@@ -898,7 +898,7 @@ class TestCRMMetricsComplete:
             return async_pool
 
         with patch(
-            "app.services.crm.metrics.get_database_pool", side_effect=fake_get_pool
+            "backend.app.services.crm.metrics.get_database_pool", side_effect=fake_get_pool
         ) as mock_get_pool:
             pool = await collector._get_pool()
 
@@ -911,7 +911,7 @@ class TestMetricsDecoratorsAndScheduler:
 
     @pytest.mark.asyncio
     async def test_track_client_creation_observes_duration(self):
-        from app.services.crm.metrics import track_client_creation
+        from backend.app.services.crm.metrics import track_client_creation
 
         async def create_client():
             return "ok"
@@ -922,7 +922,7 @@ class TestMetricsDecoratorsAndScheduler:
         mock_hist = MagicMock()
         mock_hist.labels.return_value = label
 
-        with patch("app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist):
+        with patch("backend.app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist):
             decorated = track_client_creation(client_type="individual", lead_source="web")(
                 create_client
             )
@@ -933,7 +933,7 @@ class TestMetricsDecoratorsAndScheduler:
 
     @pytest.mark.asyncio
     async def test_track_client_creation_records_duration_on_error(self):
-        from app.services.crm.metrics import track_client_creation
+        from backend.app.services.crm.metrics import track_client_creation
 
         async def fail_client():
             raise RuntimeError("creation failed")
@@ -944,7 +944,7 @@ class TestMetricsDecoratorsAndScheduler:
         mock_hist = MagicMock()
         mock_hist.labels.return_value = label
 
-        with patch("app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist):
+        with patch("backend.app.services.crm.metrics.crm_metrics.client_creation_duration", mock_hist):
             decorated = track_client_creation(client_type="existing", lead_source="referral")(
                 fail_client
             )
@@ -956,7 +956,7 @@ class TestMetricsDecoratorsAndScheduler:
 
     @pytest.mark.asyncio
     async def test_track_application_processing_records_error_on_failure(self):
-        from app.services.crm.metrics import track_application_processing
+        from backend.app.services.crm.metrics import track_application_processing
 
         async def fail_app():
             raise RuntimeError("boom")
@@ -968,7 +968,7 @@ class TestMetricsDecoratorsAndScheduler:
         mock_hist.labels.return_value = label
 
         with patch(
-            "app.services.crm.metrics.crm_metrics.application_processing_duration",
+            "backend.app.services.crm.metrics.crm_metrics.application_processing_duration",
             mock_hist,
         ):
             decorated = track_application_processing(
@@ -982,7 +982,7 @@ class TestMetricsDecoratorsAndScheduler:
 
     @pytest.mark.asyncio
     async def test_track_application_processing_observes_success(self):
-        from app.services.crm.metrics import track_application_processing
+        from backend.app.services.crm.metrics import track_application_processing
 
         class Result:
             outcome = "approved"
@@ -997,7 +997,7 @@ class TestMetricsDecoratorsAndScheduler:
         mock_hist.labels.return_value = label
 
         with patch(
-            "app.services.crm.metrics.crm_metrics.application_processing_duration",
+            "backend.app.services.crm.metrics.crm_metrics.application_processing_duration",
             mock_hist,
         ):
             decorated = track_application_processing(
@@ -1012,10 +1012,10 @@ class TestMetricsDecoratorsAndScheduler:
 
     @pytest.mark.asyncio
     async def test_schedule_metrics_updates_runs_once(self, monkeypatch):
-        from app.services.crm.metrics import (
+        from backend.app.services.crm.metrics import (
             asyncio as metrics_asyncio,
         )
-        from app.services.crm.metrics import (
+        from backend.app.services.crm.metrics import (
             metrics_collector,
             schedule_metrics_updates,
         )
@@ -1032,7 +1032,7 @@ class TestMetricsDecoratorsAndScheduler:
             raise metrics_asyncio.CancelledError()
 
         monkeypatch.setattr(metrics_collector, "update_all_metrics", fake_update)
-        monkeypatch.setattr("app.services.crm.metrics.asyncio.sleep", fake_sleep)
+        monkeypatch.setattr("backend.app.services.crm.metrics.asyncio.sleep", fake_sleep)
 
         with pytest.raises(metrics_asyncio.CancelledError):
             await schedule_metrics_updates()
@@ -1043,10 +1043,10 @@ class TestMetricsDecoratorsAndScheduler:
 
     @pytest.mark.asyncio
     async def test_schedule_metrics_updates_handles_errors(self, monkeypatch):
-        from app.services.crm.metrics import (
+        from backend.app.services.crm.metrics import (
             asyncio as metrics_asyncio,
         )
-        from app.services.crm.metrics import (
+        from backend.app.services.crm.metrics import (
             metrics_collector,
             schedule_metrics_updates,
         )
@@ -1062,7 +1062,7 @@ class TestMetricsDecoratorsAndScheduler:
                 raise metrics_asyncio.CancelledError()
 
         monkeypatch.setattr(metrics_collector, "update_all_metrics", fake_update)
-        monkeypatch.setattr("app.services.crm.metrics.asyncio.sleep", fake_sleep)
+        monkeypatch.setattr("backend.app.services.crm.metrics.asyncio.sleep", fake_sleep)
 
         with pytest.raises(metrics_asyncio.CancelledError):
             await schedule_metrics_updates()
@@ -1077,7 +1077,7 @@ class TestCRMIntegrationComplete:
     @pytest.mark.asyncio
     async def test_full_audit_flow(self):
         """Test complete audit flow from creation to retrieval"""
-        from app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
 
         audit_logger = CRMAuditLogger()
         mock_pool = MagicMock()
@@ -1148,8 +1148,8 @@ class TestCRMIntegrationComplete:
     @pytest.mark.asyncio
     async def test_metrics_and_audit_integration(self):
         """Test integration between metrics and audit logging"""
-        from app.services.crm.audit_logger import CRMAuditLogger
-        from app.services.crm.metrics import CRMMetricsCollector
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.metrics import CRMMetricsCollector
 
         # Create instances
         audit_logger = CRMAuditLogger()
@@ -1208,8 +1208,8 @@ class TestCRMIntegrationComplete:
     @pytest.mark.asyncio
     async def test_error_propagation_integration(self):
         """Test error handling in integrated system"""
-        from app.services.crm.audit_logger import CRMAuditLogger
-        from app.services.crm.metrics import CRMMetricsCollector
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.metrics import CRMMetricsCollector
 
         audit_logger = CRMAuditLogger()
         metrics_collector = CRMMetricsCollector()
@@ -1253,7 +1253,7 @@ class TestCRMEdgeCases:
     @pytest.mark.asyncio
     async def test_null_and_empty_values(self):
         """Test handling of null and empty values"""
-        from app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
 
         audit_logger = CRMAuditLogger()
         mock_pool = MagicMock()
@@ -1277,7 +1277,7 @@ class TestCRMEdgeCases:
     @pytest.mark.asyncio
     async def test_large_data_sets(self):
         """Test handling of large data sets"""
-        from app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
 
         audit_logger = CRMAuditLogger()
         mock_pool = MagicMock()
@@ -1304,7 +1304,7 @@ class TestCRMEdgeCases:
     @pytest.mark.asyncio
     async def test_concurrent_operations(self):
         """Test concurrent audit operations"""
-        from app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
 
         audit_logger = CRMAuditLogger()
         mock_pool = MagicMock()
@@ -1333,7 +1333,7 @@ class TestCRMEdgeCases:
 
     def test_special_characters_in_data(self):
         """Test handling of special characters and unicode"""
-        from app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
 
         audit_logger = CRMAuditLogger()
 
@@ -1361,7 +1361,7 @@ class TestCRMEdgeCases:
     @pytest.mark.asyncio
     async def test_extreme_values(self):
         """Test handling of extreme values"""
-        from app.services.crm.audit_logger import CRMAuditLogger
+        from backend.app.services.crm.audit_logger import CRMAuditLogger
 
         audit_logger = CRMAuditLogger()
         mock_pool = MagicMock()

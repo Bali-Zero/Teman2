@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from services.routing.query_router_integration import QueryRouterIntegration
+from backend.services.routing.query_router_integration import QueryRouterIntegration
 
 
 class TestQueryRouterIntegration:

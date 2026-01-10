@@ -93,14 +93,14 @@ def client(mock_qdrant_client, mock_embedder):
     Uses patch.object and patch to mock dependencies instead of direct assignment,
     following the pattern used in other test files like test_router_oracle_ingest.py.
     """
-    import app.routers.memory_vector as memory_vector_module
+    import backend.app.routers.memory_vector as memory_vector_module
 
     # Use patch.object for module-level variables and patch for functions
     # This provides better isolation and follows codebase patterns
     with (
         patch.object(memory_vector_module, "memory_vector_db", mock_qdrant_client),
         patch.object(memory_vector_module, "embedder", mock_embedder),
-        patch("app.routers.memory_vector.get_memory_vector_db", return_value=mock_qdrant_client),
+        patch("backend.app.routers.memory_vector.get_memory_vector_db", return_value=mock_qdrant_client),
     ):
         from fastapi import FastAPI
 
@@ -117,7 +117,7 @@ def client(mock_qdrant_client, mock_embedder):
 def test_init_memory_collection_success(client, mock_qdrant_client):
     """Test successful memory collection initialization"""
     with patch(
-        "app.routers.memory_vector.initialize_memory_vector_db",
+        "backend.app.routers.memory_vector.initialize_memory_vector_db",
         new_callable=AsyncMock,
         return_value=mock_qdrant_client,
     ):
@@ -138,7 +138,7 @@ def test_init_memory_collection_success(client, mock_qdrant_client):
 def test_init_memory_collection_with_custom_url(client):
     """Test initialization with custom Qdrant URL"""
     with patch(
-        "app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
+        "backend.app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
     ) as mock_init:
         mock_db = MagicMock()
         mock_db.qdrant_url = "https://custom-qdrant.example.com"
@@ -165,7 +165,7 @@ def test_init_memory_collection_with_custom_url(client):
 def test_init_memory_collection_failure(client):
     """Test initialization failure"""
     with patch(
-        "app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
+        "backend.app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
     ) as mock_init:
         mock_init.side_effect = Exception("Qdrant connection failed")
 
@@ -181,7 +181,7 @@ def test_init_memory_collection_failure(client):
 def test_init_memory_collection_empty_request(client, mock_qdrant_client):
     """Test initialization with no qdrant_url (uses default)"""
     with patch(
-        "app.routers.memory_vector.initialize_memory_vector_db",
+        "backend.app.routers.memory_vector.initialize_memory_vector_db",
         new_callable=AsyncMock,
         return_value=mock_qdrant_client,
     ):
@@ -893,7 +893,7 @@ def test_memory_vector_health_success(client, mock_qdrant_client, mock_embedder)
 
 def test_memory_vector_health_service_unavailable(client):
     """Test health check when Qdrant is unavailable"""
-    with patch("app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock) as mock_db:
+    with patch("backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock) as mock_db:
         mock_db.side_effect = Exception("Qdrant unavailable")
 
         response = client.get("/api/memory/health")
@@ -913,7 +913,7 @@ def test_memory_vector_health_no_auth_required(client, mock_qdrant_client):
 
 def test_memory_vector_health_stats_error(client):
     """Test health check when stats retrieval fails"""
-    with patch("app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock) as mock_db:
+    with patch("backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock) as mock_db:
         mock_client = MagicMock()
         mock_client.get_collection_stats = AsyncMock(side_effect=Exception("Stats error"))
         mock_db.return_value = mock_client

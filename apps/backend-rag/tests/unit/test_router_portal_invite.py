@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.portal_invite import (
+from backend.app.routers.portal_invite import (
     CompleteRegistrationRequest,
     RegistrationResponse,
     SendInviteRequest,
@@ -135,7 +135,7 @@ async def test_send_invitation_success(mock_team_user, mock_invite_service, mock
     """Test successful invitation sending"""
     request = SendInviteRequest(client_id=1, email="client@example.com")
 
-    with patch("app.routers.portal_invite.settings") as mock_settings:
+    with patch("backend.app.routers.portal_invite.settings") as mock_settings:
         mock_settings.frontend_url = "https://portal.example.com"
 
         result = await send_invitation(
@@ -173,7 +173,7 @@ async def test_send_invitation_email_failure(
 
     mock_email_service.send_email = AsyncMock(side_effect=Exception("Email service error"))
 
-    with patch("app.routers.portal_invite.settings") as mock_settings:
+    with patch("backend.app.routers.portal_invite.settings") as mock_settings:
         mock_settings.frontend_url = "https://portal.example.com"
 
         result = await send_invitation(
@@ -192,7 +192,7 @@ async def test_send_invitation_no_user_email(mock_invite_service, mock_email_ser
     user_no_email = {"id": 1, "role": "team"}
     request = SendInviteRequest(client_id=1, email="client@example.com")
 
-    with patch("app.routers.portal_invite.settings") as mock_settings:
+    with patch("backend.app.routers.portal_invite.settings") as mock_settings:
         mock_settings.frontend_url = "https://portal.example.com"
 
         result = await send_invitation(
@@ -241,7 +241,7 @@ async def test_send_invitation_default_frontend_url(
     """Test invitation sending with default frontend URL"""
     request = SendInviteRequest(client_id=1, email="client@example.com")
 
-    with patch("app.routers.portal_invite.settings") as mock_settings:
+    with patch("backend.app.routers.portal_invite.settings") as mock_settings:
         # Remove frontend_url attribute to test default
         if hasattr(mock_settings, "frontend_url"):
             delattr(mock_settings, "frontend_url")

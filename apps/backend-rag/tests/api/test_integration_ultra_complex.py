@@ -31,7 +31,7 @@ class TestMultiSystemIntegrations:
 
     def test_crm_oracle_intel_integration(self, authenticated_client, test_app):
         """Test integration: CRM -> Oracle -> Intel"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -45,7 +45,7 @@ class TestMultiSystemIntegrations:
                 client_id = 1
 
                 # 2. Query Oracle for legal information
-                with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+                with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                     mock_service = MagicMock()
                     mock_service.search = AsyncMock(
                         return_value={"results": [{"text": "Legal info", "score": 0.9}]}
@@ -58,11 +58,11 @@ class TestMultiSystemIntegrations:
                     )
 
                     # 3. Store intel document
-                    with patch("app.routers.intel.embedder") as mock_embedder:
+                    with patch("backend.app.routers.intel.embedder") as mock_embedder:
                         mock_embedder.generate_single_embedding = MagicMock(
                             return_value=[0.1] * 1536
                         )
-                        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+                        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                             mock_client = MagicMock()
                             mock_client.store = AsyncMock(return_value=True)
                             mock_qdrant.return_value = mock_client
@@ -82,7 +82,7 @@ class TestMultiSystemIntegrations:
 
     def test_conversation_memory_crm_integration(self, authenticated_client, test_app):
         """Test integration: Conversation -> Memory -> CRM"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -98,7 +98,7 @@ class TestMultiSystemIntegrations:
             )
 
             # 2. Store in memory vector
-            with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+            with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
                 mock_db = MagicMock()
                 mock_db.store = AsyncMock(return_value=True)
                 mock_get_db.return_value = mock_db
@@ -146,7 +146,7 @@ class TestComplexDataFlows:
         self, authenticated_client, test_app
     ):
         """Test complete data flow: Client -> Practice -> Interaction -> Notification"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -184,7 +184,7 @@ class TestComplexDataFlows:
                     )
 
                     # 4. Send notification
-                    with patch("app.routers.notifications.notification_hub") as mock_hub:
+                    with patch("backend.app.routers.notifications.notification_hub") as mock_hub:
                         mock_hub.send = AsyncMock(return_value={"notification_id": "notif_123"})
 
                         notification_response = authenticated_client.post(
@@ -225,7 +225,7 @@ class TestCrossServiceWorkflows:
     def test_agentic_rag_with_memory_and_crm(self, authenticated_client):
         """Test Agentic RAG using memory and CRM data"""
         # 1. Store memory
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_db = MagicMock()
             mock_db.store = AsyncMock(return_value=True)
             mock_get_db.return_value = mock_db
@@ -241,7 +241,7 @@ class TestCrossServiceWorkflows:
             )
 
             # 2. Query Agentic RAG
-            with patch("app.routers.agentic_rag.get_orchestrator") as mock_get_orch:
+            with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get_orch:
                 mock_orch = MagicMock()
                 mock_orch.process_query = AsyncMock(
                     return_value={
@@ -260,7 +260,7 @@ class TestCrossServiceWorkflows:
                 )
 
                 # 3. Get CRM data
-                with patch("app.dependencies.get_database_pool") as mock_get_pool:
+                with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
                     mock_pool, mock_conn = self._create_mock_db_pool()
                     mock_get_pool.return_value = mock_pool
 
@@ -293,7 +293,7 @@ class TestEndToEndBusinessProcesses:
 
     def test_complete_client_onboarding_process(self, authenticated_client, test_app):
         """Test complete client onboarding process"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -340,7 +340,7 @@ class TestEndToEndBusinessProcesses:
                 )
 
                 # Step 6: Send notification
-                with patch("app.routers.notifications.notification_hub") as mock_hub:
+                with patch("backend.app.routers.notifications.notification_hub") as mock_hub:
                     mock_hub.send = AsyncMock(return_value={"notification_id": "notif_123"})
 
                     notification_response = authenticated_client.post(
@@ -363,7 +363,7 @@ class TestEndToEndBusinessProcesses:
 
     def test_complete_practice_renewal_process(self, authenticated_client, test_app):
         """Test complete practice renewal process"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -381,7 +381,7 @@ class TestEndToEndBusinessProcesses:
             )
 
             # Step 3: Notify client
-            with patch("app.routers.notifications.notification_hub") as mock_hub:
+            with patch("backend.app.routers.notifications.notification_hub") as mock_hub:
                 mock_hub.send = AsyncMock(return_value={"notification_id": "notif_123"})
 
                 notification_response = authenticated_client.post(

@@ -99,7 +99,7 @@ class TestClientJourney:
 
     def test_create_journey_success(self, authenticated_client):
         """Test POST /api/agents/journey/create - successful creation"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_orchestrator.create_journey = MagicMock(
                 return_value={
                     "journey_id": "journey_123",
@@ -131,7 +131,7 @@ class TestClientJourney:
 
     def test_get_journey_success(self, authenticated_client):
         """Test GET /api/agents/journey/{journey_id}"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_orchestrator.get_journey = MagicMock(
                 return_value={
                     "journey_id": "journey_123",
@@ -147,7 +147,7 @@ class TestClientJourney:
 
     def test_get_journey_not_found(self, authenticated_client):
         """Test GET journey with non-existent ID"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_orchestrator.get_journey = MagicMock(return_value=None)
 
             response = authenticated_client.get("/api/agents/journey/nonexistent")
@@ -156,7 +156,7 @@ class TestClientJourney:
 
     def test_complete_step_success(self, authenticated_client):
         """Test POST /api/agents/journey/{journey_id}/step/{step_id}/complete"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_orchestrator.complete_step = MagicMock(return_value={"success": True})
 
             response = authenticated_client.post(
@@ -168,7 +168,7 @@ class TestClientJourney:
 
     def test_get_next_steps(self, authenticated_client):
         """Test GET /api/agents/journey/{journey_id}/next-steps"""
-        with patch("app.routers.agents.journey_orchestrator") as mock_orchestrator:
+        with patch("backend.app.routers.agents.journey_orchestrator") as mock_orchestrator:
             mock_orchestrator.get_next_steps = MagicMock(
                 return_value={"steps": [{"id": "step_1", "name": "Next Step"}]}
             )
@@ -184,7 +184,7 @@ class TestComplianceMonitoring:
 
     def test_track_compliance_success(self, authenticated_client):
         """Test POST /api/agents/compliance/track"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.track_item = MagicMock(
                 return_value={"alert_id": "alert_123", "severity": "warning"}
             )
@@ -202,7 +202,7 @@ class TestComplianceMonitoring:
 
     def test_get_compliance_alerts_all(self, authenticated_client):
         """Test GET /api/agents/compliance/alerts - all alerts"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.get_alerts = MagicMock(return_value=[])
 
             response = authenticated_client.get("/api/agents/compliance/alerts")
@@ -216,7 +216,7 @@ class TestComplianceMonitoring:
 
     def test_get_compliance_alerts_filtered(self, authenticated_client):
         """Test GET /api/agents/compliance/alerts - with filters"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.get_alerts = MagicMock(return_value=[])
 
             response = authenticated_client.get(
@@ -227,7 +227,7 @@ class TestComplianceMonitoring:
 
     def test_get_compliance_alerts_with_notification(self, authenticated_client):
         """Test GET /api/agents/compliance/alerts - with auto_notify"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.get_alerts = MagicMock(return_value=[])
 
             response = authenticated_client.get("/api/agents/compliance/alerts?auto_notify=true")
@@ -238,7 +238,7 @@ class TestComplianceMonitoring:
 
     def test_get_client_compliance(self, authenticated_client):
         """Test GET /api/agents/compliance/client/{client_id}"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.get_client_items = MagicMock(return_value=[])
 
             response = authenticated_client.get("/api/agents/compliance/client/client_123")
@@ -257,7 +257,7 @@ class TestKnowledgeGraph:
 
     def test_extract_knowledge_graph(self, authenticated_client):
         """Test POST /api/agents/knowledge-graph/extract"""
-        with patch("app.routers.agents.knowledge_graph") as mock_kg:
+        with patch("backend.app.routers.agents.knowledge_graph") as mock_kg:
             mock_kg.extract_entities = MagicMock(return_value={"entities": [], "relationships": []})
 
             response = authenticated_client.post(
@@ -269,7 +269,7 @@ class TestKnowledgeGraph:
 
     def test_export_knowledge_graph(self, authenticated_client):
         """Test GET /api/agents/knowledge-graph/export"""
-        with patch("app.routers.agents.knowledge_graph") as mock_kg:
+        with patch("backend.app.routers.agents.knowledge_graph") as mock_kg:
             mock_kg.export_graph = MagicMock(return_value={"nodes": [], "edges": []})
 
             response = authenticated_client.get("/api/agents/knowledge-graph/export")
@@ -283,7 +283,7 @@ class TestAutoIngestion:
 
     def test_run_ingestion(self, authenticated_client):
         """Test POST /api/agents/ingestion/run"""
-        with patch("app.routers.agents.auto_ingestion") as mock_ingestion:
+        with patch("backend.app.routers.agents.auto_ingestion") as mock_ingestion:
             mock_ingestion.run_ingestion = MagicMock(
                 return_value={"status": "running", "job_id": "job_123"}
             )
@@ -297,7 +297,7 @@ class TestAutoIngestion:
 
     def test_get_ingestion_status(self, authenticated_client):
         """Test GET /api/agents/ingestion/status"""
-        with patch("app.routers.agents.auto_ingestion") as mock_ingestion:
+        with patch("backend.app.routers.agents.auto_ingestion") as mock_ingestion:
             mock_ingestion.get_status = MagicMock(return_value={"status": "idle", "last_run": None})
 
             response = authenticated_client.get("/api/agents/ingestion/status")

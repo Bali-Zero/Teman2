@@ -28,14 +28,14 @@ class TestCollectiveMemoryService:
     @pytest.fixture
     def service(self, mock_pool):
         """Create CollectiveMemoryService instance"""
-        from services.memory.collective_memory_service import CollectiveMemoryService
+        from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
         return CollectiveMemoryService(pool=mock_pool)
 
     @pytest.fixture
     def service_no_pool(self):
         """Create CollectiveMemoryService without pool"""
-        from services.memory.collective_memory_service import CollectiveMemoryService
+        from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
         return CollectiveMemoryService(pool=None)
 
@@ -313,7 +313,7 @@ class TestCollectiveMemoryDataClass:
         """Test CollectiveMemory serialization"""
         from datetime import datetime
 
-        from services.memory.collective_memory_service import CollectiveMemory
+        from backend.services.memory.collective_memory_service import CollectiveMemory
 
         memory = CollectiveMemory(
             id=1,
@@ -343,7 +343,7 @@ class TestMemoryContextWithCollective:
 
     def test_memory_context_with_collective_facts(self):
         """Test MemoryContext includes collective facts"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@example.com",
@@ -358,7 +358,7 @@ class TestMemoryContextWithCollective:
 
     def test_memory_context_to_system_prompt(self):
         """Test MemoryContext formatting as system prompt"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@example.com",
@@ -376,7 +376,7 @@ class TestMemoryContextWithCollective:
 
     def test_memory_context_only_collective(self):
         """Test MemoryContext with only collective facts"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="new_user@example.com",
@@ -432,7 +432,7 @@ class TestQueryAwareRetrieval:
     @pytest.mark.asyncio
     async def test_get_relevant_context_with_query(self, mock_pool, mock_embedder, mock_qdrant):
         """Test query-aware retrieval returns semantically relevant facts"""
-        from services.memory.collective_memory_service import CollectiveMemoryService
+        from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
         service = CollectiveMemoryService(
             pool=mock_pool,
@@ -454,7 +454,7 @@ class TestQueryAwareRetrieval:
     @pytest.mark.asyncio
     async def test_get_relevant_context_fallback(self, mock_pool):
         """Test fallback to confidence-based when semantic search fails"""
-        from services.memory.collective_memory_service import CollectiveMemoryService
+        from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
         # Setup mock connection for fallback
         mock_conn = AsyncMock()
@@ -483,7 +483,7 @@ class TestQueryAwareRetrieval:
     @pytest.mark.asyncio
     async def test_sync_to_qdrant_on_creation(self, mock_pool, mock_embedder, mock_qdrant):
         """Test that new facts are synced to Qdrant"""
-        from services.memory.collective_memory_service import CollectiveMemoryService
+        from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
         # Setup mock connection for new fact creation
         mock_conn = AsyncMock()

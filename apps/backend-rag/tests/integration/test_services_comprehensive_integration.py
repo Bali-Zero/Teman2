@@ -59,7 +59,7 @@ class TestTeamAnalyticsServiceIntegration:
     @pytest.mark.asyncio
     async def test_analyze_work_patterns(self, db_pool):
         """Test analyzing work patterns"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -82,7 +82,7 @@ class TestTeamAnalyticsServiceIntegration:
     @pytest.mark.asyncio
     async def test_calculate_productivity_scores(self, db_pool):
         """Test calculating productivity scores"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -105,7 +105,7 @@ class TestTeamAnalyticsServiceIntegration:
     @pytest.mark.asyncio
     async def test_detect_burnout_signals(self, db_pool):
         """Test detecting burnout signals"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -129,7 +129,7 @@ class TestTeamAnalyticsServiceIntegration:
     @pytest.mark.asyncio
     async def test_analyze_performance_trends(self, db_pool):
         """Test analyzing performance trends"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -152,7 +152,7 @@ class TestTeamAnalyticsServiceIntegration:
     @pytest.mark.asyncio
     async def test_analyze_workload_balance(self, db_pool):
         """Test analyzing workload balance"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -174,7 +174,7 @@ class TestTeamAnalyticsServiceIntegration:
     @pytest.mark.asyncio
     async def test_identify_optimal_hours(self, db_pool):
         """Test identifying optimal hours"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -196,7 +196,7 @@ class TestTeamAnalyticsServiceIntegration:
     @pytest.mark.asyncio
     async def test_generate_team_insights(self, db_pool):
         """Test generating team insights"""
-        from services.team_analytics_service import TeamAnalyticsService
+        from backend.services.team_analytics_service import TeamAnalyticsService
 
         service = TeamAnalyticsService(db_pool=db_pool)
 
@@ -222,7 +222,7 @@ class TestIntelligentRouterIntegration:
     @pytest.mark.asyncio
     async def test_intelligent_router_init(self):
         """Test IntelligentRouter initialization"""
-        from services.routing.intelligent_router import IntelligentRouter
+        from backend.services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
         assert router is not None
@@ -231,7 +231,7 @@ class TestIntelligentRouterIntegration:
     @pytest.mark.asyncio
     async def test_route_chat(self):
         """Test routing chat"""
-        from services.routing.intelligent_router import IntelligentRouter
+        from backend.services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
 
@@ -254,7 +254,7 @@ class TestIntelligentRouterIntegration:
     @pytest.mark.asyncio
     async def test_stream_chat(self):
         """Test streaming chat"""
-        from services.routing.intelligent_router import IntelligentRouter
+        from backend.services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
 
@@ -276,7 +276,7 @@ class TestIntelligentRouterIntegration:
 
     def test_get_stats(self):
         """Test getting router stats"""
-        from services.routing.intelligent_router import IntelligentRouter
+        from backend.services.routing.intelligent_router import IntelligentRouter
 
         router = IntelligentRouter()
         stats = router.get_stats()
@@ -291,7 +291,7 @@ class TestGoogleServicesIntegration:
     @pytest.mark.asyncio
     async def test_google_services_init(self):
         """Test GoogleServices initialization"""
-        from services.oracle_google_services import GoogleServices
+        from backend.services.oracle_google_services import GoogleServices
 
         service = GoogleServices()
         assert service is not None
@@ -299,7 +299,7 @@ class TestGoogleServicesIntegration:
     @pytest.mark.asyncio
     async def test_gemini_initialized(self):
         """Test Gemini initialization status"""
-        from services.oracle_google_services import GoogleServices
+        from backend.services.oracle_google_services import GoogleServices
 
         service = GoogleServices()
         # Check if the service has the initialization flag
@@ -308,7 +308,7 @@ class TestGoogleServicesIntegration:
     @pytest.mark.asyncio
     async def test_drive_service_attribute(self):
         """Test Drive service attribute exists"""
-        from services.oracle_google_services import GoogleServices
+        from backend.services.oracle_google_services import GoogleServices
 
         service = GoogleServices()
         # Check if the service has drive service attribute
@@ -321,7 +321,7 @@ class TestCollaboratorServiceIntegration:
 
     def test_collaborator_service_init(self):
         """Test CollaboratorService initialization"""
-        from services.collaborator_service import CollaboratorService
+        from backend.services.collaborator_service import CollaboratorService
 
         try:
             service = CollaboratorService()
@@ -333,7 +333,7 @@ class TestCollaboratorServiceIntegration:
 
     def test_list_members(self):
         """Test listing team members"""
-        from services.collaborator_service import CollaboratorService
+        from backend.services.collaborator_service import CollaboratorService
 
         try:
             service = CollaboratorService()
@@ -344,7 +344,7 @@ class TestCollaboratorServiceIntegration:
 
     def test_get_team_stats(self):
         """Test getting team stats"""
-        from services.collaborator_service import CollaboratorService
+        from backend.services.collaborator_service import CollaboratorService
 
         try:
             service = CollaboratorService()
@@ -357,7 +357,7 @@ class TestCollaboratorServiceIntegration:
     @pytest.mark.asyncio
     async def test_identify_unknown_email(self):
         """Test identifying with unknown email returns anonymous profile"""
-        from services.collaborator_service import CollaboratorService
+        from backend.services.collaborator_service import CollaboratorService
 
         try:
             service = CollaboratorService()
@@ -375,14 +375,14 @@ class TestResponseHandlerIntegration:
 
     def test_response_handler_init(self):
         """Test ResponseHandler initialization"""
-        from services.routing.response_handler import ResponseHandler
+        from backend.services.routing.response_handler import ResponseHandler
 
         handler = ResponseHandler()
         assert handler is not None
 
     def test_classify_query(self):
         """Test query classification"""
-        from services.routing.response_handler import ResponseHandler
+        from backend.services.routing.response_handler import ResponseHandler
 
         handler = ResponseHandler()
         query_type = handler.classify_query("Hello")
@@ -390,7 +390,7 @@ class TestResponseHandlerIntegration:
 
     def test_sanitize_response(self):
         """Test response sanitization"""
-        from services.routing.response_handler import ResponseHandler
+        from backend.services.routing.response_handler import ResponseHandler
 
         handler = ResponseHandler()
         response = handler.sanitize_response(
@@ -403,7 +403,7 @@ class TestResponseHandlerIntegration:
 
     def test_sanitize_response_empty(self):
         """Test sanitizing empty response"""
-        from services.routing.response_handler import ResponseHandler
+        from backend.services.routing.response_handler import ResponseHandler
 
         handler = ResponseHandler()
         response = handler.sanitize_response("", query_type="business")
@@ -416,14 +416,14 @@ class TestLLMAdaptersIntegration:
 
     def test_registry_get_adapter_gemini(self):
         """Test getting Gemini adapter"""
-        from llm.adapters.registry import get_adapter
+        from backend.llm.adapters.registry import get_adapter
 
         adapter = get_adapter("gemini-2.0-flash")
         assert adapter is not None
 
     def test_registry_get_adapter_fallback(self):
         """Test adapter fallback"""
-        from llm.adapters.registry import get_adapter
+        from backend.llm.adapters.registry import get_adapter
 
         adapter = get_adapter("unknown-model")
         # Should fallback to GeminiAdapter
@@ -431,7 +431,7 @@ class TestLLMAdaptersIntegration:
 
     def test_fallback_messages_get_message(self):
         """Test getting fallback messages"""
-        from llm.fallback_messages import get_fallback_message
+        from backend.llm.fallback_messages import get_fallback_message
 
         message = get_fallback_message("connection_error", "en")
         assert message is not None
@@ -439,7 +439,7 @@ class TestLLMAdaptersIntegration:
 
     def test_fallback_messages_localization(self):
         """Test fallback message localization"""
-        from llm.fallback_messages import get_fallback_message
+        from backend.llm.fallback_messages import get_fallback_message
 
         en_message = get_fallback_message("connection_error", "en")
         it_message = get_fallback_message("connection_error", "it")
@@ -450,7 +450,7 @@ class TestLLMAdaptersIntegration:
 
     def test_fallback_messages_unknown_type(self):
         """Test fallback message with unknown type"""
-        from llm.fallback_messages import get_fallback_message
+        from backend.llm.fallback_messages import get_fallback_message
 
         message = get_fallback_message("unknown_type", "en")
         # Should return generic error message

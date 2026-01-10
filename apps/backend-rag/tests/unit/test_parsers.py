@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.parsers import (
+from backend.core.parsers import (
     DocumentParseError,
     auto_detect_and_parse,
     extract_text_from_epub,
@@ -43,7 +43,7 @@ def test_extract_text_from_pdf_success():
     mock_page.extract_text = MagicMock(return_value="Test PDF content")
     mock_reader.pages = [mock_page]
 
-    with patch("core.parsers.PdfReader", return_value=mock_reader):
+    with patch("backend.core.parsers.PdfReader", return_value=mock_reader):
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp.write(b"fake pdf content")
             tmp_path = tmp.name
@@ -68,7 +68,7 @@ def test_extract_text_from_pdf_empty_text():
     mock_page.extract_text = MagicMock(return_value="")
     mock_reader.pages = [mock_page]
 
-    with patch("core.parsers.PdfReader", return_value=mock_reader):
+    with patch("backend.core.parsers.PdfReader", return_value=mock_reader):
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp.write(b"fake pdf")
             tmp_path = tmp.name
@@ -89,7 +89,7 @@ def test_extract_text_from_pdf_page_error():
     mock_page2.extract_text = MagicMock(side_effect=Exception("Page error"))
     mock_reader.pages = [mock_page1, mock_page2]
 
-    with patch("core.parsers.PdfReader", return_value=mock_reader):
+    with patch("backend.core.parsers.PdfReader", return_value=mock_reader):
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp.write(b"fake pdf")
             tmp_path = tmp.name
@@ -117,8 +117,8 @@ def test_extract_text_from_epub_success():
     mock_item.get_content = MagicMock(return_value=b"<html><body>Test EPUB content</body></html>")
     mock_book.get_items = MagicMock(return_value=[mock_item])
 
-    with patch("core.parsers.epub.read_epub", return_value=mock_book):
-        with patch("core.parsers.BeautifulSoup") as mock_soup:
+    with patch("backend.core.parsers.epub.read_epub", return_value=mock_book):
+        with patch("backend.core.parsers.BeautifulSoup") as mock_soup:
             mock_soup_instance = MagicMock()
             mock_soup_instance.get_text = MagicMock(return_value="Test EPUB content")
             mock_soup.return_value = mock_soup_instance
@@ -139,7 +139,7 @@ def test_extract_text_from_epub_empty_text():
     mock_book = MagicMock()
     mock_book.get_items = MagicMock(return_value=[])
 
-    with patch("core.parsers.epub.read_epub", return_value=mock_book):
+    with patch("backend.core.parsers.epub.read_epub", return_value=mock_book):
         with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as tmp:
             tmp.write(b"fake epub")
             tmp_path = tmp.name
@@ -163,7 +163,7 @@ def test_auto_detect_and_parse_pdf():
     mock_page.extract_text = MagicMock(return_value="PDF content")
     mock_reader.pages = [mock_page]
 
-    with patch("core.parsers.PdfReader", return_value=mock_reader):
+    with patch("backend.core.parsers.PdfReader", return_value=mock_reader):
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp.write(b"fake pdf")
             tmp_path = tmp.name
@@ -180,8 +180,8 @@ def test_auto_detect_and_parse_epub():
     mock_book = MagicMock()
     mock_book.get_items = MagicMock(return_value=[])
 
-    with patch("core.parsers.epub.read_epub", return_value=mock_book):
-        with patch("core.parsers.extract_text_from_epub", return_value="EPUB content"):
+    with patch("backend.core.parsers.epub.read_epub", return_value=mock_book):
+        with patch("backend.core.parsers.extract_text_from_epub", return_value="EPUB content"):
             with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as tmp:
                 tmp.write(b"fake epub")
                 tmp_path = tmp.name
@@ -223,7 +223,7 @@ def test_get_document_info_pdf():
     mock_reader.pages = [MagicMock(), MagicMock()]
     mock_reader.metadata = {"/Title": "Test PDF", "/Author": "Test Author"}
 
-    with patch("core.parsers.PdfReader", return_value=mock_reader):
+    with patch("backend.core.parsers.PdfReader", return_value=mock_reader):
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp.write(b"fake pdf")
             tmp_path = tmp.name
@@ -248,7 +248,7 @@ def test_get_document_info_epub():
         }.get((ns, key), [])
     )
 
-    with patch("core.parsers.epub.read_epub", return_value=mock_book):
+    with patch("backend.core.parsers.epub.read_epub", return_value=mock_book):
         with tempfile.NamedTemporaryFile(suffix=".epub", delete=False) as tmp:
             tmp.write(b"fake epub")
             tmp_path = tmp.name
@@ -262,7 +262,7 @@ def test_get_document_info_epub():
 
 def test_get_document_info_handles_errors():
     """Test get_document_info handles errors gracefully"""
-    with patch("core.parsers.PdfReader", side_effect=Exception("Read error")):
+    with patch("backend.core.parsers.PdfReader", side_effect=Exception("Read error")):
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp.write(b"fake pdf")
             tmp_path = tmp.name

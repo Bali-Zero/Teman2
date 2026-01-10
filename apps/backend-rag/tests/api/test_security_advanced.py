@@ -98,7 +98,7 @@ class TestXSSAttempts:
         ]
 
         for payload in xss_payloads:
-            with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+            with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                 mock_service = MagicMock()
                 mock_service.search = AsyncMock(return_value={"results": []})
                 mock_search.return_value = mock_service
@@ -121,7 +121,7 @@ class TestXSSAttempts:
         """Test XSS attempt in conversation message"""
         xss_payload = "<script>alert('XSS')</script>"
 
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -203,7 +203,7 @@ class TestAuthorizationBypass:
     def test_access_other_user_profile(self, authenticated_client):
         """Test accessing another user's profile"""
         # Try to access different user's profile
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -214,7 +214,7 @@ class TestAuthorizationBypass:
 
     def test_access_other_client_data(self, authenticated_client):
         """Test accessing another client's data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -397,7 +397,7 @@ class TestInputSanitization:
         ]
 
         for char in special_chars:
-            with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+            with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                 mock_service = MagicMock()
                 mock_service.search = AsyncMock(return_value={"results": []})
                 mock_search.return_value = mock_service

@@ -25,7 +25,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory(self, authenticated_client):
         """Test searching shared memory"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -41,7 +41,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_renewal_query(self, authenticated_client):
         """Test searching shared memory with renewal query"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -58,7 +58,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_client_name(self, authenticated_client):
         """Test searching shared memory with client name"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -71,7 +71,7 @@ class TestCRMSharedMemory:
 
     def test_get_upcoming_renewals(self, authenticated_client):
         """Test getting upcoming renewals"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -85,7 +85,7 @@ class TestCRMSharedMemory:
 
     def test_get_client_full_context(self, authenticated_client):
         """Test getting full client context"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 123, "full_name": "Test Client"})
@@ -99,7 +99,7 @@ class TestCRMSharedMemory:
 
     def test_get_client_full_context_with_data(self, authenticated_client):
         """Test getting full client context with complete data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -132,7 +132,7 @@ class TestCRMSharedMemory:
 
     def test_get_client_full_context_not_found(self, authenticated_client):
         """Test getting full context for nonexistent client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -145,7 +145,7 @@ class TestCRMSharedMemory:
 
     def test_get_upcoming_renewals_custom_days(self, authenticated_client):
         """Test getting upcoming renewals with custom days"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -158,7 +158,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_with_limit(self, authenticated_client):
         """Test searching shared memory with custom limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -171,7 +171,7 @@ class TestCRMSharedMemory:
 
     def test_get_team_overview(self, authenticated_client):
         """Test getting team overview"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -191,7 +191,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_practice_type(self, authenticated_client):
         """Test searching shared memory with practice type"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -211,7 +211,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_urgency(self, authenticated_client):
         """Test searching shared memory with urgency query"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -231,7 +231,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_recent_interactions(self, authenticated_client):
         """Test searching shared memory with recent interactions query"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -253,7 +253,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_completed_practices(self, authenticated_client):
         """Test searching shared memory with completed practices query"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -271,7 +271,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_active_practices(self, authenticated_client):
         """Test searching shared memory with active practices query"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -291,7 +291,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_with_client_practices(self, authenticated_client):
         """Test searching shared memory that finds clients and their practices"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -311,7 +311,7 @@ class TestCRMSharedMemory:
 
     def test_get_upcoming_renewals_with_data(self, authenticated_client):
         """Test getting upcoming renewals with actual data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -337,7 +337,7 @@ class TestCRMSharedMemory:
 
     def test_get_upcoming_renewals_max_days(self, authenticated_client):
         """Test getting upcoming renewals with max days"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -350,7 +350,7 @@ class TestCRMSharedMemory:
 
     def test_get_upcoming_renewals_min_days(self, authenticated_client):
         """Test getting upcoming renewals with min days"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -363,7 +363,7 @@ class TestCRMSharedMemory:
 
     def test_get_client_full_context_with_renewals(self, authenticated_client):
         """Test getting full client context including renewals"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -389,7 +389,7 @@ class TestCRMSharedMemory:
 
     def test_get_team_overview_with_data(self, authenticated_client):
         """Test getting team overview with complete data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -410,7 +410,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_empty_query(self, authenticated_client):
         """Test searching shared memory with empty query"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -424,7 +424,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_max_limit(self, authenticated_client):
         """Test searching shared memory with max limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -437,7 +437,7 @@ class TestCRMSharedMemory:
 
     def test_search_shared_memory_summary(self, authenticated_client):
         """Test that search returns summary"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])

@@ -41,7 +41,7 @@ class TestCulturalRAGServiceIntegration:
     @pytest_asyncio.fixture
     async def service(self, mock_cultural_insights_service):
         """Create CulturalRAGService instance"""
-        from services.misc.cultural_rag_service import CulturalRAGService
+        from backend.services.misc.cultural_rag_service import CulturalRAGService
 
         return CulturalRAGService(cultural_insights_service=mock_cultural_insights_service)
 

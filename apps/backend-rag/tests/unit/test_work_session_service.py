@@ -32,10 +32,10 @@ class TestWorkSessionService:
 
     def test_work_session_service_init(self):
         """Test WorkSessionService initialization"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.misc.work_session_service import WorkSessionService
+                from backend.services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 assert service is not None
@@ -48,15 +48,15 @@ class TestWorkSessionService:
 
         with (
             patch(
-                "services.misc.work_session_service.asyncpg.create_pool",
+                "backend.services.misc.work_session_service.asyncpg.create_pool",
                 new_callable=AsyncMock,
                 return_value=mock_db_pool,
             ),
-            patch("app.core.config.settings") as mock_settings,
+            patch("backend.app.core.config.settings") as mock_settings,
         ):
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.misc.work_session_service import WorkSessionService
+                from backend.services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 await service.connect()
@@ -65,10 +65,10 @@ class TestWorkSessionService:
     @pytest.mark.asyncio
     async def test_connect_no_database_url(self):
         """Test connection without database URL"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = None
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.misc.work_session_service import WorkSessionService
+                from backend.services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 await service.connect()
@@ -79,14 +79,14 @@ class TestWorkSessionService:
         """Test starting a new session"""
         mock_db_pool.fetchrow = AsyncMock(return_value=None)
         mock_db_pool.execute = AsyncMock()
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with (
                 patch("pathlib.Path.mkdir"),
                 patch("pathlib.Path.exists", return_value=True),
-                patch("services.misc.work_session_service.WorkSessionService._write_to_log"),
+                patch("backend.services.misc.work_session_service.WorkSessionService._write_to_log"),
             ):
-                from services.misc.work_session_service import WorkSessionService
+                from backend.services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 service.pool = mock_db_pool
@@ -104,10 +104,10 @@ class TestWorkSessionService:
         mock_db_pool.fetchrow = AsyncMock(
             return_value={"id": "existing_session", "session_start": datetime.now()}
         )
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                from services.misc.work_session_service import WorkSessionService
+                from backend.services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 service.pool = mock_db_pool
@@ -122,16 +122,16 @@ class TestWorkSessionService:
         """Test ending a session"""
         mock_db_pool.execute = AsyncMock()
         with patch(
-            "services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool
         ):
-            with patch("app.core.config.settings") as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.database_url = "postgresql://test:test@localhost/test"
                 with (
                     patch("pathlib.Path.mkdir"),
                     patch("pathlib.Path.exists", return_value=True),
-                    patch("services.misc.work_session_service.WorkSessionService._write_to_log"),
+                    patch("backend.services.misc.work_session_service.WorkSessionService._write_to_log"),
                 ):
-                    from services.misc.work_session_service import WorkSessionService
+                    from backend.services.misc.work_session_service import WorkSessionService
 
                     service = WorkSessionService()
                     service.pool = mock_db_pool
@@ -147,12 +147,12 @@ class TestWorkSessionService:
             return_value={"status": "active", "session_start": "2025-01-01 09:00:00"}
         )
         with patch(
-            "services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool
+            "backend.services.misc.work_session_service.asyncpg.create_pool", return_value=mock_db_pool
         ):
-            with patch("app.core.config.settings") as mock_settings:
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.database_url = "postgresql://test:test@localhost/test"
                 with patch("pathlib.Path.mkdir"), patch("pathlib.Path.exists", return_value=True):
-                    from services.misc.work_session_service import WorkSessionService
+                    from backend.services.misc.work_session_service import WorkSessionService
 
                     service = WorkSessionService()
                     service.pool = mock_db_pool
@@ -163,14 +163,14 @@ class TestWorkSessionService:
 
     def test_write_to_log(self):
         """Test writing to log file"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test:test@localhost/test"
             with (
                 patch("pathlib.Path.mkdir"),
                 patch("pathlib.Path.exists", return_value=True),
                 patch("builtins.open", create=True) as mock_open,
             ):
-                from services.misc.work_session_service import WorkSessionService
+                from backend.services.misc.work_session_service import WorkSessionService
 
                 service = WorkSessionService()
                 service._write_to_log("test_event", {"data": "test"})

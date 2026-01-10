@@ -25,8 +25,8 @@ class TestCulturalRAGIntegration:
     @pytest.mark.asyncio
     async def test_cultural_rag_service_init(self):
         """Test CulturalRAGService initialization"""
-        with patch("services.search_service.SearchService") as mock_search_service:
-            from services.misc.cultural_rag_service import CulturalRAGService
+        with patch("backend.services.search_service.SearchService") as mock_search_service:
+            from backend.services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(mock_search_service.return_value)
             assert service is not None
@@ -35,7 +35,7 @@ class TestCulturalRAGIntegration:
     @pytest.mark.asyncio
     async def test_get_cultural_context(self):
         """Test getting cultural context for a query"""
-        with patch("services.search_service.SearchService") as mock_search_service:
+        with patch("backend.services.search_service.SearchService") as mock_search_service:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(
                 return_value={
@@ -50,7 +50,7 @@ class TestCulturalRAGIntegration:
             )
             mock_search_service.return_value = mock_service
 
-            from services.misc.cultural_rag_service import CulturalRAGService
+            from backend.services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(mock_service)
             result = await service.get_cultural_context(
@@ -63,8 +63,8 @@ class TestCulturalRAGIntegration:
     @pytest.mark.asyncio
     async def test_build_cultural_prompt_injection(self):
         """Test building cultural prompt injection"""
-        with patch("services.search_service.SearchService"):
-            from services.misc.cultural_rag_service import CulturalRAGService
+        with patch("backend.services.search_service.SearchService"):
+            from backend.services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(MagicMock())
             chunks = [
@@ -81,8 +81,8 @@ class TestCulturalRAGIntegration:
     @pytest.mark.asyncio
     async def test_get_cultural_topics_coverage(self):
         """Test getting cultural topics coverage"""
-        with patch("services.search_service.SearchService"):
-            from services.misc.cultural_rag_service import CulturalRAGService
+        with patch("backend.services.search_service.SearchService"):
+            from backend.services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(MagicMock())
             coverage = await service.get_cultural_topics_coverage()

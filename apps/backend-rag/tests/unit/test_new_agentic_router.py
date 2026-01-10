@@ -11,7 +11,7 @@ import pytest
 # Add backend to path
 sys.path.append(str(Path(__file__).parent.parent.parent / "backend"))
 
-from services.routing.intelligent_router import IntelligentRouter
+from backend.services.routing.intelligent_router import IntelligentRouter
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def mock_orchestrator():
     return orch
 
 
-@patch("services.routing.intelligent_router.create_agentic_rag")
+@patch("backend.services.routing.intelligent_router.create_agentic_rag")
 @pytest.mark.asyncio
 async def test_router_initialization(mock_create_agentic, mock_search_service, mock_orchestrator):
     """Test that router initializes Agentic RAG with correct dependencies"""
@@ -52,7 +52,7 @@ async def test_router_initialization(mock_create_agentic, mock_search_service, m
     assert router.orchestrator == mock_orchestrator
 
 
-@patch("services.routing.intelligent_router.create_agentic_rag")
+@patch("backend.services.routing.intelligent_router.create_agentic_rag")
 @pytest.mark.asyncio
 async def test_router_delegation(mock_create_agentic, mock_search_service, mock_orchestrator):
     """Test that route_chat delegates to orchestrator"""
@@ -73,7 +73,7 @@ async def test_router_delegation(mock_create_agentic, mock_search_service, mock_
     assert response["category"] == "agentic"
 
 
-@patch("services.routing.intelligent_router.create_agentic_rag")
+@patch("backend.services.routing.intelligent_router.create_agentic_rag")
 @pytest.mark.asyncio
 async def test_router_streaming(mock_create_agentic, mock_search_service, mock_orchestrator):
     """Test that stream_chat delegates to orchestrator"""

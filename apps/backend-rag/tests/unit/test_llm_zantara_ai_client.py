@@ -16,13 +16,13 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.zantara_ai_client import ZantaraAIClient
+from backend.llm.zantara_ai_client import ZantaraAIClient
 
 
 @pytest.fixture
 def mock_settings():
     """Mock settings"""
-    with patch("llm.zantara_ai_client.settings") as mock:
+    with patch("backend.llm.zantara_ai_client.settings") as mock:
         mock.google_api_key = "test-api-key"
         mock.zantara_ai_cost_input = 0.15
         mock.zantara_ai_cost_output = 0.60
@@ -46,13 +46,13 @@ def mock_no_credentials(mock_settings):
         },
         clear=False,
     ):
-        with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
             yield mock_settings
 
 
 @pytest.fixture
 def mock_genai_client():
-    """Mock GenAIClient from llm.genai_client"""
+    """Mock GenAIClient from backend.llm.genai_client"""
     mock_client = MagicMock()
     mock_client.is_available = True
 
@@ -78,8 +78,8 @@ def mock_genai_client():
 
 def test_init_with_api_key(mock_settings, mock_genai_client):
     """Test initialization with API key"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-api-key")
 
             assert client.api_key == "test-api-key"
@@ -91,7 +91,7 @@ def test_init_without_api_key(mock_settings):
     """Test initialization without API key"""
     mock_settings.google_api_key = None
 
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
         with patch("os.environ.get", return_value=None):  # No service account
             with patch("os.path.isfile", return_value=False):  # No credentials file
                 client = ZantaraAIClient(api_key=None)
@@ -102,8 +102,8 @@ def test_init_without_api_key(mock_settings):
 
 def test_init_with_custom_model(mock_settings, mock_genai_client):
     """Test initialization with custom model"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(model="custom-model")
 
             assert client.model == "custom-model"
@@ -116,8 +116,8 @@ def test_init_with_custom_model(mock_settings, mock_genai_client):
 
 def test_get_model_info(mock_settings, mock_genai_client):
     """Test getting model information"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient()
             info = client.get_model_info()
 
@@ -135,8 +135,8 @@ def test_get_model_info(mock_settings, mock_genai_client):
 
 def test_build_system_prompt_default(mock_settings, mock_genai_client):
     """Test building default system prompt"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient()
             prompt = client._build_system_prompt()
 
@@ -145,8 +145,8 @@ def test_build_system_prompt_default(mock_settings, mock_genai_client):
 
 def test_build_system_prompt_fallback(mock_settings, mock_genai_client):
     """Test building fallback system prompt (not using rich prompt)"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient()
             prompt = client._build_system_prompt(use_rich_prompt=False)
 
@@ -173,8 +173,8 @@ async def test_chat_async_mock_mode(mock_no_credentials):
 @pytest.mark.asyncio
 async def test_chat_async_native_gemini_success(mock_settings, mock_genai_client):
     """Test chat_async with native Gemini success"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-key")
             messages = [{"role": "user", "content": "Hello"}]
             result = await client.chat_async(messages=messages)
@@ -192,8 +192,8 @@ async def test_chat_async_native_gemini_error(mock_settings, mock_genai_client):
     mock_chat.send_message = AsyncMock(side_effect=Exception("API Error"))
     mock_genai_client.create_chat.return_value = mock_chat
 
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-key")
             messages = [{"role": "user", "content": "Hello"}]
 
@@ -248,8 +248,8 @@ async def test_stream_native_gemini_success(mock_settings, mock_genai_client):
     with async generator handling in execute_with_retry. The test verifies
     that streaming returns content (via fallback path in development).
     """
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-key")
             chunks = []
             async for chunk in client.stream("Hello", "user123"):
@@ -342,8 +342,8 @@ async def test_conversational_with_tools_no_tools(mock_no_credentials):
 
 def test_is_available_with_api_key(mock_settings, mock_genai_client):
     """Test is_available with API key"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-key")
             assert client.is_available() is True
 
@@ -352,7 +352,7 @@ def test_is_available_without_api_key(mock_settings):
     """Test is_available without API key"""
     mock_settings.google_api_key = None
 
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
         with patch("os.environ.get", return_value=None):  # No service account
             with patch("os.path.isfile", return_value=False):  # No credentials file
                 client = ZantaraAIClient(api_key=None)
@@ -370,8 +370,8 @@ def test_init_configure_error(mock_settings):
     mock_client = MagicMock()
     mock_client.is_available = False
 
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_client):
             client = ZantaraAIClient(api_key="test-key")
             # Should fall back to mock mode when client not available
             assert client.mock_mode is True
@@ -380,8 +380,8 @@ def test_init_configure_error(mock_settings):
 @pytest.mark.asyncio
 async def test_chat_async_with_system_role(mock_settings, mock_genai_client):
     """Test chat_async with system role in messages"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-key")
             messages = [
                 {"role": "system", "content": "System message"},
@@ -394,8 +394,8 @@ async def test_chat_async_with_system_role(mock_settings, mock_genai_client):
 @pytest.mark.asyncio
 async def test_chat_async_with_assistant_messages(mock_settings, mock_genai_client):
     """Test chat_async with assistant messages in history"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-key")
             messages = [
                 {"role": "user", "content": "First question"},
@@ -409,8 +409,8 @@ async def test_chat_async_with_assistant_messages(mock_settings, mock_genai_clie
 @pytest.mark.asyncio
 async def test_stream_native_gemini_with_history(mock_settings, mock_genai_client):
     """Test native Gemini streaming with conversation history"""
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_genai_client):
             client = ZantaraAIClient(api_key="test-key")
 
             conversation_history = [
@@ -436,8 +436,8 @@ async def test_stream_native_gemini_retry_then_fallback(mock_settings):
     mock_client.is_available = True
     mock_client.create_chat = MagicMock(side_effect=Exception("503 Service Unavailable"))
 
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_client):
             with patch("asyncio.sleep", new_callable=AsyncMock):
                 client = ZantaraAIClient(api_key="test-key")
 
@@ -466,8 +466,8 @@ async def test_stream_native_gemini_no_content_fallback(mock_settings):
     mock_chat.send_message_stream = empty_stream
     mock_client.create_chat = MagicMock(return_value=mock_chat)
 
-    with patch("llm.zantara_ai_client.GENAI_AVAILABLE", True):
-        with patch("llm.zantara_ai_client.GenAIClient", return_value=mock_client):
+    with patch("backend.llm.zantara_ai_client.GENAI_AVAILABLE", True):
+        with patch("backend.llm.zantara_ai_client.GenAIClient", return_value=mock_client):
             with patch("asyncio.sleep", new_callable=AsyncMock):
                 client = ZantaraAIClient(api_key="test-key")
 

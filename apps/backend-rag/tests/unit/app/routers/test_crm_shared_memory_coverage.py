@@ -68,22 +68,22 @@ def _load_module(monkeypatch):
         def error(self, *_args, **_kwargs):
             pass
 
-    monkeypatch.setitem(sys.modules, "core.cache", types.SimpleNamespace(cached=cached, redis_url='redis://localhost:6379'))
+    monkeypatch.setitem(sys.modules, "backend.core.cache", types.SimpleNamespace(cached=cached, redis_url='redis://localhost:6379'))
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.error_handlers",
+        "backend.app.utils.error_handlers",
         types.SimpleNamespace(handle_database_error=handle_database_error, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.logging_utils",
+        "backend.app.utils.logging_utils",
         types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
     )
     def get_current_user():
         return {"email": "test@example.com", "role": "admin"}
     
     monkeypatch.setitem(
-        sys.modules, "app.dependencies", types.SimpleNamespace(
+        sys.modules, "backend.app.dependencies", types.SimpleNamespace(
             get_database_pool=lambda: None,
             get_current_user=get_current_user,
             redis_url='redis://localhost:6379'
@@ -93,12 +93,12 @@ def _load_module(monkeypatch):
     backend_path = Path(__file__).resolve().parents[4] / "backend"
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.crm_shared_memory"
+    module_name = "backend.app.routers.crm_shared_memory"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

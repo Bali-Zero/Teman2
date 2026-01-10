@@ -17,7 +17,7 @@ class TestConnectionManager:
 
     @pytest.fixture
     def manager(self):
-        from app.routers.websocket import ConnectionManager
+        from backend.app.routers.websocket import ConnectionManager
 
         return ConnectionManager()
 
@@ -128,9 +128,9 @@ class TestGetCurrentUserWs:
     @pytest.mark.asyncio
     async def test_valid_token(self):
         """Test with valid JWT token"""
-        from app.routers.websocket import get_current_user_ws
+        from backend.app.routers.websocket import get_current_user_ws
 
-        with patch("app.routers.websocket.jwt.decode") as mock_decode:
+        with patch("backend.app.routers.websocket.jwt.decode") as mock_decode:
             mock_decode.return_value = {"sub": "user-123"}
 
             result = await get_current_user_ws("valid-token")
@@ -140,9 +140,9 @@ class TestGetCurrentUserWs:
     @pytest.mark.asyncio
     async def test_valid_token_user_id(self):
         """Test with valid token containing userId"""
-        from app.routers.websocket import get_current_user_ws
+        from backend.app.routers.websocket import get_current_user_ws
 
-        with patch("app.routers.websocket.jwt.decode") as mock_decode:
+        with patch("backend.app.routers.websocket.jwt.decode") as mock_decode:
             mock_decode.return_value = {"userId": "user-456"}
 
             result = await get_current_user_ws("valid-token")
@@ -154,9 +154,9 @@ class TestGetCurrentUserWs:
         """Test with invalid JWT token"""
         from jose import JWTError
 
-        from app.routers.websocket import get_current_user_ws
+        from backend.app.routers.websocket import get_current_user_ws
 
-        with patch("app.routers.websocket.jwt.decode") as mock_decode:
+        with patch("backend.app.routers.websocket.jwt.decode") as mock_decode:
             mock_decode.side_effect = JWTError()
 
             result = await get_current_user_ws("invalid-token")
@@ -166,9 +166,9 @@ class TestGetCurrentUserWs:
     @pytest.mark.asyncio
     async def test_token_no_user_id(self):
         """Test with token missing user ID"""
-        from app.routers.websocket import get_current_user_ws
+        from backend.app.routers.websocket import get_current_user_ws
 
-        with patch("app.routers.websocket.jwt.decode") as mock_decode:
+        with patch("backend.app.routers.websocket.jwt.decode") as mock_decode:
             mock_decode.return_value = {}  # No sub or userId
 
             result = await get_current_user_ws("token-without-user")
@@ -181,7 +181,7 @@ class TestWebsocketEndpoint:
 
     @pytest.fixture
     def app(self):
-        from app.routers.websocket import router
+        from backend.app.routers.websocket import router
 
         app = FastAPI()
         app.include_router(router)
@@ -199,7 +199,7 @@ class TestWebsocketEndpoint:
         """Test WebSocket connection with Authorization header"""
 
         with patch(
-            "app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
+            "backend.app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
         ) as mock_auth:
             mock_auth.return_value = "user-123"
 
@@ -219,7 +219,7 @@ class TestWebsocketEndpoint:
     def test_websocket_subprotocol(self, app):
         """Test WebSocket connection with subprotocol"""
         with patch(
-            "app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
+            "backend.app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
         ) as mock_auth:
             mock_auth.return_value = "user-123"
 
@@ -235,7 +235,7 @@ class TestWebsocketEndpoint:
     def test_websocket_query_param(self, app):
         """Test WebSocket connection with query param (deprecated)"""
         with patch(
-            "app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
+            "backend.app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
         ) as mock_auth:
             mock_auth.return_value = "user-123"
 
@@ -249,7 +249,7 @@ class TestWebsocketEndpoint:
     def test_websocket_invalid_token(self, app):
         """Test WebSocket connection with invalid token"""
         with patch(
-            "app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
+            "backend.app.routers.websocket.get_current_user_ws", new_callable=AsyncMock
         ) as mock_auth:
             mock_auth.return_value = None
 
@@ -267,9 +267,9 @@ class TestRedisListener:
     @pytest.mark.asyncio
     async def test_redis_listener_no_url(self):
         """Test redis listener without Redis URL"""
-        from app.routers.websocket import redis_listener
+        from backend.app.routers.websocket import redis_listener
 
-        with patch("app.routers.websocket.settings") as mock_settings:
+        with patch("backend.app.routers.websocket.settings") as mock_settings:
             mock_settings.redis_url = None
 
             # Should return immediately
@@ -278,12 +278,12 @@ class TestRedisListener:
     @pytest.mark.asyncio
     async def test_redis_listener_user_notification(self):
         """Test redis listener handling user notification"""
-        from app.routers.websocket import manager, redis_listener
+        from backend.app.routers.websocket import manager, redis_listener
 
-        with patch("app.routers.websocket.settings") as mock_settings:
+        with patch("backend.app.routers.websocket.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379"
 
-            with patch("app.routers.websocket.redis.from_url") as mock_redis:
+            with patch("backend.app.routers.websocket.redis.from_url") as mock_redis:
                 mock_client = MagicMock()
                 mock_pubsub = AsyncMock()
                 mock_client.pubsub.return_value = mock_pubsub
@@ -317,12 +317,12 @@ class TestRedisListener:
     @pytest.mark.asyncio
     async def test_redis_listener_ai_result(self):
         """Test redis listener handling AI result"""
-        from app.routers.websocket import manager, redis_listener
+        from backend.app.routers.websocket import manager, redis_listener
 
-        with patch("app.routers.websocket.settings") as mock_settings:
+        with patch("backend.app.routers.websocket.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379"
 
-            with patch("app.routers.websocket.redis.from_url") as mock_redis:
+            with patch("backend.app.routers.websocket.redis.from_url") as mock_redis:
                 mock_client = MagicMock()
                 mock_pubsub = AsyncMock()
                 mock_client.pubsub.return_value = mock_pubsub
@@ -352,12 +352,12 @@ class TestRedisListener:
     @pytest.mark.asyncio
     async def test_redis_listener_chat_message(self):
         """Test redis listener handling chat message"""
-        from app.routers.websocket import manager, redis_listener
+        from backend.app.routers.websocket import manager, redis_listener
 
-        with patch("app.routers.websocket.settings") as mock_settings:
+        with patch("backend.app.routers.websocket.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379"
 
-            with patch("app.routers.websocket.redis.from_url") as mock_redis:
+            with patch("backend.app.routers.websocket.redis.from_url") as mock_redis:
                 mock_client = MagicMock()
                 mock_pubsub = AsyncMock()
                 mock_client.pubsub.return_value = mock_pubsub
@@ -387,12 +387,12 @@ class TestRedisListener:
     @pytest.mark.asyncio
     async def test_redis_listener_system_event(self):
         """Test redis listener handling system event"""
-        from app.routers.websocket import manager, redis_listener
+        from backend.app.routers.websocket import manager, redis_listener
 
-        with patch("app.routers.websocket.settings") as mock_settings:
+        with patch("backend.app.routers.websocket.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379"
 
-            with patch("app.routers.websocket.redis.from_url") as mock_redis:
+            with patch("backend.app.routers.websocket.redis.from_url") as mock_redis:
                 mock_client = MagicMock()
                 mock_pubsub = AsyncMock()
                 mock_client.pubsub.return_value = mock_pubsub
@@ -424,12 +424,12 @@ class TestRedisListener:
     @pytest.mark.asyncio
     async def test_redis_listener_invalid_json(self):
         """Test redis listener handling invalid JSON"""
-        from app.routers.websocket import manager, redis_listener
+        from backend.app.routers.websocket import manager, redis_listener
 
-        with patch("app.routers.websocket.settings") as mock_settings:
+        with patch("backend.app.routers.websocket.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379"
 
-            with patch("app.routers.websocket.redis.from_url") as mock_redis:
+            with patch("backend.app.routers.websocket.redis.from_url") as mock_redis:
                 mock_client = MagicMock()
                 mock_pubsub = AsyncMock()
                 mock_client.pubsub.return_value = mock_pubsub
@@ -459,12 +459,12 @@ class TestRedisListener:
     @pytest.mark.asyncio
     async def test_redis_listener_error(self):
         """Test redis listener error handling"""
-        from app.routers.websocket import redis_listener
+        from backend.app.routers.websocket import redis_listener
 
-        with patch("app.routers.websocket.settings") as mock_settings:
+        with patch("backend.app.routers.websocket.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379"
 
-            with patch("app.routers.websocket.redis.from_url") as mock_redis:
+            with patch("backend.app.routers.websocket.redis.from_url") as mock_redis:
                 mock_client = MagicMock()
                 mock_pubsub = AsyncMock()
                 mock_client.pubsub.return_value = mock_pubsub

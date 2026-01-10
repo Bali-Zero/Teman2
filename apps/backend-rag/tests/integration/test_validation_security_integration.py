@@ -31,7 +31,7 @@ class TestResponseValidatorIntegration:
 
     def test_response_validator_initialization(self):
         """Test ResponseValidator initialization"""
-        from services.response.validator import ZantaraResponseValidator
+        from backend.services.response.validator import ZantaraResponseValidator
 
         config = {
             "modes": {
@@ -49,7 +49,7 @@ class TestResponseValidatorIntegration:
 
     def test_filler_removal(self):
         """Test filler pattern removal"""
-        from services.response.validator import ZantaraResponseValidator
+        from backend.services.response.validator import ZantaraResponseValidator
 
         config = {"modes": {"default": {}}}
         validator = ZantaraResponseValidator(mode_config=config, dry_run=False)
@@ -67,7 +67,7 @@ class TestResponseValidatorIntegration:
 
     def test_length_enforcement(self):
         """Test length limit enforcement"""
-        from services.response.validator import ZantaraResponseValidator
+        from backend.services.response.validator import ZantaraResponseValidator
 
         config = {
             "modes": {
@@ -94,7 +94,7 @@ class TestResponseValidatorIntegration:
 
     def test_validation_result_structure(self):
         """Test validation result structure"""
-        from services.response.validator import ValidationResult, ZantaraResponseValidator
+        from backend.services.response.validator import ValidationResult, ZantaraResponseValidator
 
         config = {"modes": {"default": {}}}
         validator = ZantaraResponseValidator(mode_config=config, dry_run=False)

@@ -22,7 +22,7 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "test_key")
     monkeypatch.setenv("GOOGLE_CREDENTIALS_JSON", "{}")
 
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = "postgresql://user:pass@localhost:5432/db"
         mock_settings.google_api_key = "test_key"
         mock_settings.google_credentials_json = "{}"
@@ -36,9 +36,9 @@ def mock_env(monkeypatch):
 async def test_initialize_plugins_success():
     """Test initialize_plugins successfully discovers plugins"""
     print("DEBUG: Running test_initialize_plugins_success with PATCHED code")
-    if "app.main_cloud" in sys.modules:
-        del sys.modules["app.main_cloud"]
-    from app.main_cloud import initialize_plugins
+    if "backend.app.main_cloud" in sys.modules:
+        del sys.modules["backend.app.main_cloud"]
+    from backend.app.main_cloud import initialize_plugins
 
     # Mock app state
     mock_app = MagicMock()
@@ -49,7 +49,7 @@ async def test_initialize_plugins_success():
     mock_registry.discover_plugins = AsyncMock(return_value={"discovered": 3, "errors": []})
     mock_registry.get_statistics = MagicMock(return_value={"total_plugins": 3, "categories": 2})
 
-    with patch("core.plugins.registry", mock_registry):
+    with patch("backend.core.plugins.registry", mock_registry):
         await initialize_plugins(mock_app)
 
         # Verify discovery was called
@@ -62,7 +62,7 @@ async def test_initialize_plugins_success():
 @pytest.mark.asyncio
 async def test_initialize_plugins_handles_errors():
     """Test initialize_plugins handles errors gracefully"""
-    from app.main_cloud import initialize_plugins
+    from backend.app.main_cloud import initialize_plugins
 
     # Mock app state
     mock_app = MagicMock()
@@ -72,7 +72,7 @@ async def test_initialize_plugins_handles_errors():
     mock_registry = MagicMock()
     mock_registry.discover_plugins = AsyncMock(side_effect=Exception("Discovery failed"))
 
-    with patch("core.plugins.registry", mock_registry):
+    with patch("backend.core.plugins.registry", mock_registry):
         # Should not raise
         await initialize_plugins(mock_app)
 
@@ -83,7 +83,7 @@ async def test_initialize_plugins_handles_errors():
 @pytest.mark.asyncio
 async def test_initialize_plugins_finds_plugins_directory():
     """Test initialize_plugins finds correct plugins directory"""
-    from app.main_cloud import initialize_plugins
+    from backend.app.main_cloud import initialize_plugins
 
     # Mock app state
     mock_app = MagicMock()
@@ -94,7 +94,7 @@ async def test_initialize_plugins_finds_plugins_directory():
     mock_registry.discover_plugins = AsyncMock(return_value={"discovered": 0, "errors": []})
     mock_registry.get_statistics = MagicMock(return_value={"total_plugins": 0, "categories": 0})
 
-    with patch("core.plugins.registry", mock_registry):
+    with patch("backend.core.plugins.registry", mock_registry):
         await initialize_plugins(mock_app)
 
         # Verify discover_plugins was called with correct path

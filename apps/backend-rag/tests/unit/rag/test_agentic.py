@@ -16,20 +16,20 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic import (
+from backend.services.rag.agentic import (
     AgenticRAGOrchestrator,
     CalculatorTool,
     VectorSearchTool,
 )
-from services.rag.agentic.prompt_builder import SystemPromptBuilder
-from services.rag.agentic.response_processor import post_process_response
-from services.rag.agentic.tool_executor import parse_tool_call_regex
-from services.response.cleaner import clean_response, is_out_of_domain
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.response_processor import post_process_response
+from backend.services.rag.agentic.tool_executor import parse_tool_call_regex
+from backend.services.response.cleaner import clean_response, is_out_of_domain
 
 
 @pytest.fixture
 def mock_genai_client():
-    """Mock GenAIClient from llm.genai_client with proper async chain"""
+    """Mock GenAIClient from backend.llm.genai_client with proper async chain"""
     mock_client = MagicMock()
     mock_client.is_available = True
 
@@ -52,11 +52,11 @@ def mock_genai_client():
 def orchestrator(mock_genai_client):
     """Create AgenticRAGOrchestrator with mocked GenAI client"""
     # Patch the correct module paths - GENAI_AVAILABLE is in llm_gateway
-    with patch("services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
+    with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
         with patch(
-            "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+            "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
         ):
-            with patch("services.rag.agentic.orchestrator.settings") as mock_settings:
+            with patch("backend.services.rag.agentic.orchestrator.settings") as mock_settings:
                 mock_settings.google_api_key = "test-api-key"
                 orch = AgenticRAGOrchestrator(tools=[CalculatorTool()])
                 return orch
@@ -410,7 +410,7 @@ def test_post_process_response_whitespace():
 
 def test_format_as_numbered_list_insufficient_sentences():
     """Test that _format_as_numbered_list returns original text if not enough actionable sentences"""
-    from services.rag.agentic.response_processor import _format_as_numbered_list
+    from backend.services.rag.agentic.response_processor import _format_as_numbered_list
 
     # Text with only one actionable sentence (needs at least 2)
     text = "Prepara i documenti necessari. Questo è solo un esempio."
@@ -421,7 +421,7 @@ def test_format_as_numbered_list_insufficient_sentences():
 
 def test_format_as_numbered_list_short_sentences():
     """Test that _format_as_numbered_list filters out sentences that are too short"""
-    from services.rag.agentic.response_processor import _format_as_numbered_list
+    from backend.services.rag.agentic.response_processor import _format_as_numbered_list
 
     # Text with short sentences (less than 20 chars)
     text = "Prepara. Trova. Applica."
@@ -432,7 +432,7 @@ def test_format_as_numbered_list_short_sentences():
 
 def test_format_as_numbered_list_english():
     """Test that _format_as_numbered_list works with English"""
-    from services.rag.agentic.response_processor import _format_as_numbered_list
+    from backend.services.rag.agentic.response_processor import _format_as_numbered_list
 
     text = "Prepare the necessary documents for your application. Find a local sponsor who can support you. Apply online at the official government website."
     result = _format_as_numbered_list(text, "en")
@@ -442,7 +442,7 @@ def test_format_as_numbered_list_english():
 
 def test_format_as_numbered_list_indonesian():
     """Test that _format_as_numbered_list works with Indonesian"""
-    from services.rag.agentic.response_processor import _format_as_numbered_list
+    from backend.services.rag.agentic.response_processor import _format_as_numbered_list
 
     text = "Siapkan dokumen yang diperlukan untuk aplikasi Anda. Cari sponsor lokal yang dapat mendukung Anda. Ajukan online di situs resmi pemerintah."
     result = _format_as_numbered_list(text, "id")
@@ -452,7 +452,7 @@ def test_format_as_numbered_list_indonesian():
 
 def test_format_as_numbered_list_unknown_language():
     """Test that _format_as_numbered_list defaults to English for unknown languages"""
-    from services.rag.agentic.response_processor import _format_as_numbered_list
+    from backend.services.rag.agentic.response_processor import _format_as_numbered_list
 
     text = "Prepare the documents. Find a sponsor. Apply online."
     result = _format_as_numbered_list(text, "fr")  # Unknown language
@@ -462,7 +462,7 @@ def test_format_as_numbered_list_unknown_language():
 
 def test_has_numbered_list_false():
     """Test that _has_numbered_list returns False when no numbered list exists"""
-    from services.rag.agentic.response_processor import _has_numbered_list
+    from backend.services.rag.agentic.response_processor import _has_numbered_list
 
     text = "This is a regular paragraph without any numbered items."
     assert _has_numbered_list(text) is False
@@ -470,7 +470,7 @@ def test_has_numbered_list_false():
 
 def test_has_numbered_list_with_parentheses():
     """Test that _has_numbered_list detects numbered lists with parentheses"""
-    from services.rag.agentic.response_processor import _has_numbered_list
+    from backend.services.rag.agentic.response_processor import _has_numbered_list
 
     text = "1) First item\n2) Second item"
     assert _has_numbered_list(text) is True
@@ -478,7 +478,7 @@ def test_has_numbered_list_with_parentheses():
 
 def test_has_emotional_acknowledgment_false():
     """Test that _has_emotional_acknowledgment returns False when no acknowledgment exists"""
-    from services.rag.agentic.response_processor import _has_emotional_acknowledgment
+    from backend.services.rag.agentic.response_processor import _has_emotional_acknowledgment
 
     text = "This is a regular response without emotional acknowledgment."
     assert _has_emotional_acknowledgment(text, "en") is False
@@ -486,7 +486,7 @@ def test_has_emotional_acknowledgment_false():
 
 def test_has_emotional_acknowledgment_english():
     """Test that _has_emotional_acknowledgment detects English acknowledgments"""
-    from services.rag.agentic.response_processor import _has_emotional_acknowledgment
+    from backend.services.rag.agentic.response_processor import _has_emotional_acknowledgment
 
     text = "I understand the frustration, but don't worry - here's the solution."
     assert _has_emotional_acknowledgment(text, "en") is True
@@ -494,7 +494,7 @@ def test_has_emotional_acknowledgment_english():
 
 def test_has_emotional_acknowledgment_indonesian():
     """Test that _has_emotional_acknowledgment detects Indonesian acknowledgments"""
-    from services.rag.agentic.response_processor import _has_emotional_acknowledgment
+    from backend.services.rag.agentic.response_processor import _has_emotional_acknowledgment
 
     text = "Saya mengerti frustrasinya, tapi tenang - ada solusinya."
     assert _has_emotional_acknowledgment(text, "id") is True
@@ -502,7 +502,7 @@ def test_has_emotional_acknowledgment_indonesian():
 
 def test_add_emotional_acknowledgment_already_present():
     """Test that _add_emotional_acknowledgment doesn't add if already present"""
-    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+    from backend.services.rag.agentic.response_processor import _add_emotional_acknowledgment
 
     text = "Capisco la frustrazione, ma tranquillo - quasi ogni situazione ha una soluzione. Ecco la risposta."
     result = _add_emotional_acknowledgment(text, "it")
@@ -512,7 +512,7 @@ def test_add_emotional_acknowledgment_already_present():
 
 def test_add_emotional_acknowledgment_english():
     """Test that _add_emotional_acknowledgment adds English acknowledgment"""
-    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+    from backend.services.rag.agentic.response_processor import _add_emotional_acknowledgment
 
     text = "You can appeal the decision."
     result = _add_emotional_acknowledgment(text, "en")
@@ -522,7 +522,7 @@ def test_add_emotional_acknowledgment_english():
 
 def test_add_emotional_acknowledgment_indonesian():
     """Test that _add_emotional_acknowledgment adds Indonesian acknowledgment"""
-    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+    from backend.services.rag.agentic.response_processor import _add_emotional_acknowledgment
 
     text = "Anda bisa banding."
     result = _add_emotional_acknowledgment(text, "id")
@@ -532,7 +532,7 @@ def test_add_emotional_acknowledgment_indonesian():
 
 def test_add_emotional_acknowledgment_unknown_language():
     """Test that _add_emotional_acknowledgment defaults to Italian for unknown languages"""
-    from services.rag.agentic.response_processor import _add_emotional_acknowledgment
+    from backend.services.rag.agentic.response_processor import _add_emotional_acknowledgment
 
     text = "Test response"
     result = _add_emotional_acknowledgment(text, "fr")  # Unknown language

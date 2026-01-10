@@ -2,9 +2,10 @@ import os
 import sys
 from pathlib import Path
 
-# Add backend directory to sys.path to simulate running from backend root
-backend_path = Path(__file__).parents[3] / "backend"
-sys.path.insert(0, str(backend_path))
+# Add backend directory to sys.path
+backend_root = Path(__file__).parents[2]
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
 
 # Set env vars before importing app
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_db"
@@ -18,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main_cloud import app
+from backend.app.main_cloud import app
 
 # Create a TestClient
 client = TestClient(app)
@@ -46,11 +47,11 @@ def mock_app_state():
 async def test_app_startup():
     """Test application startup and service initialization."""
     # Import here to avoid import-time env validation issues
-    from app.setup.service_initializer import initialize_services
+    from backend.app.setup.service_initializer import initialize_services
 
-    with patch("app.setup.service_initializer.service_registry") as mock_registry:
-        with patch("app.setup.service_initializer.ZantaraAIClient") as MockAI:
-            with patch("app.setup.service_initializer.SearchService") as MockSearch:
+    with patch("backend.app.setup.service_initializer.service_registry") as mock_registry:
+        with patch("backend.app.setup.service_initializer.ZantaraAIClient") as MockAI:
+            with patch("backend.app.setup.service_initializer.SearchService") as MockSearch:
                 # Mock successful initialization
                 mock_registry.has_critical_failures.return_value = False
 
@@ -84,7 +85,7 @@ async def test_chat_stream_endpoint_success(mock_app_state):
     mock_app_state.intelligent_router.stream_chat = mock_stream
 
     # Mock API Key validation to pass middleware
-    with patch("app.services.api_key_auth.APIKeyAuth.validate_api_key") as mock_validate:
+    with patch("backend.app.services.api_key_auth.APIKeyAuth.validate_api_key") as mock_validate:
         mock_validate.return_value = {
             "id": "user123",
             "email": "test@example.com",
@@ -108,7 +109,7 @@ async def test_chat_stream_endpoint_no_query():
     headers = {"X-API-Key": "test-key"}
 
     # Mock API Key validation
-    with patch("app.services.api_key_auth.APIKeyAuth.validate_api_key") as mock_validate:
+    with patch("backend.app.services.api_key_auth.APIKeyAuth.validate_api_key") as mock_validate:
         mock_validate.return_value = {
             "id": "user123",
             "email": "test@example.com",

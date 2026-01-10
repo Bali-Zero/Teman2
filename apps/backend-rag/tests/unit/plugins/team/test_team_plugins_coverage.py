@@ -4,8 +4,8 @@ import types
 import pytest
 
 services_module = types.ModuleType("services")
-crm_module = types.ModuleType("services.crm")
-collab_module = types.ModuleType("services.crm.collaborator_service")
+crm_module = types.ModuleType("backend.services.crm")
+collab_module = types.ModuleType("backend.services.crm.collaborator_service")
 
 
 class CollaboratorService:
@@ -14,11 +14,11 @@ class CollaboratorService:
 
 collab_module.CollaboratorService = CollaboratorService
 sys.modules.setdefault("services", services_module)
-sys.modules.setdefault("services.crm", crm_module)
-sys.modules.setdefault("services.crm.collaborator_service", collab_module)
+sys.modules.setdefault("backend.services.crm", crm_module)
+sys.modules.setdefault("backend.services.crm.collaborator_service", collab_module)
 
-from plugins.team.list_members_plugin import TeamListInput, TeamMembersListPlugin
-from plugins.team.search_member_plugin import TeamMemberSearchPlugin, TeamSearchInput
+from backend.plugins.team.list_members_plugin import TeamListInput, TeamMembersListPlugin
+from backend.plugins.team.search_member_plugin import TeamMemberSearchPlugin, TeamSearchInput
 
 
 class DummyProfile:

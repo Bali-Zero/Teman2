@@ -30,7 +30,7 @@ class TestEveryParameterCombination:
 
     def test_crm_clients_all_filter_combinations(self, authenticated_client, test_app):
         """Test all possible filter combinations for CRM clients"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -70,7 +70,7 @@ class TestEveryParameterCombination:
 
     def test_practices_all_status_priority_combinations(self, authenticated_client, test_app):
         """Test all status and priority combinations for practices"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -103,7 +103,7 @@ class TestEveryParameterCombination:
 
     def test_interactions_all_type_channel_combinations(self, authenticated_client, test_app):
         """Test all interaction type and channel combinations"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -158,7 +158,7 @@ class TestCrossEndpointWorkflows:
 
     def test_complete_client_practice_interaction_workflow(self, authenticated_client, test_app):
         """Test complete workflow: client -> practice -> interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -213,7 +213,7 @@ class TestCrossEndpointWorkflows:
 
     def test_conversation_to_crm_workflow(self, authenticated_client, test_app):
         """Test workflow: conversation -> CRM auto-population"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -319,7 +319,7 @@ class TestMultiStepComplexWorkflows:
 
     def test_practice_lifecycle_with_all_steps(self, authenticated_client, test_app):
         """Test complete practice lifecycle with all possible steps"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 

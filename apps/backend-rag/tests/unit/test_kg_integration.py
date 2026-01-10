@@ -31,7 +31,7 @@ class TestKnowledgeGraphRepositoryMethods:
     @pytest.mark.asyncio
     async def test_get_user_related_entities_with_function(self, mock_pool):
         """Test get_user_related_entities using kg_nodes table (Dec 2025 unified schema)"""
-        from agents.services.kg_repository import KnowledgeGraphRepository
+        from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
         # Mock kg_nodes query results (SQL uses "entity_type as type" alias)
@@ -65,7 +65,7 @@ class TestKnowledgeGraphRepositoryMethods:
     @pytest.mark.asyncio
     async def test_get_user_related_entities_fallback(self, mock_pool):
         """Test get_user_related_entities with kg_nodes table (Dec 2025 unified schema)"""
-        from agents.services.kg_repository import KnowledgeGraphRepository
+        from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
         # Mock kg_nodes query results (no function needed anymore)
@@ -90,7 +90,7 @@ class TestKnowledgeGraphRepositoryMethods:
     @pytest.mark.asyncio
     async def test_get_user_related_entities_empty(self, mock_pool):
         """Test get_user_related_entities returns empty list on error"""
-        from agents.services.kg_repository import KnowledgeGraphRepository
+        from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
         conn.fetchval = AsyncMock(side_effect=Exception("DB error"))
@@ -103,7 +103,7 @@ class TestKnowledgeGraphRepositoryMethods:
     @pytest.mark.asyncio
     async def test_get_entity_context_for_query(self, mock_pool):
         """Test get_entity_context_for_query finds relevant entities (Dec 2025 unified schema)"""
-        from agents.services.kg_repository import KnowledgeGraphRepository
+        from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
         # Mock kg_nodes + kg_edges join results
@@ -133,7 +133,7 @@ class TestKnowledgeGraphRepositoryMethods:
     @pytest.mark.asyncio
     async def test_get_entity_context_for_query_empty(self, mock_pool):
         """Test get_entity_context_for_query returns empty on error"""
-        from agents.services.kg_repository import KnowledgeGraphRepository
+        from backend.agents.services.kg_repository import KnowledgeGraphRepository
 
         pool, conn = mock_pool
         conn.fetch = AsyncMock(side_effect=Exception("DB error"))
@@ -149,7 +149,7 @@ class TestMemoryContextWithKGEntities:
 
     def test_memory_context_includes_kg_entities(self):
         """Test MemoryContext includes kg_entities field"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@example.com",
@@ -164,7 +164,7 @@ class TestMemoryContextWithKGEntities:
 
     def test_memory_context_is_empty_with_only_kg_entities(self):
         """Test is_empty considers kg_entities"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@example.com",
@@ -175,7 +175,7 @@ class TestMemoryContextWithKGEntities:
 
     def test_memory_context_to_system_prompt_includes_kg(self):
         """Test to_system_prompt includes KG entities section"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@example.com",
@@ -194,7 +194,7 @@ class TestMemoryContextWithKGEntities:
 
     def test_memory_context_to_system_prompt_limits_entities(self):
         """Test to_system_prompt limits entities to 5"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         entities = [{"type": f"type_{i}", "name": f"Entity {i}"} for i in range(10)]
 
@@ -229,7 +229,7 @@ class TestMemoryOrchestratorKGIntegration:
     @pytest.mark.asyncio
     async def test_orchestrator_initializes_kg_repository(self, mock_pool):
         """Test MemoryOrchestrator initializes KG repository"""
-        from services.memory.orchestrator import MemoryOrchestrator
+        from backend.services.memory.orchestrator import MemoryOrchestrator
 
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
         await orchestrator.initialize()
@@ -239,7 +239,7 @@ class TestMemoryOrchestratorKGIntegration:
     @pytest.mark.asyncio
     async def test_get_user_context_includes_kg_entities(self, mock_pool):
         """Test get_user_context retrieves KG entities when query provided"""
-        from services.memory.orchestrator import MemoryOrchestrator
+        from backend.services.memory.orchestrator import MemoryOrchestrator
 
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
         await orchestrator.initialize()
@@ -271,7 +271,7 @@ class TestMemoryOrchestratorKGIntegration:
     @pytest.mark.asyncio
     async def test_get_user_context_no_kg_without_query(self, mock_pool):
         """Test get_user_context doesn't fetch KG entities without query"""
-        from services.memory.orchestrator import MemoryOrchestrator
+        from backend.services.memory.orchestrator import MemoryOrchestrator
 
         orchestrator = MemoryOrchestrator(db_pool=mock_pool)
         await orchestrator.initialize()
@@ -307,8 +307,8 @@ class TestContextManagerKGIntegration:
     @pytest.mark.asyncio
     async def test_get_user_context_includes_kg_in_result(self):
         """Test get_user_context includes kg_entities in returned dict"""
-        from services.memory.models import MemoryContext
-        from services.rag.agentic.context_manager import get_user_context
+        from backend.services.memory.models import MemoryContext
+        from backend.services.rag.agentic.context_manager import get_user_context
 
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
@@ -341,8 +341,8 @@ class TestContextManagerKGIntegration:
     @pytest.mark.asyncio
     async def test_get_user_context_includes_timeline_summary(self):
         """Test get_user_context includes timeline_summary"""
-        from services.memory.models import MemoryContext
-        from services.rag.agentic.context_manager import get_user_context
+        from backend.services.memory.models import MemoryContext
+        from backend.services.rag.agentic.context_manager import get_user_context
 
         mock_pool = MagicMock()
         mock_conn = AsyncMock()
@@ -372,8 +372,8 @@ class TestContextManagerKGIntegration:
     @pytest.mark.asyncio
     async def test_get_user_context_includes_memory_context_object(self):
         """Test get_user_context includes full memory_context object"""
-        from services.memory.models import MemoryContext
-        from services.rag.agentic.context_manager import get_user_context
+        from backend.services.memory.models import MemoryContext
+        from backend.services.rag.agentic.context_manager import get_user_context
 
         mock_pool = MagicMock()
         mock_conn = AsyncMock()

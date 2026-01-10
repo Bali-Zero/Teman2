@@ -73,39 +73,39 @@ def _load_module(monkeypatch, invite_service=None, email_service=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.core.config",
+        "backend.app.core.config",
         types.SimpleNamespace(settings=types.SimpleNamespace(frontend_url="https://front", redis_url='redis://localhost:6379')),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.dependencies",
+        "backend.app.dependencies",
         types.SimpleNamespace(get_current_user=get_current_user, get_database_pool=get_database_pool
         , redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.logging_utils",
+        "backend.app.utils.logging_utils",
         types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.portal",
+        "backend.services.portal",
         types.SimpleNamespace(InviteService=invite_service, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.integrations.zoho_email_service",
+        "backend.services.integrations.zoho_email_service",
         types.SimpleNamespace(ZohoEmailService=email_service, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.portal_invite"
+    module_name = "backend.app.routers.portal_invite"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

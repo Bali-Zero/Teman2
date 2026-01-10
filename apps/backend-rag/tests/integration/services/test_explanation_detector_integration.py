@@ -23,7 +23,7 @@ class TestExplanationDetectorIntegration:
 
     def test_detect_explanation_level_simple(self):
         """Test detecting simple explanation level"""
-        from services.communication import detect_explanation_level
+        from backend.services.communication import detect_explanation_level
 
         assert detect_explanation_level("Spiegami in modo semplice") == "simple"
         assert detect_explanation_level("Explain it simply") == "simple"
@@ -33,7 +33,7 @@ class TestExplanationDetectorIntegration:
 
     def test_detect_explanation_level_expert(self):
         """Test detecting expert explanation level"""
-        from services.communication import detect_explanation_level
+        from backend.services.communication import detect_explanation_level
 
         assert detect_explanation_level("Spiegazione tecnica dettagliata") == "expert"
         assert detect_explanation_level("Expert explanation with regulations") == "expert"
@@ -41,14 +41,14 @@ class TestExplanationDetectorIntegration:
 
     def test_detect_explanation_level_standard(self):
         """Test detecting standard explanation level"""
-        from services.communication import detect_explanation_level
+        from backend.services.communication import detect_explanation_level
 
         assert detect_explanation_level("What is PT PMA?") == "standard"
         assert detect_explanation_level("Come ottenere un visto?") == "standard"
 
     def test_needs_alternatives_format(self):
         """Test detecting alternatives request"""
-        from services.communication import needs_alternatives_format
+        from backend.services.communication import needs_alternatives_format
 
         assert needs_alternatives_format("Quali sono le alternative?") is True
         assert needs_alternatives_format("What are the other options?") is True
@@ -57,7 +57,7 @@ class TestExplanationDetectorIntegration:
 
     def test_build_explanation_instructions_simple(self):
         """Test building simple explanation instructions"""
-        from services.communication import build_explanation_instructions
+        from backend.services.communication import build_explanation_instructions
 
         instruction = build_explanation_instructions("simple")
 
@@ -67,7 +67,7 @@ class TestExplanationDetectorIntegration:
 
     def test_build_explanation_instructions_expert(self):
         """Test building expert explanation instructions"""
-        from services.communication import build_explanation_instructions
+        from backend.services.communication import build_explanation_instructions
 
         instruction = build_explanation_instructions("expert")
 
@@ -77,7 +77,7 @@ class TestExplanationDetectorIntegration:
 
     def test_build_explanation_instructions_standard(self):
         """Test building standard explanation instructions"""
-        from services.communication import build_explanation_instructions
+        from backend.services.communication import build_explanation_instructions
 
         instruction = build_explanation_instructions("standard")
 
@@ -86,7 +86,7 @@ class TestExplanationDetectorIntegration:
 
     def test_build_alternatives_instructions(self):
         """Test building alternatives instructions"""
-        from services.communication import build_alternatives_instructions
+        from backend.services.communication import build_alternatives_instructions
 
         instruction = build_alternatives_instructions()
 

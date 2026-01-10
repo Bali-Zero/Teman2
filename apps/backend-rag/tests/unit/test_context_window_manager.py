@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.context_window_manager import ContextWindowManager
+from backend.services.misc.context_window_manager import ContextWindowManager
 
 # ============================================================================
 # Fixtures
@@ -32,14 +32,14 @@ def mock_zantara_client():
 @pytest.fixture
 def context_manager(mock_zantara_client):
     """Create ContextWindowManager with mocked client"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
         return ContextWindowManager(max_messages=15, summary_threshold=20), mock_zantara_client
 
 
 @pytest.fixture
 def context_manager_no_ai():
     """Create ContextWindowManager without AI client"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("No AI")):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("No AI")):
         return ContextWindowManager()
 
 
@@ -50,7 +50,7 @@ def context_manager_no_ai():
 
 def test_init_with_ai(mock_zantara_client):
     """Test initialization with AI client"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
         manager = ContextWindowManager(max_messages=10, summary_threshold=15)
 
         assert manager.max_messages == 10
@@ -60,7 +60,7 @@ def test_init_with_ai(mock_zantara_client):
 
 def test_init_without_ai():
     """Test initialization without AI client"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("No AI")):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("No AI")):
         manager = ContextWindowManager()
 
         assert manager.zantara_client is None
@@ -68,7 +68,7 @@ def test_init_without_ai():
 
 def test_init_defaults():
     """Test initialization with defaults"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("No AI")):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", side_effect=Exception("No AI")):
         manager = ContextWindowManager()
 
         assert manager.max_messages == 10

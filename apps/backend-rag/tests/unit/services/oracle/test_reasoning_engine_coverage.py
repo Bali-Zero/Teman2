@@ -52,39 +52,39 @@ class DummyValidator:
 
 # Setup mock modules
 services_pkg = types.ModuleType("services")
-oracle_pkg = types.ModuleType("services.oracle")
+oracle_pkg = types.ModuleType("backend.services.oracle")
 oracle_pkg.__path__ = []
-response_pkg = types.ModuleType("services.response")
+response_pkg = types.ModuleType("backend.services.response")
 response_pkg.__path__ = []
-validator_module = types.ModuleType("services.response.validator")
+validator_module = types.ModuleType("backend.services.response.validator")
 validator_module.ZantaraResponseValidator = DummyValidator
 
-google_services_module = types.ModuleType("services.oracle.oracle_google_services")
+google_services_module = types.ModuleType("backend.services.oracle.oracle_google_services")
 google_services_module.google_services = SimpleNamespace(get_gemini_model=lambda *_a, **_k: None, redis_url='redis://localhost:6379')
 
 llm_pkg = types.ModuleType("llm")
-llm_adapters_pkg = types.ModuleType("llm.adapters")
+llm_adapters_pkg = types.ModuleType("backend.llm.adapters")
 llm_adapters_pkg.__path__ = []
-gemini_module = types.ModuleType("llm.adapters.gemini")
+gemini_module = types.ModuleType("backend.llm.adapters.gemini")
 gemini_module.GeminiAdapter = object
 
 prompts_pkg = types.ModuleType("prompts")
-prompt_builder_module = types.ModuleType("prompts.zantara_prompt_builder")
+prompt_builder_module = types.ModuleType("backend.prompts.zantara_prompt_builder")
 prompt_builder_module.PromptContext = DummyPromptContext
 prompt_builder_module.ZantaraPromptBuilder = DummyPromptBuilder
 
 sys.modules.update(
     {
         "services": services_pkg,
-        "services.oracle": oracle_pkg,
-        "services.response": response_pkg,
-        "services.response.validator": validator_module,
-        "services.oracle.oracle_google_services": google_services_module,
+        "backend.services.oracle": oracle_pkg,
+        "backend.services.response": response_pkg,
+        "backend.services.response.validator": validator_module,
+        "backend.services.oracle.oracle_google_services": google_services_module,
         "llm": llm_pkg,
-        "llm.adapters": llm_adapters_pkg,
-        "llm.adapters.gemini": gemini_module,
+        "backend.llm.adapters": llm_adapters_pkg,
+        "backend.llm.adapters.gemini": gemini_module,
         "prompts": prompts_pkg,
-        "prompts.zantara_prompt_builder": prompt_builder_module,
+        "backend.prompts.zantara_prompt_builder": prompt_builder_module,
     }
 )
 
@@ -92,7 +92,7 @@ sys.modules.update(
 module_path = (
     Path(__file__).resolve().parents[4] / "backend" / "services" / "oracle" / "reasoning_engine.py"
 )
-spec = importlib.util.spec_from_file_location("services.oracle.reasoning_engine", module_path)
+spec = importlib.util.spec_from_file_location("backend.services.oracle.reasoning_engine", module_path)
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)

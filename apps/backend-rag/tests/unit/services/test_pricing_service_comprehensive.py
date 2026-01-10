@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from services.pricing.pricing_service import (
+from backend.services.pricing.pricing_service import (
     PricingService,
     get_all_prices,
     get_pricing_service,
@@ -216,14 +216,14 @@ class TestPricingService:
 
     def test_get_pricing_service_singleton(self):
         """Test get_pricing_service returns singleton"""
-        with patch("services.pricing.pricing_service._pricing_service", None):
+        with patch("backend.services.pricing.pricing_service._pricing_service", None):
             service1 = get_pricing_service()
             service2 = get_pricing_service()
             assert service1 is service2
 
     def test_convenience_functions(self, sample_prices_data):
         """Test convenience functions"""
-        with patch("services.pricing.pricing_service.get_pricing_service") as mock_get:
+        with patch("backend.services.pricing.pricing_service.get_pricing_service") as mock_get:
             mock_service = MagicMock()
             mock_service.get_all_prices.return_value = sample_prices_data
             mock_get.return_value = mock_service

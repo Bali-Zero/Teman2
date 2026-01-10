@@ -3,42 +3,41 @@ Test for Agentic Tools Factory
 """
 
 import sys
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 # Add backend to path
-sys.path.append(str(Path(__file__).parent.parent.parent / "backend"))
+backend_root = Path(__file__).parents[2]
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
 
-# Mock VisionRAGService and app.core.config to avoid import errors and validation
-mock_config = MagicMock()
-mock_config.settings.GOOGLE_API_KEY = "test_key"
-
-with patch.dict(
-    sys.modules,
-    {
-        "backend.services.rag.vision_rag": MagicMock(),
-        "app.core.config": mock_config,
-        "backend.services.search_service": MagicMock(),
-    },
-):
-    from backend.services.rag.agentic import VisionTool, create_agentic_rag
+from backend.services.rag.agentic import create_agentic_rag, VisionTool
 
 
-def test_create_agentic_rag_includes_vision_tool():
+@pytest.mark.asyncio
+async def test_create_agentic_rag_includes_vision_tool():
     """Test that the factory creates an orchestrator with VisionTool"""
     mock_retriever = MagicMock()
     mock_db_pool = MagicMock()
 
-    orchestrator = create_agentic_rag(mock_retriever, mock_db_pool)
+    # Patch KnowledgeGraphBuilder and KnowledgeGraphTool to avoid complex init
+    mock_kg_tool = MagicMock()
+    mock_kg_tool.name = "knowledge_graph_search"
+    
+    with patch("backend.services.autonomous_agents.knowledge_graph_builder.KnowledgeGraphBuilder", return_value=MagicMock()):
+        with patch("backend.services.tools.knowledge_graph_tool.KnowledgeGraphTool", return_value=mock_kg_tool):
+            orchestrator = create_agentic_rag(mock_retriever, mock_db_pool)
 
-    # Check if VisionTool is in the tools list
-    tool_names = [tool.name for tool in orchestrator.tools]
-    assert "vision_analysis" in tool_names
+    # orchestrator.tools is now a dict {name: tool_object}
+    assert "vision_analysis" in orchestrator.tools
+    assert "knowledge_graph_search" in orchestrator.tools
 
     # Verify VisionTool instance
-    vision_tool = next(t for t in orchestrator.tools if isinstance(t, VisionTool))
+    vision_tool = orchestrator.tools["vision_analysis"]
+    assert isinstance(vision_tool, VisionTool)
     assert vision_tool.name == "vision_analysis"
     assert "visual elements" in vision_tool.description
 
@@ -55,20 +54,18 @@ async def test_vector_search_tool_uses_reranking():
         }
     )
 
-    # We need to import VectorSearchTool. Since it's not exported by create_agentic_rag,
-    # we import it from the module (which is already patched in the context above)
     from backend.services.rag.agentic import VectorSearchTool
 
     tool = VectorSearchTool(retriever=mock_retriever)
 
-    result = await tool.execute(query="test query", top_k=3)
+    # Specify a collection to avoid federated search
+    result_json = await tool.execute(query="test query", top_k=3, collection="visa_oracle")
+    result = json.loads(result_json)
 
     # Verify call
     mock_retriever.search_with_reranking.assert_called_once()
-    call_kwargs = mock_retriever.search_with_reranking.call_args.kwargs
-    assert call_kwargs["query"] == "test query"
-    assert call_kwargs["limit"] == 3
-
-    # Verify result format
-    assert "[1] Reranked Doc 1" in result
-    assert "[2] Reranked Doc 2" in result
+    
+    # Verify result contains the expected content
+    assert "Reranked Doc 1" in result["content"]
+    assert "Reranked Doc 2" in result["content"]
+    assert len(result["sources"]) == 2

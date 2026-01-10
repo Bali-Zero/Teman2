@@ -55,7 +55,7 @@ class TestFeedbackP1Endpoints:
         # Mock database responses
         conn.fetchval = AsyncMock(return_value=rating_id)
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -94,7 +94,7 @@ class TestFeedbackP1Endpoints:
         # Mock database responses - first call returns rating_id, second returns review_queue_id
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -134,7 +134,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -174,7 +174,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -214,7 +214,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchval = AsyncMock(return_value=rating_id)
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -252,7 +252,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchval = AsyncMock(return_value=rating_id)
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -341,7 +341,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -367,7 +367,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchrow = AsyncMock(return_value=None)
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -396,7 +396,7 @@ class TestFeedbackP1Endpoints:
         conn.fetchrow = AsyncMock(return_value=mock_stats)
         conn.fetchval = AsyncMock(return_value=3)  # low_ratings_count
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -419,7 +419,7 @@ class TestFeedbackP1Endpoints:
 
     def test_submit_feedback_database_unavailable(self, authenticated_client):
         """Test POST /api/v2/feedback - database not available"""
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = None
@@ -453,7 +453,7 @@ class TestFeedbackP1Endpoints:
         pool, conn = mock_db_pool
         conn.fetchval = AsyncMock(side_effect=asyncpg.PostgresError("Database error"))
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -482,7 +482,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchval = AsyncMock(return_value=rating_id)
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool
@@ -519,7 +519,7 @@ class TestFeedbackP1Endpoints:
 
         conn.fetchval = AsyncMock(side_effect=[rating_id, review_queue_id])
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
         original_pool = getattr(app.state, "db_pool", None)
         app.state.db_pool = pool

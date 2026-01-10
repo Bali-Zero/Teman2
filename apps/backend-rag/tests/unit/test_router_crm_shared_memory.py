@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.crm_shared_memory import (
+from backend.app.routers.crm_shared_memory import (
     get_client_full_context,
     get_team_overview,
     get_upcoming_renewals,

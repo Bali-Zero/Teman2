@@ -66,10 +66,10 @@ class TestPricingServiceIntegration:
         with open(prices_file, "w", encoding="utf-8") as f:
             json.dump(mock_prices_data, f)
 
-        with patch("services.pricing_service.Path") as mock_path:
+        with patch("backend.services.pricing_service.Path") as mock_path:
             mock_path.return_value.parent.parent = tmp_path
 
-            from services.pricing.pricing_service import PricingService
+            from backend.services.pricing.pricing_service import PricingService
 
             service = PricingService()
             return service
@@ -170,10 +170,10 @@ class TestPricingServiceIntegration:
 
     def test_service_not_loaded(self):
         """Test service when prices file not found"""
-        with patch("services.pricing_service.Path") as mock_path:
+        with patch("backend.services.pricing_service.Path") as mock_path:
             mock_path.return_value.parent.parent = Path("/nonexistent")
 
-            from services.pricing.pricing_service import PricingService
+            from backend.services.pricing.pricing_service import PricingService
 
             service = PricingService()
 

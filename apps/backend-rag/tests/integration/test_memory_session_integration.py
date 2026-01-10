@@ -37,7 +37,7 @@ class TestMemorySessionIntegration:
         user_id = "test_user_memory_1"
 
         # Create memory
-        from services.memory.memory_service_postgres import UserMemory
+        from backend.services.memory.memory_service_postgres import UserMemory
 
         memory = UserMemory(
             user_id=user_id,
@@ -113,7 +113,7 @@ class TestMemorySessionIntegration:
             )
 
             # Extract facts (mock extraction)
-            with patch("services.memory_fact_extractor.MemoryFactExtractor") as mock_extractor:
+            with patch("backend.services.memory_fact_extractor.MemoryFactExtractor") as mock_extractor:
                 mock_extractor_instance = MagicMock()
                 mock_extractor_instance.extract_facts = AsyncMock(
                     return_value=[

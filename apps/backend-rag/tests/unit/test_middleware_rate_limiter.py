@@ -40,7 +40,7 @@ def rate_limiter():
 
 def test_init_without_redis():
     """Test RateLimiter initialization without Redis"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = None
         # Create a new instance to test initialization
         limiter = RateLimiter()
@@ -50,7 +50,7 @@ def test_init_without_redis():
 
 def test_init_with_redis(mock_redis_client):
     """Test RateLimiter initialization with Redis"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = "redis://localhost:6379"
         # redis is imported inside __init__, so we patch it at the import location
         with patch("redis.from_url", return_value=mock_redis_client):
@@ -98,7 +98,7 @@ def test_is_allowed_redis_backend(mock_redis_client):
 
     mock_redis_client.pipeline = MagicMock(return_value=mock_pipeline)
 
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.redis_url = "redis://localhost:6379"
         with patch("redis.from_url", return_value=mock_redis_client):
             limiter = RateLimiter()

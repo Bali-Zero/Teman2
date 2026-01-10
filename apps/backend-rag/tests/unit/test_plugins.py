@@ -13,15 +13,15 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.plugins.executor import PluginExecutor
-from core.plugins.plugin import (
+from backend.core.plugins.executor import PluginExecutor
+from backend.core.plugins.plugin import (
     Plugin,
     PluginCategory,
     PluginInput,
     PluginMetadata,
     PluginOutput,
 )
-from core.plugins.registry import PluginRegistry
+from backend.core.plugins.registry import PluginRegistry
 
 # ============================================================================
 # Test Plugin Implementation
@@ -219,7 +219,7 @@ async def test_executor_execute_success():
     plugin = MockTestPlugin()
     registry.get = MagicMock(return_value=plugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         result = await executor.execute("test.plugin", {})
 
         assert result.success is True
@@ -232,7 +232,7 @@ async def test_executor_execute_plugin_not_found():
     registry = MagicMock()
     registry.get = MagicMock(return_value=None)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         result = await executor.execute("nonexistent.plugin", {})
 
         assert result.success is False
@@ -247,7 +247,7 @@ async def test_executor_execute_with_cache():
     plugin = MockTestPlugin()
     registry.get = MagicMock(return_value=plugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         result1 = await executor.execute("test.plugin", {}, use_cache=True)
         result2 = await executor.execute("test.plugin", {}, use_cache=True)
 

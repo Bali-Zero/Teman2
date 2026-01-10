@@ -10,7 +10,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.fallback_messages import FALLBACK_MESSAGES, get_fallback_message
+from backend.llm.fallback_messages import FALLBACK_MESSAGES, get_fallback_message
 
 
 def test_fallback_messages_structure():

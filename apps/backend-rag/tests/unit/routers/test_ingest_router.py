@@ -31,7 +31,7 @@ if str(backend_path) not in sys.path:
 @pytest.fixture
 def app():
     """Create test FastAPI app with ingest router"""
-    from app.routers.ingest import router
+    from backend.app.routers.ingest import router
 
     test_app = FastAPI()
     test_app.include_router(router)
@@ -47,7 +47,7 @@ def client(app):
 @pytest.fixture
 def mock_ingestion_service():
     """Mock IngestionService with successful responses"""
-    with patch("app.routers.ingest.IngestionService") as mock_service_class:
+    with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
         mock_service = AsyncMock()
         mock_service_class.return_value = mock_service
 
@@ -68,7 +68,7 @@ def mock_ingestion_service():
 @pytest.fixture
 def mock_qdrant_client():
     """Mock QdrantClient for stats endpoint"""
-    with patch("app.routers.ingest.QdrantClient") as mock_client_class:
+    with patch("backend.app.routers.ingest.QdrantClient") as mock_client_class:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
@@ -110,9 +110,9 @@ class TestUploadEndpoint:
     def test_upload_pdf_success(self, client, mock_ingestion_service, sample_pdf_content):
         """Test successful PDF upload and ingestion"""
         with (
-            patch("app.routers.ingest.open", mock_open()) as mock_file,
-            patch("app.routers.ingest.os.remove") as mock_remove,
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()) as mock_file,
+            patch("backend.app.routers.ingest.os.remove") as mock_remove,
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             # Mock Path operations
             mock_temp_dir = MagicMock()
@@ -151,9 +151,9 @@ class TestUploadEndpoint:
     def test_upload_epub_success(self, client, mock_ingestion_service):
         """Test successful EPUB upload"""
         with (
-            patch("app.routers.ingest.open", mock_open()) as mock_file,
-            patch("app.routers.ingest.os.remove") as mock_remove,
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()) as mock_file,
+            patch("backend.app.routers.ingest.os.remove") as mock_remove,
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             # Mock Path operations
             mock_temp_dir = MagicMock()
@@ -175,9 +175,9 @@ class TestUploadEndpoint:
     def test_upload_with_tier_override(self, client, mock_ingestion_service, sample_pdf_content):
         """Test upload with manual tier override"""
         with (
-            patch("app.routers.ingest.open", mock_open()),
-            patch("app.routers.ingest.os.remove"),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             # Mock Path operations
             mock_temp_dir = MagicMock()
@@ -217,9 +217,9 @@ class TestUploadEndpoint:
         mock_ingestion_service.ingest_book.side_effect = Exception("Database connection failed")
 
         with (
-            patch("app.routers.ingest.open", mock_open()),
-            patch("app.routers.ingest.os.remove"),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             # Mock Path operations
             mock_temp_dir = MagicMock()
@@ -239,8 +239,8 @@ class TestUploadEndpoint:
     def test_upload_file_write_error(self, client, sample_pdf_content):
         """Test upload when file write fails"""
         with (
-            patch("app.routers.ingest.open", side_effect=IOError("Disk full")),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", side_effect=IOError("Disk full")),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             mock_temp_dir = MagicMock()
             mock_path.return_value = mock_temp_dir
@@ -258,9 +258,9 @@ class TestUploadEndpoint:
         mock_ingestion_service.ingest_book.side_effect = Exception("Processing failed")
 
         with (
-            patch("app.routers.ingest.open", mock_open()) as mock_file,
-            patch("app.routers.ingest.os.remove") as mock_remove,
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()) as mock_file,
+            patch("backend.app.routers.ingest.os.remove") as mock_remove,
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             # Mock Path operations
             mock_temp_dir = MagicMock()
@@ -281,9 +281,9 @@ class TestUploadEndpoint:
     ):
         """Test upload without title and author (should use auto-detection)"""
         with (
-            patch("app.routers.ingest.open", mock_open()),
-            patch("app.routers.ingest.os.remove"),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             mock_temp_dir = MagicMock()
             mock_temp_path = MagicMock()
@@ -311,7 +311,7 @@ class TestFileEndpoint:
 
     def test_ingest_local_file_success(self, client, mock_ingestion_service):
         """Test successful local file ingestion"""
-        with patch("app.routers.ingest.os.path.exists", return_value=True):
+        with patch("backend.app.routers.ingest.os.path.exists", return_value=True):
             request_data = {
                 "file_path": "/data/books/test_book.pdf",
                 "title": "Local Test Book",
@@ -339,7 +339,7 @@ class TestFileEndpoint:
 
     def test_ingest_local_file_minimal_params(self, client, mock_ingestion_service):
         """Test local file ingestion with only required params"""
-        with patch("app.routers.ingest.os.path.exists", return_value=True):
+        with patch("backend.app.routers.ingest.os.path.exists", return_value=True):
             request_data = {"file_path": "/data/books/simple.pdf"}
 
             response = client.post("/api/ingest/file", json=request_data)
@@ -351,7 +351,7 @@ class TestFileEndpoint:
 
     def test_ingest_local_file_not_found(self, client):
         """Test ingestion when file doesn't exist"""
-        with patch("app.routers.ingest.os.path.exists", return_value=False):
+        with patch("backend.app.routers.ingest.os.path.exists", return_value=False):
             request_data = {"file_path": "/data/books/nonexistent.pdf"}
 
             response = client.post("/api/ingest/file", json=request_data)
@@ -363,7 +363,7 @@ class TestFileEndpoint:
         """Test local file ingestion when service fails"""
         mock_ingestion_service.ingest_book.side_effect = Exception("Parsing error")
 
-        with patch("app.routers.ingest.os.path.exists", return_value=True):
+        with patch("backend.app.routers.ingest.os.path.exists", return_value=True):
             request_data = {"file_path": "/data/books/corrupt.pdf"}
 
             response = client.post("/api/ingest/file", json=request_data)
@@ -389,7 +389,7 @@ class TestBatchEndpoint:
 
     def test_batch_ingest_success(self, client, mock_ingestion_service):
         """Test successful batch ingestion of multiple books"""
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             # Mock directory
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
@@ -451,7 +451,7 @@ class TestBatchEndpoint:
         BookIngestionResponse with tier="Unknown" which violates TierLevel enum,
         causing a 500 error. This test documents the current behavior.
         """
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_path_class.return_value = mock_dir
@@ -486,7 +486,7 @@ class TestBatchEndpoint:
 
     def test_batch_ingest_directory_not_found(self, client):
         """Test batch ingestion when directory doesn't exist"""
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = False
             mock_path_class.return_value = mock_dir
@@ -500,7 +500,7 @@ class TestBatchEndpoint:
 
     def test_batch_ingest_no_books_found(self, client):
         """Test batch ingestion when no matching books found"""
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_dir.glob.return_value = []  # No files
@@ -515,7 +515,7 @@ class TestBatchEndpoint:
 
     def test_batch_ingest_default_patterns(self, client, mock_ingestion_service):
         """Test batch ingestion with default file patterns"""
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_path_class.return_value = mock_dir
@@ -547,7 +547,7 @@ class TestBatchEndpoint:
 
     def test_batch_ingest_custom_patterns(self, client, mock_ingestion_service):
         """Test batch ingestion with custom file patterns"""
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_path_class.return_value = mock_dir
@@ -581,7 +581,7 @@ class TestBatchEndpoint:
 
         NOTE: Due to tier="Unknown" validation bug, returns 500
         """
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_path_class.return_value = mock_dir
@@ -612,7 +612,7 @@ class TestBatchEndpoint:
 
         Uses valid tier to avoid validation error
         """
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_path_class.return_value = mock_dir
@@ -644,7 +644,7 @@ class TestBatchEndpoint:
 
     def test_batch_ingest_unexpected_exception(self, client):
         """Test batch ingestion with unexpected exception"""
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_path_class.side_effect = Exception("Unexpected error")
 
             request_data = {"directory_path": "/data/books"}
@@ -735,9 +735,9 @@ class TestIngestRouterIntegration:
         """Test uploading a book and then checking stats"""
         # First upload a book
         with (
-            patch("app.routers.ingest.open", mock_open()),
-            patch("app.routers.ingest.os.remove"),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             mock_temp_dir = MagicMock()
             mock_temp_path = MagicMock()
@@ -756,7 +756,7 @@ class TestIngestRouterIntegration:
 
     def test_multiple_endpoints_share_service(self, client, mock_ingestion_service):
         """Test that multiple endpoints can use the service"""
-        with patch("app.routers.ingest.os.path.exists", return_value=True):
+        with patch("backend.app.routers.ingest.os.path.exists", return_value=True):
             # Call file endpoint
             response1 = client.post("/api/ingest/file", json={"file_path": "/data/book1.pdf"})
             assert response1.status_code == 200
@@ -780,9 +780,9 @@ class TestEdgeCases:
     def test_upload_very_large_filename(self, client, mock_ingestion_service, sample_pdf_content):
         """Test upload with very long filename"""
         with (
-            patch("app.routers.ingest.open", mock_open()),
-            patch("app.routers.ingest.os.remove"),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             mock_temp_dir = MagicMock()
             mock_temp_path = MagicMock()
@@ -803,9 +803,9 @@ class TestEdgeCases:
     ):
         """Test upload with special characters in filename"""
         with (
-            patch("app.routers.ingest.open", mock_open()),
-            patch("app.routers.ingest.os.remove"),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             mock_temp_dir = MagicMock()
             mock_temp_path = MagicMock()
@@ -830,7 +830,7 @@ class TestEdgeCases:
 
     def test_batch_ingest_empty_patterns_list(self, client, mock_ingestion_service):
         """Test batch ingestion with empty patterns list"""
-        with patch("app.routers.ingest.Path") as mock_path_class:
+        with patch("backend.app.routers.ingest.Path") as mock_path_class:
             mock_dir = MagicMock()
             mock_dir.exists.return_value = True
             mock_path_class.return_value = mock_dir
@@ -852,9 +852,9 @@ class TestEdgeCases:
     ):
         """Test upload with uppercase extension"""
         with (
-            patch("app.routers.ingest.open", mock_open()),
-            patch("app.routers.ingest.os.remove"),
-            patch("app.routers.ingest.Path") as mock_path,
+            patch("backend.app.routers.ingest.open", mock_open()),
+            patch("backend.app.routers.ingest.os.remove"),
+            patch("backend.app.routers.ingest.Path") as mock_path,
         ):
             mock_temp_dir = MagicMock()
             mock_temp_path = MagicMock()

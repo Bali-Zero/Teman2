@@ -197,7 +197,7 @@ def test_app():
         return service_mock
 
     for service_name in service_modules_to_mock:
-        service_module_name = f"services.{service_name}"
+        service_module_name = f"backend.services.{service_name}"
         if service_module_name not in sys.modules:
             service_mock = create_service_mock(service_name)
             sys.modules[service_module_name] = service_mock
@@ -206,18 +206,18 @@ def test_app():
             if "." in service_name:
                 parent_name = service_name.split(".")[0]
                 child_name = service_name.split(".")[1]
-                if f"services.{parent_name}" not in sys.modules:
+                if f"backend.services.{parent_name}" not in sys.modules:
                     parent_mock = types.ModuleType(parent_name)
                     parent_mock.__path__ = []
-                    sys.modules[f"services.{parent_name}"] = parent_mock
+                    sys.modules[f"backend.services.{parent_name}"] = parent_mock
                     setattr(sys.modules["services"], parent_name, parent_mock)
-                setattr(sys.modules[f"services.{parent_name}"], child_name, service_mock)
+                setattr(sys.modules[f"backend.services.{parent_name}"], child_name, service_mock)
             else:
                 setattr(sys.modules["services"], service_name, service_mock)
 
         # Special handling for oracle_config - it's imported as a variable
-        if "services.oracle_config" in sys.modules:
-            oracle_config_module = sys.modules["services.oracle_config"]
+        if "backend.services.oracle_config" in sys.modules:
+            oracle_config_module = sys.modules["backend.services.oracle_config"]
             if not hasattr(oracle_config_module, "oracle_config"):
                 config_instance = MagicMock()
                 config_instance.google_api_key = "test_key"
@@ -225,26 +225,26 @@ def test_app():
                 oracle_config_module.oracle_config = config_instance
 
         # Special handling for oracle_database
-        if "services.oracle_database" not in sys.modules:
+        if "backend.services.oracle_database" not in sys.modules:
             oracle_db_mock = types.ModuleType("oracle_database")
             oracle_db_mock.OracleDatabase = MagicMock
             oracle_db_mock.db_manager = MagicMock()  # Instance variable
-            sys.modules["services.oracle_database"] = oracle_db_mock
+            sys.modules["backend.services.oracle_database"] = oracle_db_mock
             sys.modules["services"].oracle_database = oracle_db_mock
 
         # Special handling for oracle_google_services
-        if "services.oracle_google_services" not in sys.modules:
+        if "backend.services.oracle_google_services" not in sys.modules:
             oracle_google_mock = types.ModuleType("oracle_google_services")
             oracle_google_mock.google_services = MagicMock()  # Instance variable
-            sys.modules["services.oracle_google_services"] = oracle_google_mock
+            sys.modules["backend.services.oracle_google_services"] = oracle_google_mock
             sys.modules["services"].oracle_google_services = oracle_google_mock
 
     # Mock GeminiAdapter before importing app to prevent initialization errors
-    with patch("llm.adapters.gemini.GeminiAdapter") as mock_adapter_class:
+    with patch("backend.llm.adapters.gemini.GeminiAdapter") as mock_adapter_class:
         mock_adapter_instance = MagicMock()
         mock_adapter_class.return_value = mock_adapter_instance
 
-        from app.main_cloud import app
+        from backend.app.main_cloud import app
 
     # Clear startup/shutdown handlers to prevent heavy initialization
     app.router.on_startup.clear()

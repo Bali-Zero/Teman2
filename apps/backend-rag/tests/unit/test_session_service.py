@@ -29,9 +29,9 @@ class TestSessionService:
     @pytest.fixture
     def service(self, mock_redis):
         """Create SessionService instance"""
-        with patch("services.misc.session_service.redis.from_url") as mock_from_url:
+        with patch("backend.services.misc.session_service.redis.from_url") as mock_from_url:
             mock_from_url.return_value = mock_redis
-            from services.misc.session_service import SessionService
+            from backend.services.misc.session_service import SessionService
 
             service = SessionService("redis://localhost:6379")
             service.redis = mock_redis
@@ -39,9 +39,9 @@ class TestSessionService:
 
     def test_init_success(self, mock_redis):
         """Test successful initialization"""
-        with patch("services.misc.session_service.redis.from_url") as mock_from_url:
+        with patch("backend.services.misc.session_service.redis.from_url") as mock_from_url:
             mock_from_url.return_value = mock_redis
-            from services.misc.session_service import SessionService
+            from backend.services.misc.session_service import SessionService
 
             service = SessionService("redis://localhost:6379", ttl_hours=48)
 
@@ -49,9 +49,9 @@ class TestSessionService:
 
     def test_init_failure(self):
         """Test initialization failure"""
-        with patch("services.misc.session_service.redis.from_url") as mock_from_url:
+        with patch("backend.services.misc.session_service.redis.from_url") as mock_from_url:
             mock_from_url.side_effect = Exception("Connection failed")
-            from services.misc.session_service import SessionService
+            from backend.services.misc.session_service import SessionService
 
             with pytest.raises(Exception, match="Connection failed"):
                 SessionService("redis://localhost:6379")

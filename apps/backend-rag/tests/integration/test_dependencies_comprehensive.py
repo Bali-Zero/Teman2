@@ -33,7 +33,7 @@ class TestDependencyInjection:
     async def test_get_search_service_dependency(self):
         """Test get_search_service dependency"""
 
-        from app.dependencies import get_search_service
+        from backend.app.dependencies import get_search_service
 
         # Mock request with search_service in state
         mock_request = MagicMock()
@@ -50,7 +50,7 @@ class TestDependencyInjection:
         """Test get_search_service when service is missing"""
         from fastapi import HTTPException
 
-        from app.dependencies import get_search_service
+        from backend.app.dependencies import get_search_service
 
         # Mock request without search_service
         mock_request = MagicMock()
@@ -67,7 +67,7 @@ class TestDependencyInjection:
     async def test_get_ai_client_dependency(self):
         """Test get_ai_client dependency"""
 
-        from app.dependencies import get_ai_client
+        from backend.app.dependencies import get_ai_client
 
         # Mock request with ai_client in state
         mock_request = MagicMock()
@@ -83,7 +83,7 @@ class TestDependencyInjection:
     async def test_get_database_pool_dependency(self):
         """Test get_database_pool dependency"""
 
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         # Mock request with db_pool in state
         mock_request = MagicMock()
@@ -110,7 +110,7 @@ class TestDependencyInjection:
         mock_credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
         # Mock security dependency
-        with patch("app.dependencies.security") as mock_security:
+        with patch("backend.app.dependencies.security") as mock_security:
             mock_security.return_value = mock_credentials
 
             # Get user (would need proper setup)

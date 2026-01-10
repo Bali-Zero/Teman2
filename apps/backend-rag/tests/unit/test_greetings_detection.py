@@ -7,7 +7,7 @@ without triggering RAG/vector_search.
 
 import pytest
 
-from services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
 
 
 class TestGreetingsDetection:

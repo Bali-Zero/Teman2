@@ -32,7 +32,7 @@ class TestDataConsistency:
 
     def test_client_update_preserves_other_fields(self, authenticated_client, test_app):
         """Test updating client preserves fields not in update"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate existing client
             mock_conn.fetchrow = AsyncMock(
@@ -56,7 +56,7 @@ class TestDataConsistency:
 
     def test_practice_status_transitions(self, authenticated_client, test_app):
         """Test practice status transition validity"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "status": "inquiry"})
             mock_get_pool.return_value = mock_pool
@@ -100,7 +100,7 @@ class TestRaceConditions:
         results = []
 
         def create_client():
-            with patch("app.dependencies.get_database_pool") as mock_get_pool:
+            with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
                 mock_pool, mock_conn = self._create_mock_db_pool()
                 mock_get_pool.return_value = mock_pool
 
@@ -132,7 +132,7 @@ class TestRaceConditions:
         results = []
 
         def update_practice(practice_id):
-            with patch("app.dependencies.get_database_pool") as mock_get_pool:
+            with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
                 mock_pool, mock_conn = self._create_mock_db_pool()
                 mock_conn.fetchrow = AsyncMock(return_value={"id": practice_id})
                 mock_get_pool.return_value = mock_pool
@@ -181,7 +181,7 @@ class TestStateManagement:
         """Test session consistency across requests"""
         session_id = "test_session_123"
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -197,7 +197,7 @@ class TestStateManagement:
 
     def test_cache_invalidation(self, authenticated_client, test_app):
         """Test cache invalidation scenarios"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -242,7 +242,7 @@ class TestCommonFailurePatterns:
 
     def test_null_handling(self, authenticated_client, test_app):
         """Test null value handling"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate null values from database
             mock_conn.fetchrow = AsyncMock(
@@ -262,7 +262,7 @@ class TestCommonFailurePatterns:
 
     def test_empty_result_sets(self, authenticated_client, test_app):
         """Test empty result set handling"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -276,7 +276,7 @@ class TestCommonFailurePatterns:
 
     def test_missing_optional_fields(self, authenticated_client, test_app):
         """Test missing optional fields"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -312,7 +312,7 @@ class TestErrorRecovery:
 
     def test_partial_failure_recovery(self, authenticated_client, test_app):
         """Test recovery from partial failures"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
 
             # First call fails
@@ -332,7 +332,7 @@ class TestErrorRecovery:
 
     def test_timeout_recovery(self, authenticated_client):
         """Test recovery from timeout scenarios"""
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             # Simulate timeout
             mock_service.search = AsyncMock(side_effect=TimeoutError("Request timeout"))

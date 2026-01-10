@@ -29,8 +29,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.reasoning import ReasoningEngine
-from services.tools.definitions import AgentState, ToolCall
+from backend.services.rag.agentic.reasoning import ReasoningEngine
+from backend.services.tools.definitions import AgentState, ToolCall
 
 
 @pytest.mark.integration
@@ -95,11 +95,11 @@ class TestReasoningComplexScenarios:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
             ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -165,11 +165,11 @@ class TestReasoningComplexScenarios:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
             ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -244,11 +244,11 @@ class TestReasoningComplexScenarios:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call", side_effect=mock_parse_tool_call
             ):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
@@ -286,10 +286,10 @@ class TestReasoningComplexScenarios:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
-            with patch("services.rag.agentic.reasoning.parse_tool_call", return_value=None):
+            with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None):
                 result_state, _, _ = await engine.execute_react_loop(
                     state=state,
                     llm_gateway=llm_gateway,
@@ -345,11 +345,11 @@ class TestReasoningComplexScenarios:
         from contextlib import nullcontext
 
         with patch(
-            "services.rag.agentic.reasoning.trace_span",
+            "backend.services.rag.agentic.reasoning.trace_span",
             side_effect=lambda *args, **kwargs: nullcontext(),
         ):
             with patch(
-                "services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
+                "backend.services.rag.agentic.reasoning.parse_tool_call", return_value=mock_tool_call
             ):
                 async for event in engine.execute_react_loop_stream(
                     state=state,

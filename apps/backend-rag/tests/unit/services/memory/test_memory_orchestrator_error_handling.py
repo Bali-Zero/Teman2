@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.error_classification import ErrorCategory, ErrorClassifier
-from services.memory.orchestrator import MemoryOrchestrator, MemoryServiceStatus
+from backend.app.core.error_classification import ErrorCategory, ErrorClassifier
+from backend.services.memory.orchestrator import MemoryOrchestrator, MemoryServiceStatus
 
 
 @pytest.fixture
@@ -27,19 +27,20 @@ async def test_degraded_mode_on_non_critical_failure(memory_orchestrator):
     """Test that degraded mode is activated on non-critical failures."""
     # Mock memory service to succeed
     mock_memory_service = MagicMock()
+    mock_memory_service.connect = AsyncMock()
     mock_memory_service.get_memory = AsyncMock(return_value=MagicMock())
     mock_memory_service.pool = MagicMock()
 
     # Mock fact extractor to fail (non-critical)
     with (
         patch(
-            "services.memory.orchestrator.MemoryServicePostgres", return_value=mock_memory_service
+            "backend.services.memory.orchestrator.MemoryServicePostgres", return_value=mock_memory_service
         ),
         patch(
-            "services.memory.orchestrator.MemoryFactExtractor",
+            "backend.services.memory.orchestrator.MemoryFactExtractor",
             side_effect=Exception("Fact extractor failed"),
         ),
-        patch("services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()),
+        patch("backend.services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()),
     ):
         await memory_orchestrator.initialize()
 
@@ -53,7 +54,7 @@ async def test_unavailable_on_critical_failure(memory_orchestrator):
     """Test that orchestrator is unavailable on critical failures."""
     # Mock memory service to fail (critical)
     with patch(
-        "services.memory.orchestrator.MemoryServicePostgres",
+        "backend.services.memory.orchestrator.MemoryServicePostgres",
         side_effect=Exception("Memory service failed"),
     ):
         # Should raise RuntimeError
@@ -70,15 +71,16 @@ async def test_healthy_status_on_success(memory_orchestrator):
     """Test that orchestrator is healthy when all services initialize."""
     # Mock all services to succeed
     mock_memory_service = MagicMock()
+    mock_memory_service.connect = AsyncMock()
     mock_memory_service.get_memory = AsyncMock(return_value=MagicMock())
     mock_memory_service.pool = MagicMock()
 
     with (
         patch(
-            "services.memory.orchestrator.MemoryServicePostgres", return_value=mock_memory_service
+            "backend.services.memory.orchestrator.MemoryServicePostgres", return_value=mock_memory_service
         ),
-        patch("services.memory.orchestrator.MemoryFactExtractor", return_value=MagicMock()),
-        patch("services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()),
+        patch("backend.services.memory.orchestrator.MemoryFactExtractor", return_value=MagicMock()),
+        patch("backend.services.memory.orchestrator.CollectiveMemoryService", return_value=MagicMock()),
     ):
         await memory_orchestrator.initialize()
 
@@ -120,11 +122,9 @@ async def test_degraded_mode_returns_limited_context(memory_orchestrator):
 
 @pytest.mark.asyncio
 async def test_ensure_initialized_raises_on_unavailable(memory_orchestrator):
-    """Test that _ensure_initialized raises error when unavailable."""
+    """Test that _ensure_initialized raises when status is unavailable."""
     memory_orchestrator._status = MemoryServiceStatus.UNAVAILABLE
-    memory_orchestrator._is_initialized = False
-
-    # Should raise RuntimeError
+    memory_orchestrator._is_initialized = True
     with pytest.raises(RuntimeError, match="unavailable"):
         memory_orchestrator._ensure_initialized()
 

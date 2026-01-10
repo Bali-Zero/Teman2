@@ -4,15 +4,15 @@ import types
 import pytest
 
 services_module = types.ModuleType("services")
-pricing_module = types.ModuleType("services.pricing")
-pricing_service_module = types.ModuleType("services.pricing.pricing_service")
+pricing_module = types.ModuleType("backend.services.pricing")
+pricing_service_module = types.ModuleType("backend.services.pricing.pricing_service")
 pricing_service_module.get_pricing_service = lambda: None
 
 sys.modules.setdefault("services", services_module)
-sys.modules.setdefault("services.pricing", pricing_module)
-sys.modules.setdefault("services.pricing.pricing_service", pricing_service_module)
+sys.modules.setdefault("backend.services.pricing", pricing_module)
+sys.modules.setdefault("backend.services.pricing.pricing_service", pricing_service_module)
 
-from plugins.bali_zero.pricing_plugin import PricingPlugin, PricingQueryInput
+from backend.plugins.bali_zero.pricing_plugin import PricingPlugin, PricingQueryInput
 
 
 class DummyPricingService:

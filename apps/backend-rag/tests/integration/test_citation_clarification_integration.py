@@ -32,8 +32,8 @@ class TestCitationServiceIntegration:
     @pytest.mark.asyncio
     async def test_citation_service_initialization(self):
         """Test CitationService initialization"""
-        with patch("services.search_service.SearchService") as mock_search:
-            from services.citation_service import CitationService
+        with patch("backend.services.search_service.SearchService") as mock_search:
+            from backend.services.citation_service import CitationService
 
             service = CitationService(search_service=mock_search.return_value)
 
@@ -42,7 +42,7 @@ class TestCitationServiceIntegration:
     @pytest.mark.asyncio
     async def test_citation_generation(self, qdrant_client):
         """Test citation generation from search results"""
-        with patch("services.search_service.SearchService") as mock_search:
+        with patch("backend.services.search_service.SearchService") as mock_search:
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
                 return_value={
@@ -61,7 +61,7 @@ class TestCitationServiceIntegration:
                 }
             )
 
-            from services.citation_service import CitationService
+            from backend.services.citation_service import CitationService
 
             service = CitationService(search_service=mock_search_instance)
 
@@ -134,8 +134,8 @@ class TestClarificationServiceIntegration:
     @pytest.mark.asyncio
     async def test_clarification_service_initialization(self):
         """Test ClarificationService initialization"""
-        with patch("services.clarification_service.ZantaraAIClient") as mock_ai:
-            from services.misc.clarification_service import ClarificationService
+        with patch("backend.services.clarification_service.ZantaraAIClient") as mock_ai:
+            from backend.services.misc.clarification_service import ClarificationService
 
             service = ClarificationService(ai_client=mock_ai.return_value)
 
@@ -144,7 +144,7 @@ class TestClarificationServiceIntegration:
     @pytest.mark.asyncio
     async def test_clarification_request_generation(self):
         """Test clarification request generation"""
-        with patch("services.clarification_service.ZantaraAIClient") as mock_ai:
+        with patch("backend.services.clarification_service.ZantaraAIClient") as mock_ai:
             mock_ai_instance = MagicMock()
             mock_ai_instance.generate_clarification = AsyncMock(
                 return_value={
@@ -156,7 +156,7 @@ class TestClarificationServiceIntegration:
                 }
             )
 
-            from services.misc.clarification_service import ClarificationService
+            from backend.services.misc.clarification_service import ClarificationService
 
             service = ClarificationService(ai_client=mock_ai_instance)
 
@@ -240,8 +240,8 @@ class TestFollowupServiceIntegration:
     @pytest.mark.asyncio
     async def test_followup_service_initialization(self, db_pool):
         """Test FollowupService initialization"""
-        with patch("services.followup_service.MemoryServicePostgres") as mock_memory:
-            from services.misc.followup_service import FollowupService
+        with patch("backend.services.followup_service.MemoryServicePostgres") as mock_memory:
+            from backend.services.misc.followup_service import FollowupService
 
             service = FollowupService(memory_service=mock_memory.return_value)
 

@@ -17,7 +17,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.memory.collective_memory_service import CollectiveMemoryService
+from backend.services.memory.collective_memory_service import CollectiveMemoryService
 from tests.conftest import create_async_cm_mock
 
 
