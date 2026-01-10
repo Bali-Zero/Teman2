@@ -103,7 +103,7 @@ export function ChatHeader({
           }`}
         >
           <Image
-            src="/static/logo_zan.png"
+            src="/assets/logo_zan.png"
             alt="Zantara"
             width={64}
             height={64}

@@ -369,7 +369,7 @@ export const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
           {/* Logo */}
           <div className="relative w-full h-full">
             <Image
-              src="/static/logo_zan.png"
+              src="/assets/logo_zan.png"
               alt="Zantara"
               fill
               className="object-contain brightness-110 drop-shadow-[0_0_20px_rgba(100,100,255,0.5)] scale-125"
