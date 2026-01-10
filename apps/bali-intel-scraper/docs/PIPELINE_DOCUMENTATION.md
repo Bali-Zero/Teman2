@@ -1,6 +1,6 @@
 # BaliZero Intel Scraper - Pipeline Documentation
 
-> Last Updated: 2026-01-04
+> Last Updated: 2026-01-11
 > Author: Claude Code Session
 
 ## Overview
@@ -267,13 +267,25 @@ apps/bali-intel-scraper/
 │   ├── claude_validator.py     # Step 3: Claude validation
 │   ├── article_deep_enricher.py # Step 4: Content enrichment
 │   ├── gemini_image_generator.py # Step 5: Image generation
-│   ├── seo_aeo_optimizer.py    # Step 5.5: SEO/AEO (NEW)
-│   ├── telegram_approval.py    # Step 6: Approval (NEW)
+│   ├── seo_aeo_optimizer.py    # Step 5.5: SEO/AEO
+│   ├── telegram_approval.py    # Step 6: Approval
+│   ├── preview_generator.py    # E-E-A-T HTML previews
+│   ├── logging_config.py       # Centralized logging
+│   ├── metrics.py              # Prometheus metrics
 │   └── data/
 │       ├── pending_articles/   # JSON files for pending articles
 │       └── previews/           # HTML preview files
+├── tests/
+│   └── unit/
+│       ├── test_intel_pipeline.py
+│       ├── test_logging_config.py  # 47 tests
+│       ├── test_metrics.py
+│       ├── test_preview_generator.py
+│       └── ...
 ├── docs/
-│   └── PIPELINE_DOCUMENTATION.md  # This file
+│   ├── PIPELINE_DOCUMENTATION.md  # This file
+│   └── BALIZERO_STYLE_GUIDE.md
+├── CLAUDE.md                   # AI session memory
 ├── .env                        # Environment variables
 └── .env.example                # Template
 ```
@@ -402,3 +414,100 @@ fly secrets set TELEGRAM_APPROVAL_CHAT_ID="8290313965,ANOTHER_CHAT_ID" -a nuzant
 - **Configuration**
   - Added `TELEGRAM_APPROVAL_CHAT_ID` to Fly.io secrets
   - Created `.env.example` template
+
+### 2026-01-11
+
+- **Added Centralized Logging** (`logging_config.py`)
+  - Environment-based log levels (DEBUG in dev, INFO in prod)
+  - JSON structured logging for production (machine-parseable)
+  - Log rotation (100MB) and retention (7 days)
+  - Context managers: `log_context()`, `correlation_context()`
+  - Decorators: `@log_operation()`, `@log_errors()`
+  - PerformanceLogger class for timing operations
+
+- **Added Metrics Module** (`metrics.py`)
+  - Prometheus-compatible metrics export
+  - Thread-safe MetricsCollector with counters, gauges, latencies
+  - Pipeline-specific metrics (articles_input, processed, rejected, etc.)
+  - Latency tracking with `track_latency()` context manager
+  - StructuredLogger for component-scoped logging
+
+- **Added E-E-A-T Preview Generator** (`preview_generator.py`)
+  - BaliZero branded HTML previews for human review
+  - E-E-A-T compliance indicators
+  - FAQ accordion display
+  - Responsive mobile layout
+  - Source citations and SEO metadata preview
+
+- **Updated Pipeline** (`intel_pipeline.py`)
+  - Integrated MetricsCollector for observability
+  - Integrated StructuredLogger for consistent logging
+  - Added `get_metrics()` and `get_prometheus_metrics()` methods
+  - Images now mandatory (E-E-A-T compliance)
+
+- **Test Coverage**
+  - Fixed 11 failing tests across 6 test files
+  - Added 47 new tests for logging_config.py
+  - All 563 tests passing
+
+---
+
+## Observability
+
+### Logging Configuration
+
+```python
+from logging_config import setup_logging, get_logger, log_context
+
+# At application startup
+setup_logging(environment="production", app_name="intel_pipeline")
+
+# In modules
+logger = get_logger("enricher")
+logger.info("Processing article", title="Example", score=85)
+
+# With context (all logs in block include these fields)
+with log_context(batch_id="abc123", user="admin"):
+    logger.info("Starting enrichment")
+    # ... processing ...
+    logger.info("Enrichment complete")
+```
+
+### Metrics Collection
+
+```python
+from metrics import MetricsCollector, track_latency
+
+metrics = MetricsCollector(app_name="intel_pipeline")
+metrics.start_pipeline()
+
+# Track latency
+with track_latency(metrics, "claude_validation"):
+    result = await validate_article(article)
+
+# Increment counters
+metrics.increment("articles_processed")
+metrics.increment("claude_approved")
+
+# End pipeline and save
+metrics.end_pipeline()
+metrics.save_to_file("metrics_20260111.json")
+
+# Export for Prometheus
+print(metrics.export_prometheus())
+```
+
+### Prometheus Metrics Format
+
+```
+# TYPE intel_pipeline_articles_input counter
+intel_pipeline_articles_input 100
+
+# TYPE intel_pipeline_articles_processed counter
+intel_pipeline_articles_processed 85
+
+# TYPE intel_pipeline_claude_validation_duration_ms summary
+intel_pipeline_claude_validation_duration_ms_count 85
+intel_pipeline_claude_validation_duration_ms_avg 1250.45
+intel_pipeline_claude_validation_duration_ms_p95 2100.00
+```
