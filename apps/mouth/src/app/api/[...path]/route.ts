@@ -160,14 +160,28 @@ async function proxy(req: NextRequest): Promise<Response> {
     const respHeaders = new Headers(upstream.headers);
     respHeaders.delete('transfer-encoding');
 
-    // CRITICAL: Do NOT remove content-encoding - let the browser handle decompression
-    // The issue was that we were removing the header but the body was still compressed
-    // Now we keep both the header and body intact so the browser can decompress properly
-
     // CRITICAL: Prevent Fly.io edge from re-compressing our response
     respHeaders.set('Cache-Control', 'no-transform');
 
-    return new Response(upstream.body, {
+    // For SSE (streaming) endpoints, pass through the body stream as-is
+    // SSE endpoints are typically not compressed and need to stay as streams
+    if (isStreamingEndpoint) {
+      return new Response(upstream.body, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers: respHeaders,
+      });
+    }
+
+    // For non-streaming endpoints, read the body as ArrayBuffer
+    // This fixes an issue where Vercel edge doesn't properly pass through
+    // compressed response bodies from upstream
+    respHeaders.delete('content-encoding');
+    respHeaders.delete('content-length'); // Length may change after decompression
+
+    const bodyBuffer = await upstream.arrayBuffer();
+
+    return new Response(bodyBuffer, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: respHeaders,
