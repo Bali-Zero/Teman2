@@ -112,6 +112,7 @@ Il sistema usa un **evidence_score** (0.0-1.0) per decidere se rispondere:
 | 2026-01-01 | visa_types correct codes (E28A, E33G, D1...) | `seed_visa_types.py` | v1218 |
 | 2026-01-01 | Visa PDF generation (25 types, Bali Zero style) | `/tmp/create_visa_pdf_v2.py` | - |
 | 2026-01-01 | KBLI PDF generator prototype | `/tmp/create_kbli_pdf.py` | - |
+| 2026-01-10 | CRM date conversion (asyncpg DATE fix) | `crm_enhanced.py`, `crm_clients.py` | v1490 |
 
 #### 6.3 Trusted Tools
 
@@ -284,4 +285,4 @@ Maintain code quality. If you see legacy code violating these rules, **refactor 
 
 ---
 
-**Last Updated:** 2026-01-04
+**Last Updated:** 2026-01-10
