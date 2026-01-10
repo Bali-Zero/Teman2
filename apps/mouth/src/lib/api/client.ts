@@ -1,6 +1,14 @@
 import { UserProfile } from '@/types';
 import type { IApiClient, ApiRequestOptions } from './types/api-client.types';
 import { safeStorage } from '@/lib/utils/storage';
+import { logger } from '@/lib/logger';
+
+/** FastAPI validation error structure */
+interface FastAPIValidationError {
+  loc: (string | number)[];
+  msg: string;
+  type: string;
+}
 
 /**
  * Base API client with token management and request handling.
@@ -150,13 +158,17 @@ export class ApiClientBase implements IApiClient {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    console.log('[HTTP] 🌐 Request starting:', {
-      method,
-      endpoint,
-      fullUrl: `${this.baseUrl}${endpoint}`,
-      hasToken: !!currentToken,
-      hasCsrf: !!(this.csrfToken || this.getCsrfFromCookie()),
-      credentials: 'include',
+    logger.debug('HTTP request starting', {
+      component: 'ApiClient',
+      action: 'request',
+      metadata: {
+        method,
+        endpoint,
+        fullUrl: `${this.baseUrl}${endpoint}`,
+        hasToken: !!currentToken,
+        hasCsrf: !!(this.csrfToken || this.getCsrfFromCookie()),
+        credentials: 'include',
+      },
     });
 
     try {
@@ -167,23 +179,21 @@ export class ApiClientBase implements IApiClient {
         signal: controller.signal,
       });
 
-      console.log('[HTTP] ✅ Response received:', {
-        method,
-        endpoint,
-        status: response.status,
-        ok: response.ok,
-        statusText: response.statusText,
-        headers: {
-          contentType: response.headers.get('content-type'),
-          setCookie: response.headers.get('set-cookie'),
+      logger.debug('HTTP response received', {
+        component: 'ApiClient',
+        action: 'response',
+        metadata: {
+          method,
+          endpoint,
+          status: response.status,
+          ok: response.ok,
+          statusText: response.statusText,
+          headers: {
+            contentType: response.headers.get('content-type'),
+            setCookie: response.headers.get('set-cookie'),
+          },
         },
       });
-
-      if (process.env.NODE_ENV !== 'production') {
-        console.log(
-          `[ApiClient] ${method} ${endpoint} -> Status: ${response.status}, OK: ${response.ok}`
-        );
-      }
 
       // Handle 401 Unauthorized (token expired or invalid)
       if (response.status === 401) {
@@ -195,7 +205,11 @@ export class ApiClientBase implements IApiClient {
           // Avoid redirect loops by checking current path
           const currentPath = window.location.pathname;
           if (currentPath !== '/login' && !currentPath.startsWith('/api/')) {
-            console.log('[ApiClient] Token expired or invalid, redirecting to login');
+            logger.warn('Token expired or invalid, redirecting to login', {
+              component: 'ApiClient',
+              action: 'auth_redirect',
+              metadata: { currentPath },
+            });
             // Use replace to avoid adding to history
             window.location.replace('/login?expired=true&reason=token_expired');
           }
@@ -211,11 +225,16 @@ export class ApiClientBase implements IApiClient {
 
         // Handle FastAPI 422 validation errors (detail is array of validation errors)
         if (response.status === 422 && Array.isArray(error.detail)) {
-          const validationErrors = error.detail.map((err: any) => {
+          const validationErrors = (error.detail as FastAPIValidationError[]).map((err) => {
             const field = err.loc ? err.loc.join('.') : 'unknown';
             return `${field}: ${err.msg}`;
           }).join(', ');
           throw new Error(`Validation error: ${validationErrors}`);
+        }
+
+        // Handle 405 Method Not Allowed - convert to INVALID_METHOD for consistency
+        if (response.status === 405) {
+          throw new Error('INVALID_METHOD');
         }
 
         throw new Error(error.detail || `HTTP ${response.status}`);

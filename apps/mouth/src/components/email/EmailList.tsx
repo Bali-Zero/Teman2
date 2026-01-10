@@ -30,6 +30,7 @@ interface EmailListProps {
   isLoading?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
+  onPreviousPage?: () => void;
   currentPage?: number;
   totalEmails?: number;
 }
@@ -49,6 +50,7 @@ export function EmailList({
   isLoading,
   hasMore,
   onLoadMore,
+  onPreviousPage,
   currentPage = 1,
   totalEmails = 0,
 }: EmailListProps) {
@@ -245,11 +247,11 @@ export function EmailList({
       {totalEmails > 0 && (
         <div className="flex items-center justify-between p-3 border-t border-[var(--border)] bg-[var(--background-secondary)]">
           <span className="text-xs text-[var(--foreground-muted)]">
-            {emails.length} of {totalEmails} emails
+            {emails.length > 0 ? (currentPage - 1) * 50 + 1 : 0} - {Math.min(currentPage * 50, totalEmails)} of {totalEmails} emails
           </span>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => {}}
+              onClick={onPreviousPage}
               disabled={currentPage === 1}
               className="p-1.5 rounded text-[var(--foreground-muted)] hover:text-[var(--foreground)] disabled:opacity-50 disabled:cursor-not-allowed"
             >

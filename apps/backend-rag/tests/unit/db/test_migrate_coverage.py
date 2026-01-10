@@ -119,7 +119,7 @@ def test_main_no_command_exits_1(capsys):
 
 
 def test_main_missing_database_url_exits_1():
-    args = SimpleNamespace(command="status")
+    args = SimpleNamespace(command="status", redis_url='redis://localhost:6379')
     with patch("db.migrate.settings") as mock_settings:
         mock_settings.database_url = ""
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
@@ -129,7 +129,7 @@ def test_main_missing_database_url_exits_1():
 
 
 def test_main_migration_manager_error_exits_1():
-    args = SimpleNamespace(command="status")
+    args = SimpleNamespace(command="status", redis_url='redis://localhost:6379')
     with patch("db.migrate.settings") as mock_settings:
         mock_settings.database_url = "postgres://test"
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
@@ -140,7 +140,7 @@ def test_main_migration_manager_error_exits_1():
 
 
 def test_main_keyboard_interrupt_exits_130():
-    args = SimpleNamespace(command="status")
+    args = SimpleNamespace(command="status", redis_url='redis://localhost:6379')
 
     def run_and_interrupt(coro):
         coro.close()
@@ -157,7 +157,7 @@ def test_main_keyboard_interrupt_exits_130():
 
 
 def test_main_exception_exits_1():
-    args = SimpleNamespace(command="status")
+    args = SimpleNamespace(command="status", redis_url='redis://localhost:6379')
 
     def run_and_raise(coro):
         coro.close()
@@ -174,7 +174,7 @@ def test_main_exception_exits_1():
 
 
 def test_main_dispatches_command_runs_and_exits_0():
-    args = SimpleNamespace(command="status")
+    args = SimpleNamespace(command="status", redis_url='redis://localhost:6379')
 
     class DummyManager:
         async def __aenter__(self):
@@ -203,7 +203,7 @@ def test_main_dispatches_command_runs_and_exits_0():
 
 
 def test_main_unknown_command_prints_help_and_exits_1(capsys):
-    args = SimpleNamespace(command="unknown", dry_run=False, migration_number=1)
+    args = SimpleNamespace(command="unknown", dry_run=False, migration_number=1, redis_url='redis://localhost:6379')
 
     class DummyManager:
         async def __aenter__(self):

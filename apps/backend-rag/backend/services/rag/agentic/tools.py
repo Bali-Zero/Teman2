@@ -190,7 +190,9 @@ class VectorSearchTool(BaseTool):
                     or metadata.get("id", "")
                 )
 
-                formatted_texts.append(f"[{i + 1}] Source: {source_col} | Title: {title}\n{text}")
+                # Include document ID in formatted text if available
+                id_prefix = f"ID: {doc_id}\n" if doc_id else ""
+                formatted_texts.append(f"[{i + 1}] Source: {source_col} | Title: {title}\n{id_prefix}{text}")
 
                 sources_metadata.append(
                     {
@@ -876,8 +878,8 @@ class TimeSheetTool(BaseTool):
                    for m in data:
                        if m.get("email", "").lower() == email.lower():
                            return m.get("id")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[TimeSheetTool] Failed to lookup user by email {email}: {e}")
         return None
 
     async def execute(self, action: str, email: str, **kwargs) -> str:

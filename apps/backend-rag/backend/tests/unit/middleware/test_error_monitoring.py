@@ -304,4 +304,3 @@ class TestErrorMonitoringMiddleware:
 
         assert isinstance(middleware, ErrorMonitoringMiddleware)
         assert middleware.alert_service == mock_alert_service
-

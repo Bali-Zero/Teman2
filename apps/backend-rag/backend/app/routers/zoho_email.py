@@ -14,7 +14,7 @@ import secrets
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, Body
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Query, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 
@@ -31,7 +31,17 @@ router = APIRouter(prefix="/api/integrations/zoho", tags=["zoho-email"])
 
 class DeleteEmailsRequest(BaseModel):
     """Request model for deleting emails."""
+
     message_ids: list[str] = Field(..., min_length=1, description="Message IDs to delete")
+
+
+class AttachmentObject(BaseModel):
+    """Model for attachment details required by Zoho API."""
+
+    attachment_id: str = Field(..., description="Attachment ID")
+    store_name: str = Field(..., description="Store Name")
+    attachment_path: str = Field(..., description="Attachment Path")
+    attachment_name: str = Field(..., description="Attachment Name")
 
 
 # ================================================
@@ -50,7 +60,7 @@ class SendEmailRequest(BaseModel):
     content: str | None = Field(None, description="Email body content (legacy)")
     cc: list[EmailStr] | None = Field(None, description="CC recipients")
     bcc: list[EmailStr] | None = Field(None, description="BCC recipients")
-    attachment_ids: list[str] | None = Field(None, description="Attachment IDs from upload")
+    attachment_ids: list[AttachmentObject] | None = Field(None, description="Attachments")
     is_html: bool = Field(True, description="Whether content is HTML")
 
     def get_content(self) -> str:
@@ -406,7 +416,9 @@ async def send_email(
             content=request.get_content(),  # Accepts html_content, text_content, or content
             cc=[str(e) for e in request.cc] if request.cc else None,
             bcc=[str(e) for e in request.bcc] if request.bcc else None,
-            attachments=request.attachment_ids,
+            attachments=[a.model_dump() for a in request.attachment_ids]
+            if request.attachment_ids
+            else None,
             is_html=request.is_html,
         )
     except ValueError as e:
@@ -579,9 +591,120 @@ async def delete_emails(
         raise HTTPException(status_code=500, detail="Failed to delete emails")
 
 
+@router.post("/emails/delete")
+async def delete_emails_post(
+    request: DeleteEmailsRequest = Body(...),
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, bool]:
+    """
+    Move emails to trash (POST variant for better proxy compatibility).
+
+    Supports bulk deletion of multiple messages.
+    """
+    try:
+        user_id = _get_user_id(current_user)
+        email_service = _get_email_service(db_pool)
+
+        success = await email_service.delete_emails(
+            user_id=user_id,
+            message_ids=request.message_ids,
+        )
+        return {"success": success}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to delete emails: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete emails")
+
+
+# ================================================
+# DRAFT ENDPOINTS
+# ================================================
+
+
+class SaveDraftRequest(BaseModel):
+    """Request body for saving a draft."""
+
+    to: list[EmailStr] | None = Field(None, description="Recipient email addresses")
+    subject: str = Field(..., max_length=500, description="Email subject")
+    html_content: str = Field(..., description="Email content")
+    cc: list[EmailStr] | None = Field(None, description="CC recipients")
+    bcc: list[EmailStr] | None = Field(None, description="BCC recipients")
+    attachment_ids: list[AttachmentObject] | None = Field(None, description="Attachments")
+
+
+@router.post("/drafts")
+async def save_draft(
+    request: SaveDraftRequest,
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """
+    Save an email as draft.
+    """
+    try:
+        user_id = _get_user_id(current_user)
+        email_service = _get_email_service(db_pool)
+
+        return await email_service.save_draft(
+            user_id=user_id,
+            to=[str(e) for e in request.to] if request.to else None,
+            subject=request.subject,
+            content=request.html_content,
+            cc=[str(e) for e in request.cc] if request.cc else None,
+            bcc=[str(e) for e in request.bcc] if request.bcc else None,
+            attachments=[a.model_dump() for a in request.attachment_ids]
+            if request.attachment_ids
+            else None,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to save draft: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save draft")
+
+
 # ================================================
 # ATTACHMENT ENDPOINTS
 # ================================================
+
+
+@router.post("/attachments")
+async def upload_attachment(
+    file: Any = Body(...),  # Using Any to bypass strict type checking for UploadFile
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> dict[str, Any]:
+    """
+    Upload an attachment.
+    Expects multipart/form-data.
+    """
+    from fastapi import UploadFile
+
+    # Manual type check/cast
+    if not isinstance(file, UploadFile):
+        # In case FastAPI passes it differently or for testing
+        pass
+
+    try:
+        user_id = _get_user_id(current_user)
+        email_service = _get_email_service(db_pool)
+
+        content = await file.read()
+        attachment_result = await email_service.upload_attachment(
+            user_id=user_id,
+            filename=file.filename or "unnamed",
+            content=content,
+            content_type=file.content_type or "application/octet-stream",
+        )
+
+        return attachment_result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to upload attachment: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload attachment")
 
 
 @router.get("/emails/{message_id}/attachments/{attachment_id}")

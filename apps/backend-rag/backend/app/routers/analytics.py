@@ -11,13 +11,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.dependencies import get_current_user
+from app.utils.crm_utils import is_super_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
-
-# Founder email - only this user can access analytics
-FOUNDER_EMAIL = "zero@balizero.com"
 
 
 class AnalyticsUser(BaseModel):
@@ -40,9 +38,8 @@ def verify_founder_access(user: dict = Depends(get_current_user)) -> dict:
     Raises:
         HTTPException: 403 if not the Founder
     """
-    user_email = user.get("email", "").lower()
-    if user_email != FOUNDER_EMAIL:
-        logger.warning(f"Analytics access denied for {user_email}")
+    if not is_super_admin(user):
+        logger.warning(f"Analytics access denied for {user.get('email')}")
         raise HTTPException(
             status_code=403, detail="Analytics dashboard is restricted to the Founder only"
         )

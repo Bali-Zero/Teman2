@@ -24,8 +24,8 @@ if "langgraph.graph" not in sys.modules:
     class _StateGraph:
         pass
 
-    graph_stub = types.SimpleNamespace(END="END", StateGraph=_StateGraph)
-    sys.modules["langgraph"] = types.SimpleNamespace(graph=graph_stub)
+    graph_stub = types.SimpleNamespace(END="END", StateGraph=_StateGraph, redis_url='redis://localhost:6379')
+    sys.modules["langgraph"] = types.SimpleNamespace(graph=graph_stub, redis_url='redis://localhost:6379')
     sys.modules["langgraph.graph"] = graph_stub
 
 from fastapi import FastAPI
@@ -531,10 +531,9 @@ def test_get_autonomous_agents_status_structure():
 
 
 def _install_main_cloud_stub(monkeypatch, retriever=None, db_pool=None):
-    app_stub = types.SimpleNamespace(
-        state=types.SimpleNamespace(retriever=retriever, db_pool=db_pool)
+    app_stub = types.SimpleNamespace(state=types.SimpleNamespace(retriever=retriever, db_pool=db_pool, redis_url='redis://localhost:6379')
     )
-    module_stub = types.SimpleNamespace(app=app_stub)
+    module_stub = types.SimpleNamespace(app=app_stub, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "app.main_cloud", module_stub)
     return app_stub
 
@@ -563,7 +562,7 @@ def test_extract_kg_sample_success(monkeypatch):
             ]
             return (chunks, None)
 
-    retriever = types.SimpleNamespace(client=_QdrantClient())
+    retriever = types.SimpleNamespace(client=_QdrantClient(), redis_url='redis://localhost:6379')
     _install_main_cloud_stub(monkeypatch, retriever=retriever)
 
     response = client.get("/api/autonomous-agents/knowledge-graph/extract-sample?sample_size=10")
@@ -589,7 +588,7 @@ def test_persist_kg_sample_qdrant_unavailable(monkeypatch):
 
 def test_persist_kg_sample_db_unavailable(monkeypatch):
     """Test persist sample returns 503 when db_pool is unavailable"""
-    retriever = types.SimpleNamespace(client=object())
+    retriever = types.SimpleNamespace(client=object(), redis_url='redis://localhost:6379')
     _install_main_cloud_stub(monkeypatch, retriever=retriever, db_pool=None)
 
     response = client.post("/api/autonomous-agents/knowledge-graph/persist-sample")
@@ -629,12 +628,12 @@ def test_persist_kg_sample_success(monkeypatch):
         async def add_entity(self, entity):
             added_entities.append(entity)
 
-    kg_module = types.SimpleNamespace(Entity=_Entity, KnowledgeGraphBuilder=_KnowledgeGraphBuilder)
+    kg_module = types.SimpleNamespace(Entity=_Entity, KnowledgeGraphBuilder=_KnowledgeGraphBuilder, redis_url='redis://localhost:6379')
     monkeypatch.setitem(
         sys.modules, "services.autonomous_agents.knowledge_graph_builder", kg_module
     )
 
-    retriever = types.SimpleNamespace(client=_QdrantClient())
+    retriever = types.SimpleNamespace(client=_QdrantClient(), redis_url='redis://localhost:6379')
     _install_main_cloud_stub(monkeypatch, retriever=retriever, db_pool=object())
 
     response = client.post("/api/autonomous-agents/knowledge-graph/persist-sample?sample_size=10")
@@ -652,7 +651,7 @@ def test_persist_kg_sample_success(monkeypatch):
 
 
 def _install_scheduler_stub(monkeypatch, scheduler):
-    module_stub = types.SimpleNamespace(get_autonomous_scheduler=lambda: scheduler)
+    module_stub = types.SimpleNamespace(get_autonomous_scheduler=lambda: scheduler, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "services.misc.autonomous_scheduler", module_stub)
 
 
@@ -679,7 +678,7 @@ def test_get_scheduler_status_failure(monkeypatch):
     def _raise():
         raise RuntimeError("scheduler offline")
 
-    module_stub = types.SimpleNamespace(get_autonomous_scheduler=_raise)
+    module_stub = types.SimpleNamespace(get_autonomous_scheduler=_raise, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "services.misc.autonomous_scheduler", module_stub)
 
     response = client.get("/api/autonomous-agents/scheduler/status")

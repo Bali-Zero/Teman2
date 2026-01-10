@@ -28,7 +28,7 @@ def _load_module(monkeypatch, service_result=None, service_error=None):
     monkeypatch.setitem(
         sys.modules,
         "services.misc.image_generation_service",
-        types.SimpleNamespace(ImageGenerationService=_ImageService),
+        types.SimpleNamespace(ImageGenerationService=_ImageService, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

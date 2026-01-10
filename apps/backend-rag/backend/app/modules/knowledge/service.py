@@ -2,12 +2,15 @@
 NUZANTARA PRIME - Knowledge Service
 Business logic for RAG, Search, and Vector Database operations
 
-DEPRECATED: This service is deprecated in favor of SearchService (canonical retriever).
+⚠️ DEPRECATED: This service is deprecated in favor of SearchService (canonical retriever).
 It is kept only as a fallback for test/local boot scenarios where SearchService may not be initialized.
 
 Migration path:
 - Use SearchService from app.state.search_service (injected in main_cloud.py)
 - For /api/search endpoint, use get_search_service(request) helper in router.py
+
+Status: This service will be removed in a future version once all tests and fallback scenarios
+are migrated to SearchService. Do not use this service in new code.
 """
 
 import logging

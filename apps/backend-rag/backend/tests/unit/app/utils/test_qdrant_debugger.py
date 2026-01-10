@@ -231,4 +231,3 @@ class TestQdrantDebugger:
             assert stats["name"] == "test_collection"
             assert stats["status"] == "green"
             assert "config" in stats
-

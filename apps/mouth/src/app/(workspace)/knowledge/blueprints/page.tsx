@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
+import { useEnhancedAnalytics } from '@/lib/enhanced-analytics';
 
 // =============================================================================
 // Blueprint Data
@@ -1529,6 +1530,7 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
   const [showIndonesian, setShowIndonesian] = useState(false);
   const [showBisnis, setShowBisnis] = useState(false);
   const IconComponent = getIcon(blueprint.icon);
+  const { trackEvent, trackUserInteraction } = useEnhancedAnalytics();
 
   const handleDownload = () => {
     // Determine which PDF to download based on toggles
@@ -1542,11 +1544,27 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
         pdfFilename = blueprint.pdf_bisnis_filename || blueprint.pdf_filename;
       } else if (blueprint.pdf_id_teknis_url) {
         pdfUrl = blueprint.pdf_id_teknis_url;
+      } else if (blueprint.has_indonesian && pdfFilename) {
+        // Construct Indonesian Teknis URL from filename
+        // Pattern: KBLI_XXXXX_Name_Teknis.pdf -> KBLI_XXXXX_Name_ID_Teknis.pdf
+        const baseName = pdfFilename.replace(/_Teknis\.pdf$/, '').replace(/_Bisnis\.pdf$/, '');
+        pdfUrl = `/blueprints/${baseName}_ID_Teknis.pdf`;
       }
     } else if (showBisnis && blueprint.has_bisnis && blueprint.pdf_bisnis_url) {
       // English Business version
       pdfUrl = blueprint.pdf_bisnis_url;
       pdfFilename = blueprint.pdf_bisnis_filename || blueprint.pdf_filename;
+    } else if (showBisnis && blueprint.has_bisnis && pdfFilename) {
+      // Construct English Bisnis URL from filename
+      // Pattern: KBLI_XXXXX_Name_Teknis.pdf -> KBLI_XXXXX_Name_Bisnis.pdf
+      const baseName = pdfFilename.replace(/_Teknis\.pdf$/, '');
+      pdfUrl = `/blueprints/${baseName}_Bisnis.pdf`;
+    }
+    
+    // If no explicit URL but we have a filename, construct the URL
+    // Default path: /blueprints/{filename} (default is Teknis English)
+    if (!pdfUrl && pdfFilename) {
+      pdfUrl = `/blueprints/${pdfFilename}`;
     }
 
     if (pdfUrl) {
@@ -1557,29 +1575,37 @@ function BlueprintCard({ blueprint }: BlueprintCardProps) {
       link.click();
       document.body.removeChild(link);
       
-      // Log download action
+      // Log download action (solo per logging interno)
       logger.userAction('blueprint_download', undefined, blueprint.id, {
         component: 'BlueprintsPage',
         action: 'download',
         metadata: {
           blueprintId: blueprint.id,
-          blueprintName: blueprint.name,
+          blueprintName: blueprint.title,
           filename: pdfFilename,
           url: pdfUrl,
         },
       });
+      
+      // Download riuscito - tutti i blueprint hanno PDF collegato
     } else {
-      // No PDF available - log warning but don't redirect to Google Drive
-      logger.warn('Download attempted but no PDF URL available', {
+      // Questo caso NON DOVREBBE MAI VERIFICARSI
+      // Tutti i blueprint hanno pdf_filename, quindi l'URL viene sempre costruito
+      // Log di sicurezza per debug se mai dovesse succedere
+      logger.error('CRITICAL: Blueprint senza PDF - questo non dovrebbe mai succedere', {
         component: 'BlueprintsPage',
-        action: 'download_failed',
+        action: 'download_failed_critical',
         metadata: {
           blueprintId: blueprint.id,
-          blueprintName: blueprint.name,
+          blueprintName: blueprint.title,
+          blueprintCode: blueprint.kbli_code,
+          hasPdfFilename: !!blueprint.pdf_filename,
+          pdfFilename: blueprint.pdf_filename,
         },
       });
-      // Show user-friendly message instead of redirecting
-      alert('PDF download is not available for this blueprint at the moment.');
+      
+      // Fallback: mostra messaggio di errore
+      alert('Errore: PDF non disponibile. Contatta il supporto.');
     }
   };
 

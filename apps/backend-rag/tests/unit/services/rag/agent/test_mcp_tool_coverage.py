@@ -52,14 +52,14 @@ def _load_module(monkeypatch, session_result=None, session_error=None, stdio_err
         captured["stdio_params"] = params
         return _StdioCtx()
 
-    structures_stub = types.SimpleNamespace(BaseTool=object)
+    structures_stub = types.SimpleNamespace(BaseTool=object, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "services.rag.agent.structures", structures_stub)
 
-    mcp_stub = types.SimpleNamespace(ClientSession=_Session, StdioServerParameters=_StdioParams)
+    mcp_stub = types.SimpleNamespace(ClientSession=_Session, StdioServerParameters=_StdioParams, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "mcp", mcp_stub)
     monkeypatch.setitem(sys.modules, "mcp.client", types.SimpleNamespace())
     monkeypatch.setitem(
-        sys.modules, "mcp.client.stdio", types.SimpleNamespace(stdio_client=_stdio_client)
+        sys.modules, "mcp.client.stdio", types.SimpleNamespace(stdio_client=_stdio_client, redis_url='redis://localhost:6379')
     )
 
     if module_name in sys.modules:
@@ -132,8 +132,8 @@ async def test_call_mcp_missing_server(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_call_mcp_success_with_content(monkeypatch):
-    content = [types.SimpleNamespace(text="one"), types.SimpleNamespace(text="two")]
-    result_obj = types.SimpleNamespace(content=content)
+    content = [types.SimpleNamespace(text="one", redis_url='redis://localhost:6379'), types.SimpleNamespace(text="two", redis_url='redis://localhost:6379')]
+    result_obj = types.SimpleNamespace(content=content, redis_url='redis://localhost:6379')
     module, captured = _load_module(monkeypatch, session_result=result_obj)
     tool = module.MCPSuperTool()
 

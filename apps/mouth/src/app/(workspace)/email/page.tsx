@@ -124,6 +124,7 @@ export default function EmailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasMore, setHasMore] = useState(false);
   const [totalEmails, setTotalEmails] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Compose state
   const [isComposeOpen, setIsComposeOpen] = useState(false);
@@ -169,13 +170,15 @@ export default function EmailPage() {
   };
 
   // Load emails
-  const loadEmails = useCallback(async (folderId: string, search?: string) => {
+  const loadEmails = useCallback(async (folderId: string, search?: string, page: number = 1) => {
     setIsEmailsLoading(true);
     try {
+      const offset = (page - 1) * 50;
       const response = await api.email.listEmails({
         folder_id: folderId,
         query: search,
         limit: 50,
+        offset: offset,
       });
       setEmails(response.emails);
       setHasMore(response.has_more);
@@ -243,6 +246,7 @@ export default function EmailPage() {
     setSelectedEmail(null);
     setSelectedIds(new Set());
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   // Handle email selection
@@ -333,8 +337,53 @@ export default function EmailPage() {
   // Handle search
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setCurrentPage(1);
     if (selectedFolderId) {
-      loadEmails(selectedFolderId, query);
+      loadEmails(selectedFolderId, query, 1);
+    }
+  };
+
+  // Handle pagination
+  const handleLoadMore = () => {
+    if (!hasMore) return;
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    if (selectedFolderId) {
+      loadEmails(selectedFolderId, searchQuery, nextPage);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage <= 1) return;
+    const prevPage = currentPage - 1;
+    setCurrentPage(prevPage);
+    if (selectedFolderId) {
+      loadEmails(selectedFolderId, searchQuery, prevPage);
+    }
+  };
+
+  // Handle save draft
+  const handleSaveDraft = async (data: ComposeData) => {
+    try {
+      await api.email.saveDraft({
+        to: data.to,
+        cc: data.cc,
+        bcc: data.bcc,
+        subject: data.subject,
+        html_content: data.htmlContent,
+        attachment_ids: data.attachmentIds,
+      });
+
+      setIsComposeOpen(false);
+      alert('Draft saved successfully');
+      
+      // Refresh current view to show changes if we are in drafts (or general refresh)
+      if (selectedFolderId) {
+        loadEmails(selectedFolderId, searchQuery, currentPage);
+      }
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+      alert('Failed to save draft. Please try again.');
     }
   };
 
@@ -438,6 +487,7 @@ ${originalContent}`,
           bcc: data.bcc,
           subject: data.subject,
           html_content: data.htmlContent,
+          attachment_ids: data.attachmentIds,
         });
       }
 
@@ -513,7 +563,7 @@ ${originalContent}`,
   // Load emails when folder changes
   useEffect(() => {
     if (selectedFolderId && connectionStatus?.connected) {
-      loadEmails(selectedFolderId, searchQuery);
+      loadEmails(selectedFolderId, searchQuery, 1);
     }
   }, [selectedFolderId, connectionStatus?.connected, loadEmails]);
 
@@ -565,7 +615,9 @@ ${originalContent}`,
           searchQuery={searchQuery}
           isLoading={isEmailsLoading}
           hasMore={hasMore}
-          onLoadMore={() => {}}
+          onLoadMore={handleLoadMore}
+          onPreviousPage={handlePreviousPage}
+          currentPage={currentPage}
           totalEmails={totalEmails}
         />
       </div>
@@ -592,7 +644,7 @@ ${originalContent}`,
         isOpen={isComposeOpen}
         onClose={() => setIsComposeOpen(false)}
         onSend={handleSendEmail}
-        onSaveDraft={() => {}}
+        onSaveDraft={handleSaveDraft}
         initialData={composeInitialData}
         mode={composeMode}
         isSending={isSending}

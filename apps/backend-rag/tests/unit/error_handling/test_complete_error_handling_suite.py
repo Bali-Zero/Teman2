@@ -267,7 +267,7 @@ class TestLLMGatewayCircuitBreaker:
 
     async def test_circuit_breaker_state_machine(self):
         """Test complete circuit breaker state machine."""
-        from backend.services.rag.agentic.llm_gateway import CircuitState
+        from app.core.circuit_breaker import CircuitState
 
         # Test state transitions
         state = CircuitState.CLOSED
@@ -281,7 +281,8 @@ class TestLLMGatewayCircuitBreaker:
 
     async def test_circuit_opens_after_threshold(self):
         """Test circuit opens after failure threshold."""
-        from backend.services.rag.agentic.llm_gateway import CircuitState, LLMGateway
+        from app.core.circuit_breaker import CircuitState
+        from backend.services.rag.agentic.llm_gateway import LLMGateway
 
         gateway = MagicMock(spec=LLMGateway)
         gateway._circuit_breaker_threshold = 3
@@ -307,7 +308,8 @@ class TestLLMGatewayCircuitBreaker:
 
     async def test_circuit_half_open_after_timeout(self):
         """Test circuit moves to half-open after timeout."""
-        from backend.services.rag.agentic.llm_gateway import CircuitState, LLMGateway
+        from app.core.circuit_breaker import CircuitState
+        from backend.services.rag.agentic.llm_gateway import LLMGateway
 
         gateway = MagicMock(spec=LLMGateway)
         gateway._circuit_breaker_timeout = 0.1

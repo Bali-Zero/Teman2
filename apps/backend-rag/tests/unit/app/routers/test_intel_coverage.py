@@ -40,7 +40,7 @@ def _load_module(
                 {"chunks": chunks, "embeddings": embeddings, "metadatas": metadatas, "ids": ids}
             )
 
-        def peek(self, limit=100):
+        async def peek(self, limit=100):
             return (peek_results or {}).get(self.collection_name, {"metadatas": []})
 
         def get_collection_stats(self):
@@ -51,12 +51,16 @@ def _load_module(
     monkeypatch.setitem(
         sys.modules,
         "core.embeddings",
-        types.SimpleNamespace(create_embeddings_generator=lambda: _Embedder()),
+        types.SimpleNamespace(
+            create_embeddings_generator=lambda **kwargs: _Embedder(),
+            EmbeddingsGenerator=_Embedder,
+            redis_url='redis://localhost:6379'
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
         "core.qdrant_db",
-        types.SimpleNamespace(QdrantClient=_QdrantClient),
+        types.SimpleNamespace(QdrantClient=_QdrantClient, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")

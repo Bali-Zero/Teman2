@@ -394,7 +394,7 @@ class TestOracleIngestRouter99Coverage:
                             "law_id": f"LAW{i+100}",
                             "category": "contract"
                         }
-                    )
+                    ))
                 
                 request = IngestRequest(
                     collection="legal_intelligence",

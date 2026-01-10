@@ -55,8 +55,7 @@ def _load_module(
     genai_client_available=True,
     genai_text="answer",
 ):
-    settings = SimpleNamespace(
-        google_credentials_json=json.dumps({"key": "value"}),
+    settings = SimpleNamespace(google_credentials_json=json.dumps({"key": "value"}, redis_url='redis://localhost:6379'),
         google_api_key="key",
     )
     if settings_overrides:
@@ -110,9 +109,9 @@ def _load_module(
                 self.files = self
 
             def upload(self, file):
-                return SimpleNamespace(uri="file://uri", mime_type="application/pdf")
+                return SimpleNamespace(uri="file://uri", mime_type="application/pdf", redis_url='redis://localhost:6379')
 
-        genai_client_module.genai = types.SimpleNamespace(Client=Client)
+        genai_client_module.genai = types.SimpleNamespace(Client=Client, redis_url='redis://localhost:6379')
     else:
         genai_client_module.genai = None
 
@@ -200,7 +199,7 @@ async def test_smart_oracle_no_pdf():
 async def test_smart_oracle_genai_unavailable():
     module = _load_module()
     module.download_pdf_from_drive = lambda *_a, **_k: "/tmp/doc.pdf"
-    module._genai_client = SimpleNamespace(is_available=False)
+    module._genai_client = SimpleNamespace(is_available=False, redis_url='redis://localhost:6379')
     result = await module.smart_oracle("q", "file.pdf")
     assert "AI service not available" in result
 
@@ -218,8 +217,7 @@ async def test_smart_oracle_sdk_missing():
 async def test_smart_oracle_success_removes_file():
     module = _load_module(genai_text="answer")
     module.download_pdf_from_drive = lambda *_a, **_k: "/tmp/doc.pdf"
-    module._genai_client = SimpleNamespace(
-        is_available=True, generate_content=AsyncMock(return_value={"text": "answer"})
+    module._genai_client = SimpleNamespace(is_available=True, generate_content=AsyncMock(return_value={"text": "answer"})
     )
 
     with patch("os.remove") as remove_file:
@@ -233,8 +231,7 @@ async def test_smart_oracle_success_removes_file():
 async def test_smart_oracle_ai_error():
     module = _load_module()
     module.download_pdf_from_drive = lambda *_a, **_k: "/tmp/doc.pdf"
-    module._genai_client = SimpleNamespace(
-        is_available=True, generate_content=AsyncMock(side_effect=RuntimeError("boom"))
+    module._genai_client = SimpleNamespace(is_available=True, generate_content=AsyncMock(side_effect=RuntimeError("boom"))
     )
     result = await module.smart_oracle("q", "file.pdf")
     assert result == "Error processing the document with AI."

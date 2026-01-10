@@ -239,4 +239,3 @@ class TestBatchIngestionRequest:
         assert "*.pdf" in request.file_patterns
         assert "*.epub" in request.file_patterns
         assert request.skip_existing is True
-

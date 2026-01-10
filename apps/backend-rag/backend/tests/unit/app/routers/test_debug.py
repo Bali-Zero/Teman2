@@ -308,21 +308,19 @@ async def test_bab_full_text_fail(mock_settings, auth_headers):
 
 def test_profile(mock_settings, auth_headers):
     # Mock sys.path and file existence
-    with patch("pathlib.Path.exists", return_value=True), \
-         patch("sys.path", new=sys.path):
-         
-         # Mock the module and class
-         mock_module = MagicMock()
-         mock_profiler_cls = MagicMock()
-         mock_profiler_instance = AsyncMock()
-         mock_profiler_instance.run_profiling.return_value = {}
-         mock_profiler_cls.return_value = mock_profiler_instance
-         mock_module.PerformanceProfiler = mock_profiler_cls
-         
-         with patch.dict("sys.modules", {"performance_profiler": mock_module}):
-             response = client.post("/api/debug/profile", headers=auth_headers)
-             assert response.status_code == 200
-             assert response.json()["success"] is True
+    with patch("pathlib.Path.exists", return_value=True), patch("sys.path", new=sys.path):
+        # Mock the module and class
+        mock_module = MagicMock()
+        mock_profiler_cls = MagicMock()
+        mock_profiler_instance = AsyncMock()
+        mock_profiler_instance.run_profiling.return_value = {}
+        mock_profiler_cls.return_value = mock_profiler_instance
+        mock_module.PerformanceProfiler = mock_profiler_cls
+
+        with patch.dict("sys.modules", {"performance_profiler": mock_module}):
+            response = client.post("/api/debug/profile", headers=auth_headers)
+            assert response.status_code == 200
+            assert response.json()["success"] is True
 
 
 def test_profile_script_not_found(mock_settings, auth_headers):

@@ -12,7 +12,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.dependencies import get_database_pool
+from app.dependencies import get_current_user, get_database_pool
+from app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +93,15 @@ class ClientProfileUpdate(BaseModel):
 
 
 @router.get("/clients/{client_id}/profile")
-async def get_client_profile(client_id: int, pool=Depends(get_database_pool)):
+async def get_client_profile(
+    client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
+):
     """
     Get enhanced client profile with family members, documents, and expiry alerts.
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
         # Get client with extended fields
         client = await conn.fetchrow(
@@ -116,6 +122,13 @@ async def get_client_profile(client_id: int, pool=Depends(get_database_pool)):
 
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
+
+        # RBAC: Check if user has access to this client
+        if not user_is_admin and (client["assigned_to"] or "").lower() != user_email:
+            logger.warning(f"RBAC: User {user_email} denied access to client profile {client_id}")
+            raise HTTPException(
+                status_code=403, detail="You don't have access to this client profile"
+            )
 
         # Get family members
         family_members = await conn.fetch(
@@ -229,11 +242,25 @@ async def get_client_profile(client_id: int, pool=Depends(get_database_pool)):
 
 @router.patch("/clients/{client_id}/profile")
 async def update_client_profile(
-    client_id: int, data: ClientProfileUpdate, pool=Depends(get_database_pool)
+    client_id: int,
+    data: ClientProfileUpdate,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Update client profile fields (avatar, Google Drive folder, etc.)
     """
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
+    async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
     update_fields = []
     values = []
     param_num = 1
@@ -287,9 +314,22 @@ async def update_client_profile(
 
 
 @router.get("/clients/{client_id}/family")
-async def get_family_members(client_id: int, pool=Depends(get_database_pool)):
+async def get_family_members(
+    client_id: int, pool=Depends(get_database_pool), current_user: dict = Depends(get_current_user)
+):
     """Get all family members for a client."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
+
         members = await conn.fetch(
             """
             SELECT
@@ -326,14 +366,23 @@ async def get_family_members(client_id: int, pool=Depends(get_database_pool)):
 
 @router.post("/clients/{client_id}/family")
 async def create_family_member(
-    client_id: int, data: FamilyMemberCreate, pool=Depends(get_database_pool)
+    client_id: int,
+    data: FamilyMemberCreate,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """Add a family member to a client."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
-        # Verify client exists
-        client = await conn.fetchrow("SELECT id FROM clients WHERE id = $1", client_id)
+        # Verify client exists and check access
+        client = await conn.fetchrow("SELECT id, assigned_to FROM clients WHERE id = $1", client_id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (client["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
 
         # Sanitize date fields - convert empty strings to None for PostgreSQL DATE columns
         date_of_birth = data.date_of_birth if data.date_of_birth else None
@@ -368,9 +417,24 @@ async def create_family_member(
 
 @router.patch("/clients/{client_id}/family/{member_id}")
 async def update_family_member(
-    client_id: int, member_id: int, data: FamilyMemberUpdate, pool=Depends(get_database_pool)
+    client_id: int,
+    member_id: int,
+    data: FamilyMemberUpdate,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """Update a family member."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
+    async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
     # Date fields that need empty string → None conversion
     date_fields = {"date_of_birth", "passport_expiry", "visa_expiry"}
 
@@ -410,9 +474,25 @@ async def update_family_member(
 
 
 @router.delete("/clients/{client_id}/family/{member_id}")
-async def delete_family_member(client_id: int, member_id: int, pool=Depends(get_database_pool)):
+async def delete_family_member(
+    client_id: int,
+    member_id: int,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
     """Delete a family member."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
+
         result = await conn.execute(
             "DELETE FROM client_family_members WHERE id = $1 AND client_id = $2",
             member_id,
@@ -437,9 +517,21 @@ async def get_client_documents(
     ),
     include_archived: bool = Query(False, description="Include archived documents"),
     pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """Get all documents for a client, optionally filtered by category."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
+
         query = """
             SELECT
                 d.id, d.document_type, d.document_category,
@@ -476,9 +568,25 @@ async def get_client_documents(
 
 
 @router.post("/clients/{client_id}/documents")
-async def create_document(client_id: int, data: DocumentCreate, pool=Depends(get_database_pool)):
+async def create_document(
+    client_id: int,
+    data: DocumentCreate,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
+):
     """Add a document to a client."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
+
         # Sanitize date field - convert empty string to None for PostgreSQL DATE column
         expiry_date = data.expiry_date if data.expiry_date else None
 
@@ -510,9 +618,24 @@ async def create_document(client_id: int, data: DocumentCreate, pool=Depends(get
 
 @router.patch("/clients/{client_id}/documents/{doc_id}")
 async def update_document(
-    client_id: int, doc_id: int, data: DocumentUpdate, pool=Depends(get_database_pool)
+    client_id: int,
+    doc_id: int,
+    data: DocumentUpdate,
+    pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """Update a document."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
+    async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
     # Date field that needs empty string → None conversion
     date_fields = {"expiry_date"}
 
@@ -557,9 +680,21 @@ async def archive_document(
     doc_id: int,
     permanent: bool = Query(False, description="Permanently delete instead of archive"),
     pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """Archive or delete a document."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
+        # Check access
+        check = await conn.fetchrow("SELECT assigned_to FROM clients WHERE id = $1", client_id)
+        if not check:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if not user_is_admin and (check["assigned_to"] or "").lower() != user_email:
+            raise HTTPException(status_code=403, detail="You don't have access to this client")
+
         if permanent:
             result = await conn.execute(
                 "DELETE FROM documents WHERE id = $1 AND client_id = $2", doc_id, client_id
@@ -610,8 +745,12 @@ async def get_all_expiry_alerts(
     assigned_to: str | None = Query(None, description="Filter by team member email"),
     limit: int = Query(100, le=500),
     pool=Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """Get all expiry alerts across all clients (for team dashboard)."""
+    user_email = current_user.get("email", "").lower()
+    user_is_admin = is_crm_admin(current_user)
+
     async with pool.acquire() as conn:
         query = """
             SELECT
@@ -623,12 +762,14 @@ async def get_all_expiry_alerts(
         params = []
         param_num = 1
 
-        if alert_color:
-            query += f" AND alert_color = ${param_num}"
-            params.append(alert_color)
+        # RBAC: Non-admins only see their assigned clients' alerts
+        if not user_is_admin:
+            query += f" AND assigned_to = ${param_num}"
+            params.append(user_email)
             param_num += 1
-
-        if assigned_to:
+            logger.info(f"RBAC: User {user_email} alerts filtered to their assigned clients")
+        elif assigned_to:
+            # Admins can filter by specific assigned_to
             query += f" AND assigned_to = ${param_num}"
             params.append(assigned_to)
             param_num += 1

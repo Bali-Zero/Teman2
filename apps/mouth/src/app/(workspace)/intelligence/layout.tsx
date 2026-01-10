@@ -3,7 +3,8 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Shield, Newspaper, Activity } from "lucide-react";
+import { Shield, Newspaper, Activity, BarChart3 } from "lucide-react";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 const tabs = [
   {
@@ -17,6 +18,12 @@ const tabs = [
     href: "/intelligence/news-room",
     icon: Newspaper,
     description: "Curate immigration news articles"
+  },
+  {
+    name: "Analytics",
+    href: "/intelligence/analytics",
+    icon: BarChart3,
+    description: "Historical trends and performance metrics"
   },
   {
     name: "System Pulse",
@@ -92,7 +99,13 @@ export default function IntelligenceLayout({
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
-        {children}
+        <ErrorBoundary
+          onError={(error, errorInfo) => {
+            console.error('[Intelligence] Error caught:', error.message, errorInfo.componentStack);
+          }}
+        >
+          {children}
+        </ErrorBoundary>
       </div>
     </div>
   );

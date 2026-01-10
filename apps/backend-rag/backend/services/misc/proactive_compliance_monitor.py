@@ -128,8 +128,10 @@ class ProactiveComplianceMonitor:
             self.task.cancel()
             try:
                 await self.task
-            except Exception:
-                pass
+            except asyncio.CancelledError:
+                pass  # Expected during shutdown
+            except Exception as e:
+                logger.debug(f"Task cleanup exception (safe to ignore): {e}")
         logger.info("🛑 ProactiveComplianceMonitor stopped")
 
     async def _monitoring_loop(self):

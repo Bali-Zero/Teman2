@@ -18,6 +18,7 @@ import asyncpg
 import httpx
 
 from app.core.config import settings
+from app.core.constants import HttpTimeoutConstants
 
 logger = logging.getLogger(__name__)
 
@@ -96,23 +97,15 @@ class ZohoOAuthService:
         Raises:
             ValueError: If token exchange fails
         """
-        logger.info(f"[ZOHO_DEBUG] Starting exchange_code for user {user_id}")
-        logger.info(
-            f"[ZOHO_DEBUG] client_id: {self.client_id[:8] if self.client_id else 'None'}..."
-        )
-        logger.info(f"[ZOHO_DEBUG] client_secret: {'set' if self.client_secret else 'None'}")
-        logger.info(f"[ZOHO_DEBUG] redirect_uri: {self.redirect_uri}")
-        logger.info(f"[ZOHO_DEBUG] accounts_url: {self.accounts_url}")
-        logger.info(f"[ZOHO_DEBUG] code length: {len(code)}")
+        logger.debug(f"Starting OAuth code exchange for user {user_id}")
 
         if not self.client_id or not self.client_secret:
-            logger.error("[ZOHO_DEBUG] OAuth not configured - missing credentials")
+            logger.error("Zoho OAuth not configured - missing credentials")
             raise ValueError("Zoho OAuth not configured")
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=HttpTimeoutConstants.ZOHO_OAUTH_TIMEOUT) as client:
                 token_url = f"{self.accounts_url}/oauth/v2/token"
-                logger.info(f"[ZOHO_DEBUG] Posting to: {token_url}")
 
                 response = await client.post(
                     token_url,
@@ -125,13 +118,10 @@ class ZohoOAuthService:
                     },
                 )
 
-                logger.info(f"[ZOHO_DEBUG] Response status: {response.status_code}")
-                logger.info(f"[ZOHO_DEBUG] Response body: {response.text[:500]}")
-
                 if response.status_code != 200:
                     error_data = response.json() if response.content else {}
                     logger.error(
-                        f"[ZOHO_DEBUG] Token exchange failed: {response.status_code} - {error_data}"
+                        f"Zoho token exchange failed: {response.status_code} - {error_data.get('error', 'unknown')}"
                     )
                     raise ValueError(
                         f"Token exchange failed: {error_data.get('error', 'unknown error')}"
@@ -140,14 +130,11 @@ class ZohoOAuthService:
                 token_data = response.json()
 
                 if "error" in token_data:
-                    logger.error(f"[ZOHO_DEBUG] Zoho OAuth error in response: {token_data}")
+                    logger.error(f"Zoho OAuth error: {token_data.get('error')}")
                     raise ValueError(f"OAuth error: {token_data.get('error')}")
-
-                logger.info("[ZOHO_DEBUG] Token exchange successful, getting account info...")
 
                 # Get account information
                 account_info = await self._get_account_info(token_data["access_token"])
-                logger.info(f"[ZOHO_DEBUG] Account info: {account_info}")
 
                 # Store tokens in database
                 await self._store_tokens(
@@ -159,13 +146,11 @@ class ZohoOAuthService:
                     expires_in=token_data.get("expires_in", 3600),
                 )
 
-                logger.info(
-                    f"[ZOHO_DEBUG] Zoho OAuth successful for user {user_id}: {account_info['email']}"
-                )
+                logger.info(f"Zoho OAuth connected for user {user_id}: {account_info['email']}")
                 return token_data
 
         except httpx.RequestError as e:
-            logger.error(f"[ZOHO_DEBUG] HTTP request error: {type(e).__name__}: {e}")
+            logger.error(f"Zoho OAuth network error: {type(e).__name__}: {e}")
             raise ValueError(f"Network error during token exchange: {e}")
 
     async def _get_account_info(self, access_token: str) -> dict[str, str]:
@@ -178,11 +163,6 @@ class ZohoOAuthService:
         Returns:
             Dict with account_id and email
         """
-        # VERSION MARKER - helps identify which code version is running
-        logger.info(
-            "[ZOHO_DEBUG] ===== _get_account_info VERSION: 2024-12-30-v3 WITH SAFEGUARD ====="
-        )
-
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self.api_domain}/api/accounts",
@@ -207,70 +187,40 @@ class ZohoOAuthService:
             email_list = account.get("email", [])
             primary_email = ""
 
-            logger.info(
-                f"[ZOHO_DEBUG] Raw email_list type: {type(email_list)}, value: {email_list}"
-            )
-
             if isinstance(email_list, list):
-                logger.info(f"[ZOHO_DEBUG] email_list is a list with {len(email_list)} items")
-                for i, email_entry in enumerate(email_list):
-                    logger.info(
-                        f"[ZOHO_DEBUG] Processing item {i}: type={type(email_entry)}, value={email_entry}"
-                    )
-                    is_dict = isinstance(email_entry, dict)
-                    is_primary = email_entry.get("isPrimary") if is_dict else None
-                    logger.info(
-                        f"[ZOHO_DEBUG] is_dict={is_dict}, isPrimary={is_primary}, type(isPrimary)={type(is_primary)}"
-                    )
-                    if is_dict and is_primary:
+                for email_entry in email_list:
+                    if isinstance(email_entry, dict) and email_entry.get("isPrimary"):
                         primary_email = email_entry.get("mailId", "")
-                        logger.info(f"[ZOHO_DEBUG] FOUND primary! mailId={primary_email}")
                         break
                 # Fallback to first email if no primary found
                 if not primary_email and email_list and isinstance(email_list[0], dict):
                     primary_email = email_list[0].get("mailId", "")
-                    logger.info(f"[ZOHO_DEBUG] Using fallback: {primary_email}")
             elif isinstance(email_list, str):
-                # Handle case where email is already a string
                 primary_email = email_list
-                logger.info(f"[ZOHO_DEBUG] email_list was already a string: {primary_email}")
 
             # Also check for emailAddress field as fallback
             if not primary_email:
                 primary_email = account.get("emailAddress", "")
-                logger.info(f"[ZOHO_DEBUG] Using emailAddress fallback: {primary_email}")
 
-            logger.info(
-                f"[ZOHO_DEBUG] Extracted email: {primary_email}, type: {type(primary_email)}"
-            )
-
-            # FINAL SAFEGUARD: Ensure email is ALWAYS a string
-            # This handles edge cases where extraction might have failed
+            # Ensure email is always a string (edge case safeguard)
             if not isinstance(primary_email, str):
-                logger.error(
-                    f"[ZOHO_DEBUG] CRITICAL: primary_email is NOT a string! Type: {type(primary_email)}, Value: {primary_email}"
-                )
-                # Try to extract from whatever we have
+                logger.warning(f"Unexpected email type: {type(primary_email)}")
                 if isinstance(primary_email, list) and primary_email:
                     first_item = primary_email[0]
-                    if isinstance(first_item, dict):
-                        primary_email = str(first_item.get("mailId", ""))
-                    else:
-                        primary_email = str(first_item) if first_item else ""
+                    primary_email = (
+                        str(first_item.get("mailId", ""))
+                        if isinstance(first_item, dict)
+                        else str(first_item) if first_item else ""
+                    )
                 elif isinstance(primary_email, dict):
                     primary_email = str(primary_email.get("mailId", ""))
                 else:
                     primary_email = str(primary_email) if primary_email else ""
-                logger.info(f"[ZOHO_DEBUG] Recovered email: {primary_email}")
 
             # Final validation
             if not primary_email or "@" not in primary_email:
-                logger.error(f"[ZOHO_DEBUG] Invalid email extracted: '{primary_email}'")
-                # Last resort: search in the entire account object
-                logger.info(f"[ZOHO_DEBUG] Full account object keys: {account.keys()}")
+                logger.error(f"Invalid email extracted from Zoho account: '{primary_email}'")
                 raise ValueError("Could not extract valid email address from Zoho account")
-
-            logger.info(f"[ZOHO_DEBUG] ===== FINAL EMAIL: {primary_email} =====")
 
             return {
                 "account_id": str(account.get("accountId", "")),
@@ -506,7 +456,7 @@ class ZohoOAuthService:
             if row and row["refresh_token"]:
                 # Attempt to revoke token (optional, may fail)
                 try:
-                    async with httpx.AsyncClient(timeout=10.0) as client:
+                    async with httpx.AsyncClient(timeout=HttpTimeoutConstants.SHORT_TIMEOUT) as client:
                         await client.post(
                             f"{self.accounts_url}/oauth/v2/token/revoke",
                             params={"token": row["refresh_token"]},

@@ -31,7 +31,7 @@ from loguru import logger
 # Import our modules
 from rss_fetcher import GoogleNewsRSSFetcher, send_to_balizero
 from unified_scraper import BaliZeroScraperV2
-from intel_pipeline import IntelPipeline, PipelineArticle
+from intel_pipeline import IntelPipeline
 
 # Configure logging
 Path("logs").mkdir(exist_ok=True)
@@ -42,7 +42,7 @@ async def run_quick_mode(
     max_age: int = 7,
     limit_per_topic: int = 5,
     min_score: int = 50,
-    api_url: str = "https://balizero.com",
+    api_url: str = "https://nuzantara-rag.fly.dev",
     api_key: Optional[str] = None,
     use_ollama: bool = False,
     dry_run: bool = False,
@@ -84,7 +84,7 @@ async def run_full_mode(
     max_age: int = 7,
     limit_per_topic: int = 3,
     min_score: int = 60,
-    api_url: str = "https://balizero.com",
+    api_url: str = "https://nuzantara-rag.fly.dev",
     api_key: Optional[str] = None,
     use_ollama: bool = False,
     dry_run: bool = False,
@@ -135,6 +135,7 @@ async def run_full_mode(
 
     # Initialize Telegram approval system
     from telegram_approval import TelegramApproval
+
     telegram = TelegramApproval() if not dry_run else None
 
     enriched_count = 0
@@ -161,27 +162,63 @@ async def run_full_mode(
             # Send to Telegram for approval (HTML formatted)
             if telegram and not dry_run:
                 try:
+                    # Build SEO metadata from enriched article
+                    seo_metadata = {
+                        "meta_title": enriched.headline,
+                        "meta_description": enriched.ai_summary[:160]
+                        if enriched.ai_summary
+                        else "",
+                        "keywords": enriched.ai_tags[:5] if enriched.ai_tags else [],
+                    }
+
+                    # Build full enriched content - fallback to ai_summary if facts/take are empty
+                    facts_section = (
+                        enriched.facts
+                        if enriched.facts and enriched.facts.strip()
+                        else ""
+                    )
+                    take_section = (
+                        enriched.bali_zero_take
+                        if enriched.bali_zero_take and enriched.bali_zero_take.strip()
+                        else ""
+                    )
+
+                    # Use structured content if available, otherwise use ai_summary
+                    if facts_section or take_section:
+                        full_content = f"{facts_section}\n\n{take_section}".strip()
+                    else:
+                        # Fallback to ai_summary (complete Bali Zero style article)
+                        full_content = (
+                            enriched.ai_summary or enriched.original_content[:2000]
+                        )
+
                     article_data = {
                         "title": enriched.headline,
-                        "content": enriched.executive_brief,
-                        "enriched_content": f"{enriched.facts}\n\n{enriched.bali_zero_take}",
+                        "content": enriched.ai_summary,
+                        "enriched_content": full_content,
                         "category": enriched.category,
                         "source": item.get("source", "Unknown"),
                         "source_url": item.get("sourceUrl", ""),
                         "image_url": enriched.cover_image or "",
+                        "relevance_score": enriched.relevance_score,
+                        "published_at": enriched.published_at,
                     }
 
                     pending = await telegram.submit_for_approval(
                         article=article_data,
-                        seo_metadata=enriched.seo_metadata or {},
-                        enriched_content=f"{enriched.facts}\n\n{enriched.bali_zero_take}",
+                        seo_metadata=seo_metadata,
+                        enriched_content=full_content,
                     )
 
                     if pending.telegram_message_id:
-                        logger.success(f"   📱 Telegram sent! Message ID: {pending.telegram_message_id}")
+                        logger.success(
+                            f"   📱 Telegram sent! Message ID: {pending.telegram_message_id}"
+                        )
                         sent_count += 1
                     else:
-                        logger.warning("   ⚠️ Telegram notification failed (check config)")
+                        logger.warning(
+                            "   ⚠️ Telegram notification failed (check config)"
+                        )
                 except Exception as e:
                     logger.error(f"   ❌ Telegram error: {e}")
 
@@ -232,7 +269,7 @@ async def run_full_mode(
 
 
 async def run_enrich_only(
-    api_url: str = "https://balizero.com",
+    api_url: str = "https://nuzantara-rag.fly.dev",
     api_key: Optional[str] = None,
     limit: int = 10,
     dry_run: bool = False,
@@ -282,7 +319,9 @@ async def run_massive_mode(
     logger.info("🚀 BALIZERO INTEL FEED - MASSIVE MODE")
     logger.info(f"📅 {datetime.now().isoformat()}")
     logger.info("=" * 70)
-    logger.info("📊 Sources: 790+ web sources (unified_sources.json + extended_sources.json)")
+    logger.info(
+        "📊 Sources: 790+ web sources (unified_sources.json + extended_sources.json)"
+    )
     logger.info(f"🎯 Categories: {categories or 'ALL'}")
     logger.info(f"📈 Tiers: {tiers or ['T1', 'T2']}")
     logger.info(f"🔢 Min Score: {min_score}")
@@ -316,11 +355,17 @@ async def run_massive_mode(
         categories=categories,
     )
 
-    logger.info(f"\n📊 Scraping Results:")
-    logger.info(f"   Total Found: {scrape_results.get('stats', {}).get('total_found', 0)}")
+    logger.info("\n📊 Scraping Results:")
+    logger.info(
+        f"   Total Found: {scrape_results.get('stats', {}).get('total_found', 0)}"
+    )
     logger.info(f"   Saved: {scrape_results.get('stats', {}).get('saved', 0)}")
-    logger.info(f"   Filtered (low score): {scrape_results.get('stats', {}).get('filtered_low_score', 0)}")
-    logger.info(f"   Filtered (duplicate): {scrape_results.get('stats', {}).get('filtered_duplicate', 0)}")
+    logger.info(
+        f"   Filtered (low score): {scrape_results.get('stats', {}).get('filtered_low_score', 0)}"
+    )
+    logger.info(
+        f"   Filtered (duplicate): {scrape_results.get('stats', {}).get('filtered_duplicate', 0)}"
+    )
 
     # Get scraped articles from data/raw directory
     scraped_articles = []
@@ -351,7 +396,9 @@ async def run_massive_mode(
                                 content_lines.append(line)
 
                         article["content"] = "\n".join(content_lines)
-                        article["summary"] = article["content"][:500] if article["content"] else ""
+                        article["summary"] = (
+                            article["content"][:500] if article["content"] else ""
+                        )
 
                         if article.get("title") and article.get("url"):
                             scraped_articles.append(article)
@@ -438,7 +485,7 @@ async def main():
     parser.add_argument(
         "--api-url", default="https://balizero.com", help="BaliZero API URL"
     )
-    parser.add_argument("--api-key", help="API key (or set BALIZERO_API_KEY env)")
+    parser.add_argument("--api-key", help="API key (or set NUZANTARA_API_KEY env)")
     parser.add_argument(
         "--dry-run", action="store_true", help="Preview without sending"
     )
@@ -478,10 +525,10 @@ async def main():
     args = parser.parse_args()
 
     # Get API key
-    api_key = args.api_key or os.getenv("BALIZERO_API_KEY")
+    api_key = args.api_key or os.getenv("NUZANTARA_API_KEY")
 
     if not api_key and not args.dry_run:
-        logger.warning("No API key provided. Use --api-key or set BALIZERO_API_KEY")
+        logger.warning("No API key provided. Use --api-key or set NUZANTARA_API_KEY")
 
     # Run selected mode
     if args.mode == "massive":

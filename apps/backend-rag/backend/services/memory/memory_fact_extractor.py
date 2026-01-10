@@ -5,6 +5,9 @@ Extracts important facts to save in user memory for context building
 
 import logging
 import re
+import time
+
+from app.metrics import metrics_collector
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +74,7 @@ class MemoryFactExtractor:
         Returns:
             List of facts: [{"content": str, "type": str, "confidence": float}, ...]
         """
+        start_time = time.time()
         facts = []
 
         try:
@@ -85,9 +89,16 @@ class MemoryFactExtractor:
             # Deduplicate and rank by confidence
             facts = self._deduplicate_facts(facts)
 
+            # Record metrics
+            duration = time.time() - start_time
+            fact_types = [f["type"] for f in facts]
+            metrics_collector.record_memory_extraction(duration, fact_types)
+
             # Log extraction results
             if facts:
-                logger.info(f"💎 [FactExtractor] Extracted {len(facts)} facts for {user_id}")
+                logger.info(
+                    f"💎 [FactExtractor] Extracted {len(facts)} facts for {user_id} ({duration * 1000:.1f}ms)"
+                )
                 for fact in facts[:3]:  # Log top 3
                     logger.info(
                         f"   - [{fact['type']}] {fact['content'][:50]}... (conf: {fact['confidence']:.2f})"

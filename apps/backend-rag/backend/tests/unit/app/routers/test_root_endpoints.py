@@ -131,4 +131,3 @@ class TestRootEndpoints:
         data = response.json()
         assert data["system_health"] == "error"
         assert "error" in data
-

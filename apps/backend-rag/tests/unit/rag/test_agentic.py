@@ -262,7 +262,9 @@ def test_is_out_of_domain_personal_data():
 
 def test_is_out_of_domain_realtime_info():
     """Test detection of real-time information queries"""
-    query = "Che tempo fa a Bali oggi?"
+    # Weather queries are now ALLOWED (handled by web_search tool)
+    # Test with financial real-time info instead - use English pattern
+    query = "What is the bitcoin price?"
     is_ood, reason = is_out_of_domain(query)
     assert is_ood is True
     assert reason == "realtime_info"

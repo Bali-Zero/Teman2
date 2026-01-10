@@ -130,4 +130,3 @@ class TestChatStreamRequest:
         """Test request with metadata"""
         request = ChatStreamRequest(message="test", metadata={"key": "value"})
         assert request.metadata["key"] == "value"
-

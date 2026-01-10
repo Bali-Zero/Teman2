@@ -8,10 +8,10 @@ from fastapi import FastAPI
 from app.modules.identity.router import router as identity_router
 from app.modules.knowledge.router import router as knowledge_router
 from app.routers import (
+    admin_logs,
     agentic_rag,
     agents,
     analytics,
-    audio,
     auth,
     autonomous_agents,
     blog_ask,
@@ -24,6 +24,7 @@ from app.routers import (
     crm_portal_integration,
     crm_practices,
     crm_shared_memory,
+    dashboard_summary,
     debug,
     episodic_memory,
     feedback,
@@ -116,6 +117,11 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(intel.router)
     api.include_router(oracle_universal.router)
 
+    # Preview router (for Telegram article previews)
+    from app.routers import preview
+
+    api.include_router(preview.router)
+
     # Communication routers (notifications/whatsapp/instagram removed - will be MCP)
     api.include_router(websocket.router)
     api.include_router(telegram.router)  # Telegram bot integration
@@ -147,7 +153,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(team_activity.router)
     api.include_router(team_analytics.router)
     api.include_router(media.router)
-    api.include_router(audio.router)
+    # api.include_router(audio.router)  # Already included in app_factory.py with prefix="/api"
     api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI
 
     # Image generation router
@@ -157,3 +163,9 @@ def include_routers(api: FastAPI) -> None:
 
     # Analytics router (Founder-only dashboard)
     api.include_router(analytics.router)
+
+    # Admin Logs router (Admin-only activity logs and audit trail)
+    api.include_router(admin_logs.router)
+
+    # Dashboard aggregation router
+    api.include_router(dashboard_summary.router)

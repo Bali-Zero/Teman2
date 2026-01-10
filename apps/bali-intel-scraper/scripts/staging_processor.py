@@ -29,10 +29,8 @@ import asyncio
 import json
 import os
 import sys
-import httpx
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional
 from loguru import logger
 
 # Add parent directory to path for imports
@@ -53,9 +51,7 @@ class StagingProcessor:
     """Process articles from backend staging directory"""
 
     def __init__(
-        self,
-        staging_dir: Path = Path("/data/staging"),
-        dry_run: bool = False
+        self, staging_dir: Path = Path("/data/staging"), dry_run: bool = False
     ):
         self.staging_dir = staging_dir
         self.dry_run = dry_run
@@ -72,7 +68,7 @@ class StagingProcessor:
             "visa_found": 0,
             "sent_to_telegram": 0,
             "errors": 0,
-            "skipped": 0
+            "skipped": 0,
         }
 
     async def process_staging_files(self):
@@ -101,7 +97,7 @@ class StagingProcessor:
         # Summary
         logger.info("=" * 70)
         logger.info("✅ STAGING PROCESSING COMPLETE")
-        logger.info(f"📊 Stats:")
+        logger.info("📊 Stats:")
         logger.info(f"   News found: {self.stats['news_found']}")
         logger.info(f"   Visa found: {self.stats['visa_found']}")
         logger.info(f"   Sent to Telegram: {self.stats['sent_to_telegram']}")
@@ -158,7 +154,7 @@ class StagingProcessor:
             return
 
         if self.dry_run:
-            logger.info(f"      🧪 DRY RUN - Would send to Telegram")
+            logger.info("      🧪 DRY RUN - Would send to Telegram")
             return
 
         # Send to Telegram for approval
@@ -181,18 +177,22 @@ class StagingProcessor:
                     "meta_description": content[:160] if content else "",
                     "keywords": [category, category_type],
                     "faq_items": [],
-                    "reading_time_minutes": len(content.split()) // 200 if content else 1,
+                    "reading_time_minutes": len(content.split()) // 200
+                    if content
+                    else 1,
                 }
 
                 # Submit for approval
                 pending = await self.telegram.submit_for_approval(
                     article=article_data,
                     seo_metadata=seo_metadata,
-                    enriched_content=content
+                    enriched_content=content,
                 )
 
                 if pending and pending.telegram_message_id:
-                    logger.success(f"      ✅ Sent to Telegram (ID: {pending.article_id})")
+                    logger.success(
+                        f"      ✅ Sent to Telegram (ID: {pending.article_id})"
+                    )
                     self.stats["sent_to_telegram"] += 1
 
                     # Move to processed
@@ -202,14 +202,14 @@ class StagingProcessor:
                     json_file.rename(new_path)
                     logger.info(f"      📦 Moved to: {new_path}")
                 else:
-                    logger.warning(f"      ⚠️ Telegram send failed (no message ID)")
+                    logger.warning("      ⚠️ Telegram send failed (no message ID)")
                     self.stats["errors"] += 1
 
             except Exception as e:
                 logger.error(f"      ❌ Telegram approval failed: {e}")
                 self.stats["errors"] += 1
         else:
-            logger.warning(f"      ⚠️ Telegram not configured - skipping")
+            logger.warning("      ⚠️ Telegram not configured - skipping")
             self.stats["skipped"] += 1
 
 
@@ -221,19 +221,18 @@ async def main():
     parser.add_argument(
         "--staging-dir",
         default="/data/staging",
-        help="Path to staging directory (default: /data/staging on Fly.io)"
+        help="Path to staging directory (default: /data/staging on Fly.io)",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Dry run - show what would be processed without sending"
+        help="Dry run - show what would be processed without sending",
     )
 
     args = parser.parse_args()
 
     processor = StagingProcessor(
-        staging_dir=Path(args.staging_dir),
-        dry_run=args.dry_run
+        staging_dir=Path(args.staging_dir), dry_run=args.dry_run
     )
 
     await processor.process_staging_files()

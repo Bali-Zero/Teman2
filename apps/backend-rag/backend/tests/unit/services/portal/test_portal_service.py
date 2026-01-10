@@ -78,4 +78,3 @@ class TestPortalService:
         mock_db_pool.acquire = MagicMock(return_value=mock_conn)
         with pytest.raises(ValueError):
             await portal_service.get_dashboard(999)
-

@@ -160,4 +160,3 @@ class TestValidationExceptionHandler:
 
         assert response.status_code == 422
         assert "detail" in response.body.decode()
-

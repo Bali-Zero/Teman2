@@ -38,6 +38,7 @@ def _load_module(monkeypatch, perf_monitor, embedding_cache, search_cache):
             perf_monitor=perf_monitor,
             embedding_cache=embedding_cache,
             search_cache=search_cache,
+            redis_url='redis://localhost:6379'
         ),
     )
 

@@ -25,9 +25,10 @@ def _load_module(
         jwt_algorithm="HS256",
         zantara_allowed_origins=allowed_origin,
         dev_origins="",
+        redis_url='redis://localhost:6379'
     )
     monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub)
+        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
     )
 
     class _APIKeyAuth:
@@ -43,7 +44,7 @@ def _load_module(
             return {"total": 1}
 
     monkeypatch.setitem(
-        sys.modules, "app.services.api_key_auth", types.SimpleNamespace(APIKeyAuth=_APIKeyAuth)
+        sys.modules, "app.services.api_key_auth", types.SimpleNamespace(APIKeyAuth=_APIKeyAuth, redis_url='redis://localhost:6379')
     )
 
     cookie_state = {"token": None, "csrf_valid": True, "csrf_exempt": False}
@@ -64,6 +65,7 @@ def _load_module(
             get_jwt_from_cookie=get_jwt_from_cookie,
             is_csrf_exempt=is_csrf_exempt,
             validate_csrf=validate_csrf,
+            redis_url='redis://localhost:6379'
         ),
     )
 
@@ -141,7 +143,7 @@ def test_api_key_auth_success(monkeypatch):
     response = client.get("/private", headers={"X-API-Key": "valid-key"})
 
     assert response.status_code == 200
-    assert response.headers["X-Auth-Type"] == "unknown"
+    assert response.headers["X-Auth-Type"] == "api_key"
 
 
 def test_cookie_auth_csrf_failure(monkeypatch):
@@ -168,7 +170,7 @@ def test_cookie_auth_success(monkeypatch):
     response = client.get("/private")
 
     assert response.status_code == 200
-    assert response.headers["X-Auth-Type"] == "unknown"
+    assert response.headers["X-Auth-Type"] == "jwt_cookie"
 
 
 def test_header_jwt_bypassed(monkeypatch):

@@ -27,8 +27,8 @@ class _FakeResponse:
 
 
 def _load_module(monkeypatch, token="token", async_client=None):
-    settings_stub = types.SimpleNamespace(telegram_bot_token=token)
-    config_stub = types.SimpleNamespace(settings=settings_stub)
+    settings_stub = types.SimpleNamespace(telegram_bot_token=token, redis_url='redis://localhost:6379')
+    config_stub = types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "app.core.config", config_stub)
 
     if async_client is None:

@@ -1,73 +1,0 @@
-Note: Unnecessary use of -X or --request, POST is already inferred.
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Host nuzantara-rag.fly.dev:443 was resolved.
-* IPv6: (none)
-* IPv4: 66.241.124.44
-*   Trying 66.241.124.44:443...
-* Connected to nuzantara-rag.fly.dev (66.241.124.44) port 443
-* ALPN: curl offers h2,http/1.1
-* (304) (OUT), TLS handshake, Client hello (1):
-} [326 bytes data]
-*  CAfile: /etc/ssl/cert.pem
-*  CApath: none
-* (304) (IN), TLS handshake, Server hello (2):
-{ [122 bytes data]
-* (304) (IN), TLS handshake, Unknown (8):
-{ [19 bytes data]
-* (304) (IN), TLS handshake, Certificate (11):
-{ [2030 bytes data]
-* (304) (IN), TLS handshake, CERT verify (15):
-{ [79 bytes data]
-* (304) (IN), TLS handshake, Finished (20):
-{ [36 bytes data]
-* (304) (OUT), TLS handshake, Finished (20):
-} [36 bytes data]
-* SSL connection using TLSv1.3 / AEAD-CHACHA20-POLY1305-SHA256 / [blank] / UNDEF
-* ALPN: server accepted h2
-* Server certificate:
-*  subject: CN=*.fly.dev
-*  start date: Dec 21 23:24:02 2025 GMT
-*  expire date: Mar 21 23:24:01 2026 GMT
-*  subjectAltName: host "nuzantara-rag.fly.dev" matched cert's "*.fly.dev"
-*  issuer: C=US; O=Let's Encrypt; CN=E7
-*  SSL certificate verify ok.
-* using HTTP/2
-* [HTTP/2] [1] OPENED stream for https://nuzantara-rag.fly.dev/api/agentic-rag/query
-* [HTTP/2] [1] [:method: POST]
-* [HTTP/2] [1] [:scheme: https]
-* [HTTP/2] [1] [:authority: nuzantara-rag.fly.dev]
-* [HTTP/2] [1] [:path: /api/agentic-rag/query]
-* [HTTP/2] [1] [user-agent: curl/8.7.1]
-* [HTTP/2] [1] [accept: */*]
-* [HTTP/2] [1] [authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3ZGZlNTZiMi1mZjYzLTRkNDAtYjc4Yi05MGMwMTgxMjdhMDIiLCJlbWFpbCI6Inplcm9AYmFsaXplcm8uY29tIiwicm9sZSI6IkZvdW5kZXIiLCJleHAiOjE3NjY5NDEzOTJ9.qnGPct4MDkL5KfEK-B7hO851tRkAstmDcW2IFf-XheE]
-* [HTTP/2] [1] [content-type: application/json]
-* [HTTP/2] [1] [content-length: 83]
-> POST /api/agentic-rag/query HTTP/2
-> Host: nuzantara-rag.fly.dev
-> User-Agent: curl/8.7.1
-> Accept: */*
-> Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3ZGZlNTZiMi1mZjYzLTRkNDAtYjc4Yi05MGMwMTgxMjdhMDIiLCJlbWFpbCI6Inplcm9AYmFsaXplcm8uY29tIiwicm9sZSI6IkZvdW5kZXIiLCJleHAiOjE3NjY5NDEzOTJ9.qnGPct4MDkL5KfEK-B7hO851tRkAstmDcW2IFf-XheE
-> Content-Type: application/json
-> Content-Length: 83
-> 
-} [83 bytes data]
-* upload completely sent off: 83 bytes
-100    83    0     0  100    83      0     71  0:00:01  0:00:01 --:--:--    71100    83    0     0  100    83      0     38  0:00:02  0:00:02 --:--:--    38100    83    0     0  100    83      0     26  0:00:03  0:00:03 --:--:--    26100    83    0     0  100    83      0     19  0:00:04  0:00:04 --:--:--    19100    83    0     0  100    83      0     16  0:00:05  0:00:05 --:--:--    16100    83    0     0  100    83      0     13  0:00:06  0:00:06 --:--:--     0100    83    0     0  100    83      0     11  0:00:07  0:00:07 --:--:--     0100    83    0     0  100    83      0     10  0:00:08  0:00:08 --:--:--     0100    83    0     0  100    83      0      9  0:00:09  0:00:09 --:--:--     0100    83    0     0  100    83      0      8  0:00:10  0:00:10 --:--:--     0100    83    0     0  100    83      0      7  0:00:11  0:00:11 --:--:--     0100    83    0     0  100    83      0      6  0:00:13  0:00:12  0:00:01     0100    83    0     0  100    83      0      6  0:00:13  0:00:13 --:--:--     0100    83    0     0  100    83      0      5  0:00:16  0:00:14  0:00:02     0100    83    0     0  100    83      0      5  0:00:16  0:00:15  0:00:01     0100    83    0     0  100    83      0      5  0:00:16  0:00:16 --:--:--     0100    83    0     0  100    83      0      4  0:00:20  0:00:17  0:00:03     0100    83    0     0  100    83      0      4  0:00:20  0:00:18  0:00:02     0100    83    0     0  100    83      0      4  0:00:20  0:00:19  0:00:01     0< HTTP/2 200 
-< date: Sat, 27 Dec 2025 17:17:40 GMT
-< server: Fly/fbde0e6c3 (2025-12-17)
-< content-length: 353
-< content-type: application/json
-< x-auth-type: unknown
-< x-correlation-id: 3dc82217-ca64-4e31-88a8-80bf6fc49a2b
-< x-request-id: 310886b4-37b4-4327-aa7c-80ad9875852b
-< x-ratelimit-limit: 120
-< x-ratelimit-remaining: 118
-< x-ratelimit-reset: 1766855921
-< via: 2 fly.io
-< fly-request-id: 01KDGD1RTPCBB9NDW96XCM4PX4-sin
-< 
-{ [353 bytes data]
-100   436  100   353  100    83     17      4  0:00:20  0:00:19  0:00:01    75100   436  100   353  100    83     17      4  0:00:20  0:00:19  0:00:01    96
-* Connection #0 to host nuzantara-rag.fly.dev left intact
-{"answer":"Mi dispiace, non ho trovato informazioni verificate sufficienti nei documenti ufficiali per rispondere alla tua domanda specifica. Posso aiutarti con altro?","sources":[],"context_length":0,"execution_time":19.68495464324951,"route_used":null,"tools_called":0,"total_steps":0,"debug_info":{"model":"gemini-3-flash-preview","cache_hit":false}}

@@ -234,4 +234,3 @@ class TestObservabilitySetup:
                     call_kwargs = mock_http_exporter.call_args[1]
                     assert call_kwargs["headers"]["Authorization"] == "Basic token123"
                     assert call_kwargs["headers"]["X-Custom-Header"] == "custom-value"
-

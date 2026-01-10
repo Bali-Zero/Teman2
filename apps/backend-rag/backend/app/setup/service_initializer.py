@@ -553,6 +553,13 @@ async def initialize_crm_and_memory_services(
         app.state.conversation_service = ConversationService(db_pool)
         logger.info("✅ Conversation Service initialized")
 
+        # Initialize Activity Logger
+        from services.monitoring.activity_logger import activity_logger
+
+        await activity_logger.initialize(db_pool)
+        app.state.activity_logger = activity_logger
+        logger.info("✅ Activity Logger initialized")
+
         # Initialize Collective Memory Workflow
         collective_memory_workflow = create_collective_memory_workflow(
             memory_service=app.state.memory_service

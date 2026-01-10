@@ -42,8 +42,7 @@ class SystemConnectionStatus(BaseModel):
     root_folder_id: str | None = None
 
 
-# Admin emails allowed to connect SYSTEM OAuth
-ADMIN_EMAILS = ["zero@balizero.com", "antonellosiano@gmail.com"]
+from app.utils.crm_utils import is_super_admin
 
 
 class FileItem(BaseModel):
@@ -241,10 +240,10 @@ async def get_system_auth_url(
     user_email = current_user.get("email", "")
 
     # Check admin permission
-    if user_email not in ADMIN_EMAILS:
+    if not is_super_admin(current_user):
         raise HTTPException(
             status_code=403,
-            detail=f"Solo gli admin ({', '.join(ADMIN_EMAILS)}) possono connettere il Drive di sistema",
+            detail="Solo gli admin possono connettere il Drive di sistema",
         )
 
     service = GoogleDriveService(db_pool)
@@ -276,10 +275,10 @@ async def disconnect_system(
     user_email = current_user.get("email", "")
 
     # Check admin permission
-    if user_email not in ADMIN_EMAILS:
+    if not is_super_admin(current_user):
         raise HTTPException(
             status_code=403,
-            detail=f"Solo gli admin ({', '.join(ADMIN_EMAILS)}) possono disconnettere il Drive di sistema",
+            detail="Solo gli admin possono disconnettere il Drive di sistema",
         )
 
     service = GoogleDriveService(db_pool)

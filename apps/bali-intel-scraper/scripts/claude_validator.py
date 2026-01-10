@@ -79,7 +79,9 @@ class ClaudeValidator:
             try:
                 with open(PUBLISHED_ARTICLES_FILE, "r") as f:
                     data = json.load(f)
-                    logger.info(f"Loaded {len(data.get('articles', []))} published articles for duplicate check")
+                    logger.info(
+                        f"Loaded {len(data.get('articles', []))} published articles for duplicate check"
+                    )
                     return data.get("articles", [])
             except Exception as e:
                 logger.warning(f"Error loading published articles: {e}")
@@ -87,7 +89,9 @@ class ClaudeValidator:
         return []
 
     @staticmethod
-    def add_published_article(title: str, url: str, category: str, published_at: str = None):
+    def add_published_article(
+        title: str, url: str, category: str, published_at: str = None
+    ):
         """
         Add article to published registry. Call this after successful publish.
 
@@ -107,23 +111,30 @@ class ClaudeValidator:
                 articles = []
 
         # Add new article
-        articles.append({
-            "title": title,
-            "url": url,
-            "category": category,
-            "published_at": published_at or datetime.now().isoformat(),
-        })
+        articles.append(
+            {
+                "title": title,
+                "url": url,
+                "category": category,
+                "published_at": published_at or datetime.now().isoformat(),
+            }
+        )
 
         # Keep last 500 articles (rolling window)
         articles = articles[-500:]
 
         # Save
         with open(PUBLISHED_ARTICLES_FILE, "w") as f:
-            json.dump({
-                "last_updated": datetime.now().isoformat(),
-                "count": len(articles),
-                "articles": articles
-            }, f, indent=2, ensure_ascii=False)
+            json.dump(
+                {
+                    "last_updated": datetime.now().isoformat(),
+                    "count": len(articles),
+                    "articles": articles,
+                },
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
 
         logger.info(f"Added to published registry: {title[:50]}...")
 
@@ -135,7 +146,9 @@ class ClaudeValidator:
         recent = self.published_articles[-limit:]
         lines = []
         for art in recent:
-            lines.append(f"- [{art.get('category', 'general')}] {art.get('title', 'Untitled')}")
+            lines.append(
+                f"- [{art.get('category', 'general')}] {art.get('title', 'Untitled')}"
+            )
 
         return "\n".join(lines)
 
@@ -154,7 +167,23 @@ class ClaudeValidator:
         title_words = set(title_lower.split())
 
         # Remove common stop words
-        stop_words = {'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'of', 'and', 'or', 'is', 'are', 'was', 'were'}
+        stop_words = {
+            "the",
+            "a",
+            "an",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "and",
+            "or",
+            "is",
+            "are",
+            "was",
+            "were",
+        }
         title_words = title_words - stop_words
 
         for pub in self.published_articles[-100:]:  # Check last 100
@@ -172,7 +201,9 @@ class ClaudeValidator:
                 similarity = overlap / smaller_set
                 # If more than 60% words match, likely duplicate
                 if similarity > 0.6:
-                    logger.debug(f"Quick duplicate check: {similarity:.0%} match with '{pub.get('title', '')[:50]}'")
+                    logger.debug(
+                        f"Quick duplicate check: {similarity:.0%} match with '{pub.get('title', '')[:50]}'"
+                    )
                     return pub.get("title")
 
         return None
@@ -348,7 +379,9 @@ DECISION GUIDELINES:
             is_likely_duplicate = self._quick_duplicate_check(title)
             if is_likely_duplicate:
                 self.stats["duplicate_rejected"] += 1
-                logger.warning(f"🔄 DUPLICATE rejected (high score but duplicate): {title[:50]}...")
+                logger.warning(
+                    f"🔄 DUPLICATE rejected (high score but duplicate): {title[:50]}..."
+                )
                 return ValidationResult(
                     approved=False,
                     confidence=80,

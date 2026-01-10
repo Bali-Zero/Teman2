@@ -90,32 +90,36 @@ class BackendReporter:
     def add_visa_change(self, title, url, content, detection_type="NEW"):
         """Add a visa change for staging approval."""
         item_id = hashlib.md5(url.encode()).hexdigest()[:12]
-        self.visa_items.append({
-            "id": item_id,
-            "type": "visa",
-            "title": title,
-            "url": url,
-            "content": content,
-            "status": "pending",
-            "detected_at": datetime.now().isoformat(),
-            "detection_type": detection_type,  # NEW or UPDATED
-            "source": "intelligent_visa_agent"
-        })
+        self.visa_items.append(
+            {
+                "id": item_id,
+                "type": "visa",
+                "title": title,
+                "url": url,
+                "content": content,
+                "status": "pending",
+                "detected_at": datetime.now().isoformat(),
+                "detection_type": detection_type,  # NEW or UPDATED
+                "source": "intelligent_visa_agent",
+            }
+        )
 
     def add_news_item(self, title, summary, is_critical=False):
         """Add a news item for staging approval."""
         item_id = hashlib.md5(f"{title}{datetime.now()}".encode()).hexdigest()[:12]
-        self.news_items.append({
-            "id": item_id,
-            "type": "news",
-            "title": title,
-            "content": summary,
-            "status": "pending",
-            "detected_at": datetime.now().isoformat(),
-            "detection_type": "NEW",
-            "source": "imigrasi_news",
-            "is_critical": is_critical
-        })
+        self.news_items.append(
+            {
+                "id": item_id,
+                "type": "news",
+                "title": title,
+                "content": summary,
+                "status": "pending",
+                "detected_at": datetime.now().isoformat(),
+                "detection_type": "NEW",
+                "source": "imigrasi_news",
+                "is_critical": is_critical,
+            }
+        )
 
     async def save_to_staging(self):
         """
@@ -172,7 +176,9 @@ class BackendReporter:
                     payload = {
                         "title": item["title"],
                         "content": item["content"],
-                        "source_url": item.get("url", f"https://www.imigrasi.go.id/news/{item['id']}"),
+                        "source_url": item.get(
+                            "url", f"https://www.imigrasi.go.id/news/{item['id']}"
+                        ),
                         "source_name": item.get("source", "imigrasi_news"),
                         "category": "immigration",  # Immigration news
                         "relevance_score": 95 if item.get("is_critical") else 75,
@@ -201,10 +207,14 @@ class BackendReporter:
             logger.info(f"📦 Total items sent to backend: {saved_count}")
             if duplicate_count > 0:
                 logger.info(f"   ({duplicate_count} duplicates skipped)")
-            logger.info("👁️ Review at: https://zantara.balizero.com/intelligence/visa-oracle")
+            logger.info(
+                "👁️ Review at: https://zantara.balizero.com/intelligence/visa-oracle"
+            )
         else:
             if duplicate_count > 0:
-                logger.info(f"ℹ️ No new changes. {duplicate_count} items already in staging.")
+                logger.info(
+                    f"ℹ️ No new changes. {duplicate_count} items already in staging."
+                )
             else:
                 logger.info("ℹ️ No new changes detected.")
 
@@ -339,7 +349,7 @@ class IntelligentVisaAgent:
                 self.reporter.add_news_item(
                     title=f"[{site_name.upper()}] {result['title']}",
                     summary=result["summary"],
-                    is_critical=True
+                    is_critical=True,
                 )
                 return True
             return False
@@ -462,7 +472,7 @@ class IntelligentVisaAgent:
                 self.reporter.add_news_item(
                     title=item["title"],
                     summary=item["summary"],
-                    is_critical=is_critical
+                    is_critical=is_critical,
                 )
                 if is_critical:
                     logger.info(f"🚨 Found critical news: {item['title']}")
@@ -522,7 +532,7 @@ class IntelligentVisaAgent:
                             title=f"{'🆕 NEW' if status == 'NEW' else '📝 UPDATED'} VISA: {title}",
                             url=link,
                             content=content,
-                            detection_type=status
+                            detection_type=status,
                         )
 
                         if status == "NEW":

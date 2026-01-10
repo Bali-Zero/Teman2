@@ -1,0 +1,243 @@
+# Prometheus Alerting Rules for Ingestion Services
+# Auto-generates alerts based on performance thresholds
+
+groups:
+  - name: ingestion_performance
+    rules:
+      # High parsing duration alert
+      - alert: IngestionHighParsingDuration
+        expr: histogram_quantile(0.95, sum(rate(zantara_parsing_duration_seconds_bucket[5m])) by (le)) > 15
+        for: 2m
+        labels:
+          severity: warning
+          service: ingestion
+          component: parser
+        annotations:
+          summary: "High parsing duration detected"
+          description: "95th percentile parsing duration is {{ $value }}s for the last 5 minutes"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/parsing-slow"
+      
+      # Critical parsing duration alert
+      - alert: IngestionCriticalParsingDuration
+        expr: histogram_quantile(0.95, sum(rate(zantara_parsing_duration_seconds_bucket[5m])) by (le)) > 30
+        for: 1m
+        labels:
+          severity: critical
+          service: ingestion
+          component: parser
+        annotations:
+          summary: "Critical parsing duration detected"
+          description: "95th percentile parsing duration is {{ $value }}s - system may be overloaded"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/parsing-critical"
+      
+      # High failure rate alert
+      - alert: IngestionHighFailureRate
+        expr: sum(rate(zantara_documents_ingested_total{status="error"}[5m])) / sum(rate(zantara_documents_ingested_total[5m])) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          service: ingestion
+          component: pipeline
+        annotations:
+          summary: "High ingestion failure rate"
+          description: "Ingestion failure rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/high-failure-rate"
+      
+      # Critical failure rate alert
+      - alert: IngestionCriticalFailureRate
+        expr: sum(rate(zantara_documents_ingested_total{status="error"}[5m])) / sum(rate(zantara_documents_ingested_total[5m])) > 0.2
+        for: 1m
+        labels:
+          severity: critical
+          service: ingestion
+          component: pipeline
+        annotations:
+          summary: "Critical ingestion failure rate"
+          description: "Ingestion failure rate is {{ $value | humanizePercentage }} - immediate attention required"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/critical-failure-rate"
+      
+      # No documents processed alert
+      - alert: IngestionNoDocumentsProcessed
+        expr: sum(rate(zantara_documents_ingested_total[10m])) == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: ingestion
+          component: pipeline
+        annotations:
+          summary: "No documents processed in last 10 minutes"
+          description: "Ingestion pipeline appears to be idle or stuck"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/no-activity"
+      
+      # High memory usage alert
+      - alert: IngestionHighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 2048  # 2GB
+        for: 5m
+        labels:
+          severity: warning
+          service: ingestion
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}MB - consider scaling or optimization"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/high-memory"
+      
+      # Critical memory usage alert
+      - alert: IngestionCriticalMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 4096  # 4GB
+        for: 2m
+        labels:
+          severity: critical
+          service: ingestion
+          component: system
+        annotations:
+          summary: "Critical memory usage detected"
+          description: "Memory usage is {{ $value }}MB - system at risk of OOM"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/critical-memory"
+      
+      # High CPU usage alert
+      - alert: IngestionHighCpuUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: ingestion
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% - consider load balancing"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/high-cpu"
+      
+      # Critical CPU usage alert
+      - alert: IngestionCriticalCpuUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 95
+        for: 2m
+        labels:
+          severity: critical
+          service: ingestion
+          component: system
+        annotations:
+          summary: "Critical CPU usage detected"
+          description: "CPU usage is {{ $value }}% - system overloaded"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/critical-cpu"
+      
+      # Slow embedding generation alert
+      - alert: IngestionSlowEmbeddingGeneration
+        expr: histogram_quantile(0.95, sum(rate(zantara_embedding_generation_duration_seconds_bucket[5m])) by (le)) > 60
+        for: 3m
+        labels:
+          severity: warning
+          service: ingestion
+          component: embeddings
+        annotations:
+          summary: "Slow embedding generation detected"
+          description: "95th percentile embedding generation is {{ $value }}s"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/slow-embeddings"
+      
+      # Vector storage performance alert
+      - alert: IngestionSlowVectorStorage
+        expr: histogram_quantile(0.95, sum(rate(zantara_vector_storage_duration_seconds_bucket[5m])) by (le)) > 15
+        for: 3m
+        labels:
+          severity: warning
+          service: ingestion
+          component: vector_db
+        annotations:
+          summary: "Slow vector storage detected"
+          description: "95th percentile vector storage is {{ $value }}s"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/slow-vector-storage"
+      
+      # Scraper normalization errors alert
+      - alert: IngestionScraperNormalizationErrors
+        expr: sum(rate(zantara_scraper_normalization_errors_total[5m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: ingestion
+          component: scraper
+        annotations:
+          summary: "High scraper normalization errors"
+          description: "Scraper normalization error rate is {{ $value }} errors/sec"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/scraper-errors"
+      
+      # Queue buildup alert (if using queue system)
+      - alert: IngestionQueueBuildup
+        expr: ingestion_queue_size > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: ingestion
+          component: queue
+        annotations:
+          summary: "Ingestion queue buildup detected"
+          description: "Queue size is {{ $value }} items - processing may be falling behind"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/queue-buildup"
+      
+      # Critical queue buildup alert
+      - alert: IngestionCriticalQueueBuildup
+        expr: ingestion_queue_size > 5000
+        for: 2m
+        labels:
+          severity: critical
+          service: ingestion
+          component: queue
+        annotations:
+          summary: "Critical ingestion queue buildup"
+          description: "Queue size is {{ $value }} items - immediate attention required"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/critical-queue"
+
+  - name: ingestion_availability
+    rules:
+      # Service down alert
+      - alert: IngestionServiceDown
+        expr: up{job="ingestion"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ingestion
+          component: availability
+        annotations:
+          summary: "Ingestion service is down"
+          description: "Ingestion service {{ $labels.instance }} has been down for more than 1 minute"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/service-down"
+      
+      # Database connection issues
+      - alert: IngestionDatabaseConnectionIssues
+        expr: ingestion_database_connections_active / ingestion_database_connections_max > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: ingestion
+          component: database
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connection usage is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/db-connections"
+
+  - name: ingestion_performance_trends
+    rules:
+      # Performance degradation alert
+      - alert: IngestionPerformanceDegradation
+        expr: (histogram_quantile(0.95, sum(rate(zantara_document_processing_duration_seconds_bucket[5m])) by (le)) / histogram_quantile(0.95, sum(rate(zantara_document_processing_duration_seconds_bucket[1h])) by (le))) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          service: ingestion
+          component: performance
+        annotations:
+          summary: "Performance degradation detected"
+          description: "Processing time is 50% slower than the 1-hour average"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/performance-degradation"
+      
+      # Low throughput alert
+      - alert: IngestionLowThroughput
+        expr: sum(rate(zantara_documents_ingested_total[10m])) < 1
+        for: 15m
+        labels:
+          severity: warning
+          service: ingestion
+          component: throughput
+        annotations:
+          summary: "Low ingestion throughput"
+          description: "Processing less than 1 document per minute for the last 15 minutes"
+          runbook_url: "https://docs.zantara.ai/runbooks/ingestion/low-throughput"

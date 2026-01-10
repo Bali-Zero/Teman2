@@ -1,6 +1,6 @@
 # OBSERVABILITY GUIDE - Nuzantara Platform
 
-**Last Updated:** 2025-12-31
+**Last Updated:** 2026-01-09
 **Maintainer:** AI Dev Team
 
 > Guida completa per DevAI su come usare lo stack di observability per debugging, monitoring e quality control.
@@ -354,6 +354,87 @@ docker logs nuzantara-jaeger | grep -i error
 # Verifica backend env
 docker exec nuzantara-backend env | grep OTEL
 ```
+
+---
+
+---
+
+## 11. Structured Logging (NEW - Jan 2026)
+
+### Configuration
+
+Logging è configurato automaticamente in `app/setup/logging_config.py`:
+
+```python
+from app.setup.logging_config import configure_logging, get_logger
+
+# Automatic at startup in app_factory.py
+configure_logging()
+
+# In your module
+logger = get_logger(__name__)
+```
+
+### Output Formats
+
+**Development** (colored, human-readable):
+```
+21:37:05 [INFO    ] zantara.backend: Logging configured
+    context: {"level": "INFO", "environment": "development"}
+```
+
+**Production** (JSON for log aggregation):
+```json
+{
+  "timestamp": "2026-01-09T21:37:05.123Z",
+  "level": "INFO",
+  "logger": "zantara.backend",
+  "message": "Logging configured",
+  "service": "nuzantara-backend",
+  "environment": "production",
+  "source": {"file": "/app/backend/app/setup/logging_config.py", "line": 150},
+  "context": {"level": "INFO"}
+}
+```
+
+### Structured Context
+
+```python
+from app.utils.logging_utils import log_success, log_error, log_operation
+
+# With duration and context
+log_success(logger, "Query processed", duration_ms=245.5, user="zero@balizero.com")
+
+# With error details
+log_error(logger, "Query failed", error=e, query_id="abc123")
+
+# Context manager with automatic timing
+with log_operation(logger, "process_query", user_id=123) as ctx:
+    result = process_query()
+    ctx["result_count"] = len(result)  # Add more context
+```
+
+### Log Rotation
+
+- **File:** `./data/zantara_rag.log`
+- **Max Size:** 50MB per file
+- **Backups:** 5 rotating files
+- **Format:** Always JSON in file (for parsing)
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `app/setup/logging_config.py` | Configure formatters, handlers, rotation |
+| `app/utils/logging_utils.py` | Utility functions (log_success, log_error, etc.) |
+| `app/setup/app_factory.py` | Calls `configure_logging()` at startup |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOG_LEVEL` | INFO | DEBUG, INFO, WARNING, ERROR, CRITICAL |
+| `ENVIRONMENT` | development | production = JSON output |
 
 ---
 
