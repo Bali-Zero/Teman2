@@ -36,3 +36,9 @@ primary_region = "sin"  # Singapore (closest to Indonesian sources)
 # - OPENROUTER_API_KEY (for AI generation)
 # - GOOGLE_API_KEY (for AI generation)
 # - ANTHROPIC_API_KEY (optional fallback)
+
+# Claude CLI Authentication:
+# After deploy, authenticate via SSH:
+#   fly ssh console -a bali-intel-scraper
+#   cd /app && bash scripts/setup_claude_auth.sh
+# Or mount ~/.claude from local machine using Fly.io volumes
