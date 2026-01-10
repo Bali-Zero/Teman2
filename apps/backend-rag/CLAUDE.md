@@ -1,5 +1,102 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-09 21:00-22:00 UTC)
+
+### P0-P1-P2 Code Quality Refactoring - COMPLETED
+
+**Obiettivo:** Sistema i problemi P0, P1, P2 identificati nell'analisi code quality.
+
+---
+
+### Summary
+
+| Priority | Tasks | Status |
+|----------|-------|--------|
+| **P0** | Bare except, debug logging, any types | 3/3 DONE |
+| **P1** | Orchestrator split, chat split, exceptions, tests | 4/4 DONE |
+| **P2** | DI pattern, state management, dead code, logging | 4/4 DONE |
+
+---
+
+### P2.1: Standardize Dependency Injection
+
+**Files Modified:**
+- `backend/app/routers/agentic_rag.py` - Use centralized `get_orchestrator()`
+- `backend/app/routers/telegram.py` - Use centralized `get_orchestrator()`
+- `tests/unit/app/routers/test_agentic_rag_coverage.py` - Fix imports
+
+**Pattern:** All routers now use centralized dependencies from `app/dependencies.py`
+
+---
+
+### P2.2: Consolidate Frontend State Management
+
+**Files Created:**
+- `apps/mouth/src/hooks/useIsMounted.ts` - Safe async state updates
+
+**Files Modified:**
+- `apps/mouth/src/hooks/useConversations.ts` - Migrated to React Query
+- `apps/mouth/src/lib/api/intelligence.api.ts` - Fix TypeScript error
+
+**Pattern:** React Query for data fetching with optimistic updates
+
+---
+
+### P2.3: Clean Dead Code
+
+**Files Deleted:**
+- `backend/services/rag/agent/diagnostics_tool.py` - Never instantiated
+- `backend/services/rag/agent/mcp_tool.py` - Never instantiated
+- `backend/services/intelligence/__init__.py` - Empty directory
+
+**Files Modified:**
+- `backend/services/rag/agentic/__init__.py` - Remove unused imports
+
+---
+
+### P2.4: Add Structured Logging
+
+**Files Created:**
+- `backend/app/setup/logging_config.py` - JSON/dev formatters
+
+**Features:**
+- `StructuredFormatter` - JSON output for production (log aggregation)
+- `DevelopmentFormatter` - Colored output for local dev
+- `ContextFilter` - Correlation ID propagation
+- Log rotation (50MB, 5 backups)
+- `log_operation()` context manager
+- `log_function_call()` decorator
+
+**Files Modified:**
+- `backend/app/setup/app_factory.py` - Call `configure_logging()` at startup
+- `backend/app/utils/logging_utils.py` - Enhanced with structured context
+
+**Output Format:**
+
+Development:
+```
+21:37:05 [INFO    ] zantara.backend: Logging configured
+    context: {"level": "INFO", "environment": "development"}
+```
+
+Production (JSON):
+```json
+{"timestamp": "2026-01-09T21:37:05Z", "level": "INFO", "logger": "zantara.backend", "message": "Logging configured", "service": "nuzantara-backend"}
+```
+
+---
+
+### Deploy
+
+| App | Version | Status |
+|-----|---------|--------|
+| nuzantara-rag | v1475 | 2/2 healthy |
+| nuzantara-mouth | deployed | 2/2 healthy |
+
+**Commit:** `453fa4e2 feat(observability): add structured JSON logging + cleanup dead code`
+
+---
+
 ## Session Update (2026-01-09 03:30-04:45 UTC)
 
 ### GitHub Repo Sync + Test Cleanup - COMPLETED
