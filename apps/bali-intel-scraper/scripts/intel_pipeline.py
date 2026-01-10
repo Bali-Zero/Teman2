@@ -222,7 +222,16 @@ class IntelPipeline:
         self.ollama_scorer = OllamaScorer()
         self.claude_validator = ClaudeValidator()
         self.enricher = ArticleDeepEnricher(generate_images=generate_images)
-        self.image_generator = GeminiImageGenerator() if generate_images else None
+        # Initialize image generator if enabled
+        if generate_images:
+            try:
+                self.image_generator = GeminiImageGenerator()
+                logger.info("✅ Gemini Image Generator initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize Gemini Image Generator: {e}")
+                self.image_generator = None
+        else:
+            self.image_generator = None
         self.seo_optimizer = SEOAEOOptimizer()
         self.approval_system = TelegramApproval() if require_approval else None
 
