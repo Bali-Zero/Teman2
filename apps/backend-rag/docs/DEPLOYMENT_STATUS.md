@@ -9,7 +9,7 @@
 | Service | Platform | URL | Status |
 |---------|----------|-----|--------|
 | **Backend RAG** | Fly.io | https://nuzantara-rag.fly.dev | ✅ ACTIVE |
-| **Frontend Mouth** | Fly.io | https://nuzantara-mouth.fly.dev | ✅ ACTIVE |
+| **Frontend** | Vercel | https://www.balizero.com | ✅ ACTIVE |
 
 ### Latest Deployment
 
@@ -74,28 +74,28 @@
 ### Monitoring
 
 ```bash
-# Backend logs
+# Backend logs (Fly.io)
 fly logs -a nuzantara-rag
-
-# Frontend logs
-fly logs -a nuzantara-mouth
 
 # Status check
 fly status -a nuzantara-rag
-fly status -a nuzantara-mouth
+
+# Frontend monitoring - use Vercel dashboard
+# https://vercel.com/dashboard
 ```
 
 ### Deployment Commands
 
 ```bash
-# Backend
+# Backend (Fly.io)
 cd apps/backend-rag && fly deploy --remote-only
 
-# Frontend
-cd apps/mouth && fly deploy --remote-only
+# Frontend (Vercel)
+cd apps/mouth && vercel deploy --prod
 
 # Health check
 curl https://nuzantara-rag.fly.dev/health | jq
+curl -I https://www.balizero.com
 ```
 
 ### Notes

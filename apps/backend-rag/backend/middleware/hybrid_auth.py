@@ -58,12 +58,13 @@ def _allowed_origins() -> set[str]:
             {origin.strip() for origin in settings.dev_origins.split(",") if origin.strip()}
         )
 
-    # Defaults (keep in sync with main_cloud.py)
+    # Defaults (keep in sync with cors_config.py)
     defaults = {
+        "https://balizero.com",  # Primary production domain
+        "https://www.balizero.com",  # Primary production domain (www)
         "https://zantara.balizero.com",
         "https://www.zantara.balizero.com",
-        "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment (primary)
-        "https://nuzantara-mouth.fly.dev",  # Legacy Fly.io deployment (deprecated)
+        "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment
         "http://localhost:3000",
     }
     origins.update(defaults)

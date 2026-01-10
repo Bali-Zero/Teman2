@@ -12,7 +12,7 @@ echo "Questo script ti guiderà attraverso un test manuale di una conversazione 
 echo "Apri l'app in un browser e segui le istruzioni."
 echo ""
 
-APP_URL="${PLAYWRIGHT_BASE_URL:-https://nuzantara-mouth.fly.dev}"
+APP_URL="${PLAYWRIGHT_BASE_URL:-https://www.balizero.com}"
 echo "📡 App URL: $APP_URL"
 echo ""
 

@@ -17,7 +17,7 @@ RETRY_DELAY=10
 
 # Services to check
 BACKEND_URL="${BACKEND_URL:-https://nuzantara-rag.fly.dev}"
-FRONTEND_URL="${FRONTEND_URL:-https://nuzantara-mouth.fly.dev}"
+FRONTEND_URL="${FRONTEND_URL:-https://www.balizero.com}"
 
 echo -e "${BLUE}🏥 Nuzantara Health Check${NC}"
 echo "=================================="
