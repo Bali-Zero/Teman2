@@ -700,7 +700,13 @@ class IntelPipeline:
             logger.info(f"\n[{i}/{len(articles)}] {'=' * 50}")
 
             # Validate URL before creating article
-            url = article_dict.get("url", article_dict.get("source_url", ""))
+            # Support multiple URL field names: url, source_url, sourceUrl
+            url = (
+                article_dict.get("url") 
+                or article_dict.get("source_url") 
+                or article_dict.get("sourceUrl")
+                or ""
+            )
             if not url or not url.startswith(("http://", "https://")):
                 logger.warning(f"Skipping article with invalid URL: {url}")
                 self.stats.errors += 1
