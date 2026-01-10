@@ -1,5 +1,83 @@
 # Claude Memory - Backend RAG
 
+## Session Update (2026-01-10 04:00-05:30 UTC)
+
+### Frontend Images Fix + Vercel Migration Cleanup - COMPLETED
+
+**Problema:** Tutte le immagini scomparse dal sito web.
+
+---
+
+### Root Cause Analysis (3 problemi concatenati)
+
+| # | Problema | Dettaglio |
+|---|----------|-----------|
+| 1 | `.gitignore` bloccava immagini | Regole `*.JPG` e `*.PNG` (case-insensitive su macOS) |
+| 2 | 176 immagini mai committate | `/public/static/` esisteva localmente ma non su git |
+| 3 | Path errati nel codice | 390 riferimenti usavano `/images/` invece di `/static/` |
+
+---
+
+### Fix Applicati
+
+1. **Gitignore con negation patterns** (commit `31ac84a6`)
+   ```gitignore
+   # Ignore images globally (AI context pollution)
+   *.jpg
+   *.png
+   ...
+   # BUT allow frontend public folder
+   !apps/mouth/public/**/*.jpg
+   !apps/mouth/public/**/*.png
+   ```
+
+2. **Aggiunte 176 immagini** a git (commit `40287795`)
+   - `/static/team/` - foto team
+   - `/static/news/` - cover articoli news
+   - `/static/blog/` - cover articoli blog
+   - `/static/insights/` - immagini categorie
+   - `/avatars/team/` - avatar team members
+
+3. **Sostituiti 390 path** in 117 file
+   - `/images/` → `/static/`
+
+4. **Route guard migliorata** (`[category]/[slug]/page.tsx`)
+   - Aggiunto `images, avatars, blueprints, videos` a `STATIC_PATHS`
+
+---
+
+### Vercel Migration Cleanup
+
+- Rimosso `nuzantara-mouth.fly.dev` da CORS backend (già migrato)
+- Aggiornati URL storici in documentazione
+- Backend redeployato (v1479) con CORS pulito
+
+---
+
+### Verification
+
+```
+✅ 117 pagine sitemap → 200 OK
+✅ 13 immagini chiave → 200 OK
+✅ Pagine principali → 29-93KB contenuto
+✅ Backend API → healthy, 58K docs
+```
+
+---
+
+### Files Modified
+
+| File | Tipo | Descrizione |
+|------|------|-------------|
+| `.gitignore` | MODIFIED | Negation patterns per public/ |
+| `apps/mouth/public/static/**` | ADDED | 176 immagini |
+| `apps/mouth/src/**/*.tsx` | MODIFIED | Path /images/ → /static/ |
+| `apps/mouth/src/content/**/*.mdx` | MODIFIED | Path /images/ → /static/ |
+| `apps/backend-rag/fly.toml` | MODIFIED | CORS cleanup |
+| `apps/backend-rag/backend/app/setup/cors_config.py` | MODIFIED | CORS cleanup |
+
+---
+
 ## Session Update (2026-01-09 21:00-22:00 UTC)
 
 ### P0-P1-P2 Code Quality Refactoring - COMPLETED
