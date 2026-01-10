@@ -171,7 +171,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
         <div className="flex items-center gap-3 px-4 py-5 border-b border-[rgba(255,255,255,0.04)]">
           <div className="relative w-10 h-10">
             <Image
-              src="/images/logo_zan.png"
+              src="/static/logo_zan.png"
               alt="Zantara"
               fill
               className="object-contain"
@@ -227,7 +227,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
         <div className="flex items-center gap-3">
           <div className="relative w-8 h-8">
             <Image
-              src="/images/logo_zan.png"
+              src="/static/logo_zan.png"
               alt="Zantara"
               fill
               className="object-contain"
@@ -257,7 +257,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
             <div className="flex items-center gap-3 h-16 px-4 border-b border-white/5">
               <div className="relative w-8 h-8">
                 <Image
-                  src="/images/logo_zan.png"
+                  src="/static/logo_zan.png"
                   alt="Zantara"
                   fill
                   className="object-contain"

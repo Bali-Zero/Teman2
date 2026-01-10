@@ -51,7 +51,7 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
-    pathname.startsWith('/images') ||
+    pathname.startsWith('/static') ||
     pathname.includes('.') // files with extensions
   ) {
     return NextResponse.next();

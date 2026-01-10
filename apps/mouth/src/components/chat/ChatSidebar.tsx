@@ -71,7 +71,7 @@ export function ChatSidebar({
           <div className="h-14 border-b border-white/5 flex items-center justify-between px-4">
             <div className="flex items-center gap-3">
               <Image
-                src="/images/logo_zan.png"
+                src="/static/logo_zan.png"
                 alt="Zantara"
                 width={32}
                 height={32}

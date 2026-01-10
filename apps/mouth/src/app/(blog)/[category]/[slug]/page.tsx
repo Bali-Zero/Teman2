@@ -12,7 +12,7 @@ interface PageProps {
 }
 
 // Static file paths that should NOT be handled by this route
-const STATIC_PATHS = ['images', 'assets', 'fonts', '_next', 'api'];
+const STATIC_PATHS = ['static', 'assets', 'fonts', '_next', 'api'];
 
 // Valid blog categories
 const VALID_CATEGORIES = ['immigration', 'business', 'tax-legal', 'property', 'lifestyle', 'digital-nomad', 'tech'];
