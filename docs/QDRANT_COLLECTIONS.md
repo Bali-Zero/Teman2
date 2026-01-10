@@ -1,25 +1,29 @@
 # Qdrant Collections - Guida Completa
 
-**Ultimo aggiornamento:** 2025-12-31
+**Ultimo aggiornamento:** 2026-01-10
 
 Questa guida documenta tutte le collezioni Qdrant del sistema Zantara/Nuzantara, come aggiungerle, e come fare troubleshooting.
 
 ---
 
-## Panoramica Collezioni
+## Panoramica Collezioni (Aggiornato 2026-01-10)
 
 | Collezione | Documenti | Stato | Scopo |
 |------------|-----------|-------|-------|
-| `visa_oracle` | ~1,612 | ✅ Attiva | Immigration, KITAS, KITAP, permessi |
-| `legal_unified` | ~5,041 | ✅ Attiva | Leggi indonesiane (PP, UU, Permen) |
-| `kbli_unified` | ~8,886 | ✅ Attiva | Codici KBLI, classificazione business |
-| `tax_genius` | 332 | ✅ Attiva | PPh 21, PPN/VAT, tasse (NEW: Dec 2025) |
-| `bali_zero_pricing` | ~29 | ✅ Attiva | Listino prezzi servizi Bali Zero |
-| `bali_zero_team` | ~22 | ✅ Attiva | Team members e competenze |
-| `collective_memories` | dinamico | ✅ Attiva | Memoria collettiva team |
-| `training_conversations` | dinamico | ✅ Attiva | Conversazioni golden |
+| `legal_unified_hybrid` | **47,959** | ✅ Attiva | Leggi indonesiane (PP, UU, Permen) - **PRIMARY** |
+| `training_conversations_hybrid` | 3,525 | ✅ Attiva | Conversazioni training (hybrid format) |
+| `training_conversations` | 2,898 | ✅ Attiva | Conversazioni training (standard) |
+| `kbli_unified` | **2,818** | ✅ Attiva | Codici KBLI, classificazione business |
+| `tax_genius_hybrid` | 332 | ✅ Attiva | PPh 21, PPN/VAT, tasse (hybrid format) |
+| `tax_genius` | 332 | ✅ Attiva | PPh 21, PPN/VAT, tasse (standard) |
+| `visa_oracle` | **82** | ✅ Attiva | Immigration, KITAS, KITAP, permessi |
+| `bali_zero_pricing` | 70 | ✅ Attiva | Listino prezzi servizi Bali Zero |
+| `balizero_news_history` | 6 | ✅ Attiva | Storia news Bali Zero |
+| `collective_memories` | 0 | 📭 Vuota | Memoria collettiva team (da popolare) |
 
-**Totale documenti:** ~54,089
+**⚠️ NOTA:** `bali_zero_team` non esiste più. Il sistema usa `TeamKnowledgeTool` che legge da PostgreSQL.
+
+**Totale documenti:** **58,022** (verificato 2026-01-10)
 
 ---
 
@@ -54,9 +58,10 @@ elif primary_domain == "tax":
 elif primary_domain == "visa":
     collection = "visa_oracle"
 
-# Legal queries → legal_unified
+# Legal queries → legal_unified_hybrid
+# FIXED 2026-01-10: legal_unified doesn't exist, using legal_unified_hybrid
 elif primary_domain == "legal":
-    collection = "legal_unified"
+    collection = "legal_unified_hybrid"
 ```
 
 ### Fallback Chains
@@ -65,9 +70,9 @@ Se una collezione non trova risultati, il sistema usa fallback chains definite i
 
 ```python
 FALLBACK_CHAINS = {
-    "tax_genius": ["legal_unified"],  # tax → legal
-    "visa_oracle": ["legal_unified"],  # visa → legal
-    "kbli_unified": ["legal_unified"], # kbli → legal
+    "tax_genius": ["legal_unified_hybrid"],  # tax → legal
+    "visa_oracle": ["legal_unified_hybrid"],  # visa → legal
+    "kbli_unified": ["legal_unified_hybrid"], # kbli → legal
 }
 ```
 

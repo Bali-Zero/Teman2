@@ -1,6 +1,6 @@
 # NUZANTARA 4D SYSTEM CONSCIOUSNESS
 
-**Generated: 2026-01-04 | Auto-generated Report**
+**Generated: 2026-01-10 | Auto-generated Report**
 
 > Questa mappa rappresenta la "coscienza" completa del sistema NUZANTARA, organizzata in 4 dimensioni per una comprensione immediata.
 
@@ -11,14 +11,14 @@
 | Metrica | Valore | Note |
 |---------|--------|------|
 | **Documenti Qdrant** | **53,757** | 4 collezioni attive |
-| **API Endpoints** | **328** | 48 file router |
-| **Servizi Python** | **173** | /backend/services/ |
-| **File Test** | **551** | unit/api/integration |
-| **Test Cases** | **~9727+** | pytest coverage |
-| **Tabelle Database** | **70** | PostgreSQL |
-| **Migrazioni** | **32** | Applicate |
-| **Variabili Ambiente** | **62+** | Across all apps |
-| **File Documentazione** | **61+** | Markdown |
+| **API Endpoints** | **356** | 52 file router |
+| **Servizi Python** | **179** | /backend/services/ |
+| **File Test** | **553** | unit/api/integration |
+| **Test Cases** | **~9278+** | pytest coverage |
+| **Tabelle Database** | **71** | PostgreSQL |
+| **Migrazioni** | **35** | Applicate |
+| **Variabili Ambiente** | **63+** | Across all apps |
+| **File Documentazione** | **84+** | Markdown |
 | **Fonti Intel** | **630+** | 12 categorie |
 
 ---
@@ -30,14 +30,14 @@ nuzantara/
 ├── apps/
 │   ├── backend-rag/          ← CORE (Python FastAPI)
 │   │   ├── backend/
-│   │   │   ├── app/routers/  (48 files, 328+ endpoints)
-│   │   │   ├── services/     (173 Python files)
+│   │   │   ├── app/routers/  (52 files, 356+ endpoints)
+│   │   │   ├── services/     (179 Python files)
 │   │   │   ├── core/         (embeddings, chunking, cache)
 │   │   │   ├── middleware/   (auth, rate-limit, tracing)
 │   │   │   ├── llm/          (Gemini, OpenRouter, Jaksel)
-│   │   │   ├── agents/       (29 Tier-1 autonomous)
-│   │   │   └── migrations/   (32 migrations, 70 tables)
-│   │   └── tests/            (551 files, ~9727+ test cases)
+│   │   │   ├── agents/       (30 Tier-1 autonomous)
+│   │   │   └── migrations/   (35 migrations, 71 tables)
+│   │   └── tests/            (553 files, ~9278+ test cases)
 │   │
 │   ├── mouth/                ← FRONTEND (Next.js 16 + React 19)
 │   │   ├── src/app/          (login, chat, dashboard, clienti, pratiche)
@@ -49,7 +49,7 @@ nuzantara/
 │   ├── evaluator/            ← SATELLITE: RAG quality (RAGAS)
 │   └── kb/                   ← SATELLITE: legal scraping utilities
 │
-├── docs/                     (61+ markdown files)
+├── docs/                     (84+ markdown files)
 ├── config/                   (prometheus, alertmanager)
 ├── scripts/                  (deploy, test, analysis tools)
 └── docker-compose.yml        (local dev stack)
@@ -124,7 +124,7 @@ USER REQUEST
 │                     DATA LAYER                               │
 │  ┌───────────┐  ┌───────────┐  ┌───────────┐               │
 │  │ PostgreSQL│  │  Qdrant   │  │   Redis   │               │
-│  │  70 tables│  │ 53,757 docs│  │   cache   │               │
+│  │  71 tables│  │ 53,757 docs│  │   cache   │               │
 │  └───────────┘  └───────────┘  └───────────┘               │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -350,7 +350,7 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 - b: 0.75 (length normalization)
 - Hybrid Weights: Dense=0.7, Sparse=0.3
 
-### Database Tables (70)
+### Database Tables (71)
 
 | Categoria | Tabelle |
 |-----------|---------|
@@ -369,27 +369,27 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │                    TEST PYRAMID                              │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  UNITTESTS (183 files)                                     │
+│  UNITTESTS (184 files)                                     │
 │  ├─ Services: RAG, Memory, CRM, Sessions                   │
 │  ├─ Core: Embeddings, Chunking, Cache, Plugins             │
 │  ├─ Middleware: Auth, Rate Limiting                        │
 │  └─ Coverage target: 95%                                   │
 │                                                             │
-│  API TESTS (183 files)                                      │
+│  API TESTS (184 files)                                      │
 │  ├─ Auth endpoints                                          │
 │  ├─ CRM endpoints                                           │
 │  ├─ Agentic RAG endpoints                                   │
 │  └─ TestClient with mocked services                        │
 │                                                             │
-│  INTEGRATION TESTS (183 files)                              │
+│  INTEGRATION TESTS (184 files)                              │
 │  ├─ Real PostgreSQL (testcontainers)                       │
 │  ├─ Real Qdrant                                            │
 │  ├─ Real Redis                                             │
 │  └─ End-to-end workflows                                   │
 │                                                             │
 │  Conftest Files: 4 (1,619 lines total)                     │
-│  Total Test Files: 551                                      │
-│  Total Test Cases: ~9727+                                  │
+│  Total Test Files: 553                                      │
+│  Total Test Cases: ~9278+                                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -400,12 +400,12 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │                     FLY.IO SINGAPORE                          │
 ├──────────────────────────────────────────────────────────────┤
 │                                                              │
-│  nuzantara-rag (BACKEND)                                     │
-│  ├─ 2 shared CPUs                                            │
-│  ├─ 2GB RAM                                                  │
-│  ├─ Port 8080                                                │
-│  ├─ Min machines: 1                                         │
-│  └─ Concurrency: 250                                         │
+│  nuzantara-rag (PRIMARY)        nuzantara-mouth (FRONTEND)  │
+│  ├─ 2 shared CPUs               ├─ 1 shared CPU              │
+│  ├─ 2GB RAM                     ├─ 1GB RAM                   │
+│  ├─ Port 8080                   ├─ Port 3000                 │
+│  ├─ Min machines: 1             ├─ Min machines: 0 (auto)    │
+│  └─ Concurrency: 250            └─ Auto-stop enabled         │
 │                                                              │
 │  bali-intel-scraper             zantara-media                │
 │  ├─ 1 CPU, 2GB RAM              ├─ 1 CPU, 2GB RAM            │
@@ -417,23 +417,9 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │  ├─ Qdrant Cloud (53,757 docs)                              │
 │  └─ Redis (optional cache)                                   │
 └──────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────┐
-│                     VERCEL (GLOBAL CDN)                       │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  nuzantara-mouth (FRONTEND)                                  │
-│  ├─ Next.js 16 Edge Runtime                                 │
-│  ├─ React 19 Server Components                              │
-│  ├─ Global CDN (automatic)                                  │
-│  ├─ Auto-scaling                                             │
-│  └─ Zero-config deployment                                    │
-│                                                              │
-│  URL: https://nuzantara-mouth.vercel.app                    │
-└──────────────────────────────────────────────────────────────┘
 ```
 
-### Environment Variables (62+)
+### Environment Variables (63+)
 
 | Categoria | Variabili Chiave |
 |-----------|------------------|
@@ -477,13 +463,10 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 docker compose up                    # Start full stack
 cd apps/mouth && npm run dev         # Frontend dev
 
-# Fly.io Operations (Backend)
+# Fly.io Operations
 ./scripts/fly-backend.sh status      # Backend status
 ./scripts/fly-backend.sh logs        # Backend logs
-
-# Vercel Operations (Frontend)
-# Frontend is deployed on Vercel - use Vercel CLI or dashboard
-# vercel deploy --prod              # Deploy frontend
+./scripts/fly-frontend.sh deploy     # Frontend deploy
 
 # Testing
 cd apps/backend-rag && pytest        # Run all tests
@@ -511,5 +494,5 @@ python apps/core/scribe.py           # Regenerate docs
 
 ---
 
-*System Map Complete. 29 agents synthesized. 4 dimensions mapped.*
-*Generated: 2026-01-04*
+*System Map Complete. 30 agents synthesized. 4 dimensions mapped.*
+*Generated: 2026-01-10*
