@@ -453,22 +453,27 @@ DECISION GUIDELINES:
             is_duplicate = data.get("is_duplicate", False)
             similar_to = data.get("similar_to")
 
+            reason = data.get("reason", "No reason provided")
+            
             if is_duplicate:
                 self.stats["duplicate_rejected"] += 1
                 logger.warning(f"🔄 DUPLICATE rejected: {title[:50]}...")
+                logger.info(f"   Reason: {reason}")
                 if similar_to:
                     logger.warning(f"   Similar to: {similar_to[:50]}...")
             elif approved:
                 self.stats["validated_approved"] += 1
                 logger.success(f"✅ Validated & approved: {title[:50]}...")
+                logger.info(f"   Reason: {reason}")
             else:
                 self.stats["validated_rejected"] += 1
                 logger.info(f"❌ Validated & rejected: {title[:50]}...")
+                logger.info(f"   Reason: {reason}")
 
             return ValidationResult(
                 approved=approved,
                 confidence=data.get("confidence", 50),
-                reason=data.get("reason", "No reason provided"),
+                reason=reason,
                 category_override=data.get("category_override"),
                 priority_override=data.get("priority_override"),
                 research_notes=data.get("research_notes"),
