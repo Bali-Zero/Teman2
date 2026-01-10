@@ -276,32 +276,42 @@ class AIInsightsService {
   // Helper methods for predictions
   private calculateTrend(data: number[]): number {
     if (data.length < 2) return 0;
-    const recent = data.slice(-7).reduce((a, b) => a + b, 0) / Math.min(7, data.length);
-    const older = data.slice(-14, -7).reduce((a, b) => a + b, 0) / Math.min(7, data.length);
+    const recentSlice = data.slice(-7);
+    const olderSlice = data.slice(-14, -7);
+    if (recentSlice.length === 0 || olderSlice.length === 0) return 0;
+    const recent = recentSlice.reduce((a, b) => a + b, 0) / recentSlice.length;
+    const older = olderSlice.reduce((a, b) => a + b, 0) / olderSlice.length;
+    if (older === 0) return recent > 0 ? 1 : 0; // Avoid division by zero
     return (recent - older) / older;
   }
 
   private async predictCaseVolume(data: any): Promise<{ value: number; confidence: number }> {
     // Simplified prediction logic
     const historical = data.cases || [];
+    if (historical.length === 0) {
+      return { value: 0, confidence: 0.5 };
+    }
     const average = historical.reduce((a: number, b: number) => a + b, 0) / historical.length;
     const trend = this.calculateTrend(historical);
     const prediction = average * (1 + trend);
-    
+
     return {
-      value: Math.max(0, prediction),
+      value: Math.max(0, isFinite(prediction) ? prediction : 0),
       confidence: 0.85,
     };
   }
 
   private async predictRevenue(data: any): Promise<{ value: number; confidence: number }> {
     const historical = data.revenue || [];
+    if (historical.length === 0) {
+      return { value: 0, confidence: 0.5 };
+    }
     const average = historical.reduce((a: number, b: number) => a + b, 0) / historical.length;
     const trend = this.calculateTrend(historical);
     const prediction = average * (1 + trend);
-    
+
     return {
-      value: Math.max(0, prediction),
+      value: Math.max(0, isFinite(prediction) ? prediction : 0),
       confidence: 0.82,
     };
   }
@@ -364,41 +374,45 @@ class AIInsightsService {
 
   private detectMetricAnomaly(data: number[], metric: string): any {
     if (data.length < 10) return null;
-    
+
     const recent = data.slice(-5);
     const historical = data.slice(-20, -5);
+    if (historical.length === 0 || recent.length === 0) return null;
     const historicalAvg = historical.reduce((a, b) => a + b, 0) / historical.length;
     const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
-    
+
+    if (historicalAvg === 0) return null; // Avoid division by zero
     const deviation = Math.abs(recentAvg - historicalAvg) / historicalAvg;
-    
+
     if (deviation > 0.3) {
       return {
         metric,
         value: recentAvg,
         expected: historicalAvg,
-        deviation,
+        deviation: isFinite(deviation) ? deviation : 0,
         timestamp: new Date().toISOString(),
       };
     }
-    
+
     return null;
   }
 
   private async detectEfficiencyAnomalies(data: any): Promise<{ detected: boolean; deviation: number }> {
     const efficiency = data.efficiency || [];
     if (efficiency.length < 10) return { detected: false, deviation: 0 };
-    
+
     const recent = efficiency.slice(-5);
     const historical = efficiency.slice(-20, -5);
+    if (historical.length === 0 || recent.length === 0) return { detected: false, deviation: 0 };
     const historicalAvg = historical.reduce((a: number, b: number) => a + b, 0) / historical.length;
     const recentAvg = recent.reduce((a: number, b: number) => a + b, 0) / recent.length;
-    
+
+    if (historicalAvg === 0) return { detected: false, deviation: 0 }; // Avoid division by zero
     const deviation = Math.abs(recentAvg - historicalAvg) / historicalAvg;
-    
+
     return {
-      detected: deviation > 0.2,
-      deviation,
+      detected: isFinite(deviation) && deviation > 0.2,
+      deviation: isFinite(deviation) ? deviation : 0,
     };
   }
 
