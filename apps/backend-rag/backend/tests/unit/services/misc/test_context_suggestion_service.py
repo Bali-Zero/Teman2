@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.context_suggestion_service import (
+from backend.services.misc.context_suggestion_service import (
     ContextSuggestionService,
     get_context_suggestion_service,
 )
@@ -67,7 +67,7 @@ class TestContextSuggestionService:
     def test_get_context_suggestion_service_with_pool(self):
         """Test getting service with db_pool"""
         # Reset singleton first
-        import services.misc.context_suggestion_service as module
+        import backend.services.misc.context_suggestion_service as module
 
         module._context_suggestion_service = None
 

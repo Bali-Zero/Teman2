@@ -2,7 +2,7 @@
 Tests for LegalCleaner
 """
 
-from core.legal.cleaner import LegalCleaner
+from backend.core.legal.cleaner import LegalCleaner
 
 
 class TestLegalCleaner:

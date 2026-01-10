@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.crm.auto_crm_service import AutoCRMService
+from backend.services.crm.auto_crm_service import AutoCRMService
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def mock_db_pool():
 @pytest.fixture
 def auto_crm_service(mock_db_pool):
     """Create AutoCRMService instance"""
-    with patch("services.crm.auto_crm_service.get_extractor") as mock_get_extractor:
+    with patch("backend.services.crm.auto_crm_service.get_extractor") as mock_get_extractor:
         mock_extractor = MagicMock()
         mock_extractor.extract_from_conversation = AsyncMock(
             return_value={
@@ -65,13 +65,13 @@ class TestAutoCRMService:
 
     def test_init(self, mock_db_pool):
         """Test initialization"""
-        with patch("services.crm.auto_crm_service.get_extractor"):
+        with patch("backend.services.crm.auto_crm_service.get_extractor"):
             service = AutoCRMService(db_pool=mock_db_pool)
             assert service.pool == mock_db_pool
 
     def test_init_no_pool(self):
         """Test initialization without pool"""
-        with patch("services.crm.auto_crm_service.get_extractor"):
+        with patch("backend.services.crm.auto_crm_service.get_extractor"):
             service = AutoCRMService()
             assert service.pool is None
 
@@ -90,7 +90,7 @@ class TestAutoCRMService:
     @pytest.mark.asyncio
     async def test_process_conversation_no_pool(self):
         """Test processing conversation without pool"""
-        with patch("services.crm.auto_crm_service.get_extractor"):
+        with patch("backend.services.crm.auto_crm_service.get_extractor"):
             service = AutoCRMService()
             result = await service.process_conversation(
                 conversation_id=1,
@@ -489,7 +489,7 @@ class TestAutoCRMService:
     @pytest.mark.asyncio
     async def test_process_email_interaction_no_pool(self):
         """Test processing email without pool"""
-        with patch("services.crm.auto_crm_service.get_extractor"):
+        with patch("backend.services.crm.auto_crm_service.get_extractor"):
             service = AutoCRMService()
             result = await service.process_email_interaction(
                 email_data={"subject": "Test", "sender": "test@example.com", "body": "Test"}
@@ -523,13 +523,13 @@ class TestAutoCRMService:
 
     def test_get_auto_crm_service_singleton(self):
         """Test get_auto_crm_service returns singleton"""
-        with patch("services.crm.auto_crm_service.AutoCRMService") as mock_service_class:
+        with patch("backend.services.crm.auto_crm_service.AutoCRMService") as mock_service_class:
             mock_instance = MagicMock()
             mock_service_class.return_value = mock_instance
 
             # Reset singleton
-            import services.crm.auto_crm_service as module
-            from services.crm.auto_crm_service import get_auto_crm_service
+            import backend.services.crm.auto_crm_service as module
+            from backend.services.crm.auto_crm_service import get_auto_crm_service
 
             module._auto_crm_instance = None
 

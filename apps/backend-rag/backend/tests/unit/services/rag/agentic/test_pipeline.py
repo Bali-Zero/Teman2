@@ -12,7 +12,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.pipeline import (
+from backend.services.rag.agentic.pipeline import (
     CitationStage,
     FormatStage,
     PostProcessingStage,

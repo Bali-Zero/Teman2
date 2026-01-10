@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
-from services.memory import MemoryContext
-from services.rag.agentic.context_manager import get_user_context
+from backend.services.memory import MemoryContext
+from backend.services.rag.agentic.context_manager import get_user_context
 
 
 @pytest.fixture
@@ -114,7 +114,7 @@ class TestGetUserContext:
         }
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_memory_cache_lookup_keyerror(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -132,7 +132,7 @@ class TestGetUserContext:
         assert result["entities"] == {}
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_memory_cache_lookup_valueerror(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -150,7 +150,7 @@ class TestGetUserContext:
         assert result["entities"] == {}
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_memory_cache_lookup_runtimeerror(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -195,7 +195,7 @@ class TestGetUserContext:
         assert result["history"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_user_found_with_profile_no_history(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -231,7 +231,7 @@ class TestGetUserContext:
         assert result["entities"] == {}
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_user_found_with_profile_and_history_json_string(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -268,7 +268,7 @@ class TestGetUserContext:
         assert result["entities"] == {"name": "John"}
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_user_found_with_profile_and_history_dict_format(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -304,7 +304,7 @@ class TestGetUserContext:
         assert result["history"][0]["role"] == "user"
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_history_last_20_messages_limit(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -336,7 +336,7 @@ class TestGetUserContext:
         assert result["history"][0]["content"] == "Message 5"  # Last 20 messages
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_history_empty_messages_list(self, mock_get_cache, mock_db_pool, mock_connection):
         """Test with empty messages list"""
         mock_db_pool.acquire.return_value.__aenter__.return_value = mock_connection
@@ -389,7 +389,7 @@ class TestGetUserContext:
         assert "session123" in call_args
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_with_memory_orchestrator_success(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):
@@ -430,7 +430,7 @@ class TestGetUserContext:
         )
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_with_memory_orchestrator_no_query(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):
@@ -463,7 +463,7 @@ class TestGetUserContext:
         )
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_without_memory_orchestrator(self, mock_get_cache, mock_db_pool, mock_connection):
         """Test without memory orchestrator - should return empty facts"""
         mock_db_pool.acquire.return_value.__aenter__.return_value = mock_connection
@@ -490,7 +490,7 @@ class TestGetUserContext:
         assert result["collective_facts"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_memory_orchestrator_postgres_error(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):
@@ -524,7 +524,7 @@ class TestGetUserContext:
         assert result["collective_facts"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_memory_orchestrator_value_error(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):
@@ -557,7 +557,7 @@ class TestGetUserContext:
         assert result["collective_facts"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_memory_orchestrator_runtime_error(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):
@@ -590,7 +590,7 @@ class TestGetUserContext:
         assert result["collective_facts"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_memory_orchestrator_key_error(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):
@@ -650,7 +650,7 @@ class TestGetUserContext:
         assert result["history"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_json_decode_error_in_conversation(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -681,7 +681,7 @@ class TestGetUserContext:
         assert result["history"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_key_error_in_conversation_parsing(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -713,7 +713,7 @@ class TestGetUserContext:
         assert result["history"] == []
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_user_id_updated_from_profile(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):
@@ -747,7 +747,7 @@ class TestGetUserContext:
         )
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_deep_think_mode_parameter(self, mock_get_cache, mock_db_pool, mock_connection):
         """Test deep_think_mode parameter (should be accepted but not used directly)"""
         mock_db_pool.acquire.return_value.__aenter__.return_value = mock_connection
@@ -777,7 +777,7 @@ class TestGetUserContext:
         assert result["profile"] is not None
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_messages_as_json_string(self, mock_get_cache, mock_db_pool, mock_connection):
         """Test messages field as JSON string (nested JSON)"""
         messages = [
@@ -810,7 +810,7 @@ class TestGetUserContext:
         assert result["history"][0]["role"] == "user"
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_entities_from_cache_with_conversation_id(
         self, mock_get_cache, mock_db_pool, mock_connection
     ):
@@ -842,7 +842,7 @@ class TestGetUserContext:
         mock_cache.get_entities.assert_called_once_with("conv123")
 
     @pytest.mark.asyncio
-    @patch("services.rag.agentic.context_manager.get_memory_cache")
+    @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
     async def test_full_integration_all_features(
         self, mock_get_cache, mock_db_pool, mock_connection, mock_memory_orchestrator
     ):

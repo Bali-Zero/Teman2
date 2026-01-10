@@ -11,10 +11,10 @@ import json
 import logging
 from enum import Enum
 
-from llm.genai_client import GENAI_AVAILABLE, GenAIClient
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient
 from pydantic import BaseModel, Field
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

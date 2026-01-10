@@ -3,10 +3,10 @@ import logging
 import operator
 import re
 
-from app.core.config import settings
-from services.pricing.pricing_service import get_pricing_service
-from services.rag.agent.structures import BaseTool
-from services.rag.vision_rag import VisionRAGService
+from backend.app.core.config import settings
+from backend.services.pricing.pricing_service import get_pricing_service
+from backend.services.rag.agent.structures import BaseTool
+from backend.services.rag.vision_rag import VisionRAGService
 
 logger = logging.getLogger(__name__)
 

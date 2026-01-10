@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from app.dependencies import get_current_user
-from app.utils.crm_utils import is_super_admin
+from backend.app.dependencies import get_current_user
+from backend.app.utils.crm_utils import is_super_admin
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ async def get_overview(
     request: Request, user: dict = Depends(verify_founder_access)
 ) -> OverviewStats:
     """Get overview statistics for the dashboard"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_overview_stats()
@@ -98,7 +98,7 @@ class RAGStats(BaseModel):
 @router.get("/rag", response_model=RAGStats)
 async def get_rag_stats(request: Request, user: dict = Depends(verify_founder_access)) -> RAGStats:
     """Get RAG pipeline statistics"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_rag_stats()
@@ -128,7 +128,7 @@ class CRMStats(BaseModel):
 @router.get("/crm", response_model=CRMStats)
 async def get_crm_stats(request: Request, user: dict = Depends(verify_founder_access)) -> CRMStats:
     """Get CRM statistics"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_crm_stats()
@@ -155,7 +155,7 @@ async def get_team_stats(
     request: Request, user: dict = Depends(verify_founder_access)
 ) -> TeamStats:
     """Get team productivity statistics"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_team_stats()
@@ -187,7 +187,7 @@ async def get_system_stats(
     request: Request, user: dict = Depends(verify_founder_access)
 ) -> SystemStats:
     """Get system health statistics"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_system_stats()
@@ -214,7 +214,7 @@ async def get_qdrant_stats(
     request: Request, user: dict = Depends(verify_founder_access)
 ) -> QdrantStats:
     """Get Qdrant vector database statistics"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_qdrant_stats()
@@ -241,7 +241,7 @@ async def get_feedback_stats(
     request: Request, user: dict = Depends(verify_founder_access)
 ) -> FeedbackStats:
     """Get feedback and quality statistics"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_feedback_stats()
@@ -396,7 +396,7 @@ async def get_alert_stats(
     request: Request, user: dict = Depends(verify_founder_access)
 ) -> AlertStats:
     """Get alert and error statistics"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
     return await aggregator.get_alert_stats()
@@ -426,7 +426,7 @@ async def get_all_analytics(
     request: Request, user: dict = Depends(verify_founder_access)
 ) -> AllAnalytics:
     """Get all analytics in one request for initial dashboard load"""
-    from services.analytics.analytics_aggregator import AnalyticsAggregator
+    from backend.services.analytics.analytics_aggregator import AnalyticsAggregator
 
     aggregator = AnalyticsAggregator(request.app.state)
 

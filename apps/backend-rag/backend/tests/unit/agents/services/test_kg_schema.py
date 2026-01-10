@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from agents.services.kg_schema import KnowledgeGraphSchema
+from backend.agents.services.kg_schema import KnowledgeGraphSchema
 
 
 class TestKnowledgeGraphSchema:
@@ -133,7 +133,7 @@ class TestKnowledgeGraphSchema:
         mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("agents.services.kg_schema.logger") as mock_logger:
+        with patch("backend.agents.services.kg_schema.logger") as mock_logger:
             await kg_schema.init_schema()
 
             # Verify info was logged with counts

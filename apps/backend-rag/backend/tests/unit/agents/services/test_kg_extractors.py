@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from agents.services.kg_extractors import EntityExtractor, RelationshipExtractor
+from backend.agents.services.kg_extractors import EntityExtractor, RelationshipExtractor
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ class TestEntityExtractor:
 
     def test_init_no_ai_client(self):
         """Test initialization without AI client"""
-        with patch("agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
+        with patch("backend.agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
             extractor = EntityExtractor()
             assert extractor.ai_client is None
 
@@ -69,7 +69,7 @@ class TestEntityExtractor:
     @pytest.mark.asyncio
     async def test_extract_entities_no_ai_client(self):
         """Test extracting entities without AI client"""
-        with patch("agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
+        with patch("backend.agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
             extractor = EntityExtractor()
             result = await extractor.extract_entities("Test text")
             assert result == []
@@ -122,7 +122,7 @@ class TestRelationshipExtractor:
 
     def test_init_no_ai_client(self):
         """Test initialization without AI client"""
-        with patch("agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
+        with patch("backend.agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
             extractor = RelationshipExtractor()
             assert extractor.ai_client is None
 
@@ -152,7 +152,7 @@ class TestRelationshipExtractor:
     @pytest.mark.asyncio
     async def test_extract_relationships_no_ai_client(self):
         """Test extracting relationships without AI client"""
-        with patch("agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
+        with patch("backend.agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
             extractor = RelationshipExtractor()
             result = await extractor.extract_relationships(
                 [{"type": "law", "name": "Test"}], "Test text"

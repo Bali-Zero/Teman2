@@ -11,8 +11,8 @@ from contextlib import suppress
 
 from fastapi import FastAPI
 
-from services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
-from services.monitoring.health_monitor import HealthMonitor
+from backend.services.misc.proactive_compliance_monitor import ProactiveComplianceMonitor
+from backend.services.monitoring.health_monitor import HealthMonitor
 
 logger = logging.getLogger("zantara.backend")
 

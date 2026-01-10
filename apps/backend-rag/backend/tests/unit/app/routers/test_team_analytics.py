@@ -15,9 +15,9 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.dependencies import get_database_pool
-from app.routers.team_analytics import get_team_analytics_service, router
-from services.analytics.team_analytics_service import TeamAnalyticsService
+from backend.app.dependencies import get_database_pool
+from backend.app.routers.team_analytics import get_team_analytics_service, router
+from backend.services.analytics.team_analytics_service import TeamAnalyticsService
 
 
 @pytest.fixture

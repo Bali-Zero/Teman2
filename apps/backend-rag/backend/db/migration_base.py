@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 import asyncpg
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

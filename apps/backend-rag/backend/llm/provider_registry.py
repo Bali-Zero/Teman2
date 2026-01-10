@@ -6,7 +6,7 @@ Centralized registry for LLM providers with factory functions.
 
 import logging
 
-from llm.base import LLMProvider
+from backend.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
 
@@ -57,28 +57,28 @@ def list_providers() -> list[str]:
 def _register_builtin_providers():
     """Register all built-in providers."""
     try:
-        from llm.providers.gemini import GeminiProvider
+        from backend.llm.providers.gemini import GeminiProvider
 
         register_provider("gemini", GeminiProvider)
     except ImportError:
         pass
 
     try:
-        from llm.providers.openrouter import OpenRouterProvider
+        from backend.llm.providers.openrouter import OpenRouterProvider
 
         register_provider("openrouter", OpenRouterProvider)
     except ImportError:
         pass
 
     try:
-        from llm.providers.deepseek import DeepSeekProvider
+        from backend.llm.providers.deepseek import DeepSeekProvider
 
         register_provider("deepseek", DeepSeekProvider)
     except ImportError:
         pass
 
     try:
-        from llm.providers.vertex import VertexProvider
+        from backend.llm.providers.vertex import VertexProvider
 
         register_provider("vertex", VertexProvider)
     except ImportError:

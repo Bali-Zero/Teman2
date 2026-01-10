@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.multimodal.pdf_vision_service import PDFVisionService
+from backend.services.multimodal.pdf_vision_service import PDFVisionService
 
 
 @pytest.fixture
@@ -28,12 +28,12 @@ def mock_genai_client():
 @pytest.fixture
 def pdf_vision_service(mock_genai_client):
     """Create PDFVisionService instance"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.google_api_key = "test_key"
         with (
-            patch("services.multimodal.pdf_vision_service.GENAI_AVAILABLE", True),
+            patch("backend.services.multimodal.pdf_vision_service.GENAI_AVAILABLE", True),
             patch(
-                "services.multimodal.pdf_vision_service.GenAIClient", return_value=mock_genai_client
+                "backend.services.multimodal.pdf_vision_service.GenAIClient", return_value=mock_genai_client
             ),
         ):
             return PDFVisionService(api_key="test_key", ai_client=mock_genai_client)
@@ -49,16 +49,16 @@ class TestPDFVisionService:
 
     def test_init_without_api_key(self):
         """Test initialization without API key"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_api_key = None
-            with patch("services.multimodal.pdf_vision_service.GENAI_AVAILABLE", False):
+            with patch("backend.services.multimodal.pdf_vision_service.GENAI_AVAILABLE", False):
                 service = PDFVisionService()
                 assert service._available is False
 
     @pytest.mark.asyncio
     async def test_analyze_page_not_available(self):
         """Test analyzing page when service not available"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_api_key = None
             service = PDFVisionService()
             result = await service.analyze_page("test.pdf", 1)
@@ -99,7 +99,7 @@ class TestPDFVisionService:
     async def test_analyze_page_with_drive_file(self, pdf_vision_service):
         """Test analyzing page with Drive file"""
         with (
-            patch("services.oracle.smart_oracle.download_pdf_from_drive") as mock_download,
+            patch("backend.services.oracle.smart_oracle.download_pdf_from_drive") as mock_download,
             patch.object(pdf_vision_service, "_render_page_to_image") as mock_render,
             patch("os.path.exists") as mock_exists,
             patch("os.remove") as mock_remove,
@@ -117,7 +117,7 @@ class TestPDFVisionService:
     @pytest.mark.asyncio
     async def test_analyze_page_drive_download_failed(self, pdf_vision_service):
         """Test analyzing page when Drive download fails"""
-        with patch("services.oracle.smart_oracle.download_pdf_from_drive") as mock_download:
+        with patch("backend.services.oracle.smart_oracle.download_pdf_from_drive") as mock_download:
             mock_download.return_value = None
 
             result = await pdf_vision_service.analyze_page("drive_file_id", 1, is_drive_file=True)
@@ -127,7 +127,7 @@ class TestPDFVisionService:
     async def test_extract_kbli_table(self, pdf_vision_service):
         """Test extracting KBLI table"""
         with (
-            patch("services.oracle.smart_oracle.download_pdf_from_drive") as mock_download,
+            patch("backend.services.oracle.smart_oracle.download_pdf_from_drive") as mock_download,
             patch.object(pdf_vision_service, "analyze_page") as mock_analyze,
             patch("os.path.exists") as mock_exists,
             patch("os.remove") as mock_remove,
@@ -147,7 +147,7 @@ class TestPDFVisionService:
     @pytest.mark.asyncio
     async def test_extract_kbli_table_download_failed(self, pdf_vision_service):
         """Test extracting KBLI table when download fails"""
-        with patch("services.oracle.smart_oracle.download_pdf_from_drive") as mock_download:
+        with patch("backend.services.oracle.smart_oracle.download_pdf_from_drive") as mock_download:
             mock_download.return_value = None
 
             result = await pdf_vision_service.extract_kbli_table(

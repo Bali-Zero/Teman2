@@ -12,14 +12,14 @@ Centralizes all application setup logic including:
 - Application factory
 """
 
-from app.setup.app_factory import create_app
-from app.setup.cors_config import get_allowed_origins, register_cors_middleware
-from app.setup.middleware_config import register_middleware
-from app.setup.observability import setup_observability
-from app.setup.plugin_initializer import initialize_plugins
-from app.setup.router_registration import include_routers
-from app.setup.sentry_config import init_sentry
-from app.setup.service_initializer import initialize_services
+from backend.app.setup.app_factory import create_app
+from backend.app.setup.cors_config import get_allowed_origins, register_cors_middleware
+from backend.app.setup.middleware_config import register_middleware
+from backend.app.setup.observability import setup_observability
+from backend.app.setup.plugin_initializer import initialize_plugins
+from backend.app.setup.router_registration import include_routers
+from backend.app.setup.sentry_config import init_sentry
+from backend.app.setup.service_initializer import initialize_services
 
 __all__ = [
     "create_app",

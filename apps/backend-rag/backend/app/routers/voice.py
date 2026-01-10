@@ -13,7 +13,7 @@ import time
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ async def generate_fast_response(
     """Generate response using fast LLM (GPT-4o-mini)."""
     import openai
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 

@@ -8,8 +8,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.routers.team_activity import get_admin_user
-from services.monitoring.unified_health_service import (
+from backend.app.routers.team_activity import get_admin_user
+from backend.services.monitoring.unified_health_service import (
     UnifiedHealthService,
     get_unified_health_service,
 )
@@ -59,7 +59,7 @@ async def get_postgres_tables(
     """List all public tables in PostgreSQL (ADMIN ONLY)"""
     import asyncpg
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url)
@@ -91,7 +91,7 @@ async def get_table_data(
 
     import asyncpg
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     # Basic sanitized table name check (prevent injection)
     if not table.replace("_", "").isalnum():
@@ -147,9 +147,9 @@ async def get_qdrant_collections(
     admin_user: dict = Depends(get_admin_user),
 ) -> dict[str, Any]:
     """List Qdrant collections with stats (ADMIN ONLY)"""
-    from core.qdrant_db import QdrantClient
+    from backend.core.qdrant_db import QdrantClient
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         client = QdrantClient(qdrant_url=settings.qdrant_url)
@@ -187,7 +187,7 @@ async def get_qdrant_points(
     """Browse Qdrant points (ADMIN ONLY)"""
     import httpx
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         # Using scroll API

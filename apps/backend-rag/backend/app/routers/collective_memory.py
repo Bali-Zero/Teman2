@@ -8,9 +8,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.dependencies import get_database_pool as get_db_pool
-from app.routers.auth import get_current_user
-from services.memory.collective_memory_service import CollectiveMemoryService
+from backend.app.dependencies import get_database_pool as get_db_pool
+from backend.app.routers.auth import get_current_user
+from backend.services.memory.collective_memory_service import CollectiveMemoryService
 
 logger = logging.getLogger(__name__)
 

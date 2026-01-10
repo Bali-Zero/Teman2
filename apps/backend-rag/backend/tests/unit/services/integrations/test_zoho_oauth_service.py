@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.integrations.zoho_oauth_service import ZohoOAuthService
+from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def mock_db_pool():
 @pytest.fixture
 def zoho_oauth_service(mock_db_pool):
     """Create ZohoOAuthService instance"""
-    with patch("services.integrations.zoho_oauth_service.settings") as mock_settings:
+    with patch("backend.services.integrations.zoho_oauth_service.settings") as mock_settings:
         mock_settings.zoho_client_id = "test_client_id"
         mock_settings.zoho_client_secret = "test_secret"
         mock_settings.zoho_redirect_uri = "http://localhost/callback"
@@ -58,7 +58,7 @@ class TestZohoOAuthService:
 
     def test_get_authorization_url_not_configured(self, mock_db_pool):
         """Test getting authorization URL when not configured"""
-        with patch("services.integrations.zoho_oauth_service.settings") as mock_settings:
+        with patch("backend.services.integrations.zoho_oauth_service.settings") as mock_settings:
             mock_settings.zoho_client_id = None
             mock_settings.zoho_client_secret = None
             mock_settings.zoho_redirect_uri = None
@@ -116,7 +116,7 @@ class TestZohoOAuthService:
     @pytest.mark.asyncio
     async def test_exchange_code_not_configured(self, mock_db_pool):
         """Test exchange_code when OAuth not configured"""
-        with patch("services.integrations.zoho_oauth_service.settings") as mock_settings:
+        with patch("backend.services.integrations.zoho_oauth_service.settings") as mock_settings:
             mock_settings.zoho_client_id = None
             mock_settings.zoho_client_secret = None
             mock_settings.zoho_redirect_uri = None

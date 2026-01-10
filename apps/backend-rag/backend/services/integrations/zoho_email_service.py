@@ -22,10 +22,10 @@ from typing import Any
 import asyncpg
 import httpx
 
-from app.core.config import settings
-from app.core.constants import HttpTimeoutConstants
-from app.metrics import metrics_collector
-from services.integrations.zoho_oauth_service import ZohoOAuthService
+from backend.app.core.config import settings
+from backend.app.core.constants import HttpTimeoutConstants
+from backend.app.metrics import metrics_collector
+from backend.services.integrations.zoho_oauth_service import ZohoOAuthService
 
 logger = logging.getLogger(__name__)
 

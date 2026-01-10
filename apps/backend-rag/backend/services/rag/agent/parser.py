@@ -1,7 +1,7 @@
 import logging
 import re
 
-from services.rag.agent.structures import ToolCall
+from backend.services.rag.agent.structures import ToolCall
 
 logger = logging.getLogger(__name__)
 

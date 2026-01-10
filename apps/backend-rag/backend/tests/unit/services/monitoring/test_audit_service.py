@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.monitoring.audit_service import AuditService
+from backend.services.monitoring.audit_service import AuditService
 
 
 @pytest.fixture
 def audit_service():
     """Create AuditService instance"""
-    with patch("services.monitoring.audit_service.settings") as mock_settings:
+    with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
         mock_settings.database_url = "postgresql://test"
         service = AuditService()
         return service
@@ -30,7 +30,7 @@ class TestAuditService:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             service = AuditService()
             assert service.enabled is True
@@ -49,7 +49,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect_disabled(self):
         """Test connecting when disabled"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
             await service.connect()
@@ -79,7 +79,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_auth_event_disabled(self):
         """Test logging auth event when disabled"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
             await service.log_auth_event(email="test@example.com", action="login", success=True)

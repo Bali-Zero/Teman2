@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 import asyncpg
-from app.core.config import settings
+from backend.app.core.config import settings
 
 async def run_migration():
     if not settings.database_url:

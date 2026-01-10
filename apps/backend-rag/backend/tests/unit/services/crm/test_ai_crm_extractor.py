@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.crm.ai_crm_extractor import AICRMExtractor, get_extractor
+from backend.services.crm.ai_crm_extractor import AICRMExtractor, get_extractor
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ class TestAICRMExtractor:
 
     def test_init_without_client(self):
         """Test initialization without client (uses ZantaraAIClient)"""
-        with patch("services.crm.ai_crm_extractor.ZantaraAIClient") as mock_zantara:
+        with patch("backend.services.crm.ai_crm_extractor.ZantaraAIClient") as mock_zantara:
             mock_client = MagicMock()
             mock_zantara.return_value = mock_client
 
@@ -84,7 +84,7 @@ class TestAICRMExtractor:
         """Test initialization error handling"""
         with (
             patch(
-                "services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")
+                "backend.services.crm.ai_crm_extractor.ZantaraAIClient", side_effect=Exception("Init error")
             ),
             pytest.raises(Exception),
         ):
@@ -333,11 +333,11 @@ class TestGetExtractor:
     def test_get_extractor_first_call(self):
         """Test first call creates instance"""
         # Reset singleton
-        import services.crm.ai_crm_extractor as module
+        import backend.services.crm.ai_crm_extractor as module
 
         module._extractor_instance = None
 
-        with patch("services.crm.ai_crm_extractor.AICRMExtractor") as mock_extractor_class:
+        with patch("backend.services.crm.ai_crm_extractor.AICRMExtractor") as mock_extractor_class:
             mock_instance = MagicMock()
             mock_extractor_class.return_value = mock_instance
 
@@ -348,7 +348,7 @@ class TestGetExtractor:
 
     def test_get_extractor_subsequent_calls(self):
         """Test subsequent calls return same instance"""
-        import services.crm.ai_crm_extractor as module
+        import backend.services.crm.ai_crm_extractor as module
 
         mock_instance = MagicMock()
         module._extractor_instance = mock_instance
@@ -359,13 +359,13 @@ class TestGetExtractor:
 
     def test_get_extractor_with_client(self):
         """Test get_extractor with provided client"""
-        import services.crm.ai_crm_extractor as module
+        import backend.services.crm.ai_crm_extractor as module
 
         module._extractor_instance = None
 
         mock_client = MagicMock()
 
-        with patch("services.crm.ai_crm_extractor.AICRMExtractor") as mock_extractor_class:
+        with patch("backend.services.crm.ai_crm_extractor.AICRMExtractor") as mock_extractor_class:
             mock_instance = MagicMock()
             mock_extractor_class.return_value = mock_instance
 
@@ -376,13 +376,13 @@ class TestGetExtractor:
 
     def test_get_extractor_init_error(self):
         """Test get_extractor handles initialization error"""
-        import services.crm.ai_crm_extractor as module
+        import backend.services.crm.ai_crm_extractor as module
 
         module._extractor_instance = None
 
         with (
             patch(
-                "services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")
+                "backend.services.crm.ai_crm_extractor.AICRMExtractor", side_effect=Exception("Init error")
             ),
             pytest.raises(Exception),
         ):

@@ -19,7 +19,7 @@ except ImportError:
 
 async def apply_migration():
     """Apply migration 010 to fix team_members schema"""
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     database_url = settings.database_url
 

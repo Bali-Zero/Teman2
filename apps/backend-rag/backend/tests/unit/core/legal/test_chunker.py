@@ -4,7 +4,7 @@ Tests for LegalChunker
 
 from unittest.mock import MagicMock, patch
 
-from core.legal.chunker import LegalChunker, SemanticSplitter
+from backend.core.legal.chunker import LegalChunker, SemanticSplitter
 
 
 class TestSemanticSplitter:
@@ -97,7 +97,7 @@ class TestSemanticSplitter:
 class TestLegalChunker:
     """Test suite for LegalChunker"""
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_init(self, mock_create_embedder):
         """Test chunker initialization"""
         mock_embedder = MagicMock()
@@ -108,7 +108,7 @@ class TestLegalChunker:
         assert chunker.embedder == mock_embedder
         assert chunker.semantic_splitter is not None
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_init_default(self, mock_create_embedder):
         """Test chunker initialization with default max_pasal_tokens"""
         mock_embedder = MagicMock()
@@ -117,7 +117,7 @@ class TestLegalChunker:
 
         assert chunker.max_pasal_tokens == 1000  # Default from constants
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_chunk_empty_text(self, mock_create_embedder):
         """Test chunking empty text"""
         mock_embedder = MagicMock()
@@ -129,7 +129,7 @@ class TestLegalChunker:
 
         assert result == []
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_chunk_whitespace_only(self, mock_create_embedder):
         """Test chunking whitespace-only text"""
         mock_embedder = MagicMock()
@@ -141,7 +141,7 @@ class TestLegalChunker:
 
         assert result == []
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_chunk_with_pasal_structure(self, mock_create_embedder):
         """Test chunking text with Pasal structure"""
         mock_embedder = MagicMock()
@@ -161,7 +161,7 @@ Ini adalah konten Pasal 2."""
         assert all("total_chunks" in chunk for chunk in result)
         assert all("has_context" in chunk for chunk in result)
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_chunk_without_pasal_structure(self, mock_create_embedder):
         """Test chunking text without Pasal structure (fallback)"""
         mock_embedder = MagicMock()
@@ -178,7 +178,7 @@ It should use fallback semantic chunking."""
         assert all("chunk_index" in chunk for chunk in result)
         assert all("total_chunks" in chunk for chunk in result)
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_chunk_with_structure(self, mock_create_embedder):
         """Test chunking with provided structure"""
         mock_embedder = MagicMock()
@@ -201,7 +201,7 @@ Content of Pasal 1."""
 
         assert len(result) > 0
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_chunk_large_pasal_split_by_ayat(self, mock_create_embedder):
         """Test chunking large Pasal that gets split by Ayat"""
         mock_embedder = MagicMock()
@@ -220,7 +220,7 @@ Content of Pasal 1."""
 
         assert len(result) > 0
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_build_context(self, mock_create_embedder):
         """Test _build_context method"""
         mock_embedder = MagicMock()
@@ -236,7 +236,7 @@ Content of Pasal 1."""
         assert "TAHUN 2024" in context
         assert "TENTANG TEST" in context
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_build_context_with_bab(self, mock_create_embedder):
         """Test _build_context with BAB"""
         mock_embedder = MagicMock()
@@ -248,7 +248,7 @@ Content of Pasal 1."""
 
         assert "BAB I" in context
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_build_context_with_pasal(self, mock_create_embedder):
         """Test _build_context with Pasal"""
         mock_embedder = MagicMock()
@@ -260,7 +260,7 @@ Content of Pasal 1."""
 
         assert "Pasal 1" in context
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_create_chunk(self, mock_create_embedder):
         """Test _create_chunk method"""
         mock_embedder = MagicMock()
@@ -279,7 +279,7 @@ Content of Pasal 1."""
         assert chunk["type_abbrev"] == "UU"
         assert chunk["number"] == "12"
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_create_chunk_with_pasal_num(self, mock_create_embedder):
         """Test _create_chunk with Pasal number"""
         mock_embedder = MagicMock()
@@ -293,7 +293,7 @@ Content of Pasal 1."""
 
         assert chunk["pasal_number"] == "1"
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_split_by_pasal(self, mock_create_embedder):
         """Test _split_by_pasal method"""
         mock_embedder = MagicMock()
@@ -311,7 +311,7 @@ Content of Pasal 2."""
 
         assert len(chunks) >= 2  # Preamble + at least 2 Pasal
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_split_by_ayat(self, mock_create_embedder):
         """Test _split_by_ayat method"""
         mock_embedder = MagicMock()
@@ -327,7 +327,7 @@ Content of Pasal 2."""
         assert all("Pasal 1" in chunk for chunk in chunks)
         assert all("Ayat" in chunk for chunk in chunks)
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_split_by_ayat_no_ayat(self, mock_create_embedder):
         """Test _split_by_ayat with no Ayat"""
         mock_embedder = MagicMock()
@@ -340,7 +340,7 @@ Content of Pasal 2."""
         assert len(chunks) == 1
         assert chunks[0] == pasal_text
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_find_bab_for_pasal(self, mock_create_embedder):
         """Test _find_bab_for_pasal method"""
         mock_embedder = MagicMock()
@@ -361,7 +361,7 @@ Content of Pasal 2."""
         assert bab_context is not None
         assert "BAB I" in bab_context
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_find_bab_for_pasal_not_found(self, mock_create_embedder):
         """Test _find_bab_for_pasal when Pasal not found"""
         mock_embedder = MagicMock()
@@ -381,7 +381,7 @@ Content of Pasal 2."""
 
         assert bab_context is None
 
-    @patch("core.legal.chunker.create_embeddings_generator")
+    @patch("backend.core.legal.chunker.create_embeddings_generator")
     def test_fallback_chunking(self, mock_create_embedder):
         """Test _fallback_chunking method"""
         mock_embedder = MagicMock()

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from app.metrics import metrics_collector
+from backend.app.metrics import metrics_collector
 
 from .ingestion_logger import IngestionStage, ingestion_logger
 

@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.utils.qdrant_debugger import (
+from backend.app.utils.qdrant_debugger import (
     CollectionHealth,
     QdrantDebugger,
     QueryPerformance,
@@ -79,7 +79,7 @@ class TestQdrantDebugger:
 
     def test_init_default(self):
         """Test QdrantDebugger initialization with defaults"""
-        with patch("app.utils.qdrant_debugger.settings") as mock_settings:
+        with patch("backend.app.utils.qdrant_debugger.settings") as mock_settings:
             mock_settings.qdrant_url = "http://localhost:6333"
             mock_settings.qdrant_api_key = None
 

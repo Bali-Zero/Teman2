@@ -11,7 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.legal.quality_validators import (
+from backend.core.legal.quality_validators import (
     assess_document_quality,
     calculate_ocr_quality_score,
     calculate_text_fingerprint,

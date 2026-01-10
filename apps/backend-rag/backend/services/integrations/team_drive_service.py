@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # =========================================================================
 
 try:
-    from app.metrics import metrics_collector
+    from backend.app.metrics import metrics_collector
 
     METRICS_ENABLED = True
 except ImportError:
@@ -319,7 +319,7 @@ class TeamDriveService:
         try:
             from datetime import datetime, timedelta, timezone
 
-            from app.core.config import settings
+            from backend.app.core.config import settings
 
             async with self._db_pool.acquire() as conn:
                 row = await conn.fetchrow(
@@ -366,7 +366,7 @@ class TeamDriveService:
         """Refresh OAuth token using refresh token."""
         from datetime import datetime, timedelta, timezone
 
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         client_id = settings.google_drive_client_id
         client_secret = settings.google_drive_client_secret

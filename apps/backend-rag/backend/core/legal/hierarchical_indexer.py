@@ -9,13 +9,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import asyncpg
-from core.legal.quality_validators import (
+from backend.core.legal.quality_validators import (
     assess_document_quality,
     extract_ayat_numbers,
     validate_ayat_sequence,
 )
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

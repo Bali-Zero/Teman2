@@ -7,7 +7,7 @@ Wraps the existing GeminiJakselService to implement the LLMProvider interface.
 import logging
 from collections.abc import AsyncIterator
 
-from llm.base import LLMMessage, LLMProvider, LLMResponse
+from backend.llm.base import LLMMessage, LLMProvider, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class GeminiProvider(LLMProvider):
     def _init_service(self):
         """Lazy initialize the underlying service."""
         try:
-            from services.llm_clients.gemini_service import GeminiJakselService
+            from backend.services.llm_clients.gemini_service import GeminiJakselService
 
             self._service = GeminiJakselService(model_name=self._model_name)
             self._available = getattr(self._service, "_available", True)

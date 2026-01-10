@@ -19,9 +19,9 @@ print(f"DEBUG: sys.path[0] = {sys.path[0]}")
 print(f"DEBUG: sys.path[1] = {sys.path[1]}")
 
 try:
-    from app.core.config import settings
-    from app.core.database import db
-    from services.rag.agentic import create_agentic_rag
+    from backend.app.core.config import settings
+    from backend.app.core.database import db
+    from backend.services.rag.agentic import create_agentic_rag
 except ImportError:
     # Fallback for alternative structure
     from backend.app.core.database import db

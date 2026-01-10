@@ -20,10 +20,10 @@ The LLM decides which collection to search based on the tool description.
 import json
 import logging
 
-from app.utils.tracing import set_span_attribute, set_span_status, trace_span
-from services.pricing.pricing_service import get_pricing_service
-from services.rag.vision_rag import VisionRAGService
-from services.tools.definitions import BaseTool
+from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
+from backend.services.pricing.pricing_service import get_pricing_service
+from backend.services.rag.vision_rag import VisionRAGService
+from backend.services.tools.definitions import BaseTool
 
 logger = logging.getLogger(__name__)
 
@@ -236,39 +236,12 @@ class CalculatorTool(BaseTool):
 
     async def execute(self, expression: str, **kwargs) -> str:
         try:
-            import ast
-            import operator
-
-            allowed_operators = {
-                ast.Add: operator.add,
-                ast.Sub: operator.sub,
-                ast.Mult: operator.mul,
-                ast.Div: operator.truediv,
-                ast.Pow: operator.pow,
-                ast.Mod: operator.mod,
-            }
-
-            def safe_eval(node):
-                if isinstance(node, ast.Expression):
-                    return safe_eval(node.body)
-                elif isinstance(node, ast.Constant):
-                    return node.value
-                elif isinstance(node, ast.BinOp):
-                    if type(node.op) not in allowed_operators:
-                        raise ValueError(f"Operator not allowed: {type(node.op)}")
-                    return allowed_operators[type(node.op)](
-                        safe_eval(node.left), safe_eval(node.right)
-                    )
-                elif isinstance(node, ast.UnaryOp):
-                    if isinstance(node.op, ast.USub):
-                        return -safe_eval(node.operand)
-                    elif isinstance(node.op, ast.UAdd):
-                        return safe_eval(node.operand)
-                    raise ValueError(f"Unary operator not allowed: {type(node.op)}")
-                else:
-                    raise ValueError(f"Invalid expression node: {type(node)}")
-
-            result = safe_eval(ast.parse(expression, mode="eval"))
+            from backend.app.utils.safe_math import safe_evaluate, SafeMathError
+            
+            try:
+                result = safe_evaluate(expression)
+            except SafeMathError as e:
+                return f"Error in mathematical expression: {e}"
 
             # Format nicely
             if isinstance(result, float):
@@ -487,7 +460,7 @@ class ImageGenerationTool(BaseTool):
         """Generate an image using Google Imagen API."""
         import httpx
 
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         with trace_span("tool.generate_image", {"prompt_length": len(prompt)}):
             try:
@@ -605,7 +578,7 @@ class WebSearchTool(BaseTool):
     def _get_keys(self):
         """Lazy load API keys from settings."""
         if self._tavily_key is None and self._brave_key is None:
-            from app.core.config import settings
+            from backend.app.core.config import settings
 
             self._tavily_key = settings.tavily_api_key
             self._brave_key = settings.brave_api_key
@@ -884,7 +857,7 @@ class TimeSheetTool(BaseTool):
 
     async def execute(self, action: str, email: str, **kwargs) -> str:
         try:
-            from services.analytics.team_timesheet_service import get_timesheet_service
+            from backend.services.analytics.team_timesheet_service import get_timesheet_service
             
             service = get_timesheet_service()
             if not service:

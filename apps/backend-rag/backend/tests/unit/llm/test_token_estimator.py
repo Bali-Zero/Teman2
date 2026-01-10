@@ -11,7 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.token_estimator import TokenEstimator
+from backend.llm.token_estimator import TokenEstimator
 
 
 class TestTokenEstimator:
@@ -19,8 +19,8 @@ class TestTokenEstimator:
 
     def test_init_with_tiktoken(self):
         """Test initialization with tiktoken available"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", True):
-            with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", True):
+            with patch("backend.llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_encoding = MagicMock()
                 mock_tiktoken.encoding_for_model.return_value = mock_encoding
 
@@ -30,8 +30,8 @@ class TestTokenEstimator:
 
     def test_init_with_gemini_model(self):
         """Test initialization with Gemini model"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", True):
-            with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", True):
+            with patch("backend.llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_encoding = MagicMock()
                 mock_tiktoken.get_encoding.return_value = mock_encoding
 
@@ -40,14 +40,14 @@ class TestTokenEstimator:
 
     def test_init_without_tiktoken(self):
         """Test initialization without tiktoken"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", False):
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", False):
             estimator = TokenEstimator("gpt-4")
             assert estimator._encoding is None
 
     def test_init_tiktoken_error(self):
         """Test initialization with tiktoken error"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", True):
-            with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", True):
+            with patch("backend.llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_tiktoken.encoding_for_model.side_effect = Exception("Error")
 
                 estimator = TokenEstimator("gpt-4")
@@ -55,8 +55,8 @@ class TestTokenEstimator:
 
     def test_estimate_tokens_with_encoding(self):
         """Test estimating tokens with encoding"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", True):
-            with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", True):
+            with patch("backend.llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_encoding = MagicMock()
                 # Mock encode to return a list with 5 elements
                 tokens_list = [1, 2, 3, 4, 5]
@@ -71,8 +71,8 @@ class TestTokenEstimator:
 
     def test_estimate_tokens_encoding_error(self):
         """Test estimating tokens with encoding error"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", True):
-            with patch("llm.token_estimator.tiktoken") as mock_tiktoken:
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", True):
+            with patch("backend.llm.token_estimator.tiktoken") as mock_tiktoken:
                 mock_encoding = MagicMock()
                 mock_encoding.encode.side_effect = Exception("Encoding error")
                 mock_tiktoken.encoding_for_model.return_value = mock_encoding
@@ -84,7 +84,7 @@ class TestTokenEstimator:
 
     def test_estimate_tokens_approximation(self):
         """Test estimating tokens with approximation"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", False):
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", False):
             estimator = TokenEstimator("gpt-4")
             count = estimator.estimate_tokens("test text")
             # Approximation: len(text) / TOKEN_CHAR_RATIO
@@ -92,7 +92,7 @@ class TestTokenEstimator:
 
     def test_estimate_messages_tokens(self):
         """Test estimating tokens for messages"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", False):
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", False):
             estimator = TokenEstimator("gpt-4")
             messages = [
                 {"role": "user", "content": "Hello"},
@@ -103,14 +103,14 @@ class TestTokenEstimator:
 
     def test_estimate_messages_tokens_empty(self):
         """Test estimating tokens for empty messages"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", False):
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", False):
             estimator = TokenEstimator("gpt-4")
             count = estimator.estimate_messages_tokens([])
             assert count == 0
 
     def test_estimate_messages_tokens_missing_fields(self):
         """Test estimating tokens for messages with missing fields"""
-        with patch("llm.token_estimator.TIKTOKEN_AVAILABLE", False):
+        with patch("backend.llm.token_estimator.TIKTOKEN_AVAILABLE", False):
             estimator = TokenEstimator("gpt-4")
             messages = [
                 {"role": "user"},  # Missing content

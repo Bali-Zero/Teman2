@@ -2,7 +2,7 @@
 Tests for LegalStructureParser
 """
 
-from core.legal.structure_parser import LegalStructureParser
+from backend.core.legal.structure_parser import LegalStructureParser
 
 
 class TestLegalStructureParser:

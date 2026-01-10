@@ -15,7 +15,7 @@ from urllib.parse import quote
 import httpx
 from openai import AsyncOpenAI
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

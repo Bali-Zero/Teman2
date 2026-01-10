@@ -183,11 +183,11 @@ def mock_drive_service():
 def team_drive_service(mock_db_pool, mock_drive_service):
     """Create TeamDriveService with mocked dependencies."""
     # settings is imported inside methods, so we patch app.core.config.settings
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.google_drive_client_id = "test_client_id"
         mock_settings.google_drive_client_secret = "test_client_secret"
 
-        from services.integrations.team_drive_service import TeamDriveService
+        from backend.services.integrations.team_drive_service import TeamDriveService
 
         service = TeamDriveService(db_pool=mock_db_pool, root_folder_id="root_folder_id_123")
 
@@ -209,7 +209,7 @@ class TestTeamDriveServiceInit:
 
     def test_init_with_db_pool(self, mock_db_pool):
         """Test initialization with database pool."""
-        from services.integrations.team_drive_service import TeamDriveService
+        from backend.services.integrations.team_drive_service import TeamDriveService
 
         service = TeamDriveService(db_pool=mock_db_pool, root_folder_id="root_123")
 
@@ -220,7 +220,7 @@ class TestTeamDriveServiceInit:
 
     def test_init_without_db_pool(self):
         """Test initialization without database pool (Service Account fallback)."""
-        from services.integrations.team_drive_service import TeamDriveService
+        from backend.services.integrations.team_drive_service import TeamDriveService
 
         service = TeamDriveService()
 
@@ -237,7 +237,7 @@ class TestTeamDriveServiceInit:
 
     def test_get_connection_info_service_account(self, mock_db_pool):
         """Test connection info in Service Account mode."""
-        from services.integrations.team_drive_service import TeamDriveService
+        from backend.services.integrations.team_drive_service import TeamDriveService
 
         service = TeamDriveService(db_pool=mock_db_pool)
         service._is_oauth_mode = False
@@ -260,11 +260,11 @@ class TestOAuthTokenHandling:
     @pytest.mark.asyncio
     async def test_get_oauth_token_valid(self, mock_db_pool):
         """Test getting valid OAuth token from database."""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_drive_client_id = "test_client_id"
             mock_settings.google_drive_client_secret = "test_secret"
 
-            from services.integrations.team_drive_service import TeamDriveService
+            from backend.services.integrations.team_drive_service import TeamDriveService
 
             service = TeamDriveService(db_pool=mock_db_pool)
             token_data = await service._get_oauth_token()
@@ -276,7 +276,7 @@ class TestOAuthTokenHandling:
     @pytest.mark.asyncio
     async def test_get_oauth_token_no_db_pool(self):
         """Test OAuth token returns None when no db_pool."""
-        from services.integrations.team_drive_service import TeamDriveService
+        from backend.services.integrations.team_drive_service import TeamDriveService
 
         service = TeamDriveService()
         token_data = await service._get_oauth_token()
@@ -290,11 +290,11 @@ class TestOAuthTokenHandling:
             return_value=None
         )
 
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_drive_client_id = "test_client_id"
             mock_settings.google_drive_client_secret = "test_secret"
 
-            from services.integrations.team_drive_service import TeamDriveService
+            from backend.services.integrations.team_drive_service import TeamDriveService
 
             service = TeamDriveService(db_pool=mock_db_pool)
             token_data = await service._get_oauth_token()
@@ -304,7 +304,7 @@ class TestOAuthTokenHandling:
     @pytest.mark.asyncio
     async def test_refresh_oauth_token_success(self, mock_db_pool_expired_token):
         """Test successful OAuth token refresh."""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_drive_client_id = "test_client_id"
             mock_settings.google_drive_client_secret = "test_secret"
 
@@ -322,7 +322,7 @@ class TestOAuthTokenHandling:
                 mock_client.post = AsyncMock(return_value=mock_response)
                 mock_httpx.return_value = mock_client
 
-                from services.integrations.team_drive_service import TeamDriveService
+                from backend.services.integrations.team_drive_service import TeamDriveService
 
                 service = TeamDriveService(db_pool=mock_db_pool_expired_token)
                 new_token = await service._refresh_oauth_token("1//test_refresh")
@@ -332,7 +332,7 @@ class TestOAuthTokenHandling:
     @pytest.mark.asyncio
     async def test_refresh_oauth_token_failure(self, mock_db_pool_expired_token):
         """Test OAuth token refresh failure."""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_drive_client_id = "test_client_id"
             mock_settings.google_drive_client_secret = "test_secret"
 
@@ -347,7 +347,7 @@ class TestOAuthTokenHandling:
                 mock_client.post = AsyncMock(return_value=mock_response)
                 mock_httpx.return_value = mock_client
 
-                from services.integrations.team_drive_service import TeamDriveService
+                from backend.services.integrations.team_drive_service import TeamDriveService
 
                 service = TeamDriveService(db_pool=mock_db_pool_expired_token)
                 new_token = await service._refresh_oauth_token("1//bad_refresh")
@@ -431,7 +431,7 @@ class TestCRUDOperations:
     @pytest.mark.asyncio
     async def test_upload_file(self, team_drive_service):
         """Test uploading a file."""
-        with patch("services.integrations.team_drive_service.MediaIoBaseUpload"):
+        with patch("backend.services.integrations.team_drive_service.MediaIoBaseUpload"):
             result = await team_drive_service.upload_file(
                 file_content=b"test content",
                 filename="test_upload.txt",
@@ -564,14 +564,14 @@ class TestAuditLogging:
 
     def test_audit_logger_initialization(self):
         """Test DriveAuditLogger initializes correctly."""
-        from services.integrations.team_drive_service import DriveAuditLogger
+        from backend.services.integrations.team_drive_service import DriveAuditLogger
 
         logger = DriveAuditLogger()
         assert logger.audit_logger is not None
 
     def test_audit_logger_log_success(self):
         """Test logging successful operation."""
-        from services.integrations.team_drive_service import DriveAuditLogger
+        from backend.services.integrations.team_drive_service import DriveAuditLogger
 
         logger = DriveAuditLogger()
 
@@ -596,7 +596,7 @@ class TestAuditLogging:
 
     def test_audit_logger_log_error(self):
         """Test logging failed operation with error message."""
-        from services.integrations.team_drive_service import DriveAuditLogger
+        from backend.services.integrations.team_drive_service import DriveAuditLogger
 
         logger = DriveAuditLogger()
 
@@ -617,7 +617,7 @@ class TestAuditLogging:
 
     def test_audit_logger_error_classification(self):
         """Test error message classification."""
-        from services.integrations.team_drive_service import DriveAuditLogger
+        from backend.services.integrations.team_drive_service import DriveAuditLogger
 
         logger = DriveAuditLogger()
 
@@ -633,7 +633,7 @@ class TestAuditLogging:
     @pytest.mark.asyncio
     async def test_drive_operation_decorator_success(self, team_drive_service):
         """Test that @drive_operation decorator logs success."""
-        with patch("services.integrations.team_drive_service.audit_logger") as mock_audit:
+        with patch("backend.services.integrations.team_drive_service.audit_logger") as mock_audit:
             await team_drive_service.list_files(folder_id="test_folder")
 
             mock_audit.log.assert_called_once()
@@ -651,7 +651,7 @@ class TestAuditLogging:
             "API Error"
         )
 
-        with patch("services.integrations.team_drive_service.audit_logger") as mock_audit:
+        with patch("backend.services.integrations.team_drive_service.audit_logger") as mock_audit:
             with pytest.raises(Exception, match="API Error"):
                 await team_drive_service.list_files(folder_id="test_folder")
 
@@ -672,7 +672,7 @@ class TestMetricsIntegration:
 
     def test_metrics_import(self):
         """Test metrics can be imported when available."""
-        from services.integrations.team_drive_service import METRICS_ENABLED
+        from backend.services.integrations.team_drive_service import METRICS_ENABLED
 
         # Should be True or False depending on environment
         assert isinstance(METRICS_ENABLED, bool)
@@ -680,13 +680,13 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_oauth_refresh_records_metrics(self, mock_db_pool_expired_token):
         """Test OAuth token refresh records metrics."""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.google_drive_client_id = "test_id"
             mock_settings.google_drive_client_secret = "test_secret"
 
-            with patch("services.integrations.team_drive_service.METRICS_ENABLED", True):
+            with patch("backend.services.integrations.team_drive_service.METRICS_ENABLED", True):
                 with patch(
-                    "services.integrations.team_drive_service.metrics_collector"
+                    "backend.services.integrations.team_drive_service.metrics_collector"
                 ) as mock_metrics:
                     with patch("httpx.AsyncClient") as mock_httpx:
                         mock_response = MagicMock()
@@ -702,7 +702,7 @@ class TestMetricsIntegration:
                         mock_client.post = AsyncMock(return_value=mock_response)
                         mock_httpx.return_value = mock_client
 
-                        from services.integrations.team_drive_service import TeamDriveService
+                        from backend.services.integrations.team_drive_service import TeamDriveService
 
                         service = TeamDriveService(db_pool=mock_db_pool_expired_token)
                         await service._refresh_oauth_token("refresh_token")
@@ -721,7 +721,7 @@ class TestSingletonPattern:
 
     def test_get_team_drive_service_with_pool(self, mock_db_pool):
         """Test getting service instance with db_pool."""
-        from services.integrations.team_drive_service import get_team_drive_service
+        from backend.services.integrations.team_drive_service import get_team_drive_service
 
         with patch.dict("os.environ", {"GOOGLE_DRIVE_ROOT_FOLDER_ID": "root_123"}):
             service = get_team_drive_service(db_pool=mock_db_pool)
@@ -731,7 +731,7 @@ class TestSingletonPattern:
 
     def test_get_team_drive_service_without_pool(self):
         """Test getting service instance without db_pool."""
-        from services.integrations.team_drive_service import get_team_drive_service
+        from backend.services.integrations.team_drive_service import get_team_drive_service
 
         service = get_team_drive_service()
 

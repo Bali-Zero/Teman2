@@ -21,9 +21,9 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 # Note: These imports may need to be mocked if services have complex dependencies
-# from services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
-# from services.routing.specialized_service_router import SpecializedServiceRouter
-# from services.search.search_service import SearchService
+# from backend.services.oracle.cross_oracle_synthesis_service import CrossOracleSynthesisService
+# from backend.services.routing.specialized_service_router import SpecializedServiceRouter
+# from backend.services.search.search_service import SearchService
 
 
 @pytest.fixture
@@ -107,7 +107,7 @@ class TestCrossOracleSynthesisIntegration:
 
         # Mock specialized router
         with patch(
-            "services.routing.specialized_service_router.SpecializedServiceRouter"
+            "backend.services.routing.specialized_service_router.SpecializedServiceRouter"
         ) as mock_router:
             mock_router_instance = MagicMock()
             mock_router_instance.should_route_to_cross_oracle = MagicMock(return_value=True)

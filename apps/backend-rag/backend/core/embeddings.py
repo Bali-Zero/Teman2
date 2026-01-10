@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Tracing utilities (with fallback for standalone usage)
 try:
-    from app.utils.tracing import set_span_attribute, set_span_status, trace_span
+    from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
 except ImportError:
     from contextlib import contextmanager
 
@@ -27,7 +27,7 @@ except ImportError:
 
 # Import settings - try both absolute paths
 try:
-    from app.core.config import settings as _default_settings
+    from backend.app.core.config import settings as _default_settings
 except ImportError:
     try:
         import sys
@@ -35,7 +35,7 @@ except ImportError:
 
         # Add parent dir to path for imports
         sys.path.insert(0, str(Path(__file__).parent.parent))
-        from app.core.config import settings as _default_settings
+        from backend.app.core.config import settings as _default_settings
     except ImportError:
         # Fallback if config not available
         _default_settings = None

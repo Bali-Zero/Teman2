@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 from .compliance_tracker import ComplianceItem
 from .severity_calculator import AlertSeverity

@@ -10,7 +10,7 @@ import psycopg2
 
 
 def apply_migration():
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     database_url = settings.database_url
 

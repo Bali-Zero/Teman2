@@ -23,7 +23,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.conversation_service import ConversationService
+from backend.services.misc.conversation_service import ConversationService
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ def mock_auto_crm():
 def conversation_service(mock_db_pool, mock_memory_cache):
     """Create ConversationService with mocked dependencies"""
     with patch(
-        "services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
+        "backend.services.misc.conversation_service.get_memory_cache", return_value=mock_memory_cache
     ):
         service = ConversationService(db_pool=mock_db_pool)
         return service
@@ -251,7 +251,7 @@ class TestE2EConversationFlow:
         conn.fetchrow = AsyncMock(return_value=mock_row)
 
         # Mock EpisodicMemoryService
-        with patch("services.memory.EpisodicMemoryService") as mock_episodic:
+        with patch("backend.services.memory.EpisodicMemoryService") as mock_episodic:
             mock_episodic_instance = MagicMock()
             mock_episodic_instance.create_event = AsyncMock(
                 return_value={"event_id": 123, "success": True}

@@ -18,8 +18,8 @@ from pydantic import BaseModel, Field
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 
-from app.dependencies import get_search_service
-from services.search.search_service import SearchService
+from backend.app.dependencies import get_search_service
+from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ async def ingest_documents(
             # Auto-create collection if legal_intelligence
             if request.collection == "legal_intelligence":
                 logger.info(f"Auto-creating collection: {request.collection}")
-                from core.qdrant_db import QdrantClient
+                from backend.core.qdrant_db import QdrantClient
 
                 vector_db = QdrantClient(collection_name=request.collection)
                 service.collections[request.collection] = vector_db
@@ -128,7 +128,7 @@ async def ingest_documents(
         vector_db = service.collections[request.collection]
 
         # Generate embeddings for all documents
-        from core.embeddings import create_embeddings_generator
+        from backend.core.embeddings import create_embeddings_generator
 
         embedder = create_embeddings_generator()
         contents = [doc.content for doc in request.documents]

@@ -7,7 +7,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
-from services.misc.performance_optimizer import (
+from backend.services.misc.performance_optimizer import (
     embedding_cache,
     perf_monitor,
     search_cache,

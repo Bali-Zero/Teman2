@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -21,8 +21,8 @@ import re
 import time
 from typing import Any
 
-from app.metrics import metrics_collector
-from services.tools.definitions import BaseTool, ToolCall
+from backend.app.metrics import metrics_collector
+from backend.services.tools.definitions import BaseTool, ToolCall
 
 logger = logging.getLogger(__name__)
 

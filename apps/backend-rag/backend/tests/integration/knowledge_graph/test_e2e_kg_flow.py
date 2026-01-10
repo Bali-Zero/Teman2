@@ -23,8 +23,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.knowledge_graph.extractor import KGExtractor
-from services.knowledge_graph.pipeline import KGPipeline, PipelineConfig
+from backend.services.knowledge_graph.extractor import KGExtractor
+from backend.services.knowledge_graph.pipeline import KGPipeline, PipelineConfig
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def mock_llm_gateway():
 @pytest.fixture
 def kg_extractor(mock_llm_gateway):
     """Create KGExtractor with mocked LLM"""
-    with patch("services.knowledge_graph.kg_extractor.LLMGateway", return_value=mock_llm_gateway):
+    with patch("backend.services.knowledge_graph.kg_extractor.LLMGateway", return_value=mock_llm_gateway):
         extractor = KGExtractor()
         return extractor
 
@@ -65,7 +65,7 @@ def kg_pipeline(mock_db_pool):
     """Create KGPipeline with mocked dependencies"""
     config = PipelineConfig(batch_size=10, enable_coreference=True, enable_entity_linking=True)
 
-    with patch("services.knowledge_graph.kg_pipeline.asyncpg.create_pool") as mock_pool:
+    with patch("backend.services.knowledge_graph.kg_pipeline.asyncpg.create_pool") as mock_pool:
         mock_pool.return_value = mock_db_pool
         pipeline = KGPipeline(config=config, db_pool=mock_db_pool)
         return pipeline
@@ -126,7 +126,7 @@ class TestE2EKnowledgeGraphFlow:
         """
 
         # Mock coreference resolver
-        with patch("services.knowledge_graph.coreference.CoreferenceResolver") as mock_resolver:
+        with patch("backend.services.knowledge_graph.coreference.CoreferenceResolver") as mock_resolver:
             mock_resolver_instance = MagicMock()
             mock_resolver_instance.resolve = MagicMock(
                 return_value={
@@ -155,7 +155,7 @@ class TestE2EKnowledgeGraphFlow:
 
         # Mock episodic memory service
         with patch(
-            "services.memory.episodic_memory_service.EpisodicMemoryService"
+            "backend.services.memory.episodic_memory_service.EpisodicMemoryService"
         ) as mock_episodic:
             mock_episodic_instance = MagicMock()
             mock_episodic_instance.create_event = AsyncMock(
@@ -237,7 +237,7 @@ class TestE2EKnowledgeGraphFlow:
         document_text = "Invalid document"
 
         # Mock extraction error
-        with patch("services.knowledge_graph.kg_extractor.KGExtractor") as mock_extractor:
+        with patch("backend.services.knowledge_graph.kg_extractor.KGExtractor") as mock_extractor:
             mock_extractor_instance = MagicMock()
             mock_extractor_instance.extract_entities = AsyncMock(
                 side_effect=Exception("Extraction failed")

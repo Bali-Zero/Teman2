@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.oracle.oracle_service import OracleService
+from backend.services.oracle.oracle_service import OracleService
 
 
 @pytest.fixture
@@ -27,9 +27,9 @@ def mock_db_pool():
 def oracle_service():
     """Create oracle service instance"""
     with (
-        patch("services.oracle.oracle_service.ZantaraPromptBuilder"),
-        patch("services.oracle.oracle_service.GeminiAdapter"),
-        patch("services.oracle.oracle_service.IntentClassifier"),
+        patch("backend.services.oracle.oracle_service.ZantaraPromptBuilder"),
+        patch("backend.services.oracle.oracle_service.GeminiAdapter"),
+        patch("backend.services.oracle.oracle_service.IntentClassifier"),
         patch("pathlib.Path.exists", return_value=True),
         patch("builtins.open", create=True),
         patch("yaml.safe_load", return_value={}),
@@ -43,9 +43,9 @@ class TestOracleService:
     def test_init(self):
         """Test initialization"""
         with (
-            patch("services.oracle.oracle_service.ZantaraPromptBuilder"),
-            patch("services.oracle.oracle_service.GeminiAdapter"),
-            patch("services.oracle.oracle_service.IntentClassifier"),
+            patch("backend.services.oracle.oracle_service.ZantaraPromptBuilder"),
+            patch("backend.services.oracle.oracle_service.GeminiAdapter"),
+            patch("backend.services.oracle.oracle_service.IntentClassifier"),
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", create=True),
             patch("yaml.safe_load", return_value={}),
@@ -176,7 +176,7 @@ class TestOracleService:
     @pytest.mark.asyncio
     async def test_process_query_with_conversation_history(self, oracle_service):
         """Test process_query with conversation history"""
-        from app.routers.agentic_rag import ConversationMessageInput
+        from backend.app.routers.agentic_rag import ConversationMessageInput
 
         mock_search_service = MagicMock()
         mock_orchestrator = AsyncMock()
@@ -251,7 +251,7 @@ class TestOracleService:
 
         with (
             patch.object(oracle_service, "_get_db_pool", return_value=AsyncMock()),
-            patch("services.oracle.oracle_service.create_agentic_rag") as mock_create,
+            patch("backend.services.oracle.oracle_service.create_agentic_rag") as mock_create,
         ):
             mock_create.return_value = AsyncMock()
             orchestrator = await oracle_service._get_orchestrator(mock_search_service)
@@ -277,7 +277,7 @@ class TestOracleService:
     @pytest.mark.asyncio
     async def test_submit_feedback(self, oracle_service):
         """Test submit_feedback"""
-        with patch("services.oracle.oracle_service.db_manager") as mock_db:
+        with patch("backend.services.oracle.oracle_service.db_manager") as mock_db:
             mock_db.store_feedback = AsyncMock(return_value={"success": True})
 
             result = await oracle_service.submit_feedback(
@@ -288,9 +288,9 @@ class TestOracleService:
     def test_init_with_missing_config(self):
         """Test initialization with missing config file"""
         with (
-            patch("services.oracle.oracle_service.ZantaraPromptBuilder"),
-            patch("services.oracle.oracle_service.GeminiAdapter"),
-            patch("services.oracle.oracle_service.IntentClassifier"),
+            patch("backend.services.oracle.oracle_service.ZantaraPromptBuilder"),
+            patch("backend.services.oracle.oracle_service.GeminiAdapter"),
+            patch("backend.services.oracle.oracle_service.IntentClassifier"),
             patch("pathlib.Path.exists", return_value=False),
         ):
             service = OracleService()

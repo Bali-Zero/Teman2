@@ -1,7 +1,7 @@
 from enum import Enum
 
-from llm.adapters.base import ModelAdapter
-from llm.adapters.gemini import GeminiAdapter
+from backend.llm.adapters.base import ModelAdapter
+from backend.llm.adapters.gemini import GeminiAdapter
 
 
 class ModelType(Enum):

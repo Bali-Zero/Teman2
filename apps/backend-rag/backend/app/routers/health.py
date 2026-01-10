@@ -76,7 +76,7 @@ async def health_check(request: Request):
     Prevents container crashes during warmup by not creating heavy objects.
     """
     try:
-        # Get search service from app.state
+        # Get search service from backend.app.state
         search_service = getattr(request.app.state, "search_service", None)
 
         # CRITICAL: Return "initializing" immediately if service not ready
@@ -350,7 +350,7 @@ async def qdrant_metrics() -> dict[str, Any]:
     - Error counts
     """
     try:
-        from core.qdrant_db import get_qdrant_metrics
+        from backend.core.qdrant_db import get_qdrant_metrics
 
         metrics = get_qdrant_metrics()
         return {

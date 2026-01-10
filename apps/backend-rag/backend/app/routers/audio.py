@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.services.audio_service import AudioService, get_audio_service
+from backend.app.services.audio_service import AudioService, get_audio_service
 
 router = APIRouter(prefix="/audio", tags=["Audio"])
 logger = logging.getLogger(__name__)

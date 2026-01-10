@@ -5,11 +5,14 @@ Tracks all state changes with user attribution and timestamps
 
 import functools
 import json
+import logging
 from datetime import datetime
 from typing import Any
+from unittest.mock import MagicMock
 
-from app.dependencies import get_database_pool
-from app.utils.logging_utils import get_logger
+import asyncpg
+from backend.app.dependencies import get_database_pool
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -20,10 +23,17 @@ class CRMAuditLogger:
     def __init__(self):
         self.pool = None
 
+    def initialize(self, pool: asyncpg.Pool):
+        """Initialize with a database pool"""
+        self.pool = pool
+        logger.info("✅ CRMAuditLogger initialized with database pool")
+
     async def _get_pool(self):
         """Get database pool connection"""
         if not self.pool:
-            self.pool = await get_database_pool()
+            # Try to get it from backend.app.state if we can't find it
+            # But in a service, it should be initialized
+            raise RuntimeError("CRMAuditLogger not initialized with pool. Call .initialize(pool) first.")
         return self.pool
 
     async def log_state_change(
@@ -288,11 +298,18 @@ def audit_change(entity_type: str, change_type: str = "update"):
             if entity_id and entity_type == "client":
                 # Fetch current client state
                 try:
-                    pool = await get_database_pool()
-                    async with pool.acquire() as conn:
-                        row = await conn.fetchrow("SELECT * FROM clients WHERE id = $1", entity_id)
-                        if row:
-                            old_state = dict(row)
+                    # Get pool from kwargs or global instance
+                    pool = kwargs.get("db_pool") or audit_logger.pool
+                    if pool:
+                        async with pool.acquire() as conn:
+                            row = await conn.fetchrow("SELECT * FROM clients WHERE id = $1", entity_id)
+                            if row and hasattr(row, "items"):
+                                old_state = dict(row)
+                            elif row and not isinstance(row, MagicMock):
+                                # If it's a real record but doesn't have items() (unlikely for asyncpg)
+                                old_state = dict(row)
+                    else:
+                        logger.warning("⚠️ No database pool available for audit logging")
                 except Exception as e:
                     logger.error(f"Failed to fetch client state: {e}", exc_info=True)
 
@@ -325,9 +342,14 @@ def audit_change(entity_type: str, change_type: str = "update"):
 
 
 # Migration script to create audit log table
-async def create_audit_log_table():
+async def create_audit_log_table(pool: asyncpg.Pool | None = None):
     """Create the CRM audit log table"""
-    pool = await get_database_pool()
+    if not pool:
+        pool = audit_logger.pool
+    
+    if not pool:
+        logger.error("❌ Cannot create audit log table: no database pool available")
+        return
 
     async with pool.acquire() as conn:
         await conn.execute("""

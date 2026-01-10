@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.conversation_service import ConversationService
+from backend.services.misc.conversation_service import ConversationService
 
 
 @pytest.fixture
@@ -63,7 +63,7 @@ class TestConversationService:
             {"role": "assistant", "content": "Hi there"},
         ]
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
@@ -88,7 +88,7 @@ class TestConversationService:
 
         messages = [{"role": "user", "content": "Test"}]
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
@@ -112,7 +112,7 @@ class TestConversationService:
         messages = [{"role": "user", "content": "Test"}]
         metadata = {"source": "web", "ip": "127.0.0.1"}
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
@@ -135,7 +135,7 @@ class TestConversationService:
 
         messages = [{"role": "user", "content": "Test"}]
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache.side_effect = Exception("Cache error")
 
             result = await conversation_service.save_conversation(
@@ -155,7 +155,7 @@ class TestConversationService:
 
         messages = [{"role": "user", "content": "Test"}]
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
@@ -175,7 +175,7 @@ class TestConversationService:
 
         messages = [{"role": "user", "content": "Test"}]
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
@@ -214,7 +214,7 @@ class TestConversationService:
             }
         )
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
@@ -241,7 +241,7 @@ class TestConversationService:
 
         messages = [{"role": "user", "content": "Test"}]
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache.return_value = mock_cache_instance
 
@@ -280,7 +280,7 @@ class TestConversationService:
 
         conn.fetchrow = AsyncMock(return_value=None)
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache_instance.get_conversation = MagicMock(return_value=None)
             mock_cache.return_value = mock_cache_instance
@@ -300,7 +300,7 @@ class TestConversationService:
 
         conn.fetchrow = AsyncMock(side_effect=Exception("DB error"))
 
-        with patch("services.misc.conversation_service.get_memory_cache") as mock_cache:
+        with patch("backend.services.misc.conversation_service.get_memory_cache") as mock_cache:
             mock_cache_instance = MagicMock()
             mock_cache_instance.get_conversation = MagicMock(return_value=None)
             mock_cache.return_value = mock_cache_instance
@@ -317,7 +317,7 @@ class TestConversationService:
         """Test lazy loading of Auto-CRM service"""
         assert conversation_service._auto_crm_service is None
 
-        with patch("services.crm.auto_crm_service.get_auto_crm_service") as mock_get:
+        with patch("backend.services.crm.auto_crm_service.get_auto_crm_service") as mock_get:
             mock_service = MagicMock()
             mock_get.return_value = mock_service
 
@@ -337,7 +337,7 @@ class TestConversationService:
     def test_get_auto_crm_general_error(self, conversation_service):
         """Test handling general error for Auto-CRM"""
         with patch(
-            "services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Error")
+            "backend.services.crm.auto_crm_service.get_auto_crm_service", side_effect=Exception("Error")
         ):
             result = conversation_service._get_auto_crm()
 

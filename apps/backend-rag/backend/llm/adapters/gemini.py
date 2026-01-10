@@ -1,4 +1,4 @@
-from llm.adapters.base import ModelAdapter, ModelCapabilities
+from backend.llm.adapters.base import ModelAdapter, ModelCapabilities
 
 
 class GeminiAdapter(ModelAdapter):

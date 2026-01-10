@@ -56,13 +56,13 @@ class TestMetricsIntegration:
 
     def test_metrics_collector_import(self):
         """Test that metrics_collector can be imported."""
-        from app.metrics import metrics_collector
+        from backend.app.metrics import metrics_collector
 
         assert metrics_collector is not None
 
     def test_drive_metrics_methods_exist(self):
         """Test that drive-related metrics methods exist."""
-        from app.metrics import metrics_collector
+        from backend.app.metrics import metrics_collector
 
         assert hasattr(metrics_collector, "record_drive_operation")
         assert hasattr(metrics_collector, "record_drive_oauth_refresh")
@@ -71,7 +71,7 @@ class TestMetricsIntegration:
 
     def test_drive_metrics_callable(self):
         """Test that drive metrics methods are callable."""
-        from app.metrics import metrics_collector
+        from backend.app.metrics import metrics_collector
 
         assert callable(metrics_collector.record_drive_operation)
         assert callable(metrics_collector.record_drive_oauth_refresh)
@@ -127,14 +127,14 @@ class TestTeamDriveRouterConfig:
 
     def test_router_exists(self):
         """Test that team_drive router module exists."""
-        router_module, error = safe_import("app.routers.team_drive")
+        router_module, error = safe_import("backend.app.routers.team_drive")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         assert router_module is not None
 
     def test_router_has_routes(self):
         """Test that router has defined routes."""
-        router, error = safe_import("app.routers.team_drive", "router")
+        router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         assert router is not None
@@ -142,7 +142,7 @@ class TestTeamDriveRouterConfig:
 
     def test_router_prefix(self):
         """Test that router has correct prefix."""
-        router, error = safe_import("app.routers.team_drive", "router")
+        router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         # Router should have /api/drive prefix
@@ -150,7 +150,7 @@ class TestTeamDriveRouterConfig:
 
     def test_status_endpoint_defined(self):
         """Test that /status endpoint is defined."""
-        router, error = safe_import("app.routers.team_drive", "router")
+        router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         paths = [route.path for route in router.routes]
@@ -159,7 +159,7 @@ class TestTeamDriveRouterConfig:
 
     def test_files_endpoint_defined(self):
         """Test that /files endpoint is defined."""
-        router, error = safe_import("app.routers.team_drive", "router")
+        router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         paths = [route.path for route in router.routes]
@@ -168,7 +168,7 @@ class TestTeamDriveRouterConfig:
 
     def test_download_endpoint_defined(self):
         """Test that download endpoint is defined."""
-        router, error = safe_import("app.routers.team_drive", "router")
+        router, error = safe_import("backend.app.routers.team_drive", "router")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         paths = [route.path for route in router.routes]
@@ -188,7 +188,7 @@ class TestTeamDriveServiceIntegration:
     def test_service_import(self):
         """Test that TeamDriveService can be imported."""
         TeamDriveService, error = safe_import(
-            "services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -197,7 +197,7 @@ class TestTeamDriveServiceIntegration:
     def test_get_service_function(self):
         """Test that get_team_drive_service function exists."""
         get_fn, error = safe_import(
-            "services.integrations.team_drive_service", "get_team_drive_service"
+            "backend.services.integrations.team_drive_service", "get_team_drive_service"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -206,7 +206,7 @@ class TestTeamDriveServiceIntegration:
     def test_audit_logger_import(self):
         """Test that DriveAuditLogger can be imported."""
         DriveAuditLogger, error = safe_import(
-            "services.integrations.team_drive_service", "DriveAuditLogger"
+            "backend.services.integrations.team_drive_service", "DriveAuditLogger"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -215,7 +215,7 @@ class TestTeamDriveServiceIntegration:
     def test_drive_operation_decorator_import(self):
         """Test that drive_operation decorator can be imported."""
         decorator, error = safe_import(
-            "services.integrations.team_drive_service", "drive_operation"
+            "backend.services.integrations.team_drive_service", "drive_operation"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -223,7 +223,7 @@ class TestTeamDriveServiceIntegration:
 
     def test_metrics_enabled_flag(self):
         """Test that METRICS_ENABLED flag exists."""
-        flag, error = safe_import("services.integrations.team_drive_service", "METRICS_ENABLED")
+        flag, error = safe_import("backend.services.integrations.team_drive_service", "METRICS_ENABLED")
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
         assert isinstance(flag, bool)
@@ -240,7 +240,7 @@ class TestErrorClassification:
     def test_error_types_classification(self):
         """Test that various error types are correctly classified."""
         DriveAuditLogger, error = safe_import(
-            "services.integrations.team_drive_service", "DriveAuditLogger"
+            "backend.services.integrations.team_drive_service", "DriveAuditLogger"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -274,7 +274,7 @@ class TestOAuthConfiguration:
     def test_oauth_scopes_defined(self):
         """Test that OAuth scopes are properly defined."""
         TeamDriveService, error = safe_import(
-            "services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -286,7 +286,7 @@ class TestOAuthConfiguration:
     def test_system_user_id_defined(self):
         """Test that SYSTEM user ID is defined."""
         TeamDriveService, error = safe_import(
-            "services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")
@@ -297,7 +297,7 @@ class TestOAuthConfiguration:
     def test_export_mimetypes_defined(self):
         """Test that export MIME types are defined."""
         TeamDriveService, error = safe_import(
-            "services.integrations.team_drive_service", "TeamDriveService"
+            "backend.services.integrations.team_drive_service", "TeamDriveService"
         )
         if error:
             pytest.skip(f"Skipped due to import issue: {error}")

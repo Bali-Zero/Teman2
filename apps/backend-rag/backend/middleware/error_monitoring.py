@@ -66,7 +66,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             # Check for high latency
             alert_service = self._resolve_alert_service(request)
             if alert_service is not None:
-                from app.core.config import settings
+                from backend.app.core.config import settings
 
                 if (
                     duration_ms > settings.latency_alert_threshold_ms

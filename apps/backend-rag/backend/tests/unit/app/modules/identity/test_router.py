@@ -27,7 +27,7 @@ class TestIdentityRouter:
 
     def test_get_identity_service(self):
         """Test getting identity service singleton"""
-        from app.modules.identity.router import get_identity_service
+        from backend.app.modules.identity.router import get_identity_service
 
         service = get_identity_service()
         assert service is not None
@@ -39,7 +39,7 @@ class TestIdentityRouter:
     @pytest.mark.asyncio
     async def test_team_login_success(self, mock_response):
         """Test successful team login"""
-        with patch("app.modules.identity.router.get_identity_service") as mock_get_service:
+        with patch("backend.app.modules.identity.router.get_identity_service") as mock_get_service:
             # Mock user object
             mock_user = MagicMock()
             mock_user.id = "user_123"
@@ -60,10 +60,10 @@ class TestIdentityRouter:
             mock_get_service.return_value = mock_service
 
             # Mock cookie setter
-            with patch("app.modules.identity.router.set_auth_cookies") as mock_set_cookies:
+            with patch("backend.app.modules.identity.router.set_auth_cookies") as mock_set_cookies:
                 mock_set_cookies.return_value = "csrf_token_123"
 
-                from app.modules.identity.router import LoginRequest, team_login
+                from backend.app.modules.identity.router import LoginRequest, team_login
 
                 request = LoginRequest(email="test@example.com", pin="1234")
                 result = await team_login(request, mock_response)
@@ -78,7 +78,7 @@ class TestIdentityRouter:
         """Test login with invalid PIN format (non-digit)"""
         from fastapi import HTTPException
 
-        from app.modules.identity.router import LoginRequest, team_login
+        from backend.app.modules.identity.router import LoginRequest, team_login
 
         request = LoginRequest(email="test@example.com", pin="abcd")
 
@@ -91,14 +91,14 @@ class TestIdentityRouter:
     @pytest.mark.asyncio
     async def test_team_login_auth_failed(self, mock_response):
         """Test login with wrong credentials"""
-        with patch("app.modules.identity.router.get_identity_service") as mock_get_service:
+        with patch("backend.app.modules.identity.router.get_identity_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.authenticate_user = AsyncMock(return_value=None)
             mock_get_service.return_value = mock_service
 
             from fastapi import HTTPException
 
-            from app.modules.identity.router import LoginRequest, team_login
+            from backend.app.modules.identity.router import LoginRequest, team_login
 
             request = LoginRequest(email="test@example.com", pin="1234")
 
@@ -111,14 +111,14 @@ class TestIdentityRouter:
     @pytest.mark.asyncio
     async def test_team_login_service_error(self, mock_response):
         """Test login when service throws error"""
-        with patch("app.modules.identity.router.get_identity_service") as mock_get_service:
+        with patch("backend.app.modules.identity.router.get_identity_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.authenticate_user = AsyncMock(side_effect=Exception("DB error"))
             mock_get_service.return_value = mock_service
 
             from fastapi import HTTPException
 
-            from app.modules.identity.router import LoginRequest, team_login
+            from backend.app.modules.identity.router import LoginRequest, team_login
 
             request = LoginRequest(email="test@example.com", pin="1234")
 
@@ -133,7 +133,7 @@ class TestLoginModels:
 
     def test_login_request_valid(self):
         """Test valid login request"""
-        from app.modules.identity.router import LoginRequest
+        from backend.app.modules.identity.router import LoginRequest
 
         request = LoginRequest(email="test@example.com", pin="1234")
         assert request.email == "test@example.com"
@@ -141,7 +141,7 @@ class TestLoginModels:
 
     def test_login_response_fields(self):
         """Test login response model fields"""
-        from app.modules.identity.router import LoginResponse
+        from backend.app.modules.identity.router import LoginResponse
 
         response = LoginResponse(
             success=True,

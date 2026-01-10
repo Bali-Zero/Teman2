@@ -13,11 +13,11 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
 
-from app.core.config import settings
-from app.dependencies import get_database_pool
-from app.models import UserProfile
-from app.utils.cookie_auth import clear_auth_cookies, set_auth_cookies
-from app.utils.logging_utils import get_logger, log_error, log_warning
+from backend.app.core.config import settings
+from backend.app.dependencies import get_database_pool
+from backend.app.models import UserProfile
+from backend.app.utils.cookie_auth import clear_auth_cookies, set_auth_cookies
+from backend.app.utils.logging_utils import get_logger, log_error, log_warning
 
 logger = get_logger(__name__)
 
@@ -145,7 +145,7 @@ async def login(
     Returns JWT token and user profile on successful authentication.
     Also sets httpOnly cookie with JWT token and CSRF cookie.
     """
-    from services.monitoring.audit_service import get_audit_service
+    from backend.services.monitoring.audit_service import get_audit_service
 
     audit_service = get_audit_service()
     if not audit_service.pool:

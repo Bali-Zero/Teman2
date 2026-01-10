@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from agents.agents.client_value_predictor import ClientValuePredictor
+from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
 
 @pytest.fixture
@@ -37,11 +37,11 @@ def mock_db_pool():
 def client_value_predictor(mock_db_pool):
     """Create ClientValuePredictor instance"""
     with (
-        patch("agents.agents.client_value_predictor.ClientScoringService"),
-        patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-        patch("agents.agents.client_value_predictor.NurturingMessageService"),
-        patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-        patch("app.core.config.settings") as mock_settings,
+        patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+        patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+        patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+        patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+        patch("backend.app.core.config.settings") as mock_settings,
     ):
         mock_settings.twilio_account_sid = "test_sid"
         mock_settings.twilio_auth_token = "test_token"
@@ -56,11 +56,11 @@ class TestClientValuePredictor:
     def test_init(self, mock_db_pool):
         """Test initialization"""
         with (
-            patch("agents.agents.client_value_predictor.ClientScoringService"),
-            patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-            patch("agents.agents.client_value_predictor.NurturingMessageService"),
-            patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-            patch("app.core.config.settings") as mock_settings,
+            patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+            patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+            patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+            patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+            patch("backend.app.core.config.settings") as mock_settings,
         ):
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"
@@ -75,7 +75,7 @@ class TestClientValuePredictor:
 
     def test_init_no_db_pool(self):
         """Test initialization without db_pool"""
-        with patch("agents.agents.client_value_predictor.app", create=True) as mock_app:
+        with patch("backend.agents.agents.client_value_predictor.app", create=True) as mock_app:
             mock_app.state = MagicMock()
             mock_app.state.db_pool = None
 
@@ -83,7 +83,7 @@ class TestClientValuePredictor:
                 ClientValuePredictor(db_pool=None)
 
     def test_init_from_app_state(self):
-        """Test initialization from app.state"""
+        """Test initialization from backend.app.state"""
         mock_pool = MagicMock()
 
         # Create a mock app module with state
@@ -92,12 +92,12 @@ class TestClientValuePredictor:
         mock_app_module.state.db_pool = mock_pool
 
         with (
-            patch("app.main_cloud.app", mock_app_module),
-            patch("agents.agents.client_value_predictor.ClientScoringService"),
-            patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-            patch("agents.agents.client_value_predictor.NurturingMessageService"),
-            patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-            patch("app.core.config.settings") as mock_settings,
+            patch("backend.app.main_cloud.app", mock_app_module),
+            patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+            patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+            patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+            patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+            patch("backend.app.core.config.settings") as mock_settings,
         ):
             mock_settings.twilio_account_sid = "test_sid"
             mock_settings.twilio_auth_token = "test_token"

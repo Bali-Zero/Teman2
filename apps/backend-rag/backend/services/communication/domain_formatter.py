@@ -10,7 +10,7 @@ Domains supported:
 - company: PT PMA setup, business registration
 """
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 
 def get_domain_format_instruction(domain: str, language: str) -> str:
@@ -24,7 +24,7 @@ def get_domain_format_instruction(domain: str, language: str) -> str:
     Returns:
         Instruction string with template
     """
-    from services.response.standard_templates import (
+    from backend.services.response.standard_templates import (
         get_company_setup_template,
         get_tax_template,
         get_visa_template,

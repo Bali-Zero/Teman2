@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.work_session_service import WorkSessionService
+from backend.services.misc.work_session_service import WorkSessionService
 
 
 @pytest.fixture
 def work_session_service():
     """Create WorkSessionService instance"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = None
         return WorkSessionService()
 
@@ -39,7 +39,7 @@ class TestWorkSessionService:
 
     def test_init(self):
         """Test initialization"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = None
             service = WorkSessionService()
             assert service.db_url is None
@@ -52,9 +52,9 @@ class TestWorkSessionService:
 
         with (
             patch(
-                "services.misc.work_session_service.asyncpg.create_pool", new_callable=AsyncMock
+                "backend.services.misc.work_session_service.asyncpg.create_pool", new_callable=AsyncMock
             ) as mock_create_pool,
-            patch("app.core.config.settings") as mock_settings,
+            patch("backend.app.core.config.settings") as mock_settings,
         ):
             mock_create_pool.return_value = mock_pool
             mock_settings.database_url = "postgresql://test:test@localhost/test"

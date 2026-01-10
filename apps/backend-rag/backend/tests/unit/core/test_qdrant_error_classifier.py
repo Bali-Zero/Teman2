@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.qdrant_db import QdrantErrorClassifier, QdrantErrorType
+from backend.core.qdrant_db import QdrantErrorClassifier, QdrantErrorType
 
 
 class TestQdrantErrorClassifier:
@@ -105,7 +105,7 @@ class TestQdrantMetrics:
 
     def test_get_qdrant_metrics_empty(self):
         """Test getting metrics when no operations performed"""
-        from core.qdrant_db import _qdrant_metrics, get_qdrant_metrics
+        from backend.core.qdrant_db import _qdrant_metrics, get_qdrant_metrics
 
         # Reset metrics
         original = _qdrant_metrics.copy()
@@ -134,7 +134,7 @@ class TestQdrantMetrics:
 
     def test_get_qdrant_metrics_with_data(self):
         """Test getting metrics with operation data"""
-        from core.qdrant_db import _qdrant_metrics, get_qdrant_metrics
+        from backend.core.qdrant_db import _qdrant_metrics, get_qdrant_metrics
 
         # Save original
         original = _qdrant_metrics.copy()
@@ -172,7 +172,7 @@ class TestRetryWithBackoff:
     @pytest.mark.asyncio
     async def test_retry_success_first_attempt(self):
         """Test retry succeeds on first attempt"""
-        from core.qdrant_db import _retry_with_backoff
+        from backend.core.qdrant_db import _retry_with_backoff
 
         async def success_func():
             return "success"
@@ -183,7 +183,7 @@ class TestRetryWithBackoff:
     @pytest.mark.asyncio
     async def test_retry_success_after_retries(self):
         """Test retry succeeds after some failures"""
-        from core.qdrant_db import _retry_with_backoff
+        from backend.core.qdrant_db import _retry_with_backoff
 
         attempts = []
 
@@ -200,7 +200,7 @@ class TestRetryWithBackoff:
     @pytest.mark.asyncio
     async def test_retry_exhausted(self):
         """Test retry raises exception when all retries exhausted"""
-        from core.qdrant_db import _retry_with_backoff
+        from backend.core.qdrant_db import _retry_with_backoff
 
         async def fail_func():
             raise ValueError("Persistent error")
@@ -213,7 +213,7 @@ class TestRetryWithBackoff:
         """Test that retry uses exponential backoff"""
         import asyncio
 
-        from core.qdrant_db import _retry_with_backoff
+        from backend.core.qdrant_db import _retry_with_backoff
 
         delays = []
         original_sleep = asyncio.sleep

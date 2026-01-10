@@ -15,9 +15,9 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.system_observability import router
-from app.routers.team_activity import get_admin_email
-from services.monitoring.unified_health_service import get_unified_health_service
+from backend.app.routers.system_observability import router
+from backend.app.routers.team_activity import get_admin_email
+from backend.services.monitoring.unified_health_service import get_unified_health_service
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ class TestSystemObservabilityRouter:
         response = client.get("/api/admin/system-health")
         assert response.status_code == 500
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("asyncpg.connect")
     def test_get_postgres_tables(self, mock_connect, mock_settings, app, client):
         """Test getting PostgreSQL tables"""
@@ -90,7 +90,7 @@ class TestSystemObservabilityRouter:
         data = response.json()
         assert isinstance(data, list)
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("asyncpg.connect")
     def test_get_postgres_tables_error(self, mock_connect, mock_settings, app, client):
         """Test getting PostgreSQL tables with error"""
@@ -100,7 +100,7 @@ class TestSystemObservabilityRouter:
         response = client.get("/api/admin/postgres/tables")
         assert response.status_code == 500
 
-    @patch("app.core.config.settings")
+    @patch("backend.app.core.config.settings")
     @patch("asyncpg.connect")
     def test_get_table_data(self, mock_connect, mock_settings, app, client):
         """Test getting table data"""

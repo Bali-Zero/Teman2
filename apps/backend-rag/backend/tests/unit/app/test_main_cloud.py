@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.main_cloud import (
+from backend.app.main_cloud import (
     _allowed_origins,
     _parse_history,
     _safe_endpoint_label,
@@ -34,9 +34,9 @@ class TestMainCloud:
     async def test_on_startup(self):
         """Test startup handler"""
         with (
-            patch("app.main_cloud.initialize_services") as mock_init_services,
-            patch("app.main_cloud.initialize_plugins") as mock_init_plugins,
-            patch("app.main_cloud.AlertService") as mock_alert,
+            patch("backend.app.main_cloud.initialize_services") as mock_init_services,
+            patch("backend.app.main_cloud.initialize_plugins") as mock_init_plugins,
+            patch("backend.app.main_cloud.AlertService") as mock_alert,
         ):
             mock_init_services.return_value = None
             mock_init_plugins.return_value = None

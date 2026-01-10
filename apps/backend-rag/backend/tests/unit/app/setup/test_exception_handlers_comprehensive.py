@@ -17,7 +17,7 @@ from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.setup.exception_handlers import (
+from backend.app.setup.exception_handlers import (
     http_exception_handler,
     sanitize_detail,
     starlette_http_exception_handler,

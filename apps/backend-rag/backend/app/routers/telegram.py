@@ -12,10 +12,10 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from pydantic import BaseModel
 
-from app.core.config import settings
-from app.core.intel_approvers import get_required_votes, get_team_config
-from app.dependencies import get_orchestrator
-from app.metrics import (
+from backend.app.core.config import settings
+from backend.app.core.intel_approvers import get_required_votes, get_team_config
+from backend.app.dependencies import get_orchestrator
+from backend.app.metrics import (
     intel_items_approved,
     intel_items_rejected,
     intel_qdrant_ingestion_duration,
@@ -23,8 +23,8 @@ from app.metrics import (
     intel_votes_cast,
     intel_voting_duration,
 )
-from services.integrations.telegram_bot_service import telegram_bot
-from services.rag.agentic import AgenticRAGOrchestrator
+from backend.services.integrations.telegram_bot_service import telegram_bot
+from backend.services.rag.agentic import AgenticRAGOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -349,8 +349,8 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
         data = j.loads(staging_file.read_text())
 
         # Import ingestion services
-        from core.embeddings import embedding_service
-        from core.qdrant_db import qdrant_client
+        from backend.core.embeddings import embedding_service
+        from backend.core.qdrant_db import qdrant_client
 
         # Extract content
         title = data.get("title", "Untitled")
@@ -461,7 +461,7 @@ async def process_telegram_message(
         # 1. Typing indicator
         await telegram_bot.send_chat_action(chat_id, "typing")
 
-        # 2. Get orchestrator (sync function from app.dependencies)
+        # 2. Get orchestrator (sync function from backend.app.dependencies)
         orchestrator = get_orchestrator(request)
 
         # Create unique user_id for Telegram users

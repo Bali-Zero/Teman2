@@ -16,13 +16,13 @@ from datetime import datetime
 from typing import Any
 
 import asyncpg
-from agents.services.client_scoring import ClientScoringService
-from agents.services.client_segmentation import ClientSegmentationService
-from agents.services.nurturing_message import NurturingMessageService
-from agents.services.whatsapp_notification import WhatsAppNotificationService
+from backend.agents.services.client_scoring import ClientScoringService
+from backend.agents.services.client_segmentation import ClientSegmentationService
+from backend.agents.services.nurturing_message import NurturingMessageService
+from backend.agents.services.whatsapp_notification import WhatsAppNotificationService
 
 try:
-    from llm.zantara_ai_client import ZantaraAIClient
+    from backend.llm.zantara_ai_client import ZantaraAIClient
 
     ZANTARA_AVAILABLE = True
 except ImportError:
@@ -56,16 +56,16 @@ class ClientValuePredictor:
         Initialize ClientValuePredictor with dependencies.
 
         Args:
-            db_pool: AsyncPG connection pool (if None, will try to get from app.state)
+            db_pool: AsyncPG connection pool (if None, will try to get from backend.app.state)
             ai_client: ZantaraAIClient instance (if None, will create new)
         """
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         # Get db_pool
         self.db_pool = db_pool
         if not self.db_pool:
             try:
-                from app.main_cloud import app
+                from backend.app.main_cloud import app
 
                 self.db_pool = getattr(app.state, "db_pool", None)
             except Exception:
@@ -262,7 +262,7 @@ class ClientValuePredictor:
                         logger.error(f"❌ Error processing client {client_id}: {e}", exc_info=True)
 
             # Send summary to team
-            from app.core.config import settings
+            from backend.app.core.config import settings
 
             if settings.slack_webhook_url:
                 try:

@@ -6,7 +6,7 @@ Responsibility: Build journeys from templates
 import logging
 from datetime import datetime, timedelta
 
-from services.journey.journey_templates import JourneyTemplatesService
+from backend.services.journey.journey_templates import JourneyTemplatesService
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class JourneyBuilderService:
         Returns:
             ClientJourney instance
         """
-        from services.misc.client_journey_orchestrator import (
+        from backend.services.misc.client_journey_orchestrator import (
             ClientJourney,
             JourneyStatus,
             JourneyStep,
@@ -119,7 +119,7 @@ class JourneyBuilderService:
         Returns:
             ClientJourney instance
         """
-        from services.misc.client_journey_orchestrator import (
+        from backend.services.misc.client_journey_orchestrator import (
             ClientJourney,
             JourneyStatus,
             JourneyStep,

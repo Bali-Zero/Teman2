@@ -22,11 +22,11 @@ from typing import Any
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
-from app.core.config import settings
-from app.core.constants import EvidenceScoreConstants
-from app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
-from services.llm_clients.pricing import TokenUsage
-from services.tools.definitions import AgentState, AgentStep
+from backend.app.core.config import settings
+from backend.app.core.constants import EvidenceScoreConstants
+from backend.app.utils.tracing import add_span_event, set_span_attribute, set_span_status, trace_span
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.tools.definitions import AgentState, AgentStep
 
 from .response_processor import post_process_response
 from .tool_executor import execute_tool, parse_tool_call
@@ -450,10 +450,12 @@ class ReasoningEngine:
                         logger.info(
                             f"🔧 [Agent] Calling tool: {tool_call.tool_name}",
                             extra={
-                                "tool": tool_call.tool_name,
-                                "args": tool_call.arguments,
-                                "step": state.current_step,
-                                "user_id": user_id,
+                                "context": {
+                                    "tool": tool_call.tool_name,
+                                    "arguments": tool_call.arguments,
+                                    "step": state.current_step,
+                                    "user_id": user_id,
+                                }
                             },
                         )
                         tool_result, tool_duration = await execute_tool(
@@ -564,13 +566,15 @@ class ReasoningEngine:
                                 logger.warning(
                                     f"⚠️ Context quality too low ({quality_score:.2f} < {self._min_context_quality_score})",
                                     extra={
-                                        "quality_score": quality_score,
-                                        "context_items": len(state.context_gathered),
-                                        "step": state.current_step,
+                                        "context": {
+                                            "quality_score": quality_score,
+                                            "context_items": len(state.context_gathered),
+                                            "step": state.current_step,
+                                        }
                                     },
                                 )
                                 try:
-                                    from app.metrics import reasoning_low_context_quality_total
+                                    from backend.app.metrics import reasoning_low_context_quality_total
 
                                     reasoning_low_context_quality_total.inc()
                                 except ImportError:

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 MAX_TEXT_LENGTH = 4000
 
 try:
-    from llm.zantara_ai_client import ZantaraAIClient
+    from backend.llm.zantara_ai_client import ZantaraAIClient
 
     ZANTARA_AVAILABLE = True
 except ImportError:

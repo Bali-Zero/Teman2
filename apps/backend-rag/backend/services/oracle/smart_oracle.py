@@ -18,9 +18,9 @@ import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from llm.genai_client import GENAI_AVAILABLE, GenAIClient, genai, get_genai_client
+from backend.llm.genai_client import GENAI_AVAILABLE, GenAIClient, genai, get_genai_client
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ if GENAI_AVAILABLE:
 # 2. Google Drive Service (Using Service Account)
 def get_drive_service():
     """Initialize Google Drive service using service account credentials"""
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     creds_json = settings.google_credentials_json
     if not creds_json:

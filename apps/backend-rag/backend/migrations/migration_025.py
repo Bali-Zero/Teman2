@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import asyncpg
-from db.migration_base import BaseMigration
+from backend.db.migration_base import BaseMigration
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ async def main():
     """Run migration standalone"""
     # Try to get DATABASE_URL from environment or settings
     try:
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         database_url = settings.database_url
     except (ImportError, AttributeError):

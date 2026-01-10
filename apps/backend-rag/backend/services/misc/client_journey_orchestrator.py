@@ -35,7 +35,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from services.journey import (
+from backend.services.journey import (
     JourneyBuilderService,
     JourneyTemplatesService,
     PrerequisitesCheckerService,

@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.services.api_key_auth import APIKeyAuth
+from backend.app.services.api_key_auth import APIKeyAuth
 
 
 @pytest.fixture
 def api_key_auth():
     """Create APIKeyAuth instance"""
-    with patch("app.services.api_key_auth.settings") as mock_settings:
+    with patch("backend.app.services.api_key_auth.settings") as mock_settings:
         mock_settings.api_keys = "test-key-123,admin-key-456"
         return APIKeyAuth()
 
@@ -29,7 +29,7 @@ class TestAPIKeyAuth:
 
     def test_init(self):
         """Test initialization"""
-        with patch("app.services.api_key_auth.settings") as mock_settings:
+        with patch("backend.app.services.api_key_auth.settings") as mock_settings:
             mock_settings.api_keys = "key1,key2"
             auth = APIKeyAuth()
             assert len(auth.valid_keys) == 2

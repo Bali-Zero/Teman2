@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.image_generation import router
+from backend.app.routers.image_generation import router
 
 
 @pytest.fixture
@@ -35,8 +35,8 @@ def client(app):
 class TestImageGenerationRouter:
     """Tests for image generation router"""
 
-    @patch("app.routers.image_generation.httpx.AsyncClient")
-    @patch("app.routers.image_generation.settings")
+    @patch("backend.app.routers.image_generation.httpx.AsyncClient")
+    @patch("backend.app.routers.image_generation.settings")
     def test_generate_image_success(self, mock_settings, mock_client_class, client):
         """Test generating image successfully"""
         mock_settings.google_imagen_api_key = "test-key"
@@ -64,7 +64,7 @@ class TestImageGenerationRouter:
         assert data["success"] is True
         assert len(data["images"]) == 2
 
-    @patch("app.routers.image_generation.settings")
+    @patch("backend.app.routers.image_generation.settings")
     def test_generate_image_no_api_key(self, mock_settings, client):
         """Test generating image without API key"""
         mock_settings.google_imagen_api_key = None
@@ -74,8 +74,8 @@ class TestImageGenerationRouter:
         response = client.post("/api/v1/image/generate", json={"prompt": "test"})
         assert response.status_code == 500
 
-    @patch("app.routers.image_generation.httpx.AsyncClient")
-    @patch("app.routers.image_generation.settings")
+    @patch("backend.app.routers.image_generation.httpx.AsyncClient")
+    @patch("backend.app.routers.image_generation.settings")
     def test_generate_image_403_error(self, mock_settings, mock_client_class, client):
         """Test generating image with 403 error"""
         mock_settings.google_imagen_api_key = "test-key"
@@ -98,8 +98,8 @@ class TestImageGenerationRouter:
         # The router checks for 403 specifically and raises HTTPException with 403
         assert response.status_code == 403
 
-    @patch("app.routers.image_generation.httpx.AsyncClient")
-    @patch("app.routers.image_generation.settings")
+    @patch("backend.app.routers.image_generation.httpx.AsyncClient")
+    @patch("backend.app.routers.image_generation.settings")
     def test_generate_image_no_images(self, mock_settings, mock_client_class, client):
         """Test generating image with no images returned"""
         mock_settings.google_imagen_api_key = "test-key"

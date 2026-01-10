@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.memory.collective_memory_service import CollectiveMemory, CollectiveMemoryService
+from backend.services.memory.collective_memory_service import CollectiveMemory, CollectiveMemoryService
 
 
 @pytest.fixture
@@ -44,11 +44,10 @@ def mock_qdrant():
 
 
 @pytest.fixture
-def collective_memory_service(mock_db_pool, mock_embedder, mock_qdrant):
+def collective_memory_service(mock_db_pool):
     """Create collective memory service instance"""
-    return CollectiveMemoryService(
-        pool=mock_db_pool, embedder=mock_embedder, qdrant_client=mock_qdrant
-    )
+    # NOTE 2026-01-10: Qdrant removed, service only needs pool
+    return CollectiveMemoryService(pool=mock_db_pool)
 
 
 class TestCollectiveMemoryService:
@@ -153,25 +152,8 @@ class TestCollectiveMemoryService:
         facts = await collective_memory_service.get_collective_context(category="pricing", limit=10)
         assert len(facts) > 0
 
-    @pytest.mark.asyncio
-    async def test_search_facts(self, collective_memory_service):
-        """Test semantic search for facts"""
-        with (
-            patch.object(collective_memory_service, "_get_embedder") as mock_get_embedder,
-            patch.object(collective_memory_service, "_get_qdrant") as mock_get_qdrant,
-        ):
-            mock_embedder = MagicMock()
-            mock_embedder.generate_query_embedding = MagicMock(return_value=[0.1] * 1536)
-            mock_get_embedder.return_value = mock_embedder
-
-            mock_qdrant = MagicMock()
-            mock_qdrant.search = AsyncMock(
-                return_value={"documents": [["test fact"]], "metadatas": [{"confidence": 0.9}]}
-            )
-            mock_get_qdrant.return_value = mock_qdrant
-
-            results = await collective_memory_service.get_relevant_context("test query", limit=5)
-            assert results is not None
+    # NOTE 2026-01-10: test_search_facts removed - get_relevant_context() method removed (Qdrant)
+    # Use test_get_collective_context instead for PostgreSQL-based retrieval
 
 
 class TestCollectiveMemory:
@@ -208,31 +190,14 @@ class TestCollectiveMemory:
         """Test getting embedder"""
         # Reset embedder to None to force initialization
         collective_memory_service._embedder = None
-        with patch("core.embeddings.create_embeddings_generator") as mock_create:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
             mock_embedder = MagicMock()
             mock_create.return_value = mock_embedder
             embedder = collective_memory_service._get_embedder()
             assert embedder is not None
             mock_create.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_get_qdrant(self, collective_memory_service):
-        """Test getting Qdrant client"""
-        # Reset qdrant to None to force initialization
-        collective_memory_service._qdrant = None
-        collective_memory_service._qdrant_initialized = False
-        with (
-            patch("core.qdrant_db.QdrantClient") as mock_qdrant_class,
-            patch("app.core.config.settings") as mock_settings,
-        ):
-            mock_settings.qdrant_url = "http://localhost:6333"
-            mock_qdrant_instance = MagicMock()
-            mock_qdrant_instance.create_collection = AsyncMock()
-            mock_qdrant_class.return_value = mock_qdrant_instance
-
-            qdrant = await collective_memory_service._get_qdrant()
-            assert qdrant is not None
-            mock_qdrant_class.assert_called()
+    # NOTE 2026-01-10: test_get_qdrant removed - _get_qdrant() method removed (Qdrant)
 
     def test_hash_content(self):
         """Test content hashing"""
@@ -349,35 +314,7 @@ class TestCollectiveMemory:
         assert "total_facts" in stats
         assert stats["total_facts"] == 10
 
-    @pytest.mark.asyncio
-    async def test_sync_to_qdrant(self, collective_memory_service, mock_db_pool):
-        """Test syncing memory to Qdrant"""
-        from contextlib import asynccontextmanager
-
-        with (
-            patch.object(collective_memory_service, "_get_embedder") as mock_get_embedder,
-            patch.object(collective_memory_service, "_get_qdrant") as mock_get_qdrant,
-        ):
-            mock_embedder = MagicMock()
-            mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            mock_get_embedder.return_value = mock_embedder
-
-            mock_qdrant = MagicMock()
-            mock_qdrant.upsert_documents = AsyncMock(return_value={"success": True})
-            mock_get_qdrant.return_value = mock_qdrant
-
-            mock_conn = AsyncMock()
-            mock_conn.execute = AsyncMock()
-
-            @asynccontextmanager
-            async def acquire():
-                yield mock_conn
-
-            collective_memory_service.pool = mock_db_pool
-            mock_db_pool.acquire = acquire
-
-            result = await collective_memory_service._sync_to_qdrant(1, "test content", "pricing")
-            assert result is True
+    # NOTE 2026-01-10: test_sync_to_qdrant removed - _sync_to_qdrant() method removed (Qdrant)
 
     @pytest.mark.asyncio
     async def test_refute_fact_not_found(self, collective_memory_service, mock_db_pool):

@@ -12,7 +12,7 @@ import psycopg2
 # Add backend to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 
 def apply_migration_013():

@@ -11,8 +11,8 @@ from typing import Any
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 
-from app.models import TierLevel
-from services.ingestion.legal_ingestion_service import LegalIngestionService
+from backend.app.models import TierLevel
+from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +304,7 @@ async def register_parent_document(request: RegisterParentDocRequest) -> dict[st
 
     import asyncpg
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url, timeout=10)
@@ -365,7 +365,7 @@ async def get_parent_documents(document_id: str) -> dict[str, Any]:
     """
     import asyncpg
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url, timeout=10)
@@ -427,7 +427,7 @@ async def get_bab_full_text(document_id: str, bab_id: str) -> dict[str, Any]:
     """
     import asyncpg
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     try:
         conn = await asyncpg.connect(settings.database_url, timeout=10)

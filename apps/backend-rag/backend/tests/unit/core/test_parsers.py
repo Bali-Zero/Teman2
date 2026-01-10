@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.parsers import (
+from backend.core.parsers import (
     DocumentParseError,
     auto_detect_and_parse,
     extract_text_from_epub,
@@ -71,7 +71,7 @@ class TestExtractTextFromTxt:
 class TestExtractTextFromPdf:
     """Tests for extract_text_from_pdf"""
 
-    @patch("core.parsers.PdfReader")
+    @patch("backend.core.parsers.PdfReader")
     def test_extract_text_success(self, mock_reader_class):
         """Test successful PDF extraction"""
         mock_reader = MagicMock()
@@ -86,7 +86,7 @@ class TestExtractTextFromPdf:
         assert "Page 1 content" in result
         assert "Page 2 content" in result
 
-    @patch("core.parsers.PdfReader")
+    @patch("backend.core.parsers.PdfReader")
     def test_extract_text_empty(self, mock_reader_class):
         """Test extraction from empty PDF"""
         mock_reader = MagicMock()
@@ -96,7 +96,7 @@ class TestExtractTextFromPdf:
         with pytest.raises(DocumentParseError):
             extract_text_from_pdf("/test/file.pdf")
 
-    @patch("core.parsers.PdfReader")
+    @patch("backend.core.parsers.PdfReader")
     def test_extract_text_page_error(self, mock_reader_class):
         """Test extraction with page error"""
         mock_reader = MagicMock()
@@ -110,7 +110,7 @@ class TestExtractTextFromPdf:
         result = extract_text_from_pdf("/test/file.pdf")
         assert "Page 1 content" in result  # Should continue despite error
 
-    @patch("core.parsers.PdfReader")
+    @patch("backend.core.parsers.PdfReader")
     def test_extract_text_reader_error(self, mock_reader_class):
         """Test extraction with reader error"""
         mock_reader_class.side_effect = Exception("Reader error")
@@ -122,8 +122,8 @@ class TestExtractTextFromPdf:
 class TestExtractTextFromEpub:
     """Tests for extract_text_from_epub"""
 
-    @patch("core.parsers.epub.read_epub")
-    @patch("core.parsers.BeautifulSoup")
+    @patch("backend.core.parsers.epub.read_epub")
+    @patch("backend.core.parsers.BeautifulSoup")
     def test_extract_text_success(self, mock_soup, mock_read):
         """Test successful EPUB extraction"""
         import ebooklib
@@ -142,7 +142,7 @@ class TestExtractTextFromEpub:
         result = extract_text_from_epub("/test/file.epub")
         assert "Chapter content" in result
 
-    @patch("core.parsers.epub.read_epub")
+    @patch("backend.core.parsers.epub.read_epub")
     def test_extract_text_empty(self, mock_read):
         """Test extraction from empty EPUB"""
 
@@ -181,7 +181,7 @@ class TestAutoDetectAndParse:
         finally:
             os.unlink(temp_path)
 
-    @patch("core.parsers.extract_text_from_pdf")
+    @patch("backend.core.parsers.extract_text_from_pdf")
     def test_auto_detect_pdf(self, mock_extract):
         """Test auto-detection of PDF file"""
         mock_extract.return_value = "PDF content"
@@ -229,7 +229,7 @@ class TestGetDocumentInfo:
         finally:
             os.unlink(temp_path)
 
-    @patch("core.parsers.PdfReader")
+    @patch("backend.core.parsers.PdfReader")
     def test_get_info_pdf(self, mock_reader_class):
         """Test getting info for PDF file"""
         mock_reader = MagicMock()
@@ -249,7 +249,7 @@ class TestGetDocumentInfo:
         finally:
             os.unlink(temp_path)
 
-    @patch("core.parsers.epub.read_epub")
+    @patch("backend.core.parsers.epub.read_epub")
     def test_get_info_epub(self, mock_read):
         """Test getting info for EPUB file"""
         mock_book = MagicMock()

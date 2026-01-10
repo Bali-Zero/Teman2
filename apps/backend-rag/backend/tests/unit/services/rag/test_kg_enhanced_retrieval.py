@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services.rag.kg_enhanced_retrieval import KGContext, KGEnhancedRetrieval
+from backend.services.rag.kg_enhanced_retrieval import KGContext, KGEnhancedRetrieval
 
 
 class TestKGContext:

@@ -103,7 +103,7 @@ class BackendSelfHealingAgent:
         logger.info("🚀 Starting self-healing agent...")
 
         # Report startup to orchestrator
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         await self.report_to_orchestrator(
             {
@@ -212,7 +212,7 @@ class BackendSelfHealingAgent:
         """Check if Redis cache is accessible"""
         try:
             if not self.redis_client:
-                from app.core.config import settings
+                from backend.app.core.config import settings
 
                 redis_url = settings.redis_url
                 if redis_url:
@@ -398,7 +398,7 @@ class BackendSelfHealingAgent:
         """Reconnect to cache"""
         logger.info("Attempting cache reconnection...")
         try:
-            from app.core.config import settings
+            from backend.app.core.config import settings
 
             redis_url = settings.redis_url
             if redis_url:
@@ -445,7 +445,7 @@ class BackendSelfHealingAgent:
 
 # Auto-start agent if run directly
 if __name__ == "__main__":
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     service_name = settings.service_name
     agent = BackendSelfHealingAgent(service_name=service_name)

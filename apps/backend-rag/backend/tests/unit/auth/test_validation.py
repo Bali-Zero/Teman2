@@ -14,8 +14,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.auth.validation import validate_api_key, validate_auth_mixed, validate_auth_token
-from app.core.config import settings
+from backend.app.auth.validation import validate_api_key, validate_auth_mixed, validate_auth_token
+from backend.app.core.config import settings
 
 
 class TestAuthValidation:
@@ -36,7 +36,7 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_api_key_invalid(self):
         """Test validating invalid API key"""
-        with patch("app.auth.validation._api_key_auth") as mock_auth:
+        with patch("backend.app.auth.validation._api_key_auth") as mock_auth:
             mock_auth.validate_api_key.return_value = None
             result = await validate_api_key("invalid_key")
             assert result is None
@@ -44,7 +44,7 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_api_key_valid(self):
         """Test validating valid API key"""
-        with patch("app.auth.validation._api_key_auth") as mock_auth:
+        with patch("backend.app.auth.validation._api_key_auth") as mock_auth:
             mock_auth.validate_api_key.return_value = {"id": "user123", "email": "test@example.com"}
             result = await validate_api_key("valid_key")
             assert result is not None
@@ -128,7 +128,7 @@ class TestAuthValidation:
     @pytest.mark.asyncio
     async def test_validate_auth_mixed_api_key(self):
         """Test validating mixed auth with API key"""
-        with patch("app.auth.validation._api_key_auth") as mock_auth:
+        with patch("backend.app.auth.validation._api_key_auth") as mock_auth:
             mock_auth.validate_api_key.return_value = {"id": "user123", "email": "test@example.com"}
             result = await validate_auth_mixed(x_api_key="valid_key")
             assert result is not None
@@ -140,7 +140,7 @@ class TestAuthValidation:
         payload = {"sub": "user123", "email": "test@example.com"}
         token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
-        with patch("app.auth.validation._api_key_auth") as mock_auth:
+        with patch("backend.app.auth.validation._api_key_auth") as mock_auth:
             mock_auth.validate_api_key.return_value = {
                 "id": "user456",
                 "email": "other@example.com",

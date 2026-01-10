@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.session import get_session_service, router
+from backend.app.routers.session import get_session_service, router
 
 
 @pytest.fixture
@@ -52,11 +52,11 @@ class TestSessionRouter:
     def test_get_session_service(self):
         """Test getting session service"""
         # Reset global
-        import app.routers.session as module
+        import backend.app.routers.session as module
 
         module._session_service = None
 
-        with patch("app.routers.session.SessionService") as mock_service_class:
+        with patch("backend.app.routers.session.SessionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service_class.return_value = mock_service
             service = get_session_service()

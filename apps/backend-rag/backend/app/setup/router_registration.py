@@ -5,9 +5,9 @@ Centralizes all router inclusion logic
 
 from fastapi import FastAPI
 
-from app.modules.identity.router import router as identity_router
-from app.modules.knowledge.router import router as knowledge_router
-from app.routers import (
+from backend.app.modules.identity.router import router as identity_router
+from backend.app.modules.knowledge.router import router as knowledge_router
+from backend.app.routers import (
     admin_logs,
     agentic_rag,
     agents,
@@ -76,7 +76,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(handlers.router)
 
     # Debug router (dev/staging always, production only if ADMIN_API_KEY is set)
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     if settings.environment.lower() != "production" or settings.admin_api_key:
         api.include_router(debug.router)
@@ -118,7 +118,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(oracle_universal.router)
 
     # Preview router (for Telegram article previews)
-    from app.routers import preview
+    from backend.app.routers import preview
 
     api.include_router(preview.router)
 
@@ -157,7 +157,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(voice.router)  # Fast voice endpoint for realtime voice AI
 
     # Image generation router
-    from app.routers import image_generation
+    from backend.app.routers import image_generation
 
     api.include_router(image_generation.router)
 

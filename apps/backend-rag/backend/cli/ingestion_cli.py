@@ -22,7 +22,7 @@ from typing import Any
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
-from services.ingestion import IngestionService, LegalIngestionService
+from backend.services.ingestion import IngestionService, LegalIngestionService
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +58,8 @@ class IngestionCLI:
             import uuid
             from pathlib import Path
 
-            from core.embeddings import create_embeddings_generator
-            from core.qdrant_db import QdrantClient
+            from backend.core.embeddings import create_embeddings_generator
+            from backend.core.qdrant_db import QdrantClient
 
             # Determine source path
             if source:
@@ -141,8 +141,8 @@ class IngestionCLI:
             import uuid
             from pathlib import Path
 
-            from core.embeddings import create_embeddings_generator
-            from core.qdrant_db import QdrantClient
+            from backend.core.embeddings import create_embeddings_generator
+            from backend.core.qdrant_db import QdrantClient
 
             source_path = Path(source)
             if not source_path.exists():

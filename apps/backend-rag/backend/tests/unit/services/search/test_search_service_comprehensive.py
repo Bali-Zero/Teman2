@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.search.search_service import SearchService
+from backend.services.search.search_service import SearchService
 
 
 @pytest.fixture
@@ -50,14 +50,14 @@ def mock_embedder():
 def search_service(mock_qdrant_client, mock_embedder):
     """Create search service instance"""
     with (
-        patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder),
-        patch("core.qdrant_db.QdrantClient", return_value=mock_qdrant_client),
-        patch("services.search.search_service.CollectionManager") as mock_cm,
-        patch("services.search.search_service.ConflictResolver"),
-        patch("services.search.search_service.CulturalInsightsService"),
-        patch("services.routing.query_router_integration.QueryRouterIntegration"),
-        patch("services.ingestion.collection_health_service.CollectionHealthService"),
-        patch("services.search.search_service.CollectionWarmupService"),
+        patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder),
+        patch("backend.core.qdrant_db.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.services.search.search_service.CollectionManager") as mock_cm,
+        patch("backend.services.search.search_service.ConflictResolver"),
+        patch("backend.services.search.search_service.CulturalInsightsService"),
+        patch("backend.services.routing.query_router_integration.QueryRouterIntegration"),
+        patch("backend.services.ingestion.collection_health_service.CollectionHealthService"),
+        patch("backend.services.search.search_service.CollectionWarmupService"),
     ):
         # Mock CollectionManager to return our mock client
         mock_cm_instance = MagicMock()
@@ -127,7 +127,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_search_with_tier_filter(self, search_service):
         """Test search with tier filter"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
 
         result = await search_service.search(
             query="test", user_level=2, limit=5, tier_filter=[TierLevel.S, TierLevel.A]
@@ -376,7 +376,7 @@ class TestSearchService:
         search_service.collection_manager.get_collection.return_value = None
 
         # Should create ad-hoc client
-        with patch("core.qdrant_db.QdrantClient") as mock_client:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_client:
             mock_client.return_value.search = AsyncMock(
                 return_value={
                     "ids": ["1"],
@@ -412,7 +412,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_init_bm25_with_retry(self, search_service):
         """Test BM25 initialization with retry"""
-        with patch("core.bm25_vectorizer.BM25Vectorizer") as mock_bm25_class:
+        with patch("backend.core.bm25_vectorizer.BM25Vectorizer") as mock_bm25_class:
             mock_bm25_class.side_effect = [Exception("Error"), MagicMock()]
 
             result = await search_service._init_bm25_with_retry()
@@ -428,7 +428,7 @@ class TestSearchService:
 
         try:
             # Temporarily disable BM25 in settings
-            import app.core.config as config_module
+            import backend.app.core.config as config_module
 
             original_settings_value = config_module.settings.enable_bm25
 
@@ -556,13 +556,13 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_init_bm25_import_error(self, search_service):
         """Test _init_bm25_with_retry with ImportError"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.enable_bm25 = True
             mock_settings.bm25_vocab_size = 100000
             mock_settings.bm25_k1 = 1.2
             mock_settings.bm25_b = 0.75
 
-            with patch("core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")):
+            with patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")):
                 # Reset state
                 search_service._bm25_enabled = False
                 search_service._bm25_vectorizer = None
@@ -583,13 +583,13 @@ class TestSearchService:
                 raise RuntimeError("Temporary error")
             return MagicMock()
 
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.enable_bm25 = True
             mock_settings.bm25_vocab_size = 100000
             mock_settings.bm25_k1 = 1.2
             mock_settings.bm25_b = 0.75
 
-            with patch("core.bm25_vectorizer.BM25Vectorizer", side_effect=mock_bm25_init):
+            with patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=mock_bm25_init):
                 # Reset state
                 search_service._bm25_enabled = False
                 search_service._bm25_vectorizer = None
@@ -604,7 +604,7 @@ class TestSearchService:
         """Test _alert_bm25_failure logs error"""
         error = RuntimeError("Test error")
 
-        with patch("services.search.search_service.logger") as mock_logger:
+        with patch("backend.services.search.search_service.logger") as mock_logger:
             await search_service._alert_bm25_failure(error)
             mock_logger.error.assert_called()
 
@@ -613,7 +613,7 @@ class TestSearchService:
         """Test _alert_bm25_failure handles exceptions"""
         error = RuntimeError("Test error")
 
-        with patch("services.search.search_service.logger") as mock_logger:
+        with patch("backend.services.search.search_service.logger") as mock_logger:
             # Make the first logger.error call raise an exception
             mock_logger.error.side_effect = [Exception("Log error"), None]
 
@@ -755,7 +755,7 @@ class TestSearchService:
         if hasattr(search_service, "_reranker"):
             delattr(search_service, "_reranker")
 
-        with patch("core.reranker.ReRanker") as mock_reranker_class:
+        with patch("backend.core.reranker.ReRanker") as mock_reranker_class:
             mock_reranker = MagicMock()
             mock_reranker.enabled = True
             mock_reranker.api_url = "http://test"
@@ -1099,7 +1099,7 @@ class TestSearchServiceBM25Init:
     @pytest.fixture
     def mock_settings_bm25_enabled(self):
         """Mock settings with BM25 enabled"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.enable_bm25 = True
             mock_settings.bm25_vocab_size = 100000
             mock_settings.bm25_k1 = 1.2
@@ -1110,14 +1110,14 @@ class TestSearchServiceBM25Init:
     def test_init_bm25_import_error_in_constructor(self, mock_settings_bm25_enabled):
         """Test BM25 ImportError handling in constructor"""
         with (
-            patch("core.embeddings.create_embeddings_generator") as mock_emb,
-            patch("services.search.search_service.CollectionManager"),
-            patch("services.search.search_service.ConflictResolver"),
-            patch("services.search.search_service.CulturalInsightsService"),
-            patch("services.routing.query_router_integration.QueryRouterIntegration"),
-            patch("services.ingestion.collection_health_service.CollectionHealthService"),
-            patch("services.search.search_service.CollectionWarmupService"),
-            patch("core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")),
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_emb,
+            patch("backend.services.search.search_service.CollectionManager"),
+            patch("backend.services.search.search_service.ConflictResolver"),
+            patch("backend.services.search.search_service.CulturalInsightsService"),
+            patch("backend.services.routing.query_router_integration.QueryRouterIntegration"),
+            patch("backend.services.ingestion.collection_health_service.CollectionHealthService"),
+            patch("backend.services.search.search_service.CollectionWarmupService"),
+            patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module")),
         ):
             mock_embedder = MagicMock()
             mock_embedder.provider = "openai"
@@ -1130,14 +1130,14 @@ class TestSearchServiceBM25Init:
     def test_init_bm25_generic_error_in_constructor(self, mock_settings_bm25_enabled):
         """Test BM25 generic error handling in constructor"""
         with (
-            patch("core.embeddings.create_embeddings_generator") as mock_emb,
-            patch("services.search.search_service.CollectionManager"),
-            patch("services.search.search_service.ConflictResolver"),
-            patch("services.search.search_service.CulturalInsightsService"),
-            patch("services.routing.query_router_integration.QueryRouterIntegration"),
-            patch("services.ingestion.collection_health_service.CollectionHealthService"),
-            patch("services.search.search_service.CollectionWarmupService"),
-            patch("core.bm25_vectorizer.BM25Vectorizer", side_effect=RuntimeError("Init error")),
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_emb,
+            patch("backend.services.search.search_service.CollectionManager"),
+            patch("backend.services.search.search_service.ConflictResolver"),
+            patch("backend.services.search.search_service.CulturalInsightsService"),
+            patch("backend.services.routing.query_router_integration.QueryRouterIntegration"),
+            patch("backend.services.ingestion.collection_health_service.CollectionHealthService"),
+            patch("backend.services.search.search_service.CollectionWarmupService"),
+            patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=RuntimeError("Init error")),
         ):
             mock_embedder = MagicMock()
             mock_embedder.provider = "openai"

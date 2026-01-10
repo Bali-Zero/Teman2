@@ -8,13 +8,13 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from core.chunker import TextChunker
-from core.embeddings import create_embeddings_generator
-from core.parsers import auto_detect_and_parse, get_document_info
-from core.qdrant_db import QdrantClient
-from utils.tier_classifier import TierClassifier
+from backend.core.chunker import TextChunker
+from backend.core.embeddings import create_embeddings_generator
+from backend.core.parsers import auto_detect_and_parse, get_document_info
+from backend.core.qdrant_db import QdrantClient
+from backend.utils.tier_classifier import TierClassifier
 
-from app.models import TierLevel
+from backend.app.models import TierLevel
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +198,7 @@ class IngestionService:
             sample = text[:5000] if len(text) > 5000 else text
 
             # Use LegalMetadataExtractor to detect
-            from core.legal import LegalMetadataExtractor
+            from backend.core.legal import LegalMetadataExtractor
 
             extractor = LegalMetadataExtractor()
             return extractor.is_legal_document(sample)

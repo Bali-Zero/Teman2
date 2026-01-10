@@ -8,20 +8,20 @@ import time
 from pathlib import Path
 from typing import Any
 
-from core.embeddings import create_embeddings_generator
-from core.legal import (
+from backend.core.embeddings import create_embeddings_generator
+from backend.core.legal import (
     HierarchicalIndexer,
     LegalChunker,
     LegalCleaner,
     LegalMetadataExtractor,
     LegalStructureParser,
 )
-from core.parsers import auto_detect_and_parse
-from core.qdrant_db import QdrantClient
-from utils.tier_classifier import TierClassifier
+from backend.core.parsers import auto_detect_and_parse
+from backend.core.qdrant_db import QdrantClient
+from backend.utils.tier_classifier import TierClassifier
 
-from app.metrics import metrics_collector
-from app.models import TierLevel
+from backend.app.metrics import metrics_collector
+from backend.app.models import TierLevel
 
 from .ingestion_logger import IngestionStage, ingestion_logger
 
@@ -195,7 +195,7 @@ class LegalIngestionService:
                     "Pattern extraction failed/incomplete. Attempting Vertex AI fallback..."
                 )
                 try:
-                    from services.llm_clients.vertex_ai_service import VertexAIService
+                    from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                     vertex_service = VertexAIService()
                     ai_metadata = await vertex_service.extract_metadata(cleaned_text)

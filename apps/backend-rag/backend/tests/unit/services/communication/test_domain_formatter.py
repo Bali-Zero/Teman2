@@ -10,7 +10,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.communication.domain_formatter import get_domain_format_instruction
+from backend.services.communication.domain_formatter import get_domain_format_instruction
 
 
 class TestDomainFormatter:

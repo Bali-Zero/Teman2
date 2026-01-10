@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.utils.postgres_debugger import (
+from backend.app.utils.postgres_debugger import (
     FORBIDDEN_KEYWORDS,
     MAX_ROWS_LIMIT,
     QUERY_TIMEOUT_SECONDS,
@@ -90,7 +90,7 @@ class TestPostgreSQLDebuggerValidateQuery:
     @pytest.fixture
     def debugger(self):
         """Create debugger instance"""
-        with patch("app.utils.postgres_debugger.settings") as mock_settings:
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             return PostgreSQLDebugger()
 
@@ -152,7 +152,7 @@ class TestPostgreSQLDebuggerExecuteQuery:
     @pytest.fixture
     def debugger(self):
         """Create debugger instance"""
-        with patch("app.utils.postgres_debugger.settings") as mock_settings:
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             return PostgreSQLDebugger()
 
@@ -236,7 +236,7 @@ class TestPostgreSQLDebuggerInit:
 
     def test_init_from_settings(self):
         """Test initialization from settings"""
-        with patch("app.utils.postgres_debugger.settings") as mock_settings:
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
             mock_settings.database_url = "postgresql://from-settings"
             debugger = PostgreSQLDebugger()
             assert debugger.database_url == "postgresql://from-settings"

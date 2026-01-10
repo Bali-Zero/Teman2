@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.routing.specialized_service_router import SpecializedServiceRouter
+from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
 
 @pytest.fixture

@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.monitoring.alert_service import AlertLevel, AlertService
+from backend.services.monitoring.alert_service import AlertLevel, AlertService
 
 
 @pytest.fixture
 def alert_service():
     """Create AlertService instance"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.slack_webhook_url = None
         mock_settings.discord_webhook_url = None
         service = AlertService()
@@ -31,7 +31,7 @@ class TestAlertService:
 
     def test_init(self):
         """Test initialization"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
             service = AlertService()
@@ -79,7 +79,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_alert_with_slack(self):
         """Test sending alert with Slack enabled"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = "https://hooks.slack.com/test"
             mock_settings.discord_webhook_url = None
             service = AlertService()
@@ -101,7 +101,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_alert_with_discord(self):
         """Test sending alert with Discord enabled"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = "https://discord.com/api/webhooks/test"
             service = AlertService()
@@ -123,7 +123,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_alert_all_channels(self):
         """Test sending alert to all channels"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = "https://hooks.slack.com/test"
             mock_settings.discord_webhook_url = "https://discord.com/api/webhooks/test"
             service = AlertService()
@@ -148,7 +148,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_alert_slack_error(self):
         """Test sending alert when Slack fails"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = "https://hooks.slack.com/test"
             mock_settings.discord_webhook_url = None
             service = AlertService()
@@ -167,7 +167,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_alert_discord_error(self):
         """Test sending alert when Discord fails"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = "https://discord.com/api/webhooks/test"
             service = AlertService()
@@ -186,7 +186,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_http_error_alert(self):
         """Test sending HTTP error alert"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
             service = AlertService()
@@ -204,7 +204,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_http_error_alert_4xx(self):
         """Test sending HTTP 4xx error alert (WARNING level)"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
             service = AlertService()
@@ -217,7 +217,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_http_error_alert_503(self):
         """Test sending HTTP 503 error alert (CRITICAL level)"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
             service = AlertService()
@@ -230,7 +230,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_latency_alert(self):
         """Test sending latency alert"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
             service = AlertService()
@@ -248,7 +248,7 @@ class TestAlertService:
     @pytest.mark.asyncio
     async def test_send_alert_logging_error(self):
         """Test sending alert when logging fails"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.slack_webhook_url = None
             mock_settings.discord_webhook_url = None
             service = AlertService()

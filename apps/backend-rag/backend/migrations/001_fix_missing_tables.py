@@ -14,7 +14,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 def run_migration():
     """Run database migration to create missing tables"""
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     database_url = settings.database_url
     if not database_url:

@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.utils.cookie_auth import (
+from backend.app.utils.cookie_auth import (
     CSRF_COOKIE_NAME,
     JWT_COOKIE_NAME,
     clear_auth_cookies,
@@ -50,14 +50,14 @@ class TestCookieAuth:
 
     def test_get_cookie_domain_with_setting(self):
         """Test getting cookie domain from settings"""
-        with patch("app.utils.cookie_auth.settings") as mock_settings:
+        with patch("backend.app.utils.cookie_auth.settings") as mock_settings:
             mock_settings.cookie_domain = ".example.com"
             domain = get_cookie_domain()
             assert domain == ".example.com"
 
     def test_get_cookie_domain_without_setting(self):
         """Test getting cookie domain without setting"""
-        with patch("app.utils.cookie_auth.settings") as mock_settings:
+        with patch("backend.app.utils.cookie_auth.settings") as mock_settings:
             if hasattr(mock_settings, "cookie_domain"):
                 delattr(mock_settings, "cookie_domain")
             domain = get_cookie_domain()
@@ -65,7 +65,7 @@ class TestCookieAuth:
 
     def test_get_cookie_secure_production(self):
         """Test getting secure flag in production"""
-        with patch("app.utils.cookie_auth.settings") as mock_settings:
+        with patch("backend.app.utils.cookie_auth.settings") as mock_settings:
             mock_settings.environment = "production"
             mock_settings.cookie_secure = True
             secure = get_cookie_secure()
@@ -73,21 +73,21 @@ class TestCookieAuth:
 
     def test_get_cookie_secure_development(self):
         """Test getting secure flag in development"""
-        with patch("app.utils.cookie_auth.settings") as mock_settings:
+        with patch("backend.app.utils.cookie_auth.settings") as mock_settings:
             mock_settings.environment = "development"
             secure = get_cookie_secure()
             assert secure is False
 
     def test_get_samesite_policy_production(self):
         """Test getting SameSite policy in production"""
-        with patch("app.utils.cookie_auth.settings") as mock_settings:
+        with patch("backend.app.utils.cookie_auth.settings") as mock_settings:
             mock_settings.environment = "production"
             policy = get_samesite_policy()
             assert policy == "none"
 
     def test_get_samesite_policy_development(self):
         """Test getting SameSite policy in development"""
-        with patch("app.utils.cookie_auth.settings") as mock_settings:
+        with patch("backend.app.utils.cookie_auth.settings") as mock_settings:
             mock_settings.environment = "development"
             policy = get_samesite_policy()
             assert policy == "lax"
@@ -95,10 +95,10 @@ class TestCookieAuth:
     def test_set_auth_cookies(self, mock_response):
         """Test setting auth cookies"""
         with (
-            patch("app.utils.cookie_auth.get_cookie_domain") as mock_domain,
-            patch("app.utils.cookie_auth.get_cookie_secure") as mock_secure,
-            patch("app.utils.cookie_auth.get_samesite_policy") as mock_samesite,
-            patch("app.utils.cookie_auth.settings") as mock_settings,
+            patch("backend.app.utils.cookie_auth.get_cookie_domain") as mock_domain,
+            patch("backend.app.utils.cookie_auth.get_cookie_secure") as mock_secure,
+            patch("backend.app.utils.cookie_auth.get_samesite_policy") as mock_samesite,
+            patch("backend.app.utils.cookie_auth.settings") as mock_settings,
         ):
             mock_domain.return_value = None
             mock_secure.return_value = False
@@ -112,7 +112,7 @@ class TestCookieAuth:
 
     def test_clear_auth_cookies(self, mock_response):
         """Test clearing auth cookies"""
-        with patch("app.utils.cookie_auth.get_cookie_domain") as mock_domain:
+        with patch("backend.app.utils.cookie_auth.get_cookie_domain") as mock_domain:
             mock_domain.return_value = None
 
             clear_auth_cookies(mock_response)

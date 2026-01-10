@@ -21,15 +21,15 @@ Note: main_cloud.py still exports initialize_services() for backward compatibili
 import logging
 
 import asyncpg
-from core.cache import CacheService, get_cache_service
+from backend.core.cache import CacheService, get_cache_service
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from llm.zantara_ai_client import ZantaraAIClient
+from backend.llm.zantara_ai_client import ZantaraAIClient
 
-from services.memory import MemoryServicePostgres
-from services.routing.intelligent_router import IntelligentRouter
-from services.search.search_service import SearchService
+from backend.services.memory import MemoryServicePostgres
+from backend.services.routing.intelligent_router import IntelligentRouter
+from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +182,7 @@ def get_database_pool(request: Request) -> asyncpg.Pool | None:
         Some endpoints may require database and should check for None explicitly.
         Others can work with degraded functionality when database is unavailable.
     """
-    # Get db_pool from app.state
+    # Get db_pool from backend.app.state
     # Use direct attribute access with fallback to handle edge cases
     db_pool = getattr(request.app.state, "db_pool", None)
 
@@ -249,7 +249,7 @@ def get_current_user(
         )
 
     try:
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         token = credentials.credentials
         payload = jwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
@@ -292,14 +292,14 @@ def get_cache(request: Request) -> CacheService:
 
     Usage:
         from fastapi import Depends
-        from app.dependencies import get_cache
+        from backend.app.dependencies import get_cache
 
         @router.get("/endpoint")
         async def my_endpoint(cache: CacheService = Depends(get_cache)):
             value = cache.get("key")
             cache.set("key", "value", ttl=300)
     """
-    # Try to get from app.state first (if initialized there)
+    # Try to get from backend.app.state first (if initialized there)
     cache_service = getattr(request.app.state, "cache_service", None)
     if cache_service is not None:
         return cache_service
@@ -335,7 +335,7 @@ def get_orchestrator(request: Request):
     global _agentic_rag_orchestrator
 
     if _agentic_rag_orchestrator is None:
-        from services.rag.agentic import create_agentic_rag
+        from backend.services.rag.agentic import create_agentic_rag
 
         db_pool = getattr(request.app.state, "db_pool", None)
         search_service = getattr(request.app.state, "search_service", None)

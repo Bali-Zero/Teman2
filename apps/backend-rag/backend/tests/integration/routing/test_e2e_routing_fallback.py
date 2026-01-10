@@ -23,10 +23,10 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 # Note: Using mocks to avoid circular import issues
-# from services.routing.fallback_manager import FallbackManagerService
-# from services.routing.query_router import QueryRouter
-# from services.routing.routing_stats import RoutingStatsService
-# from services.routing.specialized_service_router import SpecializedServiceRouter
+# from backend.services.routing.fallback_manager import FallbackManagerService
+# from backend.services.routing.query_router import QueryRouter
+# from backend.services.routing.routing_stats import RoutingStatsService
+# from backend.services.routing.specialized_service_router import SpecializedServiceRouter
 
 
 @pytest.fixture
@@ -174,7 +174,7 @@ class TestE2ERoutingFallback:
 
             # Mock autonomous research service
             with patch(
-                "services.misc.autonomous_research_service.AutonomousResearchService"
+                "backend.services.misc.autonomous_research_service.AutonomousResearchService"
             ) as mock_service:
                 mock_service_instance = MagicMock()
                 mock_service_instance.research = AsyncMock(
@@ -200,7 +200,7 @@ class TestE2ERoutingFallback:
 
         # Mock confidence calculation
         with patch(
-            "services.routing.confidence_calculator.ConfidenceCalculatorService"
+            "backend.services.routing.confidence_calculator.ConfidenceCalculatorService"
         ) as mock_confidence:
             mock_confidence_instance = MagicMock()
             mock_confidence_instance.calculate_confidence = MagicMock(return_value=0.75)
@@ -255,7 +255,7 @@ class TestE2ERoutingFallback:
         query = "URGENTE: Informazioni su visto"
 
         # Mock priority override
-        with patch("services.routing.priority_override.PriorityOverrideService") as mock_priority:
+        with patch("backend.services.routing.priority_override.PriorityOverrideService") as mock_priority:
             mock_priority_instance = MagicMock()
             mock_priority_instance.get_override_collection = MagicMock(return_value="visa_oracle")
             mock_priority.return_value = mock_priority_instance

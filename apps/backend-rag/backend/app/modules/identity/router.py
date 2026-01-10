@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, EmailStr, Field
 
-from app.modules.identity.service import IdentityService
-from app.utils.cookie_auth import set_auth_cookies
+from backend.app.modules.identity.service import IdentityService
+from backend.app.utils.cookie_auth import set_auth_cookies
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/team", tags=["identity"])

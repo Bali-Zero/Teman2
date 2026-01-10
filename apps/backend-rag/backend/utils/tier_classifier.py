@@ -6,7 +6,7 @@ Classify books into knowledge tiers (S, A, B, C, D)
 import logging
 import re
 
-from app.models import TierLevel
+from backend.app.models import TierLevel
 
 logger = logging.getLogger(__name__)
 

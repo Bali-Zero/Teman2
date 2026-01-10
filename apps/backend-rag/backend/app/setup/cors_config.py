@@ -7,7 +7,7 @@ Handles CORS middleware configuration for FastAPI application.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 
 def get_allowed_origins() -> list[str]:

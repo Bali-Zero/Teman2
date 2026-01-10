@@ -6,7 +6,7 @@ Responsibility: Manage fallback chains and collection selection
 import logging
 from typing import Literal
 
-from app.core.constants import RoutingConstants
+from backend.app.core.constants import RoutingConstants
 
 logger = logging.getLogger(__name__)
 

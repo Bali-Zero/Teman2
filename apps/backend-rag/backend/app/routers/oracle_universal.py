@@ -30,10 +30,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.dependencies import get_current_user, get_search_service
-from app.models import UserProfile
-from services.oracle.oracle_service import oracle_service
-from services.search.search_service import SearchService
+from backend.app.dependencies import get_current_user, get_search_service
+from backend.app.models import UserProfile
+from backend.services.oracle.oracle_service import oracle_service
+from backend.services.search.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 

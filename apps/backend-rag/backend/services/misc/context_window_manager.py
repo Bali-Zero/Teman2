@@ -31,7 +31,7 @@ class ContextWindowManager:
         self.summary_threshold = summary_threshold
         # Use ZANTARA AI for summarization (via ZantaraAIClient)
         try:
-            from llm.zantara_ai_client import ZantaraAIClient
+            from backend.llm.zantara_ai_client import ZantaraAIClient
 
             self.zantara_client = ZantaraAIClient()
         except Exception as e:

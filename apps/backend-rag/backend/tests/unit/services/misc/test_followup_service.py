@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.misc.followup_service import FollowupService
+from backend.services.misc.followup_service import FollowupService
 
 
 @pytest.fixture
 def followup_service():
     """Create FollowupService instance"""
-    with patch("services.misc.followup_service.ZantaraAIClient") as mock_client:
+    with patch("backend.services.misc.followup_service.ZantaraAIClient") as mock_client:
         mock_client_instance = MagicMock()
         mock_client.return_value = mock_client_instance
         return FollowupService()
@@ -29,7 +29,7 @@ def followup_service():
 def followup_service_no_ai():
     """Create FollowupService instance without AI"""
     with patch(
-        "services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
+        "backend.services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
     ):
         return FollowupService()
 
@@ -39,7 +39,7 @@ class TestFollowupService:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.misc.followup_service.ZantaraAIClient") as mock_client:
+        with patch("backend.services.misc.followup_service.ZantaraAIClient") as mock_client:
             mock_client_instance = MagicMock()
             mock_client.return_value = mock_client_instance
             service = FollowupService()
@@ -48,7 +48,7 @@ class TestFollowupService:
     def test_init_no_ai(self):
         """Test initialization without AI"""
         with patch(
-            "services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
+            "backend.services.misc.followup_service.ZantaraAIClient", side_effect=Exception("Not available")
         ):
             service = FollowupService()
             assert service.zantara_client is None

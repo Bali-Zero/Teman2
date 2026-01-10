@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.verification_service import (
+from backend.services.rag.verification_service import (
     VerificationResult,
     VerificationService,
     VerificationStatus,
@@ -24,9 +24,9 @@ from services.rag.verification_service import (
 def verification_service():
     """Create VerificationService instance"""
     with (
-        patch("services.rag.verification_service.GENAI_AVAILABLE", True),
-        patch("services.rag.verification_service.GenAIClient") as mock_client_class,
-        patch("app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.verification_service.GENAI_AVAILABLE", True),
+        patch("backend.services.rag.verification_service.GenAIClient") as mock_client_class,
+        patch("backend.app.core.config.settings") as mock_settings,
     ):
         mock_settings.google_api_key = "test_key"
         mock_client = MagicMock()
@@ -39,8 +39,8 @@ def verification_service():
 def verification_service_no_genai():
     """Create VerificationService instance without GenAI"""
     with (
-        patch("services.rag.verification_service.GENAI_AVAILABLE", False),
-        patch("app.core.config.settings") as mock_settings,
+        patch("backend.services.rag.verification_service.GENAI_AVAILABLE", False),
+        patch("backend.app.core.config.settings") as mock_settings,
     ):
         mock_settings.google_api_key = None
         return VerificationService()
@@ -216,9 +216,9 @@ class TestVerificationServiceInit:
     def test_init_exception(self):
         """Test initialization with exception - covers lines 55-56"""
         with (
-            patch("services.rag.verification_service.GENAI_AVAILABLE", True),
-            patch("services.rag.verification_service.GenAIClient") as mock_client_class,
-            patch("app.core.config.settings") as mock_settings,
+            patch("backend.services.rag.verification_service.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.verification_service.GenAIClient") as mock_client_class,
+            patch("backend.app.core.config.settings") as mock_settings,
         ):
             mock_settings.google_api_key = "test_key"
             mock_client_class.side_effect = Exception("Connection failed")
@@ -230,9 +230,9 @@ class TestVerificationServiceInit:
     def test_init_client_not_available(self):
         """Test initialization when client is not available"""
         with (
-            patch("services.rag.verification_service.GENAI_AVAILABLE", True),
-            patch("services.rag.verification_service.GenAIClient") as mock_client_class,
-            patch("app.core.config.settings") as mock_settings,
+            patch("backend.services.rag.verification_service.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.verification_service.GenAIClient") as mock_client_class,
+            patch("backend.app.core.config.settings") as mock_settings,
         ):
             mock_settings.google_api_key = "test_key"
             mock_client = MagicMock()
@@ -245,8 +245,8 @@ class TestVerificationServiceInit:
     def test_init_no_api_key(self):
         """Test initialization without API key"""
         with (
-            patch("services.rag.verification_service.GENAI_AVAILABLE", True),
-            patch("services.rag.verification_service.settings") as mock_settings,
+            patch("backend.services.rag.verification_service.GENAI_AVAILABLE", True),
+            patch("backend.services.rag.verification_service.settings") as mock_settings,
         ):
             mock_settings.google_api_key = None
 

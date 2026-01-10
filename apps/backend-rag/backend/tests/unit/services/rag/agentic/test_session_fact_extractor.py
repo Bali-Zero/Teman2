@@ -3,7 +3,7 @@ Comprehensive test coverage for session_fact_extractor.py
 Target: Maximum coverage for all code paths
 """
 
-from services.rag.agentic.session_fact_extractor import (
+from backend.services.rag.agentic.session_fact_extractor import (
     SessionFactExtractor,
     SessionFacts,
 )

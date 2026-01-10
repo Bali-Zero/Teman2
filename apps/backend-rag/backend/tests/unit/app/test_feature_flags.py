@@ -11,7 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.feature_flags import (
+from backend.app.feature_flags import (
     get_feature_flags,
     should_enable_collective_memory,
     should_enable_skill_detection,
@@ -34,14 +34,14 @@ class TestFeatureFlags:
 
     def test_should_enable_collective_memory_disabled(self):
         """Test collective memory flag when disabled"""
-        with patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", False):
+        with patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", False):
             result = should_enable_collective_memory()
             assert result is False
 
     def test_should_enable_collective_memory_enabled_with_langgraph(self):
         """Test collective memory flag when enabled and langgraph available"""
         with (
-            patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True),
+            patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True),
             patch("importlib.util.find_spec") as mock_find_spec,
         ):
             mock_find_spec.return_value = MagicMock()
@@ -51,7 +51,7 @@ class TestFeatureFlags:
     def test_should_enable_collective_memory_enabled_without_langgraph(self):
         """Test collective memory flag when enabled but langgraph not available"""
         with (
-            patch("app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True),
+            patch("backend.app.feature_flags.COLLECTIVE_MEMORY_ENABLED", True),
             patch("importlib.util.find_spec") as mock_find_spec,
         ):
             mock_find_spec.return_value = None

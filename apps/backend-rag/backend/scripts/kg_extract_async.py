@@ -59,7 +59,7 @@ RELATIONSHIP_PATTERNS = [
 
 
 async def main():
-    from core.qdrant_db import QdrantClient
+    from backend.core.qdrant_db import QdrantClient
 
     print("=" * 60)
     print("KG EXTRACTION - 500 CHUNKS (ASYNC)")

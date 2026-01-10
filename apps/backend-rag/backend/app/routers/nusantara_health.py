@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from app.utils.logging_utils import get_logger
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

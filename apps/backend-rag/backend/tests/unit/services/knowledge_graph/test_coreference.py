@@ -13,8 +13,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.knowledge_graph.coreference import CoreferenceResolver, EntityCluster, EntityMention
-from services.knowledge_graph.ontology import EntityType
+from backend.services.knowledge_graph.coreference import CoreferenceResolver, EntityCluster, EntityMention
+from backend.services.knowledge_graph.ontology import EntityType
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ class TestCoreferenceResolver:
 
     def test_cluster_entities(self, coreference_resolver):
         """Test clustering entities"""
-        from services.knowledge_graph.extractor import ExtractedEntity
+        from backend.services.knowledge_graph.extractor import ExtractedEntity
 
         entities = [
             ExtractedEntity(
@@ -95,7 +95,7 @@ class TestCoreferenceResolver:
     @pytest.mark.asyncio
     async def test_resolve_reference(self, coreference_resolver):
         """Test resolving reference"""
-        with patch("services.knowledge_graph.coreference.anthropic.Anthropic") as mock_anthropic:
+        with patch("backend.services.knowledge_graph.coreference.anthropic.Anthropic") as mock_anthropic:
             mock_client = MagicMock()
             mock_message = MagicMock()
             mock_message.content = [
@@ -122,7 +122,7 @@ class TestCoreferenceResolver:
 
     def test_deduplicate_entities(self, coreference_resolver):
         """Test deduplicating entities"""
-        from services.knowledge_graph.extractor import ExtractedEntity
+        from backend.services.knowledge_graph.extractor import ExtractedEntity
 
         entities = [
             ExtractedEntity(

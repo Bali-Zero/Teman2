@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.qdrant_db import QdrantClient
+from backend.core.qdrant_db import QdrantClient
 
 
 class TestQdrantClientSearch:
@@ -43,7 +43,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
 
             async def retry_func():
@@ -75,7 +75,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
             mock_retry.return_value = {
                 "ids": [],
@@ -99,7 +99,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
             mock_retry.return_value = {
                 "ids": [],
@@ -133,7 +133,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
             mock_retry.side_effect = timeout_error
 
@@ -154,7 +154,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
             # Simulate retryable error that eventually succeeds
             mock_retry.return_value = {
@@ -180,7 +180,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
             # Client errors should return empty results
             async def retry_func():
@@ -210,7 +210,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
             # First attempt fails, then retries with named vector
             call_count = 0
@@ -246,7 +246,7 @@ class TestQdrantClientSearch:
         with (
             patch.object(client, "_get_client", return_value=AsyncMock()) as mock_get_client,
             patch("time.time", return_value=0.0),
-            patch("core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
+            patch("backend.core.qdrant_db._retry_with_backoff", new_callable=AsyncMock) as mock_retry,
         ):
             mock_retry.side_effect = connection_error
 

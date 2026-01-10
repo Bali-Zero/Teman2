@@ -18,7 +18,7 @@ import asyncpg
 async def run_migration():
     """Create comprehensive logging tables for team activity tracking"""
 
-    from app.core.config import settings
+    from backend.app.core.config import settings
 
     if not settings.database_url:
         print("❌ ERROR: DATABASE_URL not found")

@@ -31,10 +31,10 @@ All original exports are maintained for seamless integration with existing code.
 import logging
 from typing import Any
 
-from services.misc.clarification_service import ClarificationService
-from services.misc.graph_service import GraphService
-from services.rag.agentic.graph_tool import GraphTraversalTool
-from services.search.semantic_cache import SemanticCache
+from backend.services.misc.clarification_service import ClarificationService
+from backend.services.misc.graph_service import GraphService
+from backend.services.rag.agentic.graph_tool import GraphTraversalTool
+from backend.services.search.semantic_cache import SemanticCache
 
 from .orchestrator import AgenticRAGOrchestrator
 from .pipeline import (
@@ -119,8 +119,8 @@ def create_agentic_rag(
 
     # Initialize New Knowledge Graph Builder (Dec 2025)
     # Uses PostgreSQL persistence and LLM semantic extraction
-    from services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
-    from services.tools.knowledge_graph_tool import KnowledgeGraphTool
+    from backend.services.autonomous_agents.knowledge_graph_builder import KnowledgeGraphBuilder
+    from backend.services.tools.knowledge_graph_tool import KnowledgeGraphTool
 
     # We pass the ai_client later if needed, but for now we use the factory's db_pool
     kg_builder = KnowledgeGraphBuilder(search_service=retriever, db_pool=db_pool)

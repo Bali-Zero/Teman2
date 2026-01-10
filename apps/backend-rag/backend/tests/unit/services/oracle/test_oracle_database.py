@@ -14,13 +14,13 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.oracle.oracle_database import DatabaseManager
+from backend.services.oracle.oracle_database import DatabaseManager
 
 
 @pytest.fixture
 def database_manager():
     """Create database manager instance"""
-    with patch("services.oracle.oracle_database.create_engine"):
+    with patch("backend.services.oracle.oracle_database.create_engine"):
         return DatabaseManager(database_url="postgresql://test:test@localhost/testdb")
 
 
@@ -29,13 +29,13 @@ class TestDatabaseManager:
 
     def test_init(self):
         """Test initialization"""
-        with patch("services.oracle.oracle_database.create_engine") as mock_engine:
+        with patch("backend.services.oracle.oracle_database.create_engine") as mock_engine:
             manager = DatabaseManager(database_url="postgresql://test:test@localhost/testdb")
             assert manager.database_url == "postgresql://test:test@localhost/testdb"
 
     def test_init_placeholder_url(self):
         """Test initialization with placeholder URL"""
-        with patch("services.oracle.oracle_database.create_engine") as mock_engine:
+        with patch("backend.services.oracle.oracle_database.create_engine") as mock_engine:
             manager = DatabaseManager(database_url="postgresql://user:pass@localhost/db")
             # Should skip engine initialization
             mock_engine.assert_not_called()
@@ -44,7 +44,7 @@ class TestDatabaseManager:
     async def test_get_user_profile_from_team_members(self, database_manager):
         """Test getting user profile from team_members"""
         with patch(
-            "data.team_members.TEAM_MEMBERS",
+            "backend.data.team_members.TEAM_MEMBERS",
             [{"email": "test@example.com", "name": "Test", "role": "Dev", "id": "123"}],
         ):
             profile = await database_manager.get_user_profile("test@example.com")

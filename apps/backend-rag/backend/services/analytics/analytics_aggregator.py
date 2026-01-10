@@ -46,7 +46,7 @@ class AnalyticsAggregator:
 
     async def get_overview_stats(self) -> dict:
         """Get overview statistics"""
-        from app.routers.analytics import OverviewStats
+        from backend.app.routers.analytics import OverviewStats
 
         stats = OverviewStats()
 
@@ -110,7 +110,7 @@ class AnalyticsAggregator:
 
     async def get_rag_stats(self) -> dict:
         """Get RAG pipeline statistics"""
-        from app.routers.analytics import RAGStats
+        from backend.app.routers.analytics import RAGStats
 
         stats = RAGStats()
 
@@ -157,7 +157,7 @@ class AnalyticsAggregator:
 
             # Get Prometheus metrics if available
             try:
-                from app.metrics import MetricsCollector
+                from backend.app.metrics import MetricsCollector
 
                 collector = MetricsCollector()
                 # These would come from actual Prometheus metrics
@@ -176,7 +176,7 @@ class AnalyticsAggregator:
 
     async def get_crm_stats(self) -> dict:
         """Get CRM statistics"""
-        from app.routers.analytics import CRMStats
+        from backend.app.routers.analytics import CRMStats
 
         stats = CRMStats()
 
@@ -266,7 +266,7 @@ class AnalyticsAggregator:
 
     async def get_team_stats(self) -> dict:
         """Get team productivity statistics"""
-        from app.routers.analytics import TeamStats
+        from backend.app.routers.analytics import TeamStats
 
         stats = TeamStats()
 
@@ -336,7 +336,7 @@ class AnalyticsAggregator:
 
     async def get_system_stats(self) -> dict:
         """Get system health statistics"""
-        from app.routers.analytics import SystemStats
+        from backend.app.routers.analytics import SystemStats
 
         stats = SystemStats()
 
@@ -382,8 +382,8 @@ class AnalyticsAggregator:
         """Get Qdrant vector database statistics using direct HTTP calls"""
         import httpx
 
-        from app.core.config import settings
-        from app.routers.analytics import QdrantStats
+        from backend.app.core.config import settings
+        from backend.app.routers.analytics import QdrantStats
 
         stats = QdrantStats()
 
@@ -439,7 +439,7 @@ class AnalyticsAggregator:
 
     async def get_feedback_stats(self) -> dict:
         """Get feedback and quality statistics"""
-        from app.routers.analytics import FeedbackStats
+        from backend.app.routers.analytics import FeedbackStats
 
         stats = FeedbackStats()
 
@@ -518,7 +518,7 @@ class AnalyticsAggregator:
 
     async def get_alert_stats(self) -> dict:
         """Get alert and error statistics"""
-        from app.routers.analytics import AlertStats
+        from backend.app.routers.analytics import AlertStats
 
         stats = AlertStats()
 

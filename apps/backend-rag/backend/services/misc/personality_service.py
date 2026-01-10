@@ -22,7 +22,7 @@ from typing import Any
 import aiohttp
 
 sys.path.append(str(Path(__file__).parent.parent))
-from data.team_members import TEAM_MEMBERS
+from backend.data.team_members import TEAM_MEMBERS
 
 logger = logging.getLogger(__name__)
 

@@ -15,14 +15,14 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.orchestrator import (
+from backend.services.rag.agentic.orchestrator import (
     AgenticRAGOrchestrator,
     StreamEvent,
     _is_conversation_recall_query,
     _wrap_query_with_language_instruction,
 )
-from services.rag.agentic.schema import CoreResult
-from services.tools.definitions import BaseTool
+from backend.services.rag.agentic.schema import CoreResult
+from backend.services.tools.definitions import BaseTool
 
 
 @pytest.fixture
@@ -64,17 +64,17 @@ def mock_semantic_cache():
 def orchestrator(mock_tools, mock_db_pool, mock_retriever, mock_semantic_cache):
     """Create orchestrator instance"""
     with (
-        patch("services.rag.agentic.orchestrator.LLMGateway"),
-        patch("services.rag.agentic.orchestrator.IntentClassifier"),
-        patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-        patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-        patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-        patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-        patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-        patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-        patch("services.rag.agentic.orchestrator.FollowupService"),
-        patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
-        patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+        patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+        patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+        patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+        patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+        patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+        patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+        patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+        patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+        patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+        patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
+        patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
     ):
         return AgenticRAGOrchestrator(
             tools=mock_tools,
@@ -92,17 +92,17 @@ class TestAgenticRAGOrchestrator:
     ):
         """Test initialization with all services"""
         with (
-            patch("services.rag.agentic.orchestrator.LLMGateway") as mock_gateway,
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_gateway,
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
         ):
             instance = AgenticRAGOrchestrator(
                 tools=mock_tools,
@@ -119,17 +119,17 @@ class TestAgenticRAGOrchestrator:
     def test_init_without_optional_services(self, mock_tools):
         """Test initialization without optional services"""
         with (
-            patch("services.rag.agentic.orchestrator.LLMGateway"),
-            patch("services.rag.agentic.orchestrator.IntentClassifier"),
-            patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-            patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-            patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-            patch("services.rag.agentic.orchestrator.ReasoningEngine"),
-            patch("services.rag.agentic.orchestrator.EntityExtractionService"),
-            patch("services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
-            patch("services.rag.agentic.orchestrator.FollowupService"),
-            patch("services.rag.agentic.orchestrator.GoldenAnswerService"),
-            patch("services.rag.agentic.orchestrator.ContextWindowManager"),
+            patch("backend.services.rag.agentic.orchestrator.LLMGateway"),
+            patch("backend.services.rag.agentic.orchestrator.IntentClassifier"),
+            patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+            patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+            patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+            patch("backend.services.rag.agentic.orchestrator.ReasoningEngine"),
+            patch("backend.services.rag.agentic.orchestrator.EntityExtractionService"),
+            patch("backend.services.rag.agentic.orchestrator.KGEnhancedRetrieval"),
+            patch("backend.services.rag.agentic.orchestrator.FollowupService"),
+            patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
+            patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
         ):
             instance = AgenticRAGOrchestrator(tools=mock_tools)
             assert instance is not None
@@ -141,7 +141,7 @@ class TestAgenticRAGOrchestrator:
     async def test_get_memory_orchestrator_success(self, orchestrator, mock_db_pool):
         """Test lazy loading of memory orchestrator"""
         orchestrator.db_pool = mock_db_pool
-        with patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
+        with patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
             mock_instance = AsyncMock()
             mock_instance.initialize = AsyncMock()
             mock_memory.return_value = mock_instance
@@ -154,7 +154,7 @@ class TestAgenticRAGOrchestrator:
     async def test_get_memory_orchestrator_failure(self, orchestrator, mock_db_pool):
         """Test memory orchestrator initialization failure"""
         orchestrator.db_pool = mock_db_pool
-        with patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
+        with patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
             # Mock MemoryOrchestrator to raise RuntimeError (which is caught)
             def raise_exception(*args, **kwargs):
                 raise RuntimeError("DB error")
@@ -169,7 +169,7 @@ class TestAgenticRAGOrchestrator:
     async def test_get_memory_orchestrator_no_db(self, orchestrator):
         """Test memory orchestrator without DB pool"""
         orchestrator.db_pool = None
-        with patch("services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
+        with patch("backend.services.rag.agentic.orchestrator.MemoryOrchestrator") as mock_memory:
             # MemoryOrchestrator will fail initialization without db_pool
             def raise_error(db_pool=None, **kwargs):
                 if db_pool is None:

@@ -60,7 +60,7 @@ class _TonePromptsDict:
 TONE_PROMPTS = _TonePromptsDict()
 
 if TYPE_CHECKING:
-    from services.misc.emotional_attunement import ToneStyle
+    from backend.services.misc.emotional_attunement import ToneStyle
 
 
 class PromptManager:

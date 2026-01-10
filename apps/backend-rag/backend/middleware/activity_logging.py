@@ -17,8 +17,8 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.utils.logging_utils import get_logger
-from services.monitoring.activity_logger import activity_logger
+from backend.app.utils.logging_utils import get_logger
+from backend.services.monitoring.activity_logger import activity_logger
 
 logger = get_logger(__name__)
 

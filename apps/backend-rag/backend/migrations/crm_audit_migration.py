@@ -6,8 +6,8 @@ Creates tables and indexes for comprehensive audit trails
 import asyncio
 from datetime import datetime
 
-from app.dependencies import get_database_pool
-from app.utils.logging_utils import get_logger
+from backend.app.dependencies import get_database_pool
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

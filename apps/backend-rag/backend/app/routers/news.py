@@ -10,7 +10,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.dependencies import get_database_pool
+from backend.app.dependencies import get_database_pool
 
 logger = logging.getLogger(__name__)
 

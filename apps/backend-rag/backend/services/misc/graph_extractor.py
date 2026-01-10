@@ -14,7 +14,7 @@ import json
 import logging
 from typing import Any
 
-from llm.zantara_ai_client import ZantaraAIClient
+from backend.llm.zantara_ai_client import ZantaraAIClient
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)

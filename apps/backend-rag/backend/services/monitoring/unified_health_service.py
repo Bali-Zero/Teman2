@@ -4,7 +4,7 @@ NUZANTARA PRIME - Unified Health Check Service
 Centralizes all health check functionality:
 - Manual health checks (from scripts/health_check.py)
 - Continuous monitoring (from self_healing/backend_agent.py)
-- Service registry integration (from app.core.service_health)
+- Service registry integration (from backend.app.core.service_health)
 
 This service provides a single source of truth for system health.
 """
@@ -20,8 +20,8 @@ import httpx
 import psutil
 import redis
 
-from app.core.config import settings
-from app.core.service_health import ServiceStatus, service_registry
+from backend.app.core.config import settings
+from backend.app.core.service_health import ServiceStatus, service_registry
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ class UnifiedHealthService:
                     timestamp=time.time(),
                 )
 
-            from core.qdrant_db import QdrantClient
+            from backend.core.qdrant_db import QdrantClient
 
             client = QdrantClient(qdrant_url=settings.qdrant_url, collection_name="visa_oracle")
             if client.qdrant_url and client.collection_name:
@@ -239,7 +239,7 @@ class UnifiedHealthService:
         """Check CRM models are importable"""
         start = time.time()
         try:
-            from app.modules.crm.models import Client, Interaction, Practice, PracticeType
+            from backend.app.modules.crm.models import Client, Interaction, Practice, PracticeType
 
             models = {
                 "Client": Client,
@@ -270,7 +270,7 @@ class UnifiedHealthService:
         """Check CollectionManager initialization"""
         start = time.time()
         try:
-            from services.ingestion.collection_manager import CollectionManager
+            from backend.services.ingestion.collection_manager import CollectionManager
 
             manager = CollectionManager()
             collections = manager.list_collections()

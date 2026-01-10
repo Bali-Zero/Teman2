@@ -7,7 +7,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.dependencies import get_current_user, get_database_pool
+from backend.app.dependencies import get_current_user, get_database_pool
 
 router = APIRouter(prefix="/api/team", tags=["team"])
 

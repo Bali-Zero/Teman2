@@ -2,9 +2,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.llm_clients.pricing import TokenUsage
-from services.rag.agentic.orchestrator import AgenticRAGOrchestrator, CoreResult
-from services.tools.definitions import AgentState, BaseTool
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator, CoreResult
+from backend.services.tools.definitions import AgentState, BaseTool
 
 
 # Mock Tools
@@ -68,18 +68,18 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
     tools = [MockTool("vector_search"), MockTool("calculator")]
 
     with (
-        patch("services.rag.agentic.orchestrator.IntentClassifier") as MockIntentClassifier,
-        patch("services.rag.agentic.orchestrator.EmotionalAttunementService"),
-        patch("services.rag.agentic.orchestrator.SystemPromptBuilder"),
-        patch("services.rag.agentic.orchestrator.create_default_pipeline"),
-        patch("services.rag.agentic.orchestrator.LLMGateway", return_value=mock_llm_gateway),
+        patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as MockIntentClassifier,
+        patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService"),
+        patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
+        patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
+        patch("backend.services.rag.agentic.orchestrator.LLMGateway", return_value=mock_llm_gateway),
         patch(
-            "services.rag.agentic.orchestrator.ReasoningEngine", return_value=mock_reasoning_engine
+            "backend.services.rag.agentic.orchestrator.ReasoningEngine", return_value=mock_reasoning_engine
         ),
-        patch("services.rag.agentic.orchestrator.EntityExtractionService") as MockEntityExtractor,
-        patch("services.rag.agentic.orchestrator.ContextWindowManager"),
-        patch("services.rag.agentic.orchestrator.get_user_context") as mock_get_user_context,
-        patch("services.rag.agentic.orchestrator.trace_span") as mock_trace_span,
+        patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as MockEntityExtractor,
+        patch("backend.services.rag.agentic.orchestrator.ContextWindowManager"),
+        patch("backend.services.rag.agentic.orchestrator.get_user_context") as mock_get_user_context,
+        patch("backend.services.rag.agentic.orchestrator.trace_span") as mock_trace_span,
     ):
         # Setup specific mocks
         mock_intent_classifier = MockIntentClassifier.return_value
@@ -267,12 +267,12 @@ async def test_stream_query_team_early_route(orchestrator, mock_llm_gateway):
     """Test early team route in streaming."""
     # We need to mock the detect_team_query function or specific query logic
     with patch(
-        "services.rag.agentic.orchestrator.detect_team_query",
+        "backend.services.rag.agentic.orchestrator.detect_team_query",
         return_value=(True, "search_by_name", "zainal"),
     ):
         # Mock tool execution for team_knowledge
         with patch(
-            "services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
+            "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock
         ) as mock_exec:
             mock_exec.return_value = (
                 "Zainal info found and it is definitely longer than twenty characters now."

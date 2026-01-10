@@ -3,7 +3,7 @@ from typing import Any
 
 import asyncpg
 
-from app.utils.logging_utils import get_logger, log_success
+from backend.app.utils.logging_utils import get_logger, log_success
 
 from ..memory.memory_fallback import get_memory_cache
 
@@ -24,7 +24,7 @@ class ConversationService:
         """Lazy load Auto-CRM service"""
         if self._auto_crm_service is None:
             try:
-                from services.crm.auto_crm_service import get_auto_crm_service
+                from backend.services.crm.auto_crm_service import get_auto_crm_service
 
                 self._auto_crm_service = get_auto_crm_service()
             except ImportError:

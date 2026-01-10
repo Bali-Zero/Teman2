@@ -15,8 +15,8 @@ from middleware.request_tracing import (
 )
 from pydantic import BaseModel
 
-from app.core.config import settings
-from app.dependencies import get_current_user
+from backend.app.core.config import settings
+from backend.app.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +202,7 @@ async def get_services_status(
     Returns:
         Services status
     """
-    from app.core.service_health import service_registry
+    from backend.app.core.service_health import service_registry
 
     services_status: dict[str, Any] = {}
 
@@ -337,7 +337,7 @@ async def get_slow_queries(
     Returns:
         Slow queries list
     """
-    from app.utils.db_debugger import DatabaseQueryDebugger
+    from backend.app.utils.db_debugger import DatabaseQueryDebugger
 
     slow_queries = DatabaseQueryDebugger.get_slow_queries(limit=limit)
 
@@ -363,7 +363,7 @@ async def get_recent_queries(
     Returns:
         Recent queries list
     """
-    from app.utils.db_debugger import DatabaseQueryDebugger
+    from backend.app.utils.db_debugger import DatabaseQueryDebugger
 
     recent_queries = DatabaseQueryDebugger.get_recent_queries(limit=limit)
 
@@ -385,7 +385,7 @@ async def analyze_query_patterns(
     Returns:
         Query pattern analysis
     """
-    from app.utils.db_debugger import DatabaseQueryDebugger
+    from backend.app.utils.db_debugger import DatabaseQueryDebugger
 
     analysis = DatabaseQueryDebugger.analyze_query_patterns()
 
@@ -406,7 +406,7 @@ async def get_qdrant_collections_health(
     Returns:
         Collections health status
     """
-    from app.utils.qdrant_debugger import QdrantDebugger
+    from backend.app.utils.qdrant_debugger import QdrantDebugger
 
     debugger = QdrantDebugger()
     health_statuses = await debugger.get_all_collections_health()
@@ -443,7 +443,7 @@ async def get_collection_stats(
     Returns:
         Collection statistics
     """
-    from app.utils.qdrant_debugger import QdrantDebugger
+    from backend.app.utils.qdrant_debugger import QdrantDebugger
 
     debugger = QdrantDebugger()
     stats = await debugger.get_collection_stats(collection_name)
@@ -671,11 +671,11 @@ async def get_postgres_connection(
     Returns:
         Connection information and status
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
-    # Try to get pool from app.state if available
+    # Try to get pool from backend.app.state if available
     pool = getattr(request.app.state, "db_pool", None)
     if pool is None:
         # Try memory_service pool
@@ -722,7 +722,7 @@ async def get_postgres_tables(
     Returns:
         List of tables
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
@@ -756,7 +756,7 @@ async def get_postgres_table_details(
     Returns:
         Table details including columns, indexes, foreign keys, constraints
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
@@ -793,7 +793,7 @@ async def get_postgres_indexes(
     Returns:
         List of indexes
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
@@ -824,7 +824,7 @@ async def get_postgres_table_stats(
     Returns:
         Table statistics
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
@@ -851,7 +851,7 @@ async def get_postgres_database_stats(
     Returns:
         Database statistics
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
@@ -883,11 +883,11 @@ async def execute_postgres_query(
     Returns:
         Query results
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
-    # Try to get pool from app.state if available
+    # Try to get pool from backend.app.state if available
     pool = None
     if request:
         pool = getattr(request.app.state, "db_pool", None)
@@ -928,7 +928,7 @@ async def get_postgres_slow_queries(
     Returns:
         Slow queries list
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
@@ -957,7 +957,7 @@ async def get_postgres_locks(
     Returns:
         Active locks list
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 
@@ -984,7 +984,7 @@ async def get_postgres_connection_stats(
     Returns:
         Connection statistics
     """
-    from app.utils.postgres_debugger import PostgreSQLDebugger
+    from backend.app.utils.postgres_debugger import PostgreSQLDebugger
 
     debugger = PostgreSQLDebugger()
 

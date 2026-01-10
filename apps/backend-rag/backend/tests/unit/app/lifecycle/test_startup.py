@@ -21,8 +21,8 @@ def mock_startup_dependencies():
     with patch.dict(
         "sys.modules",
         {
-            "app.setup.plugin_initializer": MagicMock(),
-            "app.setup.service_initializer": MagicMock(),
+            "backend.app.setup.plugin_initializer": MagicMock(),
+            "backend.app.setup.service_initializer": MagicMock(),
         },
     ):
         yield
@@ -42,22 +42,22 @@ class TestStartupHandlers:
     def test_register_startup_handlers(self, mock_app):
         """Test registering startup handlers"""
         # Import inside test to use mocked dependencies
-        with patch("app.setup.plugin_initializer.initialize_plugins", new=AsyncMock()):
-            with patch("app.setup.service_initializer.initialize_services", new=AsyncMock()):
+        with patch("backend.app.setup.plugin_initializer.initialize_plugins", new=AsyncMock()):
+            with patch("backend.app.setup.service_initializer.initialize_services", new=AsyncMock()):
                 # Re-import with mocked deps
-                if "app.lifecycle.startup" in sys.modules:
-                    del sys.modules["app.lifecycle.startup"]
+                if "backend.app.lifecycle.startup" in sys.modules:
+                    del sys.modules["backend.app.lifecycle.startup"]
 
                 # Mock the imports at module level
                 with patch.dict(
                     "sys.modules",
                     {
-                        "app.setup.plugin_initializer": MagicMock(initialize_plugins=AsyncMock()),
-                        "app.setup.service_initializer": MagicMock(initialize_services=AsyncMock()),
-                        "services.monitoring.alert_service": MagicMock(AlertService=MagicMock()),
+                        "backend.app.setup.plugin_initializer": MagicMock(initialize_plugins=AsyncMock()),
+                        "backend.app.setup.service_initializer": MagicMock(initialize_services=AsyncMock()),
+                        "backend.services.monitoring.alert_service": MagicMock(AlertService=MagicMock()),
                     },
                 ):
-                    from app.lifecycle.startup import register_startup_handlers
+                    from backend.app.lifecycle.startup import register_startup_handlers
 
                     register_startup_handlers(mock_app)
 
@@ -88,16 +88,16 @@ class TestStartupHandlersDirect:
         with patch.dict(
             "sys.modules",
             {
-                "app.setup.plugin_initializer": MagicMock(initialize_plugins=AsyncMock()),
-                "app.setup.service_initializer": MagicMock(initialize_services=AsyncMock()),
-                "services.monitoring.alert_service": MagicMock(AlertService=MagicMock()),
+                "backend.app.setup.plugin_initializer": MagicMock(initialize_plugins=AsyncMock()),
+                "backend.app.setup.service_initializer": MagicMock(initialize_services=AsyncMock()),
+                "backend.services.monitoring.alert_service": MagicMock(AlertService=MagicMock()),
             },
         ):
             # Clear cached module
-            if "app.lifecycle.startup" in sys.modules:
-                del sys.modules["app.lifecycle.startup"]
+            if "backend.app.lifecycle.startup" in sys.modules:
+                del sys.modules["backend.app.lifecycle.startup"]
 
-            from app.lifecycle.startup import register_startup_handlers
+            from backend.app.lifecycle.startup import register_startup_handlers
 
             register_startup_handlers(mock_app)
 
@@ -132,16 +132,16 @@ class TestStartupHandlersDirect:
         with patch.dict(
             "sys.modules",
             {
-                "app.setup.plugin_initializer": MagicMock(initialize_plugins=mock_init_plugins),
-                "app.setup.service_initializer": MagicMock(initialize_services=mock_init_services),
-                "services.monitoring.alert_service": MagicMock(AlertService=mock_alert_service),
+                "backend.app.setup.plugin_initializer": MagicMock(initialize_plugins=mock_init_plugins),
+                "backend.app.setup.service_initializer": MagicMock(initialize_services=mock_init_services),
+                "backend.services.monitoring.alert_service": MagicMock(AlertService=mock_alert_service),
             },
         ):
             # Clear cached module
-            if "app.lifecycle.startup" in sys.modules:
-                del sys.modules["app.lifecycle.startup"]
+            if "backend.app.lifecycle.startup" in sys.modules:
+                del sys.modules["backend.app.lifecycle.startup"]
 
-            from app.lifecycle.startup import register_startup_handlers
+            from backend.app.lifecycle.startup import register_startup_handlers
 
             register_startup_handlers(mock_app)
 
@@ -182,15 +182,15 @@ class TestStartupHandlersDirect:
         with patch.dict(
             "sys.modules",
             {
-                "app.setup.plugin_initializer": MagicMock(initialize_plugins=mock_init_plugins),
-                "app.setup.service_initializer": MagicMock(initialize_services=mock_init_services),
-                "services.monitoring.alert_service": MagicMock(AlertService=MagicMock()),
+                "backend.app.setup.plugin_initializer": MagicMock(initialize_plugins=mock_init_plugins),
+                "backend.app.setup.service_initializer": MagicMock(initialize_services=mock_init_services),
+                "backend.services.monitoring.alert_service": MagicMock(AlertService=MagicMock()),
             },
         ):
-            if "app.lifecycle.startup" in sys.modules:
-                del sys.modules["app.lifecycle.startup"]
+            if "backend.app.lifecycle.startup" in sys.modules:
+                del sys.modules["backend.app.lifecycle.startup"]
 
-            from app.lifecycle.startup import register_startup_handlers
+            from backend.app.lifecycle.startup import register_startup_handlers
 
             register_startup_handlers(mock_app)
 

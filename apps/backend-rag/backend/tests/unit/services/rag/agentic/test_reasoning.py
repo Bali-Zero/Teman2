@@ -11,12 +11,12 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.reasoning import (
+from backend.services.rag.agentic.reasoning import (
     _validate_context_quality,
     calculate_evidence_score,
     is_valid_tool_call,
 )
-from services.tools.definitions import ToolCall
+from backend.services.tools.definitions import ToolCall
 
 
 class TestReasoningHelpers:

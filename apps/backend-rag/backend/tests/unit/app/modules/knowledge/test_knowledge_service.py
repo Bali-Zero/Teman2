@@ -13,8 +13,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.models import TierLevel
-from app.modules.knowledge.service import KnowledgeService
+from backend.app.models import TierLevel
+from backend.app.modules.knowledge.service import KnowledgeService
 
 
 @pytest.fixture
@@ -43,9 +43,9 @@ def mock_router():
 @pytest.fixture
 def knowledge_service(mock_qdrant_client, mock_router):
     """Create KnowledgeService instance with mocked dependencies"""
-    with patch("app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client):
-        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
-            with patch("app.modules.knowledge.service.QueryRouter", return_value=mock_router):
+    with patch("backend.app.modules.knowledge.service.QdrantClient", return_value=mock_qdrant_client):
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
+            with patch("backend.app.modules.knowledge.service.QueryRouter", return_value=mock_router):
                 mock_embedder_instance = MagicMock()
                 mock_embedder_instance.provider = "test"
                 mock_embedder_instance.dimensions = 384
@@ -294,7 +294,7 @@ class TestKnowledgeService:
     def test_init_reranker(self, knowledge_service):
         """Test _init_reranker lazy loading"""
         assert not hasattr(knowledge_service, "reranker")
-        with patch("core.reranker.ReRanker") as mock_reranker_class:
+        with patch("backend.core.reranker.ReRanker") as mock_reranker_class:
             mock_reranker_instance = MagicMock()
             mock_reranker_class.return_value = mock_reranker_instance
             knowledge_service._init_reranker()
@@ -305,7 +305,7 @@ class TestKnowledgeService:
         """Test _init_reranker doesn't recreate if already exists"""
         existing_reranker = MagicMock()
         knowledge_service.reranker = existing_reranker
-        with patch("core.reranker.ReRanker") as mock_reranker_class:
+        with patch("backend.core.reranker.ReRanker") as mock_reranker_class:
             knowledge_service._init_reranker()
             # Should not create new reranker
             assert knowledge_service.reranker == existing_reranker

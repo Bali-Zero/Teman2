@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 import asyncpg
 
 if TYPE_CHECKING:
-    from services.memory import MemoryOrchestrator
+    from backend.services.memory import MemoryOrchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class MemoryHandler:
         """
         if self._memory_orchestrator is None:
             try:
-                from services.memory import MemoryOrchestrator
+                from backend.services.memory import MemoryOrchestrator
 
                 self._memory_orchestrator = MemoryOrchestrator(db_pool=self.db_pool)
                 await self._memory_orchestrator.initialize()

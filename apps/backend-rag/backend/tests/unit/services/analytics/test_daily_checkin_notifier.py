@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from services.analytics.daily_checkin_notifier import (
+from backend.services.analytics.daily_checkin_notifier import (
     DailyCheckinNotifier,
     init_daily_notifier,
 )
@@ -243,7 +243,7 @@ class TestDailyCheckinNotifier:
         assert html.count("Check-in") <= 20
 
     @pytest.mark.asyncio
-    @patch("services.analytics.daily_checkin_notifier.settings")
+    @patch("backend.services.analytics.daily_checkin_notifier.settings")
     async def test_send_daily_report_no_smtp_config(self, mock_settings):
         """Test sending daily report without SMTP config"""
         mock_settings.smtp_host = None
@@ -257,8 +257,8 @@ class TestDailyCheckinNotifier:
         # Should return early without error
 
     @pytest.mark.asyncio
-    @patch("services.analytics.daily_checkin_notifier.smtplib.SMTP")
-    @patch("services.analytics.daily_checkin_notifier.settings")
+    @patch("backend.services.analytics.daily_checkin_notifier.smtplib.SMTP")
+    @patch("backend.services.analytics.daily_checkin_notifier.settings")
     async def test_send_daily_report_success(self, mock_settings, mock_smtp):
         """Test successfully sending daily report"""
         mock_settings.smtp_host = "smtp.example.com"
@@ -290,8 +290,8 @@ class TestDailyCheckinNotifier:
         mock_server.send_message.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("services.analytics.daily_checkin_notifier.smtplib.SMTP")
-    @patch("services.analytics.daily_checkin_notifier.settings")
+    @patch("backend.services.analytics.daily_checkin_notifier.smtplib.SMTP")
+    @patch("backend.services.analytics.daily_checkin_notifier.settings")
     async def test_send_daily_report_no_tls(self, mock_settings, mock_smtp):
         """Test sending daily report without TLS"""
         mock_settings.smtp_host = "smtp.example.com"
@@ -322,8 +322,8 @@ class TestDailyCheckinNotifier:
         mock_server.login.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("services.analytics.daily_checkin_notifier.smtplib.SMTP")
-    @patch("services.analytics.daily_checkin_notifier.settings")
+    @patch("backend.services.analytics.daily_checkin_notifier.smtplib.SMTP")
+    @patch("backend.services.analytics.daily_checkin_notifier.settings")
     async def test_send_daily_report_error(self, mock_settings, mock_smtp):
         """Test sending daily report with error"""
         mock_settings.smtp_host = "smtp.example.com"
@@ -350,7 +350,7 @@ class TestDailyCheckinNotifier:
         await notifier._send_daily_report()
 
     @pytest.mark.asyncio
-    @patch("services.analytics.daily_checkin_notifier.settings")
+    @patch("backend.services.analytics.daily_checkin_notifier.settings")
     async def test_send_now(self, mock_settings):
         """Test send_now method"""
         mock_settings.smtp_host = None
@@ -376,7 +376,7 @@ class TestDailyCheckinNotifierFunctions:
 
     def test_get_daily_notifier(self):
         """Test get_daily_notifier function"""
-        from services.analytics.daily_checkin_notifier import get_daily_notifier
+        from backend.services.analytics.daily_checkin_notifier import get_daily_notifier
 
         # Initially None
         result = get_daily_notifier()

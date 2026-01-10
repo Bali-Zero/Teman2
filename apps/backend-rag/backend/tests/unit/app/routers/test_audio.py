@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.audio import get_audio_service, router
+from backend.app.routers.audio import get_audio_service, router
 
 
 @pytest.fixture
@@ -48,11 +48,11 @@ class TestAudioRouter:
     def test_get_audio_service(self):
         """Test getting audio service"""
         # Reset global if needed
-        import app.services.audio_service as module
+        import backend.app.services.audio_service as module
 
         module._audio_service = None
 
-        with patch("app.services.audio_service.AudioService") as mock_service_class:
+        with patch("backend.app.services.audio_service.AudioService") as mock_service_class:
             mock_service = MagicMock()
             mock_service_class.return_value = mock_service
             service = get_audio_service()

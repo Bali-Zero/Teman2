@@ -3,7 +3,7 @@ Activity Logger Service
 Centralized service for logging all team activities, interactions, and API calls
 
 Usage:
-    from services.monitoring.activity_logger import activity_logger
+    from backend.services.monitoring.activity_logger import activity_logger
 
     # Log general activity
     await activity_logger.log_activity(
@@ -41,7 +41,7 @@ from typing import Any
 
 import asyncpg
 
-from app.utils.logging_utils import get_logger
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

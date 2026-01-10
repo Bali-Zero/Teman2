@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.integrations.zoho_email_service import ZohoEmailService
 
 
 @pytest.fixture
@@ -50,10 +50,10 @@ def zoho_email_service(mock_db_pool, mock_oauth_service):
     """Create ZohoEmailService instance"""
     with (
         patch(
-            "services.integrations.zoho_email_service.ZohoOAuthService",
+            "backend.services.integrations.zoho_email_service.ZohoOAuthService",
             return_value=mock_oauth_service,
         ),
-        patch("services.integrations.zoho_email_service.settings") as mock_settings,
+        patch("backend.services.integrations.zoho_email_service.settings") as mock_settings,
     ):
         mock_settings.zoho_api_domain = "https://mail.zoho.com"
         service = ZohoEmailService(db_pool=mock_db_pool)

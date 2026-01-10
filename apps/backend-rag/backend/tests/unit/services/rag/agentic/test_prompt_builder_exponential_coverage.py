@@ -25,7 +25,7 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.prompt_builder import (
+from backend.services.rag.agentic.prompt_builder import (
     SystemPromptBuilder,
 )
 
@@ -34,7 +34,7 @@ from services.rag.agentic.prompt_builder import (
 @pytest.fixture(autouse=True)
 def mock_settings():
     """Auto-use fixture to mock settings.COMPANY_NAME"""
-    with patch("services.rag.agentic.prompt_builder.settings") as mock_settings:
+    with patch("backend.services.rag.agentic.prompt_builder.settings") as mock_settings:
         mock_settings.COMPANY_NAME = "Bali Zero"
         yield mock_settings
 

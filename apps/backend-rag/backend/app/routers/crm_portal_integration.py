@@ -19,10 +19,10 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, EmailStr
 
-from app.dependencies import get_current_user, get_database_pool
-from app.utils.crm_utils import is_crm_admin
-from app.utils.logging_utils import get_logger
-from services.portal import InviteService, PortalService
+from backend.app.dependencies import get_current_user, get_database_pool
+from backend.app.utils.crm_utils import is_crm_admin
+from backend.app.utils.logging_utils import get_logger
+from backend.services.portal import InviteService, PortalService
 
 logger = get_logger(__name__)
 

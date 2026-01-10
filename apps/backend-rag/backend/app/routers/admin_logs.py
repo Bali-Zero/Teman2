@@ -12,9 +12,9 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from app.dependencies import get_database_pool
-from app.routers.debug import verify_debug_access
-from app.utils.logging_utils import get_logger
+from backend.app.dependencies import get_database_pool
+from backend.app.routers.debug import verify_debug_access
+from backend.app.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

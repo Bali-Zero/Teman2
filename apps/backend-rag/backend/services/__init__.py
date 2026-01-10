@@ -2,7 +2,7 @@
 ZANTARA RAG - Services
 
 Backward-compatible re-exports for all services after reorganization.
-All services can still be imported from services.X for compatibility.
+All services can still be imported from backend.services.X for compatibility.
 """
 
 # Search services

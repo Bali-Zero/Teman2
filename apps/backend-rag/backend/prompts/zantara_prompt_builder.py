@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 
 import yaml
-from llm.adapters import ModelAdapter
+from backend.llm.adapters import ModelAdapter
 
 logger = logging.getLogger(__name__)
 

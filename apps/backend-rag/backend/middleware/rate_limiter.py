@@ -32,7 +32,7 @@ class RateLimiter:
         self.redis_client = None
 
         # Try to connect to Redis
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         redis_url = settings.redis_url
         if redis_url:

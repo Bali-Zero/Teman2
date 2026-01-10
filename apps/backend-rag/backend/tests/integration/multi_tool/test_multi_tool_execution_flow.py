@@ -21,8 +21,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.tool_executor import execute_tool
-from services.rag.agentic.tools import (
+from backend.services.rag.agentic.tool_executor import execute_tool
+from backend.services.rag.agentic.tools import (
     CalculatorTool,
     PricingTool,
     TeamKnowledgeTool,

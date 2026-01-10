@@ -15,8 +15,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.legal_ingest import router
-from services.ingestion.legal_ingestion_service import LegalIngestionService
+from backend.app.routers.legal_ingest import router
+from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 
 @pytest.fixture
@@ -53,8 +53,8 @@ def client(app):
 class TestLegalIngestRouter:
     """Tests for legal_ingest router"""
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_success(self, mock_path, mock_get_service, client):
         """Test ingesting legal document successfully"""
         mock_path.return_value.exists.return_value = True
@@ -82,7 +82,7 @@ class TestLegalIngestRouter:
         assert data["book_title"] == "Test Document"
         assert data["message"] == "Document ingested successfully"
 
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_file_not_found(self, mock_path, client):
         """Test ingesting legal document with file not found"""
         mock_path.return_value.exists.return_value = False
@@ -90,8 +90,8 @@ class TestLegalIngestRouter:
         response = client.post("/api/legal/ingest", json={"file_path": "/nonexistent/document.pdf"})
         assert response.status_code == 404
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_with_tier(self, mock_path, mock_get_service, client):
         """Test ingesting legal document with tier override"""
         mock_path.return_value.exists.return_value = True
@@ -114,7 +114,7 @@ class TestLegalIngestRouter:
         )
         assert response.status_code == 200
 
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_invalid_tier(self, mock_path, client):
         """Test ingesting legal document with invalid tier"""
         mock_path.return_value.exists.return_value = True
@@ -124,8 +124,8 @@ class TestLegalIngestRouter:
         )
         assert response.status_code == 400
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_with_collection(self, mock_path, mock_get_service, client):
         """Test ingesting legal document with collection override"""
         mock_path.return_value.exists.return_value = True
@@ -149,8 +149,8 @@ class TestLegalIngestRouter:
         )
         assert response.status_code == 200
 
-    @patch("app.routers.legal_ingest.get_legal_service")
-    @patch("app.routers.legal_ingest.Path")
+    @patch("backend.app.routers.legal_ingest.get_legal_service")
+    @patch("backend.app.routers.legal_ingest.Path")
     def test_ingest_legal_document_error(self, mock_path, mock_get_service, client):
         """Test ingesting legal document with service error"""
         mock_path.return_value.exists.return_value = True

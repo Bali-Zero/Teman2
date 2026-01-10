@@ -14,16 +14,16 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from llm.genai_client import GenAIClient, get_genai_client
+from backend.llm.genai_client import GenAIClient, get_genai_client
 
 
 @pytest.fixture
 def genai_client():
     """Create GenAI client instance"""
     with (
-        patch("llm.genai_client.genai") as mock_genai,
-        patch("llm.genai_client.types") as mock_types,
-        patch("llm.genai_client.GENAI_AVAILABLE", True),
+        patch("backend.llm.genai_client.genai") as mock_genai,
+        patch("backend.llm.genai_client.types") as mock_types,
+        patch("backend.llm.genai_client.GENAI_AVAILABLE", True),
     ):
         mock_client = MagicMock()
         mock_genai.Client.return_value = mock_client
@@ -39,8 +39,8 @@ class TestGenAIClient:
     def test_init(self):
         """Test initialization"""
         with (
-            patch("llm.genai_client.genai") as mock_genai,
-            patch("llm.genai_client.GENAI_AVAILABLE", True),
+            patch("backend.llm.genai_client.genai") as mock_genai,
+            patch("backend.llm.genai_client.GENAI_AVAILABLE", True),
         ):
             mock_client = MagicMock()
             mock_genai.Client.return_value = mock_client
@@ -89,14 +89,14 @@ class TestGenAIClient:
     def test_get_genai_client_singleton(self):
         """Test singleton pattern"""
         with (
-            patch("llm.genai_client.genai") as mock_genai,
-            patch("llm.genai_client.GENAI_AVAILABLE", True),
+            patch("backend.llm.genai_client.genai") as mock_genai,
+            patch("backend.llm.genai_client.GENAI_AVAILABLE", True),
         ):
             mock_client = MagicMock()
             mock_genai.Client.return_value = mock_client
 
             # Reset singleton
-            import llm.genai_client
+            import backend.llm.genai_client
 
             llm.genai_client._client_instance = None
 

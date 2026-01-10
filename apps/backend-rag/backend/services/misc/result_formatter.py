@@ -61,7 +61,7 @@ def format_search_results(
         ... )
         >>> print(results[0]["score"])  # 0.9185 (base + pricing boost)
     """
-    from app.core.constants import SearchConstants
+    from backend.app.core.constants import SearchConstants
 
     formatted_results = []
 

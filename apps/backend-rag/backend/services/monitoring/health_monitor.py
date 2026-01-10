@@ -94,7 +94,7 @@ class HealthMonitor:
 
     async def _check_health(self):
         """Perform health check and send alerts if needed"""
-        from app.dependencies import get_search_service
+        from backend.app.dependencies import get_search_service
 
         # Get services from dependencies
         try:
@@ -175,7 +175,7 @@ class HealthMonitor:
         """Check if Qdrant is actually working via HTTP"""
         import httpx
 
-        from app.core.config import settings
+        from backend.app.core.config import settings
 
         try:
             headers = {}

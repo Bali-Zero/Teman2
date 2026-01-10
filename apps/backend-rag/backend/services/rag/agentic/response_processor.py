@@ -18,12 +18,12 @@ Key Features:
 import logging
 import re
 
-from services.communication import (
+from backend.services.communication import (
     detect_language,
     has_emotional_content,
     is_procedural_question,
 )
-from services.response.cleaner import clean_response
+from backend.services.response.cleaner import clean_response
 
 logger = logging.getLogger(__name__)
 

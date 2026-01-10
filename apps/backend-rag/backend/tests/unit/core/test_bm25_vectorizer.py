@@ -11,7 +11,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.bm25_vectorizer import BM25Vectorizer, get_bm25_vectorizer
+from backend.core.bm25_vectorizer import BM25Vectorizer, get_bm25_vectorizer
 
 
 class TestBM25Vectorizer:
@@ -247,13 +247,13 @@ class TestBM25Vectorizer:
 
     def test_get_bm25_vectorizer_singleton(self):
         """Test get_bm25_vectorizer returns singleton"""
-        with patch("core.bm25_vectorizer._bm25_vectorizer", None):
+        with patch("backend.core.bm25_vectorizer._bm25_vectorizer", None):
             vectorizer1 = get_bm25_vectorizer()
             vectorizer2 = get_bm25_vectorizer()
             assert vectorizer1 is vectorizer2
 
     def test_get_bm25_vectorizer_creates_new(self):
         """Test get_bm25_vectorizer creates new instance if None"""
-        with patch("core.bm25_vectorizer._bm25_vectorizer", None):
+        with patch("backend.core.bm25_vectorizer._bm25_vectorizer", None):
             vectorizer = get_bm25_vectorizer()
             assert isinstance(vectorizer, BM25Vectorizer)
