@@ -69,14 +69,10 @@ fly logs -a nuzantara-rag | grep "intel"
 ```bash
 cd apps/mouth
 
-# Build
-npm run build
+# Deploy su Vercel (frontend è ora su Vercel, non più su Fly.io)
+vercel deploy --prod
 
-# Deploy
-fly deploy -a nuzantara-mouth
-
-# Verifica health
-fly status -a nuzantara-mouth
+# Oppure usa Vercel dashboard/GitHub integration per deploy automatico
 ```
 
 ### Step 3: Test E2E
@@ -389,7 +385,7 @@ fly logs -a nuzantara-rag | grep "Added to published registry"
 - [x] API client aggiornato
 - [x] Documentazione completa
 - [ ] Backend deployed su Fly.io
-- [ ] Frontend deployed su Fly.io
+- [ ] Frontend deployed su Vercel
 - [ ] Test E2E eseguito
 - [ ] Registry file verificato
 
@@ -401,7 +397,7 @@ fly logs -a nuzantara-rag | grep "Added to published registry"
 
 **Prossimi step:**
 1. Deploy backend (`fly deploy -a nuzantara-rag`)
-2. Deploy frontend (`fly deploy -a nuzantara-mouth`)
+2. Deploy frontend (`vercel deploy --prod` da `apps/mouth/`)
 3. Test E2E con articolo reale
 4. Monitor logs per prima settimana
 

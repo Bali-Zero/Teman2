@@ -400,12 +400,12 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │                     FLY.IO SINGAPORE                          │
 ├──────────────────────────────────────────────────────────────┤
 │                                                              │
-│  nuzantara-rag (PRIMARY)        nuzantara-mouth (FRONTEND)  │
-│  ├─ 2 shared CPUs               ├─ 1 shared CPU              │
-│  ├─ 2GB RAM                     ├─ 1GB RAM                   │
-│  ├─ Port 8080                   ├─ Port 3000                 │
-│  ├─ Min machines: 1             ├─ Min machines: 0 (auto)    │
-│  └─ Concurrency: 250            └─ Auto-stop enabled         │
+│  nuzantara-rag (BACKEND)                                     │
+│  ├─ 2 shared CPUs                                            │
+│  ├─ 2GB RAM                                                  │
+│  ├─ Port 8080                                                │
+│  ├─ Min machines: 1                                         │
+│  └─ Concurrency: 250                                         │
 │                                                              │
 │  bali-intel-scraper             zantara-media                │
 │  ├─ 1 CPU, 2GB RAM              ├─ 1 CPU, 2GB RAM            │
@@ -416,6 +416,20 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 │  ├─ PostgreSQL (Fly managed)                                 │
 │  ├─ Qdrant Cloud (53,757 docs)                              │
 │  └─ Redis (optional cache)                                   │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│                     VERCEL (GLOBAL CDN)                       │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  nuzantara-mouth (FRONTEND)                                  │
+│  ├─ Next.js 16 Edge Runtime                                 │
+│  ├─ React 19 Server Components                              │
+│  ├─ Global CDN (automatic)                                  │
+│  ├─ Auto-scaling                                             │
+│  └─ Zero-config deployment                                    │
+│                                                              │
+│  URL: https://nuzantara-mouth.vercel.app                    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -463,10 +477,13 @@ visa_oracle legal_unified tax_genius kbli_unified bali_zero_pricing
 docker compose up                    # Start full stack
 cd apps/mouth && npm run dev         # Frontend dev
 
-# Fly.io Operations
+# Fly.io Operations (Backend)
 ./scripts/fly-backend.sh status      # Backend status
 ./scripts/fly-backend.sh logs        # Backend logs
-./scripts/fly-frontend.sh deploy     # Frontend deploy
+
+# Vercel Operations (Frontend)
+# Frontend is deployed on Vercel - use Vercel CLI or dashboard
+# vercel deploy --prod              # Deploy frontend
 
 # Testing
 cd apps/backend-rag && pytest        # Run all tests

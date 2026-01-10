@@ -34,8 +34,8 @@ def get_allowed_origins() -> list[str]:
     default_origins = [
         "https://zantara.balizero.com",
         "https://www.zantara.balizero.com",
-        "https://nuzantara-mouth.fly.dev",  # Frontend Fly.io deployment (mouth)
-        "https://teman2-mouth.vercel.app",  # Frontend Vercel deployment
+        "https://nuzantara-mouth.vercel.app",  # Frontend Vercel deployment (primary)
+        "https://nuzantara-mouth.fly.dev",  # Legacy Fly.io deployment (deprecated, kept for backward compatibility)
         "http://localhost:3000",  # Local development
     ]
 

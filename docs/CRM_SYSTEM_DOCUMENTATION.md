@@ -777,7 +777,7 @@ router.refresh();  // ✅ Fresh data
 
 **Maintainer**: Zero (zero@balizero.com)
 **Deployment**: https://nuzantara-rag.fly.dev
-**Frontend**: https://nuzantara-mouth.fly.dev
+**Frontend**: https://nuzantara-mouth.vercel.app (deployed on Vercel)
 **Logs**: `fly logs -a nuzantara-rag`
 
 **Emergency Rollback**:

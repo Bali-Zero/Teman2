@@ -35,7 +35,9 @@ You are working on **Project Nuzantara**, an AI-developed RAG ecosystem.
 - **AI Architecture:** Agentic RAG with ReAct Pattern (Thought→Action→Observation loop).
 - **LLM Cascade:** Gemini 3 Flash Preview → 2.0 Flash fallback.
 - **Providers:** Google Gemini (`google-genai` SDK), OpenAI (embeddings), ZeroEntropy (reranker).
-- **Deploy:** Fly.io (Dockerized, Singapore region).
+- **Deploy:** 
+  - **Backend:** Fly.io (Dockerized, Singapore region)
+  - **Frontend:** Vercel (Next.js Edge, global CDN)
 
 ### 3. FILE MAP (Mental Model)
 ```text
@@ -207,7 +209,7 @@ Mostra vista completa del cliente:
 - Logo: `/Users/antonellosiano/Desktop/Investor KITAS - Bali Zero_files/balizero-logo-transparent.png`
 
 **Deployed to:** `apps/mouth/public/files/visa/`
-**URL pattern:** `https://nuzantara-mouth.fly.dev/files/visa/{CODE}_{Name}_BaliZero.pdf`
+**URL pattern:** `https://nuzantara-mouth.vercel.app/files/visa/{CODE}_{Name}_BaliZero.pdf` (deployed on Vercel)
 
 **Database:** `visa_types.metadata->>'pdf_url'` contiene il path relativo
 
