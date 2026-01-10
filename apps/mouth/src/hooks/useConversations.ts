@@ -121,9 +121,7 @@ export function useConversations() {
     isLoading,
     currentConversationId,
     setCurrentConversationId,
-    loadConversationList: () => {
-      return loadConversationList();
-    },
+    loadConversationList,
     deleteConversation,
     clearHistory,
   };
