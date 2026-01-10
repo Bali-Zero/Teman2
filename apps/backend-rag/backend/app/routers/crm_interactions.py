@@ -166,22 +166,28 @@ async def create_interaction(
     try:
         async with db_pool.acquire() as conn:
             # Insert interaction
+            # Note: 'type' and 'content' are legacy NOT NULL columns that must be populated
+            content_value = interaction.summary or interaction.subject or "Interaction"
             row = await conn.fetchrow(
                 """
                 INSERT INTO interactions (
-                    client_id, practice_id, conversation_id, interaction_type, channel,
-                    subject, summary, full_content, sentiment, team_member, direction,
+                    client_id, practice_id, conversation_id,
+                    type, interaction_type, channel,
+                    content, subject, summary, full_content,
+                    sentiment, team_member, direction,
                     duration_minutes, extracted_entities, action_items, interaction_date
                 ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
                 )
                 RETURNING *
                 """,
                 interaction.client_id,
                 interaction.practice_id,
                 interaction.conversation_id,
+                interaction.interaction_type,  # type (legacy NOT NULL column)
                 interaction.interaction_type,
                 interaction.channel,
+                content_value,  # content (legacy NOT NULL column)
                 interaction.subject,
                 interaction.summary,
                 interaction.full_content,
@@ -744,30 +750,36 @@ async def create_interaction_from_conversation(
 # NOTE: Gmail sync endpoint removed - will be replaced by MCP integration
 
 
-@router.delete("/interactions/{interaction_id}")
+@router.delete("/{interaction_id}")
 async def delete_interaction(
     interaction_id: int,
-    deleted_by: str = Query(..., description="Email of user deleting"),
     current_user: dict = Depends(get_current_user),
     pool=Depends(get_database_pool),
 ):
     """
     Delete an interaction (soft delete - marks as archived).
+    User must be admin or the creator of the interaction.
     """
     user_email = current_user.get("email", "").lower()
     user_is_admin = is_crm_admin(current_user)
-
-    if not user_is_admin and deleted_by.lower() != user_email:
-        raise HTTPException(status_code=403, detail="You can only delete your own interactions")
     try:
         async with pool.acquire() as conn:
-            # Check if interaction exists
+            # Check if interaction exists and get creator
             existing = await conn.fetchrow(
-                "SELECT id, interaction_type FROM interactions WHERE id = $1",
+                "SELECT id, interaction_type, created_by FROM interactions WHERE id = $1",
                 interaction_id,
             )
             if not existing:
                 raise HTTPException(status_code=404, detail="Interaction not found")
+
+            # RBAC: Non-admins can only delete their own interactions
+            if not user_is_admin:
+                created_by = (existing.get("created_by") or "").lower()
+                if created_by != user_email:
+                    raise HTTPException(
+                        status_code=403,
+                        detail="You can only delete interactions you created"
+                    )
 
             # Delete the interaction
             await conn.execute(
@@ -775,12 +787,12 @@ async def delete_interaction(
                 interaction_id,
             )
 
-            logger.info(f"Interaction {interaction_id} deleted by {deleted_by}")
+            logger.info(f"Interaction {interaction_id} deleted by {user_email}")
 
             return {
                 "success": True,
                 "interaction_id": interaction_id,
-                "deleted_by": deleted_by,
+                "deleted_by": user_email,
             }
 
     except HTTPException:

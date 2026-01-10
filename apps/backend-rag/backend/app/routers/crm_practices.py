@@ -165,8 +165,8 @@ class PracticeResponse(BaseModel):
 async def create_practice(
     request: Request,
     practice: PracticeCreate,
-    created_by: str = Query(..., description="Team member creating this practice"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Create a new practice for a client
@@ -177,6 +177,9 @@ async def create_practice(
     - **quoted_price**: Price quoted to client
     - **assigned_to**: Team member email to handle this
     """
+    # Extract created_by from current user
+    created_by = current_user.get("email", "").lower()
+
     try:
         async with db_pool.acquire() as conn:
             # Get practice_type_id from code
@@ -505,7 +508,6 @@ async def update_practice(
     request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
     updates: PracticeUpdate = Body(...),
-    updated_by: str = Query(..., description="Team member making the update"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -621,7 +623,7 @@ async def update_practice(
                 "practice",
                 practice_id,
                 "updated",
-                updated_by,
+                user_email,
                 f"Updated: {', '.join(changed_fields)}",
                 updates.dict(exclude_unset=True),
             )
@@ -653,7 +655,7 @@ async def update_practice(
                 logger,
                 "Updated practice",
                 practice_id=practice_id,
-                updated_by=updated_by,
+                updated_by=user_email,
             )
             return updated_practice
 
@@ -667,7 +669,6 @@ async def update_practice(
 async def delete_practice(
     request: Request,
     practice_id: int = Path(..., gt=0, description="Practice ID"),
-    deleted_by: str = Query(..., description="Team member deleting the practice"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
@@ -731,7 +732,7 @@ async def delete_practice(
                 "practice",
                 practice_id,
                 "deleted",
-                deleted_by,
+                user_email,
                 "Practice marked as cancelled",
             )
 
@@ -739,7 +740,7 @@ async def delete_practice(
                 logger,
                 "Deleted (soft) practice",
                 practice_id=practice_id,
-                deleted_by=deleted_by,
+                deleted_by=user_email,
             )
             return {"success": True, "message": "Practice marked as cancelled"}
 

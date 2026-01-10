@@ -522,7 +522,6 @@ async def get_client_by_email(
 async def update_client(
     updates: ClientUpdate = Body(...),
     client_id: int = Path(..., gt=0, description="Client ID"),
-    user_email: str = Query(..., description="Team member making the update", alias="updated_by"),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     current_user: dict = Depends(get_current_user),
 ):
