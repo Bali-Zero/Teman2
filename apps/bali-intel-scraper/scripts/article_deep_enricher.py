@@ -340,15 +340,24 @@ NOTES:
         Call Claude via CLI using Max subscription.
         Uses `claude -p` for prompt mode (no API costs!).
         Requires Claude CLI to be installed and authenticated.
+        Supports OAuth token via CLAUDE_CODE_OAUTH_TOKEN env var.
         """
         try:
             logger.info("🤖 Calling Claude Max (via CLI)...")
+            
+            # Prepare environment with OAuth token if available
+            env = os.environ.copy()
+            oauth_token = os.getenv("CLAUDE_CODE_OAUTH_TOKEN")
+            if oauth_token:
+                env["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
+                logger.debug("Using OAuth token from environment")
 
             result = subprocess.run(
                 ["claude", "-p", "--output-format", "text", prompt],
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                env=env,
             )
 
             if result.returncode != 0:
