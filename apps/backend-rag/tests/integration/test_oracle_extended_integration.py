@@ -36,12 +36,12 @@ class TestOracleMultiModalIntegration:
     @pytest.mark.asyncio
     async def test_oracle_with_pdf_vision(self, qdrant_client, db_pool):
         """Test Oracle query with PDF vision analysis"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
         with (
-            patch("app.routers.oracle_universal.smart_oracle") as mock_smart_oracle,
-            patch("app.routers.oracle_universal.get_search_service") as mock_get_search,
+            patch("backend.app.routers.oracle_universal.smart_oracle") as mock_smart_oracle,
+            patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search,
         ):
             # Mock smart oracle with PDF vision
             mock_smart_oracle.return_value = {
@@ -77,11 +77,11 @@ class TestOracleMultiModalIntegration:
     @pytest.mark.asyncio
     async def test_oracle_google_drive_integration(self, qdrant_client, db_pool):
         """Test Oracle with Google Drive document access"""
-        from app.routers.oracle_universal import download_pdf_from_drive
+        from backend.app.routers.oracle_universal import download_pdf_from_drive
 
         with (
-            patch("app.routers.oracle_universal.build") as mock_build,
-            patch("app.routers.oracle_universal.os.path.exists") as mock_exists,
+            patch("backend.app.routers.oracle_universal.build") as mock_build,
+            patch("backend.app.routers.oracle_universal.os.path.exists") as mock_exists,
         ):
             # Mock Google Drive service
             mock_drive = MagicMock()
@@ -121,12 +121,12 @@ class TestOracleLocalizationIntegration:
     @pytest.mark.asyncio
     async def test_oracle_user_localization(self, qdrant_client, db_pool):
         """Test Oracle query with user localization preferences"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
         with (
-            patch("app.routers.oracle_universal.get_search_service") as mock_get_search,
-            patch("app.routers.oracle_universal.OracleDatabase") as mock_oracle_db,
+            patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search,
+            patch("backend.app.routers.oracle_universal.OracleDatabase") as mock_oracle_db,
         ):
             # Mock user profile with localization
             mock_db_instance = MagicMock()
@@ -162,12 +162,12 @@ class TestOracleLocalizationIntegration:
     @pytest.mark.asyncio
     async def test_oracle_personality_integration(self, qdrant_client, db_pool):
         """Test Oracle with personality service integration"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
         with (
-            patch("app.routers.oracle_universal.get_search_service") as mock_get_search,
-            patch("app.routers.oracle_universal.PersonalityService") as mock_personality,
+            patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search,
+            patch("backend.app.routers.oracle_universal.PersonalityService") as mock_personality,
         ):
             # Mock personality service
             mock_personality_instance = MagicMock()
@@ -207,9 +207,9 @@ class TestOracleFeedbackIntegration:
     @pytest.mark.asyncio
     async def test_oracle_feedback_storage(self, qdrant_client, db_pool):
         """Test storing user feedback for Oracle queries"""
-        from app.routers.oracle_universal import submit_feedback
+        from backend.app.routers.oracle_universal import submit_feedback
 
-        with patch("app.routers.oracle_universal.OracleDatabase") as mock_oracle_db:
+        with patch("backend.app.routers.oracle_universal.OracleDatabase") as mock_oracle_db:
             mock_db_instance = MagicMock()
             mock_db_instance.store_feedback = AsyncMock(return_value=True)
             mock_oracle_db.return_value = mock_db_instance
@@ -230,12 +230,12 @@ class TestOracleFeedbackIntegration:
     @pytest.mark.asyncio
     async def test_oracle_analytics_tracking(self, qdrant_client, db_pool):
         """Test Oracle query analytics tracking"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
         with (
-            patch("app.routers.oracle_universal.get_search_service") as mock_get_search,
-            patch("app.routers.oracle_universal.OracleDatabase") as mock_oracle_db,
+            patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search,
+            patch("backend.app.routers.oracle_universal.OracleDatabase") as mock_oracle_db,
         ):
             # Mock analytics storage
             mock_db_instance = MagicMock()
@@ -272,10 +272,10 @@ class TestOracleSessionManagement:
     @pytest.mark.asyncio
     async def test_oracle_session_tracking(self, qdrant_client, db_pool):
         """Test Oracle query with session tracking"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_get_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search:
             mock_search = MagicMock()
             mock_search.search = AsyncMock(
                 return_value={
@@ -301,10 +301,10 @@ class TestOracleSessionManagement:
     @pytest.mark.asyncio
     async def test_oracle_multi_query_session(self, qdrant_client, db_pool):
         """Test multiple Oracle queries in same session"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_get_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search:
             mock_search = MagicMock()
             mock_search.search = AsyncMock(
                 return_value={
@@ -344,10 +344,10 @@ class TestOracleDomainHintIntegration:
     @pytest.mark.asyncio
     async def test_oracle_with_domain_hint(self, qdrant_client, db_pool):
         """Test Oracle query with domain hint for routing"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_get_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search:
             mock_search = MagicMock()
             mock_search.search = AsyncMock(
                 return_value={
@@ -371,10 +371,10 @@ class TestOracleDomainHintIntegration:
     @pytest.mark.asyncio
     async def test_oracle_response_format(self, qdrant_client, db_pool):
         """Test Oracle query with different response formats"""
-        from app.models import OracleQueryRequest
-        from app.routers.oracle_universal import hybrid_oracle_query
+        from backend.app.models import OracleQueryRequest
+        from backend.app.routers.oracle_universal import hybrid_oracle_query
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_get_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_search:
             mock_search = MagicMock()
             mock_search.search = AsyncMock(
                 return_value={

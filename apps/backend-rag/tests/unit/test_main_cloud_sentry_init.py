@@ -20,7 +20,7 @@ class TestSentryInitialization:
         with patch.dict(os.environ, {"SKIP_SENTRY_INIT": "1", "SENTRY_DSN": "test-dsn"}):
             with patch("sentry_sdk.init") as mock_sentry_init:
                 # Re-import to trigger initialization check
-                import app.main_cloud
+                import backend.app.main_cloud
 
                 importlib.reload(app.main_cloud)
 
@@ -37,7 +37,7 @@ class TestSentryInitialization:
             with patch("sentry_sdk.init") as mock_sentry_init:
                 import importlib
 
-                import app.main_cloud
+                import backend.app.main_cloud
 
                 importlib.reload(app.main_cloud)
 
@@ -57,7 +57,7 @@ class TestSentryInitialization:
             with patch("sentry_sdk.init") as mock_sentry_init:
                 import importlib
 
-                import app.main_cloud
+                import backend.app.main_cloud
 
                 importlib.reload(app.main_cloud)
 

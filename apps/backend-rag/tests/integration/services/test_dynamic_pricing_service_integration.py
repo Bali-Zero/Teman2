@@ -88,7 +88,7 @@ class TestDynamicPricingServiceIntegration:
     @pytest_asyncio.fixture
     async def pricing_service(self, mock_cross_oracle_synthesis, mock_search_service):
         """Create DynamicPricingService instance"""
-        from services.dynamic_pricing_service import DynamicPricingService
+        from backend.services.dynamic_pricing_service import DynamicPricingService
 
         service = DynamicPricingService(
             cross_oracle_synthesis_service=mock_cross_oracle_synthesis,
@@ -270,7 +270,7 @@ class TestDynamicPricingServiceIntegration:
     async def test_format_text_report_with_recurring_costs(self, pricing_service):
         """Test text report formatting with recurring costs"""
         # Create a result with recurring costs
-        from services.dynamic_pricing_service import CostItem, PricingResult
+        from backend.services.dynamic_pricing_service import CostItem, PricingResult
 
         result = PricingResult(
             scenario="Test",
@@ -299,7 +299,7 @@ class TestDynamicPricingServiceIntegration:
     @pytest.mark.asyncio
     async def test_format_text_report_with_zero_setup_cost(self, pricing_service):
         """Test text report formatting with zero setup cost"""
-        from services.dynamic_pricing_service import PricingResult
+        from backend.services.dynamic_pricing_service import PricingResult
 
         result = PricingResult(
             scenario="Test",

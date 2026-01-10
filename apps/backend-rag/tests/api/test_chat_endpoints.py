@@ -163,7 +163,7 @@ class TestSaveConversation:
         self, test_app, test_client, valid_jwt_token, mock_db_connection
     ):
         """Test successful conversation save"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_pool, mock_conn = mock_db_connection
         mock_conn.fetchrow = AsyncMock(return_value={"id": 123})
@@ -174,7 +174,7 @@ class TestSaveConversation:
         test_app.dependency_overrides[get_database_pool] = override_db_pool
 
         try:
-            with patch("app.routers.conversations.get_auto_crm", return_value=None):
+            with patch("backend.app.routers.conversations.get_auto_crm", return_value=None):
                 response = test_client.post(
                     "/api/bali-zero/conversations/save",
                     json={
@@ -203,9 +203,9 @@ class TestSaveConversation:
         mock_conn.fetchrow = AsyncMock(return_value={"id": 456})
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.get_auto_crm", return_value=None),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.post(
                 "/api/bali-zero/conversations/save",
@@ -226,9 +226,9 @@ class TestSaveConversation:
         mock_conn.fetchrow = AsyncMock(return_value={"id": 789})
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.get_auto_crm", return_value=None),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.post(
                 "/api/bali-zero/conversations/save",
@@ -257,8 +257,8 @@ class TestSaveConversation:
         mock_conn.execute = AsyncMock(side_effect=Exception("Database error"))
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.post(
                 "/api/bali-zero/conversations/save",
@@ -292,8 +292,8 @@ class TestGetConversationHistory:
         )
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.get(
                 "/api/bali-zero/conversations/history",
@@ -318,8 +318,8 @@ class TestGetConversationHistory:
         )
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.get(
                 "/api/bali-zero/conversations/history?limit=10",
@@ -343,8 +343,8 @@ class TestGetConversationHistory:
         )
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.get(
                 "/api/bali-zero/conversations/history?session_id=specific-session",
@@ -362,8 +362,8 @@ class TestGetConversationHistory:
         mock_conn.fetchrow = AsyncMock(return_value=None)
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.get(
                 "/api/bali-zero/conversations/history",
@@ -393,8 +393,8 @@ class TestClearConversationHistory:
         mock_conn.execute = AsyncMock(return_value="DELETE 5")
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.delete(
                 "/api/bali-zero/conversations/clear",
@@ -413,8 +413,8 @@ class TestClearConversationHistory:
         mock_conn.execute = AsyncMock(return_value="DELETE 2")
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.delete(
                 "/api/bali-zero/conversations/clear?session_id=specific-session",
@@ -432,8 +432,8 @@ class TestClearConversationHistory:
         mock_conn.execute = AsyncMock(return_value="DELETE 0")
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.delete(
                 "/api/bali-zero/conversations/clear",
@@ -452,8 +452,8 @@ class TestClearConversationHistory:
         mock_conn.execute = AsyncMock(side_effect=Exception("Database error"))
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.delete(
                 "/api/bali-zero/conversations/clear",
@@ -484,8 +484,8 @@ class TestGetConversationStats:
         )
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.get(
                 "/api/bali-zero/conversations/stats",
@@ -512,8 +512,8 @@ class TestGetConversationStats:
         )
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.get(
                 "/api/bali-zero/conversations/stats",
@@ -534,8 +534,8 @@ class TestGetConversationStats:
         mock_conn.execute = AsyncMock(side_effect=Exception("Database error"))
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.get(
                 "/api/bali-zero/conversations/stats",
@@ -559,9 +559,9 @@ class TestConversationSecurity:
         mock_conn.fetchrow = AsyncMock(return_value={"id": 100})
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.get_auto_crm", return_value=None),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
+            patch("backend.app.routers.conversations.logger"),
         ):
             response = test_client.post(
                 "/api/bali-zero/conversations/save",
@@ -600,9 +600,9 @@ class TestConversationSecurity:
         user2_token = jwt.encode(user2_payload, secret, algorithm="HS256")
 
         with (
-            patch("app.dependencies.get_database_pool", return_value=mock_pool),
-            patch("app.routers.conversations.get_auto_crm", return_value=None),
-            patch("app.routers.conversations.logger"),
+            patch("backend.app.dependencies.get_database_pool", return_value=mock_pool),
+            patch("backend.app.routers.conversations.get_auto_crm", return_value=None),
+            patch("backend.app.routers.conversations.logger"),
         ):
             # User 1 saves
             response1 = test_client.post(

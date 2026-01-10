@@ -52,7 +52,7 @@ def temp_dir_structure():
 
 def test_init():
     """Test PoliticsIngestionService initialization"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     service = PoliticsIngestionService()
     assert service.embedder is not None
@@ -62,7 +62,7 @@ def test_init():
 
 def test_init_custom_collection():
     """Test initialization with custom qdrant URL"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     service = PoliticsIngestionService(qdrant_url="http://localhost:6333")
     assert service.vector_db is not None
@@ -71,7 +71,7 @@ def test_init_custom_collection():
 
 def test_ingest_jsonl_file(temp_jsonl_file):
     """Test ingesting a single JSONL file"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     service = PoliticsIngestionService()
 
@@ -92,7 +92,7 @@ def test_ingest_jsonl_file(temp_jsonl_file):
 
 def test_ingest_jsonl_file_empty():
     """Test ingesting an empty JSONL file"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     # Create empty file
     with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
@@ -111,7 +111,7 @@ def test_ingest_jsonl_file_empty():
 
 def test_ingest_jsonl_file_invalid_json(temp_jsonl_file):
     """Test ingesting JSONL file with invalid JSON lines"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     # Write invalid JSON
     invalid_file = temp_jsonl_file.parent / "invalid.jsonl"
@@ -130,7 +130,7 @@ def test_ingest_jsonl_file_invalid_json(temp_jsonl_file):
 
 def test_ingest_jsonl_files_multiple(temp_jsonl_file):
     """Test ingesting multiple JSONL files"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     # Create second file
     second_file = temp_jsonl_file.parent / "second.jsonl"
@@ -156,7 +156,7 @@ def test_ingest_jsonl_files_multiple(temp_jsonl_file):
 
 def test_ingest_dir(temp_dir_structure):
     """Test ingesting directory structure"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     service = PoliticsIngestionService()
 
@@ -175,7 +175,7 @@ def test_ingest_dir(temp_dir_structure):
 
 def test_ingest_dir_empty():
     """Test ingesting empty directory"""
-    from services.ingestion.politics_ingestion import PoliticsIngestionService
+    from backend.services.ingestion.politics_ingestion import PoliticsIngestionService
 
     with tempfile.TemporaryDirectory() as tmpdir:
         empty_dir = Path(tmpdir) / "empty"

@@ -87,9 +87,9 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_get_auth_url_success(self, mock_db_pool, mock_current_user, mock_oauth_service):
         """Test get auth URL"""
-        from app.routers.zoho_email import get_auth_url
+        from backend.app.routers.zoho_email import get_auth_url
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             response = await get_auth_url(mock_current_user, mock_db_pool)
 
             assert "auth_url" in response
@@ -99,11 +99,11 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_get_auth_url_error(self, mock_db_pool, mock_current_user, mock_oauth_service):
         """Test get auth URL error"""
-        from app.routers.zoho_email import get_auth_url
+        from backend.app.routers.zoho_email import get_auth_url
 
         mock_oauth_service.get_authorization_url.side_effect = ValueError("Config error")
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             with pytest.raises(HTTPException) as exc:
                 await get_auth_url(mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -111,11 +111,11 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_get_auth_url_no_user_id(self, mock_db_pool, mock_oauth_service):
         """Test get auth URL without user_id"""
-        from app.routers.zoho_email import get_auth_url
+        from backend.app.routers.zoho_email import get_auth_url
 
         current_user_no_id = {"email": "test@example.com"}
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             with pytest.raises(HTTPException) as exc:
                 await get_auth_url(current_user_no_id, mock_db_pool)
             assert exc.value.status_code == 400
@@ -123,10 +123,10 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_oauth_callback_success(self, mock_db_pool, mock_oauth_service):
         """Test OAuth callback success"""
-        from app.routers.zoho_email import oauth_callback
+        from backend.app.routers.zoho_email import oauth_callback
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
-             patch("app.routers.zoho_email.settings") as mock_settings:
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
+             patch("backend.app.routers.zoho_email.settings") as mock_settings:
             mock_settings.frontend_url = "http://localhost:3000"
             
             response = await oauth_callback(code="auth_code_123", state="user_123:state_token", error=None, db_pool=mock_db_pool)
@@ -138,9 +138,9 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_oauth_callback_with_error(self, mock_db_pool):
         """Test OAuth callback with error"""
-        from app.routers.zoho_email import oauth_callback
+        from backend.app.routers.zoho_email import oauth_callback
 
-        with patch("app.routers.zoho_email.settings") as mock_settings:
+        with patch("backend.app.routers.zoho_email.settings") as mock_settings:
             mock_settings.frontend_url = "http://localhost:3000"
             
             response = await oauth_callback(code=None, state=None, error="access_denied", db_pool=mock_db_pool)
@@ -151,9 +151,9 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_oauth_callback_missing_params(self, mock_db_pool):
         """Test OAuth callback missing code/state"""
-        from app.routers.zoho_email import oauth_callback
+        from backend.app.routers.zoho_email import oauth_callback
 
-        with patch("app.routers.zoho_email.settings") as mock_settings:
+        with patch("backend.app.routers.zoho_email.settings") as mock_settings:
             mock_settings.frontend_url = "http://localhost:3000"
             
             response = await oauth_callback(code=None, state=None, error=None, db_pool=mock_db_pool)
@@ -164,10 +164,10 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_oauth_callback_invalid_state(self, mock_db_pool, mock_oauth_service):
         """Test OAuth callback invalid state format"""
-        from app.routers.zoho_email import oauth_callback
+        from backend.app.routers.zoho_email import oauth_callback
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
-             patch("app.routers.zoho_email.settings") as mock_settings:
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
+             patch("backend.app.routers.zoho_email.settings") as mock_settings:
             mock_settings.frontend_url = "http://localhost:3000"
             
             response = await oauth_callback(code="auth_code", state="invalid_state", error=None, db_pool=mock_db_pool)
@@ -178,12 +178,12 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_oauth_callback_exception(self, mock_db_pool, mock_oauth_service):
         """Test OAuth callback generic exception (line 236)"""
-        from app.routers.zoho_email import oauth_callback
+        from backend.app.routers.zoho_email import oauth_callback
 
         mock_oauth_service.exchange_code = AsyncMock(side_effect=RuntimeError("Network error"))
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
-             patch("app.routers.zoho_email.settings") as mock_settings:
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service), \
+             patch("backend.app.routers.zoho_email.settings") as mock_settings:
             mock_settings.frontend_url = "http://localhost:3000"
             
             response = await oauth_callback(code="auth_code", state="user_123:token", error=None, db_pool=mock_db_pool)
@@ -194,9 +194,9 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_get_connection_status_connected(self, mock_db_pool, mock_current_user, mock_oauth_service):
         """Test get connection status - connected"""
-        from app.routers.zoho_email import get_connection_status
+        from backend.app.routers.zoho_email import get_connection_status
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             response = await get_connection_status(mock_current_user, mock_db_pool)
 
             assert response.connected is True
@@ -206,11 +206,11 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_get_connection_status_not_connected(self, mock_db_pool, mock_current_user, mock_oauth_service):
         """Test get connection status - not connected"""
-        from app.routers.zoho_email import get_connection_status
+        from backend.app.routers.zoho_email import get_connection_status
 
         mock_oauth_service.get_connection_status.return_value = {"connected": False}
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             response = await get_connection_status(mock_current_user, mock_db_pool)
 
             assert response.connected is False
@@ -218,11 +218,11 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_get_connection_status_error(self, mock_db_pool, mock_current_user, mock_oauth_service):
         """Test get connection status error handling"""
-        from app.routers.zoho_email import get_connection_status
+        from backend.app.routers.zoho_email import get_connection_status
 
         mock_oauth_service.get_connection_status.side_effect = Exception("Service error")
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             response = await get_connection_status(mock_current_user, mock_db_pool)
 
             assert response.connected is False
@@ -231,9 +231,9 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_disconnect_account_success(self, mock_db_pool, mock_current_user, mock_oauth_service):
         """Test disconnect account"""
-        from app.routers.zoho_email import disconnect_account
+        from backend.app.routers.zoho_email import disconnect_account
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             response = await disconnect_account(mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -242,11 +242,11 @@ class TestZohoEmailOAuth:
     @pytest.mark.asyncio
     async def test_disconnect_account_error(self, mock_db_pool, mock_current_user, mock_oauth_service):
         """Test disconnect account error"""
-        from app.routers.zoho_email import disconnect_account
+        from backend.app.routers.zoho_email import disconnect_account
 
         mock_oauth_service.disconnect.side_effect = Exception("Disconnect error")
 
-        with patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+        with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
             with pytest.raises(HTTPException) as exc:
                 await disconnect_account(mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -259,9 +259,9 @@ class TestZohoEmailFolders:
     @pytest.mark.asyncio
     async def test_list_folders_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test list folders"""
-        from app.routers.zoho_email import list_folders
+        from backend.app.routers.zoho_email import list_folders
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await list_folders(mock_current_user, mock_db_pool)
 
             assert "folders" in response
@@ -271,11 +271,11 @@ class TestZohoEmailFolders:
     @pytest.mark.asyncio
     async def test_list_folders_error(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test list folders error"""
-        from app.routers.zoho_email import list_folders
+        from backend.app.routers.zoho_email import list_folders
 
         mock_email_service.list_folders.side_effect = ValueError("Not connected")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await list_folders(mock_current_user, mock_db_pool)
             assert exc.value.status_code == 400
@@ -283,11 +283,11 @@ class TestZohoEmailFolders:
     @pytest.mark.asyncio
     async def test_list_folders_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test list folders generic exception (line 314)"""
-        from app.routers.zoho_email import list_folders
+        from backend.app.routers.zoho_email import list_folders
 
         mock_email_service.list_folders.side_effect = RuntimeError("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await list_folders(mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -300,9 +300,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_list_emails_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test list emails"""
-        from app.routers.zoho_email import list_emails
+        from backend.app.routers.zoho_email import list_emails
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await list_emails(
                 folder_id="inbox",
                 limit=50,
@@ -320,9 +320,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_list_emails_with_filters(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test list emails with search and unread filter"""
-        from app.routers.zoho_email import list_emails
+        from backend.app.routers.zoho_email import list_emails
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await list_emails(
                 folder_id="inbox",
                 limit=50,
@@ -338,11 +338,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_list_emails_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test list emails generic exception (line 353)"""
-        from app.routers.zoho_email import list_emails
+        from backend.app.routers.zoho_email import list_emails
 
         mock_email_service.list_emails.side_effect = RuntimeError("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await list_emails(
                     folder_id="inbox",
@@ -358,9 +358,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_get_email_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test get email"""
-        from app.routers.zoho_email import get_email
+        from backend.app.routers.zoho_email import get_email
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await get_email(
                 message_id="msg_1",
                 folder_id="inbox",
@@ -375,11 +375,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_get_email_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test get email generic exception (line 377)"""
-        from app.routers.zoho_email import get_email
+        from backend.app.routers.zoho_email import get_email
 
         mock_email_service.get_email.side_effect = RuntimeError("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await get_email(
                     message_id="msg_1",
@@ -392,7 +392,7 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_send_email_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test send email"""
-        from app.routers.zoho_email import SendEmailRequest, send_email
+        from backend.app.routers.zoho_email import SendEmailRequest, send_email
 
         request_data = SendEmailRequest(
             to=["recipient@example.com"],
@@ -400,7 +400,7 @@ class TestZohoEmailOperations:
             html_content="<p>Test Body</p>",
         )
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await send_email(request_data, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -409,7 +409,7 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_send_email_with_cc_bcc(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test send email with CC and BCC"""
-        from app.routers.zoho_email import SendEmailRequest, send_email
+        from backend.app.routers.zoho_email import SendEmailRequest, send_email
 
         request_data = SendEmailRequest(
             to=["recipient@example.com"],
@@ -419,7 +419,7 @@ class TestZohoEmailOperations:
             bcc=["bcc@example.com"],
         )
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await send_email(request_data, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -427,7 +427,7 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_send_email_error(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test send email error - service raises ValueError"""
-        from app.routers.zoho_email import SendEmailRequest, send_email
+        from backend.app.routers.zoho_email import SendEmailRequest, send_email
 
         mock_email_service.send_email.side_effect = ValueError("Service error: Invalid recipient")
 
@@ -437,7 +437,7 @@ class TestZohoEmailOperations:
             html_content="Test",
         )
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await send_email(request_data, mock_current_user, mock_db_pool)
             assert exc.value.status_code == 400
@@ -445,7 +445,7 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_send_email_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test send email generic exception (line 409)"""
-        from app.routers.zoho_email import SendEmailRequest, send_email
+        from backend.app.routers.zoho_email import SendEmailRequest, send_email
 
         mock_email_service.send_email.side_effect = RuntimeError("Network error")
 
@@ -455,7 +455,7 @@ class TestZohoEmailOperations:
             html_content="Test",
         )
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await send_email(request_data, mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -463,9 +463,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_search_emails_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test search emails"""
-        from app.routers.zoho_email import search_emails
+        from backend.app.routers.zoho_email import search_emails
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await search_emails(
                 query="test query",
                 limit=50,
@@ -480,11 +480,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_search_emails_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test search emails generic exception (line 432)"""
-        from app.routers.zoho_email import search_emails
+        from backend.app.routers.zoho_email import search_emails
 
         mock_email_service.search_emails.side_effect = RuntimeError("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await search_emails(
                     query="test query",
@@ -497,11 +497,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_reply_email_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test reply email"""
-        from app.routers.zoho_email import ReplyEmailRequest, reply_email
+        from backend.app.routers.zoho_email import ReplyEmailRequest, reply_email
 
         request_data = ReplyEmailRequest(content="Reply content", reply_all=False)
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await reply_email("msg_1", request_data, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -510,11 +510,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_reply_email_all(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test reply all"""
-        from app.routers.zoho_email import ReplyEmailRequest, reply_email
+        from backend.app.routers.zoho_email import ReplyEmailRequest, reply_email
 
         request_data = ReplyEmailRequest(content="Reply content", reply_all=True)
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await reply_email("msg_1", request_data, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -522,13 +522,13 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_reply_email_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test reply email generic exception (line 461)"""
-        from app.routers.zoho_email import ReplyEmailRequest, reply_email
+        from backend.app.routers.zoho_email import ReplyEmailRequest, reply_email
 
         mock_email_service.reply_email.side_effect = RuntimeError("Service error")
 
         request_data = ReplyEmailRequest(content="Reply content", reply_all=False)
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await reply_email("msg_1", request_data, mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -536,11 +536,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_forward_email_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test forward email"""
-        from app.routers.zoho_email import ForwardEmailRequest, forward_email
+        from backend.app.routers.zoho_email import ForwardEmailRequest, forward_email
 
         request_data = ForwardEmailRequest(to=["forward@example.com"], content="Additional content")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await forward_email("msg_1", request_data, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -549,13 +549,13 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_forward_email_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test forward email generic exception (line 490)"""
-        from app.routers.zoho_email import ForwardEmailRequest, forward_email
+        from backend.app.routers.zoho_email import ForwardEmailRequest, forward_email
 
         mock_email_service.forward_email.side_effect = RuntimeError("Service error")
 
         request_data = ForwardEmailRequest(to=["forward@example.com"], content="Additional content")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await forward_email("msg_1", request_data, mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -563,11 +563,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_mark_emails_read_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test mark emails as read"""
-        from app.routers.zoho_email import MarkReadRequest, mark_emails_read
+        from backend.app.routers.zoho_email import MarkReadRequest, mark_emails_read
 
         request_data = MarkReadRequest(message_ids=["msg_1", "msg_2"], is_read=True)
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await mark_emails_read(request_data, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -576,11 +576,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_mark_emails_unread(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test mark emails as unread"""
-        from app.routers.zoho_email import MarkReadRequest, mark_emails_read
+        from backend.app.routers.zoho_email import MarkReadRequest, mark_emails_read
 
         request_data = MarkReadRequest(message_ids=["msg_1"], is_read=False)
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await mark_emails_read(request_data, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -588,13 +588,13 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_mark_emails_read_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test mark emails read generic exception (line 518)"""
-        from app.routers.zoho_email import MarkReadRequest, mark_emails_read
+        from backend.app.routers.zoho_email import MarkReadRequest, mark_emails_read
 
         mock_email_service.mark_read.side_effect = RuntimeError("Service error")
 
         request_data = MarkReadRequest(message_ids=["msg_1", "msg_2"], is_read=True)
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await mark_emails_read(request_data, mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -602,9 +602,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_toggle_flag_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test toggle flag"""
-        from app.routers.zoho_email import toggle_flag
+        from backend.app.routers.zoho_email import toggle_flag
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await toggle_flag("msg_1", True, mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -614,11 +614,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_toggle_flag_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test toggle flag generic exception (line 545)"""
-        from app.routers.zoho_email import toggle_flag
+        from backend.app.routers.zoho_email import toggle_flag
 
         mock_email_service.toggle_flag.side_effect = RuntimeError("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await toggle_flag("msg_1", True, mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -626,9 +626,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_delete_emails_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test delete emails"""
-        from app.routers.zoho_email import delete_emails
+        from backend.app.routers.zoho_email import delete_emails
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await delete_emails(["msg_1", "msg_2"], mock_current_user, mock_db_pool)
 
             assert response["success"] is True
@@ -637,11 +637,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_delete_emails_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test delete emails generic exception (line 572)"""
-        from app.routers.zoho_email import delete_emails
+        from backend.app.routers.zoho_email import delete_emails
 
         mock_email_service.delete_emails.side_effect = RuntimeError("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await delete_emails(["msg_1", "msg_2"], mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -649,9 +649,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_download_attachment_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test download attachment"""
-        from app.routers.zoho_email import download_attachment
+        from backend.app.routers.zoho_email import download_attachment
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await download_attachment("msg_1", "att_1", mock_current_user, mock_db_pool)
 
             assert isinstance(response, Response)
@@ -662,11 +662,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_download_attachment_exception(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test download attachment generic exception (line 611)"""
-        from app.routers.zoho_email import download_attachment
+        from backend.app.routers.zoho_email import download_attachment
 
         mock_email_service.get_attachment.side_effect = RuntimeError("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             with pytest.raises(HTTPException) as exc:
                 await download_attachment("msg_1", "att_1", mock_current_user, mock_db_pool)
             assert exc.value.status_code == 500
@@ -674,9 +674,9 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_get_unread_count_success(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test get unread count"""
-        from app.routers.zoho_email import get_unread_count
+        from backend.app.routers.zoho_email import get_unread_count
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await get_unread_count(mock_current_user, mock_db_pool)
 
             assert response["unread_count"] == 5
@@ -685,11 +685,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_get_unread_count_not_connected(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test get unread count - not connected"""
-        from app.routers.zoho_email import get_unread_count
+        from backend.app.routers.zoho_email import get_unread_count
 
         mock_email_service.get_unread_count.side_effect = ValueError("Not connected")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await get_unread_count(mock_current_user, mock_db_pool)
 
             assert response["unread_count"] == 0
@@ -697,11 +697,11 @@ class TestZohoEmailOperations:
     @pytest.mark.asyncio
     async def test_get_unread_count_error(self, mock_db_pool, mock_current_user, mock_email_service):
         """Test get unread count error handling"""
-        from app.routers.zoho_email import get_unread_count
+        from backend.app.routers.zoho_email import get_unread_count
 
         mock_email_service.get_unread_count.side_effect = Exception("Service error")
 
-        with patch("app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+        with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
             response = await get_unread_count(mock_current_user, mock_db_pool)
 
             assert response["unread_count"] == 0
@@ -713,7 +713,7 @@ class TestZohoEmailPydanticModels:
 
     def test_send_email_request(self):
         """Test SendEmailRequest model"""
-        from app.routers.zoho_email import SendEmailRequest
+        from backend.app.routers.zoho_email import SendEmailRequest
 
         request = SendEmailRequest(
             to=["test@example.com"],
@@ -730,7 +730,7 @@ class TestZohoEmailPydanticModels:
 
     def test_send_email_request_content_priority(self):
         """Test SendEmailRequest content priority (html_content > text_content > content)"""
-        from app.routers.zoho_email import SendEmailRequest
+        from backend.app.routers.zoho_email import SendEmailRequest
 
         request = SendEmailRequest(
             to=["test@example.com"],
@@ -753,7 +753,7 @@ class TestZohoEmailPydanticModels:
 
     def test_reply_email_request(self):
         """Test ReplyEmailRequest model"""
-        from app.routers.zoho_email import ReplyEmailRequest
+        from backend.app.routers.zoho_email import ReplyEmailRequest
 
         request = ReplyEmailRequest(content="Reply content", reply_all=True)
 
@@ -762,7 +762,7 @@ class TestZohoEmailPydanticModels:
 
     def test_forward_email_request(self):
         """Test ForwardEmailRequest model"""
-        from app.routers.zoho_email import ForwardEmailRequest
+        from backend.app.routers.zoho_email import ForwardEmailRequest
 
         request = ForwardEmailRequest(to=["forward@example.com"], content="Additional content")
 
@@ -771,7 +771,7 @@ class TestZohoEmailPydanticModels:
 
     def test_mark_read_request(self):
         """Test MarkReadRequest model"""
-        from app.routers.zoho_email import MarkReadRequest
+        from backend.app.routers.zoho_email import MarkReadRequest
 
         request = MarkReadRequest(message_ids=["msg_1", "msg_2"], is_read=False)
 

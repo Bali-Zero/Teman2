@@ -34,7 +34,7 @@ class TestCreateInteraction:
 
     def test_create_interaction_chat(self, authenticated_client, test_app):
         """Test creating chat interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -52,7 +52,7 @@ class TestCreateInteraction:
 
     def test_create_interaction_email(self, authenticated_client, test_app):
         """Test creating email interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -74,7 +74,7 @@ class TestCreateInteraction:
         """Test creating interactions of all types"""
         interaction_types = ["chat", "email", "whatsapp", "call", "meeting", "note"]
 
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -141,7 +141,7 @@ class TestCreateInteraction:
 
     def test_create_interaction_with_action_items(self, authenticated_client, test_app):
         """Test creating interaction with action items"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -162,7 +162,7 @@ class TestCreateInteraction:
 
     def test_create_interaction_with_entities(self, authenticated_client, test_app):
         """Test creating interaction with extracted entities"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -184,7 +184,7 @@ class TestCreateInteraction:
 
     def test_create_interaction_outbound(self, authenticated_client, test_app):
         """Test creating outbound interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -223,7 +223,7 @@ class TestListInteractions:
 
     def test_list_interactions_default(self, authenticated_client, test_app):
         """Test listing interactions with default parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -241,7 +241,7 @@ class TestListInteractions:
 
     def test_list_interactions_with_filters(self, authenticated_client, test_app):
         """Test listing interactions with filters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -262,7 +262,7 @@ class TestListInteractions:
 
     def test_list_interactions_max_limit(self, authenticated_client, test_app):
         """Test listing interactions with maximum limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -301,7 +301,7 @@ class TestGetInteraction:
 
     def test_get_interaction_by_id(self, authenticated_client, test_app):
         """Test getting interaction by ID"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -319,7 +319,7 @@ class TestGetInteraction:
 
     def test_get_interaction_not_found(self, authenticated_client, test_app):
         """Test getting non-existent interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -350,7 +350,7 @@ class TestClientTimeline:
 
     def test_get_client_timeline(self, authenticated_client, test_app):
         """Test getting client interaction timeline"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -368,7 +368,7 @@ class TestClientTimeline:
 
     def test_get_client_timeline_with_limit(self, authenticated_client, test_app):
         """Test getting client timeline with limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -400,7 +400,7 @@ class TestPracticeHistory:
 
     def test_get_practice_history(self, authenticated_client, test_app):
         """Test getting practice interaction history"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -432,7 +432,7 @@ class TestInteractionStats:
 
     def test_get_interaction_stats(self, authenticated_client, test_app):
         """Test getting interaction statistics"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -451,7 +451,7 @@ class TestInteractionStats:
 
     def test_get_interaction_stats_cached(self, authenticated_client, test_app):
         """Test interaction stats are cached"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool
@@ -484,7 +484,7 @@ class TestFromConversation:
 
     def test_create_interaction_from_conversation(self, authenticated_client, test_app):
         """Test creating interaction from conversation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -501,7 +501,7 @@ class TestFromConversation:
 
     def test_create_interaction_from_conversation_not_found(self, authenticated_client, test_app):
         """Test creating interaction from non-existent conversation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool

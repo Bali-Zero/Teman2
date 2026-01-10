@@ -103,11 +103,11 @@ def mock_websocket():
 @pytest.fixture
 def connection_manager():
     """Create a fresh ConnectionManager instance"""
-    with patch("app.routers.websocket.settings") as mock_settings:
+    with patch("backend.app.routers.websocket.settings") as mock_settings:
         mock_settings.jwt_secret_key = "test-secret-key-minimum-32-characters-long"
         mock_settings.jwt_algorithm = "HS256"
 
-        from app.routers.websocket import ConnectionManager
+        from backend.app.routers.websocket import ConnectionManager
 
         return ConnectionManager()
 
@@ -122,8 +122,8 @@ class TestConnectionManagerInit:
 
     def test_init_creates_empty_connections(self):
         """Test that ConnectionManager starts with empty connections"""
-        with patch("app.routers.websocket.settings"):
-            from app.routers.websocket import ConnectionManager
+        with patch("backend.app.routers.websocket.settings"):
+            from backend.app.routers.websocket import ConnectionManager
 
             manager = ConnectionManager()
 
@@ -298,7 +298,7 @@ class TestMessageSending:
         await connection_manager.connect(ws_good, user_id)
         await connection_manager.connect(ws_bad, user_id)
 
-        with patch("app.routers.websocket.logger"):
+        with patch("backend.app.routers.websocket.logger"):
             await connection_manager.send_personal_message(message, user_id)
 
         # Good connection should receive message
@@ -343,8 +343,8 @@ class TestWebSocketJWTValidation:
     @pytest.mark.asyncio
     async def test_valid_token_returns_user_id(self, mock_settings, valid_jwt_token):
         """Test that valid token returns user ID"""
-        with patch("app.routers.websocket.settings", mock_settings):
-            from app.routers.websocket import get_current_user_ws
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
 
             user_id = await get_current_user_ws(valid_jwt_token)
 
@@ -353,8 +353,8 @@ class TestWebSocketJWTValidation:
     @pytest.mark.asyncio
     async def test_expired_token_returns_none(self, mock_settings, expired_jwt_token):
         """Test that expired token returns None"""
-        with patch("app.routers.websocket.settings", mock_settings):
-            from app.routers.websocket import get_current_user_ws
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
 
             user_id = await get_current_user_ws(expired_jwt_token)
 
@@ -363,8 +363,8 @@ class TestWebSocketJWTValidation:
     @pytest.mark.asyncio
     async def test_invalid_token_returns_none(self, mock_settings):
         """Test that invalid token returns None"""
-        with patch("app.routers.websocket.settings", mock_settings):
-            from app.routers.websocket import get_current_user_ws
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
 
             user_id = await get_current_user_ws("invalid-token-format")
 
@@ -384,8 +384,8 @@ class TestWebSocketJWTValidation:
         }
         token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
 
-        with patch("app.routers.websocket.settings", mock_settings):
-            from app.routers.websocket import get_current_user_ws
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
 
             user_id = await get_current_user_ws(token)
 
@@ -405,8 +405,8 @@ class TestWebSocketJWTValidation:
         }
         token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
 
-        with patch("app.routers.websocket.settings", mock_settings):
-            from app.routers.websocket import get_current_user_ws
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
 
             user_id = await get_current_user_ws(token)
 
@@ -426,8 +426,8 @@ class TestWebSocketJWTValidation:
         }
         token = jwt.encode(payload, mock_settings.jwt_secret_key, algorithm="HS256")
 
-        with patch("app.routers.websocket.settings", mock_settings):
-            from app.routers.websocket import get_current_user_ws
+        with patch("backend.app.routers.websocket.settings", mock_settings):
+            from backend.app.routers.websocket import get_current_user_ws
 
             user_id = await get_current_user_ws(token)
 
@@ -450,11 +450,11 @@ class TestWebSocketEndpoint:
         mock_websocket.scope = {"subprotocols": []}
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.get_current_user_ws", AsyncMock(return_value=None)),
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.get_current_user_ws", AsyncMock(return_value=None)),
+            patch("backend.app.routers.websocket.logger"),
         ):
-            from app.routers.websocket import websocket_endpoint
+            from backend.app.routers.websocket import websocket_endpoint
 
             await websocket_endpoint(mock_websocket)
 
@@ -475,14 +475,14 @@ class TestWebSocketEndpoint:
         mock_websocket.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.manager") as mock_manager,
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.manager") as mock_manager,
+            patch("backend.app.routers.websocket.logger"),
         ):
             mock_manager.connect = AsyncMock()
             mock_manager.disconnect = AsyncMock()
 
-            from app.routers.websocket import websocket_endpoint
+            from backend.app.routers.websocket import websocket_endpoint
 
             await websocket_endpoint(mock_websocket)
 
@@ -502,14 +502,14 @@ class TestWebSocketEndpoint:
         mock_websocket.receive_text = AsyncMock(side_effect=WebSocketDisconnect())
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.manager") as mock_manager,
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.manager") as mock_manager,
+            patch("backend.app.routers.websocket.logger"),
         ):
             mock_manager.connect = AsyncMock()
             mock_manager.disconnect = AsyncMock()
 
-            from app.routers.websocket import websocket_endpoint
+            from backend.app.routers.websocket import websocket_endpoint
 
             await websocket_endpoint(mock_websocket)
 
@@ -524,10 +524,10 @@ class TestWebSocketEndpoint:
         mock_websocket.url.query = ""
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.logger"),
         ):
-            from app.routers.websocket import websocket_endpoint
+            from backend.app.routers.websocket import websocket_endpoint
 
             await websocket_endpoint(mock_websocket)
 
@@ -548,10 +548,10 @@ class TestRedisListener:
     async def test_redis_listener_disabled_without_url(self, mock_settings_no_redis):
         """Test that Redis listener is disabled without URL"""
         with (
-            patch("app.routers.websocket.settings", mock_settings_no_redis),
-            patch("app.routers.websocket.logger") as mock_logger,
+            patch("backend.app.routers.websocket.settings", mock_settings_no_redis),
+            patch("backend.app.routers.websocket.logger") as mock_logger,
         ):
-            from app.routers.websocket import redis_listener
+            from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
@@ -581,14 +581,14 @@ class TestRedisListener:
         mock_redis.close = AsyncMock()
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("app.routers.websocket.manager") as mock_manager,
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
+            patch("backend.app.routers.websocket.manager") as mock_manager,
+            patch("backend.app.routers.websocket.logger"),
         ):
             mock_manager.send_personal_message = AsyncMock()
 
-            from app.routers.websocket import redis_listener
+            from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
@@ -619,14 +619,14 @@ class TestRedisListener:
         mock_redis.close = AsyncMock()
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("app.routers.websocket.manager") as mock_manager,
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
+            patch("backend.app.routers.websocket.manager") as mock_manager,
+            patch("backend.app.routers.websocket.logger"),
         ):
             mock_manager.send_personal_message = AsyncMock()
 
-            from app.routers.websocket import redis_listener
+            from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
@@ -655,14 +655,14 @@ class TestRedisListener:
         mock_redis.close = AsyncMock()
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("app.routers.websocket.manager") as mock_manager,
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
+            patch("backend.app.routers.websocket.manager") as mock_manager,
+            patch("backend.app.routers.websocket.logger"),
         ):
             mock_manager.broadcast = AsyncMock()
 
-            from app.routers.websocket import redis_listener
+            from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
@@ -692,14 +692,14 @@ class TestRedisListener:
         mock_redis.close = AsyncMock()
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("app.routers.websocket.manager") as mock_manager,
-            patch("app.routers.websocket.logger"),
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
+            patch("backend.app.routers.websocket.manager") as mock_manager,
+            patch("backend.app.routers.websocket.logger"),
         ):
             mock_manager.send_personal_message = AsyncMock()
 
-            from app.routers.websocket import redis_listener
+            from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 
@@ -724,11 +724,11 @@ class TestRedisListener:
         mock_redis.close = AsyncMock()
 
         with (
-            patch("app.routers.websocket.settings", mock_settings),
-            patch("app.routers.websocket.redis.from_url", return_value=mock_redis),
-            patch("app.routers.websocket.logger") as mock_logger,
+            patch("backend.app.routers.websocket.settings", mock_settings),
+            patch("backend.app.routers.websocket.redis.from_url", return_value=mock_redis),
+            patch("backend.app.routers.websocket.logger") as mock_logger,
         ):
-            from app.routers.websocket import redis_listener
+            from backend.app.routers.websocket import redis_listener
 
             await redis_listener()
 

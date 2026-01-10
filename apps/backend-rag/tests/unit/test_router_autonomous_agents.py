@@ -30,11 +30,11 @@ if "langgraph.graph" not in sys.modules:
 
 from fastapi import FastAPI
 
-routers_pkg = types.ModuleType("app.routers")
+routers_pkg = types.ModuleType("backend.app.routers")
 routers_pkg.__path__ = []
-sys.modules.setdefault("app.routers", routers_pkg)
+sys.modules.setdefault("backend.app.routers", routers_pkg)
 
-module_name = "app.routers.autonomous_agents"
+module_name = "backend.app.routers.autonomous_agents"
 module_path = backend_path / "app" / "routers" / "autonomous_agents.py"
 spec = importlib.util.spec_from_file_location(module_name, module_path)
 autonomous_agents = importlib.util.module_from_spec(spec)
@@ -84,7 +84,7 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("GOOGLE_CREDENTIALS_JSON", "{}")
 
     # Patch settings object directly as it might be already instantiated
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = "postgresql://user:pass@localhost:5432/db"
         mock_settings.google_api_key = "test_key"
         mock_settings.google_credentials_json = "{}"
@@ -157,13 +157,13 @@ def test_list_executions():
 @pytest.mark.asyncio
 async def test_run_conversation_trainer_task_no_analysis(monkeypatch):
     """Test conversation trainer background task when no analysis found"""
-    from app.routers.autonomous_agents import _run_conversation_trainer_task
+    from backend.app.routers.autonomous_agents import _run_conversation_trainer_task
 
     execution_id = "test_exec_1"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
+    with patch("backend.app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
         trainer_instance = AsyncMock()
         trainer_instance.analyze_winning_patterns = AsyncMock(return_value=None)
         mock_trainer.return_value = trainer_instance
@@ -182,13 +182,13 @@ async def test_run_conversation_trainer_task_no_analysis(monkeypatch):
 @pytest.mark.asyncio
 async def test_run_conversation_trainer_task_success(monkeypatch):
     """Test conversation trainer background task successful execution"""
-    from app.routers.autonomous_agents import _run_conversation_trainer_task
+    from backend.app.routers.autonomous_agents import _run_conversation_trainer_task
 
     execution_id = "test_exec_2"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
+    with patch("backend.app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
         trainer_instance = AsyncMock()
         trainer_instance.analyze_winning_patterns = AsyncMock(return_value=["insight1", "insight2"])
         trainer_instance.generate_prompt_update = AsyncMock(return_value="New prompt")
@@ -207,13 +207,13 @@ async def test_run_conversation_trainer_task_success(monkeypatch):
 @pytest.mark.asyncio
 async def test_run_client_value_predictor_task_success(monkeypatch):
     """Test client value predictor background task successful execution"""
-    from app.routers.autonomous_agents import _run_client_value_predictor_task
+    from backend.app.routers.autonomous_agents import _run_client_value_predictor_task
 
     execution_id = "test_exec_3"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.ClientValuePredictor") as mock_predictor:
+    with patch("backend.app.routers.autonomous_agents.ClientValuePredictor") as mock_predictor:
         predictor_instance = AsyncMock()
         predictor_instance.run_daily_nurturing = AsyncMock(
             return_value={
@@ -237,13 +237,13 @@ async def test_run_client_value_predictor_task_success(monkeypatch):
 @pytest.mark.asyncio
 async def test_run_knowledge_graph_builder_task_with_init(monkeypatch):
     """Test knowledge graph builder with schema initialization"""
-    from app.routers.autonomous_agents import _run_knowledge_graph_builder_task
+    from backend.app.routers.autonomous_agents import _run_knowledge_graph_builder_task
 
     execution_id = "test_exec_4"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
+    with patch("backend.app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
         builder_instance = AsyncMock()
         builder_instance.init_graph_schema = AsyncMock()
         builder_instance.build_graph_from_all_conversations = AsyncMock()
@@ -268,13 +268,13 @@ async def test_run_knowledge_graph_builder_task_with_init(monkeypatch):
 @pytest.mark.asyncio
 async def test_run_knowledge_graph_builder_task_without_init(monkeypatch):
     """Test knowledge graph builder without schema initialization"""
-    from app.routers.autonomous_agents import _run_knowledge_graph_builder_task
+    from backend.app.routers.autonomous_agents import _run_knowledge_graph_builder_task
 
     execution_id = "test_exec_5"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
+    with patch("backend.app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
         builder_instance = AsyncMock()
         builder_instance.init_graph_schema = AsyncMock()
         builder_instance.build_graph_from_all_conversations = AsyncMock()
@@ -411,13 +411,13 @@ def test_list_executions_negative_limit():
 @pytest.mark.asyncio
 async def test_run_conversation_trainer_task_exception(monkeypatch):
     """Test conversation trainer background task exception handling"""
-    from app.routers.autonomous_agents import _run_conversation_trainer_task
+    from backend.app.routers.autonomous_agents import _run_conversation_trainer_task
 
     execution_id = "test_exec_exception"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
+    with patch("backend.app.routers.autonomous_agents.ConversationTrainer") as mock_trainer:
         trainer_instance = AsyncMock()
         trainer_instance.analyze_winning_patterns = AsyncMock(side_effect=Exception("Test error"))
         mock_trainer.return_value = trainer_instance
@@ -432,13 +432,13 @@ async def test_run_conversation_trainer_task_exception(monkeypatch):
 @pytest.mark.asyncio
 async def test_run_client_value_predictor_task_exception(monkeypatch):
     """Test client value predictor background task exception handling"""
-    from app.routers.autonomous_agents import _run_client_value_predictor_task
+    from backend.app.routers.autonomous_agents import _run_client_value_predictor_task
 
     execution_id = "test_exec_predictor_exception"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.ClientValuePredictor") as mock_predictor:
+    with patch("backend.app.routers.autonomous_agents.ClientValuePredictor") as mock_predictor:
         predictor_instance = AsyncMock()
         predictor_instance.run_daily_nurturing = AsyncMock(side_effect=Exception("Predictor error"))
         mock_predictor.return_value = predictor_instance
@@ -453,13 +453,13 @@ async def test_run_client_value_predictor_task_exception(monkeypatch):
 @pytest.mark.asyncio
 async def test_run_knowledge_graph_builder_task_exception(monkeypatch):
     """Test knowledge graph builder background task exception handling"""
-    from app.routers.autonomous_agents import _run_knowledge_graph_builder_task
+    from backend.app.routers.autonomous_agents import _run_knowledge_graph_builder_task
 
     execution_id = "test_exec_kg_exception"
     agent_executions[execution_id] = {"status": "started"}
     _install_main_cloud_stub(monkeypatch, db_pool=object())
 
-    with patch("app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
+    with patch("backend.app.routers.autonomous_agents.KnowledgeGraphBuilder") as mock_builder:
         builder_instance = AsyncMock()
         builder_instance.build_graph_from_all_conversations = AsyncMock(
             side_effect=Exception("KG builder error")
@@ -534,7 +534,7 @@ def _install_main_cloud_stub(monkeypatch, retriever=None, db_pool=None):
     app_stub = types.SimpleNamespace(state=types.SimpleNamespace(retriever=retriever, db_pool=db_pool, redis_url='redis://localhost:6379')
     )
     module_stub = types.SimpleNamespace(app=app_stub, redis_url='redis://localhost:6379')
-    monkeypatch.setitem(sys.modules, "app.main_cloud", module_stub)
+    monkeypatch.setitem(sys.modules, "backend.app.main_cloud", module_stub)
     return app_stub
 
 
@@ -630,7 +630,7 @@ def test_persist_kg_sample_success(monkeypatch):
 
     kg_module = types.SimpleNamespace(Entity=_Entity, KnowledgeGraphBuilder=_KnowledgeGraphBuilder, redis_url='redis://localhost:6379')
     monkeypatch.setitem(
-        sys.modules, "services.autonomous_agents.knowledge_graph_builder", kg_module
+        sys.modules, "backend.services.autonomous_agents.knowledge_graph_builder", kg_module
     )
 
     retriever = types.SimpleNamespace(client=_QdrantClient(), redis_url='redis://localhost:6379')
@@ -652,7 +652,7 @@ def test_persist_kg_sample_success(monkeypatch):
 
 def _install_scheduler_stub(monkeypatch, scheduler):
     module_stub = types.SimpleNamespace(get_autonomous_scheduler=lambda: scheduler, redis_url='redis://localhost:6379')
-    monkeypatch.setitem(sys.modules, "services.misc.autonomous_scheduler", module_stub)
+    monkeypatch.setitem(sys.modules, "backend.services.misc.autonomous_scheduler", module_stub)
 
 
 def test_get_scheduler_status_success(monkeypatch):
@@ -679,7 +679,7 @@ def test_get_scheduler_status_failure(monkeypatch):
         raise RuntimeError("scheduler offline")
 
     module_stub = types.SimpleNamespace(get_autonomous_scheduler=_raise, redis_url='redis://localhost:6379')
-    monkeypatch.setitem(sys.modules, "services.misc.autonomous_scheduler", module_stub)
+    monkeypatch.setitem(sys.modules, "backend.services.misc.autonomous_scheduler", module_stub)
 
     response = client.get("/api/autonomous-agents/scheduler/status")
 

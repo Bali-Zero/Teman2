@@ -43,7 +43,7 @@ class TestAgenticRAGSessionAPI:
 
     def test_greeting_endpoint_skips_rag(self, authenticated_client, mock_orchestrator):
         """Test: POST /api/agentic-rag/query with greeting skips RAG"""
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_get.return_value = mock_orchestrator
 
             # Mock greeting detection
@@ -78,7 +78,7 @@ class TestAgenticRAGSessionAPI:
         """Test: session_id is passed from API to orchestrator"""
         session_id = str(uuid4())
 
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_get.return_value = mock_orchestrator
 
             response = authenticated_client.post(
@@ -107,7 +107,7 @@ class TestAgenticRAGSessionAPI:
 
         mock_orchestrator.stream_query = mock_stream
 
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_get.return_value = mock_orchestrator
 
             response = authenticated_client.post(
@@ -159,7 +159,7 @@ class TestAgenticRAGSessionAPI:
 
         mock_orchestrator.process_query = AsyncMock(side_effect=mock_process_query)
 
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_get.return_value = mock_orchestrator
 
             # Query with session 1

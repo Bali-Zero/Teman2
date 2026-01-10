@@ -5,7 +5,7 @@ Unit tests for Semantic Chunking
 from unittest.mock import MagicMock, patch
 
 import pytest
-from core.legal.chunker import LegalChunker, SemanticSplitter
+from backend.core.legal.chunker import LegalChunker, SemanticSplitter
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def test_semantic_splitter_max_tokens(mock_embedder):
 @pytest.mark.asyncio
 async def test_legal_chunker_fallback_semantic(mock_embedder):
     """Test LegalChunker uses semantic splitting for fallback"""
-    with patch("core.legal.chunker.create_embeddings_generator", return_value=mock_embedder):
+    with patch("backend.core.legal.chunker.create_embeddings_generator", return_value=mock_embedder):
         chunker = LegalChunker(max_pasal_tokens=1000)
 
         text = "I like apple. I like banana. I drive a car."

@@ -16,8 +16,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.memory.models import MemoryContext, MemoryProcessResult
-from services.memory.orchestrator import MemoryOrchestrator
+from backend.services.memory.models import MemoryContext, MemoryProcessResult
+from backend.services.memory.orchestrator import MemoryOrchestrator
 
 
 @pytest.fixture
@@ -59,10 +59,12 @@ def mock_fact_extractor():
 @pytest.fixture
 def orchestrator(mock_db_pool, mock_memory_service, mock_fact_extractor):
     """Create MemoryOrchestrator instance"""
+    from backend.services.memory.orchestrator import MemoryServiceStatus
     orchestrator = MemoryOrchestrator(db_pool=mock_db_pool)
     orchestrator._memory_service = mock_memory_service
     orchestrator._fact_extractor = mock_fact_extractor
     orchestrator._is_initialized = True
+    orchestrator._status = MemoryServiceStatus.HEALTHY
     return orchestrator
 
 

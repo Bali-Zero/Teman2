@@ -38,10 +38,10 @@ def test_app():
     from unittest.mock import patch
 
     # Mock heavy services that require external APIs
-    with patch("services.rag.agentic.AgenticRAGOrchestrator") as mock_rag:
-        with patch("services.oracle_google_services.google_services") as mock_google:
-            with patch("services.gemini_service.GeminiService") as mock_gemini:
-                from app.main_cloud import app
+    with patch("backend.services.rag.agentic.AgenticRAGOrchestrator") as mock_rag:
+        with patch("backend.services.oracle_google_services.google_services") as mock_google:
+            with patch("backend.services.gemini_service.GeminiService") as mock_gemini:
+                from backend.app.main_cloud import app
 
                 # Setup app state with mocked services
                 app.state.search_service = MagicMock()
@@ -68,7 +68,7 @@ def test_client(test_app, db_pool):
     """Create TestClient with real database pool"""
     # Override database dependency
     test_app.dependency_overrides = {}
-    from app.dependencies import get_database_pool
+    from backend.app.dependencies import get_database_pool
 
     # Create override function that returns real db_pool
     def override_get_db_pool(request):
@@ -507,7 +507,7 @@ class TestCRMEndpoints:
 class TestSearchEndpoints:
     """Integration tests for Search endpoints"""
 
-    @patch("services.search_service.SearchService.search")
+    @patch("backend.services.search_service.SearchService.search")
     def test_search_endpoint(self, mock_search, authenticated_client):
         """Test search endpoint"""
         mock_search.return_value = {
@@ -518,7 +518,7 @@ class TestSearchEndpoints:
         response = authenticated_client.get("/api/search/?query=test&limit=5")
         assert response.status_code in [200, 404]
 
-    @patch("services.search_service.SearchService.search")
+    @patch("backend.services.search_service.SearchService.search")
     def test_search_with_tier_filter(self, mock_search, authenticated_client):
         """Test search with tier filtering"""
         mock_search.return_value = {
@@ -534,7 +534,7 @@ class TestSearchEndpoints:
 class TestAgenticRAGEndpoints:
     """Integration tests for Agentic RAG endpoints"""
 
-    @patch("services.rag.agentic.AgenticRAGOrchestrator.stream_query")
+    @patch("backend.services.rag.agentic.AgenticRAGOrchestrator.stream_query")
     def test_agentic_rag_stream(self, mock_stream, authenticated_client):
         """Test Agentic RAG streaming endpoint"""
 
@@ -562,7 +562,7 @@ class TestAgenticRAGEndpoints:
         content = response.text
         assert "data:" in content or len(content) > 0
 
-    @patch("services.rag.agentic.AgenticRAGOrchestrator.process_query")
+    @patch("backend.services.rag.agentic.AgenticRAGOrchestrator.process_query")
     def test_agentic_rag_query(self, mock_query, authenticated_client):
         """Test Agentic RAG non-streaming query"""
         mock_query.return_value = {
@@ -587,8 +587,8 @@ class TestAgenticRAGEndpoints:
 class TestOracleEndpoints:
     """Integration tests for Oracle endpoints"""
 
-    @patch("services.oracle_google_services.google_services")
-    @patch("services.gemini_service.GeminiService")
+    @patch("backend.services.oracle_google_services.google_services")
+    @patch("backend.services.gemini_service.GeminiService")
     def test_oracle_query(self, mock_gemini, mock_google, authenticated_client, qdrant_client):
         """Test Oracle Universal query endpoint"""
         # Mock Gemini response

@@ -16,7 +16,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.memory.memory_service_postgres import MemoryServicePostgres, UserMemory
+from backend.services.memory.memory_service_postgres import MemoryServicePostgres, UserMemory
 
 # ============================================================================
 # Fixtures
@@ -51,8 +51,8 @@ def mock_pool():
 def memory_service(mock_pool):
     """Create MemoryServicePostgres instance with mocked pool"""
     pool, conn = mock_pool
-    with patch("services.memory.memory_service_postgres.asyncpg.create_pool", return_value=pool):
-        with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.services.memory.memory_service_postgres.asyncpg.create_pool", return_value=pool):
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             service = MemoryServicePostgres()
             service.pool = pool
@@ -63,7 +63,7 @@ def memory_service(mock_pool):
 @pytest.fixture
 def memory_service_no_db():
     """Create MemoryServicePostgres instance without database"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = None
         service = MemoryServicePostgres()
         service.use_postgres = False
@@ -77,7 +77,7 @@ def memory_service_no_db():
 
 def test_init_with_database_url():
     """Test initialization with database URL"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = "postgresql://test"
         service = MemoryServicePostgres()
 
@@ -88,7 +88,7 @@ def test_init_with_database_url():
 
 def test_init_without_database_url():
     """Test initialization without database URL"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = None
         service = MemoryServicePostgres()
 
@@ -110,7 +110,7 @@ def test_init_with_custom_url():
 @pytest.mark.asyncio
 async def test_connect_success():
     """Test connect successful"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = "postgresql://test"
         service = MemoryServicePostgres()
         mock_pool = AsyncMock()
@@ -120,7 +120,7 @@ async def test_connect_success():
             return mock_pool
 
         with patch(
-            "services.memory.memory_service_postgres.asyncpg.create_pool",
+            "backend.services.memory.memory_service_postgres.asyncpg.create_pool",
             side_effect=mock_create_pool,
         ):
             await service.connect()
@@ -139,11 +139,11 @@ async def test_connect_no_database_url(memory_service_no_db):
 @pytest.mark.asyncio
 async def test_connect_exception():
     """Test connect with exception"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.database_url = "postgresql://test"
         service = MemoryServicePostgres()
         with patch(
-            "services.memory.memory_service_postgres.asyncpg.create_pool",
+            "backend.services.memory.memory_service_postgres.asyncpg.create_pool",
             side_effect=asyncpg.PostgresError("Connection error"),
         ):
             await service.connect()

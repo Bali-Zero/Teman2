@@ -32,7 +32,7 @@ class TestLegalIngest:
     def test_ingest_legal_document_success(self, authenticated_client):
         """Test POST /api/legal/ingest - successful ingestion"""
         with (
-            patch("app.routers.legal_ingest.get_legal_service") as mock_get_service,
+            patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -91,7 +91,7 @@ class TestLegalIngest:
     def test_ingest_legal_document_service_error(self, authenticated_client):
         """Test POST /api/legal/ingest - service error"""
         with (
-            patch("app.routers.legal_ingest.get_legal_service") as mock_get_service,
+            patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -114,7 +114,7 @@ class TestLegalIngestBatch:
 
     def test_ingest_batch_success(self, authenticated_client):
         """Test POST /api/legal/ingest-batch - successful batch"""
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_get_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_legal_document = AsyncMock(
                 return_value={
@@ -141,7 +141,7 @@ class TestLegalIngestBatch:
 
     def test_ingest_batch_partial_failure(self, authenticated_client):
         """Test POST /api/legal/ingest-batch - partial failure"""
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_get_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service:
             mock_service = MagicMock()
             call_count = 0
 
@@ -178,7 +178,7 @@ class TestLegalCollectionStats:
 
     def test_get_collection_stats(self, authenticated_client):
         """Test GET /api/legal/collections/stats"""
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_get_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service:
             mock_service = MagicMock()
             mock_get_service.return_value = mock_service
 
@@ -190,7 +190,7 @@ class TestLegalCollectionStats:
 
     def test_get_collection_stats_custom_collection(self, authenticated_client):
         """Test GET /api/legal/collections/stats with custom collection"""
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_get_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service:
             mock_service = MagicMock()
             mock_get_service.return_value = mock_service
 
@@ -203,7 +203,7 @@ class TestLegalCollectionStats:
     def test_ingest_legal_document_with_tier_override(self, authenticated_client):
         """Test POST /api/legal/ingest - with tier override"""
         with (
-            patch("app.routers.legal_ingest.get_legal_service") as mock_get_service,
+            patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -232,7 +232,7 @@ class TestLegalCollectionStats:
     def test_ingest_legal_document_with_collection_override(self, authenticated_client):
         """Test POST /api/legal/ingest - with collection override"""
         with (
-            patch("app.routers.legal_ingest.get_legal_service") as mock_get_service,
+            patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -272,7 +272,7 @@ class TestLegalCollectionStats:
 
     def test_ingest_batch_large_list(self, authenticated_client):
         """Test POST /api/legal/ingest-batch - large file list"""
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_get_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.ingest_legal_document = AsyncMock(
                 return_value={
@@ -310,7 +310,7 @@ class TestLegalCollectionStats:
         valid_tiers = ["S", "A", "B", "C", "D"]
 
         with (
-            patch("app.routers.legal_ingest.get_legal_service") as mock_get_service,
+            patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -338,7 +338,7 @@ class TestLegalCollectionStats:
     def test_ingest_legal_document_lowercase_tier(self, authenticated_client):
         """Test POST /api/legal/ingest - lowercase tier (should be converted)"""
         with (
-            patch("app.routers.legal_ingest.get_legal_service") as mock_get_service,
+            patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service,
             patch("pathlib.Path.exists", return_value=True),
         ):
             mock_service = MagicMock()
@@ -364,7 +364,7 @@ class TestLegalCollectionStats:
 
     def test_get_collection_stats_default_collection(self, authenticated_client):
         """Test GET /api/legal/collections/stats - default collection"""
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_get_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_get_service:
             mock_service = MagicMock()
             mock_get_service.return_value = mock_service
 

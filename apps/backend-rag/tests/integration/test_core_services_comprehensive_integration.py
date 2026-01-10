@@ -26,7 +26,7 @@ class TestEmbeddingsServiceIntegration:
     @pytest.mark.asyncio
     async def test_embeddings_generator_init_openai(self):
         """Test OpenAI embeddings initialization"""
-        from core.embeddings import EmbeddingsGenerator
+        from backend.core.embeddings import EmbeddingsGenerator
 
         # Mock OpenAI API key
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
@@ -40,7 +40,7 @@ class TestEmbeddingsServiceIntegration:
     @pytest.mark.asyncio
     async def test_embeddings_generator_init_sentence_transformers(self):
         """Test Sentence Transformers initialization"""
-        from core.embeddings import EmbeddingsGenerator
+        from backend.core.embeddings import EmbeddingsGenerator
 
         # Try to initialize with sentence-transformers
         try:
@@ -54,7 +54,7 @@ class TestEmbeddingsServiceIntegration:
     @pytest.mark.asyncio
     async def test_generate_embeddings_openai(self):
         """Test generating embeddings with OpenAI"""
-        from core.embeddings import EmbeddingsGenerator
+        from backend.core.embeddings import EmbeddingsGenerator
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
             generator = EmbeddingsGenerator(
@@ -79,7 +79,7 @@ class TestEmbeddingsServiceIntegration:
     @pytest.mark.asyncio
     async def test_generate_single_embedding(self):
         """Test generating single embedding"""
-        from core.embeddings import EmbeddingsGenerator
+        from backend.core.embeddings import EmbeddingsGenerator
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
             generator = EmbeddingsGenerator(
@@ -96,7 +96,7 @@ class TestEmbeddingsServiceIntegration:
     @pytest.mark.asyncio
     async def test_generate_query_embedding(self):
         """Test generating query embedding"""
-        from core.embeddings import EmbeddingsGenerator
+        from backend.core.embeddings import EmbeddingsGenerator
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
             generator = EmbeddingsGenerator(
@@ -113,7 +113,7 @@ class TestEmbeddingsServiceIntegration:
     @pytest.mark.asyncio
     async def test_get_model_info(self):
         """Test getting model info"""
-        from core.embeddings import EmbeddingsGenerator
+        from backend.core.embeddings import EmbeddingsGenerator
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
             generator = EmbeddingsGenerator(
@@ -128,7 +128,7 @@ class TestEmbeddingsServiceIntegration:
     @pytest.mark.asyncio
     async def test_create_embeddings_generator_factory(self):
         """Test factory function"""
-        from core.embeddings import create_embeddings_generator
+        from backend.core.embeddings import create_embeddings_generator
 
         with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
             generator = create_embeddings_generator(
@@ -153,21 +153,21 @@ class TestTokenEstimatorIntegration:
 
     def test_token_estimator_init(self):
         """Test TokenEstimator initialization"""
-        from llm.token_estimator import TokenEstimator
+        from backend.llm.token_estimator import TokenEstimator
 
         estimator = TokenEstimator(model="gpt-4")
         assert estimator.model == "gpt-4"
 
     def test_token_estimator_init_gemini(self):
         """Test TokenEstimator with Gemini model"""
-        from llm.token_estimator import TokenEstimator
+        from backend.llm.token_estimator import TokenEstimator
 
         estimator = TokenEstimator(model="gemini-3-flash-preview")
         assert estimator.model == "gemini-3-flash-preview"
 
     def test_estimate_tokens(self):
         """Test token estimation"""
-        from llm.token_estimator import TokenEstimator
+        from backend.llm.token_estimator import TokenEstimator
 
         estimator = TokenEstimator(model="gpt-4")
         text = "Hello world, this is a test"
@@ -176,7 +176,7 @@ class TestTokenEstimatorIntegration:
 
     def test_estimate_tokens_with_tiktoken(self):
         """Test token estimation with tiktoken"""
-        from llm.token_estimator import TIKTOKEN_AVAILABLE, TokenEstimator
+        from backend.llm.token_estimator import TIKTOKEN_AVAILABLE, TokenEstimator
 
         estimator = TokenEstimator(model="gpt-4")
         text = "Hello world, this is a test"
@@ -191,7 +191,7 @@ class TestTokenEstimatorIntegration:
 
     def test_estimate_messages_tokens(self):
         """Test estimating tokens for messages"""
-        from llm.token_estimator import TokenEstimator
+        from backend.llm.token_estimator import TokenEstimator
 
         estimator = TokenEstimator(model="gpt-4")
         messages = [
@@ -203,7 +203,7 @@ class TestTokenEstimatorIntegration:
 
     def test_estimate_approximate_fallback(self):
         """Test approximation fallback"""
-        from llm.token_estimator import TokenEstimator
+        from backend.llm.token_estimator import TokenEstimator
 
         estimator = TokenEstimator(model="gpt-4")
         # Force approximation by setting encoding to None
@@ -221,7 +221,7 @@ class TestMemoryServicePostgresIntegration:
     @pytest_asyncio.fixture
     async def memory_service(self, postgres_container):
         """Create memory service for testing"""
-        from services.memory.memory_service_postgres import MemoryServicePostgres
+        from backend.services.memory.memory_service_postgres import MemoryServicePostgres
 
         database_url = postgres_container
         if database_url and "+" in database_url:
@@ -395,14 +395,14 @@ class TestCacheServiceIntegration:
 
     def test_cache_service_init(self):
         """Test cache service initialization"""
-        from core.cache import CacheService
+        from backend.core.cache import CacheService
 
         cache = CacheService()
         assert cache is not None
 
     def test_cache_set_get(self):
         """Test cache set and get"""
-        from core.cache import CacheService
+        from backend.core.cache import CacheService
 
         cache = CacheService()
         cache.set("test_key", "test_value", ttl=60)
@@ -413,7 +413,7 @@ class TestCacheServiceIntegration:
         """Test cache expiration"""
         import time
 
-        from core.cache import CacheService
+        from backend.core.cache import CacheService
 
         cache = CacheService()
         cache.set("expire_key", "value", ttl=1)
@@ -423,7 +423,7 @@ class TestCacheServiceIntegration:
 
     def test_cache_delete(self):
         """Test cache delete"""
-        from core.cache import CacheService
+        from backend.core.cache import CacheService
 
         cache = CacheService()
         cache.set("delete_key", "value")
@@ -433,7 +433,7 @@ class TestCacheServiceIntegration:
 
     def test_cache_clear(self):
         """Test cache clear"""
-        from core.cache import CacheService
+        from backend.core.cache import CacheService
 
         cache = CacheService()
         cache.set("key1", "value1")
@@ -444,7 +444,7 @@ class TestCacheServiceIntegration:
 
     def test_get_cache_service_singleton(self):
         """Test singleton pattern"""
-        from core.cache import get_cache_service
+        from backend.core.cache import get_cache_service
 
         cache1 = get_cache_service()
         cache2 = get_cache_service()

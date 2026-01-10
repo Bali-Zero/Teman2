@@ -47,7 +47,7 @@ class TestHighVolumeRequests:
 
     def test_high_volume_post_requests(self, authenticated_client, test_app):
         """Test high volume POST requests"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -66,7 +66,7 @@ class TestHighVolumeRequests:
 
     def test_high_volume_mixed_requests(self, authenticated_client, test_app):
         """Test high volume mixed request types"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -137,7 +137,7 @@ class TestConcurrentRequests:
 
     def test_concurrent_post_requests(self, authenticated_client, test_app):
         """Test concurrent POST requests"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -164,7 +164,7 @@ class TestConcurrentRequests:
 
     def test_concurrent_mixed_requests(self, authenticated_client, test_app):
         """Test concurrent mixed request types"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -219,7 +219,7 @@ class TestResourceExhaustion:
 
     def test_database_connection_exhaustion(self, authenticated_client, test_app):
         """Test behavior when database connections are exhausted"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_pool.acquire = MagicMock(side_effect=Exception("Connection pool exhausted"))
             mock_get_pool.return_value = mock_pool
@@ -231,7 +231,7 @@ class TestResourceExhaustion:
 
     def test_memory_pressure_scenario(self, authenticated_client, test_app):
         """Test behavior under memory pressure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate large result set
             mock_conn.fetch = AsyncMock(
@@ -246,7 +246,7 @@ class TestResourceExhaustion:
 
     def test_timeout_scenario(self, authenticated_client):
         """Test behavior when requests timeout"""
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(side_effect=TimeoutError("Request timeout"))
             mock_search.return_value = mock_service
@@ -294,7 +294,7 @@ class TestRapidSequentialRequests:
 
     def test_rapid_sequential_posts(self, authenticated_client, test_app):
         """Test rapid sequential POST requests"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 

@@ -27,7 +27,7 @@ class TestMediaEndpoints:
 
     def test_generate_image_success(self, authenticated_client):
         """Test POST /media/generate-image - successful generation"""
-        with patch("app.routers.media.ImageGenerationService") as mock_service_class:
+        with patch("backend.app.routers.media.ImageGenerationService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.generate_image = AsyncMock(
                 return_value={
@@ -52,7 +52,7 @@ class TestMediaEndpoints:
     def test_generate_image_service_error(self, authenticated_client):
         """Test POST /media/generate-image - service error"""
         # Mock the ImageGenerationService to return an error
-        with patch("app.routers.media.ImageGenerationService") as mock_service_class:
+        with patch("backend.app.routers.media.ImageGenerationService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.generate_image = AsyncMock(
                 return_value={
@@ -73,7 +73,7 @@ class TestMediaEndpoints:
     def test_generate_image_invalid_prompt(self, authenticated_client):
         """Test POST /media/generate-image - invalid prompt"""
         with patch(
-            "services.image_generation_service.ImageGenerationService"
+            "backend.services.image_generation_service.ImageGenerationService"
         ) as mock_service_class:
             mock_service = MagicMock()
             mock_service.generate_image = AsyncMock(
@@ -102,7 +102,7 @@ class TestMediaEndpoints:
 
     def test_generate_image_long_prompt(self, authenticated_client):
         """Test POST /media/generate-image - very long prompt"""
-        with patch("app.routers.media.ImageGenerationService") as mock_service_class:
+        with patch("backend.app.routers.media.ImageGenerationService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.generate_image = AsyncMock(
                 return_value={
@@ -122,7 +122,7 @@ class TestMediaEndpoints:
 
     def test_generate_image_internal_error(self, authenticated_client):
         """Test POST /media/generate-image - internal server error"""
-        with patch("app.routers.media.ImageGenerationService") as mock_service_class:
+        with patch("backend.app.routers.media.ImageGenerationService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.generate_image = AsyncMock(side_effect=Exception("Internal error"))
             mock_service_class.return_value = mock_service
@@ -147,7 +147,7 @@ class TestMediaEndpoints:
 
     def test_generate_image_special_characters(self, authenticated_client):
         """Test POST /media/generate-image - prompt with special characters"""
-        with patch("app.routers.media.ImageGenerationService") as mock_service_class:
+        with patch("backend.app.routers.media.ImageGenerationService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.generate_image = AsyncMock(
                 return_value={
@@ -169,7 +169,7 @@ class TestMediaEndpoints:
 
     def test_generate_image_response_structure(self, authenticated_client):
         """Test POST /media/generate-image - response structure"""
-        with patch("app.routers.media.ImageGenerationService") as mock_service_class:
+        with patch("backend.app.routers.media.ImageGenerationService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.generate_image = AsyncMock(
                 return_value={

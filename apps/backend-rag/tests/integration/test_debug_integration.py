@@ -18,7 +18,7 @@ if str(backend_path) not in sys.path:
 
 from middleware.request_tracing import RequestTracingMiddleware
 
-from app.routers import debug
+from backend.app.routers import debug
 
 
 @pytest.fixture
@@ -39,7 +39,7 @@ def client(app):
 @pytest.fixture
 def mock_settings_dev():
     """Mock settings for development"""
-    with patch("app.routers.debug.settings") as mock:
+    with patch("backend.app.routers.debug.settings") as mock:
         mock.environment = "development"
         mock.admin_api_key = "test-admin-key"
         mock.port = 8000
@@ -119,7 +119,7 @@ class TestDebugUtilitiesIntegration:
 
     def test_rag_debugger_integration(self):
         """Test RAG debugger in realistic scenario"""
-        from app.utils.rag_debugger import RAGPipelineDebugger
+        from backend.app.utils.rag_debugger import RAGPipelineDebugger
 
         debugger = RAGPipelineDebugger(query="test query", correlation_id="test-correlation")
 
@@ -147,7 +147,7 @@ class TestDebugUtilitiesIntegration:
 
     def test_db_debugger_integration(self):
         """Test database debugger in realistic scenario"""
-        from app.utils.db_debugger import DatabaseQueryDebugger
+        from backend.app.utils.db_debugger import DatabaseQueryDebugger
 
         debugger = DatabaseQueryDebugger(slow_query_threshold_ms=1000.0)
 
@@ -173,11 +173,11 @@ class TestDebugUtilitiesIntegration:
     @pytest.mark.asyncio
     async def test_qdrant_debugger_integration(self):
         """Test Qdrant debugger integration"""
-        from app.utils.qdrant_debugger import QdrantDebugger
+        from backend.app.utils.qdrant_debugger import QdrantDebugger
 
         debugger = QdrantDebugger()
 
-        with patch("app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.utils.qdrant_debugger.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -240,8 +240,8 @@ class TestDebugContextIntegration:
 
     def test_debug_context_with_rag_pipeline(self):
         """Test debug context with RAG pipeline"""
-        from app.utils.debug_context import debug_mode
-        from app.utils.rag_debugger import RAGPipelineDebugger
+        from backend.app.utils.debug_context import debug_mode
+        from backend.app.utils.rag_debugger import RAGPipelineDebugger
 
         with debug_mode(request_id="test-123", enable_verbose_logging=True) as ctx:
             debugger = RAGPipelineDebugger(query="test", correlation_id="test-123")

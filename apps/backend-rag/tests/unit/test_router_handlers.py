@@ -13,13 +13,13 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.handlers import extract_handlers_from_router, list_all_handlers, search_handlers
+from backend.app.routers.handlers import extract_handlers_from_router, list_all_handlers, search_handlers
 
 
 @pytest.fixture
 def mock_settings(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db")
-    with patch("app.core.config.settings") as mock:
+    with patch("backend.app.core.config.settings") as mock:
         mock.database_url = "postgresql://user:pass@localhost:5432/db"
         yield mock
 
@@ -77,7 +77,7 @@ async def test_list_all_handlers_success():
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)  # Ignore Pydantic warnings
-        with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
+        with patch("backend.app.routers.handlers.extract_handlers_from_router", return_value=[]):
             result = await list_all_handlers()
 
             assert "total_handlers" in result
@@ -104,7 +104,7 @@ async def test_search_handlers_by_name():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result = await search_handlers("test")
 
@@ -128,7 +128,7 @@ async def test_search_handlers_no_results():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result = await search_handlers("xyz123nonexistent")
 
@@ -150,7 +150,7 @@ async def test_search_handlers_by_path():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result = await search_handlers("clients")
 
@@ -171,7 +171,7 @@ async def test_search_handlers_by_description():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result = await search_handlers("upload")
 
@@ -187,7 +187,7 @@ async def test_search_handlers_by_description():
 @pytest.mark.asyncio
 async def test_get_handlers_by_category_success():
     """Test getting handlers by category"""
-    from app.routers.handlers import get_handlers_by_category
+    from backend.app.routers.handlers import get_handlers_by_category
 
     mock_categories = {
         "agents": {
@@ -208,7 +208,7 @@ async def test_get_handlers_by_category_success():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
         ):
             result = await get_handlers_by_category("agents")
 
@@ -222,7 +222,7 @@ async def test_get_handlers_by_category_not_found():
     """Test getting handlers for non-existent category"""
     from fastapi import HTTPException
 
-    from app.routers.handlers import get_handlers_by_category
+    from backend.app.routers.handlers import get_handlers_by_category
 
     mock_categories = {"agents": {"count": 1, "handlers": []}}
 
@@ -231,7 +231,7 @@ async def test_get_handlers_by_category_not_found():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await get_handlers_by_category("nonexistent")
@@ -306,7 +306,7 @@ async def test_search_handlers_case_insensitive():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result_lower = await search_handlers("test")
             result_upper = await search_handlers("TEST")
@@ -330,7 +330,7 @@ async def test_search_handlers_partial_match():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result = await search_handlers("client")
 
@@ -353,7 +353,7 @@ async def test_search_handlers_special_characters():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             # Special characters should be handled gracefully
             result = await search_handlers("test@#$%")
@@ -376,7 +376,7 @@ async def test_search_handlers_empty_query():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result = await search_handlers("")
 
@@ -399,7 +399,7 @@ async def test_search_handlers_multiple_matches():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"handlers": mock_handlers}
         ):
             result = await search_handlers("create")
 
@@ -416,7 +416,7 @@ async def test_search_handlers_multiple_matches():
 @pytest.mark.asyncio
 async def test_get_handlers_by_category_empty_category():
     """Test getting handlers for category with no handlers"""
-    from app.routers.handlers import get_handlers_by_category
+    from backend.app.routers.handlers import get_handlers_by_category
 
     mock_categories = {
         "empty_category": {"count": 0, "handlers": []},
@@ -427,7 +427,7 @@ async def test_get_handlers_by_category_empty_category():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
         ):
             result = await get_handlers_by_category("empty_category")
 
@@ -440,7 +440,7 @@ async def test_get_handlers_by_category_case_sensitive():
     """Test that category names are case-sensitive"""
     from fastapi import HTTPException
 
-    from app.routers.handlers import get_handlers_by_category
+    from backend.app.routers.handlers import get_handlers_by_category
 
     mock_categories = {
         "agents": {"count": 1, "handlers": [{"name": "test", "path": "/test"}]},
@@ -451,7 +451,7 @@ async def test_get_handlers_by_category_case_sensitive():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
         ):
             # Should work with exact case
             result = await get_handlers_by_category("agents")
@@ -468,7 +468,7 @@ async def test_get_handlers_by_category_case_sensitive():
 async def test_get_handlers_by_category_special_characters():
     """Test getting handlers for category with special characters"""
 
-    from app.routers.handlers import get_handlers_by_category
+    from backend.app.routers.handlers import get_handlers_by_category
 
     mock_categories = {
         "test-category": {"count": 1, "handlers": [{"name": "test", "path": "/test"}]},
@@ -479,7 +479,7 @@ async def test_get_handlers_by_category_special_characters():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with patch(
-            "app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
+            "backend.app.routers.handlers.list_all_handlers", return_value={"categories": mock_categories}
         ):
             result = await get_handlers_by_category("test-category")
 
@@ -498,7 +498,7 @@ async def test_list_all_handlers_empty_modules():
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
-        with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
+        with patch("backend.app.routers.handlers.extract_handlers_from_router", return_value=[]):
             result = await list_all_handlers()
 
             assert result["total_handlers"] == 0
@@ -513,7 +513,7 @@ async def test_list_all_handlers_duplicate_modules():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         # The router already has oracle_universal twice in modules list
-        with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
+        with patch("backend.app.routers.handlers.extract_handlers_from_router", return_value=[]):
             result = await list_all_handlers()
 
             # Should handle duplicates without error
@@ -528,7 +528,7 @@ async def test_list_all_handlers_response_structure():
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
-        with patch("app.routers.handlers.extract_handlers_from_router", return_value=[]):
+        with patch("backend.app.routers.handlers.extract_handlers_from_router", return_value=[]):
             result = await list_all_handlers()
 
             assert "total_handlers" in result

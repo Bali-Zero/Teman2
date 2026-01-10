@@ -6,7 +6,7 @@ Tests the format_search_results function extracted from SearchService.
 
 import pytest
 
-from services.misc.result_formatter import format_search_results
+from backend.services.misc.result_formatter import format_search_results
 
 
 class TestFormatSearchResults:

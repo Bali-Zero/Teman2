@@ -15,7 +15,7 @@ if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
 import httpx
-from core.qdrant_db import QdrantClient, _retry_with_backoff
+from backend.core.qdrant_db import QdrantClient, _retry_with_backoff
 
 # ============================================================================
 # Fixtures
@@ -25,7 +25,7 @@ from core.qdrant_db import QdrantClient, _retry_with_backoff
 @pytest.fixture
 def mock_settings():
     """Mock settings configuration"""
-    with patch("core.qdrant_db.settings") as mock:
+    with patch("backend.core.qdrant_db.settings") as mock:
         mock.qdrant_url = "https://test-qdrant.example.com"
         mock.qdrant_api_key = None
         mock.qdrant_timeout = 30
@@ -35,7 +35,7 @@ def mock_settings():
 @pytest.fixture
 def qdrant_client_async(mock_settings):
     """Create a QdrantClient instance with httpx available"""
-    with patch("core.qdrant_db.httpx") as mock_httpx_module:
+    with patch("backend.core.qdrant_db.httpx") as mock_httpx_module:
         # Assign real exception classes so they can be caught
         mock_httpx_module.HTTPStatusError = httpx.HTTPStatusError
         mock_httpx_module.RequestError = httpx.RequestError
@@ -56,7 +56,7 @@ def qdrant_client_async(mock_settings):
 def qdrant_client_sync(mock_settings):
     """Create a QdrantClient instance with requests fallback"""
     # Use patch to set httpx to None
-    with patch("core.qdrant_db.httpx", None):
+    with patch("backend.core.qdrant_db.httpx", None):
         try:
             import requests as requests_module
 

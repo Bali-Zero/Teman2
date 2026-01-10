@@ -25,7 +25,7 @@ def app():
     """Create FastAPI app with health router"""
     from fastapi import FastAPI
 
-    from app.routers.health import router
+    from backend.app.routers.health import router
 
     app = FastAPI()
     app.include_router(router)
@@ -55,7 +55,7 @@ class TestHealthRouterIntegration:
     @pytest.mark.asyncio
     async def test_health_check_with_service(self, client):
         """Test health check with search service available"""
-        with patch("app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
+        with patch("backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
             mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
             # Mock app.state.search_service
@@ -98,9 +98,9 @@ class TestHealthRouterIntegration:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_success(self):
         """Test getting Qdrant stats successfully"""
-        from app.routers.health import get_qdrant_stats
+        from backend.app.routers.health import get_qdrant_stats
 
-        with patch("app.routers.health.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client:
             mock_response = MagicMock()
             mock_response.json.return_value = {
                 "result": {
@@ -136,9 +136,9 @@ class TestHealthRouterIntegration:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_error(self):
         """Test getting Qdrant stats with error"""
-        from app.routers.health import get_qdrant_stats
+        from backend.app.routers.health import get_qdrant_stats
 
-        with patch("app.routers.health.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client:
             mock_client_instance = MagicMock()
             mock_client_instance.get = AsyncMock(side_effect=Exception("Connection error"))
             mock_client_instance.__aenter__ = AsyncMock(return_value=mock_client_instance)

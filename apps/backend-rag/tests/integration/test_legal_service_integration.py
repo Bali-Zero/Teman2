@@ -26,7 +26,7 @@ class TestLegalServiceIntegration:
     @pytest.mark.asyncio
     async def test_legal_service_initialization(self, qdrant_client):
         """Test legal service initialization"""
-        from app.routers.legal_ingest import get_legal_service
+        from backend.app.routers.legal_ingest import get_legal_service
 
         service = get_legal_service()
         assert service is not None
@@ -36,7 +36,7 @@ class TestLegalServiceIntegration:
         """Test legal document ingestion flow"""
         with (
             patch(
-                "services.legal_ingestion_service.LegalIngestionService.ingest_legal_document",
+                "backend.services.legal_ingestion_service.LegalIngestionService.ingest_legal_document",
                 new_callable=AsyncMock,
             ) as mock_ingest,
             patch("pathlib.Path.exists", return_value=True),
@@ -49,7 +49,7 @@ class TestLegalServiceIntegration:
                 "message": "Ingestion successful",
             }
 
-            from app.routers.legal_ingest import get_legal_service
+            from backend.app.routers.legal_ingest import get_legal_service
 
             service = get_legal_service()
             result = await service.ingest_legal_document("/path/to/document.pdf")

@@ -67,15 +67,15 @@ def mock_team_config():
 
 def test_vote_approve_first_vote(mock_pending_dir, mock_team_config):
     """Test first APPROVE vote is recorded correctly"""
-    from app.routers.telegram import add_intel_vote, get_required_votes
+    from backend.app.routers.telegram import add_intel_vote, get_required_votes
 
     item_id = "visa_20260105_test1"
     intel_type = "visa"
     user = {"id": 8290313965, "first_name": "Zero"}
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Create initial voting status
         voting_status = {
@@ -100,14 +100,14 @@ def test_vote_approve_first_vote(mock_pending_dir, mock_team_config):
 
 def test_vote_approve_majority_reached(mock_pending_dir, mock_team_config):
     """Test APPROVE majority (2/3) triggers approval"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test2"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Create voting status with 1 approve vote already
         voting_status = {
@@ -136,14 +136,14 @@ def test_vote_approve_majority_reached(mock_pending_dir, mock_team_config):
 
 def test_vote_reject_majority_reached(mock_pending_dir, mock_team_config):
     """Test REJECT majority (2/3) triggers rejection"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test3"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Create voting status with 1 reject vote already
         voting_status = {
@@ -174,14 +174,14 @@ def test_vote_reject_majority_reached(mock_pending_dir, mock_team_config):
 
 def test_vote_duplicate_vote_rejected(mock_pending_dir, mock_team_config):
     """Test user cannot vote twice"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test4"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Create voting status with Zero already voted APPROVE
         voting_status = {
@@ -210,14 +210,14 @@ def test_vote_duplicate_vote_rejected(mock_pending_dir, mock_team_config):
 
 def test_vote_duplicate_across_types(mock_pending_dir, mock_team_config):
     """Test user who voted APPROVE cannot vote REJECT"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test5"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Dea voted APPROVE
         voting_status = {
@@ -246,14 +246,14 @@ def test_vote_duplicate_across_types(mock_pending_dir, mock_team_config):
 
 def test_vote_closed_voting_approved(mock_pending_dir, mock_team_config):
     """Test cannot vote on already approved item"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test6"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Create voting status already APPROVED
         voting_status = {
@@ -282,14 +282,14 @@ def test_vote_closed_voting_approved(mock_pending_dir, mock_team_config):
 
 def test_vote_closed_voting_rejected(mock_pending_dir, mock_team_config):
     """Test cannot vote on already rejected item"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test7"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Create voting status already REJECTED
         voting_status = {
@@ -319,14 +319,14 @@ def test_vote_closed_voting_rejected(mock_pending_dir, mock_team_config):
 
 def test_vote_tally_mixed_votes(mock_pending_dir, mock_team_config):
     """Test tally with mixed approve/reject votes"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test8"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Zero voted APPROVE, Dea voted REJECT
         voting_status = {
@@ -357,7 +357,7 @@ def test_vote_tally_mixed_votes(mock_pending_dir, mock_team_config):
 
 def test_format_vote_tally_display(mock_team_config):
     """Test vote tally formatting for display"""
-    from app.routers.telegram import format_intel_vote_tally
+    from backend.app.routers.telegram import format_intel_vote_tally
 
     intel_data = {
         "votes": {
@@ -373,7 +373,7 @@ def test_format_vote_tally_display(mock_team_config):
 
     original_text = "🛂 New Visa Update\n\nE33E Requirements Changed"
 
-    with patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.get_required_votes", return_value=2):
         tally = format_intel_vote_tally(intel_data, "visa", original_text)
 
         # Verify tally contains key elements
@@ -389,11 +389,11 @@ def test_format_vote_tally_display(mock_team_config):
 
 def test_vote_new_file_creation(mock_pending_dir, mock_team_config):
     """Test get_intel_status creates default status if file doesn't exist (defensive)"""
-    from app.routers.telegram import get_intel_status
+    from backend.app.routers.telegram import get_intel_status
 
     item_id = "visa_20260105_new"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir):
         # No file exists yet - get_intel_status should return default status
         # (In production, file is created by send_intel_approval_notification)
 
@@ -408,14 +408,14 @@ def test_vote_new_file_creation(mock_pending_dir, mock_team_config):
 
 def test_vote_concurrent_votes_same_type(mock_pending_dir, mock_team_config):
     """Test two users vote APPROVE at nearly same time"""
-    from app.routers.telegram import add_intel_vote
+    from backend.app.routers.telegram import add_intel_vote
 
     item_id = "visa_20260105_test9"
     intel_type = "visa"
 
-    with patch("app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
-         patch("app.routers.telegram.get_team_config", return_value=mock_team_config), \
-         patch("app.routers.telegram.get_required_votes", return_value=2):
+    with patch("backend.app.routers.telegram.PENDING_INTEL_PATH", mock_pending_dir), \
+         patch("backend.app.routers.telegram.get_team_config", return_value=mock_team_config), \
+         patch("backend.app.routers.telegram.get_required_votes", return_value=2):
 
         # Initial empty state
         voting_status = {

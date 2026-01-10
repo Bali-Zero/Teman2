@@ -32,7 +32,7 @@ if str(backend_path) not in sys.path:
 def app():
     """Create test FastAPI app with media router"""
     app = FastAPI()
-    from app.routers.media import router
+    from backend.app.routers.media import router
 
     app.include_router(router)
     return app
@@ -70,7 +70,7 @@ class TestGenerateImageEndpoint:
             "service": "pollinations_fallback",
         }
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": "a beautiful sunset"})
 
         assert response.status_code == 200
@@ -90,7 +90,7 @@ class TestGenerateImageEndpoint:
             "details": "GOOGLE_API_KEY environment variable required",
         }
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 503
@@ -106,7 +106,7 @@ class TestGenerateImageEndpoint:
             "details": "Prompt cannot be empty",
         }
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": ""})
 
         assert response.status_code == 400
@@ -122,7 +122,7 @@ class TestGenerateImageEndpoint:
             "details": "Network timeout",
         }
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 500
@@ -135,7 +135,7 @@ class TestGenerateImageEndpoint:
         """Test exception handling during image generation"""
         mock_image_service.generate_image.side_effect = RuntimeError("Unexpected error")
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": "test prompt"})
 
         assert response.status_code == 500
@@ -153,7 +153,7 @@ class TestGenerateImageEndpoint:
             # prompt and service fields missing
         }
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": "test"})
 
         assert response.status_code == 200
@@ -161,7 +161,7 @@ class TestGenerateImageEndpoint:
         assert data["success"] is True
         assert data["url"] == "https://example.com/image.png"
         assert data["prompt"] is None  # Uses .get() with no default
-        assert data["service"] == "unknown"  # Has default value
+        assert data["service"] == "pollinations_fallback"  # Has default value
 
     @pytest.mark.asyncio
     async def test_generate_image_long_prompt(self, client, mock_image_service):
@@ -174,7 +174,7 @@ class TestGenerateImageEndpoint:
             "service": "pollinations_fallback",
         }
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": long_prompt})
 
         assert response.status_code == 200
@@ -191,7 +191,7 @@ class TestGenerateImageEndpoint:
             "service": "pollinations_fallback",
         }
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
             response = client.post("/media/generate-image", json={"prompt": special_prompt})
 
         assert response.status_code == 200
@@ -233,7 +233,7 @@ class TestUploadFileEndpoint:
             mock_path_instance.mkdir = MagicMock()
             mock_file_path = MagicMock()
 
-            with patch("app.routers.media.Path") as mock_path_class:
+            with patch("backend.app.routers.media.Path") as mock_path_class:
                 # Mock the Path("static/uploads") call
                 mock_path_class.return_value = mock_path_instance
                 mock_path_instance.__truediv__ = MagicMock(return_value=mock_file_path)
@@ -248,10 +248,10 @@ class TestUploadFileEndpoint:
 
                 mock_path_class.side_effect = path_side_effect
 
-                with patch("app.routers.media.uuid.uuid4") as mock_uuid:
+                with patch("backend.app.routers.media.uuid.uuid4") as mock_uuid:
                     mock_uuid.return_value = "test-uuid"
                     with patch("builtins.open", create=True) as mock_open:
-                        with patch("app.routers.media.shutil.copyfileobj") as mock_copy:
+                        with patch("backend.app.routers.media.shutil.copyfileobj") as mock_copy:
                             mock_file = MagicMock()
                             mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                             mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -274,7 +274,7 @@ class TestUploadFileEndpoint:
         mock_path_instance.mkdir = MagicMock()
         mock_file_path = MagicMock()
 
-        with patch("app.routers.media.Path") as mock_path_class:
+        with patch("backend.app.routers.media.Path") as mock_path_class:
 
             def path_side_effect(arg):
                 if arg == "image.png":
@@ -286,10 +286,10 @@ class TestUploadFileEndpoint:
             mock_path_class.side_effect = path_side_effect
             mock_path_instance.__truediv__ = MagicMock(return_value=mock_file_path)
 
-            with patch("app.routers.media.uuid.uuid4") as mock_uuid:
+            with patch("backend.app.routers.media.uuid.uuid4") as mock_uuid:
                 mock_uuid.return_value = "test-uuid-2"
                 with patch("builtins.open", create=True) as mock_open:
-                    with patch("app.routers.media.shutil.copyfileobj"):
+                    with patch("backend.app.routers.media.shutil.copyfileobj"):
                         mock_file = MagicMock()
                         mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                         mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -310,7 +310,7 @@ class TestUploadFileEndpoint:
         mock_path_instance.mkdir = MagicMock()
         mock_file_path = MagicMock()
 
-        with patch("app.routers.media.Path") as mock_path_class:
+        with patch("backend.app.routers.media.Path") as mock_path_class:
 
             def path_side_effect(arg):
                 if arg == "filename_no_ext":
@@ -322,10 +322,10 @@ class TestUploadFileEndpoint:
             mock_path_class.side_effect = path_side_effect
             mock_path_instance.__truediv__ = MagicMock(return_value=mock_file_path)
 
-            with patch("app.routers.media.uuid.uuid4") as mock_uuid:
+            with patch("backend.app.routers.media.uuid.uuid4") as mock_uuid:
                 mock_uuid.return_value = "test-uuid-3"
                 with patch("builtins.open", create=True) as mock_open:
-                    with patch("app.routers.media.shutil.copyfileobj"):
+                    with patch("backend.app.routers.media.shutil.copyfileobj"):
                         mock_file = MagicMock()
                         mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                         mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -345,7 +345,7 @@ class TestUploadFileEndpoint:
         mock_path_instance.mkdir = MagicMock()
         mock_file_path = MagicMock()
 
-        with patch("app.routers.media.Path") as mock_path_class:
+        with patch("backend.app.routers.media.Path") as mock_path_class:
 
             def path_side_effect(arg):
                 if arg == "document.pdf":
@@ -357,10 +357,10 @@ class TestUploadFileEndpoint:
             mock_path_class.side_effect = path_side_effect
             mock_path_instance.__truediv__ = MagicMock(return_value=mock_file_path)
 
-            with patch("app.routers.media.uuid.uuid4") as mock_uuid:
+            with patch("backend.app.routers.media.uuid.uuid4") as mock_uuid:
                 mock_uuid.return_value = "test-uuid-pdf"
                 with patch("builtins.open", create=True) as mock_open:
-                    with patch("app.routers.media.shutil.copyfileobj"):
+                    with patch("backend.app.routers.media.shutil.copyfileobj"):
                         mock_file = MagicMock()
                         mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                         mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -381,7 +381,7 @@ class TestUploadFileEndpoint:
         mock_path_instance.mkdir = MagicMock()
         mock_file_path = MagicMock()
 
-        with patch("app.routers.media.Path") as mock_path_class:
+        with patch("backend.app.routers.media.Path") as mock_path_class:
 
             def path_side_effect(arg):
                 if arg == "audio.mp3":
@@ -393,10 +393,10 @@ class TestUploadFileEndpoint:
             mock_path_class.side_effect = path_side_effect
             mock_path_instance.__truediv__ = MagicMock(return_value=mock_file_path)
 
-            with patch("app.routers.media.uuid.uuid4") as mock_uuid:
+            with patch("backend.app.routers.media.uuid.uuid4") as mock_uuid:
                 mock_uuid.return_value = "test-uuid-audio"
                 with patch("builtins.open", create=True) as mock_open:
-                    with patch("app.routers.media.shutil.copyfileobj"):
+                    with patch("backend.app.routers.media.shutil.copyfileobj"):
                         mock_file = MagicMock()
                         mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                         mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -413,15 +413,15 @@ class TestUploadFileEndpoint:
         file_content = b"test content"
         files = {"file": ("test.txt", BytesIO(file_content), "text/plain")}
 
-        with patch("app.routers.media.Path") as mock_path_class:
+        with patch("backend.app.routers.media.Path") as mock_path_class:
             mock_upload_dir = MagicMock()
             mock_path_class.return_value = mock_upload_dir
             mock_file_path = MagicMock()
             mock_upload_dir.__truediv__ = MagicMock(return_value=mock_file_path)
 
-            with patch("app.routers.media.uuid.uuid4", return_value="test-uuid"):
+            with patch("backend.app.routers.media.uuid.uuid4", return_value="test-uuid"):
                 with patch("builtins.open", create=True) as mock_open:
-                    with patch("app.routers.media.shutil.copyfileobj"):
+                    with patch("backend.app.routers.media.shutil.copyfileobj"):
                         mock_file = MagicMock()
                         mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                         mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -437,7 +437,7 @@ class TestUploadFileEndpoint:
         file_content = b"test content"
         files = {"file": ("test.jpg", BytesIO(file_content), "image/jpeg")}
 
-        with patch("app.routers.media.Path") as mock_path:
+        with patch("backend.app.routers.media.Path") as mock_path:
             mock_upload_dir = MagicMock()
             mock_upload_dir.mkdir = MagicMock()
             mock_file_path = MagicMock()
@@ -459,7 +459,7 @@ class TestUploadFileEndpoint:
         file_content = b"test content"
         files = {"file": ("test.jpg", BytesIO(file_content), "image/jpeg")}
 
-        with patch("app.routers.media.Path") as mock_path:
+        with patch("backend.app.routers.media.Path") as mock_path:
             mock_upload_dir = MagicMock()
             mock_upload_dir.mkdir.side_effect = PermissionError("Access denied")
             mock_path.return_value = mock_upload_dir
@@ -476,7 +476,7 @@ class TestUploadFileEndpoint:
         file_content = b"test content"
         files = {"file": ("test.jpg", BytesIO(file_content), "image/jpeg")}
 
-        with patch("app.routers.media.Path") as mock_path:
+        with patch("backend.app.routers.media.Path") as mock_path:
             mock_upload_dir = MagicMock()
             mock_upload_dir.mkdir = MagicMock()
             mock_file_path = MagicMock()
@@ -486,7 +486,7 @@ class TestUploadFileEndpoint:
 
             with patch("builtins.open", create=True) as mock_open:
                 with patch(
-                    "app.routers.media.shutil.copyfileobj", side_effect=OSError("Copy failed")
+                    "backend.app.routers.media.shutil.copyfileobj", side_effect=OSError("Copy failed")
                 ):
                     mock_file = MagicMock()
                     mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
@@ -509,7 +509,7 @@ class TestUploadFileEndpoint:
         file_content = b"x" * (10 * 1024 * 1024)
         files = {"file": ("large_file.bin", BytesIO(file_content), "application/octet-stream")}
 
-        with patch("app.routers.media.Path") as mock_path:
+        with patch("backend.app.routers.media.Path") as mock_path:
             mock_upload_dir = MagicMock()
             mock_upload_dir.mkdir = MagicMock()
             mock_file_path = MagicMock()
@@ -517,9 +517,9 @@ class TestUploadFileEndpoint:
             mock_path.return_value = mock_upload_dir
             mock_upload_dir.__truediv__ = MagicMock(return_value=mock_file_path)
 
-            with patch("app.routers.media.uuid.uuid4", return_value="large-uuid"):
+            with patch("backend.app.routers.media.uuid.uuid4", return_value="large-uuid"):
                 with patch("builtins.open", create=True) as mock_open:
-                    with patch("app.routers.media.shutil.copyfileobj"):
+                    with patch("backend.app.routers.media.shutil.copyfileobj"):
                         mock_file = MagicMock()
                         mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
                         mock_open.return_value.__exit__ = MagicMock(return_value=False)
@@ -539,14 +539,14 @@ class TestImagePromptModel:
 
     def test_image_prompt_valid(self):
         """Test valid ImagePrompt creation"""
-        from app.routers.media import ImagePrompt
+        from backend.app.routers.media import ImagePrompt
 
         prompt = ImagePrompt(prompt="test prompt")
         assert prompt.prompt == "test prompt"
 
     def test_image_prompt_empty_string(self):
         """Test ImagePrompt with empty string (valid for Pydantic)"""
-        from app.routers.media import ImagePrompt
+        from backend.app.routers.media import ImagePrompt
 
         prompt = ImagePrompt(prompt="")
         assert prompt.prompt == ""
@@ -555,14 +555,14 @@ class TestImagePromptModel:
         """Test ImagePrompt with missing field"""
         from pydantic import ValidationError
 
-        from app.routers.media import ImagePrompt
+        from backend.app.routers.media import ImagePrompt
 
         with pytest.raises(ValidationError):
             ImagePrompt()
 
     def test_image_prompt_extra_field(self):
         """Test ImagePrompt ignores extra fields by default"""
-        from app.routers.media import ImagePrompt
+        from backend.app.routers.media import ImagePrompt
 
         # Pydantic v2 allows extra fields by default unless forbidden
         prompt = ImagePrompt(prompt="test", extra_field="ignored")
@@ -582,27 +582,28 @@ class TestLogging:
         """Test that errors are logged during image generation"""
         mock_image_service.generate_image.side_effect = RuntimeError("Test error")
 
-        with patch("app.routers.media.ImageGenerationService", return_value=mock_image_service):
-            with patch("app.routers.media.logger") as mock_logger:
+        with patch("backend.app.routers.media.ImageGenerationService", return_value=mock_image_service):
+            with patch("backend.app.routers.media.logger") as mock_logger:
                 response = client.post("/media/generate-image", json={"prompt": "test"})
 
         assert response.status_code == 500
-        # Verify logger.error was called
-        assert mock_logger.error.called
+        # Verify error was logged
+        mock_logger.error.assert_called_once()
         call_args = str(mock_logger.error.call_args)
-        assert "Image generation error" in call_args
+        assert "Unexpected image generation error" in call_args
+        assert "Test error" in call_args
 
     def test_upload_file_logs_error_on_exception(self, client):
         """Test that errors are logged during file upload"""
         file_content = b"test"
         files = {"file": ("test.jpg", BytesIO(file_content), "image/jpeg")}
 
-        with patch("app.routers.media.Path") as mock_path:
+        with patch("backend.app.routers.media.Path") as mock_path:
             mock_upload_dir = MagicMock()
             mock_upload_dir.mkdir.side_effect = RuntimeError("Test error")
             mock_path.return_value = mock_upload_dir
 
-            with patch("app.routers.media.logger") as mock_logger:
+            with patch("backend.app.routers.media.logger") as mock_logger:
                 response = client.post("/media/upload", files=files)
 
         assert response.status_code == 500
@@ -622,14 +623,14 @@ class TestRouterIntegration:
 
     def test_router_prefix_and_tags(self):
         """Test that router has correct prefix and tags"""
-        from app.routers.media import router
+        from backend.app.routers.media import router
 
         assert router.prefix == "/media"
         assert "media" in router.tags
 
     def test_router_has_required_endpoints(self):
         """Test that router has all required endpoints"""
-        from app.routers.media import router
+        from backend.app.routers.media import router
 
         routes = [route.path for route in router.routes]
         # Routes include the prefix
@@ -638,14 +639,14 @@ class TestRouterIntegration:
 
     def test_generate_image_endpoint_method(self):
         """Test that generate-image endpoint accepts POST"""
-        from app.routers.media import router
+        from backend.app.routers.media import router
 
         route = next(r for r in router.routes if r.path == "/media/generate-image")
         assert "POST" in route.methods
 
     def test_upload_endpoint_method(self):
         """Test that upload endpoint accepts POST"""
-        from app.routers.media import router
+        from backend.app.routers.media import router
 
         route = next(r for r in router.routes if r.path == "/media/upload")
         assert "POST" in route.methods

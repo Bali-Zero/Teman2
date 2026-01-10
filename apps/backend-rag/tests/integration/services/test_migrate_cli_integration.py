@@ -29,7 +29,7 @@ class TestMigrateCLIIntegration:
 
         # Run migrate status
         result = subprocess.run(
-            [sys.executable, "-m", "db.migrate", "status"],
+            [sys.executable, "-m", "backend.db.migrate", "status"],
             cwd=str(backend_path.parent),
             capture_output=True,
             text=True,
@@ -45,7 +45,7 @@ class TestMigrateCLIIntegration:
         os.environ["DATABASE_URL"] = postgres_container
 
         result = subprocess.run(
-            [sys.executable, "-m", "db.migrate", "list"],
+            [sys.executable, "-m", "backend.db.migrate", "list"],
             cwd=str(backend_path.parent),
             capture_output=True,
             text=True,
@@ -61,7 +61,7 @@ class TestMigrateCLIIntegration:
         os.environ["DATABASE_URL"] = postgres_container
 
         result = subprocess.run(
-            [sys.executable, "-m", "db.migrate", "info", "1"],
+            [sys.executable, "-m", "backend.db.migrate", "info", "1"],
             cwd=str(backend_path.parent),
             capture_output=True,
             text=True,
@@ -76,7 +76,7 @@ class TestMigrateCLIIntegration:
         os.environ["DATABASE_URL"] = postgres_container
 
         result = subprocess.run(
-            [sys.executable, "-m", "db.migrate", "apply-all", "--dry-run"],
+            [sys.executable, "-m", "backend.db.migrate", "apply-all", "--dry-run"],
             cwd=str(backend_path.parent),
             capture_output=True,
             text=True,
@@ -94,7 +94,7 @@ class TestMigrateCLIIntegration:
     def test_migrate_help_command(self):
         """Test migrate help command"""
         result = subprocess.run(
-            [sys.executable, "-m", "db.migrate", "--help"],
+            [sys.executable, "-m", "backend.db.migrate", "--help"],
             cwd=str(backend_path.parent),
             capture_output=True,
             text=True,
@@ -107,7 +107,7 @@ class TestMigrateCLIIntegration:
     def test_migrate_no_command_shows_help(self):
         """Test migrate with no command shows help"""
         result = subprocess.run(
-            [sys.executable, "-m", "db.migrate"],
+            [sys.executable, "-m", "backend.db.migrate"],
             cwd=str(backend_path.parent),
             capture_output=True,
             text=True,
@@ -125,7 +125,7 @@ class TestMigrateCLIIntegration:
 
         try:
             result = subprocess.run(
-                [sys.executable, "-m", "db.migrate", "status"],
+                [sys.executable, "-m", "backend.db.migrate", "status"],
                 cwd=str(backend_path.parent),
                 capture_output=True,
                 text=True,

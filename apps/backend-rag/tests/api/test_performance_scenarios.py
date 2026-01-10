@@ -161,7 +161,7 @@ class TestLargePayloads:
         """Test batch operation with many items"""
         large_batch = [f"/path/to/doc{i}.pdf" for i in range(100)]
 
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_service:
             mock_service_instance = MagicMock()
             mock_service_instance.ingest_legal_document = AsyncMock(
                 return_value={
@@ -224,7 +224,7 @@ class TestBatchOperations:
         """Test batch ingestion handles multiple items efficiently"""
         file_paths = [f"/path/to/doc{i}.pdf" for i in range(20)]
 
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_service:
             mock_service_instance = MagicMock()
             mock_service_instance.ingest_legal_document = AsyncMock(
                 return_value={
@@ -251,7 +251,7 @@ class TestBatchOperations:
         """Compare batch vs individual request performance"""
         file_paths = [f"/path/to/doc{i}.pdf" for i in range(5)]
 
-        with patch("app.routers.legal_ingest.get_legal_service") as mock_service:
+        with patch("backend.app.routers.legal_ingest.get_legal_service") as mock_service:
             mock_service_instance = MagicMock()
             mock_service_instance.ingest_legal_document = AsyncMock(
                 return_value={

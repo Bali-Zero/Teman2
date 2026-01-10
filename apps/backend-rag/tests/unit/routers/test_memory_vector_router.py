@@ -37,15 +37,15 @@ class TestInitializeMemoryVectorDB:
     @pytest.mark.asyncio
     async def test_initialize_with_default_url(self):
         """Test initialization with default Qdrant URL from settings"""
-        from app.routers import memory_vector
+        from backend.app.routers import memory_vector
 
         mock_client = AsyncMock()
         mock_client.get_collection_stats = AsyncMock(
             return_value={"collection_name": "zantara_memories", "total_documents": 100}
         )
 
-        with patch("app.routers.memory_vector.QdrantClient", return_value=mock_client):
-            with patch("app.routers.memory_vector.settings") as mock_settings:
+        with patch("backend.app.routers.memory_vector.QdrantClient", return_value=mock_client):
+            with patch("backend.app.routers.memory_vector.settings") as mock_settings:
                 mock_settings.qdrant_url = "http://localhost:6333"
 
                 result = await memory_vector.initialize_memory_vector_db()
@@ -57,14 +57,14 @@ class TestInitializeMemoryVectorDB:
     @pytest.mark.asyncio
     async def test_initialize_with_custom_url(self):
         """Test initialization with custom Qdrant URL"""
-        from app.routers import memory_vector
+        from backend.app.routers import memory_vector
 
         mock_client = AsyncMock()
         mock_client.get_collection_stats = AsyncMock(
             return_value={"collection_name": "zantara_memories", "total_documents": 50}
         )
 
-        with patch("app.routers.memory_vector.QdrantClient", return_value=mock_client):
+        with patch("backend.app.routers.memory_vector.QdrantClient", return_value=mock_client):
             custom_url = "http://custom:6333"
             result = await memory_vector.initialize_memory_vector_db(custom_url)
 
@@ -74,10 +74,10 @@ class TestInitializeMemoryVectorDB:
     @pytest.mark.asyncio
     async def test_initialize_failure(self):
         """Test initialization failure handling"""
-        from app.routers import memory_vector
+        from backend.app.routers import memory_vector
 
         with patch(
-            "app.routers.memory_vector.QdrantClient", side_effect=Exception("Connection failed")
+            "backend.app.routers.memory_vector.QdrantClient", side_effect=Exception("Connection failed")
         ):
             with pytest.raises(Exception, match="Connection failed"):
                 await memory_vector.initialize_memory_vector_db()
@@ -89,7 +89,7 @@ class TestGetMemoryVectorDB:
     @pytest.mark.asyncio
     async def test_get_existing_db(self):
         """Test getting already initialized DB"""
-        from app.routers import memory_vector
+        from backend.app.routers import memory_vector
 
         mock_db = AsyncMock()
         memory_vector.memory_vector_db = mock_db
@@ -100,7 +100,7 @@ class TestGetMemoryVectorDB:
     @pytest.mark.asyncio
     async def test_get_uninitialized_db(self):
         """Test getting DB when not initialized - should auto-initialize"""
-        from app.routers import memory_vector
+        from backend.app.routers import memory_vector
 
         # Reset global state
         memory_vector.memory_vector_db = None
@@ -110,8 +110,8 @@ class TestGetMemoryVectorDB:
             return_value={"collection_name": "zantara_memories", "total_documents": 0}
         )
 
-        with patch("app.routers.memory_vector.QdrantClient", return_value=mock_client):
-            with patch("app.routers.memory_vector.settings") as mock_settings:
+        with patch("backend.app.routers.memory_vector.QdrantClient", return_value=mock_client):
+            with patch("backend.app.routers.memory_vector.settings") as mock_settings:
                 mock_settings.qdrant_url = "http://localhost:6333"
 
                 result = await memory_vector.get_memory_vector_db()
@@ -128,7 +128,7 @@ class TestGetMemoryVectorDB:
 @pytest.fixture
 def app():
     """Create FastAPI app with memory_vector router"""
-    from app.routers.memory_vector import router
+    from backend.app.routers.memory_vector import router
 
     app = FastAPI()
     app.include_router(router)
@@ -176,7 +176,7 @@ class TestInitEndpoint:
 
     def test_init_success_default_url(self, client, mock_qdrant_client):
         """Test successful initialization with default URL"""
-        with patch("app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
+        with patch("backend.app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
             mock_init.return_value = mock_qdrant_client
 
             response = client.post("/api/memory/init", json={})
@@ -193,7 +193,7 @@ class TestInitEndpoint:
         custom_url = "http://custom:6333"
         mock_qdrant_client.qdrant_url = custom_url
 
-        with patch("app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
+        with patch("backend.app.routers.memory_vector.initialize_memory_vector_db") as mock_init:
             mock_init.return_value = mock_qdrant_client
 
             response = client.post("/api/memory/init", json={"qdrant_url": custom_url})
@@ -206,7 +206,7 @@ class TestInitEndpoint:
     def test_init_failure(self, client):
         """Test initialization failure"""
         with patch(
-            "app.routers.memory_vector.initialize_memory_vector_db",
+            "backend.app.routers.memory_vector.initialize_memory_vector_db",
             side_effect=Exception("DB connection failed"),
         ):
             response = client.post("/api/memory/init", json={})
@@ -220,7 +220,7 @@ class TestEmbedEndpoint:
 
     def test_embed_success(self, client, mock_embedder):
         """Test successful embedding generation"""
-        with patch("app.routers.memory_vector.embedder", mock_embedder):
+        with patch("backend.app.routers.memory_vector.embedder", mock_embedder):
             response = client.post(
                 "/api/memory/embed", json={"text": "Test memory", "model": "sentence-transformers"}
             )
@@ -234,7 +234,7 @@ class TestEmbedEndpoint:
 
     def test_embed_default_model(self, client, mock_embedder):
         """Test embedding with default model"""
-        with patch("app.routers.memory_vector.embedder", mock_embedder):
+        with patch("backend.app.routers.memory_vector.embedder", mock_embedder):
             response = client.post("/api/memory/embed", json={"text": "Test memory"})
 
             assert response.status_code == 200
@@ -245,7 +245,7 @@ class TestEmbedEndpoint:
         """Test embedding generation failure"""
         mock_embedder.generate_single_embedding.side_effect = Exception("Embedding failed")
 
-        with patch("app.routers.memory_vector.embedder", mock_embedder):
+        with patch("backend.app.routers.memory_vector.embedder", mock_embedder):
             response = client.post("/api/memory/embed", json={"text": "Test memory"})
 
             assert response.status_code == 500
@@ -253,7 +253,7 @@ class TestEmbedEndpoint:
 
     def test_embed_empty_text(self, client, mock_embedder):
         """Test embedding with empty text"""
-        with patch("app.routers.memory_vector.embedder", mock_embedder):
+        with patch("backend.app.routers.memory_vector.embedder", mock_embedder):
             response = client.post("/api/memory/embed", json={"text": ""})
 
             assert response.status_code == 200
@@ -265,7 +265,7 @@ class TestStoreEndpoint:
 
     def test_store_success(self, client, mock_qdrant_client):
         """Test successful memory storage"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {
@@ -299,7 +299,7 @@ class TestStoreEndpoint:
         """Test storage failure"""
         mock_qdrant_client.upsert_documents.side_effect = Exception("Storage failed")
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {
@@ -316,7 +316,7 @@ class TestStoreEndpoint:
 
     def test_store_with_complex_metadata(self, client, mock_qdrant_client):
         """Test storage with complex metadata"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {
@@ -354,7 +354,7 @@ class TestSearchEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"query_embedding": [0.1] * 384, "limit": 10}
@@ -386,7 +386,7 @@ class TestSearchEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {
@@ -419,7 +419,7 @@ class TestSearchEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {
@@ -450,7 +450,7 @@ class TestSearchEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"query_embedding": [0.1] * 384, "limit": 10}
@@ -466,7 +466,7 @@ class TestSearchEndpoint:
         """Test search failure"""
         mock_qdrant_client.search.side_effect = Exception("Search failed")
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"query_embedding": [0.1] * 384}
@@ -495,7 +495,7 @@ class TestSimilarEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 5}
@@ -526,7 +526,7 @@ class TestSimilarEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 3}
@@ -542,7 +542,7 @@ class TestSimilarEndpoint:
         """Test similar search when memory doesn't exist"""
         mock_qdrant_client.get = AsyncMock(return_value={"embeddings": []})
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "nonexistent", "limit": 5}
@@ -556,7 +556,7 @@ class TestSimilarEndpoint:
         """Test similar search when no embeddings in response"""
         mock_qdrant_client.get = AsyncMock(return_value={"embeddings": None})
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 5}
@@ -571,7 +571,7 @@ class TestSimilarEndpoint:
         # Return dict or other invalid format
         mock_qdrant_client.get = AsyncMock(return_value={"embeddings": [{"invalid": "format"}]})
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 5}
@@ -595,7 +595,7 @@ class TestSimilarEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 3}
@@ -613,7 +613,7 @@ class TestSimilarEndpoint:
         mock_qdrant_client.get = AsyncMock(return_value={"embeddings": [[0.1] * 384]})
         mock_qdrant_client.search.side_effect = Exception("Search failed")
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 5}
@@ -629,7 +629,7 @@ class TestDeleteEndpoint:
 
     def test_delete_success(self, client, mock_qdrant_client):
         """Test successful memory deletion"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.delete("/api/memory/mem_123")
@@ -645,7 +645,7 @@ class TestDeleteEndpoint:
         """Test deletion failure"""
         mock_qdrant_client.delete.side_effect = Exception("Deletion failed")
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.delete("/api/memory/mem_123")
@@ -655,7 +655,7 @@ class TestDeleteEndpoint:
 
     def test_delete_special_characters_in_id(self, client, mock_qdrant_client):
         """Test deletion with special characters in ID"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             memory_id = "mem_123-abc_xyz"
@@ -685,7 +685,7 @@ class TestStatsEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.get("/api/memory/stats")
@@ -706,7 +706,7 @@ class TestStatsEndpoint:
 
         mock_qdrant_client.peek = AsyncMock(return_value={"metadatas": []})
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.get("/api/memory/stats")
@@ -733,7 +733,7 @@ class TestStatsEndpoint:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.get("/api/memory/stats")
@@ -747,7 +747,7 @@ class TestStatsEndpoint:
         """Test stats failure - should return error dict instead of exception"""
         mock_qdrant_client.get_collection_stats.side_effect = Exception("Stats failed")
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.get("/api/memory/stats")
@@ -769,8 +769,8 @@ class TestHealthEndpoint:
             return_value={"collection_name": "zantara_memories", "total_documents": 100}
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
-            with patch("app.routers.memory_vector.embedder", mock_embedder):
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+            with patch("backend.app.routers.memory_vector.embedder", mock_embedder):
                 mock_get_db.return_value = mock_qdrant_client
 
                 response = client.get("/api/memory/health")
@@ -789,7 +789,7 @@ class TestHealthEndpoint:
         """Test health check failure"""
         mock_qdrant_client.get_collection_stats.side_effect = Exception("DB unavailable")
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.get("/api/memory/health")
@@ -800,7 +800,7 @@ class TestHealthEndpoint:
     def test_health_db_initialization_failure(self, client):
         """Test health check when DB can't be initialized"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db",
+            "backend.app.routers.memory_vector.get_memory_vector_db",
             side_effect=Exception("Cannot connect"),
         ):
             response = client.get("/api/memory/health")
@@ -829,7 +829,7 @@ class TestEdgeCases:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {
@@ -854,7 +854,7 @@ class TestEdgeCases:
 
     def test_store_with_very_large_embedding(self, client, mock_qdrant_client):
         """Test storing memory with large embedding dimension"""
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             large_embedding = [0.1] * 1536  # GPT-3 size
@@ -885,7 +885,7 @@ class TestEdgeCases:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 5}
@@ -901,7 +901,7 @@ class TestEdgeCases:
         """Test embedding generation with very long text"""
         long_text = "word " * 1000  # 1000 words
 
-        with patch("app.routers.memory_vector.embedder", mock_embedder):
+        with patch("backend.app.routers.memory_vector.embedder", mock_embedder):
             response = client.post("/api/memory/embed", json={"text": long_text})
 
             assert response.status_code == 200
@@ -919,7 +919,7 @@ class TestEdgeCases:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"query_embedding": [0.1] * 384, "limit": 1}
@@ -940,7 +940,7 @@ class TestEdgeCases:
         metadatas = [{"userId": f"user_{i % 10}"} for i in range(1000)]
         mock_qdrant_client.peek = AsyncMock(return_value={"metadatas": metadatas})
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             response = client.get("/api/memory/stats")
@@ -964,7 +964,7 @@ class TestEdgeCases:
             }
         )
 
-        with patch("app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
+        with patch("backend.app.routers.memory_vector.get_memory_vector_db") as mock_get_db:
             mock_get_db.return_value = mock_qdrant_client
 
             request_data = {"memory_id": "mem_123", "limit": 5}
@@ -984,7 +984,7 @@ class TestEdgeCases:
 @pytest.fixture(autouse=True)
 def reset_global_state():
     """Reset global state before each test"""
-    from app.routers import memory_vector
+    from backend.app.routers import memory_vector
 
     memory_vector.memory_vector_db = None
     yield

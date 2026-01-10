@@ -28,19 +28,19 @@ os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 with patch.dict(
     "sys.modules",
     {
-        "app.core.config": MagicMock(),
-        "app.core.circuit_breaker": MagicMock(),
-        "app.core.error_classification": MagicMock(),
-        "app.metrics": MagicMock(),
-        "app.utils.tracing": MagicMock(),
-        "llm.genai_client": MagicMock(),
-        "services.llm_clients.openrouter_client": MagicMock(),
-        "services.llm_clients.pricing": MagicMock(),
+        "backend.app.core.config": MagicMock(),
+        "backend.app.core.circuit_breaker": MagicMock(),
+        "backend.app.core.error_classification": MagicMock(),
+        "backend.app.metrics": MagicMock(),
+        "backend.app.utils.tracing": MagicMock(),
+        "backend.llm.genai_client": MagicMock(),
+        "backend.services.llm_clients.openrouter_client": MagicMock(),
+        "backend.services.llm_clients.pricing": MagicMock(),
     },
 ):
     # Configure mocks
-    sys.modules["llm.genai_client"].GENAI_AVAILABLE = True
-    sys.modules["services.llm_clients.pricing"].create_token_usage = Mock(
+    sys.modules["backend.llm.genai_client"].GENAI_AVAILABLE = True
+    sys.modules["backend.services.llm_clients.pricing"].create_token_usage = Mock(
         return_value=Mock(cost_usd=0.001)
     )
 
@@ -66,27 +66,27 @@ with patch.dict(
         def record_failure(self):
             self.failures += 1
 
-    sys.modules["app.core.circuit_breaker"].CircuitBreaker = MockCircuitBreaker
-    sys.modules["app.core.error_classification"].ErrorClassifier = Mock()
-    sys.modules["app.core.error_classification"].ErrorClassifier.classify_error = Mock(
+    sys.modules["backend.app.core.circuit_breaker"].CircuitBreaker = MockCircuitBreaker
+    sys.modules["backend.app.core.error_classification"].ErrorClassifier = Mock()
+    sys.modules["backend.app.core.error_classification"].ErrorClassifier.classify_error = Mock(
         return_value=("quota", "high")
     )
-    sys.modules["app.core.error_classification"].get_error_context = Mock(return_value={})
-    sys.modules["app.utils.tracing"].trace_span = Mock()
-    sys.modules["app.utils.tracing"].set_span_attribute = Mock()
-    sys.modules["app.utils.tracing"].set_span_status = Mock()
-    sys.modules["app.metrics"].metrics_collector = Mock()
+    sys.modules["backend.app.core.error_classification"].get_error_context = Mock(return_value={})
+    sys.modules["backend.app.utils.tracing"].trace_span = Mock()
+    sys.modules["backend.app.utils.tracing"].set_span_attribute = Mock()
+    sys.modules["backend.app.utils.tracing"].set_span_status = Mock()
+    sys.modules["backend.app.metrics"].metrics_collector = Mock()
 
     # Mock OpenRouter
     class MockModelTier:
         RAG = "rag"
 
-    sys.modules["services.llm_clients.openrouter_client"].ModelTier = MockModelTier
-    sys.modules["services.llm_clients.openrouter_client"].OpenRouterClient = Mock()
+    sys.modules["backend.services.llm_clients.openrouter_client"].ModelTier = MockModelTier
+    sys.modules["backend.services.llm_clients.openrouter_client"].OpenRouterClient = Mock()
 
     # Now import the module
     try:
-        from services.rag.agentic.llm_gateway import (
+        from backend.services.rag.agentic.llm_gateway import (
             TIER_FALLBACK,
             TIER_FLASH,
             TIER_LITE,
@@ -135,7 +135,7 @@ def sample_gemini_tools():
 @pytest.fixture
 def llm_gateway(mock_genai_client, sample_gemini_tools):
     """Create LLMGateway instance with mocked dependencies."""
-    with patch("services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client):
+    with patch("backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client):
         gateway = LLMGateway(gemini_tools=sample_gemini_tools)
         gateway._genai_client = mock_genai_client
         gateway._available = True
@@ -148,7 +148,7 @@ class TestLLMGatewayBasic:
     def test_init_without_tools(self, mock_genai_client):
         """Test initialization without Gemini tools."""
         with patch(
-            "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+            "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
         ):
             gateway = LLMGateway()
             assert gateway.gemini_tools == []
@@ -161,7 +161,7 @@ class TestLLMGatewayBasic:
     def test_init_with_tools(self, mock_genai_client, sample_gemini_tools):
         """Test initialization with Gemini tools."""
         with patch(
-            "services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
+            "backend.services.rag.agentic.llm_gateway.get_genai_client", return_value=mock_genai_client
         ):
             gateway = LLMGateway(gemini_tools=sample_gemini_tools)
             assert gateway.gemini_tools == sample_gemini_tools
@@ -239,7 +239,7 @@ class TestCircuitBreakerFunctionality:
         error = Exception("Test error")
         llm_gateway._record_failure("test-model", error)
 
-        from app.core.error_classification import ErrorClassifier
+        from backend.app.core.error_classification import ErrorClassifier
 
         ErrorClassifier.classify_error.assert_called_with(error)
 
@@ -351,7 +351,7 @@ class TestOpenRouterIntegration:
 
     def test_get_openrouter_client_new(self, llm_gateway):
         """Test lazy loading OpenRouter client."""
-        from services.llm_clients.openrouter_client import OpenRouterClient
+        from backend.services.llm_clients.openrouter_client import OpenRouterClient
 
         mock_client = Mock()
         OpenRouterClient.return_value = mock_client
@@ -362,7 +362,7 @@ class TestOpenRouterIntegration:
 
     def test_get_openrouter_client_cached(self, llm_gateway):
         """Test caching of OpenRouter client."""
-        from services.llm_clients.openrouter_client import OpenRouterClient
+        from backend.services.llm_clients.openrouter_client import OpenRouterClient
 
         mock_client = Mock()
         OpenRouterClient.return_value = mock_client
@@ -462,7 +462,7 @@ class TestHealthCheck:
         """Test health check when all services are healthy."""
         mock_genai_client.generate_content = AsyncMock(return_value={"text": "pong"})
 
-        with patch("services.llm_clients.openrouter_client.OpenRouterClient") as mock_openrouter:
+        with patch("backend.services.llm_clients.openrouter_client.OpenRouterClient") as mock_openrouter:
             mock_openrouter.return_value = Mock()
 
             status = await llm_gateway.health_check()
@@ -476,7 +476,7 @@ class TestHealthCheck:
         """Test health check when GenAI client unavailable."""
         llm_gateway._available = False
 
-        with patch("services.llm_clients.openrouter_client.OpenRouterClient") as mock_openrouter:
+        with patch("backend.services.llm_clients.openrouter_client.OpenRouterClient") as mock_openrouter:
             mock_openrouter.return_value = Mock()
 
             status = await llm_gateway.health_check()

@@ -34,8 +34,8 @@ class TestPricingServiceIntegration:
     @pytest.mark.asyncio
     async def test_pricing_service_initialization(self, qdrant_client):
         """Test PricingService initialization"""
-        with patch("services.pricing_service.QdrantClient") as mock_qdrant:
-            from services.pricing.pricing_service import PricingService
+        with patch("backend.services.pricing_service.QdrantClient") as mock_qdrant:
+            from backend.services.pricing.pricing_service import PricingService
 
             service = PricingService()
 
@@ -44,7 +44,7 @@ class TestPricingServiceIntegration:
     @pytest.mark.asyncio
     async def test_get_pricing_for_service(self, qdrant_client):
         """Test getting pricing for a service"""
-        with patch("services.pricing_service.QdrantClient") as mock_qdrant:
+        with patch("backend.services.pricing_service.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.search = AsyncMock(
                 return_value=[
@@ -60,7 +60,7 @@ class TestPricingServiceIntegration:
             )
             mock_qdrant.return_value = mock_client
 
-            from services.pricing.pricing_service import PricingService
+            from backend.services.pricing.pricing_service import PricingService
 
             service = PricingService()
             service.qdrant_client = mock_client
@@ -73,7 +73,7 @@ class TestPricingServiceIntegration:
     @pytest.mark.asyncio
     async def test_get_all_pricing(self, qdrant_client):
         """Test getting all pricing information"""
-        with patch("services.pricing_service.QdrantClient") as mock_qdrant:
+        with patch("backend.services.pricing_service.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.scroll = AsyncMock(
                 return_value=(
@@ -96,7 +96,7 @@ class TestPricingServiceIntegration:
             )
             mock_qdrant.return_value = mock_client
 
-            from services.pricing.pricing_service import PricingService
+            from backend.services.pricing.pricing_service import PricingService
 
             service = PricingService()
             service.qdrant_client = mock_client

@@ -24,23 +24,23 @@ class TestHealthMonitorIntegration:
 
     def test_health_monitor_initialization(self, qdrant_client):
         """Test health monitor initialization"""
-        with patch("services.health_monitor.HealthMonitor") as mock_monitor_class:
+        with patch("backend.services.health_monitor.HealthMonitor") as mock_monitor_class:
             mock_monitor = MagicMock()
             mock_monitor_class.return_value = mock_monitor
 
-            from services.monitoring.health_monitor import HealthMonitor
+            from backend.services.monitoring.health_monitor import HealthMonitor
 
             monitor = HealthMonitor()
             assert monitor is not None
 
     def test_health_monitor_record_operation(self, qdrant_client):
         """Test health monitor operation recording"""
-        with patch("services.health_monitor.HealthMonitor") as mock_monitor_class:
+        with patch("backend.services.health_monitor.HealthMonitor") as mock_monitor_class:
             mock_monitor = MagicMock()
             mock_monitor.record_operation = MagicMock()
             mock_monitor_class.return_value = mock_monitor
 
-            from services.monitoring.health_monitor import HealthMonitor
+            from backend.services.monitoring.health_monitor import HealthMonitor
 
             monitor = HealthMonitor()
             monitor.record_operation("search", "visa_oracle", 100.0, success=True)

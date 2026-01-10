@@ -92,7 +92,7 @@ def cleanup_pending_articles():
 
 def test_get_article_status_new(cleanup_pending_articles):
     """Test get_article_status for new article"""
-    from app.routers.telegram import get_article_status
+    from backend.app.routers.telegram import get_article_status
     
     article_id = "test_article_123"
     status = get_article_status(article_id)
@@ -107,7 +107,7 @@ def test_get_article_status_new(cleanup_pending_articles):
 
 def test_get_article_status_existing(cleanup_pending_articles):
     """Test get_article_status for existing article"""
-    from app.routers.telegram import get_article_status, save_article_status
+    from backend.app.routers.telegram import get_article_status, save_article_status
     
     article_id = "test_article_456"
     data = {
@@ -126,7 +126,7 @@ def test_get_article_status_existing(cleanup_pending_articles):
 
 def test_add_vote_new_vote(cleanup_pending_articles):
     """Test add_vote with new vote"""
-    from app.routers.telegram import add_vote
+    from backend.app.routers.telegram import add_vote
     
     article_id = "test_vote_1"
     user = {"id": 1, "first_name": "TestUser"}
@@ -140,7 +140,7 @@ def test_add_vote_new_vote(cleanup_pending_articles):
 
 def test_add_vote_already_voted(cleanup_pending_articles):
     """Test add_vote when user already voted"""
-    from app.routers.telegram import add_vote
+    from backend.app.routers.telegram import add_vote
     
     article_id = "test_vote_2"
     user = {"id": 1, "first_name": "TestUser"}
@@ -153,7 +153,7 @@ def test_add_vote_already_voted(cleanup_pending_articles):
 
 def test_add_vote_approved(cleanup_pending_articles):
     """Test add_vote reaching approval threshold"""
-    from app.routers.telegram import add_vote
+    from backend.app.routers.telegram import add_vote
     
     article_id = "test_vote_3"
     user1 = {"id": 1, "first_name": "User1"}
@@ -169,7 +169,7 @@ def test_add_vote_approved(cleanup_pending_articles):
 
 def test_add_vote_rejected(cleanup_pending_articles):
     """Test add_vote reaching rejection threshold"""
-    from app.routers.telegram import add_vote
+    from backend.app.routers.telegram import add_vote
     
     article_id = "test_vote_4"
     user1 = {"id": 1, "first_name": "User1"}
@@ -185,7 +185,7 @@ def test_add_vote_rejected(cleanup_pending_articles):
 
 def test_add_vote_voting_closed(cleanup_pending_articles):
     """Test add_vote when voting is closed"""
-    from app.routers.telegram import add_vote, save_article_status
+    from backend.app.routers.telegram import add_vote, save_article_status
     
     article_id = "test_vote_5"
     data = {
@@ -205,13 +205,13 @@ def test_add_vote_voting_closed(cleanup_pending_articles):
 
 def test_format_vote_tally(cleanup_pending_articles):
     """Test format_vote_tally"""
-    from app.routers.telegram import format_vote_tally, add_vote
+    from backend.app.routers.telegram import format_vote_tally, add_vote
     
     article_id = "test_tally_1"
     user1 = {"id": 1, "first_name": "User1"}
     add_vote(article_id, "approve", user1)
     
-    from app.routers.telegram import get_article_status
+    from backend.app.routers.telegram import get_article_status
     data = get_article_status(article_id)
     
     tally = format_vote_tally(data, "Original article text")
@@ -230,9 +230,9 @@ def test_format_vote_tally(cleanup_pending_articles):
 @pytest.mark.asyncio
 async def test_get_orchestrator(mock_request):
     """Test get_orchestrator creates orchestrator"""
-    from app.routers.telegram import get_orchestrator
+    from backend.app.routers.telegram import get_orchestrator
     
-    with patch("app.routers.telegram.create_agentic_rag") as mock_create:
+    with patch("backend.app.routers.telegram.create_agentic_rag") as mock_create:
         mock_orch = MagicMock()
         mock_create.return_value = mock_orch
         
@@ -250,14 +250,14 @@ async def test_get_orchestrator(mock_request):
 @pytest.mark.asyncio
 async def test_telegram_webhook_invalid_secret():
     """Test webhook with invalid secret token"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = "expected_secret"
         
         response = client.post(
@@ -272,14 +272,14 @@ async def test_telegram_webhook_invalid_secret():
 @pytest.mark.asyncio
 async def test_telegram_webhook_valid_secret_no_token():
     """Test webhook with valid secret but no token in header"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = "expected_secret"
         
         response = client.post(
@@ -294,14 +294,14 @@ async def test_telegram_webhook_valid_secret_no_token():
 @pytest.mark.asyncio
 async def test_telegram_webhook_invalid_format():
     """Test webhook with invalid update format"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = None
         
         response = client.post(
@@ -315,16 +315,16 @@ async def test_telegram_webhook_invalid_format():
 @pytest.mark.asyncio
 async def test_telegram_webhook_start_command(mock_telegram_bot):
     """Test webhook with /start command"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = None
-    with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+    with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
         response = client.post(
             "/api/telegram/webhook",
             json={
@@ -348,16 +348,16 @@ async def test_telegram_webhook_start_command(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_telegram_webhook_help_command(mock_telegram_bot):
     """Test webhook with /help command"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = None
-    with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+    with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
         response = client.post(
             "/api/telegram/webhook",
             json={
@@ -381,7 +381,7 @@ async def test_telegram_webhook_help_command(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_telegram_webhook_normal_message(mock_telegram_bot, mock_orchestrator, mock_request):
     """Test webhook with normal message (now uses streaming)"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
@@ -393,10 +393,10 @@ async def test_telegram_webhook_normal_message(mock_telegram_bot, mock_orchestra
     # Mock placeholder message response
     mock_telegram_bot.send_message.return_value = {"result": {"message_id": 999}}
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = None
-    with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
-        with patch("app.routers.telegram.get_orchestrator") as mock_get_orch:
+    with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.get_orchestrator") as mock_get_orch:
             mock_get_orch.return_value = mock_orchestrator
             
             response = client.post(
@@ -423,16 +423,16 @@ async def test_telegram_webhook_normal_message(mock_telegram_bot, mock_orchestra
 @pytest.mark.asyncio
 async def test_telegram_webhook_callback_approve(mock_telegram_bot, cleanup_pending_articles):
     """Test webhook with approve callback"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = None
-    with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+    with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
         response = client.post(
             "/api/telegram/webhook",
             json={
@@ -457,16 +457,16 @@ async def test_telegram_webhook_callback_approve(mock_telegram_bot, cleanup_pend
 @pytest.mark.asyncio
 async def test_telegram_webhook_callback_invalid_action(mock_telegram_bot):
     """Test webhook with invalid callback action"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
     
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
     
-    with patch("app.routers.telegram.settings") as mock_settings:
+    with patch("backend.app.routers.telegram.settings") as mock_settings:
         mock_settings.telegram_webhook_secret = None
-    with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+    with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
         response = client.post(
             "/api/telegram/webhook",
             json={
@@ -497,16 +497,16 @@ async def test_telegram_webhook_callback_invalid_action(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_setup_webhook_success(mock_telegram_bot):
     """Test setup_webhook success"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
         with patch.object(config.settings, "telegram_webhook_secret", "secret"):
-            with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+            with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
                 client = TestClient(app)
                 response = client.post(
                     "/api/telegram/setup-webhook",
@@ -523,16 +523,16 @@ async def test_setup_webhook_success(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_setup_webhook_default_url(mock_telegram_bot):
     """Test setup_webhook with default URL"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
         with patch.object(config.settings, "telegram_webhook_secret", "secret"):
-            with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+            with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
                 client = TestClient(app)
                 response = client.post(
                     "/api/telegram/setup-webhook",
@@ -548,9 +548,9 @@ async def test_setup_webhook_default_url(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_setup_webhook_no_token():
     """Test setup_webhook without bot token"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
@@ -568,16 +568,16 @@ async def test_setup_webhook_no_token():
 @pytest.mark.asyncio
 async def test_setup_webhook_error(mock_telegram_bot):
     """Test setup_webhook with error"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
         with patch.object(config.settings, "telegram_webhook_secret", "secret"):
-            with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+            with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
                 mock_telegram_bot.set_webhook.side_effect = Exception("API Error")
                 client = TestClient(app)
                 response = client.post(
@@ -596,15 +596,15 @@ async def test_setup_webhook_error(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_delete_webhook_success(mock_telegram_bot):
     """Test delete_webhook success"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             client = TestClient(app)
             response = client.delete("/api/telegram/webhook")
             
@@ -617,9 +617,9 @@ async def test_delete_webhook_success(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_delete_webhook_no_token():
     """Test delete_webhook without bot token"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
@@ -634,15 +634,15 @@ async def test_delete_webhook_no_token():
 @pytest.mark.asyncio
 async def test_delete_webhook_error(mock_telegram_bot):
     """Test delete_webhook with error"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             mock_telegram_bot.delete_webhook.side_effect = Exception("API Error")
             client = TestClient(app)
             response = client.delete("/api/telegram/webhook")
@@ -658,15 +658,15 @@ async def test_delete_webhook_error(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_get_webhook_info_success(mock_telegram_bot):
     """Test get_webhook_info success"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             client = TestClient(app)
             response = client.get("/api/telegram/webhook-info")
             
@@ -679,9 +679,9 @@ async def test_get_webhook_info_success(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_get_webhook_info_no_token():
     """Test get_webhook_info without bot token"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
@@ -696,15 +696,15 @@ async def test_get_webhook_info_no_token():
 @pytest.mark.asyncio
 async def test_get_webhook_info_error(mock_telegram_bot):
     """Test get_webhook_info with error"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             mock_telegram_bot.get_webhook_info.side_effect = Exception("API Error")
             client = TestClient(app)
             response = client.get("/api/telegram/webhook-info")
@@ -720,15 +720,15 @@ async def test_get_webhook_info_error(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_get_bot_info_success(mock_telegram_bot):
     """Test get_bot_info success"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             client = TestClient(app)
             response = client.get("/api/telegram/bot-info")
             
@@ -741,9 +741,9 @@ async def test_get_bot_info_success(mock_telegram_bot):
 @pytest.mark.asyncio
 async def test_get_bot_info_no_token():
     """Test get_bot_info without bot token"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
@@ -758,15 +758,15 @@ async def test_get_bot_info_no_token():
 @pytest.mark.asyncio
 async def test_get_bot_info_error(mock_telegram_bot):
     """Test get_bot_info with error"""
-    from app.routers.telegram import router
+    from backend.app.routers.telegram import router
     from fastapi import FastAPI
-    from app.core import config
+    from backend.app.core import config
     
     app = FastAPI()
     app.include_router(router)
     
     with patch.object(config.settings, "telegram_bot_token", "test_token"):
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             mock_telegram_bot.get_me.side_effect = Exception("API Error")
             client = TestClient(app)
             response = client.get("/api/telegram/bot-info")
@@ -781,7 +781,7 @@ async def test_get_bot_info_error(mock_telegram_bot):
 
 def test_format_telegram_message_basic():
     """Test _format_telegram_message with basic text"""
-    from app.routers.telegram import _format_telegram_message
+    from backend.app.routers.telegram import _format_telegram_message
     
     result = _format_telegram_message("Hello world")
     assert "Hello world" in result
@@ -790,7 +790,7 @@ def test_format_telegram_message_basic():
 
 def test_format_telegram_message_with_status():
     """Test _format_telegram_message with status"""
-    from app.routers.telegram import _format_telegram_message
+    from backend.app.routers.telegram import _format_telegram_message
     
     result = _format_telegram_message("Hello world", status="processing")
     assert "🔍" in result
@@ -800,7 +800,7 @@ def test_format_telegram_message_with_status():
 
 def test_format_telegram_message_with_sources():
     """Test _format_telegram_message with sources"""
-    from app.routers.telegram import _format_telegram_message
+    from backend.app.routers.telegram import _format_telegram_message
     
     sources = [
         {"title": "Source 1"},
@@ -814,7 +814,7 @@ def test_format_telegram_message_with_sources():
 
 def test_format_telegram_message_empty_text():
     """Test _format_telegram_message with empty text but with status"""
-    from app.routers.telegram import _format_telegram_message
+    from backend.app.routers.telegram import _format_telegram_message
     
     result = _format_telegram_message("", status="processing")
     assert "🔍" in result
@@ -824,7 +824,7 @@ def test_format_telegram_message_empty_text():
 
 def test_format_telegram_message_no_status_no_text():
     """Test _format_telegram_message with no status and no text"""
-    from app.routers.telegram import _format_telegram_message
+    from backend.app.routers.telegram import _format_telegram_message
     
     result = _format_telegram_message("")
     assert "Elaborazione in corso" in result
@@ -833,15 +833,15 @@ def test_format_telegram_message_no_status_no_text():
 @pytest.mark.asyncio
 async def test_process_telegram_message_streaming(mock_telegram_bot, mock_orchestrator, mock_request):
     """Test process_telegram_message with streaming"""
-    from app.routers.telegram import process_telegram_message
+    from backend.app.routers.telegram import process_telegram_message
     
     # Mock placeholder message response
     mock_telegram_bot.send_message.return_value = {"result": {"message_id": 999}}
     mock_telegram_bot.edit_message_text.return_value = {"ok": True}
     
-    with patch("app.routers.telegram.get_orchestrator") as mock_get_orch:
+    with patch("backend.app.routers.telegram.get_orchestrator") as mock_get_orch:
         mock_get_orch.return_value = mock_orchestrator
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             await process_telegram_message(
                 chat_id=123,
                 message_text="Test query",
@@ -862,14 +862,14 @@ async def test_process_telegram_message_streaming(mock_telegram_bot, mock_orches
 @pytest.mark.asyncio
 async def test_process_telegram_message_no_placeholder_id(mock_telegram_bot, mock_orchestrator, mock_request):
     """Test process_telegram_message fallback when placeholder_id is None"""
-    from app.routers.telegram import process_telegram_message
+    from backend.app.routers.telegram import process_telegram_message
     
     # Mock placeholder message response without message_id
     mock_telegram_bot.send_message.return_value = {"result": {}}
     
-    with patch("app.routers.telegram.get_orchestrator") as mock_get_orch:
+    with patch("backend.app.routers.telegram.get_orchestrator") as mock_get_orch:
         mock_get_orch.return_value = mock_orchestrator
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             await process_telegram_message(
                 chat_id=123,
                 message_text="Test query",
@@ -887,7 +887,7 @@ async def test_process_telegram_message_no_placeholder_id(mock_telegram_bot, moc
 async def test_process_telegram_message_timeout(mock_telegram_bot, mock_orchestrator, mock_request):
     """Test process_telegram_message timeout handling"""
     import asyncio
-    from app.routers.telegram import process_telegram_message
+    from backend.app.routers.telegram import process_telegram_message
     
     # Mock placeholder message response
     mock_telegram_bot.send_message.return_value = {"result": {"message_id": 999}}
@@ -900,9 +900,9 @@ async def test_process_telegram_message_timeout(mock_telegram_bot, mock_orchestr
     
     mock_orchestrator.stream_query = slow_stream_query
     
-    with patch("app.routers.telegram.get_orchestrator") as mock_get_orch:
+    with patch("backend.app.routers.telegram.get_orchestrator") as mock_get_orch:
         mock_get_orch.return_value = mock_orchestrator
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             await process_telegram_message(
                 chat_id=123,
                 message_text="Test query",
@@ -920,7 +920,7 @@ async def test_process_telegram_message_timeout(mock_telegram_bot, mock_orchestr
 @pytest.mark.asyncio
 async def test_process_telegram_message_error_handling(mock_telegram_bot, mock_request):
     """Test process_telegram_message error handling"""
-    from app.routers.telegram import process_telegram_message
+    from backend.app.routers.telegram import process_telegram_message
     
     # Mock placeholder message response
     mock_telegram_bot.send_message.return_value = {"result": {"message_id": 999}}
@@ -930,9 +930,9 @@ async def test_process_telegram_message_error_handling(mock_telegram_bot, mock_r
     mock_orchestrator = MagicMock()
     mock_orchestrator.stream_query.side_effect = Exception("Test error")
     
-    with patch("app.routers.telegram.get_orchestrator") as mock_get_orch:
+    with patch("backend.app.routers.telegram.get_orchestrator") as mock_get_orch:
         mock_get_orch.return_value = mock_orchestrator
-        with patch("app.routers.telegram.telegram_bot", mock_telegram_bot):
+        with patch("backend.app.routers.telegram.telegram_bot", mock_telegram_bot):
             await process_telegram_message(
                 chat_id=123,
                 message_text="Test query",

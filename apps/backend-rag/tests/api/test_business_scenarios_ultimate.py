@@ -31,7 +31,7 @@ class TestComplexBusinessWorkflows:
 
     def test_multi_client_practice_management(self, authenticated_client, test_app):
         """Test managing multiple clients with multiple practices"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -69,7 +69,7 @@ class TestComplexBusinessWorkflows:
 
     def test_practice_renewal_workflow_complete(self, authenticated_client, test_app):
         """Test complete practice renewal workflow"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -100,7 +100,7 @@ class TestComplexBusinessWorkflows:
 
     def test_client_journey_with_all_interactions(self, authenticated_client, test_app):
         """Test complete client journey with all interaction types"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -167,7 +167,7 @@ class TestRealWorldScenarios:
 
     def test_high_priority_client_onboarding(self, authenticated_client, test_app):
         """Test high-priority client onboarding scenario"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -207,7 +207,7 @@ class TestRealWorldScenarios:
                 )
 
                 # 4. Send priority notification
-                with patch("app.routers.notifications.notification_hub") as mock_hub:
+                with patch("backend.app.routers.notifications.notification_hub") as mock_hub:
                     mock_hub.send = AsyncMock(return_value={"notification_id": "notif_123"})
 
                     notification_response = authenticated_client.post(
@@ -226,7 +226,7 @@ class TestRealWorldScenarios:
 
     def test_bulk_practice_processing(self, authenticated_client, test_app):
         """Test bulk processing of practices"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -277,7 +277,7 @@ class TestMultiEntityRelationships:
 
     def test_client_practice_interaction_relationships(self, authenticated_client, test_app):
         """Test relationships between clients, practices, and interactions"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -330,7 +330,7 @@ class TestMultiEntityRelationships:
 
     def test_practice_document_management(self, authenticated_client, test_app):
         """Test practice document management workflow"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -392,7 +392,7 @@ class TestBusinessRuleValidations:
 
     def test_practice_status_transition_rules(self, authenticated_client, test_app):
         """Test practice status transition business rules"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -434,7 +434,7 @@ class TestBusinessRuleValidations:
 
     def test_price_validation_rules(self, authenticated_client, test_app):
         """Test price validation business rules"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool

@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.oracle.cross_oracle_synthesis_service import (
+from backend.services.oracle.cross_oracle_synthesis_service import (
     CrossOracleSynthesisService,
     OracleQuery,
     SynthesisResult,
@@ -44,7 +44,7 @@ def mock_zantara_client():
 @pytest.fixture
 def cross_oracle_service(mock_search_service, mock_zantara_client):
     """Create CrossOracleSynthesisService instance"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
         return (
             CrossOracleSynthesisService(mock_search_service, mock_zantara_client),
             mock_search_service,
@@ -55,7 +55,7 @@ def cross_oracle_service(mock_search_service, mock_zantara_client):
 @pytest.fixture
 def cross_oracle_service_no_ai(mock_search_service):
     """Create CrossOracleSynthesisService without AI client"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", return_value=MagicMock()):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", return_value=MagicMock()):
         return CrossOracleSynthesisService(mock_search_service), mock_search_service
 
 
@@ -66,7 +66,7 @@ def cross_oracle_service_no_ai(mock_search_service):
 
 def test_init_with_ai(mock_search_service, mock_zantara_client):
     """Test initialization with AI client"""
-    with patch("llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
         service = CrossOracleSynthesisService(mock_search_service, mock_zantara_client)
 
         assert service.search == mock_search_service
@@ -77,7 +77,7 @@ def test_init_with_ai(mock_search_service, mock_zantara_client):
 def test_init_without_ai(mock_search_service):
     """Test initialization without AI client"""
     mock_zantara = MagicMock()
-    with patch("llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara):
         service = CrossOracleSynthesisService(mock_search_service)
 
         assert service.search == mock_search_service
@@ -88,7 +88,7 @@ def test_init_with_golden_answers(mock_search_service, mock_zantara_client):
     """Test initialization with golden answer service"""
     mock_golden = MagicMock()
 
-    with patch("llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
+    with patch("backend.llm.zantara_ai_client.ZantaraAIClient", return_value=mock_zantara_client):
         service = CrossOracleSynthesisService(mock_search_service, mock_zantara_client, mock_golden)
 
         assert service.golden_answers == mock_golden

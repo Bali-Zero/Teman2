@@ -190,7 +190,7 @@ class TestExhaustiveErrorConditions:
         ]
 
         for error in db_errors:
-            with patch("app.dependencies.get_database_pool") as mock_get_pool:
+            with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
                 mock_pool, mock_conn = self._create_mock_db_pool()
                 mock_conn.fetchrow = AsyncMock(side_effect=error)
                 mock_get_pool.return_value = mock_pool
@@ -213,7 +213,7 @@ class TestExhaustiveErrorConditions:
         ]
 
         for error in service_errors:
-            with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+            with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                 mock_service = MagicMock()
                 mock_service.search = AsyncMock(side_effect=error)
                 mock_search.return_value = mock_service
@@ -275,7 +275,7 @@ class TestExhaustiveDataTypes:
 
     def test_null_handling_scenarios(self, authenticated_client, test_app):
         """Test all null handling scenarios"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate null values
             mock_conn.fetchrow = AsyncMock(

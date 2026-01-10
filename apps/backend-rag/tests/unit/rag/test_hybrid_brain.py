@@ -8,9 +8,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from services.rag.agent.tools import DatabaseQueryTool
-from services.rag.agentic.prompt_builder import SystemPromptBuilder
-from services.rag.agentic.tools import VectorSearchTool
+from backend.services.rag.agent.tools import DatabaseQueryTool
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.tools import VectorSearchTool
 
 
 @pytest.mark.asyncio

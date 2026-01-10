@@ -32,8 +32,8 @@ class TestPersonalityServiceIntegration:
     @pytest.mark.asyncio
     async def test_personality_service_initialization(self, db_pool):
         """Test PersonalityService initialization"""
-        with patch("services.personality_service.MemoryServicePostgres") as mock_memory:
-            from services.misc.personality_service import PersonalityService
+        with patch("backend.services.personality_service.MemoryServicePostgres") as mock_memory:
+            from backend.services.misc.personality_service import PersonalityService
 
             service = PersonalityService(memory_service=mock_memory.return_value)
 

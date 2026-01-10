@@ -81,8 +81,8 @@ def mock_db_pool():
 @pytest.fixture
 def app_with_mocks(mock_orchestrator, mock_current_user, mock_db_pool):
     """Create FastAPI app with all dependencies mocked"""
-    from app.routers.agentic_rag import router
-    from app.dependencies import get_current_user, get_orchestrator, get_optional_database_pool
+    from backend.app.routers.agentic_rag import router
+    from backend.app.dependencies import get_current_user, get_orchestrator, get_optional_database_pool
 
     app = FastAPI()
     app.include_router(router)
@@ -100,7 +100,7 @@ class TestCleanImageGenerationResponse:
 
     def test_no_pollinations_url_returns_unchanged(self):
         """Text without pollinations URLs should be unchanged"""
-        from app.routers.agentic_rag import clean_image_generation_response
+        from backend.app.routers.agentic_rag import clean_image_generation_response
 
         text = "This is a normal response without image URLs."
         result = clean_image_generation_response(text)
@@ -108,7 +108,7 @@ class TestCleanImageGenerationResponse:
 
     def test_removes_pollinations_urls(self):
         """Lines with pollinations.ai URLs should be removed"""
-        from app.routers.agentic_rag import clean_image_generation_response
+        from backend.app.routers.agentic_rag import clean_image_generation_response
 
         text = """Ecco l'immagine:
 Check out https://pollinations.ai/image/test
@@ -120,7 +120,7 @@ Here's your image!"""
 
     def test_removes_visualizza_links(self):
         """Lines starting with [Visualizza should be removed"""
-        from app.routers.agentic_rag import clean_image_generation_response
+        from backend.app.routers.agentic_rag import clean_image_generation_response
 
         text = """Your image:
 [Visualizza immagine](https://pollinations.ai/test)
@@ -131,7 +131,7 @@ Done!"""
 
     def test_provides_default_for_empty_result(self):
         """If almost all content is removed, provide default response"""
-        from app.routers.agentic_rag import clean_image_generation_response
+        from backend.app.routers.agentic_rag import clean_image_generation_response
 
         text = """https://pollinations.ai/image/test
 [Visualizza immagine](link)"""
@@ -141,7 +141,7 @@ Done!"""
 
     def test_empty_input_returns_empty(self):
         """Empty input should return empty"""
-        from app.routers.agentic_rag import clean_image_generation_response
+        from backend.app.routers.agentic_rag import clean_image_generation_response
 
         assert clean_image_generation_response("") == ""
         assert clean_image_generation_response(None) is None
@@ -327,7 +327,7 @@ class TestGetConversationHistoryForAgentic:
     @pytest.mark.asyncio
     async def test_returns_empty_without_db_pool(self):
         """Should return empty list if no db_pool"""
-        from app.routers.agentic_rag import get_conversation_history_for_agentic
+        from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         result = await get_conversation_history_for_agentic(
             conversation_id=123,
@@ -341,7 +341,7 @@ class TestGetConversationHistoryForAgentic:
     @pytest.mark.asyncio
     async def test_returns_empty_without_user_id(self, mock_db_pool):
         """Should return empty list if no user_id"""
-        from app.routers.agentic_rag import get_conversation_history_for_agentic
+        from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         result = await get_conversation_history_for_agentic(
             conversation_id=123,
@@ -355,7 +355,7 @@ class TestGetConversationHistoryForAgentic:
     @pytest.mark.asyncio
     async def test_retrieves_by_conversation_id(self, mock_db_pool):
         """Should retrieve history by conversation_id"""
-        from app.routers.agentic_rag import get_conversation_history_for_agentic
+        from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         # Setup mock to return conversation
         mock_messages = [
@@ -383,7 +383,7 @@ class TestGetConversationHistoryForAgentic:
     @pytest.mark.asyncio
     async def test_handles_json_string_messages(self, mock_db_pool):
         """Should handle messages stored as JSON string"""
-        from app.routers.agentic_rag import get_conversation_history_for_agentic
+        from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         mock_messages = [{"role": "user", "content": "Test"}]
 
@@ -410,14 +410,14 @@ class TestGetOptionalDatabasePool:
 
     def test_returns_none_when_503(self):
         """Should return None when database is unavailable (503)"""
-        from app.dependencies import get_optional_database_pool
+        from backend.app.dependencies import get_optional_database_pool
         from fastapi import HTTPException
 
         # Mock request with no db_pool
         mock_request = MagicMock()
         mock_request.app.state = MagicMock(spec=[])  # No db_pool attribute
 
-        with patch('app.dependencies.get_database_pool') as mock_get_db:
+        with patch('backend.app.dependencies.get_database_pool') as mock_get_db:
             mock_get_db.side_effect = HTTPException(status_code=503, detail="DB unavailable")
 
             result = get_optional_database_pool(mock_request)
@@ -430,7 +430,7 @@ class TestPydanticModels:
 
     def test_agentic_query_request_defaults(self):
         """AgenticQueryRequest has correct defaults"""
-        from app.routers.agentic_rag import AgenticQueryRequest
+        from backend.app.routers.agentic_rag import AgenticQueryRequest
 
         request = AgenticQueryRequest(query="Test")
 
@@ -443,7 +443,7 @@ class TestPydanticModels:
 
     def test_conversation_message_input_model(self):
         """ConversationMessageInput validates correctly"""
-        from app.routers.agentic_rag import ConversationMessageInput
+        from backend.app.routers.agentic_rag import ConversationMessageInput
 
         msg = ConversationMessageInput(role="user", content="Hello")
 
@@ -452,7 +452,7 @@ class TestPydanticModels:
 
     def test_image_input_model(self):
         """ImageInput validates correctly"""
-        from app.routers.agentic_rag import ImageInput
+        from backend.app.routers.agentic_rag import ImageInput
 
         img = ImageInput(
             base64="data:image/png;base64,abc123",

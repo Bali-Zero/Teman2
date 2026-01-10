@@ -23,8 +23,8 @@ from pydantic import ValidationError
 backend_path = Path(__file__).parent.parent.parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
-from app.core.error_classification import ErrorClassifier
-from services.rag.agentic.orchestrator import StreamEvent
+from backend.app.core.error_classification import ErrorClassifier
+from backend.services.rag.agentic.orchestrator import StreamEvent
 
 # Skip all tests in this module until patch paths are corrected
 pytestmark = pytest.mark.skip(

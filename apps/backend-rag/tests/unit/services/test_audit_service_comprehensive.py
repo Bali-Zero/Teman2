@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from services.monitoring.audit_service import AuditService
+from backend.services.monitoring.audit_service import AuditService
 
 
 class TestAuditService:
@@ -27,7 +27,7 @@ class TestAuditService:
     @pytest.fixture
     def audit_service(self):
         """Create AuditService instance"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = "postgresql://test"
             return AuditService()
 
@@ -39,7 +39,7 @@ class TestAuditService:
 
     def test_init_without_url(self):
         """Test AuditService initialization without URL"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
             assert service.enabled is False
@@ -48,7 +48,7 @@ class TestAuditService:
     async def test_connect_success(self, audit_service, mock_pool):
         """Test connect success"""
         pool, conn = mock_pool
-        with patch("services.monitoring.audit_service.asyncpg.create_pool", return_value=pool):
+        with patch("backend.services.monitoring.audit_service.asyncpg.create_pool", return_value=pool):
             await audit_service.connect()
             assert audit_service.pool == pool
 
@@ -56,7 +56,7 @@ class TestAuditService:
     async def test_connect_error(self, audit_service):
         """Test connect error"""
         with patch(
-            "services.monitoring.audit_service.asyncpg.create_pool", side_effect=Exception("Error")
+            "backend.services.monitoring.audit_service.asyncpg.create_pool", side_effect=Exception("Error")
         ):
             await audit_service.connect()
             assert audit_service.enabled is False
@@ -64,7 +64,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_connect_disabled(self):
         """Test connect when disabled"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
             await service.connect()
@@ -95,7 +95,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_auth_event_disabled(self):
         """Test log_auth_event when disabled"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
             await service.log_auth_event(email="test@example.com", action="login", success=True)
@@ -131,7 +131,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_log_system_event_disabled(self):
         """Test log_system_event when disabled"""
-        with patch("services.monitoring.audit_service.settings") as mock_settings:
+        with patch("backend.services.monitoring.audit_service.settings") as mock_settings:
             mock_settings.database_url = None
             service = AuditService()
             await service.log_system_event(event_type="test", action="test_action")
@@ -139,7 +139,7 @@ class TestAuditService:
     @pytest.mark.asyncio
     async def test_get_audit_service(self):
         """Test get_audit_service singleton"""
-        from services.monitoring.audit_service import get_audit_service
+        from backend.services.monitoring.audit_service import get_audit_service
 
         service = get_audit_service()
         assert isinstance(service, AuditService)

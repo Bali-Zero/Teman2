@@ -9,7 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from core.cache import invalidate_cache
+from backend.core.cache import invalidate_cache
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
@@ -23,14 +23,14 @@ if str(backend_path) not in sys.path:
 def stubbed_search_service():
     """Provide a SearchService wired to mocked dependencies."""
     with (
-        patch("core.embeddings.create_embeddings_generator") as mock_embedder,
-        patch("services.search_service.CollectionManager") as mock_collection_manager,
+        patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
+        patch("backend.services.search_service.CollectionManager") as mock_collection_manager,
         patch(
-            "services.query_router_integration.QueryRouterIntegration"
+            "backend.services.query_router_integration.QueryRouterIntegration"
         ) as mock_router_integration,
-        patch("services.search_service.ConflictResolver"),
-        patch("services.cultural_insights_service.CulturalInsightsService"),
-        patch("services.collection_health_service.CollectionHealthService"),
+        patch("backend.services.search_service.ConflictResolver"),
+        patch("backend.services.cultural_insights_service.CulturalInsightsService"),
+        patch("backend.services.collection_health_service.CollectionHealthService"),
     ):
         embedder = MagicMock()
         embedder.generate_query_embedding.return_value = [0.4, 0.2]
@@ -45,7 +45,7 @@ def stubbed_search_service():
         router.route_query.return_value = {"collection_name": "zantara_books"}
         mock_router_integration.return_value = router
 
-        from services.search.search_service import SearchService
+        from backend.services.search.search_service import SearchService
 
         service = SearchService()
         yield service, collection_manager, router
@@ -61,7 +61,7 @@ def clear_search_cache():
 @pytest.mark.integration
 class TestSearchServiceIntegration:
     def test_search_service_initialization(self):
-        from services.search.search_service import SearchService
+        from backend.services.search.search_service import SearchService
 
         service = SearchService()
         assert service.collection_manager is not None
@@ -88,7 +88,7 @@ class TestSearchServiceIntegration:
 
     @pytest.mark.asyncio
     async def test_tier_filters_translated_to_qdrant(self, stubbed_search_service):
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
 
         service, collection_manager, router = stubbed_search_service
         router.route_query.return_value = {"collection_name": "zantara_books"}

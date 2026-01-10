@@ -39,7 +39,7 @@ class TestSemanticCacheIntegration:
     @pytest_asyncio.fixture
     async def cache(self, mock_redis):
         """Create SemanticCache instance"""
-        from services.semantic_cache import SemanticCache
+        from backend.services.semantic_cache import SemanticCache
 
         return SemanticCache(
             redis_client=mock_redis,

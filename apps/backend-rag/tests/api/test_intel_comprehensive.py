@@ -31,9 +31,9 @@ class TestIntelSearch:
 
     def test_search_intel_basic(self, authenticated_client):
         """Test basic intel search"""
-        with patch("app.routers.intel.embedder") as mock_embedder:
+        with patch("backend.app.routers.intel.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+            with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.search = AsyncMock(
                     return_value={
@@ -53,9 +53,9 @@ class TestIntelSearch:
 
     def test_search_intel_with_category(self, authenticated_client):
         """Test intel search with category filter"""
-        with patch("app.routers.intel.embedder") as mock_embedder:
+        with patch("backend.app.routers.intel.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+            with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.search = AsyncMock(
                     return_value={
@@ -87,9 +87,9 @@ class TestIntelSearch:
 
     def test_search_intel_with_date_range(self, authenticated_client):
         """Test intel search with date range"""
-        with patch("app.routers.intel.embedder") as mock_embedder:
+        with patch("backend.app.routers.intel.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+            with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.search = AsyncMock(
                     return_value={
@@ -112,9 +112,9 @@ class TestIntelSearch:
 
     def test_search_intel_with_tier(self, authenticated_client):
         """Test intel search with tier filter"""
-        with patch("app.routers.intel.embedder") as mock_embedder:
+        with patch("backend.app.routers.intel.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+            with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.search = AsyncMock(
                     return_value={
@@ -134,9 +134,9 @@ class TestIntelSearch:
 
     def test_search_intel_with_impact_level(self, authenticated_client):
         """Test intel search with impact level filter"""
-        with patch("app.routers.intel.embedder") as mock_embedder:
+        with patch("backend.app.routers.intel.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+            with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.search = AsyncMock(
                     return_value={
@@ -156,9 +156,9 @@ class TestIntelSearch:
 
     def test_search_intel_with_limit(self, authenticated_client):
         """Test intel search with limit"""
-        with patch("app.routers.intel.embedder") as mock_embedder:
+        with patch("backend.app.routers.intel.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+            with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.search = AsyncMock(
                     return_value={
@@ -201,7 +201,7 @@ class TestIntelStore:
 
     def test_store_intel_document(self, authenticated_client):
         """Test storing intel document"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.upsert = AsyncMock(return_value=True)
             mock_qdrant.return_value = mock_client
@@ -231,7 +231,7 @@ class TestIntelStore:
 
     def test_store_intel_invalid_collection(self, authenticated_client):
         """Test storing intel with invalid collection"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.upsert = AsyncMock(side_effect=ValueError("Invalid collection"))
             mock_qdrant.return_value = mock_client
@@ -257,7 +257,7 @@ class TestCriticalIntel:
 
     def test_get_critical_intel(self, authenticated_client):
         """Test getting critical intel"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.search = AsyncMock(
                 return_value={
@@ -274,7 +274,7 @@ class TestCriticalIntel:
 
     def test_get_critical_intel_with_limit(self, authenticated_client):
         """Test getting critical intel with limit"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.search = AsyncMock(
                 return_value={

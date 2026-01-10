@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.rag.agentic.prompt_builder import SystemPromptBuilder
+from backend.services.rag.agentic.prompt_builder import SystemPromptBuilder
 
 
 class TestPromptInjectionDetection:
@@ -217,30 +217,30 @@ class TestIntentClassifierTaxTerms:
 
     def test_pph_in_business_keywords(self):
         """Verify PPh is in BUSINESS_KEYWORDS after RC-004 fix."""
-        from services.classification.intent_classifier import BUSINESS_KEYWORDS
+        from backend.services.classification.intent_classifier import BUSINESS_KEYWORDS
 
         assert "pph" in BUSINESS_KEYWORDS
 
     def test_ppn_in_business_keywords(self):
         """Verify PPN is in BUSINESS_KEYWORDS."""
-        from services.classification.intent_classifier import BUSINESS_KEYWORDS
+        from backend.services.classification.intent_classifier import BUSINESS_KEYWORDS
 
         assert "ppn" in BUSINESS_KEYWORDS
 
     def test_npwp_in_business_keywords(self):
         """Verify NPWP is in BUSINESS_KEYWORDS."""
-        from services.classification.intent_classifier import BUSINESS_KEYWORDS
+        from backend.services.classification.intent_classifier import BUSINESS_KEYWORDS
 
         assert "npwp" in BUSINESS_KEYWORDS
 
     def test_pbb_in_business_keywords(self):
         """Verify PBB is in BUSINESS_KEYWORDS."""
-        from services.classification.intent_classifier import BUSINESS_KEYWORDS
+        from backend.services.classification.intent_classifier import BUSINESS_KEYWORDS
 
         assert "pbb" in BUSINESS_KEYWORDS
 
     def test_spt_in_business_keywords(self):
         """Verify SPT is in BUSINESS_KEYWORDS."""
-        from services.classification.intent_classifier import BUSINESS_KEYWORDS
+        from backend.services.classification.intent_classifier import BUSINESS_KEYWORDS
 
         assert "spt" in BUSINESS_KEYWORDS

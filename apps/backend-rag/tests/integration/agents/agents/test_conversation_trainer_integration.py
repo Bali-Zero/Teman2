@@ -47,7 +47,7 @@ class TestConversationTrainerIntegration:
     @pytest_asyncio.fixture
     async def trainer(self, mock_db_pool, mock_zantara_client):
         """Create ConversationTrainer instance"""
-        from agents.agents.conversation_trainer import ConversationTrainer
+        from backend.agents.agents.conversation_trainer import ConversationTrainer
 
         return ConversationTrainer(db_pool=mock_db_pool, zantara_client=mock_zantara_client)
 
@@ -134,13 +134,13 @@ class TestConversationTrainerIntegration:
 
     @pytest.mark.asyncio
     async def test_get_db_pool_from_app_state(self):
-        """Test getting database pool from app.state"""
+        """Test getting database pool from backend.app.state"""
         mock_pool = MagicMock()
 
-        with patch("agents.agents.conversation_trainer.app") as mock_app:
+        with patch("backend.agents.agents.conversation_trainer.app") as mock_app:
             mock_app.state.db_pool = mock_pool
 
-            from agents.agents.conversation_trainer import ConversationTrainer
+            from backend.agents.agents.conversation_trainer import ConversationTrainer
 
             trainer = ConversationTrainer(db_pool=None)
 
@@ -151,11 +151,11 @@ class TestConversationTrainerIntegration:
     @pytest.mark.asyncio
     async def test_get_db_pool_not_available(self):
         """Test getting database pool when not available"""
-        from agents.agents.conversation_trainer import ConversationTrainer
+        from backend.agents.agents.conversation_trainer import ConversationTrainer
 
         trainer = ConversationTrainer(db_pool=None)
 
-        with patch("agents.agents.conversation_trainer.app", side_effect=Exception()):
+        with patch("backend.agents.agents.conversation_trainer.app", side_effect=Exception()):
             with pytest.raises(RuntimeError):
                 await trainer._get_db_pool()
 

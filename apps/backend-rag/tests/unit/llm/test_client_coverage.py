@@ -2,8 +2,8 @@ import types
 from unittest.mock import patch
 
 import pytest
-from llm.base import LLMMessage, LLMResponse
-from llm.client import UnifiedLLMClient, create_default_client
+from backend.llm.base import LLMMessage, LLMResponse
+from backend.llm.client import UnifiedLLMClient, create_default_client
 
 
 class DummyProvider:
@@ -115,7 +115,7 @@ def test_get_available_providers():
 
 
 def test_create_default_client_uses_provider_chain():
-    providers_module = types.ModuleType("llm.providers")
+    providers_module = types.ModuleType("backend.llm.providers")
 
     class GeminiProvider:
         def __init__(self):
@@ -136,7 +136,7 @@ def test_create_default_client_uses_provider_chain():
     providers_module.OpenRouterProvider = OpenRouterProvider
     providers_module.DeepSeekProvider = DeepSeekProvider
 
-    with patch.dict("sys.modules", {"llm.providers": providers_module}):
+    with patch.dict("sys.modules", {"backend.llm.providers": providers_module}):
         client = create_default_client()
 
     names = [p.name for p in client.providers]

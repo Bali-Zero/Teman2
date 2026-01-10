@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
@@ -70,23 +71,24 @@ def _load_module(monkeypatch, settings_overrides=None):
         for key, value in settings_overrides.items():
             setattr(settings_stub, key, value)
 
-    monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub)
-    )
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = settings_stub
+    config_mock.Settings = MagicMock()
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
     monkeypatch.setitem(
         sys.modules,
-        "services.misc.session_service",
+        "backend.services.misc.session_service",
         types.SimpleNamespace(SessionService=_SessionService),
     )
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.session"
+    module_name = "backend.app.routers.session"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

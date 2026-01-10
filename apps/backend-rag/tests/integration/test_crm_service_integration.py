@@ -25,14 +25,14 @@ class TestCRMServiceIntegration:
     @pytest.mark.asyncio
     async def test_crm_client_service_flow(self, postgres_container):
         """Test CRM client service flow"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "full_name": "Test Client"})
             mock_pool.acquire = MagicMock(return_value=mock_conn)
             mock_get_pool.return_value = mock_pool
 
-            from app.routers.crm_clients import router
+            from backend.app.routers.crm_clients import router
 
             # Test that router can be imported and used
             assert router is not None
@@ -40,14 +40,14 @@ class TestCRMServiceIntegration:
     @pytest.mark.asyncio
     async def test_crm_practice_service_flow(self, postgres_container):
         """Test CRM practice service flow"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "practice_type": "KITAS"})
             mock_pool.acquire = MagicMock(return_value=mock_conn)
             mock_get_pool.return_value = mock_pool
 
-            from app.routers.crm_practices import router
+            from backend.app.routers.crm_practices import router
 
             # Test that router can be imported and used
             assert router is not None

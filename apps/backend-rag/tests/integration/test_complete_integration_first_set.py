@@ -24,7 +24,7 @@ os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/test_credentials.j
 # Import FastAPI app
 from fastapi.testclient import TestClient
 
-from app.main import app
+from backend.app.main import app
 
 # Create test client
 client = TestClient(app)

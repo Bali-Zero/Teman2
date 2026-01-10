@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.misc.golden_answer_service import GoldenAnswerService
+from backend.services.misc.golden_answer_service import GoldenAnswerService
 
 
 class TestGoldenAnswerService:
@@ -90,6 +90,6 @@ class TestGoldenAnswerService:
 
     def test_load_model(self, service):
         """Test _load_model"""
-        with patch("services.misc.golden_answer_service.SentenceTransformer") as mock_st:
+        with patch("backend.services.misc.golden_answer_service.SentenceTransformer") as mock_st:
             service._load_model()
             assert service.model is not None

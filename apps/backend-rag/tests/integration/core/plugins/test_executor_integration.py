@@ -26,7 +26,7 @@ class TestPluginExecutorIntegration:
     @pytest_asyncio.fixture
     async def mock_plugin(self):
         """Create mock plugin"""
-        from core.plugins.plugin import Plugin, PluginCategory, PluginMetadata
+        from backend.core.plugins.plugin import Plugin, PluginCategory, PluginMetadata
         from pydantic import BaseModel
 
         class TestInput(BaseModel):
@@ -75,7 +75,7 @@ class TestPluginExecutorIntegration:
     @pytest_asyncio.fixture
     async def executor(self, mock_redis):
         """Create PluginExecutor instance"""
-        from core.plugins.executor import PluginExecutor
+        from backend.core.plugins.executor import PluginExecutor
 
         executor = PluginExecutor(redis_client=mock_redis)
         return executor
@@ -83,7 +83,7 @@ class TestPluginExecutorIntegration:
     @pytest_asyncio.fixture
     async def executor_no_redis(self):
         """Create PluginExecutor without Redis"""
-        from core.plugins.executor import PluginExecutor
+        from backend.core.plugins.executor import PluginExecutor
 
         return PluginExecutor(redis_client=None)
 
@@ -102,7 +102,7 @@ class TestPluginExecutorIntegration:
     @pytest.mark.asyncio
     async def test_execute_plugin_success(self, executor, mock_plugin):
         """Test executing plugin successfully"""
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             result = await executor.execute(
                 "test.plugin", {"test_field": "test_value"}, use_cache=False
             )
@@ -113,7 +113,7 @@ class TestPluginExecutorIntegration:
     @pytest.mark.asyncio
     async def test_execute_plugin_not_found(self, executor):
         """Test executing non-existent plugin"""
-        with patch("core.plugins.executor.registry.get", return_value=None):
+        with patch("backend.core.plugins.executor.registry.get", return_value=None):
             result = await executor.execute("nonexistent.plugin", {})
 
             assert result is not None
@@ -126,7 +126,7 @@ class TestPluginExecutorIntegration:
         # First call - cache miss
         mock_redis.get = AsyncMock(return_value=None)
 
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             result1 = await executor.execute("test.plugin", {"test_field": "test"}, use_cache=True)
 
             assert result1 is not None
@@ -138,7 +138,7 @@ class TestPluginExecutorIntegration:
         cached_result = json.dumps({"success": True, "data": {"result": "cached"}})
         mock_redis.get = AsyncMock(return_value=cached_result)
 
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             result2 = await executor.execute("test.plugin", {"test_field": "test"}, use_cache=True)
 
             assert result2 is not None
@@ -149,7 +149,7 @@ class TestPluginExecutorIntegration:
         # Mock plugin with low rate limit
         mock_plugin.metadata.rate_limit = 1  # 1 per minute
 
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             # First call should succeed
             result1 = await executor.execute("test.plugin", {"test_field": "test"}, use_cache=False)
             assert result1.success is True
@@ -164,7 +164,7 @@ class TestPluginExecutorIntegration:
         """Test authentication requirement"""
         mock_plugin.metadata.requires_auth = True
 
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             result = await executor.execute("test.plugin", {"test_field": "test"}, user_id=None)
 
             assert result is not None
@@ -174,7 +174,7 @@ class TestPluginExecutorIntegration:
     @pytest.mark.asyncio
     async def test_execute_plugin_validation_error(self, executor, mock_plugin):
         """Test input validation error"""
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             result = await executor.execute("test.plugin", {"invalid_field": "test"})
 
             assert result is not None
@@ -193,7 +193,7 @@ class TestPluginExecutorIntegration:
 
         mock_plugin.execute = slow_execute
 
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             result = await executor.execute(
                 "test.plugin", {"test_field": "test"}, timeout=0.1, retry_count=0
             )
@@ -215,7 +215,7 @@ class TestPluginExecutorIntegration:
 
         mock_plugin.execute = failing_then_success
 
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             result = await executor.execute("test.plugin", {"test_field": "test"}, retry_count=2)
 
             assert result is not None
@@ -230,7 +230,7 @@ class TestPluginExecutorIntegration:
 
         mock_plugin.execute = failing_execute
 
-        with patch("core.plugins.executor.registry.get", return_value=mock_plugin):
+        with patch("backend.core.plugins.executor.registry.get", return_value=mock_plugin):
             # Trigger multiple failures to open circuit breaker
             for _ in range(6):
                 await executor.execute("test.plugin", {"test_field": "test"}, retry_count=0)

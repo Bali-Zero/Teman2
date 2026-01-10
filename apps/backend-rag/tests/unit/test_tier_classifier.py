@@ -26,7 +26,7 @@ class TestTierClassifier:
 
     def test_classify_tier_s_quantum(self):
         """Test classifying Tier S - Quantum physics"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -37,7 +37,7 @@ class TestTierClassifier:
 
     def test_classify_tier_s_consciousness(self):
         """Test classifying Tier S - Consciousness"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -48,7 +48,7 @@ class TestTierClassifier:
 
     def test_classify_tier_a_philosophy(self):
         """Test classifying Tier A - Philosophy"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -59,7 +59,7 @@ class TestTierClassifier:
 
     def test_classify_tier_a_psychology(self):
         """Test classifying Tier A - Psychology"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -70,7 +70,7 @@ class TestTierClassifier:
 
     def test_classify_tier_b_history(self):
         """Test classifying Tier B - History"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -81,7 +81,7 @@ class TestTierClassifier:
 
     def test_classify_tier_b_culture(self):
         """Test classifying Tier B - Culture"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -93,7 +93,7 @@ class TestTierClassifier:
 
     def test_classify_tier_c_self_help(self):
         """Test classifying Tier C - Self-help"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -104,7 +104,7 @@ class TestTierClassifier:
 
     def test_classify_tier_c_business(self):
         """Test classifying Tier C - Business"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -115,7 +115,7 @@ class TestTierClassifier:
 
     def test_classify_tier_d_popular_science(self):
         """Test classifying Tier D - Popular science"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -126,7 +126,7 @@ class TestTierClassifier:
 
     def test_classify_tier_d_introductory(self):
         """Test classifying Tier D - Introductory"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -137,7 +137,7 @@ class TestTierClassifier:
 
     def test_classify_default_tier(self):
         """Test classifying default tier"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()
@@ -149,7 +149,7 @@ class TestTierClassifier:
 
     def test_classify_case_insensitive(self):
         """Test classification is case insensitive"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
         from backend.utils.tier_classifier import TierClassifier
 
         classifier = TierClassifier()

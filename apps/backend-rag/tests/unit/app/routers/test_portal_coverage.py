@@ -84,10 +84,10 @@ def _load_module(monkeypatch):
     backend_path = Path(__file__).resolve().parents[4] / "backend"
 
     monkeypatch.setitem(
-        sys.modules, "services.portal", types.SimpleNamespace(PortalService=_PortalService, redis_url='redis://localhost:6379')
+        sys.modules, "backend.services.portal", types.SimpleNamespace(PortalService=_PortalService, redis_url='redis://localhost:6379')
     )
     monkeypatch.setitem(
-        sys.modules, "app.dependencies", types.SimpleNamespace(get_database_pool=lambda: None, redis_url='redis://localhost:6379')
+        sys.modules, "backend.app.dependencies", types.SimpleNamespace(get_database_pool=lambda: None, redis_url='redis://localhost:6379')
     )
 
     class _Logger:
@@ -96,18 +96,18 @@ def _load_module(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.logging_utils",
+        "backend.app.utils.logging_utils",
         types.SimpleNamespace(get_logger=lambda _name: _Logger(), redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.portal"
+    module_name = "backend.app.routers.portal"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

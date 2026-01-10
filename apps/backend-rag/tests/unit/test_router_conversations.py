@@ -135,11 +135,11 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_no_credentials_raises_401(self, mock_request_no_user):
         """Test that missing credentials raise 401"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.jwt_secret_key = "test-secret"
             mock_settings.jwt_algorithm = "HS256"
 
-            from app.dependencies import get_current_user
+            from backend.app.dependencies import get_current_user
 
             with pytest.raises(HTTPException) as exc_info:
                 get_current_user(request=mock_request_no_user, credentials=None)
@@ -152,10 +152,10 @@ class TestGetCurrentUser:
         self, mock_settings, valid_jwt_token, mock_request_no_user
     ):
         """Test that valid token returns user dict"""
-        with patch("app.core.config.settings", mock_settings):
+        with patch("backend.app.core.config.settings", mock_settings):
             from fastapi.security import HTTPAuthorizationCredentials
 
-            from app.dependencies import get_current_user
+            from backend.app.dependencies import get_current_user
 
             credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=valid_jwt_token)
 
@@ -168,10 +168,10 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_invalid_token_raises_401(self, mock_settings, mock_request_no_user):
         """Test that invalid token raises 401"""
-        with patch("app.core.config.settings", mock_settings):
+        with patch("backend.app.core.config.settings", mock_settings):
             from fastapi.security import HTTPAuthorizationCredentials
 
-            from app.dependencies import get_current_user
+            from backend.app.dependencies import get_current_user
 
             credentials = HTTPAuthorizationCredentials(
                 scheme="Bearer", credentials="invalid-token-not-jwt"
@@ -198,8 +198,8 @@ class TestSaveConversation:
         conn.fetchrow = AsyncMock(return_value={"id": 123})
         conn.execute = AsyncMock()
 
-        with patch("app.routers.conversations.get_auto_crm", return_value=mock_auto_crm):
-            from app.routers.conversations import SaveConversationRequest, save_conversation
+        with patch("backend.app.routers.conversations.get_auto_crm", return_value=mock_auto_crm):
+            from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
             request = SaveConversationRequest(
                 messages=[
@@ -228,8 +228,8 @@ class TestSaveConversation:
         conn.fetchrow = AsyncMock(return_value={"id": 456})
         conn.execute = AsyncMock()
 
-        with patch("app.routers.conversations.get_auto_crm", return_value=None):
-            from app.routers.conversations import SaveConversationRequest, save_conversation
+        with patch("backend.app.routers.conversations.get_auto_crm", return_value=None):
+            from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
             request = SaveConversationRequest(
                 messages=[{"role": "user", "content": "Test"}],
@@ -249,7 +249,7 @@ class TestSaveConversation:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
-        from app.routers.conversations import SaveConversationRequest, save_conversation
+        from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
         request = SaveConversationRequest(
             messages=[{"role": "user", "content": "Test"}],
@@ -288,7 +288,7 @@ class TestGetConversationHistory:
             }
         )
 
-        from app.routers.conversations import get_conversation_history
+        from backend.app.routers.conversations import get_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -306,7 +306,7 @@ class TestGetConversationHistory:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(return_value=None)
 
-        from app.routers.conversations import get_conversation_history
+        from backend.app.routers.conversations import get_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -334,7 +334,7 @@ class TestClearConversationHistory:
         # Mock execute to return status with rowcount
         conn.execute = AsyncMock(return_value="DELETE 5")
 
-        from app.routers.conversations import clear_conversation_history
+        from backend.app.routers.conversations import clear_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -366,7 +366,7 @@ class TestGetConversationStats:
             }
         )
 
-        from app.routers.conversations import get_conversation_stats
+        from backend.app.routers.conversations import get_conversation_stats
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -393,7 +393,7 @@ class TestSaveConversationEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(return_value={"id": 789})
 
-        from app.routers.conversations import SaveConversationRequest, save_conversation
+        from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
         request = SaveConversationRequest(messages=[])
 
@@ -410,7 +410,7 @@ class TestSaveConversationEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(return_value={"id": 999})
 
-        from app.routers.conversations import SaveConversationRequest, save_conversation
+        from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
         long_content = "A" * 10000  # 10KB message
         request = SaveConversationRequest(messages=[{"role": "user", "content": long_content}])
@@ -428,8 +428,8 @@ class TestSaveConversationEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(return_value={"id": 111})
 
-        with patch("app.routers.conversations.get_auto_crm", return_value=None):
-            from app.routers.conversations import SaveConversationRequest, save_conversation
+        with patch("backend.app.routers.conversations.get_auto_crm", return_value=None):
+            from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
             request = SaveConversationRequest(
                 messages=[{"role": "user", "content": "Test message"}]
@@ -455,8 +455,8 @@ class TestSaveConversationEdgeCases:
 
         mock_auto_crm.process_conversation = AsyncMock(side_effect=Exception("CRM error"))
 
-        with patch("app.routers.conversations.get_auto_crm", return_value=mock_auto_crm):
-            from app.routers.conversations import SaveConversationRequest, save_conversation
+        with patch("backend.app.routers.conversations.get_auto_crm", return_value=mock_auto_crm):
+            from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
             request = SaveConversationRequest(messages=[{"role": "user", "content": "Test"}])
 
@@ -477,8 +477,8 @@ class TestSaveConversationEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(return_value={"id": 333})
 
-        with patch("app.routers.conversations.get_auto_crm", return_value=None):
-            from app.routers.conversations import SaveConversationRequest, save_conversation
+        with patch("backend.app.routers.conversations.get_auto_crm", return_value=None):
+            from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
             request = SaveConversationRequest(
                 messages=[{"role": "user", "content": "Test"}],
@@ -502,8 +502,8 @@ class TestSaveConversationEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(return_value={"id": 444})
 
-        with patch("app.routers.conversations.get_auto_crm", return_value=None):
-            from app.routers.conversations import SaveConversationRequest, save_conversation
+        with patch("backend.app.routers.conversations.get_auto_crm", return_value=None):
+            from backend.app.routers.conversations import SaveConversationRequest, save_conversation
 
             metadata = {"team_member": "John", "source": "web", "priority": "high"}
             request = SaveConversationRequest(
@@ -532,7 +532,7 @@ class TestGetConversationHistoryEdgeCases:
             return_value={"messages": many_messages, "created_at": datetime.now()}
         )
 
-        from app.routers.conversations import get_conversation_history
+        from backend.app.routers.conversations import get_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -556,7 +556,7 @@ class TestGetConversationHistoryEdgeCases:
             }
         )
 
-        from app.routers.conversations import get_conversation_history
+        from backend.app.routers.conversations import get_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -580,7 +580,7 @@ class TestGetConversationHistoryEdgeCases:
             }
         )
 
-        from app.routers.conversations import get_conversation_history
+        from backend.app.routers.conversations import get_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -600,7 +600,7 @@ class TestClearConversationHistoryEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.execute = AsyncMock(return_value="DELETE 3")
 
-        from app.routers.conversations import clear_conversation_history
+        from backend.app.routers.conversations import clear_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -620,7 +620,7 @@ class TestClearConversationHistoryEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.execute = AsyncMock(return_value="DELETE 10")
 
-        from app.routers.conversations import clear_conversation_history
+        from backend.app.routers.conversations import clear_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -637,7 +637,7 @@ class TestClearConversationHistoryEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.execute = AsyncMock(return_value="DELETE 0")
 
-        from app.routers.conversations import clear_conversation_history
+        from backend.app.routers.conversations import clear_conversation_history
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 
@@ -658,7 +658,7 @@ class TestGetConversationStatsEdgeCases:
         pool, conn = mock_asyncpg_pool
         conn.fetchrow = AsyncMock(return_value=None)
 
-        from app.routers.conversations import get_conversation_stats
+        from backend.app.routers.conversations import get_conversation_stats
 
         current_user = {"email": "newuser@example.com", "user_id": "newuser"}
 
@@ -681,7 +681,7 @@ class TestGetConversationStatsEdgeCases:
             }
         )
 
-        from app.routers.conversations import get_conversation_stats
+        from backend.app.routers.conversations import get_conversation_stats
 
         current_user = {"email": "test@example.com", "user_id": "test"}
 

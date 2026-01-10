@@ -15,8 +15,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
-from core.plugins.registry import PluginRegistry
+from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins.registry import PluginRegistry
 
 # ============================================================================
 # Mock Plugins
@@ -674,8 +674,8 @@ async def test_discover_plugins_with_files(registry):
     mock_dir.rglob.return_value = [mock_file1, mock_file2, mock_file3]
 
     # Mock importlib to avoid actual imports
-    with patch("core.plugins.registry.importlib.import_module") as mock_import:
-        with patch("core.plugins.registry.inspect.getmembers") as mock_getmembers:
+    with patch("backend.core.plugins.registry.importlib.import_module") as mock_import:
+        with patch("backend.core.plugins.registry.inspect.getmembers") as mock_getmembers:
             # First import succeeds but has no Plugin classes
             mock_module = MagicMock()
             mock_import.side_effect = [
@@ -703,11 +703,11 @@ async def test_discover_plugins_registration_error(registry):
 
     mock_dir.rglob.return_value = [mock_file]
 
-    with patch("core.plugins.registry.importlib.import_module") as mock_import:
+    with patch("backend.core.plugins.registry.importlib.import_module") as mock_import:
         mock_module = MagicMock()
         mock_import.return_value = mock_module
 
-        with patch("core.plugins.registry.inspect.getmembers") as mock_getmembers:
+        with patch("backend.core.plugins.registry.inspect.getmembers") as mock_getmembers:
             # Return FailLoadPlugin which will fail on registration
             mock_getmembers.return_value = [("FailLoadPlugin", FailLoadPlugin), ("Plugin", Plugin)]
 

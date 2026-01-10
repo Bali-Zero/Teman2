@@ -9,16 +9,16 @@ import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 module_path = backend_path / "services" / "knowledge_graph" / "extractor_gemini.py"
-module_name = "services.knowledge_graph.extractor_gemini"
+module_name = "backend.services.knowledge_graph.extractor_gemini"
 
 
 def _build_module(monkeypatch, client_factory):
     services_pkg = types.ModuleType("services")
     services_pkg.__path__ = [str(backend_path / "services")]
-    kg_pkg = types.ModuleType("services.knowledge_graph")
+    kg_pkg = types.ModuleType("backend.services.knowledge_graph")
     kg_pkg.__path__ = [str(backend_path / "services" / "knowledge_graph")]
     monkeypatch.setitem(sys.modules, "services", services_pkg)
-    monkeypatch.setitem(sys.modules, "services.knowledge_graph", kg_pkg)
+    monkeypatch.setitem(sys.modules, "backend.services.knowledge_graph", kg_pkg)
 
     @dataclass
     class _ExtractedEntity:
@@ -51,9 +51,9 @@ def _build_module(monkeypatch, client_factory):
         ExtractionResult=_ExtractionResult,
         redis_url='redis://localhost:6379'
     )
-    monkeypatch.setitem(sys.modules, "services.knowledge_graph.extractor", extractor_stub)
+    monkeypatch.setitem(sys.modules, "backend.services.knowledge_graph.extractor", extractor_stub)
 
-    ontology_name = "services.knowledge_graph.ontology"
+    ontology_name = "backend.services.knowledge_graph.ontology"
     if ontology_name not in sys.modules:
         ontology_path = backend_path / "services" / "knowledge_graph" / "ontology.py"
         ontology_spec = importlib.util.spec_from_file_location(ontology_name, ontology_path)

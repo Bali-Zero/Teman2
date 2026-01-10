@@ -9,7 +9,7 @@ import pytest
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 module_path = backend_path / "services" / "integrations" / "telegram_bot_service.py"
-module_name = "services.integrations.telegram_bot_service"
+module_name = "backend.services.integrations.telegram_bot_service"
 
 
 class _FakeResponse:
@@ -29,7 +29,10 @@ class _FakeResponse:
 def _load_module(monkeypatch, token="token", async_client=None):
     settings_stub = types.SimpleNamespace(telegram_bot_token=token, redis_url='redis://localhost:6379')
     config_stub = types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
-    monkeypatch.setitem(sys.modules, "app.core.config", config_stub)
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = config_stub
+    config_mock.Settings = types.SimpleNamespace() # Dummy Settings class
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     if async_client is None:
         async_client = AsyncMock()

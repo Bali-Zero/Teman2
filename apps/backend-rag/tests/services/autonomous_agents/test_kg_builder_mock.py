@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from services.autonomous_agents.knowledge_graph_builder import (
+from backend.services.autonomous_agents.knowledge_graph_builder import (
     KnowledgeGraphBuilder,
 )
 
@@ -60,7 +60,7 @@ async def test_kg_extraction_round_trip(mock_db_pool, mock_llm_gateway):
 
     # Verify metrics recording (mock metrics_collector)
     with patch(
-        "services.autonomous_agents.knowledge_graph_builder.metrics_collector"
+        "backend.services.autonomous_agents.knowledge_graph_builder.metrics_collector"
     ) as mock_metrics:
         await builder.extract_entities(text)
         mock_metrics.record_kg_metrics.assert_called_with(1, 1, "llm")
@@ -85,7 +85,7 @@ async def test_kg_extraction_regex_fallback(mock_db_pool):
 
     # Verify metrics for regex
     with patch(
-        "services.autonomous_agents.knowledge_graph_builder.metrics_collector"
+        "backend.services.autonomous_agents.knowledge_graph_builder.metrics_collector"
     ) as mock_metrics:
         await builder.extract_entities(text)
         mock_metrics.record_kg_metrics.assert_called()

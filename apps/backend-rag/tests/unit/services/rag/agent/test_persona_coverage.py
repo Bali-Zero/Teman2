@@ -7,12 +7,12 @@ from types import SimpleNamespace
 
 def _load_persona_module(company_name="Bali Zero"):
     app_module = types.ModuleType("app")
-    app_core_module = types.ModuleType("app.core")
-    app_config_module = types.ModuleType("app.core.config")
+    app_core_module = types.ModuleType("backend.app.core")
+    app_config_module = types.ModuleType("backend.app.core.config")
     app_config_module.settings = SimpleNamespace(COMPANY_NAME=company_name, redis_url='redis://localhost:6379')
 
     services_module = types.ModuleType("services")
-    comms_module = types.ModuleType("services.communication")
+    comms_module = types.ModuleType("backend.services.communication")
 
     comms_module.build_alternatives_instructions = lambda: "ALT_INSTRUCTIONS"
     comms_module.build_explanation_instructions = lambda level: f"EXPLAIN:{level}"
@@ -28,10 +28,10 @@ def _load_persona_module(company_name="Bali Zero"):
     sys.modules.update(
         {
             "app": app_module,
-            "app.core": app_core_module,
-            "app.core.config": app_config_module,
+            "backend.app.core": app_core_module,
+            "backend.app.core.config": app_config_module,
             "services": services_module,
-            "services.communication": comms_module,
+            "backend.services.communication": comms_module,
         }
     )
 
@@ -43,7 +43,7 @@ def _load_persona_module(company_name="Bali Zero"):
         / "agent"
         / "persona.py"
     )
-    spec = importlib.util.spec_from_file_location("services.rag.agent.persona", module_path)
+    spec = importlib.util.spec_from_file_location("backend.services.rag.agent.persona", module_path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)

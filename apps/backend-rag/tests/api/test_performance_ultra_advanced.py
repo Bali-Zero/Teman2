@@ -109,7 +109,7 @@ class TestOptimizationScenarios:
 
     def test_caching_impact_on_performance(self, authenticated_client, test_app):
         """Test caching impact on performance"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -131,7 +131,7 @@ class TestOptimizationScenarios:
 
     def test_pagination_impact_on_performance(self, authenticated_client, test_app):
         """Test pagination impact on performance"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -196,7 +196,7 @@ class TestScalabilityScenarios:
 
     def test_scalability_with_large_datasets(self, authenticated_client, test_app):
         """Test scalability with large datasets"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate large dataset
             mock_conn.fetch = AsyncMock(return_value=[{"id": i} for i in range(10000)])
@@ -233,7 +233,7 @@ class TestResourceUtilization:
 
     def test_memory_usage_with_large_responses(self, authenticated_client, test_app):
         """Test memory usage with large responses"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate large response
             mock_conn.fetch = AsyncMock(
@@ -255,7 +255,7 @@ class TestResourceUtilization:
 
     def test_connection_pool_utilization(self, authenticated_client, test_app):
         """Test connection pool utilization"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             call_count = 0
 

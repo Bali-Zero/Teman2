@@ -131,7 +131,7 @@ class TestAuthLogin:
 
     def test_login_success(self, test_client, test_app):
         """Test successful login with valid credentials"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         hashed_pin = create_hashed_pin("123456")
         mock_user = {
@@ -154,7 +154,7 @@ class TestAuthLogin:
         test_app.dependency_overrides[get_database_pool] = override_db_pool
 
         # Mock audit service
-        with patch("services.audit_service.get_audit_service") as mock_audit:
+        with patch("backend.services.audit_service.get_audit_service") as mock_audit:
             mock_audit_instance = MagicMock()
             mock_audit_instance.pool = True
             mock_audit_instance.log_auth_event = AsyncMock()
@@ -174,7 +174,7 @@ class TestAuthLogin:
 
     def test_login_invalid_email(self, test_client, test_app):
         """Test login with non-existent email"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_pool, mock_conn = create_mock_db_pool(fetchrow_return=None)
 
@@ -183,7 +183,7 @@ class TestAuthLogin:
 
         test_app.dependency_overrides[get_database_pool] = override_db_pool
 
-        with patch("services.audit_service.get_audit_service") as mock_audit:
+        with patch("backend.services.audit_service.get_audit_service") as mock_audit:
             mock_audit_instance = MagicMock()
             mock_audit_instance.pool = True
             mock_audit_instance.log_auth_event = AsyncMock()
@@ -217,7 +217,7 @@ class TestAuthProfile:
 
     def test_get_profile_success(self, test_client, test_app, valid_jwt_token):
         """Test getting current user profile with valid token"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_user = {
             "id": "test-user-123",
@@ -271,7 +271,7 @@ class TestAuthCheck:
 
     def test_check_valid_token(self, test_client, test_app, valid_jwt_token):
         """Test checking a valid token"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_user = {
             "id": "test-user-123",
@@ -316,7 +316,7 @@ class TestAuthLogout:
 
     def test_logout_success(self, test_client, test_app, valid_jwt_token):
         """Test successful logout"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_user = {
             "id": "test-user-123",
@@ -376,7 +376,7 @@ class TestAuthRefreshToken:
 
     def test_refresh_token_success(self, test_client, test_app, valid_jwt_token):
         """Test POST /api/auth/refresh - successful token refresh"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_user = {
             "id": "test-user-123",
@@ -423,7 +423,7 @@ class TestAuthRefreshToken:
 
     def test_refresh_token_inactive_user(self, test_client, test_app, valid_jwt_token):
         """Test POST /api/auth/refresh - inactive user"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         # Mock user not found (inactive)
         mock_pool, mock_conn = create_mock_db_pool(fetchrow_return=None)
@@ -442,7 +442,7 @@ class TestAuthRefreshToken:
 
     def test_refresh_token_new_token_different(self, test_client, test_app, valid_jwt_token):
         """Test POST /api/auth/refresh - new token is different from old"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_user = {
             "id": "test-user-123",
@@ -475,7 +475,7 @@ class TestAuthRefreshToken:
 
     def test_refresh_token_response_structure(self, test_client, test_app, valid_jwt_token):
         """Test POST /api/auth/refresh - response structure"""
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_user = {
             "id": "test-user-123",

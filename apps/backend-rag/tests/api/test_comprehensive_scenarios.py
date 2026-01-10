@@ -44,7 +44,7 @@ class TestMultiUserScenarios:
 
     def test_user_isolation(self, authenticated_client, test_app):
         """Test user data isolation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate user-specific data
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "full_name": "User's Client"})
@@ -78,7 +78,7 @@ class TestComplexWorkflows:
 
     def test_complete_client_lifecycle(self, authenticated_client, test_app):
         """Test complete client lifecycle workflow"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -132,7 +132,7 @@ class TestComplexWorkflows:
 
     def test_practice_renewal_workflow(self, authenticated_client, test_app):
         """Test practice renewal workflow"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -190,7 +190,7 @@ class TestRealWorldDataPatterns:
 
     def test_realistic_client_data(self, authenticated_client, test_app):
         """Test with realistic client data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -215,7 +215,7 @@ class TestRealWorldDataPatterns:
 
     def test_realistic_practice_data(self, authenticated_client, test_app):
         """Test with realistic practice data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -239,7 +239,7 @@ class TestRealWorldDataPatterns:
 
     def test_realistic_interaction_data(self, authenticated_client, test_app):
         """Test with realistic interaction data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -308,7 +308,7 @@ class TestProductionLikeScenarios:
 
     def test_mixed_request_types(self, authenticated_client, test_app):
         """Test mixed request types"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -352,7 +352,7 @@ class TestEndToEndJourneys:
 
     def test_new_client_onboarding_journey(self, authenticated_client, test_app):
         """Test complete new client onboarding journey"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -387,7 +387,7 @@ class TestEndToEndJourneys:
                 )
 
                 # 4. Create journey
-                with patch("app.routers.agents.journey_orchestrator") as mock_journey:
+                with patch("backend.app.routers.agents.journey_orchestrator") as mock_journey:
                     mock_journey.create_journey = MagicMock(
                         return_value={"journey_id": "journey_123"}
                     )
@@ -407,7 +407,7 @@ class TestEndToEndJourneys:
 
     def test_existing_client_renewal_journey(self, authenticated_client, test_app):
         """Test existing client renewal journey"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 

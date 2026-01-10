@@ -25,7 +25,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from services.misc.graph_extractor import ExtractedGraph, GraphExtractor
+from backend.services.misc.graph_extractor import ExtractedGraph, GraphExtractor
 
 
 class TestExtractedGraph:
@@ -473,7 +473,7 @@ class TestGraphExtractorExtractFromText:
         """Test that errors are logged properly"""
         mock_ai_client.generate_response.side_effect = Exception("Test error")
 
-        with patch("services.misc.graph_extractor.logger") as mock_logger:
+        with patch("backend.services.misc.graph_extractor.logger") as mock_logger:
             result = await extractor.extract_from_text("Test text")
 
             # Verify error was logged

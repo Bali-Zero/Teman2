@@ -24,7 +24,7 @@ class TestAgentsEndpoints:
 
     def test_get_agents_status(self, authenticated_client):
         """Test GET /api/agents/status"""
-        with patch("app.dependencies.get_search_service") as mock_get_service:
+        with patch("backend.app.dependencies.get_search_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.router.get_routing_stats.return_value = {"selected_collection": "test"}
             mock_get_service.return_value = mock_service

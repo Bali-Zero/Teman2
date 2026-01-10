@@ -22,7 +22,7 @@ import pytest
 backend_path = Path(__file__).parent.parent.parent.parent.parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
-from app.core.error_classification import ErrorCategory, ErrorClassifier
+from backend.app.core.error_classification import ErrorCategory, ErrorClassifier
 
 # Skip all tests in this module until patch paths are corrected
 pytestmark = pytest.mark.skip(

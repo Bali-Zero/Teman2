@@ -35,7 +35,7 @@ class TestUnicodeEdgeCases:
         """Test endpoints with Chinese characters"""
         chinese_text = "这是中文测试内容"
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -51,7 +51,7 @@ class TestUnicodeEdgeCases:
         """Test endpoints with Arabic characters"""
         arabic_text = "هذا اختبار باللغة العربية"
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -67,7 +67,7 @@ class TestUnicodeEdgeCases:
         """Test endpoints with emoji characters"""
         emoji_text = "Test with 🎨 emoji 🚀 and symbols 💡"
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -83,7 +83,7 @@ class TestUnicodeEdgeCases:
         """Test endpoints with mixed Unicode scripts"""
         mixed_text = "Test 测试 тест テスト العربية"
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -101,7 +101,7 @@ class TestUnicodeEdgeCases:
         normalized_text = "caf\u00e9"  # é as single character
         decomposed_text = "cafe\u0301"  # é as e + combining accent
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -127,7 +127,7 @@ class TestLargePayloads:
         """Test with very large query string"""
         large_query = "What is " + "tax law " * 10000  # ~100KB
 
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -142,7 +142,7 @@ class TestLargePayloads:
 
     def test_very_large_message_array(self, authenticated_client, test_app):
         """Test with very large message array"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -160,7 +160,7 @@ class TestLargePayloads:
 
     def test_very_large_metadata(self, authenticated_client, test_app):
         """Test with very large metadata object"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -200,7 +200,7 @@ class TestNestedDataStructures:
 
     def test_deeply_nested_json(self, authenticated_client, test_app):
         """Test with deeply nested JSON structure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -315,7 +315,7 @@ class TestConcurrentModification:
         results = []
 
         def update_client(client_id):
-            with patch("app.dependencies.get_database_pool") as mock_get_pool:
+            with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
                 mock_pool, mock_conn = self._create_mock_db_pool()
                 mock_conn.fetchrow = AsyncMock(return_value={"id": client_id})
                 mock_get_pool.return_value = mock_pool
@@ -486,7 +486,7 @@ class TestSpecialCharacters:
         sql_chars = ["'", '"', ";", "--", "/*", "*/", "DROP", "SELECT", "UNION"]
 
         for char in sql_chars:
-            with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+            with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                 mock_service = MagicMock()
                 mock_service.search = AsyncMock(return_value={"results": []})
                 mock_search.return_value = mock_service
@@ -514,7 +514,7 @@ class TestSpecialCharacters:
         json_chars = ['"', "\\", "\n", "\r", "\t"]
 
         for char in json_chars:
-            with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+            with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                 mock_service = MagicMock()
                 mock_service.search = AsyncMock(return_value={"results": []})
                 mock_search.return_value = mock_service

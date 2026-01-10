@@ -31,7 +31,7 @@ class TestErrorHandlers:
     @pytest.mark.asyncio
     async def test_database_error_handling(self, db_pool):
         """Test database error handling"""
-        from app.utils.error_handlers import handle_database_error
+        from backend.app.utils.error_handlers import handle_database_error
 
         async with db_pool.acquire() as conn:
             # Test connection error handling
@@ -89,7 +89,7 @@ class TestLoggingUtils:
     @pytest.mark.asyncio
     async def test_logging_utils_initialization(self):
         """Test logging utilities initialization"""
-        from app.utils.logging_utils import get_logger
+        from backend.app.utils.logging_utils import get_logger
 
         logger = get_logger(__name__)
 
@@ -216,7 +216,7 @@ class TestStateHelpers:
     @pytest.mark.asyncio
     async def test_state_helpers_initialization(self):
         """Test state helpers initialization"""
-        from app.utils.state_helpers import get_app_state
+        from backend.app.utils.state_helpers import get_app_state
 
         # Mock app state
         mock_app = MagicMock()

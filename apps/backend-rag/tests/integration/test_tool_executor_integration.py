@@ -23,8 +23,8 @@ class TestToolExecutorIntegration:
 
     def test_tool_executor_init(self):
         """Test ToolExecutor initialization"""
-        with patch("services.zantara_tools.ZantaraTools") as mock_tools:
-            from services.tool_executor import ToolExecutor
+        with patch("backend.services.zantara_tools.ZantaraTools") as mock_tools:
+            from backend.services.tool_executor import ToolExecutor
 
             executor = ToolExecutor(zantara_tools=mock_tools.return_value)
             assert executor is not None
@@ -33,12 +33,12 @@ class TestToolExecutorIntegration:
     @pytest.mark.asyncio
     async def test_execute_tool_calls(self):
         """Test executing tool calls"""
-        with patch("services.zantara_tools.ZantaraTools") as mock_tools_class:
+        with patch("backend.services.zantara_tools.ZantaraTools") as mock_tools_class:
             mock_tools = MagicMock()
             mock_tools.get_team_overview = AsyncMock(return_value={"total": 10})
             mock_tools_class.return_value = mock_tools
 
-            from services.tool_executor import ToolExecutor
+            from backend.services.tool_executor import ToolExecutor
 
             executor = ToolExecutor(zantara_tools=mock_tools)
 
@@ -58,11 +58,11 @@ class TestToolExecutorIntegration:
     @pytest.mark.asyncio
     async def test_execute_tool_calls_unknown_tool(self):
         """Test executing unknown tool calls"""
-        with patch("services.zantara_tools.ZantaraTools") as mock_tools_class:
+        with patch("backend.services.zantara_tools.ZantaraTools") as mock_tools_class:
             mock_tools = MagicMock()
             mock_tools_class.return_value = mock_tools
 
-            from services.tool_executor import ToolExecutor
+            from backend.services.tool_executor import ToolExecutor
 
             executor = ToolExecutor(zantara_tools=mock_tools)
 

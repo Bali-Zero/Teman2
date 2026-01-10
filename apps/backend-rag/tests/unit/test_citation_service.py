@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from services.search.citation_service import CitationService
+from backend.services.search.citation_service import CitationService
 
 
 class TestCitationServiceInit:

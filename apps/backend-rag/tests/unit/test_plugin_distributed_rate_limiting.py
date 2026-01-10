@@ -14,9 +14,9 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.plugins.executor import PluginExecutor
-from core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
-from core.plugins.registry import PluginRegistry
+from backend.core.plugins.executor import PluginExecutor
+from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins.registry import PluginRegistry
 
 
 class MockRateLimitedPlugin(Plugin):
@@ -62,7 +62,7 @@ async def test_rate_limiting_with_redis():
     plugin = MockRateLimitedPlugin()
     await registry.register(MockRateLimitedPlugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         # First call should succeed
         result = await executor.execute("rate.limited.plugin", {})
         assert result.success is True
@@ -85,7 +85,7 @@ async def test_rate_limiting_redis_exceeds_limit():
 
     await registry.register(MockRateLimitedPlugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         result = await executor.execute("rate.limited.plugin", {})
 
         assert result.success is False
@@ -104,7 +104,7 @@ async def test_rate_limiting_redis_fallback_to_memory():
 
     await registry.register(MockRateLimitedPlugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         # Should fall back to memory-based rate limiting
         result = await executor.execute("rate.limited.plugin", {})
 
@@ -125,7 +125,7 @@ async def test_rate_limiting_per_user_with_redis():
 
     await registry.register(MockRateLimitedPlugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         # User1 makes request
         result1 = await executor.execute("rate.limited.plugin", {}, user_id="user1")
         assert result1.success is True
@@ -151,7 +151,7 @@ async def test_rate_limiting_memory_fallback():
 
     await registry.register(MockRateLimitedPlugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         # Make requests within limit
         for i in range(3):
             result = await executor.execute("rate.limited.plugin", {}, user_id="user1")
@@ -174,7 +174,7 @@ async def test_rate_limiting_redis_expiration():
 
     await registry.register(MockRateLimitedPlugin)
 
-    with patch("core.plugins.executor.registry", registry):
+    with patch("backend.core.plugins.executor.registry", registry):
         await executor.execute("rate.limited.plugin", {})
 
         # Verify expire was called with 60 seconds

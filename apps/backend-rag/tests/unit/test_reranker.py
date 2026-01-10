@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.reranker import ReRanker
+from backend.core.reranker import ReRanker
 
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def mock_httpx_client():
 async def test_reranker_init_success():
     """Test ReRanker initialization"""
     # Mock settings
-    with patch("core.reranker.settings") as mock_settings:
+    with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
         mock_settings.zerank_api_url = "https://api.test.com"
 
@@ -40,7 +40,7 @@ async def test_reranker_init_success():
 @pytest.mark.asyncio
 async def test_reranker_disabled_without_key():
     """Test ReRanker disabled if key missing"""
-    with patch("core.reranker.settings") as mock_settings:
+    with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = None
 
         reranker = ReRanker()
@@ -50,7 +50,7 @@ async def test_reranker_disabled_without_key():
 @pytest.mark.asyncio
 async def test_rerank_logic():
     """Test re-ranking logic with mocked API response"""
-    with patch("core.reranker.settings") as mock_settings:
+    with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
         mock_settings.zerank_api_url = "https://api.test.com"
 
@@ -97,7 +97,7 @@ async def test_rerank_logic():
 @pytest.mark.asyncio
 async def test_rerank_api_error():
     """Test fallback when API fails"""
-    with patch("core.reranker.settings") as mock_settings:
+    with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
 
         reranker = ReRanker()
@@ -121,7 +121,7 @@ async def test_rerank_api_error():
 @pytest.mark.asyncio
 async def test_rerank_empty_results():
     """Test handling of empty API results"""
-    with patch("core.reranker.settings") as mock_settings:
+    with patch("backend.core.reranker.settings") as mock_settings:
         mock_settings.zerank_api_key = "test_key"
 
         reranker = ReRanker()

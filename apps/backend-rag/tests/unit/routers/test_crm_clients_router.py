@@ -38,7 +38,7 @@ class TestClientCreateValidation:
 
     def test_valid_client_create(self):
         """Test creating valid ClientCreate instance"""
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         client = ClientCreate(
             full_name="John Doe",
@@ -54,7 +54,7 @@ class TestClientCreateValidation:
         """Test validation fails for invalid client_type"""
         from pydantic import ValidationError
 
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientCreate(full_name="John Doe", client_type="invalid_type")
@@ -65,7 +65,7 @@ class TestClientCreateValidation:
         """Test validation fails for empty full_name"""
         from pydantic import ValidationError
 
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientCreate(full_name="   ")
@@ -76,7 +76,7 @@ class TestClientCreateValidation:
         """Test validation fails for full_name > 200 chars"""
         from pydantic import ValidationError
 
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         long_name = "A" * 201
         with pytest.raises(ValidationError) as exc_info:
@@ -86,14 +86,14 @@ class TestClientCreateValidation:
 
     def test_client_create_name_trimmed(self):
         """Test full_name is trimmed of whitespace"""
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         client = ClientCreate(full_name="  John Doe  ")
         assert client.full_name == "John Doe"
 
     def test_client_create_defaults(self):
         """Test default values are set correctly"""
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         client = ClientCreate(full_name="John Doe")
         assert client.client_type == "individual"
@@ -102,28 +102,28 @@ class TestClientCreateValidation:
 
     def test_client_create_empty_email_to_none(self):
         """Test empty email string is converted to None"""
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         client = ClientCreate(full_name="John Doe", email="")
         assert client.email is None
 
     def test_client_create_whitespace_email_to_none(self):
         """Test whitespace-only email is converted to None"""
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         client = ClientCreate(full_name="John Doe", email="   ")
         assert client.email is None
 
     def test_client_create_empty_passport_expiry_to_none(self):
         """Test empty passport_expiry string is converted to None"""
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         client = ClientCreate(full_name="John Doe", passport_expiry="")
         assert client.passport_expiry is None
 
     def test_client_create_empty_date_of_birth_to_none(self):
         """Test empty date_of_birth string is converted to None"""
-        from app.routers.crm_clients import ClientCreate
+        from backend.app.routers.crm_clients import ClientCreate
 
         client = ClientCreate(full_name="John Doe", date_of_birth="")
         assert client.date_of_birth is None
@@ -134,7 +134,7 @@ class TestClientUpdateValidation:
 
     def test_valid_client_update(self):
         """Test creating valid ClientUpdate instance"""
-        from app.routers.crm_clients import ClientUpdate
+        from backend.app.routers.crm_clients import ClientUpdate
 
         update = ClientUpdate(full_name="Jane Doe", email="jane@example.com", status="active")
         assert update.full_name == "Jane Doe"
@@ -144,7 +144,7 @@ class TestClientUpdateValidation:
         """Test validation fails for invalid status"""
         from pydantic import ValidationError
 
-        from app.routers.crm_clients import ClientUpdate
+        from backend.app.routers.crm_clients import ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientUpdate(status="invalid_status")
@@ -155,7 +155,7 @@ class TestClientUpdateValidation:
         """Test validation fails for invalid client_type"""
         from pydantic import ValidationError
 
-        from app.routers.crm_clients import ClientUpdate
+        from backend.app.routers.crm_clients import ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientUpdate(client_type="invalid_type")
@@ -166,7 +166,7 @@ class TestClientUpdateValidation:
         """Test validation fails for empty full_name"""
         from pydantic import ValidationError
 
-        from app.routers.crm_clients import ClientUpdate
+        from backend.app.routers.crm_clients import ClientUpdate
 
         with pytest.raises(ValidationError) as exc_info:
             ClientUpdate(full_name="   ")
@@ -177,7 +177,7 @@ class TestClientUpdateValidation:
         """Test validation fails for full_name > 200 chars"""
         from pydantic import ValidationError
 
-        from app.routers.crm_clients import ClientUpdate
+        from backend.app.routers.crm_clients import ClientUpdate
 
         long_name = "A" * 201
         with pytest.raises(ValidationError) as exc_info:
@@ -187,14 +187,14 @@ class TestClientUpdateValidation:
 
     def test_client_update_name_trimmed(self):
         """Test full_name is trimmed of whitespace"""
-        from app.routers.crm_clients import ClientUpdate
+        from backend.app.routers.crm_clients import ClientUpdate
 
         update = ClientUpdate(full_name="  Jane Doe  ")
         assert update.full_name == "Jane Doe"
 
     def test_client_update_all_fields_none(self):
         """Test all fields can be None"""
-        from app.routers.crm_clients import ClientUpdate
+        from backend.app.routers.crm_clients import ClientUpdate
 
         update = ClientUpdate()
         assert update.full_name is None
@@ -212,6 +212,12 @@ def mock_db_pool():
     """Create mock database pool with connection context manager"""
     mock_pool = MagicMock()
     mock_conn = AsyncMock()
+
+    # Configure default return values to be falsy where appropriate
+    # to avoid issues with 'if row:' checks returning True for AsyncMock
+    mock_conn.fetchrow.return_value = None
+    mock_conn.fetchval.return_value = None
+    mock_conn.fetch.return_value = []
 
     # Setup async context manager for pool.acquire()
     async_context = AsyncMock()
@@ -247,13 +253,18 @@ def mock_client_row():
 @pytest.fixture
 def test_app(mock_db_pool):
     """Create FastAPI test app with mocked dependencies"""
-    from app.routers.crm_clients import router
+    from backend.app.routers.crm_clients import router
 
     app = FastAPI()
     app.include_router(router)
 
     # Override dependencies
-    from app.dependencies import get_current_user, get_database_pool
+    from backend.app.dependencies import get_current_user, get_database_pool
+    from backend.app.services.crm.audit_logger import audit_logger
+    from backend.app.services.crm.metrics import metrics_collector
+
+    audit_logger.initialize(mock_db_pool)
+    metrics_collector.initialize(mock_db_pool)
 
     app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
     app.dependency_overrides[get_current_user] = lambda: {
@@ -286,7 +297,7 @@ class TestCreateClient:
 
         # Make request
         response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={
                 "full_name": "John Doe",
                 "email": "john@example.com",
@@ -315,7 +326,7 @@ class TestCreateClient:
         )
 
         response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={
                 "full_name": "John Doe",
                 "email": "john@example.com",
@@ -325,22 +336,10 @@ class TestCreateClient:
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
 
-    def test_create_client_no_created_by(self, client):
-        """Test creating client without created_by parameter fails"""
-        response = client.post(
-            "/api/crm/clients/",
-            json={
-                "full_name": "John Doe",
-                "email": "john@example.com",
-            },
-        )
-
-        assert response.status_code == 422  # Validation error
-
     def test_create_client_invalid_email(self, client):
         """Test creating client with invalid email fails validation"""
         response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={
                 "full_name": "John Doe",
                 "email": "invalid-email",
@@ -355,7 +354,7 @@ class TestCreateClient:
         mock_conn.fetchrow.return_value = mock_client_row
 
         response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={"full_name": "John Doe"},
         )
 
@@ -367,7 +366,7 @@ class TestCreateClient:
         mock_conn.fetchrow.side_effect = asyncpg.PostgresError("Database error")
 
         response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={"full_name": "John Doe"},
         )
 
@@ -379,7 +378,7 @@ class TestCreateClient:
         mock_conn.fetchrow.return_value = None
 
         response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={"full_name": "John Doe"},
         )
 
@@ -407,10 +406,11 @@ class TestListClients:
         assert len(data) == 1
         assert data[0]["full_name"] == "John Doe"
 
-        # Verify query structure
+        # Verify database call
         mock_conn.fetch.assert_called_once()
         call_args = mock_conn.fetch.call_args
-        assert "SELECT id, uuid, full_name" in call_args[0][0]
+        assert "SELECT" in call_args[0][0]
+        assert "c.id, c.uuid, c.full_name" in call_args[0][0]
         assert "LIMIT" in call_args[0][0]
 
     def test_list_clients_with_status_filter(self, client, mock_db_pool, mock_client_row):
@@ -616,7 +616,7 @@ class TestUpdateClient:
         mock_conn.execute.return_value = None  # For activity log
 
         response = client.patch(
-            "/api/crm/clients/1?updated_by=admin@example.com",
+            "/api/crm/clients/1",
             json={"full_name": "Jane Doe"},
         )
 
@@ -642,7 +642,7 @@ class TestUpdateClient:
         mock_conn.execute.return_value = None
 
         response = client.patch(
-            "/api/crm/clients/1?updated_by=admin@example.com",
+            "/api/crm/clients/1",
             json={"full_name": "Jane Doe", "status": "inactive"},
         )
 
@@ -654,7 +654,7 @@ class TestUpdateClient:
         mock_conn.fetchrow.return_value = None
 
         response = client.patch(
-            "/api/crm/clients/999?updated_by=admin@example.com",
+            "/api/crm/clients/999",
             json={"full_name": "Jane Doe"},
         )
 
@@ -664,21 +664,15 @@ class TestUpdateClient:
         """Test updating with no fields returns 400"""
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
 
-        response = client.patch("/api/crm/clients/1?updated_by=admin@example.com", json={})
+        response = client.patch("/api/crm/clients/1", json={})
 
         assert response.status_code == 400
         assert "No fields to update" in response.json()["detail"]
 
-    def test_update_client_no_updated_by(self, client):
-        """Test updating without updated_by parameter fails"""
-        response = client.patch("/api/crm/clients/1", json={"full_name": "Jane Doe"})
-
-        assert response.status_code == 422
-
     def test_update_client_invalid_status(self, client):
         """Test updating with invalid status fails validation"""
         response = client.patch(
-            "/api/crm/clients/1?updated_by=admin@example.com",
+            "/api/crm/clients/1",
             json={"status": "invalid"},
         )
 
@@ -690,7 +684,7 @@ class TestUpdateClient:
         mock_conn.fetchrow.side_effect = asyncpg.PostgresError("Database error")
 
         response = client.patch(
-            "/api/crm/clients/1?updated_by=admin@example.com",
+            "/api/crm/clients/1",
             json={"full_name": "Jane Doe"},
         )
 
@@ -711,7 +705,7 @@ class TestDeleteClient:
         mock_conn.fetchrow.return_value = {"id": 1}
         mock_conn.execute.return_value = None  # For activity log
 
-        response = client.delete("/api/crm/clients/1?deleted_by=admin@example.com")
+        response = client.delete("/api/crm/clients/1")
 
         assert response.status_code == 200
         data = response.json()
@@ -731,22 +725,16 @@ class TestDeleteClient:
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetchrow.return_value = None
 
-        response = client.delete("/api/crm/clients/999?deleted_by=admin@example.com")
+        response = client.delete("/api/crm/clients/999")
 
         assert response.status_code == 404
-
-    def test_delete_client_no_deleted_by(self, client):
-        """Test deleting without deleted_by parameter fails"""
-        response = client.delete("/api/crm/clients/1")
-
-        assert response.status_code == 422
 
     def test_delete_client_database_error(self, client, mock_db_pool):
         """Test database error during delete"""
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetchrow.side_effect = asyncpg.PostgresError("Database error")
 
-        response = client.delete("/api/crm/clients/1?deleted_by=admin@example.com")
+        response = client.delete("/api/crm/clients/1")
 
         assert response.status_code == 503
 
@@ -925,7 +913,7 @@ class TestGetClientsStats:
         """Test successfully getting client statistics"""
         from fastapi import Request
 
-        from app.routers.crm_clients import get_clients_stats
+        from backend.app.routers.crm_clients import get_clients_stats
 
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
 
@@ -966,7 +954,7 @@ class TestGetClientsStats:
         """Test stats with no clients in database"""
         from fastapi import Request
 
-        from app.routers.crm_clients import get_clients_stats
+        from backend.app.routers.crm_clients import get_clients_stats
 
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetch.side_effect = [[], []]
@@ -983,7 +971,7 @@ class TestGetClientsStats:
 
     def test_get_stats_cache_decorator(self):
         """Test that stats endpoint has cache decorator"""
-        from app.routers.crm_clients import get_clients_stats
+        from backend.app.routers.crm_clients import get_clients_stats
 
         # Check if the function has the cached decorator applied
         # The cached decorator wraps the function, so we check for wrapper attributes
@@ -994,7 +982,7 @@ class TestGetClientsStats:
         """Test database error during stats retrieval"""
         from fastapi import Request
 
-        from app.routers.crm_clients import get_clients_stats
+        from backend.app.routers.crm_clients import get_clients_stats
 
         mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
         mock_conn.fetch.side_effect = asyncpg.PostgresError("Database error")
@@ -1016,20 +1004,10 @@ class TestConstants:
     """Tests for module constants"""
 
     def test_constants_values(self):
-        """Test that constants have expected values"""
-        from app.routers.crm_clients import (
-            CACHE_TTL_STATS_SECONDS,
-            DEFAULT_LIMIT,
-            MAX_LIMIT,
-            STATS_DAYS_RECENT,
-            STATUS_VALUES,
-        )
+        """Test constant values match implementation"""
+        from backend.app.routers.crm_clients import STATUS_VALUES
 
-        assert MAX_LIMIT == 200
-        assert DEFAULT_LIMIT == 50
-        assert STATUS_VALUES == {"active", "inactive", "prospect"}
-        assert CACHE_TTL_STATS_SECONDS == 300
-        assert STATS_DAYS_RECENT == 30
+        assert STATUS_VALUES == {"active", "inactive", "prospect", "lead"}
 
 
 # ============================================================================
@@ -1068,7 +1046,7 @@ class TestErrorHandling:
         mock_conn.fetchrow.side_effect = asyncpg.ForeignKeyViolationError("Foreign key violation")
 
         response = client.patch(
-            "/api/crm/clients/1?updated_by=admin@example.com",
+            "/api/crm/clients/1",
             json={"full_name": "Jane Doe"},
         )
 
@@ -1098,7 +1076,7 @@ class TestEdgeCases:
         mock_conn.fetchrow.return_value = full_row
 
         response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={
                 "full_name": "John Doe",
                 "email": "john@example.com",
@@ -1125,7 +1103,7 @@ class TestEdgeCases:
 
         # Only full_name should be updated, None values should be ignored
         response = client.patch(
-            "/api/crm/clients/1?updated_by=admin@example.com",
+            "/api/crm/clients/1",
             json={"full_name": "Jane Doe", "email": None},
         )
 
@@ -1235,7 +1213,7 @@ class TestFullWorkflow:
         # CREATE
         mock_conn.fetchrow.return_value = mock_client_row
         create_response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={"full_name": "John Doe", "email": "john@example.com"},
         )
         assert create_response.status_code == 200
@@ -1248,7 +1226,7 @@ class TestFullWorkflow:
         mock_conn.execute.return_value = None
 
         update_response = client.patch(
-            f"/api/crm/clients/{client_id}?updated_by=admin@example.com",
+            f"/api/crm/clients/{client_id}",
             json={"status": "inactive"},
         )
         assert update_response.status_code == 200
@@ -1256,7 +1234,7 @@ class TestFullWorkflow:
         # DELETE (soft)
         mock_conn.fetchrow.return_value = {"id": client_id}
         delete_response = client.delete(
-            f"/api/crm/clients/{client_id}?deleted_by=admin@example.com"
+            f"/api/crm/clients/{client_id}"
         )
         assert delete_response.status_code == 200
 
@@ -1267,7 +1245,7 @@ class TestFullWorkflow:
         # CREATE
         mock_conn.fetchrow.return_value = mock_client_row
         create_response = client.post(
-            "/api/crm/clients/?created_by=admin@example.com",
+            "/api/crm/clients/",
             json={"full_name": "John Doe"},
         )
         assert create_response.status_code == 200

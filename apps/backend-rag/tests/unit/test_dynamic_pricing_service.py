@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.pricing.dynamic_pricing_service import (
+from backend.services.pricing.dynamic_pricing_service import (
     CostItem,
     DynamicPricingService,
     PricingResult,

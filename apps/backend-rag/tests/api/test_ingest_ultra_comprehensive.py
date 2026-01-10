@@ -30,7 +30,7 @@ class TestUploadIngest:
 
     def test_upload_pdf_file(self, authenticated_client):
         """Test uploading PDF file"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={
@@ -55,7 +55,7 @@ class TestUploadIngest:
 
     def test_upload_epub_file(self, authenticated_client):
         """Test uploading EPUB file"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={
@@ -79,7 +79,7 @@ class TestUploadIngest:
 
     def test_upload_with_title(self, authenticated_client):
         """Test uploading file with title"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -99,7 +99,7 @@ class TestUploadIngest:
 
     def test_upload_with_author(self, authenticated_client):
         """Test uploading file with author"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -122,7 +122,7 @@ class TestUploadIngest:
         tiers = ["S", "A", "B", "C", "D"]
 
         for tier in tiers:
-            with patch("app.routers.ingest.IngestionService") as mock_service_class:
+            with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
                 mock_service = MagicMock()
                 mock_service.ingest_book = AsyncMock(
                     return_value={"success": True, "book_id": "book_123", "tier": tier}
@@ -164,7 +164,7 @@ class TestUploadIngest:
 
     def test_upload_large_file(self, authenticated_client):
         """Test uploading large file"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -190,7 +190,7 @@ class TestFileIngest:
 
     def test_ingest_local_file_basic(self, authenticated_client):
         """Test ingesting local file"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -207,7 +207,7 @@ class TestFileIngest:
 
     def test_ingest_local_file_with_title(self, authenticated_client):
         """Test ingesting local file with title"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -227,7 +227,7 @@ class TestFileIngest:
 
     def test_ingest_local_file_with_all_fields(self, authenticated_client):
         """Test ingesting local file with all fields"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -274,7 +274,7 @@ class TestBatchIngest:
 
     def test_batch_ingest_basic(self, authenticated_client):
         """Test basic batch ingestion"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -297,7 +297,7 @@ class TestBatchIngest:
 
     def test_batch_ingest_with_patterns(self, authenticated_client):
         """Test batch ingestion with file patterns"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -320,7 +320,7 @@ class TestBatchIngest:
 
     def test_batch_ingest_with_skip_existing(self, authenticated_client):
         """Test batch ingestion with skip_existing"""
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(
                 return_value={"success": True, "book_id": "book_123"}
@@ -374,7 +374,7 @@ class TestBatchIngest:
             else:
                 raise Exception("Ingestion failed")
 
-        with patch("app.routers.ingest.IngestionService") as mock_service_class:
+        with patch("backend.app.routers.ingest.IngestionService") as mock_service_class:
             mock_service = MagicMock()
             mock_service.ingest_book = AsyncMock(side_effect=ingest_side_effect)
             mock_service_class.return_value = mock_service
@@ -400,7 +400,7 @@ class TestIngestStats:
 
     def test_get_ingest_stats(self, authenticated_client):
         """Test getting ingestion statistics"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.get_collection_stats = AsyncMock(
                 return_value={"total_documents": 1000, "collection_name": "books"}
@@ -413,7 +413,7 @@ class TestIngestStats:
 
     def test_ingest_stats_structure(self, authenticated_client):
         """Test ingest stats response structure"""
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.get_collection_stats = AsyncMock(return_value={"total_documents": 1000})
             mock_qdrant.return_value = mock_client

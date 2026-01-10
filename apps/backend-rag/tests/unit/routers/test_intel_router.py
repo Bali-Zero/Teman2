@@ -83,7 +83,7 @@ def mock_qdrant_client():
 @pytest.fixture
 def client():
     """Create FastAPI test client"""
-    from app.routers.intel import router
+    from backend.app.routers.intel import router
 
     app = FastAPI()
     app.include_router(router)
@@ -98,8 +98,8 @@ def client():
 def test_search_intel_success_with_category(client, mock_embedder, mock_qdrant_client):
     """Test successful search with specific category"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -126,8 +126,8 @@ def test_search_intel_success_with_category(client, mock_embedder, mock_qdrant_c
 def test_search_intel_success_all_categories(client, mock_embedder, mock_qdrant_client):
     """Test successful search across all categories"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -147,8 +147,8 @@ def test_search_intel_success_all_categories(client, mock_embedder, mock_qdrant_
 def test_search_intel_with_impact_level_filter(client, mock_embedder, mock_qdrant_client):
     """Test search with impact level filter"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -168,8 +168,8 @@ def test_search_intel_with_impact_level_filter(client, mock_embedder, mock_qdran
 def test_search_intel_date_range_today(client, mock_embedder, mock_qdrant_client):
     """Test search with 'today' date range"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -182,8 +182,8 @@ def test_search_intel_date_range_today(client, mock_embedder, mock_qdrant_client
 def test_search_intel_date_range_last_90_days(client, mock_embedder, mock_qdrant_client):
     """Test search with 'last_90_days' date range"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -196,8 +196,8 @@ def test_search_intel_date_range_last_90_days(client, mock_embedder, mock_qdrant
 def test_search_intel_date_range_all(client, mock_embedder, mock_qdrant_client):
     """Test search with 'all' date range (no date filter)"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -210,8 +210,8 @@ def test_search_intel_date_range_all(client, mock_embedder, mock_qdrant_client):
 def test_search_intel_custom_tier_filter(client, mock_embedder, mock_qdrant_client):
     """Test search with custom tier filter"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -255,8 +255,8 @@ def test_search_intel_multiple_results(client, mock_embedder, mock_qdrant_client
     )
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -280,8 +280,8 @@ def test_search_intel_empty_results(client, mock_embedder, mock_qdrant_client):
     )
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -297,8 +297,8 @@ def test_search_intel_empty_results(client, mock_embedder, mock_qdrant_client):
 def test_search_intel_invalid_category(client, mock_embedder, mock_qdrant_client):
     """Test search with invalid category (collection not found)"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -314,8 +314,8 @@ def test_search_intel_qdrant_exception_handled(client, mock_embedder, mock_qdran
     mock_qdrant_client.search = AsyncMock(side_effect=Exception("Qdrant error"))
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -333,8 +333,8 @@ def test_search_intel_embedder_exception(client, mock_embedder, mock_qdrant_clie
     mock_embedder.generate_single_embedding.side_effect = Exception("Embedding failed")
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -365,8 +365,8 @@ def test_search_intel_limit_results(client, mock_embedder, mock_qdrant_client):
     )
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -396,8 +396,8 @@ def test_search_intel_similarity_score_calculation(client, mock_embedder, mock_q
     )
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -414,8 +414,8 @@ def test_search_intel_similarity_score_calculation(client, mock_embedder, mock_q
 def test_search_intel_result_structure(client, mock_embedder, mock_qdrant_client):
     """Test search result has correct structure"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -467,8 +467,8 @@ def test_search_intel_action_required_boolean_conversion(client, mock_embedder, 
     )
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -489,7 +489,7 @@ def test_search_intel_action_required_boolean_conversion(client, mock_embedder, 
 
 def test_store_intel_success(client, mock_qdrant_client):
     """Test successful intel storage"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.post(
             "/api/intel/store",
             json={
@@ -530,7 +530,7 @@ def test_store_intel_all_collections(client, mock_qdrant_client):
         "roundup",
     ]
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         for collection_key in collections:
             response = client.post(
                 "/api/intel/store",
@@ -551,7 +551,7 @@ def test_store_intel_all_collections(client, mock_qdrant_client):
 
 def test_store_intel_invalid_collection(client, mock_qdrant_client):
     """Test storing to invalid collection"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.post(
             "/api/intel/store",
             json={
@@ -573,7 +573,7 @@ def test_store_intel_qdrant_exception(client, mock_qdrant_client):
     """Test store handles QdrantClient exception"""
     mock_qdrant_client.upsert_documents = AsyncMock(side_effect=Exception("Upsert failed"))
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.post(
             "/api/intel/store",
             json={
@@ -592,7 +592,7 @@ def test_store_intel_qdrant_exception(client, mock_qdrant_client):
 
 def test_store_intel_with_complete_metadata(client, mock_qdrant_client):
     """Test storing with full metadata"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.post(
             "/api/intel/store",
             json={
@@ -628,7 +628,7 @@ def test_store_intel_with_complete_metadata(client, mock_qdrant_client):
 
 def test_get_critical_items_success(client, mock_qdrant_client):
     """Test getting critical items successfully"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical")
 
         assert response.status_code == 200
@@ -641,7 +641,7 @@ def test_get_critical_items_success(client, mock_qdrant_client):
 
 def test_get_critical_items_with_category(client, mock_qdrant_client):
     """Test getting critical items for specific category"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical?category=immigration")
 
         assert response.status_code == 200
@@ -651,7 +651,7 @@ def test_get_critical_items_with_category(client, mock_qdrant_client):
 
 def test_get_critical_items_with_days_filter(client, mock_qdrant_client):
     """Test getting critical items with custom days parameter"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical?days=30")
 
         assert response.status_code == 200
@@ -694,7 +694,7 @@ def test_get_critical_items_filters_correctly(client, mock_qdrant_client):
         }
     )
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical?days=7")
 
         assert response.status_code == 200
@@ -735,7 +735,7 @@ def test_get_critical_items_sorted_by_date(client, mock_qdrant_client):
         }
     )
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical")
 
         assert response.status_code == 200
@@ -752,7 +752,7 @@ def test_get_critical_items_empty_results(client, mock_qdrant_client):
     """Test getting critical items with no results"""
     mock_qdrant_client.peek = MagicMock(return_value={"metadatas": []})
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical")
 
         assert response.status_code == 200
@@ -765,7 +765,7 @@ def test_get_critical_items_qdrant_exception_handled(client, mock_qdrant_client)
     """Test critical items endpoint handles Qdrant exception"""
     mock_qdrant_client.peek = MagicMock(side_effect=Exception("Peek failed"))
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical?category=immigration")
 
         # Should handle exception and continue
@@ -776,8 +776,8 @@ def test_get_critical_items_general_exception(client, mock_qdrant_client):
     """Test critical items endpoint handles general exception in outer try block"""
     # Need to make datetime.now() fail to trigger outer exception handler
     with (
-        patch("app.routers.intel.datetime") as mock_datetime,
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.datetime") as mock_datetime,
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         mock_datetime.now.side_effect = Exception("Datetime error")
 
@@ -789,7 +789,7 @@ def test_get_critical_items_general_exception(client, mock_qdrant_client):
 
 def test_get_critical_items_invalid_category(client, mock_qdrant_client):
     """Test critical items with invalid category"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical?category=invalid")
 
         # Should handle gracefully
@@ -813,7 +813,7 @@ def test_get_critical_items_action_required_conversion(client, mock_qdrant_clien
         }
     )
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/critical")
 
         assert response.status_code == 200
@@ -829,7 +829,7 @@ def test_get_critical_items_action_required_conversion(client, mock_qdrant_clien
 
 def test_get_trends_success(client, mock_qdrant_client):
     """Test getting trends successfully"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends")
 
         assert response.status_code == 200
@@ -842,7 +842,7 @@ def test_get_trends_success(client, mock_qdrant_client):
 
 def test_get_trends_with_category(client, mock_qdrant_client):
     """Test getting trends for specific category"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends?category=immigration")
 
         assert response.status_code == 200
@@ -852,7 +852,7 @@ def test_get_trends_with_category(client, mock_qdrant_client):
 
 def test_get_trends_with_days_parameter(client, mock_qdrant_client):
     """Test getting trends with custom days parameter"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends?_days=60")
 
         assert response.status_code == 200
@@ -860,7 +860,7 @@ def test_get_trends_with_days_parameter(client, mock_qdrant_client):
 
 def test_get_trends_includes_collection_stats(client, mock_qdrant_client):
     """Test trends include collection statistics"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends")
 
         assert response.status_code == 200
@@ -875,7 +875,7 @@ def test_get_trends_includes_collection_stats(client, mock_qdrant_client):
 
 def test_get_trends_all_collections(client, mock_qdrant_client):
     """Test trends for all collections"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends")
 
         assert response.status_code == 200
@@ -888,7 +888,7 @@ def test_get_trends_handles_collection_exception(client, mock_qdrant_client):
     """Test trends handles exception from individual collection"""
     mock_qdrant_client.get_collection_stats = MagicMock(side_effect=Exception("Stats unavailable"))
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends?category=immigration")
 
         # Should continue despite exception
@@ -898,7 +898,7 @@ def test_get_trends_handles_collection_exception(client, mock_qdrant_client):
 def test_get_trends_general_exception(client, mock_qdrant_client):
     """Test trends endpoint handles general exception in outer try block"""
     # Need to trigger outer exception handler by making INTEL_COLLECTIONS.values() fail
-    with patch("app.routers.intel.INTEL_COLLECTIONS") as mock_collections:
+    with patch("backend.app.routers.intel.INTEL_COLLECTIONS") as mock_collections:
         mock_collections.get.side_effect = Exception("Collections error")
         mock_collections.values.side_effect = Exception("Collections error")
 
@@ -910,7 +910,7 @@ def test_get_trends_general_exception(client, mock_qdrant_client):
 
 def test_get_trends_invalid_category(client, mock_qdrant_client):
     """Test trends with invalid category"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/trends?category=nonexistent")
 
         # Should handle gracefully
@@ -924,7 +924,7 @@ def test_get_trends_invalid_category(client, mock_qdrant_client):
 
 def test_get_collection_stats_success(client, mock_qdrant_client):
     """Test getting collection stats successfully"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/stats/immigration")
 
         assert response.status_code == 200
@@ -949,7 +949,7 @@ def test_get_collection_stats_all_collections(client, mock_qdrant_client):
         "roundup",
     ]
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         for collection in collections:
             response = client.get(f"/api/intel/stats/{collection}")
 
@@ -960,7 +960,7 @@ def test_get_collection_stats_all_collections(client, mock_qdrant_client):
 
 def test_get_collection_stats_invalid_collection(client, mock_qdrant_client):
     """Test getting stats for invalid collection"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/stats/invalid_collection")
 
         # HTTPException gets caught and re-raised as 500
@@ -972,7 +972,7 @@ def test_get_collection_stats_qdrant_exception(client, mock_qdrant_client):
     """Test stats endpoint handles Qdrant exception"""
     mock_qdrant_client.get_collection_stats = MagicMock(side_effect=Exception("Stats error"))
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/stats/immigration")
 
         assert response.status_code == 500
@@ -981,7 +981,7 @@ def test_get_collection_stats_qdrant_exception(client, mock_qdrant_client):
 
 def test_get_collection_stats_includes_timestamp(client, mock_qdrant_client):
     """Test stats include last_updated timestamp"""
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/stats/immigration")
 
         assert response.status_code == 200
@@ -1005,7 +1005,7 @@ def test_get_collection_stats_zero_documents(client, mock_qdrant_client):
         return_value={"total_documents": 0, "vectors_count": 0}
     )
 
-    with patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
+    with patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client):
         response = client.get("/api/intel/stats/immigration")
 
         assert response.status_code == 200
@@ -1037,8 +1037,8 @@ def test_search_intel_with_missing_metadata_fields(client, mock_embedder, mock_q
     )
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -1074,8 +1074,8 @@ def test_search_intel_summary_truncation(client, mock_embedder, mock_qdrant_clie
     )
 
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -1092,8 +1092,8 @@ def test_search_intel_summary_truncation(client, mock_embedder, mock_qdrant_clie
 def test_search_intel_category_name_stripping(client, mock_embedder, mock_qdrant_client):
     """Test category name correctly strips 'bali_intel_' prefix"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         response = client.post(
             "/api/intel/search",
@@ -1122,8 +1122,8 @@ def test_all_endpoints_require_valid_json(client):
 def test_search_intel_default_values(client, mock_embedder, mock_qdrant_client):
     """Test search uses correct default values"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         # Minimal request
         response = client.post(
@@ -1137,7 +1137,7 @@ def test_search_intel_default_values(client, mock_embedder, mock_qdrant_client):
 
 def test_intel_collections_constant(client):
     """Test INTEL_COLLECTIONS constant has all expected collections"""
-    from app.routers.intel import INTEL_COLLECTIONS
+    from backend.app.routers.intel import INTEL_COLLECTIONS
 
     expected_collections = [
         "immigration",
@@ -1158,8 +1158,8 @@ def test_intel_collections_constant(client):
 def test_concurrent_search_requests(client, mock_embedder, mock_qdrant_client):
     """Test multiple simultaneous search requests"""
     with (
-        patch("app.routers.intel.embedder", mock_embedder),
-        patch("app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
+        patch("backend.app.routers.intel.embedder", mock_embedder),
+        patch("backend.app.routers.intel.QdrantClient", return_value=mock_qdrant_client),
     ):
         responses = []
         for i in range(5):

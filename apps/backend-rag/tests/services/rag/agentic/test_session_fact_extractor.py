@@ -4,7 +4,7 @@ Unit tests for SessionFactExtractor (agentic RAG).
 
 import pytest
 
-from services.rag.agentic.session_fact_extractor import SessionFactExtractor, SessionFacts
+from backend.services.rag.agentic.session_fact_extractor import SessionFactExtractor, SessionFacts
 
 
 @pytest.mark.unit

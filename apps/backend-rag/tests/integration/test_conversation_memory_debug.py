@@ -140,7 +140,7 @@ class TestConversationMemoryDebug:
         backend_path = Path(__file__).parent.parent.parent / "backend"
         if str(backend_path) not in sys.path:
             sys.path.insert(0, str(backend_path))
-        from app.routers.oracle_universal import extract_entities_from_history
+        from backend.app.routers.oracle_universal import extract_entities_from_history
 
         # Test case 1: Name and city
         conversation_history = [
@@ -231,7 +231,7 @@ class TestConversationMemoryDebug:
             logger.info(f"✅ Conversation saved: id={conversation_id}")
 
             # Test retrieval by conversation_id
-            from app.routers.oracle_universal import get_conversation_history_for_query
+            from backend.app.routers.oracle_universal import get_conversation_history_for_query
 
             history_by_id = await get_conversation_history_for_query(
                 conversation_id=conversation_id,
@@ -333,7 +333,7 @@ class TestConversationMemoryDebug:
             logger.info(f"✅ Turn 2 added: {len(turn2_messages)} total messages")
 
             # Now test hybrid_oracle_query
-            from app.routers.oracle_universal import OracleQueryRequest, hybrid_oracle_query
+            from backend.app.routers.oracle_universal import OracleQueryRequest, hybrid_oracle_query
 
             # Setup mocks
             mock_service = MagicMock()
@@ -383,13 +383,13 @@ class TestConversationMemoryDebug:
                 }
 
             with (
-                patch("app.routers.oracle_universal.db_manager") as mock_db_manager,
+                patch("backend.app.routers.oracle_universal.db_manager") as mock_db_manager,
                 patch(
-                    "app.routers.oracle_universal.reason_with_gemini",
+                    "backend.app.routers.oracle_universal.reason_with_gemini",
                     side_effect=capture_reason_args,
                 ) as mock_reason,
-                patch("app.routers.oracle_universal.get_memory_service") as mock_memory_service,
-                patch("core.embeddings.create_embeddings_generator") as mock_create_embedder,
+                patch("backend.app.routers.oracle_universal.get_memory_service") as mock_memory_service,
+                patch("backend.core.embeddings.create_embeddings_generator") as mock_create_embedder,
             ):
                 # Mock user profile
                 mock_db_manager.get_user_profile = AsyncMock(
@@ -486,7 +486,7 @@ class TestConversationMemoryDebug:
             {"role": "user", "content": "Come mi chiamo?"},
         ]
 
-        from app.routers.oracle_universal import reason_with_gemini
+        from backend.app.routers.oracle_universal import reason_with_gemini
         from backend.prompts.zantara_prompt_builder import PromptContext
 
         context = PromptContext(
@@ -545,7 +545,7 @@ class TestConversationMemoryDebug:
                 "success": True,
             }
 
-        with patch("app.routers.oracle_universal.google_services") as mock_google:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_google:
             mock_model = MagicMock()
             mock_response = MagicMock()
             mock_response.text = "Ti chiami Marco, e sei di Milano!"

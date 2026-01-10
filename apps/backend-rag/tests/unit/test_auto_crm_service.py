@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.crm.auto_crm_service import AutoCRMService, get_auto_crm_service
+from backend.services.crm.auto_crm_service import AutoCRMService, get_auto_crm_service
 
 # ============================================================================
 # Fixtures
@@ -61,7 +61,7 @@ def mock_db_pool():
 def auto_crm_service(mock_extractor, mock_db_pool):
     """Create AutoCRMService instance"""
     pool, _ = mock_db_pool
-    with patch("services.crm.auto_crm_service.get_extractor", return_value=mock_extractor):
+    with patch("backend.services.crm.auto_crm_service.get_extractor", return_value=mock_extractor):
         return AutoCRMService(db_pool=pool)
 
 
@@ -486,8 +486,8 @@ async def test_process_email_interaction_exception(auto_crm_service, mock_extrac
 
 def test_get_auto_crm_service_singleton():
     """Test get_auto_crm_service returns singleton"""
-    with patch("services.crm.auto_crm_service._auto_crm_instance", None):
-        with patch("services.crm.auto_crm_service.AutoCRMService") as mock_service_class:
+    with patch("backend.services.crm.auto_crm_service._auto_crm_instance", None):
+        with patch("backend.services.crm.auto_crm_service.AutoCRMService") as mock_service_class:
             mock_instance = MagicMock()
             mock_service_class.return_value = mock_instance
 

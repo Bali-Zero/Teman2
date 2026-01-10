@@ -17,8 +17,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.plugins.executor import PluginExecutor
-from core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins.executor import PluginExecutor
+from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
 
 # ============================================================================
 # Mock Plugin Classes
@@ -141,7 +141,7 @@ def mock_plugin():
 @pytest.fixture
 def mock_registry():
     """Mock plugin registry"""
-    with patch("core.plugins.executor.registry") as mock_reg:
+    with patch("backend.core.plugins.executor.registry") as mock_reg:
         yield mock_reg
 
 

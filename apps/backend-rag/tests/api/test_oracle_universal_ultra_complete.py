@@ -45,7 +45,7 @@ class TestOracleUniversalQuery:
 
     def test_query_valid_simple(self, authenticated_client):
         """Test simple valid query"""
-        with patch("app.routers.oracle_universal.handle_oracle_query") as mock_handle:
+        with patch("backend.app.routers.oracle_universal.handle_oracle_query") as mock_handle:
             mock_handle.return_value = {"answer": "Test answer", "sources": [], "confidence": 0.95}
 
             response = authenticated_client.post(
@@ -61,7 +61,7 @@ class TestOracleUniversalQuery:
 
     def test_query_valid_complex(self, authenticated_client):
         """Test complex query with all optional parameters"""
-        with patch("app.routers.oracle_universal.handle_oracle_query") as mock_handle:
+        with patch("backend.app.routers.oracle_universal.handle_oracle_query") as mock_handle:
             mock_handle.return_value = {
                 "answer": "Detailed answer",
                 "sources": [{"title": "Source 1", "url": "http://example.com"}],
@@ -100,7 +100,7 @@ class TestOracleUniversalQuery:
 
     def test_query_invalid_collection(self, authenticated_client):
         """Test with non-existent collection"""
-        with patch("app.routers.oracle_universal.handle_oracle_query") as mock_handle:
+        with patch("backend.app.routers.oracle_universal.handle_oracle_query") as mock_handle:
             mock_handle.side_effect = ValueError("Collection not found")
 
             response = authenticated_client.post(
@@ -172,7 +172,7 @@ class TestOracleUniversalQuery:
 
     def test_query_unicode_characters(self, authenticated_client):
         """Test with unicode and special characters"""
-        with patch("app.routers.oracle_universal.handle_oracle_query") as mock_handle:
+        with patch("backend.app.routers.oracle_universal.handle_oracle_query") as mock_handle:
             mock_handle.return_value = {"answer": "答案", "sources": [], "confidence": 0.9}
 
             response = authenticated_client.post(
@@ -241,7 +241,7 @@ class TestOracleHealth:
 
     def test_health_success(self, authenticated_client):
         """Test health check when all services are up"""
-        with patch("app.routers.oracle_universal.verify_services") as mock_verify:
+        with patch("backend.app.routers.oracle_universal.verify_services") as mock_verify:
             mock_verify.return_value = {
                 "status": "healthy",
                 "services": {"qdrant": "up", "gemini": "up", "drive": "up"},
@@ -253,7 +253,7 @@ class TestOracleHealth:
 
     def test_health_degraded(self, authenticated_client):
         """Test health check when some services are down"""
-        with patch("app.routers.oracle_universal.verify_services") as mock_verify:
+        with patch("backend.app.routers.oracle_universal.verify_services") as mock_verify:
             mock_verify.return_value = {
                 "status": "degraded",
                 "services": {"qdrant": "up", "gemini": "down", "drive": "up"},
@@ -265,7 +265,7 @@ class TestOracleHealth:
 
     def test_health_timeout(self, authenticated_client):
         """Test health check with timeout"""
-        with patch("app.routers.oracle_universal.verify_services") as mock_verify:
+        with patch("backend.app.routers.oracle_universal.verify_services") as mock_verify:
             import time
 
             time.sleep(0.1)  # Simulate slow response
@@ -291,7 +291,7 @@ class TestOraclePersonalities:
 
     def test_test_personality_valid(self, authenticated_client):
         """Test POST /api/oracle/personality/test with valid personality"""
-        with patch("app.routers.oracle_universal.test_personality") as mock_test:
+        with patch("backend.app.routers.oracle_universal.test_personality") as mock_test:
             mock_test.return_value = {
                 "personality": "professional",
                 "sample_response": "This is a professional response.",
@@ -320,7 +320,7 @@ class TestOracleUserProfile:
 
     def test_get_user_profile_valid(self, authenticated_client):
         """Test with valid user email"""
-        with patch("app.routers.oracle_universal.get_user_profile") as mock_get:
+        with patch("backend.app.routers.oracle_universal.get_user_profile") as mock_get:
             mock_get.return_value = {
                 "email": "test@example.com",
                 "language": "en",
@@ -333,7 +333,7 @@ class TestOracleUserProfile:
 
     def test_get_user_profile_not_found(self, authenticated_client):
         """Test with non-existent user"""
-        with patch("app.routers.oracle_universal.get_user_profile") as mock_get:
+        with patch("backend.app.routers.oracle_universal.get_user_profile") as mock_get:
             mock_get.return_value = None
 
             response = authenticated_client.get("/api/oracle/user/profile/nonexistent@example.com")
@@ -393,7 +393,7 @@ class TestOracleIntegrations:
 
     def test_gemini_integration(self, authenticated_client):
         """Test GET /api/oracle/gemini/test"""
-        with patch("app.routers.oracle_universal.test_gemini") as mock_test:
+        with patch("backend.app.routers.oracle_universal.test_gemini") as mock_test:
             mock_test.return_value = {"status": "ok", "model": "gemini-pro"}
 
             response = authenticated_client.get("/api/oracle/gemini/test")
@@ -402,7 +402,7 @@ class TestOracleIntegrations:
 
     def test_drive_integration(self, authenticated_client):
         """Test GET /api/oracle/drive/test"""
-        with patch("app.routers.oracle_universal.test_drive") as mock_test:
+        with patch("backend.app.routers.oracle_universal.test_drive") as mock_test:
             mock_test.return_value = {"status": "ok", "files_accessible": True}
 
             response = authenticated_client.get("/api/oracle/drive/test")

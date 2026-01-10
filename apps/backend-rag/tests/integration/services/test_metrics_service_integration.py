@@ -21,7 +21,7 @@ if str(backend_path) not in sys.path:
 @pytest.fixture(scope="function")
 def metrics_collector():
     """Create MetricsCollector instance"""
-    from app.metrics import MetricsCollector
+    from backend.app.metrics import MetricsCollector
 
     return MetricsCollector()
 
@@ -83,7 +83,7 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_measure_redis_latency_success(self, metrics_collector):
         """Test measuring Redis latency when Redis is available"""
-        with patch("app.metrics.get_cache_service") as mock_get_cache:
+        with patch("backend.app.metrics.get_cache_service") as mock_get_cache:
             mock_cache = MagicMock()
             mock_cache.set = AsyncMock()
             mock_cache.get = AsyncMock(return_value="pong")
@@ -95,14 +95,14 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_measure_redis_latency_failure(self, metrics_collector):
         """Test measuring Redis latency when Redis fails"""
-        with patch("app.metrics.get_cache_service", side_effect=Exception("Redis unavailable")):
+        with patch("backend.app.metrics.get_cache_service", side_effect=Exception("Redis unavailable")):
             latency = await metrics_collector.measure_redis_latency()
             assert latency == -1
 
     @pytest.mark.asyncio
     async def test_get_active_sessions_count(self):
         """Test getting active sessions count"""
-        from app.metrics import get_active_sessions_count
+        from backend.app.metrics import get_active_sessions_count
 
         count = await get_active_sessions_count()
         assert isinstance(count, int)
@@ -111,7 +111,7 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_collect_all_metrics(self):
         """Test collecting all metrics for Prometheus"""
-        from app.metrics import collect_all_metrics
+        from backend.app.metrics import collect_all_metrics
 
         metrics_output = await collect_all_metrics()
         assert metrics_output is not None
@@ -120,7 +120,7 @@ class TestMetricsIntegration:
 
     def test_metrics_middleware(self):
         """Test metrics middleware creation"""
-        from app.metrics import get_metrics_middleware
+        from backend.app.metrics import get_metrics_middleware
 
         middleware = get_metrics_middleware()
         assert callable(middleware)
@@ -131,7 +131,7 @@ class TestMetricsIntegration:
 
         from fastapi import Request
 
-        from app.metrics import get_metrics_middleware
+        from backend.app.metrics import get_metrics_middleware
 
         middleware = get_metrics_middleware()
 

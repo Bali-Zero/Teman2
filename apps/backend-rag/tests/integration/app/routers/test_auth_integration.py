@@ -24,7 +24,7 @@ def app():
     """Create FastAPI app with auth router"""
     from fastapi import FastAPI
 
-    from app.routers.auth import router
+    from backend.app.routers.auth import router
 
     app = FastAPI()
     app.include_router(router)
@@ -60,7 +60,7 @@ class TestAuthRouterIntegration:
 
         hashed_pin = bcrypt.hashpw("1234".encode(), bcrypt.gensalt()).decode()
 
-        with patch("app.routers.auth.get_database_pool", return_value=mock_db_pool):
+        with patch("backend.app.routers.auth.get_database_pool", return_value=mock_db_pool):
             mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -81,7 +81,7 @@ class TestAuthRouterIntegration:
     @pytest.mark.asyncio
     async def test_login_invalid_credentials(self, client, mock_db_pool):
         """Test login with invalid credentials"""
-        with patch("app.routers.auth.get_database_pool", return_value=mock_db_pool):
+        with patch("backend.app.routers.auth.get_database_pool", return_value=mock_db_pool):
             mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
             mock_conn.fetchrow = AsyncMock(return_value=None)
 
@@ -94,7 +94,7 @@ class TestAuthRouterIntegration:
     async def test_get_current_user_valid_token(self, mock_db_pool):
         """Test getting current user with valid token"""
 
-        from app.routers.auth import create_access_token, get_current_user
+        from backend.app.routers.auth import create_access_token, get_current_user
 
         token = create_access_token({"sub": "user-123", "email": "test@example.com"})
 
@@ -103,7 +103,7 @@ class TestAuthRouterIntegration:
 
         mock_request = MagicMock()
 
-        with patch("app.routers.auth.get_database_pool", return_value=mock_db_pool):
+        with patch("backend.app.routers.auth.get_database_pool", return_value=mock_db_pool):
             mock_conn = mock_db_pool.acquire.return_value.__aenter__.return_value
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -126,7 +126,7 @@ class TestAuthRouterIntegration:
     async def test_get_current_user_invalid_token(self):
         """Test getting current user with invalid token"""
 
-        from app.routers.auth import get_current_user
+        from backend.app.routers.auth import get_current_user
 
         mock_credentials = MagicMock()
         mock_credentials.credentials = "invalid_token"
@@ -140,7 +140,7 @@ class TestAuthRouterIntegration:
         """Test password verification"""
         import bcrypt
 
-        from app.routers.auth import verify_password
+        from backend.app.routers.auth import verify_password
 
         password = "test123"
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -150,7 +150,7 @@ class TestAuthRouterIntegration:
 
     def test_create_access_token(self):
         """Test creating access token"""
-        from app.routers.auth import create_access_token
+        from backend.app.routers.auth import create_access_token
 
         data = {"sub": "user-123", "email": "test@example.com"}
         token = create_access_token(data)

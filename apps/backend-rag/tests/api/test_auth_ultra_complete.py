@@ -45,7 +45,7 @@ class TestAuthLogin:
 
     def test_login_valid_credentials(self, test_client):
         """Test login with valid email and PIN"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.login.return_value = {
                 "token": "valid_jwt_token_here",
                 "user": {
@@ -67,7 +67,7 @@ class TestAuthLogin:
 
     def test_login_invalid_email(self, test_client):
         """Test login with non-existent email"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.login.side_effect = ValueError("Invalid credentials")
 
             response = test_client.post(
@@ -78,7 +78,7 @@ class TestAuthLogin:
 
     def test_login_wrong_password(self, test_client):
         """Test login with wrong PIN"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.login.side_effect = ValueError("Invalid credentials")
 
             response = test_client.post(
@@ -145,7 +145,7 @@ class TestAuthLogin:
 
     def test_login_case_sensitivity(self, test_client):
         """Test email case sensitivity"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.login.return_value = {
                 "token": "token",
                 "user": {"email": "test@balizero.com"},
@@ -185,7 +185,7 @@ class TestAuthLogin:
 
     def test_login_whitespace_trimming(self, test_client):
         """Test email whitespace trimming"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.login.return_value = {
                 "token": "token",
                 "user": {"email": "test@balizero.com"},
@@ -245,7 +245,7 @@ class TestAuthRefresh:
 
     def test_refresh_valid_token(self, authenticated_client):
         """Test refresh with valid token"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.refresh_token.return_value = {
                 "token": "new_refreshed_token",
                 "user": {"email": "test@balizero.com"},
@@ -321,7 +321,7 @@ class TestAuthProfile:
 
     def test_get_profile_authenticated(self, authenticated_client):
         """Test get profile with valid authentication"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.get_profile.return_value = {
                 "id": 1,
                 "email": "test@balizero.com",
@@ -342,7 +342,7 @@ class TestAuthProfile:
 
     def test_get_profile_deleted_user(self, authenticated_client):
         """Test get profile for deleted user"""
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.get_profile.return_value = None
 
             response = authenticated_client.get("/api/auth/profile")
@@ -443,7 +443,7 @@ class TestAuthPerformance:
         """Test login response time is acceptable"""
         import time
 
-        with patch("app.routers.auth.identity_service") as mock_identity:
+        with patch("backend.app.routers.auth.identity_service") as mock_identity:
             mock_identity.login.return_value = {
                 "token": "token",
                 "user": {"email": "test@balizero.com"},

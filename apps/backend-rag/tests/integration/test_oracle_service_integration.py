@@ -29,12 +29,12 @@ class TestOracleServiceIntegration:
     async def test_oracle_query_flow(self, qdrant_client, postgres_container):
         """Test complete Oracle query flow"""
         with (
-            patch("app.routers.oracle_universal.get_search_service") as mock_get_service,
+            patch("backend.app.routers.oracle_universal.get_search_service") as mock_get_service,
             patch(
-                "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
             ) as mock_get_profile,
             patch(
-                "app.routers.oracle_universal.personality_service.fast_chat", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.personality_service.fast_chat", new_callable=AsyncMock
             ) as mock_fast_chat,
         ):
             # Setup mocks
@@ -57,7 +57,7 @@ class TestOracleServiceIntegration:
             }
 
             # Test that services can be initialized
-            from app.routers.oracle_universal import personality_service
+            from backend.app.routers.oracle_universal import personality_service
 
             assert personality_service is not None
 
@@ -66,16 +66,16 @@ class TestOracleServiceIntegration:
         """Test Oracle feedback flow"""
         with (
             patch(
-                "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
             ) as mock_get_profile,
             patch(
-                "app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
             ) as mock_store,
         ):
             mock_get_profile.return_value = {"id": 1, "email": "test@example.com"}
             mock_store.return_value = None
 
-            from app.routers.oracle_universal import db_manager
+            from backend.app.routers.oracle_universal import db_manager
 
             # Test feedback storage
             feedback_data = {

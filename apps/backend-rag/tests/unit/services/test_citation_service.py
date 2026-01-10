@@ -36,7 +36,7 @@ backend_path = Path(__file__).parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.search.citation_service import CitationService
+from backend.services.search.citation_service import CitationService
 
 
 class TestCitationServiceInit:
@@ -912,7 +912,7 @@ class TestEdgeCasesAndErrorHandling:
         sources = [{"id": 1, "title": "Doc", "url": "https://example.com", "date": "valid"}]
 
         # Patch isinstance to raise an exception
-        with patch("services.citation_service.isinstance", side_effect=Exception("Test exception")):
+        with patch("backend.services.citation_service.isinstance", side_effect=Exception("Test exception")):
             # Should handle exception gracefully and not crash
             section = service.format_sources_section(sources)
             assert "**Sources:**" in section

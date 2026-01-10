@@ -34,18 +34,18 @@ def client():
     """Create test client with debug router only (no middleware)."""
     from fastapi import FastAPI
 
-    from app.routers import debug
+    from backend.app.routers import debug
 
     # Create minimal app with only debug router (no middleware)
     app = FastAPI()
     app.include_router(debug.router)
 
     # Mock settings for debug router
-    with patch("app.routers.debug.settings") as mock_settings:
+    with patch("backend.app.routers.debug.settings") as mock_settings:
         mock_settings.environment = "development"
         mock_settings.admin_api_key = os.getenv("ADMIN_API_KEY", "test_admin_api_key")
         # Also patch settings in postgres_debugger
-        with patch("app.utils.postgres_debugger.settings") as mock_pg_settings:
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_pg_settings:
             mock_pg_settings.database_url = os.getenv(
                 "DATABASE_URL", "postgresql://test:test@localhost:5432/test"
             )
@@ -64,7 +64,7 @@ class TestPostgresConnectionEndpoint:
 
     def test_connection_endpoint_success(self, client, auth_headers):
         """Test connection endpoint with successful connection."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_conn.fetchval = AsyncMock(side_effect=["PostgreSQL 14.0", "testdb", "testuser"])
             mock_conn.close = AsyncMock()
@@ -81,7 +81,7 @@ class TestPostgresConnectionEndpoint:
     def test_connection_endpoint_failure(self, client, auth_headers):
         """Test connection endpoint with connection failure."""
         with patch(
-            "app.utils.postgres_debugger.asyncpg.connect",
+            "backend.app.utils.postgres_debugger.asyncpg.connect",
             side_effect=Exception("Connection failed"),
         ):
             response = client.get("/api/debug/postgres/connection", headers=auth_headers)
@@ -105,7 +105,7 @@ class TestPostgresSchemaEndpoints:
 
     def test_get_tables_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/schema/tables endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_row = MagicMock()
             mock_row.__getitem__ = MagicMock(
@@ -125,7 +125,7 @@ class TestPostgresSchemaEndpoints:
 
     def test_get_table_details_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/schema/table/{name} endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             # Mock columns
             mock_col = MagicMock()
@@ -157,7 +157,7 @@ class TestPostgresSchemaEndpoints:
 
     def test_get_indexes_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/schema/indexes endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_row = MagicMock()
             mock_row.__getitem__ = MagicMock(
@@ -188,7 +188,7 @@ class TestPostgresStatsEndpoints:
 
     def test_get_table_stats_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/stats/tables endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_stat_row = MagicMock()
             mock_stat_row.__getitem__ = MagicMock(
@@ -216,7 +216,7 @@ class TestPostgresStatsEndpoints:
 
     def test_get_database_stats_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/stats/database endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_conn.fetchval = AsyncMock(
                 side_effect=["100 MB", "PostgreSQL 14.0", 10, 5, 5, "testdb"]
@@ -238,7 +238,7 @@ class TestPostgresQueryEndpoint:
 
     def test_execute_query_success(self, client, auth_headers):
         """Test successful query execution."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_tx = MagicMock()
             mock_tx.__aenter__ = AsyncMock(return_value=None)
@@ -294,7 +294,7 @@ class TestPostgresQueryEndpoint:
 
     def test_execute_query_limit_enforced(self, client, auth_headers):
         """Test that query limit is enforced."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_tx = MagicMock()
             mock_tx.__aenter__ = AsyncMock(return_value=None)
@@ -317,7 +317,7 @@ class TestPostgresQueryEndpoint:
 
     def test_execute_query_database_error(self, client, auth_headers):
         """Test error handling when database query fails."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_tx = MagicMock()
             mock_tx.__aenter__ = AsyncMock(return_value=None)
@@ -343,7 +343,7 @@ class TestPostgresPerformanceEndpoints:
 
     def test_get_slow_queries_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/performance/slow-queries endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_conn.fetchval = AsyncMock(return_value=True)  # extension exists
             mock_row = MagicMock()
@@ -374,7 +374,7 @@ class TestPostgresPerformanceEndpoints:
 
     def test_get_locks_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/performance/locks endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_row = MagicMock()
             mock_row.__getitem__ = MagicMock(
@@ -405,7 +405,7 @@ class TestPostgresPerformanceEndpoints:
 
     def test_get_connection_stats_endpoint(self, client, auth_headers):
         """Test /api/debug/postgres/performance/connections endpoint."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_state_row = MagicMock()
             mock_state_row.__getitem__ = MagicMock(

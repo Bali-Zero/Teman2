@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock
 import pytest
 from jose import jwt
 
-from app.modules.identity.models import User
-from app.modules.identity.service import IdentityService
+from backend.app.modules.identity.models import User
+from backend.app.modules.identity.service import IdentityService
 from tests.conftest import create_mock_settings
 
 
@@ -39,7 +39,7 @@ def _make_service(monkeypatch, db_url="postgres://test", jwt_secret="secret", jw
         jwt_secret_key=jwt_secret,
         jwt_algorithm=jwt_alg,
     )
-    monkeypatch.setattr("app.modules.identity.service.settings", mock_settings)
+    monkeypatch.setattr("backend.app.modules.identity.service.settings", mock_settings)
     return IdentityService()
 
 
@@ -49,7 +49,7 @@ def test_init_warns_on_default_secret(monkeypatch, caplog):
         jwt_secret_key="zantara_default_secret_key_2025_change_in_production",
         jwt_algorithm="HS256",
     )
-    monkeypatch.setattr("app.modules.identity.service.settings", mock_settings)
+    monkeypatch.setattr("backend.app.modules.identity.service.settings", mock_settings)
 
     IdentityService()
 
@@ -91,7 +91,7 @@ async def test_authenticate_user_not_found(monkeypatch):
     service = _make_service(monkeypatch)
     dummy_conn = _DummyConn(row=None)
     monkeypatch.setattr(
-        "app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+        "backend.app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
     )
 
     result = await service.authenticate_user("user@example.com", "1234")
@@ -121,7 +121,7 @@ async def test_authenticate_user_locked(monkeypatch):
     }
     dummy_conn = _DummyConn(row=row)
     monkeypatch.setattr(
-        "app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+        "backend.app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
     )
 
     result = await service.authenticate_user("user@example.com", "1234")
@@ -151,7 +151,7 @@ async def test_authenticate_user_invalid_pin_increments(monkeypatch):
     }
     dummy_conn = _DummyConn(row=row)
     monkeypatch.setattr(
-        "app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+        "backend.app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
     )
     service.verify_password = lambda *_args, **_kwargs: False
 
@@ -182,7 +182,7 @@ async def test_authenticate_user_success(monkeypatch):
     }
     dummy_conn = _DummyConn(row=row)
     monkeypatch.setattr(
-        "app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+        "backend.app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
     )
     service.verify_password = lambda *_args, **_kwargs: True
 
@@ -198,7 +198,7 @@ async def test_authenticate_user_exception(monkeypatch):
     service = _make_service(monkeypatch)
     dummy_conn = _DummyConn(error=RuntimeError("db error"))
     monkeypatch.setattr(
-        "app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
+        "backend.app.modules.identity.service.asyncpg.connect", AsyncMock(return_value=dummy_conn)
     )
 
     result = await service.authenticate_user("user@example.com", "1234")
@@ -229,7 +229,7 @@ def test_create_access_token(monkeypatch):
 
     token = service.create_access_token(user, session_id="s1")
     # Get the actual secret from the mocked settings module
-    from app.modules.identity import service as identity_service
+    from backend.app.modules.identity import service as identity_service
     actual_secret = identity_service.settings.jwt_secret_key
     payload = jwt.decode(token, actual_secret, algorithms=["HS256"])
 

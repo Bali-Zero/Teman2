@@ -28,7 +28,7 @@ class TestNotificationsRouterIntegration:
         """Create test client"""
         from fastapi import FastAPI
 
-        from app.routers.notifications import router
+        from backend.app.routers.notifications import router
 
         app = FastAPI()
         app.include_router(router)
@@ -99,7 +99,7 @@ class TestAutoCRMServiceIntegration:
     @pytest.mark.asyncio
     async def test_auto_crm_service_init(self, db_pool):
         """Test AutoCRMService initialization"""
-        from services.crm.auto_crm_service import AutoCRMService
+        from backend.services.crm.auto_crm_service import AutoCRMService
 
         service = AutoCRMService(db_pool=db_pool)
         assert service is not None
@@ -107,7 +107,7 @@ class TestAutoCRMServiceIntegration:
     @pytest.mark.asyncio
     async def test_extract_client_info(self, db_pool):
         """Test extracting client info"""
-        from services.crm.auto_crm_service import AutoCRMService
+        from backend.services.crm.auto_crm_service import AutoCRMService
 
         service = AutoCRMService(db_pool=db_pool)
 
@@ -144,7 +144,7 @@ class TestZantaraToolsIntegration:
     @pytest.mark.asyncio
     async def test_zantara_tools_init(self, db_pool):
         """Test ZantaraTools initialization"""
-        from services.zantara_tools import ZantaraTools
+        from backend.services.zantara_tools import ZantaraTools
 
         tools = ZantaraTools(db_pool=db_pool)
         assert tools is not None
@@ -152,7 +152,7 @@ class TestZantaraToolsIntegration:
     @pytest.mark.asyncio
     async def test_get_tools_list(self, db_pool):
         """Test getting tools list"""
-        from services.zantara_tools import ZantaraTools
+        from backend.services.zantara_tools import ZantaraTools
 
         tools = ZantaraTools(db_pool=db_pool)
         tools_list = tools.get_tools()
@@ -167,7 +167,7 @@ class TestCulturalRagServiceIntegration:
     @pytest.mark.asyncio
     async def test_cultural_rag_service_init(self):
         """Test CulturalRagService initialization"""
-        from services.misc.cultural_rag_service import CulturalRagService
+        from backend.services.misc.cultural_rag_service import CulturalRagService
 
         service = CulturalRagService()
         assert service is not None
@@ -175,7 +175,7 @@ class TestCulturalRagServiceIntegration:
     @pytest.mark.asyncio
     async def test_get_cultural_context(self):
         """Test getting cultural context"""
-        from services.misc.cultural_rag_service import CulturalRagService
+        from backend.services.misc.cultural_rag_service import CulturalRagService
 
         service = CulturalRagService()
 
@@ -193,14 +193,14 @@ class TestResponseValidatorIntegration:
 
     def test_validator_init(self):
         """Test ResponseValidator initialization"""
-        from services.response.validator import ResponseValidator
+        from backend.services.response.validator import ResponseValidator
 
         validator = ResponseValidator()
         assert validator is not None
 
     def test_validate_response(self):
         """Test validating response"""
-        from services.response.validator import ResponseValidator
+        from backend.services.response.validator import ResponseValidator
 
         validator = ResponseValidator()
 
@@ -219,14 +219,14 @@ class TestOracleConfigIntegration:
 
     def test_oracle_config_init(self):
         """Test OracleConfig initialization"""
-        from services.oracle_config import OracleConfig
+        from backend.services.oracle_config import OracleConfig
 
         config = OracleConfig()
         assert config is not None
 
     def test_get_collection_config(self):
         """Test getting collection config"""
-        from services.oracle_config import OracleConfig
+        from backend.services.oracle_config import OracleConfig
 
         config = OracleConfig()
         collection_config = config.get_collection_config("visa_oracle")
@@ -280,14 +280,14 @@ class TestZantaraPromptBuilderIntegration:
 
     def test_prompt_builder_init(self):
         """Test ZantaraPromptBuilder initialization"""
-        from prompts.zantara_prompt_builder import ZantaraPromptBuilder
+        from backend.prompts.zantara_prompt_builder import ZantaraPromptBuilder
 
         builder = ZantaraPromptBuilder()
         assert builder is not None
 
     def test_build_system_prompt(self):
         """Test building system prompt"""
-        from prompts.zantara_prompt_builder import ZantaraPromptBuilder
+        from backend.prompts.zantara_prompt_builder import ZantaraPromptBuilder
 
         builder = ZantaraPromptBuilder()
         prompt = builder.build_system_prompt()
@@ -296,7 +296,7 @@ class TestZantaraPromptBuilderIntegration:
 
     def test_build_user_prompt(self):
         """Test building user prompt"""
-        from prompts.zantara_prompt_builder import ZantaraPromptBuilder
+        from backend.prompts.zantara_prompt_builder import ZantaraPromptBuilder
 
         builder = ZantaraPromptBuilder()
         prompt = builder.build_user_prompt(
@@ -307,7 +307,7 @@ class TestZantaraPromptBuilderIntegration:
 
     def test_build_rag_prompt(self):
         """Test building RAG prompt"""
-        from prompts.zantara_prompt_builder import ZantaraPromptBuilder
+        from backend.prompts.zantara_prompt_builder import ZantaraPromptBuilder
 
         builder = ZantaraPromptBuilder()
         prompt = builder.build_rag_prompt(
@@ -324,7 +324,7 @@ class TestPluginSystemIntegration:
 
     def test_plugin_init(self):
         """Test Plugin initialization"""
-        from core.plugins.plugin import Plugin
+        from backend.core.plugins.plugin import Plugin
 
         plugin = Plugin(
             name="test_plugin",
@@ -336,7 +336,7 @@ class TestPluginSystemIntegration:
 
     def test_plugin_execute(self):
         """Test plugin execution"""
-        from core.plugins.plugin import Plugin
+        from backend.core.plugins.plugin import Plugin
 
         plugin = Plugin(
             name="test_plugin",
@@ -356,7 +356,7 @@ class TestGeminiAdapterIntegration:
 
     def test_gemini_adapter_init(self):
         """Test GeminiAdapter initialization"""
-        from llm.adapters.gemini import GeminiAdapter
+        from backend.llm.adapters.gemini import GeminiAdapter
 
         adapter = GeminiAdapter()
         assert adapter is not None
@@ -364,7 +364,7 @@ class TestGeminiAdapterIntegration:
     @pytest.mark.asyncio
     async def test_gemini_adapter_generate(self):
         """Test Gemini adapter generate"""
-        from llm.adapters.gemini import GeminiAdapter
+        from backend.llm.adapters.gemini import GeminiAdapter
 
         adapter = GeminiAdapter()
 
@@ -382,7 +382,7 @@ class TestGeminiAdapterIntegration:
     @pytest.mark.asyncio
     async def test_gemini_adapter_stream(self):
         """Test Gemini adapter streaming"""
-        from llm.adapters.gemini import GeminiAdapter
+        from backend.llm.adapters.gemini import GeminiAdapter
 
         adapter = GeminiAdapter()
 

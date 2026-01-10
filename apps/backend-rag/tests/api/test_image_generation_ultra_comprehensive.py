@@ -27,7 +27,7 @@ class TestImageGeneration:
 
     def test_generate_image_basic(self, authenticated_client):
         """Test basic image generation"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json = MagicMock(
@@ -48,7 +48,7 @@ class TestImageGeneration:
 
     def test_generate_multiple_images(self, authenticated_client):
         """Test generating multiple images"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json = MagicMock(
@@ -77,7 +77,7 @@ class TestImageGeneration:
         aspect_ratios = ["1:1", "4:3", "3:4", "16:9", "9:16"]
 
         for aspect_ratio in aspect_ratios:
-            with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+            with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 mock_response.json = MagicMock(
@@ -104,7 +104,7 @@ class TestImageGeneration:
         safety_levels = ["block_some", "block_few", "block_most", "block_none"]
 
         for safety_level in safety_levels:
-            with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+            with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 mock_response.json = MagicMock(
@@ -131,7 +131,7 @@ class TestImageGeneration:
         person_options = ["allow_adult", "allow_all", "block_all"]
 
         for person_option in person_options:
-            with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+            with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 mock_response.json = MagicMock(
@@ -157,7 +157,7 @@ class TestImageGeneration:
         """Test generating image with long prompt"""
         long_prompt = "A " + "very detailed " * 100 + "image"
 
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json = MagicMock(
@@ -196,7 +196,7 @@ class TestImageGeneration:
 
     def test_generate_image_api_key_missing(self, authenticated_client):
         """Test generating image without API key"""
-        with patch("app.routers.image_generation.settings") as mock_settings:
+        with patch("backend.app.routers.image_generation.settings") as mock_settings:
             mock_settings.google_imagen_api_key = None
             mock_settings.google_api_key = None
 
@@ -209,7 +209,7 @@ class TestImageGeneration:
 
     def test_generate_image_api_forbidden(self, authenticated_client):
         """Test generating image with API forbidden error"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 403
             mock_response.text = "Forbidden"
@@ -228,7 +228,7 @@ class TestImageGeneration:
 
     def test_generate_image_api_error(self, authenticated_client):
         """Test generating image with API error"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 500
             mock_response.text = "Internal Server Error"
@@ -248,7 +248,7 @@ class TestImageGeneration:
 
     def test_generate_image_response_structure(self, authenticated_client):
         """Test image generation response structure"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json = MagicMock(
@@ -278,7 +278,7 @@ class TestImageGeneration:
 
     def test_generate_image_no_images_returned(self, authenticated_client):
         """Test generating image when no images are returned"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json = MagicMock(return_value={"generatedImages": []})

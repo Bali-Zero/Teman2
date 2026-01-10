@@ -7,7 +7,7 @@ import pytest
 # Add backend to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../backend"))
 
-from services.oracle.oracle_service import oracle_service
+from backend.services.oracle.oracle_service import oracle_service
 
 
 @pytest.mark.asyncio
@@ -58,7 +58,7 @@ async def test_process_query_mock():
     )
 
     # Mock DB manager
-    with patch("services.oracle_service.db_manager") as mock_db:
+    with patch("backend.services.oracle_service.db_manager") as mock_db:
         mock_db.get_user_profile = AsyncMock(return_value={"name": "Test User", "language": "en"})
         mock_db.store_query_analytics = AsyncMock()
 

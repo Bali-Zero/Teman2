@@ -14,7 +14,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.monitoring.alert_service import AlertLevel, AlertService, get_alert_service
+from backend.services.monitoring.alert_service import AlertLevel, AlertService, get_alert_service
 
 # ============================================================================
 # Fixtures
@@ -24,7 +24,7 @@ from services.monitoring.alert_service import AlertLevel, AlertService, get_aler
 @pytest.fixture
 def mock_settings():
     """Mock settings configuration"""
-    with patch("app.core.config.settings") as mock:
+    with patch("backend.app.core.config.settings") as mock:
         mock.slack_webhook_url = "https://hooks.slack.com/test"
         mock.discord_webhook_url = "https://discord.com/api/webhooks/test"
         yield mock
@@ -33,7 +33,7 @@ def mock_settings():
 @pytest.fixture
 def mock_settings_no_webhooks():
     """Mock settings without webhooks"""
-    with patch("app.core.config.settings") as mock:
+    with patch("backend.app.core.config.settings") as mock:
         mock.slack_webhook_url = None
         mock.discord_webhook_url = None
         yield mock
@@ -179,35 +179,35 @@ async def test_send_alert_all_levels(alert_service):
 
 def test_log_alert_critical(alert_service):
     """Test logging critical alerts"""
-    with patch("services.monitoring.alert_service.logger") as mock_logger:
+    with patch("backend.services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Critical Alert", "Critical message", AlertLevel.CRITICAL)
         mock_logger.critical.assert_called_once()
 
 
 def test_log_alert_error(alert_service):
     """Test logging error alerts"""
-    with patch("services.monitoring.alert_service.logger") as mock_logger:
+    with patch("backend.services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Error Alert", "Error message", AlertLevel.ERROR)
         mock_logger.error.assert_called_once()
 
 
 def test_log_alert_warning(alert_service):
     """Test logging warning alerts"""
-    with patch("services.monitoring.alert_service.logger") as mock_logger:
+    with patch("backend.services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Warning Alert", "Warning message", AlertLevel.WARNING)
         mock_logger.warning.assert_called_once()
 
 
 def test_log_alert_info(alert_service):
     """Test logging info alerts"""
-    with patch("services.monitoring.alert_service.logger") as mock_logger:
+    with patch("backend.services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert("Info Alert", "Info message", AlertLevel.INFO)
         mock_logger.info.assert_called_once()
 
 
 def test_log_alert_with_metadata(alert_service):
     """Test logging alerts with metadata"""
-    with patch("services.monitoring.alert_service.logger") as mock_logger:
+    with patch("backend.services.monitoring.alert_service.logger") as mock_logger:
         alert_service._log_alert(
             "Test Alert", "Test message", AlertLevel.INFO, metadata={"key": "value", "num": 123}
         )
@@ -435,12 +435,12 @@ async def test_send_http_error_alert_long_error_detail(alert_service):
 
 def test_get_alert_service_singleton():
     """Test get_alert_service returns singleton"""
-    with patch("app.core.config.settings") as mock_settings:
+    with patch("backend.app.core.config.settings") as mock_settings:
         mock_settings.slack_webhook_url = None
         mock_settings.discord_webhook_url = None
 
         # Clear singleton
-        import services.monitoring.alert_service as alert_module
+        import backend.services.monitoring.alert_service as alert_module
 
         alert_module._alert_service = None
 

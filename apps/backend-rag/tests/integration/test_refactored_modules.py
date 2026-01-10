@@ -17,9 +17,9 @@ from fastapi.testclient import TestClient
 
 # Import app after path setup
 try:
-    from app.main_cloud import app
+    from backend.app.main_cloud import app
 except ImportError as e:
-    pytest.skip(f"Could not import app.main_cloud: {e}", allow_module_level=True)
+    pytest.skip(f"Could not import backend.app.main_cloud: {e}", allow_module_level=True)
 
 
 @pytest.fixture
@@ -64,7 +64,7 @@ def test_dashboard_stats_endpoint(client):
 
 def test_auth_validation_module_import():
     """Test that auth validation module can be imported"""
-    from app.auth.validation import validate_api_key, validate_auth_mixed, validate_auth_token
+    from backend.app.auth.validation import validate_api_key, validate_auth_mixed, validate_auth_token
 
     assert callable(validate_api_key)
     assert callable(validate_auth_token)
@@ -73,9 +73,9 @@ def test_auth_validation_module_import():
 
 def test_oracle_services_import():
     """Test that Oracle services can be imported"""
-    from services.oracle_config import oracle_config
-    from services.oracle_database import db_manager
-    from services.oracle_google_services import google_services
+    from backend.services.oracle_config import oracle_config
+    from backend.services.oracle_database import db_manager
+    from backend.services.oracle_google_services import google_services
 
     assert oracle_config is not None
     assert google_services is not None
@@ -84,7 +84,7 @@ def test_oracle_services_import():
 
 def test_state_helpers_import():
     """Test that state helpers can be imported"""
-    from app.utils.state_helpers import get_app_state, get_request_state
+    from backend.app.utils.state_helpers import get_app_state, get_request_state
 
     assert callable(get_app_state)
     assert callable(get_request_state)
@@ -108,7 +108,7 @@ def test_health_endpoint(client):
 @pytest.mark.asyncio
 async def test_auth_validation_functions():
     """Test auth validation functions handle None inputs"""
-    from app.auth.validation import validate_api_key, validate_auth_token
+    from backend.app.auth.validation import validate_api_key, validate_auth_token
 
     # Test with None inputs
     result = await validate_api_key(None)

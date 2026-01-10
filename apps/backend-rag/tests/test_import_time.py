@@ -33,30 +33,30 @@ class TestImportTime:
     def test_import_main_cloud(self):
         """Test that main_cloud module imports successfully"""
         try:
-            import app.main_cloud  # noqa: F401
+            import backend.app.main_cloud  # noqa: F401
         except ImportError as e:
-            pytest.fail(f"Failed to import app.main_cloud: {e}")
+            pytest.fail(f"Failed to import backend.app.main_cloud: {e}")
 
     def test_import_app_factory(self):
         """Test that app_factory module imports successfully"""
         try:
-            from app.setup.app_factory import create_app  # noqa: F401
+            from backend.app.setup.app_factory import create_app  # noqa: F401
         except ImportError as e:
-            pytest.fail(f"Failed to import app.setup.app_factory: {e}")
+            pytest.fail(f"Failed to import backend.app.setup.app_factory: {e}")
 
     def test_import_service_initializer(self):
         """Test that service_initializer module imports successfully"""
         try:
-            from app.setup.service_initializer import initialize_services  # noqa: F401
+            from backend.app.setup.service_initializer import initialize_services  # noqa: F401
         except ImportError as e:
-            pytest.fail(f"Failed to import app.setup.service_initializer: {e}")
+            pytest.fail(f"Failed to import backend.app.setup.service_initializer: {e}")
 
     def test_import_agentic_rag(self):
         """Test that agentic RAG modules import successfully"""
         try:
-            from services.rag.agentic import create_agentic_rag  # noqa: F401
-            from services.rag.agentic.reasoning import detect_team_query  # noqa: F401
-            from services.rag.agentic.session_fact_extractor import (
+            from backend.services.rag.agentic import create_agentic_rag  # noqa: F401
+            from backend.services.rag.agentic.reasoning import detect_team_query  # noqa: F401
+            from backend.services.rag.agentic.session_fact_extractor import (
                 SessionFactExtractor,  # noqa: F401
             )
         except ImportError as e:
@@ -65,7 +65,7 @@ class TestImportTime:
     def test_import_routers(self):
         """Test that critical routers import successfully"""
         try:
-            from app.routers import (
+            from backend.app.routers import (
                 agentic_rag,  # noqa: F401
                 auth,  # noqa: F401
                 crm_interactions,  # noqa: F401
@@ -86,7 +86,7 @@ class TestImportTime:
     def test_import_dependencies(self):
         """Test that dependencies module imports successfully"""
         try:
-            from app.dependencies import (
+            from backend.app.dependencies import (
                 get_ai_client,  # noqa: F401
                 get_database_pool,  # noqa: F401
                 get_search_service,  # noqa: F401
@@ -97,9 +97,9 @@ class TestImportTime:
     def test_import_core_modules(self):
         """Test that core modules import successfully"""
         try:
-            import core.qdrant_db  # noqa: F401
-            from core.cache import get_cache_service  # noqa: F401
-            from core.embeddings import create_embeddings_generator  # noqa: F401
+            import backend.core.qdrant_db  # noqa: F401
+            from backend.core.cache import get_cache_service  # noqa: F401
+            from backend.core.embeddings import create_embeddings_generator  # noqa: F401
         except ImportError as e:
             pytest.fail(f"Failed to import core modules: {e}")
 
@@ -115,10 +115,10 @@ class TestImportTimeCriticalPaths:
         """
         try:
             # This should trigger the full import chain
-            import app.main_cloud  # noqa: F401
+            import backend.app.main_cloud  # noqa: F401
 
             # Verify routers are accessible
-            from app.setup.router_registration import include_routers  # noqa: F401
+            from backend.app.setup.router_registration import include_routers  # noqa: F401
         except ImportError as e:
             pytest.fail(f"Failed to import critical path: {e}")
 
@@ -129,12 +129,12 @@ class TestImportTimeCriticalPaths:
         This simulates the import path that was failing before (detect_team_query missing).
         """
         try:
-            from app.setup.service_initializer import initialize_services  # noqa: F401
-            from services.rag.agentic import create_agentic_rag  # noqa: F401
-            from services.rag.agentic.reasoning import detect_team_query  # noqa: F401
-            from services.rag.agentic.session_fact_extractor import (
+            from backend.app.setup.service_initializer import initialize_services  # noqa: F401
+            from backend.services.rag.agentic import create_agentic_rag  # noqa: F401
+            from backend.services.rag.agentic.reasoning import detect_team_query  # noqa: F401
+            from backend.services.rag.agentic.session_fact_extractor import (
                 SessionFactExtractor,  # noqa: F401
             )
-            from services.routing.intelligent_router import IntelligentRouter  # noqa: F401
+            from backend.services.routing.intelligent_router import IntelligentRouter  # noqa: F401
         except ImportError as e:
             pytest.fail(f"Failed to import service initializer path: {e}")

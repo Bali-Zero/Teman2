@@ -51,7 +51,7 @@ class TestOracleQuery:
     @pytest.mark.asyncio
     async def test_oracle_query_basic(self, test_client, valid_jwt_token):
         """Test POST /api/oracle/query basic query"""
-        with patch("app.routers.oracle_universal.personality_service") as mock_service:
+        with patch("backend.app.routers.oracle_universal.personality_service") as mock_service:
             mock_service.fast_chat = AsyncMock(
                 return_value={
                     "response": "Test response",
@@ -72,7 +72,7 @@ class TestOracleQuery:
     @pytest.mark.asyncio
     async def test_oracle_query_with_user_email(self, test_client, valid_jwt_token):
         """Test POST /api/oracle/query with user email"""
-        with patch("app.routers.oracle_universal.personality_service") as mock_service:
+        with patch("backend.app.routers.oracle_universal.personality_service") as mock_service:
             mock_service.fast_chat = AsyncMock(
                 return_value={
                     "response": "Test response",
@@ -97,7 +97,7 @@ class TestOracleQuery:
 
     def test_oracle_query_embedding_error(self, authenticated_client, mock_search_service):
         """Test oracle query when embedding generation fails"""
-        with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
             mock_embedder.return_value.generate_single_embedding.side_effect = Exception(
                 "Embedding error"
             )
@@ -198,10 +198,10 @@ class TestOracleFeedback:
         """Test submitting user feedback successfully"""
         with (
             patch(
-                "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
             ) as mock_get_profile,
             patch(
-                "app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
             ) as mock_store,
         ):
             mock_get_profile.return_value = {"id": 1, "email": "test@example.com"}
@@ -228,10 +228,10 @@ class TestOracleFeedback:
         """Test submitting feedback when user doesn't exist"""
         with (
             patch(
-                "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
             ) as mock_get_profile,
             patch(
-                "app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
             ) as mock_store,
         ):
             mock_get_profile.return_value = None
@@ -257,10 +257,10 @@ class TestOracleFeedback:
         """Test submitting feedback when storage fails"""
         with (
             patch(
-                "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
             ) as mock_get_profile,
             patch(
-                "app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.db_manager.store_feedback", new_callable=AsyncMock
             ) as mock_store,
         ):
             mock_get_profile.return_value = {"id": 1}
@@ -287,7 +287,7 @@ class TestOracleTestEndpoints:
     def test_get_user_profile_endpoint(self, authenticated_client):
         """Test GET /api/oracle/user/profile/{user_email}"""
         with patch(
-            "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
         ) as mock_get_profile:
             mock_get_profile.return_value = {
                 "id": 1,
@@ -306,7 +306,7 @@ class TestOracleTestEndpoints:
     def test_get_user_profile_not_found(self, authenticated_client):
         """Test GET /api/oracle/user/profile/{user_email} when user doesn't exist"""
         with patch(
-            "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
         ) as mock_get_profile:
             mock_get_profile.return_value = None
 
@@ -325,7 +325,7 @@ class TestOracleTestEndpoints:
     def test_test_personality(self, authenticated_client):
         """Test POST /api/oracle/personality/test endpoint"""
         with patch(
-            "app.routers.oracle_universal.personality_service.test_personality",
+            "backend.app.routers.oracle_universal.personality_service.test_personality",
             new_callable=AsyncMock,
         ) as mock_test:
             mock_test.return_value = {
@@ -343,7 +343,7 @@ class TestOracleTestEndpoints:
     def test_test_personality_error(self, authenticated_client):
         """Test personality test when service fails"""
         with patch(
-            "app.routers.oracle_universal.personality_service.test_personality",
+            "backend.app.routers.oracle_universal.personality_service.test_personality",
             new_callable=AsyncMock,
         ) as mock_test:
             mock_test.side_effect = Exception("Service error")
@@ -358,7 +358,7 @@ class TestOracleTestEndpoints:
     def test_test_gemini_integration(self, authenticated_client):
         """Test GET /api/oracle/gemini/test endpoint"""
         with patch(
-            "app.routers.oracle_universal.google_services.get_gemini_model"
+            "backend.app.routers.oracle_universal.google_services.get_gemini_model"
         ) as mock_get_model:
             from unittest.mock import MagicMock
 
@@ -376,7 +376,7 @@ class TestOracleTestEndpoints:
 
     def test_test_drive_connection(self, authenticated_client):
         """Test GET /api/oracle/drive/test endpoint"""
-        with patch("app.routers.oracle_universal.google_services") as mock_google_services:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_google_services:
             from unittest.mock import MagicMock
 
             # Mock drive_service property
@@ -417,7 +417,7 @@ class TestOracleHealth:
     def test_get_user_profile_endpoint(self, authenticated_client):
         """Test GET /api/oracle/user/profile/{user_email}"""
         with patch(
-            "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
         ) as mock_get_profile:
             mock_get_profile.return_value = {
                 "id": 1,
@@ -436,7 +436,7 @@ class TestOracleHealth:
     def test_get_user_profile_not_found(self, authenticated_client):
         """Test GET /api/oracle/user/profile/{user_email} when user doesn't exist"""
         with patch(
-            "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
         ) as mock_get_profile:
             mock_get_profile.return_value = None
 
@@ -454,7 +454,7 @@ class TestOracleHealth:
 
     def test_test_drive_connection_not_initialized(self, authenticated_client):
         """Test GET /api/oracle/drive/test when Drive service not initialized"""
-        with patch("app.routers.oracle_universal.google_services.drive_service", None):
+        with patch("backend.app.routers.oracle_universal.google_services.drive_service", None):
             response = authenticated_client.get("/api/oracle/drive/test")
 
             assert response.status_code == 200
@@ -506,7 +506,7 @@ class TestOracleUserProfile:
     def test_get_user_profile_success(self, authenticated_client):
         """Test getting user profile successfully"""
         with patch(
-            "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
         ) as mock_get_profile:
             mock_get_profile.return_value = {
                 "id": 1,
@@ -524,7 +524,7 @@ class TestOracleUserProfile:
     def test_get_user_profile_not_found(self, authenticated_client):
         """Test getting non-existent user profile"""
         with patch(
-            "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
         ) as mock_get_profile:
             mock_get_profile.return_value = None
 
@@ -536,7 +536,7 @@ class TestOracleUserProfile:
     def test_get_user_profile_error(self, authenticated_client):
         """Test getting user profile when database fails"""
         with patch(
-            "app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.get_user_profile", new_callable=AsyncMock
         ) as mock_get_profile:
             mock_get_profile.side_effect = Exception("Database error")
 
@@ -558,7 +558,7 @@ class TestOracleUserProfile:
         mock_search_service.ai_client.generate_response.return_value = "AI response"
 
         with patch(
-            "app.routers.oracle_universal.smart_oracle", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.smart_oracle", new_callable=AsyncMock
         ) as mock_smart_oracle:
             mock_smart_oracle.return_value = "Full PDF content"
 
@@ -583,10 +583,10 @@ class TestOracleUserProfile:
 
         with (
             patch(
-                "app.routers.oracle_universal.smart_oracle", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.smart_oracle", new_callable=AsyncMock
             ) as mock_smart_oracle,
             patch(
-                "app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
+                "backend.app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
             ) as mock_reason,
         ):
             mock_smart_oracle.return_value = "Error: Document not found"
@@ -635,7 +635,7 @@ class TestOracleUserProfile:
         }
 
         with patch(
-            "app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.reason_with_gemini", new_callable=AsyncMock
         ) as mock_reason:
             mock_reason.side_effect = Exception("Reasoning error")
 
@@ -683,7 +683,7 @@ class TestOracleUserProfile:
         }
 
         with patch(
-            "app.routers.oracle_universal.db_manager.store_query_analytics", new_callable=AsyncMock
+            "backend.app.routers.oracle_universal.db_manager.store_query_analytics", new_callable=AsyncMock
         ) as mock_store:
             mock_store.return_value = None
 

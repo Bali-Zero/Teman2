@@ -13,7 +13,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.embeddings import EmbeddingsGenerator
+from backend.core.embeddings import EmbeddingsGenerator
 
 
 @pytest.fixture
@@ -174,7 +174,7 @@ def test_settings_injection(mock_settings, mock_openai_client):
 def test_default_settings_when_none_provided(mock_openai_client):
     """Test that default settings are used when None provided"""
     # Mock the module-level settings
-    with patch("core.embeddings._default_settings") as mock_default:
+    with patch("backend.core.embeddings._default_settings") as mock_default:
         mock_default.embedding_provider = "openai"
         mock_default.openai_api_key = "test-key"
         mock_default.embedding_model = "text-embedding-3-small"
@@ -232,7 +232,7 @@ def test_init_without_settings_no_provider():
     mock_transformer.get_sentence_embedding_dimension = MagicMock(return_value=384)
 
     with patch("sentence_transformers.SentenceTransformer", return_value=mock_transformer):
-        with patch("core.embeddings._default_settings", None):
+        with patch("backend.core.embeddings._default_settings", None):
             generator = EmbeddingsGenerator(provider=None, settings=None)
             # Should default to sentence-transformers
             assert generator.provider == "sentence-transformers"
@@ -408,7 +408,7 @@ def test_sentence_transformers_default_model():
 
 def test_convenience_function_generate_embeddings(mock_openai_client):
     """Test the convenience function generate_embeddings"""
-    from core.embeddings import generate_embeddings
+    from backend.core.embeddings import generate_embeddings
 
     mock_response = MagicMock()
     mock_response.data = [MagicMock(embedding=[0.1] * 1536)]
@@ -423,7 +423,7 @@ def test_convenience_function_generate_embeddings(mock_openai_client):
 def test_convenience_function_without_api_key():
     """Test convenience function without API key (uses sentence transformers)"""
     import numpy as np
-    from core.embeddings import generate_embeddings
+    from backend.core.embeddings import generate_embeddings
 
     mock_transformer = MagicMock()
     mock_transformer.get_sentence_embedding_dimension = MagicMock(return_value=384)
@@ -431,7 +431,7 @@ def test_convenience_function_without_api_key():
     mock_transformer.encode = MagicMock(return_value=mock_embeddings)
 
     with patch("sentence_transformers.SentenceTransformer", return_value=mock_transformer):
-        with patch("core.embeddings._default_settings", None):
+        with patch("backend.core.embeddings._default_settings", None):
             embeddings = generate_embeddings(["test text"])
             assert len(embeddings) == 1
             assert len(embeddings[0]) == 384
@@ -469,7 +469,7 @@ def test_default_provider_sentence_transformers():
     mock_transformer.get_sentence_embedding_dimension = MagicMock(return_value=384)
 
     with patch("sentence_transformers.SentenceTransformer", return_value=mock_transformer):
-        with patch("core.embeddings._default_settings", None):
+        with patch("backend.core.embeddings._default_settings", None):
             generator = EmbeddingsGenerator()
             assert generator.provider == "sentence-transformers"
 

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-module_name = "services.rag.agent.mcp_tool"
+module_name = "backend.services.rag.agent.mcp_tool"
 
 
 def _load_module(monkeypatch, session_result=None, session_error=None, stdio_error=None):
@@ -53,7 +53,7 @@ def _load_module(monkeypatch, session_result=None, session_error=None, stdio_err
         return _StdioCtx()
 
     structures_stub = types.SimpleNamespace(BaseTool=object, redis_url='redis://localhost:6379')
-    monkeypatch.setitem(sys.modules, "services.rag.agent.structures", structures_stub)
+    monkeypatch.setitem(sys.modules, "backend.services.rag.agent.structures", structures_stub)
 
     mcp_stub = types.SimpleNamespace(ClientSession=_Session, StdioServerParameters=_StdioParams, redis_url='redis://localhost:6379')
     monkeypatch.setitem(sys.modules, "mcp", mcp_stub)

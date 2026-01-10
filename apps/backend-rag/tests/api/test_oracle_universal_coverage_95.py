@@ -85,7 +85,7 @@ class TestFeedbackEndpoint:
             "session_id": "test-session-123",
         }
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(
                 return_value={"id": 1, "email": "test@example.com", "name": "Test User"}
             )
@@ -116,7 +116,7 @@ class TestFeedbackEndpoint:
             "session_id": "test-session-123",
         }
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(
                 return_value={"id": 1, "email": "test@example.com"}
             )
@@ -142,7 +142,7 @@ class TestFeedbackEndpoint:
             "rating": 5,
         }
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(return_value=None)
             mock_db.store_feedback = AsyncMock(return_value=True)
 
@@ -167,7 +167,7 @@ class TestFeedbackEndpoint:
             "rating": 5,
         }
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(return_value={"id": 1})
             mock_db.store_feedback = AsyncMock(side_effect=Exception("Database error"))
 
@@ -191,10 +191,10 @@ class TestHealthEndpoint:
 
     def test_health_check_success(self, test_client):
         """Test successful health check"""
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_gs.gemini_available = True
             mock_gs.drive_service = MagicMock()
-            with patch("app.routers.oracle_universal.config") as mock_config:
+            with patch("backend.app.routers.oracle_universal.config") as mock_config:
                 mock_config.openai_api_key = "test-key"
 
                 response = test_client.get("/api/oracle/health")
@@ -209,10 +209,10 @@ class TestHealthEndpoint:
 
     def test_health_check_degraded(self, test_client):
         """Test health check with degraded components"""
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_gs.gemini_available = False
             mock_gs.drive_service = None
-            with patch("app.routers.oracle_universal.config") as mock_config:
+            with patch("backend.app.routers.oracle_universal.config") as mock_config:
                 mock_config.openai_api_key = None
 
                 response = test_client.get("/api/oracle/health")
@@ -243,7 +243,7 @@ class TestUserProfileEndpoint:
             "meta_json": {"preferences": {}},
         }
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(return_value=mock_profile)
 
             response = test_client.get(
@@ -261,7 +261,7 @@ class TestUserProfileEndpoint:
         """Test user profile retrieval when user not found"""
         user_email = "nonexistent@example.com"
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(return_value=None)
 
             response = test_client.get(
@@ -276,7 +276,7 @@ class TestUserProfileEndpoint:
         """Test user profile retrieval with database error"""
         user_email = "test@example.com"
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(side_effect=Exception("Database error"))
 
             response = test_client.get(
@@ -303,7 +303,7 @@ class TestDriveTestEndpoint:
             {"id": "2", "name": "test2.pdf", "mimeType": "application/pdf"},
         ]
 
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_drive_service = MagicMock()
             mock_drive_service.files.return_value.list.return_value.execute.return_value = {
                 "files": mock_files
@@ -320,7 +320,7 @@ class TestDriveTestEndpoint:
 
     def test_drive_test_not_initialized(self, test_client):
         """Test Drive test when service not initialized"""
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_gs.drive_service = None
 
             response = test_client.get("/api/oracle/drive/test")
@@ -332,7 +332,7 @@ class TestDriveTestEndpoint:
 
     def test_drive_test_connection_error(self, test_client):
         """Test Drive test with connection error"""
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_drive_service = MagicMock()
             mock_drive_service.files.return_value.list.return_value.execute.side_effect = Exception(
                 "Connection error"
@@ -360,7 +360,7 @@ class TestGeminiTestEndpoint:
         mock_response = MagicMock()
         mock_response.text = "Hello, I am working correctly for Zantara v5.3."
 
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_model = MagicMock()
             mock_model.generate_content.return_value = mock_response
             mock_gs.get_gemini_model = MagicMock(return_value=mock_model)
@@ -380,7 +380,7 @@ class TestGeminiTestEndpoint:
         mock_response = MagicMock()
         mock_response.text = long_text
 
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_model = MagicMock()
             mock_model.generate_content.return_value = mock_response
             mock_gs.get_gemini_model = MagicMock(return_value=mock_model)
@@ -394,7 +394,7 @@ class TestGeminiTestEndpoint:
 
     def test_gemini_test_integration_error(self, test_client):
         """Test Gemini test with integration error"""
-        with patch("app.routers.oracle_universal.google_services") as mock_gs:
+        with patch("backend.app.routers.oracle_universal.google_services") as mock_gs:
             mock_gs.get_gemini_model = MagicMock(side_effect=Exception("Integration error"))
 
             response = test_client.get("/api/oracle/gemini/test")
@@ -421,20 +421,20 @@ class TestQueryEndpointEdgeCases:
             "collection": "legal",
         }
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(
                 return_value={"id": 1, "email": "test@example.com", "language": "en"}
             )
 
-            with patch("app.routers.oracle_universal.get_memory_service") as mock_mem:
+            with patch("backend.app.routers.oracle_universal.get_memory_service") as mock_mem:
                 mock_mem.return_value.connect = AsyncMock(side_effect=Exception("Memory error"))
 
-                with patch("app.routers.oracle_universal.intent_classifier") as mock_intent:
+                with patch("backend.app.routers.oracle_universal.intent_classifier") as mock_intent:
                     mock_intent.classify_intent = AsyncMock(
                         return_value={"intent": "question", "mode": "default"}
                     )
 
-                    with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+                    with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                         mock_search_service = MagicMock()
                         mock_search_service.search = AsyncMock(
                             return_value={"results": [], "total": 0}
@@ -458,22 +458,22 @@ class TestQueryEndpointEdgeCases:
             "user_email": "test@example.com",
         }
 
-        with patch("app.routers.oracle_universal.db_manager") as mock_db:
+        with patch("backend.app.routers.oracle_universal.db_manager") as mock_db:
             mock_db.get_user_profile = AsyncMock(
                 return_value={"id": 1, "email": "test@example.com"}
             )
 
-            with patch("app.routers.oracle_universal.get_personality_service") as mock_personality:
+            with patch("backend.app.routers.oracle_universal.get_personality_service") as mock_personality:
                 mock_personality.return_value.get_user_personality.side_effect = Exception(
                     "Personality error"
                 )
 
-                with patch("app.routers.oracle_universal.intent_classifier") as mock_intent:
+                with patch("backend.app.routers.oracle_universal.intent_classifier") as mock_intent:
                     mock_intent.classify_intent = AsyncMock(
                         return_value={"intent": "question", "mode": "default"}
                     )
 
-                    with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+                    with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
                         mock_search_service = MagicMock()
                         mock_search_service.search = AsyncMock(
                             return_value={"results": [], "total": 0}

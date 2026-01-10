@@ -1,5 +1,5 @@
 import pytest
-from core.plugins.plugin import (
+from backend.core.plugins.plugin import (
     Plugin,
     PluginCategory,
     PluginInput,

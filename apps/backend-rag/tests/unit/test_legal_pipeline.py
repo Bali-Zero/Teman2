@@ -14,9 +14,9 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.legal import LegalChunker, LegalCleaner, LegalMetadataExtractor, LegalStructureParser
+from backend.core.legal import LegalChunker, LegalCleaner, LegalMetadataExtractor, LegalStructureParser
 
-from services.ingestion.legal_ingestion_service import LegalIngestionService
+from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 # ============================================================================
 # Sample Legal Document Text (Indonesian)
@@ -276,9 +276,9 @@ async def test_legal_ingestion_service_full_pipeline():
     """Test complete legal ingestion pipeline"""
     # Mock file operations
     with (
-        patch("services.ingestion.legal_ingestion_service.auto_detect_and_parse") as mock_parse,
-        patch("services.ingestion.legal_ingestion_service.QdrantClient") as mock_qdrant,
-        patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+        patch("backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse") as mock_parse,
+        patch("backend.services.ingestion.legal_ingestion_service.QdrantClient") as mock_qdrant,
+        patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
     ):
         # Setup mocks
         mock_parse.return_value = SAMPLE_LEGAL_TEXT
@@ -300,8 +300,8 @@ async def test_legal_ingestion_service_full_pipeline():
 def test_ingestion_service_routes_to_legal():
     """Test that IngestionService routes legal documents to LegalIngestionService"""
     # Mock create_embeddings_generator to avoid API key requirement
-    with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
-        from services.ingestion.ingestion_service import IngestionService
+    with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
+        from backend.services.ingestion.ingestion_service import IngestionService
 
         service = IngestionService()
         # Test detection method

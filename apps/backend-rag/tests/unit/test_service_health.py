@@ -4,7 +4,7 @@ Unit tests for ServiceRegistry and service health tracking.
 
 from datetime import datetime, timezone
 
-from app.core.service_health import (
+from backend.app.core.service_health import (
     ServiceHealth,
     ServiceRegistry,
     ServiceStatus,

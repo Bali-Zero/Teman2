@@ -27,11 +27,11 @@ class TestSmartOracleIntegration:
     async def test_smart_oracle_pdf_analysis(self, qdrant_client):
         """Test Smart Oracle PDF analysis"""
         with patch(
-            "services.smart_oracle.smart_oracle", new_callable=AsyncMock
+            "backend.services.smart_oracle.smart_oracle", new_callable=AsyncMock
         ) as mock_smart_oracle:
             mock_smart_oracle.return_value = "Full PDF content extracted"
 
-            from services.smart_oracle import smart_oracle
+            from backend.services.smart_oracle import smart_oracle
 
             result = await smart_oracle("test query", "test_document.pdf")
 
@@ -41,11 +41,11 @@ class TestSmartOracleIntegration:
     async def test_smart_oracle_document_not_found(self, qdrant_client):
         """Test Smart Oracle when document not found"""
         with patch(
-            "services.smart_oracle.smart_oracle", new_callable=AsyncMock
+            "backend.services.smart_oracle.smart_oracle", new_callable=AsyncMock
         ) as mock_smart_oracle:
             mock_smart_oracle.return_value = "Error: Original document not found"
 
-            from services.smart_oracle import smart_oracle
+            from backend.services.smart_oracle import smart_oracle
 
             result = await smart_oracle("test query", "nonexistent.pdf")
 

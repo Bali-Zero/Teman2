@@ -2,10 +2,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.llm_clients.pricing import TokenUsage
-from services.rag.agentic.orchestrator import AgenticRAGOrchestrator
-from services.rag.agentic.schema import CoreResult
-from services.tools.definitions import BaseTool
+from backend.services.llm_clients.pricing import TokenUsage
+from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+from backend.services.rag.agentic.schema import CoreResult
+from backend.services.tools.definitions import BaseTool
 
 
 # Define a concrete MockTool since BaseTool is abstract/pydantic
@@ -48,10 +48,10 @@ def mock_llm_gateway():
 @pytest.fixture
 def mock_services():
     with (
-        patch("services.rag.agentic.orchestrator.IntentClassifier") as cls_mock,
-        patch("services.rag.agentic.orchestrator.EmotionalAttunementService") as emo_mock,
-        patch("services.rag.agentic.orchestrator.ContextWindowManager") as cwm_mock,
-        patch("services.rag.agentic.orchestrator.EntityExtractionService") as ent_mock,
+        patch("backend.services.rag.agentic.orchestrator.IntentClassifier") as cls_mock,
+        patch("backend.services.rag.agentic.orchestrator.EmotionalAttunementService") as emo_mock,
+        patch("backend.services.rag.agentic.orchestrator.ContextWindowManager") as cwm_mock,
+        patch("backend.services.rag.agentic.orchestrator.EntityExtractionService") as ent_mock,
     ):
         # Intent Classifier setup
         intent_instance = cls_mock.return_value
@@ -107,7 +107,7 @@ async def test_process_query_abstains_on_no_context(mock_llm_gateway, mock_servi
 
     # Need to mock get_user_context since it's called in process_query
     with patch(
-        "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+        "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
     ) as mock_ctx:
         mock_ctx.return_value = {"profile": None, "history": [], "facts": []}
 
@@ -165,11 +165,11 @@ async def test_process_query_with_tool_execution(mock_llm_gateway, mock_services
     ]
 
     # Patch execute_tool in reasoning.py to return our mock result
-    with patch("services.rag.agentic.reasoning.execute_tool", new_callable=AsyncMock) as mock_exec:
+    with patch("backend.services.rag.agentic.reasoning.execute_tool", new_callable=AsyncMock) as mock_exec:
         mock_exec.return_value = ("Tool Result Data", 0.5)  # (result, duration)
 
         with patch(
-            "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+            "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
         ) as mock_ctx:
             mock_ctx.return_value = {}
 
@@ -206,7 +206,7 @@ async def test_process_query_low_evidence_warning(mock_llm_gateway, mock_service
     )
 
     with patch(
-        "services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
+        "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock
     ) as mock_ctx:
         mock_ctx.return_value = {}
 

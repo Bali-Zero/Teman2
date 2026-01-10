@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-from db.migration_manager import MigrationError, MigrationManager
+from backend.db.migration_manager import MigrationError, MigrationManager
 
 
 class _DummyConn:
@@ -68,16 +68,16 @@ class _DummyPool:
 
 
 def test_init_requires_database_url(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=None))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url=None))
     with pytest.raises(MigrationError):
         MigrationManager()
 
 
 @pytest.mark.asyncio
 async def test_connect_and_close(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     pool = _DummyPool(_DummyConn())
-    monkeypatch.setattr("db.migration_manager.asyncpg.create_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr("backend.db.migration_manager.asyncpg.create_pool", AsyncMock(return_value=pool))
 
     manager = MigrationManager()
     await manager.connect()
@@ -88,7 +88,7 @@ async def test_connect_and_close(monkeypatch):
 
 
 def test_sanitize_db_url(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
     assert (
         manager._sanitize_db_url("postgresql://user:secret@localhost:5432/db")
@@ -98,7 +98,7 @@ def test_sanitize_db_url(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_applied_migrations(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
     manager.pool = _DummyPool(_DummyConn())
     result = await manager.get_applied_migrations()
@@ -107,7 +107,7 @@ async def test_get_applied_migrations(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_is_applied(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
     manager.pool = _DummyPool(_DummyConn())
     assert await manager.is_applied(1) is True
@@ -115,7 +115,7 @@ async def test_is_applied(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_rollback_migration_no_sql(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
     manager.pool = _DummyPool(_DummyConn(rollback_sql=None))
     assert await manager.rollback_migration("001_init") is False
@@ -123,7 +123,7 @@ async def test_rollback_migration_no_sql(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_rollback_migration_success(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
     conn = _DummyConn(rollback_sql="DELETE FROM test")
     manager.pool = _DummyPool(conn)
@@ -133,7 +133,7 @@ async def test_rollback_migration_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_discover_migrations(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
     migrations = await manager.discover_migrations()
     assert migrations
@@ -141,7 +141,7 @@ async def test_discover_migrations(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_apply_all_pending(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
 
     async def discover():
@@ -163,7 +163,7 @@ async def test_apply_all_pending(monkeypatch):
         async def apply(self):
             return True
 
-    monkeypatch.setattr("db.migration_manager.BaseMigration", _DummyMigration)
+    monkeypatch.setattr("backend.db.migration_manager.BaseMigration", _DummyMigration)
 
     result = await manager.apply_all_pending()
     assert result["applied"] == [2]
@@ -171,7 +171,7 @@ async def test_apply_all_pending(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_apply_all_pending_dry_run(monkeypatch):
-    monkeypatch.setattr("db.migration_manager.settings", create_mock_settings(database_url=db))
+    monkeypatch.setattr("backend.db.migration_manager.settings", create_mock_settings(database_url="postgres://test"))
     manager = MigrationManager()
 
     async def discover():

@@ -25,7 +25,7 @@ class TestWebSocketServiceIntegration:
     @pytest.mark.asyncio
     async def test_websocket_manager_operations(self):
         """Test WebSocket manager operations"""
-        from app.routers.websocket import ConnectionManager
+        from backend.app.routers.websocket import ConnectionManager
 
         manager = ConnectionManager()
         assert manager is not None
@@ -38,7 +38,7 @@ class TestWebSocketServiceIntegration:
         """Test WebSocket connection lifecycle"""
         from unittest.mock import MagicMock
 
-        from app.routers.websocket import ConnectionManager
+        from backend.app.routers.websocket import ConnectionManager
 
         manager = ConnectionManager()
         mock_websocket = MagicMock()

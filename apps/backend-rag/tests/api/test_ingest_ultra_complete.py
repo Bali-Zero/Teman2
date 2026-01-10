@@ -25,7 +25,7 @@ if str(backend_path) not in sys.path:
 @pytest.mark.api
 class TestIngestFile:
     def test_ingest_file_valid(self, authenticated_client):
-        with patch("app.routers.ingest.ingestion_service") as mock:
+        with patch("backend.app.routers.ingest.ingestion_service") as mock:
             mock.ingest_file.return_value = {"success": True, "chunks": 50}
             response = authenticated_client.post(
                 "/api/ingest/file", json={"file_path": "/path/to/document.pdf"}
@@ -51,7 +51,7 @@ class TestIngestUpload:
 @pytest.mark.api
 class TestIngestBatch:
     def test_batch_ingest(self, authenticated_client):
-        with patch("app.routers.ingest.ingestion_service") as mock:
+        with patch("backend.app.routers.ingest.ingestion_service") as mock:
             mock.batch_ingest.return_value = {"processed": 10, "failed": 0}
             response = authenticated_client.post(
                 "/api/ingest/batch", json={"directory_path": "/path/to/documents"}
@@ -62,7 +62,7 @@ class TestIngestBatch:
 @pytest.mark.api
 class TestIngestStats:
     def test_get_stats(self, authenticated_client):
-        with patch("app.routers.ingest.get_ingestion_stats") as mock:
+        with patch("backend.app.routers.ingest.get_ingestion_stats") as mock:
             mock.return_value = {"total_documents": 1000, "total_chunks": 50000}
             response = authenticated_client.get("/api/ingest/stats")
             assert response.status_code in [200, 500]

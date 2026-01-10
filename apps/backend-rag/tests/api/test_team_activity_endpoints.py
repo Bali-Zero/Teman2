@@ -35,7 +35,7 @@ class TestTeamActivity:
 
     def test_clock_in(self, authenticated_client):
         """Test POST /api/team/clock-in"""
-        with patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service:
+        with patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.clock_in = AsyncMock(
                 return_value={
@@ -58,7 +58,7 @@ class TestTeamActivity:
 
     def test_clock_out(self, authenticated_client):
         """Test POST /api/team/clock-out"""
-        with patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service:
+        with patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.clock_out = AsyncMock(
                 return_value={
@@ -81,7 +81,7 @@ class TestTeamActivity:
 
     def test_get_my_status(self, authenticated_client):
         """Test GET /api/team/my-status"""
-        with patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service:
+        with patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service:
             mock_service = MagicMock()
             mock_service.get_user_status = AsyncMock(
                 return_value={
@@ -99,8 +99,8 @@ class TestTeamActivity:
     def test_get_team_status(self, authenticated_client):
         """Test GET /api/team/status (admin only)"""
         with (
-            patch("app.routers.team_activity.get_admin_email") as mock_admin,
-            patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service,
+            patch("backend.app.routers.team_activity.get_admin_email") as mock_admin,
+            patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service,
         ):
             # Mock get_admin_email to return the authenticated user's email
             mock_admin.return_value = "test@example.com"
@@ -115,8 +115,8 @@ class TestTeamActivity:
     def test_get_daily_hours(self, authenticated_client):
         """Test GET /api/team/hours (admin only)"""
         with (
-            patch("app.routers.team_activity.get_admin_email") as mock_admin,
-            patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service,
+            patch("backend.app.routers.team_activity.get_admin_email") as mock_admin,
+            patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service,
         ):
             # Mock get_admin_email to return the authenticated user's email
             mock_admin.return_value = "test@example.com"
@@ -131,8 +131,8 @@ class TestTeamActivity:
     def test_get_weekly_summary(self, authenticated_client):
         """Test GET /api/team/activity/weekly (admin only)"""
         with (
-            patch("app.routers.team_activity.get_admin_email") as mock_admin,
-            patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service,
+            patch("backend.app.routers.team_activity.get_admin_email") as mock_admin,
+            patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service,
         ):
             mock_admin.return_value = "test@example.com"
             mock_service = MagicMock()
@@ -146,8 +146,8 @@ class TestTeamActivity:
     def test_get_weekly_summary_with_date(self, authenticated_client):
         """Test GET /api/team/activity/weekly with week_start date"""
         with (
-            patch("app.routers.team_activity.get_admin_email") as mock_admin,
-            patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service,
+            patch("backend.app.routers.team_activity.get_admin_email") as mock_admin,
+            patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service,
         ):
             mock_admin.return_value = "test@example.com"
             mock_service = MagicMock()
@@ -161,8 +161,8 @@ class TestTeamActivity:
     def test_get_monthly_summary(self, authenticated_client):
         """Test GET /api/team/activity/monthly (admin only)"""
         with (
-            patch("app.routers.team_activity.get_admin_email") as mock_admin,
-            patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service,
+            patch("backend.app.routers.team_activity.get_admin_email") as mock_admin,
+            patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service,
         ):
             mock_admin.return_value = "test@example.com"
             mock_service = MagicMock()
@@ -176,8 +176,8 @@ class TestTeamActivity:
     def test_get_monthly_summary_with_date(self, authenticated_client):
         """Test GET /api/team/activity/monthly with month_start date"""
         with (
-            patch("app.routers.team_activity.get_admin_email") as mock_admin,
-            patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service,
+            patch("backend.app.routers.team_activity.get_admin_email") as mock_admin,
+            patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service,
         ):
             mock_admin.return_value = "test@example.com"
             mock_service = MagicMock()
@@ -191,8 +191,8 @@ class TestTeamActivity:
     def test_export_timesheet(self, authenticated_client):
         """Test GET /api/team/export (admin only)"""
         with (
-            patch("app.routers.team_activity.get_admin_email") as mock_admin,
-            patch("services.team_timesheet_service.get_timesheet_service") as mock_get_service,
+            patch("backend.app.routers.team_activity.get_admin_email") as mock_admin,
+            patch("backend.services.team_timesheet_service.get_timesheet_service") as mock_get_service,
         ):
             mock_admin.return_value = "test@example.com"
             mock_service = MagicMock()
@@ -207,7 +207,7 @@ class TestTeamActivity:
 
     def test_export_timesheet_invalid_format(self, authenticated_client):
         """Test GET /api/team/export with invalid format"""
-        with patch("app.routers.team_activity.get_admin_email") as mock_admin:
+        with patch("backend.app.routers.team_activity.get_admin_email") as mock_admin:
             mock_admin.return_value = "test@example.com"
 
             response = authenticated_client.get(
@@ -218,7 +218,7 @@ class TestTeamActivity:
 
     def test_get_daily_hours_invalid_date(self, authenticated_client):
         """Test GET /api/team/hours with invalid date format"""
-        with patch("app.routers.team_activity.get_admin_email") as mock_admin:
+        with patch("backend.app.routers.team_activity.get_admin_email") as mock_admin:
             mock_admin.return_value = "test@example.com"
 
             response = authenticated_client.get("/api/team/hours?date=invalid-date")

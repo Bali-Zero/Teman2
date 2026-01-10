@@ -17,8 +17,8 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.models import SearchQuery, TierLevel
-from app.modules.knowledge.router import get_search_service, search_health, semantic_search
+from backend.app.models import SearchQuery, TierLevel
+from backend.app.modules.knowledge.router import get_search_service, search_health, semantic_search
 
 
 @pytest.fixture
@@ -75,7 +75,7 @@ def mock_search_query():
 
 
 def test_get_search_service_from_app_state(mock_request, mock_search_service):
-    """Test that get_search_service returns SearchService from app.state"""
+    """Test that get_search_service returns SearchService from backend.app.state"""
     mock_request.app.state.search_service = mock_search_service
 
     service = get_search_service(mock_request)
@@ -84,11 +84,11 @@ def test_get_search_service_from_app_state(mock_request, mock_search_service):
 
 def test_get_search_service_fallback_to_knowledge_service(mock_request):
     """Test that get_search_service falls back to KnowledgeService if SearchService not in app.state"""
-    # Remove search_service from app.state
+    # Remove search_service from backend.app.state
     delattr(mock_request.app.state, "search_service")
     mock_request.app.state.search_service = None
 
-    with patch("app.modules.knowledge.router.KnowledgeService") as mock_knowledge_class:
+    with patch("backend.app.modules.knowledge.router.KnowledgeService") as mock_knowledge_class:
         mock_knowledge_instance = MagicMock()
         mock_knowledge_class.return_value = mock_knowledge_instance
 
@@ -107,7 +107,7 @@ async def test_semantic_search_success(mock_search_service, mock_search_query, m
     """Test successful semantic search using SearchService"""
     mock_request.app.state.search_service = mock_search_service
 
-    with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+    with patch("backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
         response = await semantic_search(mock_search_query, mock_request)
 
         assert response.query == "test query"
@@ -135,7 +135,7 @@ async def test_semantic_search_with_tier_filter(mock_search_service, mock_reques
     mock_request.app.state.search_service = mock_search_service
     query = SearchQuery(query="test", level=2, limit=5, tier_filter=[TierLevel.C])
 
-    with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+    with patch("backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
         response = await semantic_search(query, mock_request)
 
         assert response is not None
@@ -150,7 +150,7 @@ async def test_semantic_search_with_collection_override(mock_search_service, moc
     mock_request.app.state.search_service = mock_search_service
     query = SearchQuery(query="test", level=0, limit=5, collection="kb_indonesian")
 
-    with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+    with patch("backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
         response = await semantic_search(query, mock_request)
 
         assert response is not None
@@ -173,7 +173,7 @@ async def test_semantic_search_empty_results(mock_search_service, mock_request):
 
     query = SearchQuery(query="test", level=0, limit=5)
 
-    with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+    with patch("backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
         response = await semantic_search(query, mock_request)
 
         assert response.total_found == 0
@@ -188,7 +188,7 @@ async def test_semantic_search_error_handling(mock_search_service, mock_request)
 
     query = SearchQuery(query="test", level=0, limit=5)
 
-    with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+    with patch("backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
         with pytest.raises(HTTPException) as exc_info:
             await semantic_search(query, mock_request)
 
@@ -206,7 +206,7 @@ async def test_search_health_success(mock_search_service, mock_request):
     """Test search health check success"""
     mock_request.app.state.search_service = mock_search_service
 
-    with patch("app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
+    with patch("backend.app.modules.knowledge.router.get_search_service", return_value=mock_search_service):
         response = await search_health(mock_request)
 
         assert response["status"] == "operational"
@@ -218,14 +218,14 @@ async def test_search_health_success(mock_search_service, mock_request):
 @pytest.mark.asyncio
 async def test_search_health_fallback_to_knowledge_service(mock_request):
     """Test search health check falls back to KnowledgeService"""
-    # Remove search_service from app.state (simulate it not being initialized)
+    # Remove search_service from backend.app.state (simulate it not being initialized)
     if hasattr(mock_request.app.state, "search_service"):
         delattr(mock_request.app.state, "search_service")
 
     mock_knowledge_service = MagicMock()
 
     with patch(
-        "app.modules.knowledge.router.get_search_service", return_value=mock_knowledge_service
+        "backend.app.modules.knowledge.router.get_search_service", return_value=mock_knowledge_service
     ):
         # Mock hasattr to return False (simulating SearchService not in app.state)
         with patch("builtins.hasattr", side_effect=lambda obj, attr: attr != "search_service"):
@@ -239,7 +239,7 @@ async def test_search_health_fallback_to_knowledge_service(mock_request):
 async def test_search_health_service_unavailable(mock_request):
     """Test search health check when service unavailable"""
     with patch(
-        "app.modules.knowledge.router.get_search_service", side_effect=Exception("Service error")
+        "backend.app.modules.knowledge.router.get_search_service", side_effect=Exception("Service error")
     ):
         with pytest.raises(HTTPException) as exc_info:
             await search_health(mock_request)

@@ -20,7 +20,7 @@ if str(backend_path) not in sys.path:
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.portal_invite import router
+from backend.app.routers.portal_invite import router
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ class TestPortalInviteIntegration:
     """Integration tests for portal_invite router with real database"""
 
     @pytest.mark.asyncio
-    @patch("app.routers.portal_invite.send_email")
+    @patch("backend.app.routers.portal_invite.send_email")
     async def test_send_invitation_success(self, mock_send_email, test_client, db_pool):
         """Test sending invitation successfully"""
         mock_send_email.return_value = True

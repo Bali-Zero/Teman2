@@ -25,7 +25,7 @@ def app():
     """Create FastAPI app with agentic_rag router"""
     from fastapi import FastAPI
 
-    from app.routers.agentic_rag import router
+    from backend.app.routers.agentic_rag import router
 
     app = FastAPI()
     app.include_router(router)
@@ -45,7 +45,7 @@ class TestAgenticRagRouterIntegration:
     @pytest.mark.asyncio
     async def test_query_endpoint_basic(self, client):
         """Test basic query endpoint"""
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={
@@ -67,7 +67,7 @@ class TestAgenticRagRouterIntegration:
     @pytest.mark.asyncio
     async def test_query_endpoint_with_conversation_history(self, client):
         """Test query endpoint with conversation history"""
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={
@@ -95,7 +95,7 @@ class TestAgenticRagRouterIntegration:
     @pytest.mark.asyncio
     async def test_query_endpoint_with_vision(self, client):
         """Test query endpoint with vision enabled"""
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={
@@ -120,7 +120,7 @@ class TestAgenticRagRouterIntegration:
     @pytest.mark.asyncio
     async def test_get_conversation_history_with_conversation_id(self):
         """Test getting conversation history with conversation_id"""
-        from app.routers.agentic_rag import get_conversation_history_for_agentic
+        from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         mock_pool = MagicMock()
         mock_conn = MagicMock()
@@ -141,7 +141,7 @@ class TestAgenticRagRouterIntegration:
     @pytest.mark.asyncio
     async def test_get_conversation_history_with_session_id(self):
         """Test getting conversation history with session_id"""
-        from app.routers.agentic_rag import get_conversation_history_for_agentic
+        from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         mock_pool = MagicMock()
         mock_conn = MagicMock()
@@ -164,7 +164,7 @@ class TestAgenticRagRouterIntegration:
     @pytest.mark.asyncio
     async def test_get_conversation_history_no_db_pool(self):
         """Test getting conversation history without db_pool"""
-        from app.routers.agentic_rag import get_conversation_history_for_agentic
+        from backend.app.routers.agentic_rag import get_conversation_history_for_agentic
 
         history = await get_conversation_history_for_agentic(
             conversation_id=None, session_id=None, user_id="test", db_pool=None
@@ -176,13 +176,13 @@ class TestAgenticRagRouterIntegration:
     async def test_get_orchestrator_lazy_loading(self, app):
         """Test orchestrator lazy loading"""
 
-        from app.routers.agentic_rag import get_orchestrator
+        from backend.app.routers.agentic_rag import get_orchestrator
 
         mock_request = MagicMock()
         mock_request.app.state.db_pool = MagicMock()
         mock_request.app.state.search_service = MagicMock()
 
-        with patch("app.routers.agentic_rag.create_agentic_rag") as mock_create:
+        with patch("backend.app.routers.agentic_rag.create_agentic_rag") as mock_create:
             mock_orchestrator = MagicMock()
             mock_create.return_value = mock_orchestrator
 

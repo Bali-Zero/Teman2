@@ -16,7 +16,7 @@ def _load_module(monkeypatch, validate_user=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.auth.validation",
+        "backend.app.auth.validation",
         types.SimpleNamespace(validate_auth_mixed=_validate_auth_mixed, redis_url='redis://localhost:6379'),
     )
 
@@ -31,7 +31,7 @@ def _load_module(monkeypatch, validate_user=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.state_helpers",
+        "backend.app.utils.state_helpers",
         types.SimpleNamespace(get_app_state=get_app_state, get_request_state=get_request_state, redis_url='redis://localhost:6379'),
     )
 
@@ -41,7 +41,7 @@ def _load_module(monkeypatch, validate_user=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.tracing",
+        "backend.app.utils.tracing",
         types.SimpleNamespace(
             add_span_event=lambda *_args, **_kwargs: None,
             set_span_status=lambda *_args, **_kwargs: None,
@@ -52,12 +52,12 @@ def _load_module(monkeypatch, validate_user=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "services.routing.intelligent_router",
+        "backend.services.routing.intelligent_router",
         types.SimpleNamespace(IntelligentRouter=object, redis_url='redis://localhost:6379'),
     )
 
     backend_path = Path(__file__).resolve().parents[3] / "backend"
-    module_name = "app.streaming"
+    module_name = "backend.app.streaming"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

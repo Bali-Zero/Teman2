@@ -19,7 +19,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.auth import (
+from backend.app.routers.auth import (
     create_access_token,
     get_current_user,
     verify_password,
@@ -33,7 +33,7 @@ from app.routers.auth import (
 @pytest.fixture
 def mock_settings():
     """Mock settings"""
-    with patch("app.routers.auth.settings") as mock:
+    with patch("backend.app.routers.auth.settings") as mock:
         mock.jwt_secret_key = "test-secret-key-12345"
         mock.jwt_algorithm = "HS256"
         mock.jwt_access_token_expire_hours = 24
@@ -100,8 +100,8 @@ def client_with_db(mock_asyncpg_pool, mock_request):
     """Create test client with mocked database"""
     from fastapi import FastAPI
 
-    from app.dependencies import get_database_pool
-    from app.routers.auth import router
+    from backend.app.dependencies import get_database_pool
+    from backend.app.routers.auth import router
 
     app = FastAPI()
     app.include_router(router)
@@ -125,7 +125,7 @@ def client():
     """Create test client without database mocking"""
     from fastapi import FastAPI
 
-    from app.routers.auth import router
+    from backend.app.routers.auth import router
 
     app = FastAPI()
     app.include_router(router)
@@ -135,8 +135,8 @@ def client():
 @pytest.fixture
 def valid_token(mock_settings):
     """Generate valid JWT token"""
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             data = {
                 "sub": "550e8400-e29b-41d4-a716-446655440000",
                 "email": "test@example.com",
@@ -198,8 +198,8 @@ def test_verify_password_unicode():
 
 def test_create_access_token_success(mock_settings):
     """Test creating access token"""
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             data = {"sub": "user123", "email": "test@example.com"}
 
             token = create_access_token(data)
@@ -215,8 +215,8 @@ def test_create_access_token_success(mock_settings):
 
 def test_create_access_token_with_expires_delta(mock_settings):
     """Test creating access token with custom expiration"""
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             data = {"sub": "user123"}
             token = create_access_token(data, expires_delta=timedelta(hours=1))
 
@@ -226,9 +226,9 @@ def test_create_access_token_with_expires_delta(mock_settings):
 
 def test_create_access_token_default_expiration(mock_settings):
     """Test token uses default expiration when not specified"""
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("app.routers.auth.JWT_ACCESS_TOKEN_EXPIRE_HOURS", 24):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
+            with patch("backend.app.routers.auth.JWT_ACCESS_TOKEN_EXPIRE_HOURS", 24):
                 data = {"sub": "user123"}
                 token = create_access_token(data)
 
@@ -238,8 +238,8 @@ def test_create_access_token_default_expiration(mock_settings):
 
 def test_create_access_token_with_extra_claims(mock_settings):
     """Test creating token with additional claims"""
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             data = {
                 "sub": "user123",
                 "email": "test@example.com",
@@ -273,8 +273,8 @@ async def test_get_current_user_success(mock_asyncpg_pool, mock_request, test_us
     }
     conn.fetchrow = AsyncMock(return_value=mock_row)
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             token_data = {
                 "sub": test_user_data["id"],
                 "email": test_user_data["email"],
@@ -298,9 +298,9 @@ async def test_get_current_user_invalid_token(mock_asyncpg_pool, mock_request):
     """Test getting current user with invalid token"""
     pool, conn = mock_asyncpg_pool
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("app.routers.auth.jwt.decode", side_effect=JWTError("Invalid token")):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
+            with patch("backend.app.routers.auth.jwt.decode", side_effect=JWTError("Invalid token")):
                 mock_credentials = MagicMock()
                 mock_credentials.credentials = "invalid-token"
 
@@ -316,8 +316,8 @@ async def test_get_current_user_missing_sub(mock_asyncpg_pool, mock_request):
     """Test getting current user with missing sub claim"""
     pool, conn = mock_asyncpg_pool
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             # Token without 'sub' claim
             token_data = {
                 "email": "test@example.com",
@@ -339,8 +339,8 @@ async def test_get_current_user_missing_email(mock_asyncpg_pool, mock_request):
     """Test getting current user with missing email claim"""
     pool, conn = mock_asyncpg_pool
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             # Token without 'email' claim
             token_data = {
                 "sub": "user123",
@@ -363,8 +363,8 @@ async def test_get_current_user_not_found_in_db(mock_asyncpg_pool, mock_request)
     pool, conn = mock_asyncpg_pool
     conn.fetchrow = AsyncMock(return_value=None)
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             token_data = {
                 "sub": "nonexistent-user",
                 "email": "nonexistent@example.com",
@@ -392,9 +392,9 @@ def test_login_success(client_with_db, test_user_data):
     conn.fetchrow = AsyncMock(return_value=test_user_data)
     conn.execute = AsyncMock()
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
+            with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
                 mock_audit_service = MagicMock()
                 mock_audit_service.pool = True
                 mock_audit_service.log_auth_event = AsyncMock()
@@ -427,7 +427,7 @@ def test_login_invalid_email(client_with_db):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=None)
 
-    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -448,7 +448,7 @@ def test_login_invalid_password(client_with_db, test_user_data):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=test_user_data)
 
-    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -480,7 +480,7 @@ def test_login_missing_password(client_with_db):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=None)  # No user found
 
-    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -522,7 +522,7 @@ def test_login_database_error(client_with_db):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(side_effect=Exception("Database error"))
 
-    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -543,7 +543,7 @@ def test_login_inactive_user(client_with_db, test_user_data):
     client, pool, conn = client_with_db
     conn.fetchrow = AsyncMock(return_value=None)  # Query filters by active=true
 
-    with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
         mock_audit_service = MagicMock()
         mock_audit_service.pool = True
         mock_audit_service.log_auth_event = AsyncMock()
@@ -563,10 +563,10 @@ def test_login_token_expiration(client_with_db, test_user_data):
     conn.fetchrow = AsyncMock(return_value=test_user_data)
     conn.execute = AsyncMock()
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("app.routers.auth.JWT_ACCESS_TOKEN_EXPIRE_HOURS", 24):
-                with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
+            with patch("backend.app.routers.auth.JWT_ACCESS_TOKEN_EXPIRE_HOURS", 24):
+                with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
                     mock_audit_service = MagicMock()
                     mock_audit_service.pool = True
                     mock_audit_service.log_auth_event = AsyncMock()
@@ -601,8 +601,8 @@ def test_get_profile_success(client_with_db, test_user_data):
     }
     conn.fetchrow = AsyncMock(return_value=mock_row)
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             # Create a valid token
             token_data = {
                 "sub": test_user_data["id"],
@@ -634,8 +634,8 @@ def test_get_profile_invalid_token(client_with_db):
     """Test getting profile with invalid token"""
     client, pool, conn = client_with_db
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             response = client.get(
                 "/api/auth/profile",
                 headers={"Authorization": "Bearer invalid-token"},
@@ -673,8 +673,8 @@ def test_logout_success(client_with_db, test_user_data):
     }
     conn.fetchrow = AsyncMock(return_value=mock_row)
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             # Create a valid token
             token_data = {
                 "sub": test_user_data["id"],
@@ -706,8 +706,8 @@ def test_logout_invalid_token(client_with_db):
     """Test logout with invalid token"""
     client, pool, conn = client_with_db
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             response = client.post(
                 "/api/auth/logout",
                 headers={"Authorization": "Bearer invalid-token"},
@@ -735,8 +735,8 @@ def test_check_auth_success(client_with_db, test_user_data):
     }
     conn.fetchrow = AsyncMock(return_value=mock_row)
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             # Create a valid token
             token_data = {
                 "sub": test_user_data["id"],
@@ -769,8 +769,8 @@ def test_check_auth_invalid_token(client_with_db):
     """Test checking auth with invalid token"""
     client, pool, conn = client_with_db
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             response = client.get(
                 "/api/auth/check",
                 headers={"Authorization": "Bearer invalid-token"},
@@ -783,8 +783,8 @@ def test_check_auth_expired_token(client_with_db):
     """Test checking auth with expired token"""
     client, pool, conn = client_with_db
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
             # Create expired token
             token_data = {
                 "sub": "user123",
@@ -871,9 +871,9 @@ def test_login_and_access_protected_endpoint(client_with_db, test_user_data):
     conn.fetchrow = AsyncMock(return_value=test_user_data)
     conn.execute = AsyncMock()
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
+            with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
                 mock_audit_service = MagicMock()
                 mock_audit_service.pool = True
                 mock_audit_service.log_auth_event = AsyncMock()
@@ -913,9 +913,9 @@ def test_multiple_concurrent_logins(client_with_db, test_user_data):
     conn.fetchrow = AsyncMock(return_value=test_user_data)
     conn.execute = AsyncMock()
 
-    with patch("app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
-        with patch("app.routers.auth.JWT_ALGORITHM", "HS256"):
-            with patch("services.monitoring.audit_service.get_audit_service") as mock_audit:
+    with patch("backend.app.routers.auth.JWT_SECRET_KEY", "test-secret-key-12345"):
+        with patch("backend.app.routers.auth.JWT_ALGORITHM", "HS256"):
+            with patch("backend.services.monitoring.audit_service.get_audit_service") as mock_audit:
                 mock_audit_service = MagicMock()
                 mock_audit_service.pool = True
                 mock_audit_service.log_auth_event = AsyncMock()

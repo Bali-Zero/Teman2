@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.crm_clients import (
+from backend.app.routers.crm_clients import (
     ClientCreate,
     ClientResponse,
     ClientUpdate,
@@ -654,7 +654,7 @@ async def test_get_clients_stats_success(mock_asyncpg_pool, mock_request):
     conn.fetchrow = AsyncMock(return_value={"count": 3})
 
     # Patch the cache to skip caching during tests
-    with patch("app.routers.crm_clients.cached", lambda **kwargs: lambda f: f):
+    with patch("backend.app.routers.crm_clients.cached", lambda **kwargs: lambda f: f):
         # Import fresh to apply the patch (or call the underlying function directly)
         result = await get_clients_stats.__wrapped__(request=mock_request, db_pool=pool)
 

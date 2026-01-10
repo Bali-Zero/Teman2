@@ -3,8 +3,8 @@ import types
 from unittest.mock import patch
 
 import pytest
-from llm.base import LLMMessage
-from llm.providers.vertex import VertexProvider
+from backend.llm.base import LLMMessage
+from backend.llm.providers.vertex import VertexProvider
 
 
 class DummyModel:
@@ -35,7 +35,7 @@ def test_vertex_init_import_error():
     original_import = __import__
 
     def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-        if name == "services.llm_clients.vertex_ai_service":
+        if name == "backend.services.llm_clients.vertex_ai_service":
             raise ImportError("nope")
         return original_import(name, globals, locals, fromlist, level)
 
@@ -48,14 +48,14 @@ def test_vertex_init_import_error():
 
 
 def test_vertex_init_exception():
-    module = types.ModuleType("services.llm_clients.vertex_ai_service")
+    module = types.ModuleType("backend.services.llm_clients.vertex_ai_service")
 
     class VertexAIService:
         def __init__(self, project_id=None, location=None):
             raise RuntimeError("boom")
 
     module.VertexAIService = VertexAIService
-    with patch.dict("sys.modules", {"services.llm_clients.vertex_ai_service": module}):
+    with patch.dict("sys.modules", {"backend.services.llm_clients.vertex_ai_service": module}):
         provider = VertexProvider()
 
     assert provider.is_available is False
@@ -63,9 +63,9 @@ def test_vertex_init_exception():
 
 @pytest.mark.asyncio
 async def test_vertex_generate_success():
-    module = types.ModuleType("services.llm_clients.vertex_ai_service")
+    module = types.ModuleType("backend.services.llm_clients.vertex_ai_service")
     module.VertexAIService = DummyVertexService
-    with patch.dict("sys.modules", {"services.llm_clients.vertex_ai_service": module}):
+    with patch.dict("sys.modules", {"backend.services.llm_clients.vertex_ai_service": module}):
         provider = VertexProvider(project_id="p1", location="loc")
         with patch("asyncio.get_event_loop", return_value=DummyLoop()):
             messages = [
@@ -82,9 +82,9 @@ async def test_vertex_generate_success():
 
 @pytest.mark.asyncio
 async def test_vertex_stream_yields():
-    module = types.ModuleType("services.llm_clients.vertex_ai_service")
+    module = types.ModuleType("backend.services.llm_clients.vertex_ai_service")
     module.VertexAIService = DummyVertexService
-    with patch.dict("sys.modules", {"services.llm_clients.vertex_ai_service": module}):
+    with patch.dict("sys.modules", {"backend.services.llm_clients.vertex_ai_service": module}):
         provider = VertexProvider()
         with patch("asyncio.get_event_loop", return_value=DummyLoop()):
             chunks = []

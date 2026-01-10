@@ -67,7 +67,7 @@ class TestHealthBasic:
 
     def test_health_during_startup(self, test_client):
         """Test health check during service startup"""
-        with patch("app.routers.health.is_initialized", return_value=False):
+        with patch("backend.app.routers.health.is_initialized", return_value=False):
             response = test_client.get("/health")
 
             # Should return initializing status
@@ -132,7 +132,7 @@ class TestHealthDetailed:
 
     def test_detailed_health_all_services_up(self, test_client):
         """Test detailed health when all services are operational"""
-        with patch("app.routers.health.check_all_services") as mock_check:
+        with patch("backend.app.routers.health.check_all_services") as mock_check:
             mock_check.return_value = {
                 "database": {"status": "healthy", "response_time_ms": 10},
                 "qdrant": {"status": "healthy", "response_time_ms": 15},
@@ -148,7 +148,7 @@ class TestHealthDetailed:
 
     def test_detailed_health_some_services_down(self, test_client):
         """Test detailed health when some services are degraded"""
-        with patch("app.routers.health.check_all_services") as mock_check:
+        with patch("backend.app.routers.health.check_all_services") as mock_check:
             mock_check.return_value = {
                 "database": {"status": "healthy"},
                 "qdrant": {"status": "unhealthy", "error": "Connection timeout"},
@@ -161,7 +161,7 @@ class TestHealthDetailed:
 
     def test_detailed_health_all_services_down(self, test_client):
         """Test when all services are unavailable"""
-        with patch("app.routers.health.check_all_services") as mock_check:
+        with patch("backend.app.routers.health.check_all_services") as mock_check:
             mock_check.return_value = {
                 "database": {"status": "unhealthy"},
                 "qdrant": {"status": "unhealthy"},
@@ -174,7 +174,7 @@ class TestHealthDetailed:
 
     def test_detailed_health_timeout(self, test_client):
         """Test detailed health with service timeout"""
-        with patch("app.routers.health.check_all_services") as mock_check:
+        with patch("backend.app.routers.health.check_all_services") as mock_check:
             import time
 
             time.sleep(0.1)  # Simulate slow check
@@ -186,7 +186,7 @@ class TestHealthDetailed:
 
     def test_detailed_health_exception_handling(self, test_client):
         """Test exception handling in detailed health"""
-        with patch("app.routers.health.check_all_services") as mock_check:
+        with patch("backend.app.routers.health.check_all_services") as mock_check:
             mock_check.side_effect = Exception("Internal error")
 
             response = test_client.get("/health/detailed")
@@ -223,7 +223,7 @@ class TestHealthKubernetes:
 
     def test_readiness_probe_ready(self, test_client):
         """Test readiness probe when services are ready"""
-        with patch("app.routers.health.check_critical_services") as mock_check:
+        with patch("backend.app.routers.health.check_critical_services") as mock_check:
             mock_check.return_value = True
 
             response = test_client.get("/health/ready")
@@ -232,7 +232,7 @@ class TestHealthKubernetes:
 
     def test_readiness_probe_not_ready(self, test_client):
         """Test readiness probe when services not ready"""
-        with patch("app.routers.health.check_critical_services") as mock_check:
+        with patch("backend.app.routers.health.check_critical_services") as mock_check:
             mock_check.return_value = False
 
             response = test_client.get("/health/ready")
@@ -241,7 +241,7 @@ class TestHealthKubernetes:
 
     def test_readiness_probe_during_startup(self, test_client):
         """Test readiness during application startup"""
-        with patch("app.routers.health.is_ready", return_value=False):
+        with patch("backend.app.routers.health.is_ready", return_value=False):
             response = test_client.get("/health/ready")
 
             # Should indicate not ready
@@ -281,7 +281,7 @@ class TestHealthQdrantMetrics:
 
     def test_qdrant_metrics_success(self, test_client):
         """Test Qdrant metrics when available"""
-        with patch("app.routers.health.get_qdrant_metrics") as mock_metrics:
+        with patch("backend.app.routers.health.get_qdrant_metrics") as mock_metrics:
             mock_metrics.return_value = {
                 "total_searches": 1000,
                 "avg_search_latency_ms": 50,
@@ -296,7 +296,7 @@ class TestHealthQdrantMetrics:
 
     def test_qdrant_metrics_unavailable(self, test_client):
         """Test when Qdrant metrics are unavailable"""
-        with patch("app.routers.health.get_qdrant_metrics") as mock_metrics:
+        with patch("backend.app.routers.health.get_qdrant_metrics") as mock_metrics:
             mock_metrics.return_value = None
 
             response = test_client.get("/health/metrics/qdrant")
@@ -305,7 +305,7 @@ class TestHealthQdrantMetrics:
 
     def test_qdrant_metrics_format(self, test_client):
         """Test Qdrant metrics response format"""
-        with patch("app.routers.health.get_qdrant_metrics") as mock_metrics:
+        with patch("backend.app.routers.health.get_qdrant_metrics") as mock_metrics:
             mock_metrics.return_value = {"searches": 100, "latency": 25}
 
             response = test_client.get("/health/metrics/qdrant")
@@ -380,7 +380,7 @@ class TestHealthIntegration:
 
     def test_health_correlation_with_metrics(self, test_client):
         """Test health status correlates with metrics"""
-        with patch("app.routers.health.get_qdrant_metrics") as mock_metrics:
+        with patch("backend.app.routers.health.get_qdrant_metrics") as mock_metrics:
             mock_metrics.return_value = {"error_count": 100}
 
             health_response = test_client.get("/health/detailed")
@@ -392,7 +392,7 @@ class TestHealthIntegration:
 
     def test_health_database_dependency(self, test_client):
         """Test health check handles database issues"""
-        with patch("app.routers.health.check_database") as mock_db:
+        with patch("backend.app.routers.health.check_database") as mock_db:
             mock_db.return_value = False
 
             response = test_client.get("/health/detailed")
@@ -402,7 +402,7 @@ class TestHealthIntegration:
 
     def test_health_qdrant_dependency(self, test_client):
         """Test health check handles Qdrant issues"""
-        with patch("app.routers.health.check_qdrant") as mock_qdrant:
+        with patch("backend.app.routers.health.check_qdrant") as mock_qdrant:
             mock_qdrant.return_value = False
 
             response = test_client.get("/health/detailed")
@@ -411,7 +411,7 @@ class TestHealthIntegration:
 
     def test_health_redis_dependency(self, test_client):
         """Test health check handles Redis issues"""
-        with patch("app.routers.health.check_redis") as mock_redis:
+        with patch("backend.app.routers.health.check_redis") as mock_redis:
             mock_redis.return_value = False
 
             response = test_client.get("/health/detailed")

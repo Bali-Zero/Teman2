@@ -14,9 +14,9 @@ from unittest.mock import MagicMock
 import pytest
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
-from app.core.circuit_breaker import CircuitState
-from app.core.error_classification import ErrorCategory, ErrorClassifier
-from services.rag.agentic.llm_gateway import LLMGateway
+from backend.app.core.circuit_breaker import CircuitState
+from backend.app.core.error_classification import ErrorCategory, ErrorClassifier
+from backend.services.rag.agentic.llm_gateway import LLMGateway
 
 
 @pytest.fixture

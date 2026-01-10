@@ -34,18 +34,18 @@ def client():
     """Create test client with debug router only (no middleware)."""
     from fastapi import FastAPI
 
-    from app.routers import debug
+    from backend.app.routers import debug
 
     # Create minimal app with only debug router (no middleware)
     app = FastAPI()
     app.include_router(debug.router)
 
     # Mock settings for debug router
-    with patch("app.routers.debug.settings") as mock_settings:
+    with patch("backend.app.routers.debug.settings") as mock_settings:
         mock_settings.environment = "development"
         mock_settings.admin_api_key = os.getenv("ADMIN_API_KEY", "test_admin_api_key")
         # Also patch settings in postgres_debugger
-        with patch("app.utils.postgres_debugger.settings") as mock_pg_settings:
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_pg_settings:
             mock_pg_settings.database_url = os.getenv(
                 "DATABASE_URL", "postgresql://test:test@localhost:5432/test"
             )
@@ -83,7 +83,7 @@ class TestPostgresDebugIntegration:
     """Integration tests for PostgreSQL debug functionality."""
 
     def test_connection_endpoint_with_pool_from_app_state(self, client, auth_headers, mock_db_pool):
-        """Test connection endpoint uses pool from app.state if available."""
+        """Test connection endpoint uses pool from backend.app.state if available."""
         mock_pool, mock_conn = mock_db_pool
 
         # Get app from client
@@ -132,7 +132,7 @@ class TestPostgresDebugIntegration:
                 delattr(app.state, "memory_service")
 
     def test_query_endpoint_with_pool(self, client, auth_headers, mock_db_pool):
-        """Test query endpoint uses pool from app.state if available."""
+        """Test query endpoint uses pool from backend.app.state if available."""
         mock_pool, mock_conn = mock_db_pool
 
         # Mock query results
@@ -173,7 +173,7 @@ class TestPostgresDebugIntegration:
 
     def test_full_workflow_schema_inspection(self, client, auth_headers):
         """Test full workflow: get tables -> get table details -> get indexes."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_conn.close = AsyncMock()
 
@@ -247,7 +247,7 @@ class TestPostgresDebugIntegration:
 
     def test_full_workflow_stats(self, client, auth_headers):
         """Test full workflow: database stats -> table stats."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_conn.close = AsyncMock()
 
@@ -292,7 +292,7 @@ class TestPostgresDebugIntegration:
     def test_error_propagation(self, client, auth_headers):
         """Test that errors are properly propagated through the stack."""
         with patch(
-            "app.utils.postgres_debugger.asyncpg.connect",
+            "backend.app.utils.postgres_debugger.asyncpg.connect",
             side_effect=Exception("Database connection failed"),
         ):
             response = client.get("/api/debug/postgres/schema/tables", headers=auth_headers)
@@ -326,7 +326,7 @@ class TestPostgresDebugIntegration:
 
     def test_performance_endpoints_integration(self, client, auth_headers):
         """Test performance endpoints work together."""
-        with patch("app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_conn.close = AsyncMock()
 

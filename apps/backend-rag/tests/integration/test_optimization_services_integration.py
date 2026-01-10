@@ -32,8 +32,8 @@ class TestSemanticCacheIntegration:
     @pytest.mark.asyncio
     async def test_semantic_cache_initialization(self, qdrant_client):
         """Test SemanticCache initialization"""
-        with patch("services.semantic_cache.QdrantClient") as mock_qdrant:
-            from services.semantic_cache import SemanticCache
+        with patch("backend.services.semantic_cache.QdrantClient") as mock_qdrant:
+            from backend.services.semantic_cache import SemanticCache
 
             cache = SemanticCache(qdrant_client=mock_qdrant.return_value)
 
@@ -42,12 +42,12 @@ class TestSemanticCacheIntegration:
     @pytest.mark.asyncio
     async def test_semantic_cache_storage(self, qdrant_client):
         """Test semantic cache storage"""
-        with patch("services.semantic_cache.QdrantClient") as mock_qdrant:
+        with patch("backend.services.semantic_cache.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.upsert = AsyncMock(return_value=True)
             mock_qdrant.return_value = mock_client
 
-            from services.semantic_cache import SemanticCache
+            from backend.services.semantic_cache import SemanticCache
 
             cache = SemanticCache(qdrant_client=mock_client)
 
@@ -65,8 +65,8 @@ class TestSemanticCacheIntegration:
     async def test_semantic_cache_retrieval(self, qdrant_client):
         """Test semantic cache retrieval"""
         with (
-            patch("services.semantic_cache.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.services.semantic_cache.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
         ):
             mock_client = MagicMock()
             mock_client.search = AsyncMock(
@@ -86,7 +86,7 @@ class TestSemanticCacheIntegration:
             embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
             mock_embedder.return_value = embedder
 
-            from services.semantic_cache import SemanticCache
+            from backend.services.semantic_cache import SemanticCache
 
             cache = SemanticCache(qdrant_client=mock_client)
 
@@ -106,7 +106,7 @@ class TestContextWindowManagerIntegration:
     @pytest.mark.asyncio
     async def test_context_window_manager_initialization(self):
         """Test AdvancedContextWindowManager initialization"""
-        from services.misc.context_window_manager import AdvancedContextWindowManager
+        from backend.services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -116,7 +116,7 @@ class TestContextWindowManagerIntegration:
     @pytest.mark.asyncio
     async def test_context_window_management(self):
         """Test context window management"""
-        from services.misc.context_window_manager import AdvancedContextWindowManager
+        from backend.services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -140,7 +140,7 @@ class TestContextWindowManagerIntegration:
     @pytest.mark.asyncio
     async def test_context_window_truncation(self):
         """Test context window management with many messages"""
-        from services.misc.context_window_manager import AdvancedContextWindowManager
+        from backend.services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)  # Standard window
 
@@ -167,8 +167,8 @@ class TestPerformanceOptimizerIntegration:
     @pytest.mark.asyncio
     async def test_performance_optimizer_initialization(self, db_pool):
         """Test PerformanceOptimizer initialization"""
-        with patch("services.performance_optimizer.asyncpg") as mock_asyncpg:
-            from services.misc.performance_optimizer import PerformanceOptimizer
+        with patch("backend.services.performance_optimizer.asyncpg") as mock_asyncpg:
+            from backend.services.misc.performance_optimizer import PerformanceOptimizer
 
             optimizer = PerformanceOptimizer(db_pool=db_pool)
 

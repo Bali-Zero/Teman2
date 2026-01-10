@@ -16,7 +16,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.parsers import (
+from backend.core.parsers import (
     DocumentParseError,
     auto_detect_and_parse,
     extract_text_from_docx,
@@ -32,7 +32,7 @@ class TestPDFParsing:
 
     def test_extract_text_from_pdf_success(self):
         """Test successful PDF text extraction"""
-        with patch("core.parsers.PdfReader") as mock_reader_class:
+        with patch("backend.core.parsers.PdfReader") as mock_reader_class:
             # Mock PDF reader with pages
             mock_reader = MagicMock()
             mock_page1 = MagicMock()
@@ -51,7 +51,7 @@ class TestPDFParsing:
 
     def test_extract_text_from_pdf_empty_content(self):
         """Test PDF with no extractable text"""
-        with patch("core.parsers.PdfReader") as mock_reader_class:
+        with patch("backend.core.parsers.PdfReader") as mock_reader_class:
             mock_reader = MagicMock()
             mock_page = MagicMock()
             mock_page.extract_text.return_value = ""
@@ -63,7 +63,7 @@ class TestPDFParsing:
 
     def test_extract_text_from_pdf_page_error(self):
         """Test PDF with page extraction error"""
-        with patch("core.parsers.PdfReader") as mock_reader_class:
+        with patch("backend.core.parsers.PdfReader") as mock_reader_class:
             mock_reader = MagicMock()
             mock_page1 = MagicMock()
             mock_page1.extract_text.return_value = "Valid content"
@@ -78,7 +78,7 @@ class TestPDFParsing:
 
     def test_extract_text_from_pdf_file_error(self):
         """Test PDF file reading error"""
-        with patch("core.parsers.PdfReader", side_effect=Exception("File error")):
+        with patch("backend.core.parsers.PdfReader", side_effect=Exception("File error")):
             with pytest.raises(DocumentParseError, match="Failed to parse PDF"):
                 extract_text_from_pdf("corrupt.pdf")
 
@@ -88,7 +88,7 @@ class TestDOCXParsing:
 
     def test_extract_text_from_docx_success(self):
         """Test successful DOCX text extraction"""
-        with patch("core.parsers.Document") as mock_document_class:
+        with patch("backend.core.parsers.Document") as mock_document_class:
             # Mock DOCX document
             mock_doc = MagicMock()
 
@@ -115,7 +115,7 @@ class TestDOCXParsing:
 
     def test_extract_text_from_docx_with_tables(self):
         """Test DOCX with table content"""
-        with patch("core.parsers.Document") as mock_document_class:
+        with patch("backend.core.parsers.Document") as mock_document_class:
             mock_doc = MagicMock()
 
             # Mock paragraphs
@@ -152,13 +152,13 @@ class TestDOCXParsing:
 
     def test_extract_text_from_docx_no_library(self):
         """Test DOCX parsing when python-docx is not installed"""
-        with patch("core.parsers.Document", None):
+        with patch("backend.core.parsers.Document", None):
             with pytest.raises(DocumentParseError, match="python-docx not installed"):
                 extract_text_from_docx("test.docx")
 
     def test_extract_text_from_docx_empty_content(self):
         """Test DOCX with no content"""
-        with patch("core.parsers.Document") as mock_document_class:
+        with patch("backend.core.parsers.Document") as mock_document_class:
             mock_doc = MagicMock()
             mock_doc.paragraphs = []
             mock_doc.tables = []
@@ -169,7 +169,7 @@ class TestDOCXParsing:
 
     def test_extract_text_from_docx_file_error(self):
         """Test DOCX file reading error"""
-        with patch("core.parsers.Document", side_effect=Exception("File error")):
+        with patch("backend.core.parsers.Document", side_effect=Exception("File error")):
             with pytest.raises(DocumentParseError, match="Failed to parse DOCX"):
                 extract_text_from_docx("corrupt.docx")
 
@@ -179,7 +179,7 @@ class TestEPUBParsing:
 
     def test_extract_text_from_epub_success(self):
         """Test successful EPUB text extraction"""
-        with patch("core.parsers.epub") as mock_epub:
+        with patch("backend.core.parsers.epub") as mock_epub:
             # Mock EPUB book
             mock_book = MagicMock()
 
@@ -205,7 +205,7 @@ class TestEPUBParsing:
 
     def test_extract_text_from_epub_empty_content(self):
         """Test EPUB with no extractable text"""
-        with patch("core.parsers.epub") as mock_epub:
+        with patch("backend.core.parsers.epub") as mock_epub:
             mock_book = MagicMock()
             mock_book.get_items.return_value = []
             mock_epub.read_epub.return_value = mock_book
@@ -215,7 +215,7 @@ class TestEPUBParsing:
 
     def test_extract_text_from_epub_file_error(self):
         """Test EPUB file reading error"""
-        with patch("core.parsers.epub", side_effect=Exception("File error")):
+        with patch("backend.core.parsers.epub", side_effect=Exception("File error")):
             with pytest.raises(DocumentParseError, match="Failed to parse EPUB"):
                 extract_text_from_epub("corrupt.epub")
 
@@ -260,7 +260,7 @@ class TestAutoDetectParsing:
 
     def test_auto_detect_pdf(self):
         """Test auto-detection of PDF files"""
-        with patch("core.parsers.extract_text_from_pdf") as mock_pdf:
+        with patch("backend.core.parsers.extract_text_from_pdf") as mock_pdf:
             mock_pdf.return_value = "PDF content"
 
             result = auto_detect_and_parse("test.pdf")
@@ -270,7 +270,7 @@ class TestAutoDetectParsing:
 
     def test_auto_detect_docx(self):
         """Test auto-detection of DOCX files"""
-        with patch("core.parsers.extract_text_from_docx") as mock_docx:
+        with patch("backend.core.parsers.extract_text_from_docx") as mock_docx:
             mock_docx.return_value = "DOCX content"
 
             result = auto_detect_and_parse("test.docx")
@@ -280,7 +280,7 @@ class TestAutoDetectParsing:
 
     def test_auto_detect_epub(self):
         """Test auto-detection of EPUB files"""
-        with patch("core.parsers.extract_text_from_epub") as mock_epub:
+        with patch("backend.core.parsers.extract_text_from_epub") as mock_epub:
             mock_epub.return_value = "EPUB content"
 
             result = auto_detect_and_parse("test.epub")
@@ -290,7 +290,7 @@ class TestAutoDetectParsing:
 
     def test_auto_detect_txt(self):
         """Test auto-detection of TXT files"""
-        with patch("core.parsers.extract_text_from_txt") as mock_txt:
+        with patch("backend.core.parsers.extract_text_from_txt") as mock_txt:
             mock_txt.return_value = "TXT content"
 
             result = auto_detect_and_parse("test.txt")
@@ -300,7 +300,7 @@ class TestAutoDetectParsing:
 
     def test_auto_detect_markdown(self):
         """Test auto-detection of Markdown files (treated as TXT)"""
-        with patch("core.parsers.extract_text_from_txt") as mock_txt:
+        with patch("backend.core.parsers.extract_text_from_txt") as mock_txt:
             mock_txt.return_value = "Markdown content"
 
             result = auto_detect_and_parse("test.md")
@@ -320,7 +320,7 @@ class TestAutoDetectParsing:
 
     def test_auto_detect_case_insensitive(self):
         """Test auto-detection is case insensitive"""
-        with patch("core.parsers.extract_text_from_pdf") as mock_pdf:
+        with patch("backend.core.parsers.extract_text_from_pdf") as mock_pdf:
             mock_pdf.return_value = "PDF content"
 
             result = auto_detect_and_parse("test.PDF")
@@ -335,7 +335,7 @@ class TestDocumentInfo:
     def test_get_document_info_pdf(self):
         """Test PDF document info extraction"""
         with (
-            patch("core.parsers.PdfReader") as mock_reader_class,
+            patch("backend.core.parsers.PdfReader") as mock_reader_class,
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.stat") as mock_stat,
         ):
@@ -360,7 +360,7 @@ class TestDocumentInfo:
     def test_get_document_info_docx(self):
         """Test DOCX document info extraction"""
         with (
-            patch("core.parsers.Document") as mock_document_class,
+            patch("backend.core.parsers.Document") as mock_document_class,
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.stat") as mock_stat,
         ):
@@ -390,7 +390,7 @@ class TestDocumentInfo:
     def test_get_document_info_no_library(self):
         """Test document info when required library is missing"""
         with (
-            patch("core.parsers.Document", None),
+            patch("backend.core.parsers.Document", None),
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.stat") as mock_stat,
         ):
@@ -406,7 +406,7 @@ class TestDocumentInfo:
     def test_get_document_info_epub(self):
         """Test EPUB document info extraction"""
         with (
-            patch("core.parsers.epub") as mock_epub,
+            patch("backend.core.parsers.epub") as mock_epub,
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.stat") as mock_stat,
         ):
@@ -445,13 +445,13 @@ class TestIntegrationScenarios:
 
     def test_parse_corrupted_pdf_fallback(self):
         """Test handling of corrupted PDF files"""
-        with patch("core.parsers.PdfReader", side_effect=Exception("Corrupted PDF")):
+        with patch("backend.core.parsers.PdfReader", side_effect=Exception("Corrupted PDF")):
             with pytest.raises(DocumentParseError):
                 auto_detect_and_parse("corrupted.pdf")
 
     def test_parse_large_file_performance(self):
         """Test parsing performance with large content"""
-        with patch("core.parsers.PdfReader") as mock_reader_class:
+        with patch("backend.core.parsers.PdfReader") as mock_reader_class:
             # Mock large content
             large_content = "Content " * 10000  # Large document
             mock_reader = MagicMock()
@@ -469,7 +469,7 @@ class TestIntegrationScenarios:
 
     def test_mixed_content_extraction(self):
         """Test extraction from mixed content documents"""
-        with patch("core.parsers.Document") as mock_document_class:
+        with patch("backend.core.parsers.Document") as mock_document_class:
             mock_doc = MagicMock()
 
             # Mixed paragraphs and tables

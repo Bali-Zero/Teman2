@@ -24,7 +24,7 @@ if str(backend_path) not in sys.path:
 @pytest.mark.api
 class TestHandlersList:
     def test_list_all_handlers(self, authenticated_client):
-        with patch("app.routers.handlers.get_handler_registry") as mock:
+        with patch("backend.app.routers.handlers.get_handler_registry") as mock:
             mock.return_value = []
             response = authenticated_client.get("/api/handlers/list")
             assert response.status_code in [200, 500]

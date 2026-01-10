@@ -6,7 +6,7 @@ from pathlib import Path
 
 backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 module_path = backend_path / "services" / "ingestion" / "politics_ingestion.py"
-module_name = "services.ingestion.politics_ingestion"
+module_name = "backend.services.ingestion.politics_ingestion"
 
 
 def _build_module(monkeypatch, embedder_stub, qdrant_stub):
@@ -15,11 +15,11 @@ def _build_module(monkeypatch, embedder_stub, qdrant_stub):
     monkeypatch.setitem(sys.modules, "core", core_pkg)
     monkeypatch.setitem(
         sys.modules,
-        "core.embeddings",
+        "backend.core.embeddings",
         types.SimpleNamespace(create_embeddings_generator=lambda: embedder_stub, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
-        sys.modules, "core.qdrant_db", types.SimpleNamespace(QdrantClient=qdrant_stub, redis_url='redis://localhost:6379')
+        sys.modules, "backend.core.qdrant_db", types.SimpleNamespace(QdrantClient=qdrant_stub, redis_url='redis://localhost:6379')
     )
 
     if module_name in sys.modules:

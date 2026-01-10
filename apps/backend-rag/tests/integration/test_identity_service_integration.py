@@ -25,7 +25,7 @@ class TestIdentityServiceIntegration:
     @pytest.mark.asyncio
     async def test_identity_service_initialization(self, postgres_container):
         """Test identity service initialization"""
-        from app.modules.identity.service import IdentityService
+        from backend.app.modules.identity.service import IdentityService
 
         service = IdentityService()
         assert service is not None
@@ -35,7 +35,7 @@ class TestIdentityServiceIntegration:
         """Test user authentication"""
         # Patch asyncpg.connect since IdentityService calls it directly
         with patch(
-            "app.modules.identity.service.asyncpg.connect", new_callable=AsyncMock
+            "backend.app.modules.identity.service.asyncpg.connect", new_callable=AsyncMock
         ) as mock_connect:
             mock_conn = AsyncMock()
 
@@ -67,7 +67,7 @@ class TestIdentityServiceIntegration:
 
             mock_connect.return_value = mock_conn
 
-            from app.modules.identity.service import IdentityService
+            from backend.app.modules.identity.service import IdentityService
 
             service = IdentityService()
 

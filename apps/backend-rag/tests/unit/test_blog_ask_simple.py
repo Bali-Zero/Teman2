@@ -15,7 +15,7 @@ class TestBlogAskRouterSimple:
     def test_blog_ask_router_import(self):
         """Test that blog ask router can be imported"""
         try:
-            from app.routers.blog_ask import BlogAskRequest, BlogAskResponse, router
+            from backend.app.routers.blog_ask import BlogAskRequest, BlogAskResponse, router
 
             assert router is not None
             assert BlogAskRequest is not None
@@ -27,7 +27,7 @@ class TestBlogAskRouterSimple:
     def test_router_structure(self):
         """Test that router has expected structure"""
         try:
-            from app.routers.blog_ask import router
+            from backend.app.routers.blog_ask import router
 
             # Test router configuration
             assert router.prefix == "/api/blog"
@@ -48,7 +48,7 @@ class TestBlogAskRouterSimple:
     def test_blog_ask_request_model(self):
         """Test BlogAskRequest model validation"""
         try:
-            from app.routers.blog_ask import BlogAskRequest
+            from backend.app.routers.blog_ask import BlogAskRequest
 
             # Test with minimum data
             request = BlogAskRequest(question="What is this about?")
@@ -75,7 +75,7 @@ class TestBlogAskRouterSimple:
     def test_blog_ask_request_validation(self):
         """Test BlogAskRequest field validation"""
         try:
-            from app.routers.blog_ask import BlogAskRequest
+            from backend.app.routers.blog_ask import BlogAskRequest
 
             # Test with empty question (should work)
             request_empty = BlogAskRequest(question="")
@@ -91,7 +91,7 @@ class TestBlogAskRouterSimple:
     def test_blog_ask_response_model(self):
         """Test BlogAskResponse model validation"""
         try:
-            from app.routers.blog_ask import BlogAskResponse
+            from backend.app.routers.blog_ask import BlogAskResponse
 
             # Test with minimum data
             response = BlogAskResponse(answer="This is the answer")
@@ -112,7 +112,7 @@ class TestBlogAskRouterSimple:
     def test_get_blog_orchestrator_function_exists(self):
         """Test that get_blog_orchestrator function exists and is callable"""
         try:
-            from app.routers.blog_ask import get_blog_orchestrator
+            from backend.app.routers.blog_ask import get_blog_orchestrator
 
             assert callable(get_blog_orchestrator)
 
@@ -127,7 +127,7 @@ class TestBlogAskRouterSimple:
     def test_ask_zantara_endpoint_exists(self):
         """Test that ask_zantara endpoint exists and is callable"""
         try:
-            from app.routers.blog_ask import ask_zantara
+            from backend.app.routers.blog_ask import ask_zantara
 
             assert callable(ask_zantara)
 
@@ -143,7 +143,7 @@ class TestBlogAskRouterSimple:
     async def test_get_blog_orchestrator_first_call(self):
         """Test get_blog_orchestrator on first call (creates orchestrator)"""
         try:
-            from app.routers.blog_ask import get_blog_orchestrator
+            from backend.app.routers.blog_ask import get_blog_orchestrator
 
             # Mock request
             mock_request = MagicMock()
@@ -151,7 +151,7 @@ class TestBlogAskRouterSimple:
             mock_request.app.state.db_pool = MagicMock()
             mock_request.app.state.search_service = MagicMock()
 
-            with patch("app.routers.blog_ask.create_agentic_rag") as mock_create:
+            with patch("backend.app.routers.blog_ask.create_agentic_rag") as mock_create:
                 mock_orchestrator = MagicMock()
                 mock_create.return_value = mock_orchestrator
 
@@ -170,11 +170,11 @@ class TestBlogAskRouterSimple:
     async def test_get_blog_orchestrator_cached(self):
         """Test get_blog_orchestrator on subsequent calls (returns cached)"""
         try:
-            from app.routers.blog_ask import get_blog_orchestrator
+            from backend.app.routers.blog_ask import get_blog_orchestrator
 
             # Set global orchestrator
             mock_orchestrator = MagicMock()
-            import app.routers.blog_ask
+            import backend.app.routers.blog_ask
 
             app.routers.blog_ask._blog_orchestrator = mock_orchestrator
 
@@ -192,7 +192,7 @@ class TestBlogAskRouterSimple:
     async def test_ask_zantara_with_mock(self):
         """Test ask_zantara endpoint with mocked services"""
         try:
-            from app.routers.blog_ask import BlogAskRequest, ask_zantara
+            from backend.app.routers.blog_ask import BlogAskRequest, ask_zantara
 
             # Mock request
             mock_request = MagicMock()
@@ -207,7 +207,7 @@ class TestBlogAskRouterSimple:
             mock_orchestrator.process_query.return_value = mock_result
 
             with patch(
-                "app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
+                "backend.app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
             ) as mock_get_orch:
                 mock_get_orch.return_value = mock_orchestrator
 
@@ -238,7 +238,7 @@ class TestBlogAskRouterSimple:
     async def test_ask_zantara_with_sources(self):
         """Test ask_zantara with sources formatting"""
         try:
-            from app.routers.blog_ask import BlogAskRequest, ask_zantara
+            from backend.app.routers.blog_ask import BlogAskRequest, ask_zantara
 
             # Mock request
             mock_request = MagicMock()
@@ -260,7 +260,7 @@ class TestBlogAskRouterSimple:
             mock_orchestrator.process_query.return_value = mock_result
 
             with patch(
-                "app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
+                "backend.app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
             ) as mock_get_orch:
                 mock_get_orch.return_value = mock_orchestrator
 
@@ -281,7 +281,7 @@ class TestBlogAskRouterSimple:
     async def test_ask_zantara_with_object_sources(self):
         """Test ask_zantara with sources as objects"""
         try:
-            from app.routers.blog_ask import BlogAskRequest, ask_zantara
+            from backend.app.routers.blog_ask import BlogAskRequest, ask_zantara
 
             # Mock request
             mock_request = MagicMock()
@@ -307,7 +307,7 @@ class TestBlogAskRouterSimple:
             mock_orchestrator.process_query.return_value = mock_result
 
             with patch(
-                "app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
+                "backend.app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
             ) as mock_get_orch:
                 mock_get_orch.return_value = mock_orchestrator
 
@@ -328,7 +328,7 @@ class TestBlogAskRouterSimple:
     async def test_ask_zantara_with_debug_info(self):
         """Test ask_zantara with debug_info confidence"""
         try:
-            from app.routers.blog_ask import BlogAskRequest, ask_zantara
+            from backend.app.routers.blog_ask import BlogAskRequest, ask_zantara
 
             # Mock request
             mock_request = MagicMock()
@@ -345,7 +345,7 @@ class TestBlogAskRouterSimple:
             mock_orchestrator.process_query.return_value = mock_result
 
             with patch(
-                "app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
+                "backend.app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
             ) as mock_get_orch:
                 mock_get_orch.return_value = mock_orchestrator
 
@@ -363,7 +363,7 @@ class TestBlogAskRouterSimple:
     async def test_ask_zantara_default_confidence(self):
         """Test ask_zantara with default confidence"""
         try:
-            from app.routers.blog_ask import BlogAskRequest, ask_zantara
+            from backend.app.routers.blog_ask import BlogAskRequest, ask_zantara
 
             # Mock request
             mock_request = MagicMock()
@@ -379,7 +379,7 @@ class TestBlogAskRouterSimple:
             mock_orchestrator.process_query.return_value = mock_result
 
             with patch(
-                "app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
+                "backend.app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
             ) as mock_get_orch:
                 mock_get_orch.return_value = mock_orchestrator
 
@@ -399,14 +399,14 @@ class TestBlogAskRouterSimple:
         try:
             from fastapi import HTTPException
 
-            from app.routers.blog_ask import BlogAskRequest, ask_zantara
+            from backend.app.routers.blog_ask import BlogAskRequest, ask_zantara
 
             # Mock request
             mock_request = MagicMock()
             mock_request.app.state = MagicMock()
 
             with patch(
-                "app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
+                "backend.app.routers.blog_ask.get_blog_orchestrator", new_callable=AsyncMock
             ) as mock_get_orch:
                 mock_get_orch.side_effect = Exception("Service error")
 
@@ -424,7 +424,7 @@ class TestBlogAskRouterSimple:
     def test_global_orchestrator_variable(self):
         """Test global orchestrator variable"""
         try:
-            from app.routers.blog_ask import _blog_orchestrator
+            from backend.app.routers.blog_ask import _blog_orchestrator
 
             # Should be None initially
             assert _blog_orchestrator is None
@@ -435,7 +435,7 @@ class TestBlogAskRouterSimple:
     def test_model_edge_cases(self):
         """Test model edge cases and boundary conditions"""
         try:
-            from app.routers.blog_ask import BlogAskRequest, BlogAskResponse
+            from backend.app.routers.blog_ask import BlogAskRequest, BlogAskResponse
 
             # Test BlogAskRequest with special characters
             request_special = BlogAskRequest(

@@ -34,7 +34,7 @@ class TestPluginDiscoveryIntegration:
     @pytest.mark.asyncio
     async def test_plugin_discovery(self):
         """Test automatic plugin discovery from plugins directory"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -49,8 +49,8 @@ class TestPluginDiscoveryIntegration:
     @pytest.mark.asyncio
     async def test_plugin_registration(self):
         """Test plugin registration and metadata"""
-        from core.plugins.plugin import BasePlugin
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.plugin import BasePlugin
+        from backend.core.plugins.registry import PluginRegistry
 
         class TestPlugin(BasePlugin):
             name = "test_plugin"
@@ -78,8 +78,8 @@ class TestPluginExecutionIntegration:
     @pytest.mark.asyncio
     async def test_plugin_execution(self):
         """Test executing a plugin"""
-        from core.plugins.executor import PluginExecutor
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.executor import PluginExecutor
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
         executor = PluginExecutor(registry)
@@ -102,8 +102,8 @@ class TestPluginExecutionIntegration:
     @pytest.mark.asyncio
     async def test_plugin_execution_with_caching(self):
         """Test plugin execution with caching"""
-        from core.plugins.executor import PluginExecutor
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.executor import PluginExecutor
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
         executor = PluginExecutor(registry)
@@ -131,8 +131,8 @@ class TestPluginExecutionIntegration:
     @pytest.mark.asyncio
     async def test_plugin_execution_error_handling(self):
         """Test plugin execution error handling"""
-        from core.plugins.executor import PluginExecutor
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.executor import PluginExecutor
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
         executor = PluginExecutor(registry)
@@ -162,8 +162,8 @@ class TestPluginMetricsIntegration:
     @pytest.mark.asyncio
     async def test_plugin_metrics_tracking(self):
         """Test plugin execution metrics"""
-        from core.plugins.executor import PluginExecutor
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.executor import PluginExecutor
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
         executor = PluginExecutor(registry)
@@ -192,8 +192,8 @@ class TestPluginMetricsIntegration:
         """Test plugin performance metrics"""
         import time
 
-        from core.plugins.executor import PluginExecutor
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.executor import PluginExecutor
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
         executor = PluginExecutor(registry)
@@ -227,7 +227,7 @@ class TestPluginSearchIntegration:
     @pytest.mark.asyncio
     async def test_plugin_search_by_name(self):
         """Test searching plugins by name"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -240,7 +240,7 @@ class TestPluginSearchIntegration:
     @pytest.mark.asyncio
     async def test_plugin_filter_by_category(self):
         """Test filtering plugins by category"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -253,7 +253,7 @@ class TestPluginSearchIntegration:
     @pytest.mark.asyncio
     async def test_plugin_filter_by_tags(self):
         """Test filtering plugins by tags"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -271,7 +271,7 @@ class TestPluginToolFormatIntegration:
     @pytest.mark.asyncio
     async def test_plugin_to_anthropic_format(self):
         """Test converting plugin to Anthropic tool format"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -289,7 +289,7 @@ class TestPluginToolFormatIntegration:
     @pytest.mark.asyncio
     async def test_plugin_to_gemini_format(self):
         """Test converting plugin to Gemini tool format"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -307,7 +307,7 @@ class TestPluginLifecycleIntegration:
     @pytest.mark.asyncio
     async def test_plugin_reload(self):
         """Test plugin hot-reload functionality"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -320,7 +320,7 @@ class TestPluginLifecycleIntegration:
     @pytest.mark.asyncio
     async def test_plugin_initialization(self):
         """Test plugin initialization lifecycle"""
-        from core.plugins.plugin import BasePlugin
+        from backend.core.plugins.plugin import BasePlugin
 
         class TestLifecyclePlugin(BasePlugin):
             name = "lifecycle_test"

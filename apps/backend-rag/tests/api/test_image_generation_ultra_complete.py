@@ -23,7 +23,7 @@ if str(backend_path) not in sys.path:
 @pytest.mark.api
 class TestImageGeneration:
     def test_generate_image_valid(self, authenticated_client):
-        with patch("app.routers.image_generation.image_service") as mock:
+        with patch("backend.app.routers.image_generation.image_service") as mock:
             mock.generate.return_value = {"image_url": "https://example.com/image.png"}
             response = authenticated_client.post(
                 "/api/v1/image/generate",
@@ -48,7 +48,7 @@ class TestImageGeneration:
         assert response.status_code in [400, 422]
 
     def test_generate_image_inappropriate_content(self, authenticated_client):
-        with patch("app.routers.image_generation.image_service") as mock:
+        with patch("backend.app.routers.image_generation.image_service") as mock:
             mock.generate.side_effect = ValueError("Inappropriate content")
             response = authenticated_client.post(
                 "/api/v1/image/generate", json={"prompt": "Inappropriate content here"}

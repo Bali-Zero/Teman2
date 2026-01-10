@@ -2,9 +2,9 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-import db.migrate as migrate
+import backend.db.migrate as migrate
 import pytest
-from db.migration_base import MigrationError
+from backend.db.migration_base import MigrationError
 
 
 @pytest.mark.asyncio
@@ -120,7 +120,7 @@ def test_main_no_command_exits_1(capsys):
 
 def test_main_missing_database_url_exits_1():
     args = SimpleNamespace(command="status", redis_url='redis://localhost:6379')
-    with patch("db.migrate.settings") as mock_settings:
+    with patch("backend.db.migrate.settings") as mock_settings:
         mock_settings.database_url = ""
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
             with pytest.raises(SystemExit) as exc:
@@ -130,10 +130,10 @@ def test_main_missing_database_url_exits_1():
 
 def test_main_migration_manager_error_exits_1():
     args = SimpleNamespace(command="status", redis_url='redis://localhost:6379')
-    with patch("db.migrate.settings") as mock_settings:
+    with patch("backend.db.migrate.settings") as mock_settings:
         mock_settings.database_url = "postgres://test"
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
-            with patch("db.migrate.MigrationManager", side_effect=MigrationError("fail")):
+            with patch("backend.db.migrate.MigrationManager", side_effect=MigrationError("fail")):
                 with pytest.raises(SystemExit) as exc:
                     migrate.main()
     assert exc.value.code == 1
@@ -146,11 +146,11 @@ def test_main_keyboard_interrupt_exits_130():
         coro.close()
         raise KeyboardInterrupt
 
-    with patch("db.migrate.settings") as mock_settings:
+    with patch("backend.db.migrate.settings") as mock_settings:
         mock_settings.database_url = "postgres://test"
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
-            with patch("db.migrate.MigrationManager", return_value=SimpleNamespace()):
-                with patch("db.migrate.asyncio.run", side_effect=run_and_interrupt):
+            with patch("backend.db.migrate.MigrationManager", return_value=SimpleNamespace()):
+                with patch("backend.db.migrate.asyncio.run", side_effect=run_and_interrupt):
                     with pytest.raises(SystemExit) as exc:
                         migrate.main()
     assert exc.value.code == 130
@@ -163,11 +163,11 @@ def test_main_exception_exits_1():
         coro.close()
         raise RuntimeError("boom")
 
-    with patch("db.migrate.settings") as mock_settings:
+    with patch("backend.db.migrate.settings") as mock_settings:
         mock_settings.database_url = "postgres://test"
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
-            with patch("db.migrate.MigrationManager", return_value=SimpleNamespace()):
-                with patch("db.migrate.asyncio.run", side_effect=run_and_raise):
+            with patch("backend.db.migrate.MigrationManager", return_value=SimpleNamespace()):
+                with patch("backend.db.migrate.asyncio.run", side_effect=run_and_raise):
                     with pytest.raises(SystemExit) as exc:
                         migrate.main()
     assert exc.value.code == 1
@@ -190,12 +190,12 @@ def test_main_dispatches_command_runs_and_exits_0():
         finally:
             loop.close()
 
-    with patch("db.migrate.settings") as mock_settings:
+    with patch("backend.db.migrate.settings") as mock_settings:
         mock_settings.database_url = "postgres://test"
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
-            with patch("db.migrate.MigrationManager", return_value=DummyManager()):
-                with patch("db.migrate.cmd_status", AsyncMock(return_value=True)) as cmd_status:
-                    with patch("db.migrate.asyncio.run", side_effect=run_coroutine):
+            with patch("backend.db.migrate.MigrationManager", return_value=DummyManager()):
+                with patch("backend.db.migrate.cmd_status", AsyncMock(return_value=True)) as cmd_status:
+                    with patch("backend.db.migrate.asyncio.run", side_effect=run_coroutine):
                         with pytest.raises(SystemExit) as exc:
                             migrate.main()
     assert exc.value.code == 0
@@ -219,11 +219,11 @@ def test_main_unknown_command_prints_help_and_exits_1(capsys):
         finally:
             loop.close()
 
-    with patch("db.migrate.settings") as mock_settings:
+    with patch("backend.db.migrate.settings") as mock_settings:
         mock_settings.database_url = "postgres://test"
         with patch("argparse.ArgumentParser.parse_args", return_value=args):
-            with patch("db.migrate.MigrationManager", return_value=DummyManager()):
-                with patch("db.migrate.asyncio.run", side_effect=run_coroutine):
+            with patch("backend.db.migrate.MigrationManager", return_value=DummyManager()):
+                with patch("backend.db.migrate.asyncio.run", side_effect=run_coroutine):
                     with pytest.raises(SystemExit) as exc:
                         migrate.main()
     assert exc.value.code == 1

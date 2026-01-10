@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from core.cache import invalidate_cache
+from backend.core.cache import invalidate_cache
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
@@ -22,9 +22,9 @@ if str(backend_path) not in sys.path:
 def stubbed_knowledge_service():
     """Provision a KnowledgeService with embeddings/router/Qdrant all stubbed."""
     with (
-        patch("core.embeddings.create_embeddings_generator") as mock_embedder,
-        patch("app.modules.knowledge.service.QdrantClient") as mock_qdrant,
-        patch("app.modules.knowledge.service.QueryRouter") as mock_router,
+        patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
+        patch("backend.app.modules.knowledge.service.QdrantClient") as mock_qdrant,
+        patch("backend.app.modules.knowledge.service.QueryRouter") as mock_router,
     ):
         embedder = MagicMock()
         embedder.generate_query_embedding.return_value = [0.1, 0.2, 0.3]
@@ -38,7 +38,7 @@ def stubbed_knowledge_service():
 
         mock_qdrant.return_value = MagicMock()
 
-        from app.modules.knowledge.service import KnowledgeService
+        from backend.app.modules.knowledge.service import KnowledgeService
 
         service = KnowledgeService()
         yield service, embedder, router_instance
@@ -124,7 +124,7 @@ class TestKnowledgeServiceIntegration:
 
     @pytest.mark.asyncio
     async def test_tier_filter_applied_for_zantara_books(self, stubbed_knowledge_service):
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
 
         service, _, _ = stubbed_knowledge_service
         zantara_client = MagicMock()

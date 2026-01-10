@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from services.memory.episodic_memory_service import (
+from backend.services.memory.episodic_memory_service import (
     Emotion,
     EpisodicMemoryService,
     EventType,
@@ -361,7 +361,7 @@ class TestMemoryContextIntegration:
 
     def test_memory_context_with_timeline(self):
         """Test MemoryContext includes timeline summary"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@example.com",
@@ -379,7 +379,7 @@ class TestMemoryContextIntegration:
 
     def test_memory_context_is_empty_with_timeline(self):
         """Test is_empty considers timeline"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         # Only timeline, no other data
         context = MemoryContext(
@@ -391,7 +391,7 @@ class TestMemoryContextIntegration:
 
     def test_memory_context_is_empty_without_data(self):
         """Test is_empty when truly empty"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(user_id="test@example.com")
 

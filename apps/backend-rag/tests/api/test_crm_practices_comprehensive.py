@@ -34,7 +34,7 @@ class TestCreatePractice:
 
     def test_create_practice_minimal(self, authenticated_client, test_app):
         """Test creating practice with minimal required fields"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -63,7 +63,7 @@ class TestCreatePractice:
             "cancelled",
         ]
 
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -83,7 +83,7 @@ class TestCreatePractice:
         """Test creating practice with all valid priorities"""
         priorities = ["low", "normal", "high", "urgent"]
 
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -101,7 +101,7 @@ class TestCreatePractice:
 
     def test_create_practice_with_price(self, authenticated_client, test_app):
         """Test creating practice with quoted price"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -181,7 +181,7 @@ class TestCreatePractice:
 
     def test_create_practice_with_notes(self, authenticated_client, test_app):
         """Test creating practice with notes"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -220,7 +220,7 @@ class TestListPractices:
 
     def test_list_practices_default(self, authenticated_client, test_app):
         """Test listing practices with default parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -238,7 +238,7 @@ class TestListPractices:
 
     def test_list_practices_with_filters(self, authenticated_client, test_app):
         """Test listing practices with various filters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -259,7 +259,7 @@ class TestListPractices:
 
     def test_list_practices_active(self, authenticated_client, test_app):
         """Test getting active practices"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -270,7 +270,7 @@ class TestListPractices:
 
     def test_list_practices_upcoming_renewals(self, authenticated_client, test_app):
         """Test getting upcoming renewals"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -281,7 +281,7 @@ class TestListPractices:
 
     def test_list_practices_max_limit(self, authenticated_client, test_app):
         """Test listing practices with maximum limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -313,7 +313,7 @@ class TestGetPractice:
 
     def test_get_practice_by_id(self, authenticated_client, test_app):
         """Test getting practice by ID"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -331,7 +331,7 @@ class TestGetPractice:
 
     def test_get_practice_not_found(self, authenticated_client, test_app):
         """Test getting non-existent practice"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -362,7 +362,7 @@ class TestUpdatePractice:
 
     def test_update_practice_status(self, authenticated_client, test_app):
         """Test updating practice status"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "status": "inquiry"})
             mock_get_pool.return_value = mock_pool
@@ -376,7 +376,7 @@ class TestUpdatePractice:
 
     def test_update_practice_price_fields(self, authenticated_client, test_app):
         """Test updating practice price fields"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -394,7 +394,7 @@ class TestUpdatePractice:
 
     def test_update_practice_dates(self, authenticated_client, test_app):
         """Test updating practice dates"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -412,7 +412,7 @@ class TestUpdatePractice:
 
     def test_update_practice_documents(self, authenticated_client, test_app):
         """Test updating practice documents"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -469,7 +469,7 @@ class TestAddDocuments:
 
     def test_add_documents_to_practice(self, authenticated_client, test_app):
         """Test adding documents to practice"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -488,7 +488,7 @@ class TestAddDocuments:
 
     def test_add_documents_empty_list(self, authenticated_client, test_app):
         """Test adding empty documents list"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -502,7 +502,7 @@ class TestAddDocuments:
 
     def test_add_documents_practice_not_found(self, authenticated_client, test_app):
         """Test adding documents to non-existent practice"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -536,7 +536,7 @@ class TestPracticeStats:
 
     def test_get_practice_stats(self, authenticated_client, test_app):
         """Test getting practice statistics"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -555,7 +555,7 @@ class TestPracticeStats:
 
     def test_get_practice_stats_cached(self, authenticated_client, test_app):
         """Test practice stats are cached"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool

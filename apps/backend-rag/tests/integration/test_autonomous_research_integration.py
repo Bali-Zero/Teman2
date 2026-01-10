@@ -25,15 +25,15 @@ class TestAutonomousResearchIntegration:
     def test_autonomous_research_init(self):
         """Test AutonomousResearchService initialization"""
         with (
-            patch("services.search_service.SearchService") as mock_search,
-            patch("services.query_router.QueryRouter") as mock_query_router,
-            patch("llm.zantara_ai_client.ZantaraAIClient") as mock_zantara,
+            patch("backend.services.search_service.SearchService") as mock_search,
+            patch("backend.services.query_router.QueryRouter") as mock_query_router,
+            patch("backend.llm.zantara_ai_client.ZantaraAIClient") as mock_zantara,
         ):
             mock_search_instance = mock_search.return_value
             mock_query_router_instance = mock_query_router.return_value
             mock_zantara_instance = mock_zantara.return_value
 
-            from services.autonomous_research_service import AutonomousResearchService
+            from backend.services.autonomous_research_service import AutonomousResearchService
 
             service = AutonomousResearchService(
                 search_service=mock_search_instance,
@@ -46,11 +46,11 @@ class TestAutonomousResearchIntegration:
     def test_autonomous_research_service_constants(self):
         """Test that AutonomousResearchService has expected constants"""
         with (
-            patch("services.search_service.SearchService") as mock_search,
-            patch("services.query_router.QueryRouter") as mock_query_router,
-            patch("llm.zantara_ai_client.ZantaraAIClient") as mock_zantara,
+            patch("backend.services.search_service.SearchService") as mock_search,
+            patch("backend.services.query_router.QueryRouter") as mock_query_router,
+            patch("backend.llm.zantara_ai_client.ZantaraAIClient") as mock_zantara,
         ):
-            from services.autonomous_research_service import AutonomousResearchService
+            from backend.services.autonomous_research_service import AutonomousResearchService
 
             service = AutonomousResearchService(
                 search_service=mock_search.return_value,

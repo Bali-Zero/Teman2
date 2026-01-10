@@ -32,7 +32,7 @@ class TestBackwardCompatibility:
 
     def test_old_request_format_still_works(self, authenticated_client, test_app):
         """Test old request format still works"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -47,7 +47,7 @@ class TestBackwardCompatibility:
 
     def test_new_fields_optional(self, authenticated_client, test_app):
         """Test new fields are optional (backward compatible)"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -62,7 +62,7 @@ class TestBackwardCompatibility:
 
     def test_response_includes_old_fields(self, authenticated_client, test_app):
         """Test responses include old fields for compatibility"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={"id": 1, "full_name": "Test", "email": "test@example.com"}
@@ -100,7 +100,7 @@ class TestSchemaEvolution:
 
     def test_additional_fields_ignored(self, authenticated_client, test_app):
         """Test additional unknown fields are ignored"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -169,7 +169,7 @@ class TestMigrationScenarios:
 
     def test_data_migration_compatibility(self, authenticated_client, test_app):
         """Test data migration maintains compatibility"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate old data format
             mock_conn.fetchrow = AsyncMock(
@@ -188,7 +188,7 @@ class TestMigrationScenarios:
 
     def test_schema_migration_compatibility(self, authenticated_client, test_app):
         """Test schema migration maintains compatibility"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate data with new schema
             mock_conn.fetchrow = AsyncMock(

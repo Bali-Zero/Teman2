@@ -15,7 +15,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers.ingest import router
+from backend.app.routers.ingest import router
 
 # ============================================================================
 # Fixtures
@@ -68,7 +68,7 @@ def mock_file():
 async def test_upload_and_ingest_success(client, mock_ingestion_service):
     """Test upload_and_ingest successful"""
     with (
-        patch("app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
+        patch("backend.app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
         patch("builtins.open", create=True),
         patch("pathlib.Path.mkdir"),
         patch("pathlib.Path.exists", return_value=True),
@@ -100,7 +100,7 @@ async def test_upload_and_ingest_exception(client, mock_ingestion_service):
     mock_ingestion_service.ingest_book.side_effect = Exception("Ingestion error")
 
     with (
-        patch("app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
+        patch("backend.app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
         patch("builtins.open", create=True),
         patch("pathlib.Path.mkdir"),
         patch("pathlib.Path.exists", return_value=True),
@@ -121,7 +121,7 @@ async def test_upload_and_ingest_exception(client, mock_ingestion_service):
 async def test_ingest_local_file_success(client, mock_ingestion_service):
     """Test ingest_local_file successful"""
     with (
-        patch("app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
+        patch("backend.app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
         patch("os.path.exists", return_value=True),
     ):
         response = client.post(
@@ -142,7 +142,7 @@ async def test_ingest_local_file_success(client, mock_ingestion_service):
 async def test_ingest_local_file_not_found(client, mock_ingestion_service):
     """Test ingest_local_file with file not found"""
     with (
-        patch("app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
+        patch("backend.app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
         patch("os.path.exists", return_value=False),
     ):
         response = client.post(
@@ -173,7 +173,7 @@ async def test_batch_ingest_success(client, mock_ingestion_service):
     )
 
     with (
-        patch("app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
+        patch("backend.app.routers.ingest.IngestionService", return_value=mock_ingestion_service),
         patch("pathlib.Path.exists", return_value=True),
         patch("pathlib.Path.glob", return_value=[Path("book1.pdf"), Path("book2.pdf")]),
     ):
@@ -203,7 +203,7 @@ async def test_get_stats_success(client):
     mock_qdrant = MagicMock()
     mock_qdrant.get_collection_info = AsyncMock(return_value={"points_count": 1000})
 
-    with patch("app.routers.ingest.QdrantClient", return_value=mock_qdrant):
+    with patch("backend.app.routers.ingest.QdrantClient", return_value=mock_qdrant):
         response = client.get("/api/ingest/stats")
 
         assert response.status_code == 200

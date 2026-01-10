@@ -16,7 +16,7 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.routers import voice
+from backend.app.routers import voice
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def mock_request():
 @pytest.mark.asyncio
 async def test_verify_api_key_success():
     """Test successful API key verification"""
-    with patch("app.routers.voice.settings") as mock_settings:
+    with patch("backend.app.routers.voice.settings") as mock_settings:
         mock_settings.api_keys = "key1,key2,key3"
         result = await voice.verify_api_key("key2")
         assert result == {"user_id": "voice-service", "role": "service"}
@@ -67,7 +67,7 @@ async def test_verify_api_key_missing():
 @pytest.mark.asyncio
 async def test_verify_api_key_invalid():
     """Test invalid API key"""
-    with patch("app.routers.voice.settings") as mock_settings:
+    with patch("backend.app.routers.voice.settings") as mock_settings:
         mock_settings.api_keys = "key1,key2"
         with pytest.raises(HTTPException) as exc:
             await voice.verify_api_key("invalid_key")
@@ -200,7 +200,7 @@ async def test_voice_query_success():
     mock_api_user = {"user_id": "voice-service", "role": "service"}
     mock_request = MagicMock(spec=Request)
 
-    with patch("app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.VoiceQueryRequest(query="Test query")
@@ -234,7 +234,7 @@ async def test_voice_query_with_conversation_history():
     mock_api_user = {"user_id": "voice-service", "role": "service"}
     mock_request = MagicMock(spec=Request)
 
-    with patch("app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.VoiceQueryRequest(
@@ -278,7 +278,7 @@ async def test_elevenlabs_webhook_success():
     mock_search_service.search = AsyncMock(return_value={"results": []})
     mock_request = MagicMock(spec=Request)
 
-    with patch("app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.ElevenLabsRequest(query="Test query")
@@ -308,7 +308,7 @@ async def test_elevenlabs_webhook_get_query_from_question():
     mock_search_service.search = AsyncMock(return_value={"results": []})
     mock_request = MagicMock(spec=Request)
 
-    with patch("app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
+    with patch("backend.app.routers.voice.generate_fast_response", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = "Test answer"
 
         request = voice.ElevenLabsRequest(question="Test question")

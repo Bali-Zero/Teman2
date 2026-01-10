@@ -34,10 +34,10 @@ class TestCulturalRAGServiceIntegration:
     async def test_cultural_rag_initialization(self, qdrant_client):
         """Test CulturalRAGService initialization"""
         with (
-            patch("services.cultural_rag_service.SearchService") as mock_search,
-            patch("services.cultural_rag_service.ZantaraAIClient") as mock_ai,
+            patch("backend.services.cultural_rag_service.SearchService") as mock_search,
+            patch("backend.services.cultural_rag_service.ZantaraAIClient") as mock_ai,
         ):
-            from services.misc.cultural_rag_service import CulturalRAGService
+            from backend.services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(
                 search_service=mock_search.return_value,
@@ -50,8 +50,8 @@ class TestCulturalRAGServiceIntegration:
     async def test_cultural_query_processing(self, qdrant_client):
         """Test cultural query processing"""
         with (
-            patch("services.cultural_rag_service.SearchService") as mock_search,
-            patch("services.cultural_rag_service.ZantaraAIClient") as mock_ai,
+            patch("backend.services.cultural_rag_service.SearchService") as mock_search,
+            patch("backend.services.cultural_rag_service.ZantaraAIClient") as mock_ai,
         ):
             mock_search_instance = MagicMock()
             mock_search_instance.search = AsyncMock(
@@ -66,7 +66,7 @@ class TestCulturalRAGServiceIntegration:
                 return_value="Cultural RAG response with context"
             )
 
-            from services.misc.cultural_rag_service import CulturalRAGService
+            from backend.services.misc.cultural_rag_service import CulturalRAGService
 
             service = CulturalRAGService(
                 search_service=mock_search_instance,

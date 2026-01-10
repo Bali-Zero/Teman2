@@ -215,8 +215,11 @@ async def test_dispatch_high_latency(mock_app, mock_alert_service):
 
     with unittest.mock.patch("time.time", side_effect=[start_time, end_time]):
         # Mock sys.modules to inject settings
+        mock_config = MagicMock()
+        mock_config.settings = mock_settings
+        mock_config.Settings = MagicMock()
         with unittest.mock.patch.dict(
-            "sys.modules", {"app.core.config": MagicMock(settings=mock_settings)}
+            "sys.modules", {"backend.app.core.config": mock_config}
         ):
             call_next = AsyncMock(return_value=response)
             await middleware.dispatch(request, call_next)

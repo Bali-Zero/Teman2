@@ -41,7 +41,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_renewal_query(self, authenticated_client):
         """Test search with renewal/expiry keywords"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -68,7 +68,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_client_name(self, authenticated_client):
         """Test search by client name"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -91,7 +91,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_practice_type(self, authenticated_client):
         """Test search by practice type"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -118,7 +118,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_urgent_practices(self, authenticated_client):
         """Test search for urgent/priority practices"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -145,7 +145,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_recent_interactions(self, authenticated_client):
         """Test search for recent interactions"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -172,7 +172,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_last_week(self, authenticated_client):
         """Test search with 'last week' timeframe"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -189,7 +189,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_last_30_days(self, authenticated_client):
         """Test search with 'last 30 days' timeframe"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -212,7 +212,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_with_limit(self, authenticated_client):
         """Test search with custom limit"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -244,7 +244,7 @@ class TestCRMSharedMemorySearch:
 
     def test_search_sql_injection(self, authenticated_client):
         """Test SQL injection in search query"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -265,7 +265,7 @@ class TestCRMSharedMemoryRenewals:
 
     def test_get_upcoming_renewals_default(self, authenticated_client):
         """Test with default 90 days lookahead"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = [
@@ -288,7 +288,7 @@ class TestCRMSharedMemoryRenewals:
 
     def test_get_upcoming_renewals_custom_days(self, authenticated_client):
         """Test with custom days parameter"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.return_value = []
@@ -322,7 +322,7 @@ class TestCRMSharedMemoryClientContext:
 
     def test_get_client_full_context_success(self, authenticated_client):
         """Test getting full client context"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {
@@ -350,7 +350,7 @@ class TestCRMSharedMemoryClientContext:
 
     def test_get_client_full_context_with_practices(self, authenticated_client):
         """Test client context with practices"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {"id": 1, "full_name": "John Doe"}
@@ -372,7 +372,7 @@ class TestCRMSharedMemoryClientContext:
 
     def test_get_client_full_context_with_action_items(self, authenticated_client):
         """Test client context with action items"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = {"id": 1, "full_name": "John Doe"}
@@ -393,7 +393,7 @@ class TestCRMSharedMemoryClientContext:
 
     def test_get_client_full_context_not_found(self, authenticated_client):
         """Test with non-existent client"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.return_value = None
@@ -415,7 +415,7 @@ class TestCRMSharedMemoryTeamOverview:
 
     def test_get_team_overview_success(self, authenticated_client):
         """Test getting team overview"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.side_effect = [
@@ -440,7 +440,7 @@ class TestCRMSharedMemoryTeamOverview:
 
     def test_get_team_overview_caching(self, authenticated_client):
         """Test that team overview is cached"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.side_effect = [{"count": 50}, {"count": 5}, {"count": 20}]
@@ -472,7 +472,7 @@ class TestCRMSharedMemorySecurity:
 
     def test_sql_injection_protection(self, authenticated_client):
         """Test SQL injection protection in search"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [[], []]
@@ -493,7 +493,7 @@ class TestCRMSharedMemoryPerformance:
         """Test search response time"""
         import time
 
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetch.side_effect = [
@@ -517,7 +517,7 @@ class TestCRMSharedMemoryPerformance:
         """Test team overview caching improves performance"""
         import time
 
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
             mock_conn.fetchrow.side_effect = [{"count": 50}, {"count": 5}, {"count": 20}]
@@ -539,7 +539,7 @@ class TestCRMSharedMemoryIntegration:
 
     def test_search_to_context_flow(self, authenticated_client):
         """Test flow from search to full context"""
-        with patch("app.routers.crm_shared_memory.get_database_pool") as mock_pool:
+        with patch("backend.app.routers.crm_shared_memory.get_database_pool") as mock_pool:
             mock_conn = MagicMock()
             mock_pool.return_value.acquire.return_value.__aenter__.return_value = mock_conn
 

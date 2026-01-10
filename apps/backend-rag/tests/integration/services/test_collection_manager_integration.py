@@ -26,11 +26,11 @@ class TestCollectionManagerIntegration:
     @pytest.fixture
     def manager(self):
         """Create CollectionManager instance"""
-        with patch("services.collection_manager.QdrantClient") as mock_client:
+        with patch("backend.services.collection_manager.QdrantClient") as mock_client:
             mock_client_instance = MagicMock()
             mock_client.return_value = mock_client_instance
 
-            from services.ingestion.collection_manager import CollectionManager
+            from backend.services.ingestion.collection_manager import CollectionManager
 
             manager = CollectionManager(qdrant_url="http://localhost:6333")
             return manager
@@ -43,7 +43,7 @@ class TestCollectionManagerIntegration:
 
     def test_get_collection_existing(self, manager):
         """Test getting existing collection"""
-        with patch("services.collection_manager.QdrantClient") as mock_client:
+        with patch("backend.services.collection_manager.QdrantClient") as mock_client:
             mock_client_instance = MagicMock()
             mock_client.return_value = mock_client_instance
 
@@ -60,7 +60,7 @@ class TestCollectionManagerIntegration:
 
     def test_get_collection_with_alias(self, manager):
         """Test getting collection with alias"""
-        with patch("services.collection_manager.QdrantClient") as mock_client:
+        with patch("backend.services.collection_manager.QdrantClient") as mock_client:
             mock_client_instance = MagicMock()
             mock_client.return_value = mock_client_instance
 
@@ -73,7 +73,7 @@ class TestCollectionManagerIntegration:
 
     def test_get_all_collections(self, manager):
         """Test getting all collections"""
-        with patch("services.collection_manager.QdrantClient") as mock_client:
+        with patch("backend.services.collection_manager.QdrantClient") as mock_client:
             mock_client_instance = MagicMock()
             mock_client.return_value = mock_client_instance
 
@@ -109,7 +109,7 @@ class TestCollectionManagerIntegration:
 
     def test_get_collection_caching(self, manager):
         """Test collection caching"""
-        with patch("services.collection_manager.QdrantClient") as mock_client:
+        with patch("backend.services.collection_manager.QdrantClient") as mock_client:
             mock_client_instance = MagicMock()
             mock_client.return_value = mock_client_instance
 

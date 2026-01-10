@@ -34,8 +34,8 @@ class TestIngestionServiceIntegration:
     @pytest.mark.asyncio
     async def test_ingestion_service_initialization(self, qdrant_client):
         """Test IngestionService initialization"""
-        with patch("services.ingestion_service.QdrantClient") as mock_qdrant:
-            from services.ingestion.ingestion_service import IngestionService
+        with patch("backend.services.ingestion_service.QdrantClient") as mock_qdrant:
+            from backend.services.ingestion.ingestion_service import IngestionService
 
             service = IngestionService()
 
@@ -45,8 +45,8 @@ class TestIngestionServiceIntegration:
     async def test_ingest_document(self, qdrant_client):
         """Test document ingestion"""
         with (
-            patch("services.ingestion_service.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.services.ingestion_service.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
         ):
             mock_client = MagicMock()
             mock_client.upsert = AsyncMock(return_value=True)
@@ -56,7 +56,7 @@ class TestIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536])
             mock_embedder.return_value = embedder
 
-            from services.ingestion.ingestion_service import IngestionService
+            from backend.services.ingestion.ingestion_service import IngestionService
 
             service = IngestionService()
             service.qdrant_client = mock_client
@@ -76,8 +76,8 @@ class TestIngestionServiceIntegration:
     async def test_batch_ingestion(self, qdrant_client):
         """Test batch document ingestion"""
         with (
-            patch("services.ingestion_service.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.services.ingestion_service.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
         ):
             mock_client = MagicMock()
             mock_client.upsert = AsyncMock(return_value=True)
@@ -87,7 +87,7 @@ class TestIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536] * 10)
             mock_embedder.return_value = embedder
 
-            from services.ingestion.ingestion_service import IngestionService
+            from backend.services.ingestion.ingestion_service import IngestionService
 
             service = IngestionService()
             service.qdrant_client = mock_client
@@ -109,8 +109,8 @@ class TestLegalIngestionServiceIntegration:
     @pytest.mark.asyncio
     async def test_legal_ingestion_service_initialization(self, qdrant_client):
         """Test LegalIngestionService initialization"""
-        with patch("services.legal_ingestion_service.QdrantClient") as mock_qdrant:
-            from services.ingestion.legal_ingestion_service import LegalIngestionService
+        with patch("backend.services.legal_ingestion_service.QdrantClient") as mock_qdrant:
+            from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()
 
@@ -120,8 +120,8 @@ class TestLegalIngestionServiceIntegration:
     async def test_ingest_legal_document(self, qdrant_client):
         """Test legal document ingestion"""
         with (
-            patch("services.legal_ingestion_service.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.services.legal_ingestion_service.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
         ):
             mock_client = MagicMock()
             mock_client.upsert = AsyncMock(return_value=True)
@@ -131,7 +131,7 @@ class TestLegalIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536])
             mock_embedder.return_value = embedder
 
-            from services.ingestion.legal_ingestion_service import LegalIngestionService
+            from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()
             service.qdrant_client = mock_client
@@ -154,8 +154,8 @@ class TestLegalIngestionServiceIntegration:
     async def test_legal_document_chunking(self, qdrant_client):
         """Test legal document chunking"""
         with (
-            patch("services.legal_ingestion_service.QdrantClient") as mock_qdrant,
-            patch("core.embeddings.create_embeddings_generator") as mock_embedder,
+            patch("backend.services.legal_ingestion_service.QdrantClient") as mock_qdrant,
+            patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder,
         ):
             mock_client = MagicMock()
             mock_client.upsert = AsyncMock(return_value=True)
@@ -165,7 +165,7 @@ class TestLegalIngestionServiceIntegration:
             embedder.generate_embeddings = AsyncMock(return_value=[[0.1] * 1536] * 5)
             mock_embedder.return_value = embedder
 
-            from services.ingestion.legal_ingestion_service import LegalIngestionService
+            from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
             service = LegalIngestionService()
             service.qdrant_client = mock_client
@@ -195,10 +195,10 @@ class TestAutoIngestionOrchestratorIntegration:
     async def test_auto_ingestion_orchestrator_initialization(self, db_pool):
         """Test AutoIngestionOrchestrator initialization"""
         with (
-            patch("services.auto_ingestion_orchestrator.IngestionService") as mock_ingestion,
-            patch("services.auto_ingestion_orchestrator.LegalIngestionService") as mock_legal,
+            patch("backend.services.auto_ingestion_orchestrator.IngestionService") as mock_ingestion,
+            patch("backend.services.auto_ingestion_orchestrator.LegalIngestionService") as mock_legal,
         ):
-            from services.auto_ingestion_orchestrator import AutoIngestionOrchestrator
+            from backend.services.auto_ingestion_orchestrator import AutoIngestionOrchestrator
 
             orchestrator = AutoIngestionOrchestrator(
                 ingestion_service=mock_ingestion.return_value,

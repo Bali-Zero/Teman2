@@ -31,7 +31,7 @@ class TestMultipleQueryParameters:
 
     def test_crm_clients_multiple_filters(self, authenticated_client, test_app):
         """Test CRM clients with multiple filters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -44,7 +44,7 @@ class TestMultipleQueryParameters:
 
     def test_crm_interactions_multiple_filters(self, authenticated_client, test_app):
         """Test CRM interactions with multiple filters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -57,9 +57,9 @@ class TestMultipleQueryParameters:
 
     def test_intel_search_multiple_filters(self, authenticated_client):
         """Test intel search with multiple filters"""
-        with patch("app.routers.intel.embedder") as mock_embedder:
+        with patch("backend.app.routers.intel.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding = MagicMock(return_value=[0.1] * 1536)
-            with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+            with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
                 mock_client = MagicMock()
                 mock_client.search = AsyncMock(
                     return_value={
@@ -86,7 +86,7 @@ class TestMultipleQueryParameters:
 
     def test_oracle_query_multiple_parameters(self, authenticated_client):
         """Test oracle query with multiple parameters"""
-        with patch("app.routers.oracle_universal.get_search_service") as mock_search:
+        with patch("backend.app.routers.oracle_universal.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": []})
             mock_search.return_value = mock_service
@@ -127,7 +127,7 @@ class TestConflictingParameters:
 
     def test_limit_offset_conflict(self, authenticated_client, test_app):
         """Test limit and offset together"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -139,7 +139,7 @@ class TestConflictingParameters:
 
     def test_sort_conflicting_order(self, authenticated_client, test_app):
         """Test sort with conflicting order"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -151,7 +151,7 @@ class TestConflictingParameters:
 
     def test_filter_conflicting_values(self, authenticated_client, test_app):
         """Test filters with conflicting values"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -185,7 +185,7 @@ class TestParameterPrecedence:
 
     def test_limit_precedence(self, authenticated_client, test_app):
         """Test limit parameter precedence"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -197,7 +197,7 @@ class TestParameterPrecedence:
 
     def test_default_vs_explicit(self, authenticated_client, test_app):
         """Test default values vs explicit parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -232,7 +232,7 @@ class TestParameterInteractions:
 
     def test_pagination_with_sorting(self, authenticated_client, test_app):
         """Test pagination combined with sorting"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -245,7 +245,7 @@ class TestParameterInteractions:
 
     def test_filters_with_pagination(self, authenticated_client, test_app):
         """Test filters combined with pagination"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -256,7 +256,7 @@ class TestParameterInteractions:
 
     def test_search_with_filters(self, authenticated_client, test_app):
         """Test search combined with filters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -290,7 +290,7 @@ class TestDefaultValueBehavior:
 
     def test_default_limit_behavior(self, authenticated_client, test_app):
         """Test default limit behavior"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -302,7 +302,7 @@ class TestDefaultValueBehavior:
 
     def test_default_offset_behavior(self, authenticated_client, test_app):
         """Test default offset behavior"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -314,7 +314,7 @@ class TestDefaultValueBehavior:
 
     def test_default_sort_behavior(self, authenticated_client, test_app):
         """Test default sort behavior"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -347,7 +347,7 @@ class TestParameterEdgeCases:
 
     def test_empty_string_parameters(self, authenticated_client, test_app):
         """Test empty string parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -359,7 +359,7 @@ class TestParameterEdgeCases:
 
     def test_whitespace_parameters(self, authenticated_client, test_app):
         """Test parameters with whitespace"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -373,7 +373,7 @@ class TestParameterEdgeCases:
 
     def test_special_characters_in_parameters(self, authenticated_client, test_app):
         """Test special characters in parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -387,7 +387,7 @@ class TestParameterEdgeCases:
 
     def test_very_long_parameter_values(self, authenticated_client, test_app):
         """Test very long parameter values"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool

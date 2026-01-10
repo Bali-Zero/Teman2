@@ -48,9 +48,27 @@ def _load_module(
                 raise RuntimeError("stats error")
             return (stats_results or {}).get(self.collection_name, {"total_documents": 0})
 
+    class _Settings:
+        def __init__(self):
+            self.get_intel_staging_base_dir = "/tmp/staging"
+            self.get_intel_pending_path = "/tmp/pending_intel"
+            self.qdrant_url = "http://localhost:6333"
+            self.qdrant_api_key = None
+            self.redis_url = 'redis://localhost:6379'
+            self.jwt_secret_key = "test_secret_at_least_32_chars_long_"
+            self.jwt_algorithm = "HS256"
+
+        def __getattr__(self, name):
+            return None
+
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = _Settings()
+    config_mock.Settings = _Settings
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
+
     monkeypatch.setitem(
         sys.modules,
-        "core.embeddings",
+        "backend.core.embeddings",
         types.SimpleNamespace(
             create_embeddings_generator=lambda **kwargs: _Embedder(),
             EmbeddingsGenerator=_Embedder,
@@ -59,18 +77,18 @@ def _load_module(
     )
     monkeypatch.setitem(
         sys.modules,
-        "core.qdrant_db",
+        "backend.core.qdrant_db",
         types.SimpleNamespace(QdrantClient=_QdrantClient, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.intel"
+    module_name = "backend.app.routers.intel"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

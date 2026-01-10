@@ -14,7 +14,7 @@ class TestModelTier:
 
     def test_model_tier_values(self):
         """Test all model tier values"""
-        from services.llm_clients.openrouter_client import ModelTier
+        from backend.services.llm_clients.openrouter_client import ModelTier
 
         assert ModelTier.FAST.value == "fast"
         assert ModelTier.BALANCED.value == "balanced"
@@ -27,7 +27,7 @@ class TestCompletionResult:
 
     def test_completion_result_creation(self):
         """Test creating CompletionResult"""
-        from services.llm_clients.openrouter_client import CompletionResult
+        from backend.services.llm_clients.openrouter_client import CompletionResult
 
         result = CompletionResult(
             content="Hello world",
@@ -45,7 +45,7 @@ class TestCompletionResult:
 
     def test_completion_result_defaults(self):
         """Test CompletionResult with defaults"""
-        from services.llm_clients.openrouter_client import CompletionResult
+        from backend.services.llm_clients.openrouter_client import CompletionResult
 
         result = CompletionResult(content="Test", model_used="test-model", model_name="Test Model")
 
@@ -60,7 +60,7 @@ class TestFallbackChains:
 
     def test_fallback_chains_exist(self):
         """Test that fallback chains are defined"""
-        from services.llm_clients.openrouter_client import FALLBACK_CHAINS, ModelTier
+        from backend.services.llm_clients.openrouter_client import FALLBACK_CHAINS, ModelTier
 
         assert ModelTier.RAG in FALLBACK_CHAINS
         assert ModelTier.POWERFUL in FALLBACK_CHAINS
@@ -69,7 +69,7 @@ class TestFallbackChains:
 
     def test_fallback_chain_length(self):
         """Test fallback chains have max 3 models (OpenRouter limit)"""
-        from services.llm_clients.openrouter_client import FALLBACK_CHAINS
+        from backend.services.llm_clients.openrouter_client import FALLBACK_CHAINS
 
         for tier, chain in FALLBACK_CHAINS.items():
             assert len(chain) <= 3, f"Tier {tier} has more than 3 models"
@@ -80,7 +80,7 @@ class TestModelInfo:
 
     def test_model_info_structure(self):
         """Test model info has required fields"""
-        from services.llm_clients.openrouter_client import MODEL_INFO
+        from backend.services.llm_clients.openrouter_client import MODEL_INFO
 
         for model_id, info in MODEL_INFO.items():
             assert "name" in info
@@ -94,30 +94,30 @@ class TestOpenRouterClient:
     @pytest.fixture
     def mock_settings(self):
         """Mock settings"""
-        with patch("services.llm_clients.openrouter_client.settings") as mock:
+        with patch("backend.services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = "test-api-key"
             yield mock
 
     @pytest.fixture
     def client(self, mock_settings):
         """Create OpenRouterClient instance"""
-        from services.llm_clients.openrouter_client import OpenRouterClient
+        from backend.services.llm_clients.openrouter_client import OpenRouterClient
 
         return OpenRouterClient(api_key="test-api-key")
 
     @pytest.fixture
     def client_no_key(self):
         """Create OpenRouterClient without API key"""
-        with patch("services.llm_clients.openrouter_client.settings") as mock:
+        with patch("backend.services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = None
             with patch.dict("os.environ", {}, clear=True):
-                from services.llm_clients.openrouter_client import OpenRouterClient
+                from backend.services.llm_clients.openrouter_client import OpenRouterClient
 
                 return OpenRouterClient(api_key=None)
 
     def test_init_with_api_key(self, mock_settings):
         """Test initialization with API key"""
-        from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
+        from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 
         client = OpenRouterClient(api_key="test-key")
 
@@ -127,7 +127,7 @@ class TestOpenRouterClient:
 
     def test_init_custom_params(self, mock_settings):
         """Test initialization with custom parameters"""
-        from services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
+        from backend.services.llm_clients.openrouter_client import ModelTier, OpenRouterClient
 
         client = OpenRouterClient(
             api_key="test-key",
@@ -144,27 +144,27 @@ class TestOpenRouterClient:
 
     def test_init_from_settings(self, mock_settings):
         """Test initialization from settings"""
-        from services.llm_clients.openrouter_client import OpenRouterClient
+        from backend.services.llm_clients.openrouter_client import OpenRouterClient
 
         client = OpenRouterClient()
         assert client.api_key == "test-api-key"
 
     def test_init_from_env(self):
         """Test initialization from environment"""
-        with patch("services.llm_clients.openrouter_client.settings") as mock:
+        with patch("backend.services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = None
             with patch.dict("os.environ", {"OPENROUTER_API_KEY": "env-key"}):
-                from services.llm_clients.openrouter_client import OpenRouterClient
+                from backend.services.llm_clients.openrouter_client import OpenRouterClient
 
                 client = OpenRouterClient()
                 assert client.api_key == "env-key"
 
     def test_init_no_key_warning(self):
         """Test warning when no API key"""
-        with patch("services.llm_clients.openrouter_client.settings") as mock:
+        with patch("backend.services.llm_clients.openrouter_client.settings") as mock:
             mock.openrouter_api_key = None
             with patch.dict("os.environ", {}, clear=True):
-                from services.llm_clients.openrouter_client import OpenRouterClient
+                from backend.services.llm_clients.openrouter_client import OpenRouterClient
 
                 client = OpenRouterClient(api_key=None)
                 assert client.api_key is None
@@ -179,7 +179,7 @@ class TestOpenRouterClient:
 
     def test_get_fallback_chain_specific_tier(self, client):
         """Test getting fallback chain for specific tier"""
-        from services.llm_clients.openrouter_client import ModelTier
+        from backend.services.llm_clients.openrouter_client import ModelTier
 
         chain = client.get_fallback_chain(ModelTier.FAST)
 
@@ -500,7 +500,7 @@ class TestConvenienceFunctions:
     @pytest.fixture
     def mock_client(self):
         """Mock the singleton client"""
-        with patch("services.llm_clients.openrouter_client.openrouter_client") as mock:
+        with patch("backend.services.llm_clients.openrouter_client.openrouter_client") as mock:
             mock.complete = AsyncMock()
             mock.complete_stream = AsyncMock()
             yield mock
@@ -508,7 +508,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete(self, mock_client):
         """Test smart_complete function"""
-        from services.llm_clients.openrouter_client import CompletionResult, smart_complete
+        from backend.services.llm_clients.openrouter_client import CompletionResult, smart_complete
 
         mock_client.complete.return_value = CompletionResult(
             content="Result", model_used="test", model_name="Test"
@@ -522,7 +522,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete_with_system(self, mock_client):
         """Test smart_complete with system prompt"""
-        from services.llm_clients.openrouter_client import CompletionResult, smart_complete
+        from backend.services.llm_clients.openrouter_client import CompletionResult, smart_complete
 
         mock_client.complete.return_value = CompletionResult(
             content="Result", model_used="test", model_name="Test"
@@ -539,7 +539,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete_stream(self, mock_client):
         """Test smart_complete_stream function"""
-        from services.llm_clients.openrouter_client import smart_complete_stream
+        from backend.services.llm_clients.openrouter_client import smart_complete_stream
 
         async def mock_stream(*args, **kwargs):
             yield "Hello"
@@ -556,7 +556,7 @@ class TestConvenienceFunctions:
     @pytest.mark.asyncio
     async def test_smart_complete_stream_with_system(self, mock_client):
         """Test smart_complete_stream with system prompt"""
-        from services.llm_clients.openrouter_client import smart_complete_stream
+        from backend.services.llm_clients.openrouter_client import smart_complete_stream
 
         async def mock_stream(*args, **kwargs):
             yield "Result"

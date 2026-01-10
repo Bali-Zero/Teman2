@@ -19,21 +19,21 @@ class TestResponseSanitizerIntegration:
 
     def test_sanitize_zantara_response_empty(self):
         """Test sanitize with empty response"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         result = sanitize_zantara_response("")
         assert result == ""
 
     def test_sanitize_zantara_response_none(self):
         """Test sanitize with None response"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         result = sanitize_zantara_response(None)
         assert result is None
 
     def test_sanitize_remove_placeholders(self):
         """Test removing [PRICE], [MANDATORY] placeholders"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         response = "Il costo è [PRICE]. [MANDATORY] documento richiesto."
         result = sanitize_zantara_response(response)
@@ -42,7 +42,7 @@ class TestResponseSanitizerIntegration:
 
     def test_sanitize_remove_training_format(self):
         """Test removing User:/Assistant: format leaks"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         response = "User: Domanda\nAssistant: Risposta\nContext: Info"
         result = sanitize_zantara_response(response)
@@ -52,7 +52,7 @@ class TestResponseSanitizerIntegration:
 
     def test_sanitize_remove_agentic_artifacts(self):
         """Test removing THOUGHT:/ACTION:/OBSERVATION: artifacts"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         response = (
             "THOUGHT: I need to think\nACTION: search\nOBSERVATION: found\nFinal Answer: Result"
@@ -65,7 +65,7 @@ class TestResponseSanitizerIntegration:
 
     def test_sanitize_replace_bad_patterns(self):
         """Test replacing bad patterns like 'non ho documenti'"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         bad_responses = [
             "Non ho documenti",
@@ -83,7 +83,7 @@ class TestResponseSanitizerIntegration:
 
     def test_sanitize_remove_markdown_headers(self):
         """Test removing markdown headers"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         response = "### **Header**\nContent\n### Subheader"
         result = sanitize_zantara_response(response)
@@ -92,7 +92,7 @@ class TestResponseSanitizerIntegration:
 
     def test_sanitize_clean_multiple_newlines(self):
         """Test cleaning multiple newlines"""
-        from utils.response_sanitizer import sanitize_zantara_response
+        from backend.utils.response_sanitizer import sanitize_zantara_response
 
         response = "Line 1\n\n\n\nLine 2"
         result = sanitize_zantara_response(response)
@@ -101,7 +101,7 @@ class TestResponseSanitizerIntegration:
 
     def test_enforce_santai_mode_greeting(self):
         """Test enforcing SANTAI mode for greeting"""
-        from utils.response_sanitizer import enforce_santai_mode
+        from backend.utils.response_sanitizer import enforce_santai_mode
 
         long_response = "Sentence 1. Sentence 2. Sentence 3. Sentence 4. Sentence 5."
         result = enforce_santai_mode(long_response, "greeting", max_words=30)
@@ -111,7 +111,7 @@ class TestResponseSanitizerIntegration:
 
     def test_enforce_santai_mode_casual(self):
         """Test enforcing SANTAI mode for casual query"""
-        from utils.response_sanitizer import enforce_santai_mode
+        from backend.utils.response_sanitizer import enforce_santai_mode
 
         long_response = " ".join(["word"] * 50)  # 50 words
         result = enforce_santai_mode(long_response, "casual", max_words=30)
@@ -120,7 +120,7 @@ class TestResponseSanitizerIntegration:
 
     def test_enforce_santai_mode_business(self):
         """Test that SANTAI mode doesn't apply to business queries"""
-        from utils.response_sanitizer import enforce_santai_mode
+        from backend.utils.response_sanitizer import enforce_santai_mode
 
         long_response = " ".join(["word"] * 100)
         result = enforce_santai_mode(long_response, "business", max_words=30)
@@ -129,7 +129,7 @@ class TestResponseSanitizerIntegration:
 
     def test_add_contact_if_appropriate_greeting(self):
         """Test that contact info is NOT added to greetings"""
-        from utils.response_sanitizer import add_contact_if_appropriate
+        from backend.utils.response_sanitizer import add_contact_if_appropriate
 
         response = "Hello!"
         result = add_contact_if_appropriate(response, "greeting")
@@ -138,7 +138,7 @@ class TestResponseSanitizerIntegration:
 
     def test_add_contact_if_appropriate_business(self):
         """Test that contact info IS added to business queries"""
-        from utils.response_sanitizer import add_contact_if_appropriate
+        from backend.utils.response_sanitizer import add_contact_if_appropriate
 
         response = "Here is the information about visas."
         result = add_contact_if_appropriate(response, "business")
@@ -146,7 +146,7 @@ class TestResponseSanitizerIntegration:
 
     def test_add_contact_if_appropriate_already_has_contact(self):
         """Test that contact info is not duplicated"""
-        from utils.response_sanitizer import add_contact_if_appropriate
+        from backend.utils.response_sanitizer import add_contact_if_appropriate
 
         response = "Info here. Contact us on WhatsApp +62 859 0436 9574"
         result = add_contact_if_appropriate(response, "business")
@@ -155,7 +155,7 @@ class TestResponseSanitizerIntegration:
 
     def test_classify_query_type_greeting(self):
         """Test classifying greeting queries"""
-        from utils.response_sanitizer import classify_query_type
+        from backend.utils.response_sanitizer import classify_query_type
 
         greetings = ["ciao", "hi", "hello", "buongiorno", "good morning"]
         for greeting in greetings:
@@ -164,7 +164,7 @@ class TestResponseSanitizerIntegration:
 
     def test_classify_query_type_casual(self):
         """Test classifying casual queries"""
-        from utils.response_sanitizer import classify_query_type
+        from backend.utils.response_sanitizer import classify_query_type
 
         casual_queries = ["come stai", "how are you", "what's up"]
         for query in casual_queries:
@@ -173,7 +173,7 @@ class TestResponseSanitizerIntegration:
 
     def test_classify_query_type_emergency(self):
         """Test classifying emergency queries"""
-        from utils.response_sanitizer import classify_query_type
+        from backend.utils.response_sanitizer import classify_query_type
 
         emergency_queries = [
             "urgent help needed",
@@ -187,7 +187,7 @@ class TestResponseSanitizerIntegration:
 
     def test_classify_query_type_business(self):
         """Test classifying business queries"""
-        from utils.response_sanitizer import classify_query_type
+        from backend.utils.response_sanitizer import classify_query_type
 
         business_queries = [
             "informazioni su visa",
@@ -200,7 +200,7 @@ class TestResponseSanitizerIntegration:
 
     def test_classify_query_type_casual_with_business_keyword(self):
         """Test that casual queries with business keywords are classified as business"""
-        from utils.response_sanitizer import classify_query_type
+        from backend.utils.response_sanitizer import classify_query_type
 
         # Long casual query with business keyword should be business
         query = "come stai con le informazioni sui visti"
@@ -209,7 +209,7 @@ class TestResponseSanitizerIntegration:
 
     def test_process_zantara_response_complete_pipeline(self):
         """Test complete response processing pipeline"""
-        from utils.response_sanitizer import process_zantara_response
+        from backend.utils.response_sanitizer import process_zantara_response
 
         raw_response = "THOUGHT: think\n[PRICE] User: Question\nAssistant: Answer"
         result = process_zantara_response(
@@ -222,7 +222,7 @@ class TestResponseSanitizerIntegration:
 
     def test_process_zantara_response_without_santai(self):
         """Test processing without SANTAI mode"""
-        from utils.response_sanitizer import process_zantara_response
+        from backend.utils.response_sanitizer import process_zantara_response
 
         long_response = " ".join(["word"] * 100)
         result = process_zantara_response(
@@ -233,7 +233,7 @@ class TestResponseSanitizerIntegration:
 
     def test_process_zantara_response_without_contact(self):
         """Test processing without adding contact"""
-        from utils.response_sanitizer import process_zantara_response
+        from backend.utils.response_sanitizer import process_zantara_response
 
         response = "Business information here."
         result = process_zantara_response(

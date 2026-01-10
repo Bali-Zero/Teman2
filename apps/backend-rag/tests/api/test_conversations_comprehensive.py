@@ -31,7 +31,7 @@ class TestSaveConversation:
 
     def test_save_conversation_basic(self, authenticated_client, test_app):
         """Test basic conversation save"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -49,7 +49,7 @@ class TestSaveConversation:
 
     def test_save_conversation_with_session_id(self, authenticated_client, test_app):
         """Test saving conversation with session ID"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -68,7 +68,7 @@ class TestSaveConversation:
 
     def test_save_conversation_with_metadata(self, authenticated_client, test_app):
         """Test saving conversation with metadata"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -96,7 +96,7 @@ class TestSaveConversation:
 
     def test_save_conversation_large_messages(self, authenticated_client, test_app):
         """Test saving conversation with large messages"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -114,7 +114,7 @@ class TestSaveConversation:
 
     def test_save_conversation_response_structure(self, authenticated_client, test_app):
         """Test conversation save response structure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -156,7 +156,7 @@ class TestListConversations:
 
     def test_list_conversations_default(self, authenticated_client, test_app):
         """Test listing conversations with default parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -177,7 +177,7 @@ class TestListConversations:
 
     def test_list_conversations_with_limit(self, authenticated_client, test_app):
         """Test listing conversations with limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -188,7 +188,7 @@ class TestListConversations:
 
     def test_list_conversations_with_offset(self, authenticated_client, test_app):
         """Test listing conversations with offset"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -199,7 +199,7 @@ class TestListConversations:
 
     def test_list_conversations_max_limit(self, authenticated_client, test_app):
         """Test listing conversations with maximum limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -210,7 +210,7 @@ class TestListConversations:
 
     def test_list_conversations_response_structure(self, authenticated_client, test_app):
         """Test conversations list response structure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_conn.fetchval = AsyncMock(return_value=0)
@@ -247,7 +247,7 @@ class TestGetConversation:
 
     def test_get_conversation_by_id(self, authenticated_client, test_app):
         """Test getting conversation by ID"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -270,7 +270,7 @@ class TestGetConversation:
 
     def test_get_conversation_not_found(self, authenticated_client, test_app):
         """Test getting non-existent conversation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -281,7 +281,7 @@ class TestGetConversation:
 
     def test_get_conversation_response_structure(self, authenticated_client, test_app):
         """Test conversation response structure"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -301,7 +301,7 @@ class TestGetSessionConversations:
 
     def test_get_session_conversations(self, authenticated_client, test_app):
         """Test getting conversations by session ID"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -320,7 +320,7 @@ class TestGetSessionConversations:
 
     def test_get_session_conversations_empty(self, authenticated_client, test_app):
         """Test getting conversations for non-existent session"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -338,7 +338,7 @@ class TestDeleteConversation:
 
     def test_delete_conversation(self, authenticated_client, test_app):
         """Test deleting conversation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_conn.execute = AsyncMock(return_value="DELETE 1")
@@ -350,7 +350,7 @@ class TestDeleteConversation:
 
     def test_delete_conversation_not_found(self, authenticated_client, test_app):
         """Test deleting non-existent conversation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool

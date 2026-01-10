@@ -15,9 +15,9 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from plugins.bali_zero.pricing_plugin import PricingPlugin, PricingQueryInput, PricingQueryOutput
-from plugins.team.list_members_plugin import TeamListInput, TeamListOutput, TeamMembersListPlugin
-from plugins.team.search_member_plugin import (
+from backend.plugins.bali_zero.pricing_plugin import PricingPlugin, PricingQueryInput, PricingQueryOutput
+from backend.plugins.team.list_members_plugin import TeamListInput, TeamListOutput, TeamMembersListPlugin
+from backend.plugins.team.search_member_plugin import (
     TeamMemberSearchPlugin,
     TeamSearchInput,
     TeamSearchOutput,

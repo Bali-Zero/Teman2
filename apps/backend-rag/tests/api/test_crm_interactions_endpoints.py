@@ -34,7 +34,7 @@ class TestCreateInteraction:
     @pytest.mark.skip(reason="Requires dependency override - covered by unit tests")
     def test_create_interaction_success(self, authenticated_client):
         """Test creating a new interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchval = AsyncMock(return_value=1)
@@ -96,7 +96,7 @@ class TestListInteractions:
 
     def test_list_interactions_basic(self, authenticated_client):
         """Test listing interactions"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -120,7 +120,7 @@ class TestListInteractions:
 
     def test_list_interactions_with_client_filter(self, authenticated_client):
         """Test listing interactions filtered by client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -133,7 +133,7 @@ class TestListInteractions:
 
     def test_list_interactions_with_limit(self, authenticated_client):
         """Test listing interactions with limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -146,7 +146,7 @@ class TestListInteractions:
 
     def test_list_interactions_with_practice_filter(self, authenticated_client):
         """Test listing interactions filtered by practice"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -159,7 +159,7 @@ class TestListInteractions:
 
     def test_list_interactions_with_type_filter(self, authenticated_client):
         """Test listing interactions filtered by type"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -172,7 +172,7 @@ class TestListInteractions:
 
     def test_list_interactions_with_sentiment_filter(self, authenticated_client):
         """Test listing interactions filtered by sentiment"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -185,7 +185,7 @@ class TestListInteractions:
 
     def test_list_interactions_with_offset(self, authenticated_client):
         """Test listing interactions with offset for pagination"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -203,7 +203,7 @@ class TestGetInteraction:
 
     def test_get_interaction_success(self, authenticated_client):
         """Test getting a specific interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -226,7 +226,7 @@ class TestGetInteraction:
     @pytest.mark.skip(reason="Requires dependency override - covered by unit tests")
     def test_get_interaction_not_found(self, authenticated_client):
         """Test getting non-existent interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value=None)
@@ -244,7 +244,7 @@ class TestClientTimeline:
 
     def test_get_client_timeline(self, authenticated_client):
         """Test getting client interaction timeline"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(
@@ -272,7 +272,7 @@ class TestPracticeHistory:
 
     def test_get_practice_history(self, authenticated_client):
         """Test getting practice interaction history"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -290,7 +290,7 @@ class TestUpdateInteraction:
 
     def test_update_interaction(self, authenticated_client):
         """Test updating an interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -327,7 +327,7 @@ class TestDeleteInteraction:
 
     def test_delete_interaction(self, authenticated_client):
         """Test deleting an interaction"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.execute = AsyncMock(return_value="DELETE 1")
@@ -345,7 +345,7 @@ class TestCreateFromConversation:
 
     def test_create_interaction_from_conversation(self, authenticated_client):
         """Test creating interaction from conversation"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -367,7 +367,7 @@ class TestCreateFromConversation:
 
     def test_create_interaction_from_conversation_new_client(self, authenticated_client):
         """Test creating interaction from conversation with new client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -390,7 +390,7 @@ class TestCreateFromConversation:
 
     def test_create_interaction_from_conversation_with_summary(self, authenticated_client):
         """Test creating interaction from conversation with provided summary"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -417,7 +417,7 @@ class TestSyncGmail:
 
     def test_sync_gmail_interactions(self, authenticated_client):
         """Test syncing Gmail interactions"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -432,7 +432,7 @@ class TestSyncGmail:
 
     def test_sync_gmail_interactions_custom_limit(self, authenticated_client):
         """Test syncing Gmail interactions with custom limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -453,7 +453,7 @@ class TestInteractionStats:
     @pytest.mark.skip(reason="Requires dependency override - covered by unit tests")
     def test_get_interactions_stats(self, authenticated_client):
         """Test getting interaction statistics"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(

@@ -20,8 +20,8 @@ if str(backend_path) not in sys.path:
 @pytest.mark.asyncio
 async def test_user_context_loaded_before_greeting(monkeypatch):
     """Ensure process_query loads user_context before bypass checks (greetings)."""
-    import services.rag.agentic.orchestrator as orchestrator_module
-    from services.rag.agentic.orchestrator import AgenticRAGOrchestrator
+    import backend.services.rag.agentic.orchestrator as orchestrator_module
+    from backend.services.rag.agentic.orchestrator import AgenticRAGOrchestrator
 
     tool = MagicMock()
     tool.name = "vector_search"
@@ -37,7 +37,7 @@ async def test_user_context_loaded_before_greeting(monkeypatch):
 
     monkeypatch.setattr(orchestrator_module, "get_user_context", fake_get_user_context)
 
-    with patch("services.rag.agentic.orchestrator.LLMGateway") as mock_gateway_class:
+    with patch("backend.services.rag.agentic.orchestrator.LLMGateway") as mock_gateway_class:
         mock_gateway_class.return_value = MagicMock()
         orch = AgenticRAGOrchestrator(tools=[tool], db_pool=None, retriever=MagicMock())
         orch._get_memory_orchestrator = AsyncMock(return_value=None)

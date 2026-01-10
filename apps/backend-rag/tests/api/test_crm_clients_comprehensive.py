@@ -34,7 +34,7 @@ class TestCreateClient:
 
     def test_create_client_minimal(self, authenticated_client, test_app):
         """Test creating client with minimal required fields"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -47,7 +47,7 @@ class TestCreateClient:
 
     def test_create_client_complete(self, authenticated_client, test_app):
         """Test creating client with all fields"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -73,7 +73,7 @@ class TestCreateClient:
 
     def test_create_client_company_type(self, authenticated_client, test_app):
         """Test creating company client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -134,7 +134,7 @@ class TestCreateClient:
 
     def test_create_client_duplicate_email(self, authenticated_client, test_app):
         """Test creating client with duplicate email"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             # Simulate duplicate email
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "email": "existing@example.com"})
@@ -176,7 +176,7 @@ class TestListClients:
 
     def test_list_clients_default(self, authenticated_client, test_app):
         """Test listing clients with default parameters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(
                 return_value=[
@@ -194,7 +194,7 @@ class TestListClients:
 
     def test_list_clients_with_limit(self, authenticated_client, test_app):
         """Test listing clients with limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[{"id": 1}])
             mock_get_pool.return_value = mock_pool
@@ -205,7 +205,7 @@ class TestListClients:
 
     def test_list_clients_with_status_filter(self, authenticated_client, test_app):
         """Test listing clients filtered by status"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -223,7 +223,7 @@ class TestListClients:
 
     def test_list_clients_with_search(self, authenticated_client, test_app):
         """Test listing clients with search query"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -234,7 +234,7 @@ class TestListClients:
 
     def test_list_clients_with_sorting(self, authenticated_client, test_app):
         """Test listing clients with sorting"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -245,7 +245,7 @@ class TestListClients:
 
     def test_list_clients_max_limit(self, authenticated_client, test_app):
         """Test listing clients with maximum limit"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -284,7 +284,7 @@ class TestGetClient:
 
     def test_get_client_by_id_success(self, authenticated_client, test_app):
         """Test getting client by ID"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={"id": 1, "full_name": "Test Client", "email": "test@example.com"}
@@ -299,7 +299,7 @@ class TestGetClient:
 
     def test_get_client_not_found(self, authenticated_client, test_app):
         """Test getting non-existent client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -310,7 +310,7 @@ class TestGetClient:
 
     def test_get_client_by_email(self, authenticated_client, test_app):
         """Test getting client by email"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={"id": 1, "email": "test@example.com", "full_name": "Test"}
@@ -323,7 +323,7 @@ class TestGetClient:
 
     def test_get_client_by_email_not_found(self, authenticated_client, test_app):
         """Test getting client by non-existent email"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -354,7 +354,7 @@ class TestUpdateClient:
 
     def test_update_client_partial(self, authenticated_client, test_app):
         """Test partial client update"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={"id": 1, "full_name": "Old Name", "email": "old@example.com"}
@@ -370,7 +370,7 @@ class TestUpdateClient:
 
     def test_update_client_status(self, authenticated_client, test_app):
         """Test updating client status"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "status": "active"})
             mock_get_pool.return_value = mock_pool
@@ -393,7 +393,7 @@ class TestUpdateClient:
 
     def test_update_client_not_found(self, authenticated_client, test_app):
         """Test updating non-existent client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -427,7 +427,7 @@ class TestDeleteClient:
 
     def test_delete_client_success(self, authenticated_client, test_app):
         """Test deleting client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_conn.execute = AsyncMock(return_value="DELETE 1")
@@ -439,7 +439,7 @@ class TestDeleteClient:
 
     def test_delete_client_not_found(self, authenticated_client, test_app):
         """Test deleting non-existent client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -470,7 +470,7 @@ class TestClientSummary:
 
     def test_get_client_summary(self, authenticated_client, test_app):
         """Test getting client summary"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "summary": "Test summary"})
             mock_get_pool.return_value = mock_pool
@@ -481,7 +481,7 @@ class TestClientSummary:
 
     def test_get_client_summary_not_found(self, authenticated_client, test_app):
         """Test getting summary for non-existent client"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value=None)
             mock_get_pool.return_value = mock_pool
@@ -512,7 +512,7 @@ class TestClientStats:
 
     def test_get_client_stats(self, authenticated_client, test_app):
         """Test getting client statistics"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -532,7 +532,7 @@ class TestClientStats:
 
     def test_get_client_stats_cached(self, authenticated_client, test_app):
         """Test client stats are cached"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"total": 100})
             mock_get_pool.return_value = mock_pool

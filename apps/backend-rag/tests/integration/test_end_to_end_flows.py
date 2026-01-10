@@ -56,8 +56,8 @@ class TestEndToEndFlows:
             query = "What is KITAS?"
 
             # Step 2: Search service finds relevant documents
-            with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
-                from services.search.search_service import SearchService
+            with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
+                from backend.services.search.search_service import SearchService
 
                 embedder = MagicMock()
                 embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
@@ -72,7 +72,7 @@ class TestEndToEndFlows:
                 assert "results" in search_result
 
             # Step 3: AI generates response (mocked)
-            with patch("llm.zantara_ai_client.ZantaraAIClient") as mock_ai:
+            with patch("backend.llm.zantara_ai_client.ZantaraAIClient") as mock_ai:
                 mock_ai_instance = MagicMock()
                 mock_ai_instance.generate_response = AsyncMock(
                     return_value="KITAS is a temporary residence permit..."
@@ -270,8 +270,8 @@ class TestEndToEndFlows:
             query = "How to start a business in Indonesia?"
 
             # Step 2: Route query to appropriate collections
-            with patch("core.embeddings.create_embeddings_generator") as mock_embedder:
-                from services.routing.query_router import QueryRouter
+            with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
+                from backend.services.routing.query_router import QueryRouter
 
                 embedder = MagicMock()
                 embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
@@ -287,7 +287,7 @@ class TestEndToEndFlows:
             collections = ["kbli_unified", "legal_unified", "tax_genius"]
 
             # Step 4: Synthesize results (mocked)
-            with patch("llm.zantara_ai_client.ZantaraAIClient") as mock_ai:
+            with patch("backend.llm.zantara_ai_client.ZantaraAIClient") as mock_ai:
                 mock_ai_instance = MagicMock()
                 mock_ai_instance.generate_response = AsyncMock(
                     return_value="To start a business in Indonesia, you need..."
@@ -403,8 +403,8 @@ class TestEndToEndFlows:
 
             # Step 2: Research compliance requirements
             with (
-                patch("services.proactive_compliance_monitor.SearchService") as mock_search,
-                patch("services.proactive_compliance_monitor.ZantaraAIClient") as mock_ai,
+                patch("backend.services.proactive_compliance_monitor.SearchService") as mock_search,
+                patch("backend.services.proactive_compliance_monitor.ZantaraAIClient") as mock_ai,
             ):
                 mock_search_instance = MagicMock()
                 mock_search.return_value = mock_search_instance

@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.models import TierLevel
-from services.search.search_service import SearchService
+from backend.app.models import TierLevel
+from backend.services.search.search_service import SearchService
 
 
 @pytest.fixture
@@ -85,7 +85,7 @@ def mock_reranker():
 def search_service(mock_collection_manager, mock_query_router, mock_embedder):
     """Create SearchService instance"""
     mock_manager, _ = mock_collection_manager
-    with patch("core.embeddings.create_embeddings_generator") as mock_create:
+    with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
         mock_create.return_value = mock_embedder
         service = SearchService(
             collection_manager=mock_manager,
@@ -103,7 +103,7 @@ class TestSearchServiceInit:
     ):
         """Test initialization with all dependencies provided"""
         mock_manager, _ = mock_collection_manager
-        with patch("core.embeddings.create_embeddings_generator") as mock_create:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
             mock_create.return_value = mock_embedder
             service = SearchService(
                 collection_manager=mock_manager,
@@ -114,9 +114,9 @@ class TestSearchServiceInit:
 
     def test_init_creates_default_dependencies(self, mock_embedder):
         """Test initialization creates default dependencies when None"""
-        with patch("core.embeddings.create_embeddings_generator") as mock_create:
+        with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
             mock_create.return_value = mock_embedder
-            with patch("services.search.search_service.CollectionManager") as mock_cm:
+            with patch("backend.services.search.search_service.CollectionManager") as mock_cm:
                 mock_cm_instance = MagicMock()
                 mock_cm.return_value = mock_cm_instance
                 service = SearchService()
@@ -401,7 +401,7 @@ class TestSearchCollection:
         search_service.collection_manager.get_collection = MagicMock(return_value=None)
 
         # Mock QdrantClient creation (imported inside the method)
-        with patch("core.qdrant_db.QdrantClient") as mock_qdrant:
+        with patch("backend.core.qdrant_db.QdrantClient") as mock_qdrant:
             mock_client = MagicMock()
             mock_client.search = AsyncMock(
                 return_value={

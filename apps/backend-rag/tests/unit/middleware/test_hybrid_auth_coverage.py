@@ -2,7 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -27,9 +27,10 @@ def _load_module(
         dev_origins="",
         redis_url='redis://localhost:6379'
     )
-    monkeypatch.setitem(
-        sys.modules, "app.core.config", types.SimpleNamespace(settings=settings_stub, redis_url='redis://localhost:6379')
-    )
+    config_mock = types.ModuleType("backend.app.core.config")
+    config_mock.settings = settings_stub
+    config_mock.Settings = MagicMock()
+    monkeypatch.setitem(sys.modules, "backend.app.core.config", config_mock)
 
     class _APIKeyAuth:
         def __init__(self):
@@ -44,7 +45,7 @@ def _load_module(
             return {"total": 1}
 
     monkeypatch.setitem(
-        sys.modules, "app.services.api_key_auth", types.SimpleNamespace(APIKeyAuth=_APIKeyAuth, redis_url='redis://localhost:6379')
+        sys.modules, "backend.app.services.api_key_auth", types.SimpleNamespace(APIKeyAuth=_APIKeyAuth, redis_url='redis://localhost:6379')
     )
 
     cookie_state = {"token": None, "csrf_valid": True, "csrf_exempt": False}
@@ -60,7 +61,7 @@ def _load_module(
 
     monkeypatch.setitem(
         sys.modules,
-        "app.utils.cookie_auth",
+        "backend.app.utils.cookie_auth",
         types.SimpleNamespace(
             get_jwt_from_cookie=get_jwt_from_cookie,
             is_csrf_exempt=is_csrf_exempt,

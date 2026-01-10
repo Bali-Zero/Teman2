@@ -61,9 +61,9 @@ class TestMultiServiceOrchestrationIntegration:
 
             # Mock services
             with (
-                patch("services.search_service.SearchService") as mock_search,
-                patch("services.rag.agentic.create_agentic_rag") as mock_rag,
-                patch("services.memory_service_postgres.MemoryServicePostgres") as mock_memory,
+                patch("backend.services.search_service.SearchService") as mock_search,
+                patch("backend.services.rag.agentic.create_agentic_rag") as mock_rag,
+                patch("backend.services.memory_service_postgres.MemoryServicePostgres") as mock_memory,
             ):
                 # Setup search service
                 mock_search_instance = MagicMock()
@@ -237,7 +237,7 @@ class TestMultiServiceOrchestrationIntegration:
             assert len(search_results) > 0
 
             # Step 3: Use in RAG (mocked)
-            with patch("services.rag.agentic.create_agentic_rag") as mock_rag:
+            with patch("backend.services.rag.agentic.create_agentic_rag") as mock_rag:
                 mock_rag_instance = MagicMock()
                 mock_rag_instance.process_query = AsyncMock(
                     return_value={

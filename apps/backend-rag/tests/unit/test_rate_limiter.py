@@ -21,7 +21,7 @@ class TestRateLimiter:
 
     def test_rate_limiter_init(self):
         """Test RateLimiter initialization"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.redis_url = None  # Use in-memory fallback
 
             from backend.middleware.rate_limiter import RateLimiter
@@ -31,7 +31,7 @@ class TestRateLimiter:
 
     def test_is_allowed_under_limit(self):
         """Test rate limit check when under limit"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.redis_url = None  # Use in-memory fallback
 
             from backend.middleware.rate_limiter import RateLimiter
@@ -43,7 +43,7 @@ class TestRateLimiter:
 
     def test_is_allowed_over_limit(self):
         """Test rate limit check when over limit"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.redis_url = None  # Use in-memory fallback
 
             from backend.middleware.rate_limiter import RateLimiter
@@ -58,7 +58,7 @@ class TestRateLimiter:
 
     def test_is_allowed_at_limit(self):
         """Test rate limit check at exact limit"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.redis_url = None  # Use in-memory fallback
 
             from backend.middleware.rate_limiter import RateLimiter
@@ -74,7 +74,7 @@ class TestRateLimiter:
 
     def test_is_allowed_redis_error(self):
         """Test rate limit check when Redis fails"""
-        with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.app.core.config.settings") as mock_settings:
             mock_settings.redis_url = "redis://localhost:6379"
 
             # Mock redis import to raise exception

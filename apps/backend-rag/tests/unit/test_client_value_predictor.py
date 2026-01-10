@@ -15,7 +15,7 @@ class TestClientValuePredictorSimple:
     def test_client_value_predictor_import(self):
         """Test that client value predictor can be imported"""
         try:
-            from agents.agents.client_value_predictor import ZANTARA_AVAILABLE, ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ZANTARA_AVAILABLE, ClientValuePredictor
 
             assert ClientValuePredictor is not None
             assert isinstance(ZANTARA_AVAILABLE, bool)
@@ -26,7 +26,7 @@ class TestClientValuePredictorSimple:
     def test_constants_import(self):
         """Test that constants can be imported"""
         try:
-            from agents.agents.client_value_predictor import (
+            from backend.agents.agents.client_value_predictor import (
                 HIGH_VALUE_INACTIVE_DAYS,
                 VIP_INACTIVE_DAYS,
             )
@@ -42,7 +42,7 @@ class TestClientValuePredictorSimple:
     def test_zantara_availability_check(self):
         """Test ZANTARA_AVAILABLE constant and import handling"""
         try:
-            from agents.agents.client_value_predictor import ZANTARA_AVAILABLE, ZantaraAIClient
+            from backend.agents.agents.client_value_predictor import ZANTARA_AVAILABLE, ZantaraAIClient
 
             # Should be either True with client available or False with None
             if ZANTARA_AVAILABLE:
@@ -56,7 +56,7 @@ class TestClientValuePredictorSimple:
     def test_class_structure(self):
         """Test that class has expected structure"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             # Check class exists and is callable
             assert callable(ClientValuePredictor)
@@ -81,22 +81,22 @@ class TestClientValuePredictorSimple:
     def test_initialization_with_db_pool(self):
         """Test initialization with provided db_pool"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
                 patch(
-                    "agents.agents.client_value_predictor.ClientSegmentationService"
+                    "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
                 patch(
-                    "agents.agents.client_value_predictor.NurturingMessageService"
+                    "backend.agents.agents.client_value_predictor.NurturingMessageService"
                 ) as mock_message,
                 patch(
-                    "agents.agents.client_value_predictor.WhatsAppNotificationService"
+                    "backend.agents.agents.client_value_predictor.WhatsAppNotificationService"
                 ) as mock_whatsapp,
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -124,9 +124,9 @@ class TestClientValuePredictorSimple:
     def test_initialization_no_db_pool_error(self):
         """Test initialization without db_pool raises error"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
-            with patch("app.main_cloud.app", create=True) as mock_app:
+            with patch("backend.app.main_cloud.app", create=True) as mock_app:
                 mock_app.state = MagicMock()
                 mock_app.state.db_pool = None
 
@@ -137,25 +137,25 @@ class TestClientValuePredictorSimple:
             pytest.skip(f"Cannot test initialization no db pool error: {e}")
 
     def test_initialization_from_app_state(self):
-        """Test initialization gets db_pool from app.state"""
+        """Test initialization gets db_pool from backend.app.state"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("app.main_cloud.app", create=True) as mock_app,
-                patch("agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch("backend.app.main_cloud.app", create=True) as mock_app,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
                 patch(
-                    "agents.agents.client_value_predictor.ClientSegmentationService"
+                    "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
                 patch(
-                    "agents.agents.client_value_predictor.NurturingMessageService"
+                    "backend.agents.agents.client_value_predictor.NurturingMessageService"
                 ) as mock_message,
                 patch(
-                    "agents.agents.client_value_predictor.WhatsAppNotificationService"
+                    "backend.agents.agents.client_value_predictor.WhatsAppNotificationService"
                 ) as mock_whatsapp,
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_app.state = MagicMock()
                 mock_app.state.db_pool = mock_db_pool
@@ -175,16 +175,16 @@ class TestClientValuePredictorSimple:
     async def test_get_db_pool(self):
         """Test _get_db_pool method"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -202,18 +202,18 @@ class TestClientValuePredictorSimple:
     async def test_calculate_client_score_success(self):
         """Test calculate_client_score with successful scoring"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
                 patch(
-                    "agents.agents.client_value_predictor.ClientSegmentationService"
+                    "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -251,16 +251,16 @@ class TestClientValuePredictorSimple:
     async def test_calculate_client_score_not_found(self):
         """Test calculate_client_score when client not found"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -283,18 +283,18 @@ class TestClientValuePredictorSimple:
     async def test_calculate_scores_batch(self):
         """Test calculate_scores_batch method"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService") as mock_scoring,
                 patch(
-                    "agents.agents.client_value_predictor.ClientSegmentationService"
+                    "backend.agents.agents.client_value_predictor.ClientSegmentationService"
                 ) as mock_segmentation,
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -333,18 +333,18 @@ class TestClientValuePredictorSimple:
     async def test_generate_nurturing_message(self):
         """Test generate_nurturing_message method"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
                 patch(
-                    "agents.agents.client_value_predictor.NurturingMessageService"
+                    "backend.agents.agents.client_value_predictor.NurturingMessageService"
                 ) as mock_message,
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -368,18 +368,18 @@ class TestClientValuePredictorSimple:
     async def test_send_whatsapp_message(self):
         """Test send_whatsapp_message method"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
                 patch(
-                    "agents.agents.client_value_predictor.WhatsAppNotificationService"
+                    "backend.agents.agents.client_value_predictor.WhatsAppNotificationService"
                 ) as mock_whatsapp,
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -404,7 +404,7 @@ class TestClientValuePredictorSimple:
     async def test_run_daily_nurturing_no_clients(self):
         """Test run_daily_nurturing with no active clients"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
             mock_conn = MagicMock()
@@ -415,11 +415,11 @@ class TestClientValuePredictorSimple:
             mock_db_pool.acquire.return_value.__aexit__.return_value = None
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -444,7 +444,7 @@ class TestClientValuePredictorSimple:
         try:
             import asyncio
 
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
             mock_conn = MagicMock()
@@ -459,11 +459,11 @@ class TestClientValuePredictorSimple:
             mock_db_pool.acquire.return_value.__aexit__.return_value = None
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -488,7 +488,7 @@ class TestClientValuePredictorSimple:
         """Test run_daily_nurturing with database error"""
         try:
             import asyncpg
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
@@ -496,11 +496,11 @@ class TestClientValuePredictorSimple:
             mock_db_pool.acquire.side_effect = asyncpg.PostgresError("Connection failed")
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -524,7 +524,7 @@ class TestClientValuePredictorSimple:
     async def test_run_daily_nurturing_unexpected_error(self):
         """Test run_daily_nurturing with unexpected error"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             mock_db_pool = MagicMock()
 
@@ -532,11 +532,11 @@ class TestClientValuePredictorSimple:
             mock_db_pool.acquire.side_effect = Exception("Unexpected error")
 
             with (
-                patch("agents.agents.client_value_predictor.ClientScoringService"),
-                patch("agents.agents.client_value_predictor.ClientSegmentationService"),
-                patch("agents.agents.client_value_predictor.NurturingMessageService"),
-                patch("agents.agents.client_value_predictor.WhatsAppNotificationService"),
-                patch("app.core.config.settings") as mock_settings,
+                patch("backend.agents.agents.client_value_predictor.ClientScoringService"),
+                patch("backend.agents.agents.client_value_predictor.ClientSegmentationService"),
+                patch("backend.agents.agents.client_value_predictor.NurturingMessageService"),
+                patch("backend.agents.agents.client_value_predictor.WhatsAppNotificationService"),
+                patch("backend.app.core.config.settings") as mock_settings,
             ):
                 mock_settings.twilio_account_sid = "test_sid"
                 mock_settings.twilio_auth_token = "test_token"
@@ -561,7 +561,7 @@ class TestClientValuePredictorSimple:
         try:
             import inspect
 
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             # Check async methods
             async_methods = [
@@ -583,7 +583,7 @@ class TestClientValuePredictorSimple:
     def test_class_docstring(self):
         """Test that class has proper docstring"""
         try:
-            from agents.agents.client_value_predictor import ClientValuePredictor
+            from backend.agents.agents.client_value_predictor import ClientValuePredictor
 
             assert ClientValuePredictor.__doc__ is not None
             assert len(ClientValuePredictor.__doc__.strip()) > 0
@@ -596,7 +596,7 @@ class TestClientValuePredictorSimple:
         """Test that import errors are handled gracefully"""
         try:
             # This should work regardless of Zantara availability
-            from agents.agents.client_value_predictor import ZANTARA_AVAILABLE
+            from backend.agents.agents.client_value_predictor import ZANTARA_AVAILABLE
 
             # ZANTARA_AVAILABLE should be a boolean
             assert isinstance(ZANTARA_AVAILABLE, bool)

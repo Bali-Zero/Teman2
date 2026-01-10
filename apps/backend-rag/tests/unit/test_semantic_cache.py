@@ -30,14 +30,14 @@ class TestSemanticCache:
     @pytest.fixture
     def cache(self, mock_redis):
         """Create SemanticCache instance"""
-        from services.search.semantic_cache import SemanticCache
+        from backend.services.search.semantic_cache import SemanticCache
 
         return SemanticCache(mock_redis)
 
     @pytest.fixture
     def cache_custom(self, mock_redis):
         """Create SemanticCache with custom parameters"""
-        from services.search.semantic_cache import SemanticCache
+        from backend.services.search.semantic_cache import SemanticCache
 
         return SemanticCache(
             mock_redis, similarity_threshold=0.9, default_ttl=7200, max_cache_size=5000
@@ -352,7 +352,7 @@ class TestGetSemanticCache:
 
     def test_get_semantic_cache_creates_singleton(self):
         """Test singleton creation"""
-        import services.search.semantic_cache as module
+        import backend.services.search.semantic_cache as module
 
         # Reset singleton
         module._semantic_cache = None
@@ -365,7 +365,7 @@ class TestGetSemanticCache:
 
     def test_get_semantic_cache_returns_existing(self):
         """Test returning existing instance"""
-        import services.search.semantic_cache as module
+        import backend.services.search.semantic_cache as module
 
         mock_redis = AsyncMock()
         existing = module.SemanticCache(mock_redis)

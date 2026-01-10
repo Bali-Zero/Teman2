@@ -17,7 +17,7 @@ if str(backend_path) not in sys.path:
 from fastapi import FastAPI
 
 # Import routers (notifications removed)
-from app.routers import (
+from backend.app.routers import (
     agentic_rag,
     crm_clients,
     crm_interactions,
@@ -33,8 +33,8 @@ from app.routers import (
 @pytest.fixture
 def client_agentic():
     """Create FastAPI test client for agentic_rag router"""
-    from app.dependencies import get_current_user
-    from app.routers.agentic_rag import get_orchestrator
+    from backend.app.dependencies import get_current_user
+    from backend.app.routers.agentic_rag import get_orchestrator
 
     app = FastAPI()
     app.include_router(agentic_rag.router)
@@ -97,7 +97,7 @@ def client_intel():
 @pytest.fixture
 def client_oracle():
     """Create FastAPI test client for oracle_universal router"""
-    from app.dependencies import get_current_user
+    from backend.app.dependencies import get_current_user
 
     app = FastAPI()
     app.include_router(oracle_universal.router)
@@ -153,7 +153,7 @@ def test_agentic_rag_invalid_enable_vision_type(client_agentic):
 # ============================================================================
 
 
-@patch("app.routers.crm_clients.get_database_pool")
+@patch("backend.app.routers.crm_clients.get_database_pool")
 def test_crm_clients_create_missing_full_name(mock_db_pool, client_crm_clients):
     """Test CRM client creation with missing required full_name"""
     mock_pool = MagicMock()
@@ -173,7 +173,7 @@ def test_crm_clients_create_missing_full_name(mock_db_pool, client_crm_clients):
         assert any("full_name" in str(err).lower() for err in errors)
 
 
-@patch("app.routers.crm_clients.get_database_pool")
+@patch("backend.app.routers.crm_clients.get_database_pool")
 def test_crm_clients_create_invalid_email_format(mock_db_pool, client_crm_clients):
     """Test CRM client creation with invalid email format"""
     mock_pool = MagicMock()
@@ -199,7 +199,7 @@ def test_crm_clients_create_invalid_email_format(mock_db_pool, client_crm_client
 # ============================================================================
 
 
-@patch("app.routers.crm_interactions.get_database_pool")
+@patch("backend.app.routers.crm_interactions.get_database_pool")
 def test_crm_interactions_create_missing_required_fields(mock_db_pool, client_crm_interactions):
     """Test CRM interaction creation with missing required fields"""
     mock_pool = MagicMock()
@@ -221,7 +221,7 @@ def test_crm_interactions_create_missing_required_fields(mock_db_pool, client_cr
         )
 
 
-@patch("app.routers.crm_interactions.get_database_pool")
+@patch("backend.app.routers.crm_interactions.get_database_pool")
 def test_crm_interactions_create_invalid_interaction_type(mock_db_pool, client_crm_interactions):
     """Test CRM interaction creation with invalid interaction_type"""
     mock_pool = MagicMock()
@@ -245,7 +245,7 @@ def test_crm_interactions_create_invalid_interaction_type(mock_db_pool, client_c
         assert any("interaction_type" in str(err).lower() for err in errors)
 
 
-@patch("app.routers.crm_interactions.get_database_pool")
+@patch("backend.app.routers.crm_interactions.get_database_pool")
 def test_crm_interactions_create_empty_team_member(mock_db_pool, client_crm_interactions):
     """Test CRM interaction creation with empty team_member"""
     mock_pool = MagicMock()

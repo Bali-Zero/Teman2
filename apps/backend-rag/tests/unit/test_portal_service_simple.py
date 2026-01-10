@@ -16,7 +16,7 @@ class TestPortalServiceSimple:
     def test_portal_service_import(self):
         """Test that PortalService can be imported"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             assert PortalService is not None
 
@@ -26,7 +26,7 @@ class TestPortalServiceSimple:
     def test_portal_service_init(self):
         """Test PortalService initialization"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             service = PortalService(pool=mock_pool)
@@ -39,7 +39,7 @@ class TestPortalServiceSimple:
     def test_build_visa_dashboard_data(self):
         """Test _build_visa_dashboard_data method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -91,7 +91,7 @@ class TestPortalServiceSimple:
     def test_get_tax_status(self):
         """Test _get_tax_status method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -120,7 +120,7 @@ class TestPortalServiceSimple:
     def test_build_action_items(self):
         """Test _build_action_items method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -168,7 +168,7 @@ class TestPortalServiceSimple:
     def test_status_to_progress(self):
         """Test _status_to_progress method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -198,7 +198,7 @@ class TestPortalServiceSimple:
     def test_get_standard_tax_deadlines(self):
         """Test _get_standard_tax_deadlines method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -229,7 +229,7 @@ class TestPortalServiceSimple:
     def test_format_visa_summary(self):
         """Test _format_visa_summary method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -265,7 +265,7 @@ class TestPortalServiceSimple:
     def test_format_visa_detail(self):
         """Test _format_visa_detail method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -298,7 +298,7 @@ class TestPortalServiceSimple:
     def test_format_visa_case(self):
         """Test _format_visa_case method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -326,7 +326,7 @@ class TestPortalServiceSimple:
     def test_format_case_progress(self):
         """Test _format_case_progress method"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             service = PortalService(pool=MagicMock())
 
@@ -354,7 +354,7 @@ class TestPortalServiceSimple:
     async def test_get_dashboard_with_mock(self):
         """Test get_dashboard method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             # Mock database
             mock_pool = MagicMock()
@@ -404,7 +404,7 @@ class TestPortalServiceSimple:
     async def test_get_dashboard_client_not_found(self):
         """Test get_dashboard with non-existent client"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -425,7 +425,7 @@ class TestPortalServiceSimple:
     async def test_get_visa_status_with_mock(self):
         """Test get_visa_status method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -460,7 +460,7 @@ class TestPortalServiceSimple:
     async def test_get_companies_with_mock(self):
         """Test get_companies method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -497,7 +497,7 @@ class TestPortalServiceSimple:
     async def test_get_company_detail_with_mock(self):
         """Test get_company_detail method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -538,7 +538,7 @@ class TestPortalServiceSimple:
     async def test_get_company_detail_not_accessible(self):
         """Test get_company_detail with inaccessible company"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -559,7 +559,7 @@ class TestPortalServiceSimple:
     async def test_set_primary_company_with_mock(self):
         """Test set_primary_company method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -584,7 +584,7 @@ class TestPortalServiceSimple:
     async def test_set_primary_company_not_found(self):
         """Test set_primary_company with non-existent company"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -608,7 +608,7 @@ class TestPortalServiceSimple:
     async def test_get_tax_overview_with_mock(self):
         """Test get_tax_overview method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -638,7 +638,7 @@ class TestPortalServiceSimple:
     async def test_get_documents_with_mock(self):
         """Test get_documents method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -678,7 +678,7 @@ class TestPortalServiceSimple:
     async def test_get_documents_with_filter(self):
         """Test get_documents with document type filter"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -704,7 +704,7 @@ class TestPortalServiceSimple:
     async def test_upload_document_with_mock(self):
         """Test upload_document method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -747,7 +747,7 @@ class TestPortalServiceSimple:
     async def test_upload_document_with_practice(self):
         """Test upload_document with practice_id validation"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -789,7 +789,7 @@ class TestPortalServiceSimple:
     async def test_upload_document_invalid_practice(self):
         """Test upload_document with invalid practice_id"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -816,7 +816,7 @@ class TestPortalServiceSimple:
     async def test_get_messages_with_mock(self):
         """Test get_messages method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -859,7 +859,7 @@ class TestPortalServiceSimple:
     async def test_send_message_with_mock(self):
         """Test send_message method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -893,7 +893,7 @@ class TestPortalServiceSimple:
     async def test_mark_message_read_with_mock(self):
         """Test mark_message_read method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -915,7 +915,7 @@ class TestPortalServiceSimple:
     async def test_mark_message_read_not_found(self):
         """Test mark_message_read with non-existent message"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -936,7 +936,7 @@ class TestPortalServiceSimple:
     async def test_get_preferences_with_mock(self):
         """Test get_preferences method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -969,7 +969,7 @@ class TestPortalServiceSimple:
     async def test_get_preferences_default(self):
         """Test get_preferences with no existing preferences"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -994,7 +994,7 @@ class TestPortalServiceSimple:
     async def test_update_preferences_with_mock(self):
         """Test update_preferences method with mocked database"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
@@ -1027,7 +1027,7 @@ class TestPortalServiceSimple:
     async def test_update_preferences_no_changes(self):
         """Test update_preferences with no valid fields"""
         try:
-            from services.portal.portal_service import PortalService
+            from backend.services.portal.portal_service import PortalService
 
             mock_pool = MagicMock()
             mock_conn = AsyncMock()

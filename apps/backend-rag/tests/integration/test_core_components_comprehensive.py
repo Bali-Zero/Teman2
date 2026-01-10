@@ -36,7 +36,7 @@ class TestCacheComponent:
     @pytest.mark.asyncio
     async def test_lru_cache_operations(self):
         """Test LRU cache operations"""
-        from core.cache import LRUCache
+        from backend.core.cache import LRUCache
 
         cache = LRUCache(maxsize=3)
 
@@ -59,8 +59,8 @@ class TestCacheComponent:
     @pytest.mark.asyncio
     async def test_cache_service_operations(self):
         """Test CacheService operations"""
-        with patch("core.cache.Redis") as mock_redis:
-            from core.cache import CacheService
+        with patch("backend.core.cache.Redis") as mock_redis:
+            from backend.core.cache import CacheService
 
             mock_client = MagicMock()
             mock_client.set = AsyncMock(return_value=True)
@@ -86,14 +86,14 @@ class TestEmbeddingsComponent:
     @pytest.mark.asyncio
     async def test_embeddings_generation(self):
         """Test embeddings generation"""
-        with patch("core.embeddings.OpenAI") as mock_openai:
+        with patch("backend.core.embeddings.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_client.embeddings.create = AsyncMock(
                 return_value=MagicMock(data=[MagicMock(embedding=[0.1] * 1536)])
             )
             mock_openai.return_value = mock_client
 
-            from core.embeddings import create_embeddings_generator
+            from backend.core.embeddings import create_embeddings_generator
 
             embedder = create_embeddings_generator()
 
@@ -106,7 +106,7 @@ class TestEmbeddingsComponent:
     @pytest.mark.asyncio
     async def test_batch_embeddings_generation(self):
         """Test batch embeddings generation"""
-        with patch("core.embeddings.OpenAI") as mock_openai:
+        with patch("backend.core.embeddings.OpenAI") as mock_openai:
             mock_client = MagicMock()
             mock_client.embeddings.create = AsyncMock(
                 return_value=MagicMock(
@@ -118,7 +118,7 @@ class TestEmbeddingsComponent:
             )
             mock_openai.return_value = mock_client
 
-            from core.embeddings import create_embeddings_generator
+            from backend.core.embeddings import create_embeddings_generator
 
             embedder = create_embeddings_generator()
 
@@ -136,7 +136,7 @@ class TestChunkerComponent:
     @pytest.mark.asyncio
     async def test_text_chunking(self):
         """Test text chunking"""
-        from core.chunker import TextChunker
+        from backend.core.chunker import TextChunker
 
         chunker = TextChunker(chunk_size=100, chunk_overlap=20)
 
@@ -152,7 +152,7 @@ class TestChunkerComponent:
     @pytest.mark.asyncio
     async def test_chunk_overlap(self):
         """Test chunk overlap"""
-        from core.chunker import TextChunker
+        from backend.core.chunker import TextChunker
 
         chunker = TextChunker(chunk_size=50, chunk_overlap=10)
 
@@ -172,14 +172,14 @@ class TestParsersComponent:
     @pytest.mark.asyncio
     async def test_pdf_parsing(self):
         """Test PDF parsing"""
-        with patch("core.parsers.PyPDF2") as mock_pypdf:
+        with patch("backend.core.parsers.PyPDF2") as mock_pypdf:
             mock_reader = MagicMock()
             mock_page = MagicMock()
             mock_page.extract_text.return_value = "PDF content"
             mock_reader.pages = [mock_page]
             mock_pypdf.PdfReader.return_value = mock_reader
 
-            from core.parsers import extract_text_from_pdf
+            from backend.core.parsers import extract_text_from_pdf
 
             # Parse PDF
             text = extract_text_from_pdf("test.pdf")
@@ -189,7 +189,7 @@ class TestParsersComponent:
     @pytest.mark.asyncio
     async def test_document_parse_error(self):
         """Test document parse error handling"""
-        from core.parsers import DocumentParseError
+        from backend.core.parsers import DocumentParseError
 
         # Test error
         try:
@@ -206,7 +206,7 @@ class TestPluginSystem:
     @pytest.mark.asyncio
     async def test_plugin_registry(self):
         """Test PluginRegistry"""
-        from core.plugins.registry import PluginRegistry
+        from backend.core.plugins.registry import PluginRegistry
 
         registry = PluginRegistry()
 
@@ -215,8 +215,8 @@ class TestPluginSystem:
     @pytest.mark.asyncio
     async def test_plugin_executor(self):
         """Test PluginExecutor"""
-        with patch("core.plugins.executor.Redis") as mock_redis:
-            from core.plugins.executor import PluginExecutor
+        with patch("backend.core.plugins.executor.Redis") as mock_redis:
+            from backend.core.plugins.executor import PluginExecutor
 
             executor = PluginExecutor(redis_client=mock_redis.return_value)
 
@@ -293,8 +293,8 @@ class TestRerankerComponent:
     @pytest.mark.asyncio
     async def test_reranker_initialization(self):
         """Test Reranker initialization"""
-        with patch("core.reranker.CohereClient") as mock_cohere:
-            from core.reranker import Reranker
+        with patch("backend.core.reranker.CohereClient") as mock_cohere:
+            from backend.core.reranker import Reranker
 
             reranker = Reranker(api_key="test_key")
 
@@ -303,7 +303,7 @@ class TestRerankerComponent:
     @pytest.mark.asyncio
     async def test_reranking_operations(self):
         """Test reranking operations"""
-        with patch("core.reranker.CohereClient") as mock_cohere:
+        with patch("backend.core.reranker.CohereClient") as mock_cohere:
             mock_client = MagicMock()
             mock_client.rerank = AsyncMock(
                 return_value={
@@ -315,7 +315,7 @@ class TestRerankerComponent:
             )
             mock_cohere.return_value = mock_client
 
-            from core.reranker import Reranker
+            from backend.core.reranker import Reranker
 
             reranker = Reranker(api_key="test_key")
 

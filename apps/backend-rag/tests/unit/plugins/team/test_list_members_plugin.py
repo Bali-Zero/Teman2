@@ -15,8 +15,8 @@ backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.plugins import PluginCategory
-from plugins.team.list_members_plugin import (
+from backend.core.plugins import PluginCategory
+from backend.plugins.team.list_members_plugin import (
     TeamListInput,
     TeamListOutput,
     TeamMembersListPlugin,

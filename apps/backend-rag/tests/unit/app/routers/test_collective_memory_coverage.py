@@ -38,28 +38,28 @@ def _load_module(monkeypatch, service=None):
 
     monkeypatch.setitem(
         sys.modules,
-        "app.dependencies",
+        "backend.app.dependencies",
         types.SimpleNamespace(get_database_pool=get_database_pool, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
-        "app.routers.auth",
+        "backend.app.routers.auth",
         types.SimpleNamespace(get_current_user=get_current_user, redis_url='redis://localhost:6379'),
     )
     monkeypatch.setitem(
         sys.modules,
-        "services.memory.collective_memory_service",
+        "backend.services.memory.collective_memory_service",
         types.SimpleNamespace(CollectiveMemoryService=service, redis_url='redis://localhost:6379'),
     )
 
     app_pkg = types.ModuleType("app")
     app_pkg.__path__ = [str(backend_path / "app")]
-    routers_pkg = types.ModuleType("app.routers")
+    routers_pkg = types.ModuleType("backend.app.routers")
     routers_pkg.__path__ = [str(backend_path / "app" / "routers")]
     monkeypatch.setitem(sys.modules, "app", app_pkg)
-    monkeypatch.setitem(sys.modules, "app.routers", routers_pkg)
+    monkeypatch.setitem(sys.modules, "backend.app.routers", routers_pkg)
 
-    module_name = "app.routers.collective_memory"
+    module_name = "backend.app.routers.collective_memory"
     if module_name in sys.modules:
         del sys.modules[module_name]
 

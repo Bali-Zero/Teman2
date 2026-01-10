@@ -24,20 +24,20 @@ class TestVertexAIService:
     @pytest.fixture
     def service(self, mock_vertexai):
         """Create VertexAIService instance"""
-        with patch("services.llm_clients.vertex_ai_service.vertexai") as mock_v:
-            with patch("services.llm_clients.vertex_ai_service.GenerativeModel") as mock_model:
-                with patch("services.llm_clients.vertex_ai_service.GenerationConfig"):
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai") as mock_v:
+            with patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel") as mock_model:
+                with patch("backend.services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_v.init = MagicMock()
                     mock_model.return_value = MagicMock()
 
-                    from services.llm_clients.vertex_ai_service import VertexAIService
+                    from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                     return VertexAIService(project_id="test-project")
 
     def test_init_with_project_id(self, mock_vertexai):
         """Test initialization with project ID"""
-        with patch("services.llm_clients.vertex_ai_service.vertexai"):
-            from services.llm_clients.vertex_ai_service import VertexAIService
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai"):
+            from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
             service = VertexAIService(project_id="my-project", location="europe-west1")
 
@@ -47,9 +47,9 @@ class TestVertexAIService:
 
     def test_init_with_env_project(self, mock_vertexai):
         """Test initialization from environment variable"""
-        with patch("services.llm_clients.vertex_ai_service.vertexai"):
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai"):
             with patch.dict("os.environ", {"GOOGLE_CLOUD_PROJECT": "env-project"}):
-                from services.llm_clients.vertex_ai_service import VertexAIService
+                from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                 service = VertexAIService()
 
@@ -57,9 +57,9 @@ class TestVertexAIService:
 
     def test_init_without_project(self, mock_vertexai):
         """Test initialization without project ID"""
-        with patch("services.llm_clients.vertex_ai_service.vertexai"):
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai"):
             with patch.dict("os.environ", {}, clear=True):
-                from services.llm_clients.vertex_ai_service import VertexAIService
+                from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                 service = VertexAIService(project_id=None)
 
@@ -72,9 +72,9 @@ class TestVertexAIService:
         mock_model = MagicMock()
         mock_model_class.return_value = mock_model
 
-        with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
-            with patch("services.llm_clients.vertex_ai_service.GenerativeModel", mock_model_class):
-                from services.llm_clients.vertex_ai_service import VertexAIService
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
+            with patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel", mock_model_class):
+                from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                 service = VertexAIService(project_id="test-project")
 
@@ -86,9 +86,9 @@ class TestVertexAIService:
 
     def test_ensure_initialized_already_initialized(self, mock_vertexai):
         """Test that initialization is not repeated"""
-        with patch("services.llm_clients.vertex_ai_service.vertexai") as mock_v:
-            with patch("services.llm_clients.vertex_ai_service.GenerativeModel"):
-                from services.llm_clients.vertex_ai_service import VertexAIService
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai") as mock_v:
+            with patch("backend.services.llm_clients.vertex_ai_service.GenerativeModel"):
+                from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                 service = VertexAIService(project_id="test-project")
                 service._initialized = True
@@ -100,8 +100,8 @@ class TestVertexAIService:
 
     def test_ensure_initialized_no_vertexai(self):
         """Test initialization when vertexai not installed"""
-        with patch("services.llm_clients.vertex_ai_service.vertexai", None):
-            from services.llm_clients.vertex_ai_service import VertexAIService
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai", None):
+            from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
             service = VertexAIService(project_id="test")
 
@@ -113,8 +113,8 @@ class TestVertexAIService:
         mock_vertex = MagicMock()
         mock_vertex.init.side_effect = Exception("Auth failed")
 
-        with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
-            from services.llm_clients.vertex_ai_service import VertexAIService
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
+            from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
             service = VertexAIService(project_id="test-project")
 
@@ -142,14 +142,14 @@ class TestVertexAIService:
 
         mock_vertex = MagicMock()
 
-        with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
             with patch(
-                "services.llm_clients.vertex_ai_service.GenerativeModel"
+                "backend.services.llm_clients.vertex_ai_service.GenerativeModel"
             ) as mock_model_class:
-                with patch("services.llm_clients.vertex_ai_service.GenerationConfig"):
+                with patch("backend.services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_model_class.return_value = mock_model
 
-                    from services.llm_clients.vertex_ai_service import VertexAIService
+                    from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                     service = VertexAIService(project_id="test-project")
 
@@ -171,14 +171,14 @@ class TestVertexAIService:
 
         mock_vertex = MagicMock()
 
-        with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
             with patch(
-                "services.llm_clients.vertex_ai_service.GenerativeModel"
+                "backend.services.llm_clients.vertex_ai_service.GenerativeModel"
             ) as mock_model_class:
-                with patch("services.llm_clients.vertex_ai_service.GenerationConfig"):
+                with patch("backend.services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_model_class.return_value = mock_model
 
-                    from services.llm_clients.vertex_ai_service import VertexAIService
+                    from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                     service = VertexAIService(project_id="test-project")
 
@@ -194,14 +194,14 @@ class TestVertexAIService:
 
         mock_vertex = MagicMock()
 
-        with patch("services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
+        with patch("backend.services.llm_clients.vertex_ai_service.vertexai", mock_vertex):
             with patch(
-                "services.llm_clients.vertex_ai_service.GenerativeModel"
+                "backend.services.llm_clients.vertex_ai_service.GenerativeModel"
             ) as mock_model_class:
-                with patch("services.llm_clients.vertex_ai_service.GenerationConfig"):
+                with patch("backend.services.llm_clients.vertex_ai_service.GenerationConfig"):
                     mock_model_class.return_value = mock_model
 
-                    from services.llm_clients.vertex_ai_service import VertexAIService
+                    from backend.services.llm_clients.vertex_ai_service import VertexAIService
 
                     service = VertexAIService(project_id="test-project")
 

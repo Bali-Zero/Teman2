@@ -15,7 +15,7 @@ class TestZohoEmailRouterSimple:
     def test_zoho_models_import(self):
         """Test that zoho email models can be imported"""
         try:
-            from app.routers.zoho_email import (
+            from backend.app.routers.zoho_email import (
                 AttachmentResponse,
                 ConnectionStatusResponse,
                 EmailSummaryResponse,
@@ -41,7 +41,7 @@ class TestZohoEmailRouterSimple:
     def test_send_email_request_model(self):
         """Test SendEmailRequest model validation"""
         try:
-            from app.routers.zoho_email import SendEmailRequest
+            from backend.app.routers.zoho_email import SendEmailRequest
 
             # Test valid request with minimum data
             request = SendEmailRequest(to=["test@example.com"], subject="Test Subject")
@@ -93,7 +93,7 @@ class TestZohoEmailRouterSimple:
     def test_send_email_request_validation(self):
         """Test SendEmailRequest field validation"""
         try:
-            from app.routers.zoho_email import SendEmailRequest
+            from backend.app.routers.zoho_email import SendEmailRequest
 
             # Test empty to list
             with pytest.raises(Exception):  # Should raise validation error
@@ -113,7 +113,7 @@ class TestZohoEmailRouterSimple:
     def test_reply_email_request_model(self):
         """Test ReplyEmailRequest model"""
         try:
-            from app.routers.zoho_email import ReplyEmailRequest
+            from backend.app.routers.zoho_email import ReplyEmailRequest
 
             # Test with minimum data
             request = ReplyEmailRequest(content="Reply content")
@@ -131,7 +131,7 @@ class TestZohoEmailRouterSimple:
     def test_forward_email_request_model(self):
         """Test ForwardEmailRequest model"""
         try:
-            from app.routers.zoho_email import ForwardEmailRequest
+            from backend.app.routers.zoho_email import ForwardEmailRequest
 
             # Test with minimum data
             request = ForwardEmailRequest(to=["forward@example.com"])
@@ -151,7 +151,7 @@ class TestZohoEmailRouterSimple:
     def test_mark_read_request_model(self):
         """Test MarkReadRequest model"""
         try:
-            from app.routers.zoho_email import MarkReadRequest
+            from backend.app.routers.zoho_email import MarkReadRequest
 
             # Test marking as read
             request_read = MarkReadRequest(message_ids=["msg1", "msg2"], is_read=True)
@@ -169,7 +169,7 @@ class TestZohoEmailRouterSimple:
     def test_response_models(self):
         """Test response models"""
         try:
-            from app.routers.zoho_email import (
+            from backend.app.routers.zoho_email import (
                 AttachmentResponse,
                 ConnectionStatusResponse,
                 EmailSummaryResponse,
@@ -243,7 +243,7 @@ class TestZohoEmailRouterSimple:
     def test_router_structure(self):
         """Test that router has expected structure"""
         try:
-            from app.routers.zoho_email import router
+            from backend.app.routers.zoho_email import router
 
             # Test router configuration
             assert router.prefix == "/api/integrations/zoho"
@@ -282,7 +282,7 @@ class TestZohoEmailRouterSimple:
         try:
             from fastapi import HTTPException
 
-            from app.routers.zoho_email import _get_user_id
+            from backend.app.routers.zoho_email import _get_user_id
 
             # Test _get_user_id with valid user
             user_valid = {"user_id": "123"}
@@ -311,7 +311,7 @@ class TestZohoEmailRouterSimple:
     def test_get_auth_url_endpoint_exists(self):
         """Test that get auth URL endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import get_auth_url
+            from backend.app.routers.zoho_email import get_auth_url
 
             assert callable(get_auth_url)
 
@@ -326,7 +326,7 @@ class TestZohoEmailRouterSimple:
     def test_oauth_callback_endpoint_exists(self):
         """Test that OAuth callback endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import oauth_callback
+            from backend.app.routers.zoho_email import oauth_callback
 
             assert callable(oauth_callback)
 
@@ -341,7 +341,7 @@ class TestZohoEmailRouterSimple:
     def test_get_connection_status_endpoint_exists(self):
         """Test that get connection status endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import get_connection_status
+            from backend.app.routers.zoho_email import get_connection_status
 
             assert callable(get_connection_status)
 
@@ -356,7 +356,7 @@ class TestZohoEmailRouterSimple:
     def test_disconnect_account_endpoint_exists(self):
         """Test that disconnect account endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import disconnect_account
+            from backend.app.routers.zoho_email import disconnect_account
 
             assert callable(disconnect_account)
 
@@ -371,7 +371,7 @@ class TestZohoEmailRouterSimple:
     def test_list_folders_endpoint_exists(self):
         """Test that list folders endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import list_folders
+            from backend.app.routers.zoho_email import list_folders
 
             assert callable(list_folders)
 
@@ -386,7 +386,7 @@ class TestZohoEmailRouterSimple:
     def test_list_emails_endpoint_exists(self):
         """Test that list emails endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import list_emails
+            from backend.app.routers.zoho_email import list_emails
 
             assert callable(list_emails)
 
@@ -401,7 +401,7 @@ class TestZohoEmailRouterSimple:
     def test_get_email_endpoint_exists(self):
         """Test that get email endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import get_email
+            from backend.app.routers.zoho_email import get_email
 
             assert callable(get_email)
 
@@ -416,7 +416,7 @@ class TestZohoEmailRouterSimple:
     def test_send_email_endpoint_exists(self):
         """Test that send email endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import send_email
+            from backend.app.routers.zoho_email import send_email
 
             assert callable(send_email)
 
@@ -431,7 +431,7 @@ class TestZohoEmailRouterSimple:
     def test_search_emails_endpoint_exists(self):
         """Test that search emails endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import search_emails
+            from backend.app.routers.zoho_email import search_emails
 
             assert callable(search_emails)
 
@@ -446,7 +446,7 @@ class TestZohoEmailRouterSimple:
     def test_reply_email_endpoint_exists(self):
         """Test that reply email endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import reply_email
+            from backend.app.routers.zoho_email import reply_email
 
             assert callable(reply_email)
 
@@ -461,7 +461,7 @@ class TestZohoEmailRouterSimple:
     def test_forward_email_endpoint_exists(self):
         """Test that forward email endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import forward_email
+            from backend.app.routers.zoho_email import forward_email
 
             assert callable(forward_email)
 
@@ -476,7 +476,7 @@ class TestZohoEmailRouterSimple:
     def test_mark_emails_read_endpoint_exists(self):
         """Test that mark emails read endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import mark_emails_read
+            from backend.app.routers.zoho_email import mark_emails_read
 
             assert callable(mark_emails_read)
 
@@ -491,7 +491,7 @@ class TestZohoEmailRouterSimple:
     def test_toggle_flag_endpoint_exists(self):
         """Test that toggle flag endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import toggle_flag
+            from backend.app.routers.zoho_email import toggle_flag
 
             assert callable(toggle_flag)
 
@@ -506,7 +506,7 @@ class TestZohoEmailRouterSimple:
     def test_delete_emails_endpoint_exists(self):
         """Test that delete emails endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import delete_emails
+            from backend.app.routers.zoho_email import delete_emails
 
             assert callable(delete_emails)
 
@@ -521,7 +521,7 @@ class TestZohoEmailRouterSimple:
     def test_download_attachment_endpoint_exists(self):
         """Test that download attachment endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import download_attachment
+            from backend.app.routers.zoho_email import download_attachment
 
             assert callable(download_attachment)
 
@@ -536,7 +536,7 @@ class TestZohoEmailRouterSimple:
     def test_get_unread_count_endpoint_exists(self):
         """Test that get unread count endpoint exists and is callable"""
         try:
-            from app.routers.zoho_email import get_unread_count
+            from backend.app.routers.zoho_email import get_unread_count
 
             assert callable(get_unread_count)
 
@@ -560,9 +560,9 @@ class TestZohoEmailRouterSimple:
             mock_oauth_service.get_authorization_url.return_value = "https://auth.zoho.com"
 
             with patch(
-                "app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+                "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
             ):
-                from app.routers.zoho_email import get_auth_url
+                from backend.app.routers.zoho_email import get_auth_url
 
                 response = await get_auth_url(current_user={"user_id": "123"}, db_pool=mock_pool)
 
@@ -585,14 +585,14 @@ class TestZohoEmailRouterSimple:
             mock_oauth_service = AsyncMock()
 
             with (
-                patch("app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service),
-                patch("app.routers.zoho_email.settings") as mock_settings,
+                patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service),
+                patch("backend.app.routers.zoho_email.settings") as mock_settings,
             ):
                 mock_settings.frontend_url = "https://example.com"
 
                 from fastapi.responses import RedirectResponse
 
-                from app.routers.zoho_email import oauth_callback
+                from backend.app.routers.zoho_email import oauth_callback
 
                 response = await oauth_callback(
                     code="auth_code", state="123:state_token", error=None, db_pool=mock_pool
@@ -621,9 +621,9 @@ class TestZohoEmailRouterSimple:
             }
 
             with patch(
-                "app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+                "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
             ):
-                from app.routers.zoho_email import get_connection_status
+                from backend.app.routers.zoho_email import get_connection_status
 
                 response = await get_connection_status(
                     current_user={"user_id": "123"}, db_pool=mock_pool
@@ -648,9 +648,9 @@ class TestZohoEmailRouterSimple:
             mock_oauth_service = AsyncMock()
 
             with patch(
-                "app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+                "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
             ):
-                from app.routers.zoho_email import disconnect_account
+                from backend.app.routers.zoho_email import disconnect_account
 
                 response = await disconnect_account(
                     current_user={"user_id": "123"}, db_pool=mock_pool
@@ -683,9 +683,9 @@ class TestZohoEmailRouterSimple:
             ]
 
             with patch(
-                "app.routers.zoho_email._get_email_service", return_value=mock_email_service
+                "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
             ):
-                from app.routers.zoho_email import list_folders
+                from backend.app.routers.zoho_email import list_folders
 
                 response = await list_folders(current_user={"user_id": "123"}, db_pool=mock_pool)
 
@@ -708,9 +708,9 @@ class TestZohoEmailRouterSimple:
             mock_email_service.send_email.return_value = {"success": True, "message_id": "msg123"}
 
             with patch(
-                "app.routers.zoho_email._get_email_service", return_value=mock_email_service
+                "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
             ):
-                from app.routers.zoho_email import SendEmailRequest, send_email
+                from backend.app.routers.zoho_email import SendEmailRequest, send_email
 
                 request = SendEmailRequest(
                     to=["test@example.com"],
@@ -740,9 +740,9 @@ class TestZohoEmailRouterSimple:
             mock_email_service.get_unread_count.return_value = 10
 
             with patch(
-                "app.routers.zoho_email._get_email_service", return_value=mock_email_service
+                "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
             ):
-                from app.routers.zoho_email import get_unread_count
+                from backend.app.routers.zoho_email import get_unread_count
 
                 response = await get_unread_count(
                     current_user={"user_id": "123"}, db_pool=mock_pool
@@ -756,7 +756,7 @@ class TestZohoEmailRouterSimple:
     def test_model_edge_cases(self):
         """Test model edge cases and boundary conditions"""
         try:
-            from app.routers.zoho_email import (
+            from backend.app.routers.zoho_email import (
                 ConnectionStatusResponse,
                 ForwardEmailRequest,
                 MarkReadRequest,

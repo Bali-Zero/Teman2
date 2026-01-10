@@ -37,7 +37,7 @@ class TestMemoryVectorEndpoints:
     def test_init_memory_collection(self, authenticated_client):
         """Test POST /api/memory/init"""
         with patch(
-            "app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.initialize_memory_vector_db", new_callable=AsyncMock
         ) as mock_init:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(
@@ -52,7 +52,7 @@ class TestMemoryVectorEndpoints:
 
     def test_generate_embedding(self, authenticated_client):
         """Test POST /api/memory/embed"""
-        with patch("app.routers.memory_vector.embedder") as mock_embedder:
+        with patch("backend.app.routers.memory_vector.embedder") as mock_embedder:
             mock_embedder.generate_single_embedding.return_value = [0.1] * 1536
             mock_embedder.dimensions = 1536
             mock_embedder.model = "text-embedding-3-small"
@@ -70,7 +70,7 @@ class TestMemoryVectorEndpoints:
     def test_store_memory_vector(self, authenticated_client):
         """Test POST /api/memory/store"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
         ) as mock_get_db:
             mock_db = MagicMock()
             mock_db.upsert_documents = AsyncMock(return_value=None)
@@ -91,7 +91,7 @@ class TestMemoryVectorEndpoints:
     def test_search_memories(self, authenticated_client):
         """Test POST /api/memory/search"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
         ) as mock_get_db:
             mock_db = MagicMock()
             mock_db.search = AsyncMock(
@@ -115,7 +115,7 @@ class TestMemoryVectorEndpoints:
     def test_find_similar_memories(self, authenticated_client):
         """Test POST /api/memory/similar"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
         ) as mock_get_db:
             mock_db = MagicMock()
             mock_db.get = AsyncMock(return_value={"embeddings": [[0.1] * 1536]})
@@ -138,7 +138,7 @@ class TestMemoryVectorEndpoints:
     def test_delete_memory(self, authenticated_client):
         """Test DELETE /api/memory/{memory_id}"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
         ) as mock_get_db:
             mock_db = MagicMock()
             mock_db.delete = AsyncMock(return_value=None)
@@ -151,7 +151,7 @@ class TestMemoryVectorEndpoints:
     def test_get_memory_stats(self, authenticated_client):
         """Test GET /api/memory/stats"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
         ) as mock_get_db:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(
@@ -169,7 +169,7 @@ class TestMemoryVectorEndpoints:
     def test_memory_health_check(self, authenticated_client):
         """Test GET /api/memory/health"""
         with patch(
-            "app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
+            "backend.app.routers.memory_vector.get_memory_vector_db", new_callable=AsyncMock
         ) as mock_get_db:
             mock_db = MagicMock()
             mock_db.get_collection_stats = AsyncMock(

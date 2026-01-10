@@ -25,7 +25,7 @@ class TestMetricsIntegration:
     @pytest.fixture
     def metrics_collector(self):
         """Create MetricsCollector instance"""
-        from app.metrics import MetricsCollector
+        from backend.app.metrics import MetricsCollector
 
         return MetricsCollector()
 
@@ -44,7 +44,7 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_measure_redis_latency_success(self, metrics_collector):
         """Test measuring Redis latency successfully"""
-        with patch("app.metrics.get_cache_service") as mock_get_cache:
+        with patch("backend.app.metrics.get_cache_service") as mock_get_cache:
             mock_cache = MagicMock()
             mock_cache.set = MagicMock()
             mock_cache.get = MagicMock(return_value="pong")
@@ -58,7 +58,7 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_measure_redis_latency_failure(self, metrics_collector):
         """Test measuring Redis latency when cache fails"""
-        with patch("app.metrics.get_cache_service", side_effect=Exception("Cache error")):
+        with patch("backend.app.metrics.get_cache_service", side_effect=Exception("Cache error")):
             latency = await metrics_collector.measure_redis_latency()
 
             assert latency == -1
@@ -123,7 +123,7 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_get_active_sessions_count(self):
         """Test getting active sessions count"""
-        from app.metrics import get_active_sessions_count
+        from backend.app.metrics import get_active_sessions_count
 
         count = await get_active_sessions_count()
         assert isinstance(count, int)
@@ -132,9 +132,9 @@ class TestMetricsIntegration:
     @pytest.mark.asyncio
     async def test_collect_all_metrics(self):
         """Test collecting all metrics"""
-        from app.metrics import collect_all_metrics
+        from backend.app.metrics import collect_all_metrics
 
-        with patch("app.metrics.metrics_collector.measure_redis_latency", new_callable=AsyncMock):
+        with patch("backend.app.metrics.metrics_collector.measure_redis_latency", new_callable=AsyncMock):
             metrics_output = await collect_all_metrics()
 
             assert metrics_output is not None
@@ -144,7 +144,7 @@ class TestMetricsIntegration:
         """Test getting metrics middleware"""
         from unittest.mock import AsyncMock
 
-        from app.metrics import get_metrics_middleware
+        from backend.app.metrics import get_metrics_middleware
 
         middleware = get_metrics_middleware()
         assert middleware is not None
@@ -165,7 +165,7 @@ class TestMetricsIntegration:
 
     def test_global_metrics_collector(self):
         """Test global metrics collector instance"""
-        from app.metrics import metrics_collector
+        from backend.app.metrics import metrics_collector
 
         assert metrics_collector is not None
         assert hasattr(metrics_collector, "update_session_count")

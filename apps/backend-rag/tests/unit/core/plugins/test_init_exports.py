@@ -1,7 +1,7 @@
 import importlib
 
-import core.plugins.plugin as plugin_module
-from core.plugins import (
+import backend.core.plugins.plugin as plugin_module
+from backend.core.plugins import (
     Plugin,
     PluginCategory,
     PluginExecutor,
@@ -12,11 +12,11 @@ from core.plugins import (
     executor,
     registry,
 )
-from core.plugins.executor import PluginExecutor as ExecutorClass
+from backend.core.plugins.executor import PluginExecutor as ExecutorClass
 
 
 def test_plugins_init_exports():
-    import core.plugins as plugins
+    import backend.core.plugins as plugins
 
     expected = {
         "Plugin",
@@ -36,7 +36,7 @@ def test_plugins_init_exports():
 
 
 def test_plugins_init_reexports_identity():
-    registry_module = importlib.import_module("core.plugins.registry")
+    registry_module = importlib.import_module("backend.core.plugins.registry")
     assert Plugin is plugin_module.Plugin
     assert PluginMetadata is plugin_module.PluginMetadata
     assert PluginInput is plugin_module.PluginInput

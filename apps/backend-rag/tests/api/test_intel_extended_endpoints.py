@@ -30,7 +30,7 @@ class TestIntelExtended:
 
     def test_search_intel_with_filters(self, test_client):
         """Test search_intel with metadata filters"""
-        with patch("app.routers.intel.get_search_service") as mock_search:
+        with patch("backend.app.routers.intel.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(
                 return_value={
@@ -53,7 +53,7 @@ class TestIntelExtended:
 
     def test_store_intel_with_tags(self, test_client):
         """Test store_intel with tags"""
-        with patch("app.routers.intel.get_search_service") as mock_search:
+        with patch("backend.app.routers.intel.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.collections = {"intel_collection": MagicMock()}
             mock_service.collections["intel_collection"].upsert_documents = AsyncMock()
@@ -72,7 +72,7 @@ class TestIntelExtended:
 
     def test_get_critical_items_empty(self, test_client):
         """Test get_critical_items with no results"""
-        with patch("app.routers.intel.get_search_service") as mock_search:
+        with patch("backend.app.routers.intel.get_search_service") as mock_search:
             mock_service = MagicMock()
             mock_service.search = AsyncMock(return_value={"results": [], "total_found": 0})
             mock_search.return_value = mock_service

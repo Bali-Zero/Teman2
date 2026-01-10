@@ -14,14 +14,14 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from core.cache import CacheService, cached, get_cache_service
+from backend.core.cache import CacheService, cached, get_cache_service
 
 # ============================================================================
 # Tests for Instance Isolation
 # ============================================================================
 
 
-@patch("app.core.config.settings.redis_url", None)
+@patch("backend.app.core.config.settings.redis_url", None)
 def test_cache_service_instances_are_isolated():
     """Test that different CacheService instances have isolated memory caches"""
     cache1 = CacheService()
@@ -76,7 +76,7 @@ def test_cache_service_memory_cache_is_instance_level():
 
 
 @pytest.mark.asyncio
-@patch("app.core.config.settings.redis_url", None)
+@patch("backend.app.core.config.settings.redis_url", None)
 async def test_cached_decorator_with_di():
     """Test @cached decorator works with dependency injection"""
     # Create isolated cache for testing
@@ -107,7 +107,7 @@ async def test_cached_decorator_with_di():
 
 
 @pytest.mark.asyncio
-@patch("app.core.config.settings.redis_url", None)
+@patch("backend.app.core.config.settings.redis_url", None)
 async def test_cached_decorator_without_di_uses_singleton():
     """Test @cached decorator without cache_service uses singleton"""
     call_count = 0
@@ -130,7 +130,7 @@ async def test_cached_decorator_without_di_uses_singleton():
 
 
 @pytest.mark.asyncio
-@patch("app.core.config.settings.redis_url", None)
+@patch("backend.app.core.config.settings.redis_url", None)
 async def test_cached_decorator_isolation():
     """Test that different cache instances don't share cached values"""
     cache1 = CacheService()
@@ -196,7 +196,7 @@ def test_cache_service_can_be_mocked():
 # ============================================================================
 
 
-@patch("app.core.config.settings.redis_url", None)
+@patch("backend.app.core.config.settings.redis_url", None)
 def test_memory_cache_cleanup():
     """Test that memory cache cleanup works per instance"""
     cache = CacheService()
@@ -216,7 +216,7 @@ def test_memory_cache_cleanup():
     assert cache.get("key2") == "value2"
 
 
-@patch("app.core.config.settings.redis_url", None)
+@patch("backend.app.core.config.settings.redis_url", None)
 def test_memory_cache_stats_per_instance():
     """Test that stats are per-instance"""
     cache1 = CacheService()

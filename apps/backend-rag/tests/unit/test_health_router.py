@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.routers.health import get_qdrant_stats, router
+from backend.app.routers.health import get_qdrant_stats, router
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ class TestGetQdrantStats:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_success(self):
         """Test successful Qdrant stats retrieval"""
-        with patch("app.routers.health.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -60,11 +60,11 @@ class TestGetQdrantStats:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_with_api_key(self):
         """Test Qdrant stats with API key"""
-        with patch("app.routers.health.settings") as mock_settings:
+        with patch("backend.app.routers.health.settings") as mock_settings:
             mock_settings.qdrant_api_key = "test-api-key"
             mock_settings.qdrant_url = "http://localhost:6333"
 
-            with patch("app.routers.health.httpx.AsyncClient") as mock_client:
+            with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client:
                 mock_instance = AsyncMock()
                 mock_client.return_value.__aenter__.return_value = mock_instance
                 mock_instance.get = AsyncMock(
@@ -82,7 +82,7 @@ class TestGetQdrantStats:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_failure(self):
         """Test Qdrant stats with connection failure"""
-        with patch("app.routers.health.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.side_effect = Exception("Connection failed")
 
             result = await get_qdrant_stats()
@@ -94,7 +94,7 @@ class TestGetQdrantStats:
     @pytest.mark.asyncio
     async def test_get_qdrant_stats_collection_error(self):
         """Test Qdrant stats with individual collection error"""
-        with patch("app.routers.health.httpx.AsyncClient") as mock_client:
+        with patch("backend.app.routers.health.httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_client.return_value.__aenter__.return_value = mock_instance
 
@@ -144,7 +144,7 @@ class TestHealthCheck:
         mock_search_service.embedder.dimensions = 768
         app.state.search_service = mock_search_service
 
-        with patch("app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
+        with patch("backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock) as mock_stats:
             mock_stats.return_value = {"collections": 5, "total_documents": 1000}
 
             response = client.get("/health")
@@ -172,7 +172,7 @@ class TestHealthCheck:
         )
         app.state.search_service = mock_search_service
 
-        with patch("app.routers.health.get_qdrant_stats", new_callable=AsyncMock):
+        with patch("backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock):
             response = client.get("/health")
 
             assert response.status_code == 200
@@ -181,7 +181,7 @@ class TestHealthCheck:
     def test_health_check_error(self, client, app):
         """Test health check with unexpected error"""
         # Make getattr raise an exception
-        with patch("app.routers.health.getattr", side_effect=Exception("Unexpected error")):
+        with patch("backend.app.routers.health.getattr", side_effect=Exception("Unexpected error")):
             response = client.get("/health")
 
             assert response.status_code == 200
@@ -345,7 +345,7 @@ class TestQdrantMetrics:
 
     def test_qdrant_metrics_success(self, client):
         """Test Qdrant metrics retrieval"""
-        with patch("core.qdrant_db.get_qdrant_metrics") as mock_metrics:
+        with patch("backend.core.qdrant_db.get_qdrant_metrics") as mock_metrics:
             mock_metrics.return_value = {
                 "search_count": 100,
                 "upsert_count": 50,
@@ -361,7 +361,7 @@ class TestQdrantMetrics:
 
     def test_qdrant_metrics_error(self, client):
         """Test Qdrant metrics with error"""
-        with patch("core.qdrant_db.get_qdrant_metrics", side_effect=Exception("Metrics error")):
+        with patch("backend.core.qdrant_db.get_qdrant_metrics", side_effect=Exception("Metrics error")):
             response = client.get("/health/metrics/qdrant")
 
             assert response.status_code == 200

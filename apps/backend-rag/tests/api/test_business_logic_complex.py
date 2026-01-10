@@ -31,7 +31,7 @@ class TestPracticeWorkflow:
 
     def test_practice_lifecycle_complete(self, authenticated_client, test_app):
         """Test complete practice lifecycle"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -84,7 +84,7 @@ class TestPracticeWorkflow:
 
     def test_practice_price_calculations(self, authenticated_client, test_app):
         """Test practice price calculation logic"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -114,7 +114,7 @@ class TestPracticeWorkflow:
 
     def test_practice_expiry_calculations(self, authenticated_client, test_app):
         """Test practice expiry date calculations"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
             mock_get_pool.return_value = mock_pool
@@ -157,7 +157,7 @@ class TestClientJourneyLogic:
 
     def test_client_onboarding_journey(self, authenticated_client, test_app):
         """Test complete client onboarding journey"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -196,7 +196,7 @@ class TestClientJourneyLogic:
 
     def test_client_value_calculation(self, authenticated_client, test_app):
         """Test client value calculation logic"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(
                 return_value={
@@ -235,7 +235,7 @@ class TestComplianceLogic:
 
     def test_compliance_alert_generation(self, authenticated_client):
         """Test compliance alert generation logic"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.track_item = MagicMock(
                 return_value={"alert_id": "alert_123", "severity": "warning"}
             )
@@ -257,7 +257,7 @@ class TestComplianceLogic:
 
     def test_compliance_severity_calculation(self, authenticated_client):
         """Test compliance severity calculation"""
-        with patch("app.routers.agents.compliance_monitor") as mock_monitor:
+        with patch("backend.app.routers.agents.compliance_monitor") as mock_monitor:
             mock_monitor.track_item = MagicMock(
                 return_value={"alert_id": "alert_123", "severity": "critical"}
             )
@@ -319,7 +319,7 @@ class TestWorkflowStateMachine:
 
     def test_practice_status_state_machine(self, authenticated_client, test_app):
         """Test practice status state transitions"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "status": "inquiry"})
             mock_get_pool.return_value = mock_pool
@@ -347,7 +347,7 @@ class TestWorkflowStateMachine:
 
     def test_interaction_workflow(self, authenticated_client, test_app):
         """Test interaction workflow logic"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 

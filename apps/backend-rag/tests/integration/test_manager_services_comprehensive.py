@@ -32,8 +32,8 @@ class TestCollectionManager:
     @pytest.mark.asyncio
     async def test_collection_manager_initialization(self, qdrant_client):
         """Test CollectionManager initialization"""
-        with patch("services.collection_manager.QdrantClient") as mock_qdrant:
-            from services.ingestion.collection_manager import CollectionManager
+        with patch("backend.services.collection_manager.QdrantClient") as mock_qdrant:
+            from backend.services.ingestion.collection_manager import CollectionManager
 
             manager = CollectionManager(qdrant_client=mock_qdrant.return_value)
 
@@ -90,8 +90,8 @@ class TestPromptManager:
     @pytest.mark.asyncio
     async def test_prompt_manager_initialization(self):
         """Test PromptManager initialization"""
-        with patch("llm.prompt_manager.PromptManager") as mock_prompt:
-            from llm.prompt_manager import PromptManager
+        with patch("backend.llm.prompt_manager.PromptManager") as mock_prompt:
+            from backend.llm.prompt_manager import PromptManager
 
             manager = PromptManager()
 
@@ -128,8 +128,8 @@ class TestMigrationManager:
     @pytest.mark.asyncio
     async def test_migration_manager_initialization(self, db_pool):
         """Test MigrationManager initialization"""
-        with patch("db.migration_manager.asyncpg") as mock_asyncpg:
-            from db.migration_manager import MigrationManager
+        with patch("backend.db.migration_manager.asyncpg") as mock_asyncpg:
+            from backend.db.migration_manager import MigrationManager
 
             manager = MigrationManager(db_pool=db_pool)
 
@@ -222,7 +222,7 @@ class TestContextWindowManager:
     @pytest.mark.asyncio
     async def test_context_window_manager_initialization(self):
         """Test AdvancedContextWindowManager initialization"""
-        from services.misc.context_window_manager import AdvancedContextWindowManager
+        from backend.services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -232,7 +232,7 @@ class TestContextWindowManager:
     @pytest.mark.asyncio
     async def test_context_truncation(self):
         """Test context truncation"""
-        from services.misc.context_window_manager import AdvancedContextWindowManager
+        from backend.services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 
@@ -255,7 +255,7 @@ class TestContextWindowManager:
     @pytest.mark.asyncio
     async def test_context_priority_management(self):
         """Test context priority management"""
-        from services.misc.context_window_manager import AdvancedContextWindowManager
+        from backend.services.misc.context_window_manager import AdvancedContextWindowManager
 
         manager = AdvancedContextWindowManager(max_tokens=8192)
 

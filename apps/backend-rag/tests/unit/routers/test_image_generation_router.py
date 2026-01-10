@@ -31,7 +31,7 @@ def mock_httpx_client(mock_response):
     Args:
         mock_response: MagicMock response object to return from client.post()
     """
-    with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+    with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
         # Create mock client with proper async context manager support
         mock_client = MagicMock()
 
@@ -54,7 +54,7 @@ def mock_httpx_client(mock_response):
 @pytest.fixture
 def app():
     """Create FastAPI app with image generation router"""
-    from app.routers.image_generation import router
+    from backend.app.routers.image_generation import router
 
     app = FastAPI()
     app.include_router(router)
@@ -70,8 +70,9 @@ def client(app):
 @pytest.fixture
 def mock_settings_with_imagen_key():
     """Mock settings with google_imagen_api_key configured"""
-    with patch("app.routers.image_generation.settings") as mock_settings:
+    with patch("backend.app.routers.image_generation.settings") as mock_settings:
         mock_settings.google_imagen_api_key = "test-imagen-api-key"
+        mock_settings.google_ai_studio_key = None
         mock_settings.google_api_key = None
         yield mock_settings
 
@@ -79,8 +80,9 @@ def mock_settings_with_imagen_key():
 @pytest.fixture
 def mock_settings_with_google_key():
     """Mock settings with google_api_key configured (fallback)"""
-    with patch("app.routers.image_generation.settings") as mock_settings:
+    with patch("backend.app.routers.image_generation.settings") as mock_settings:
         mock_settings.google_imagen_api_key = None
+        mock_settings.google_ai_studio_key = None
         mock_settings.google_api_key = "test-google-api-key"
         yield mock_settings
 
@@ -88,8 +90,9 @@ def mock_settings_with_google_key():
 @pytest.fixture
 def mock_settings_no_keys():
     """Mock settings with no API keys configured"""
-    with patch("app.routers.image_generation.settings") as mock_settings:
+    with patch("backend.app.routers.image_generation.settings") as mock_settings:
         mock_settings.google_imagen_api_key = None
+        mock_settings.google_ai_studio_key = None
         mock_settings.google_api_key = None
         yield mock_settings
 
@@ -140,7 +143,7 @@ class TestImageGenerationRequest:
 
     def test_request_model_with_defaults(self):
         """Test request model creation with default values"""
-        from app.routers.image_generation import ImageGenerationRequest
+        from backend.app.routers.image_generation import ImageGenerationRequest
 
         request = ImageGenerationRequest(prompt="Test prompt")
 
@@ -152,7 +155,7 @@ class TestImageGenerationRequest:
 
     def test_request_model_with_custom_values(self):
         """Test request model creation with custom values"""
-        from app.routers.image_generation import ImageGenerationRequest
+        from backend.app.routers.image_generation import ImageGenerationRequest
 
         request = ImageGenerationRequest(
             prompt="Custom prompt",
@@ -172,7 +175,7 @@ class TestImageGenerationRequest:
         """Test request model validation with missing prompt"""
         from pydantic import ValidationError
 
-        from app.routers.image_generation import ImageGenerationRequest
+        from backend.app.routers.image_generation import ImageGenerationRequest
 
         with pytest.raises(ValidationError):
             ImageGenerationRequest()
@@ -188,7 +191,7 @@ class TestImageGenerationResponse:
 
     def test_response_model_success(self):
         """Test response model for successful generation"""
-        from app.routers.image_generation import ImageGenerationResponse
+        from backend.app.routers.image_generation import ImageGenerationResponse
 
         response = ImageGenerationResponse(
             images=["data:image/png;base64,abc123"],
@@ -201,7 +204,7 @@ class TestImageGenerationResponse:
 
     def test_response_model_with_error(self):
         """Test response model with error"""
-        from app.routers.image_generation import ImageGenerationResponse
+        from backend.app.routers.image_generation import ImageGenerationResponse
 
         response = ImageGenerationResponse(
             images=[],
@@ -215,7 +218,7 @@ class TestImageGenerationResponse:
 
     def test_response_model_multiple_images(self):
         """Test response model with multiple images"""
-        from app.routers.image_generation import ImageGenerationResponse
+        from backend.app.routers.image_generation import ImageGenerationResponse
 
         images = [
             "data:image/png;base64,img1",
@@ -448,7 +451,7 @@ class TestGenerateImageErrors:
         self, client, valid_image_request, mock_settings_with_imagen_key
     ):
         """Test handling of timeout errors"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -466,7 +469,7 @@ class TestGenerateImageErrors:
         self, client, valid_image_request, mock_settings_with_imagen_key
     ):
         """Test handling of connection errors"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.post = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -484,7 +487,7 @@ class TestGenerateImageErrors:
         self, client, valid_image_request, mock_settings_with_imagen_key
     ):
         """Test handling of generic exceptions"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_client = MagicMock()
             mock_client.post = AsyncMock(side_effect=Exception("Unexpected error"))
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -665,7 +668,7 @@ class TestGenerateImageEdgeCases:
         mock_imagen_success_response,
     ):
         """Test that AsyncClient is configured with correct timeout"""
-        with patch("app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
+        with patch("backend.app.routers.image_generation.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_response = MagicMock()
             mock_response.status_code = 200
@@ -735,7 +738,7 @@ class TestAPIKeyPriority:
         self, client, valid_image_request, mock_imagen_success_response
     ):
         """Test that google_imagen_api_key takes priority over google_api_key"""
-        with patch("app.routers.image_generation.settings") as mock_settings:
+        with patch("backend.app.routers.image_generation.settings") as mock_settings:
             mock_settings.google_imagen_api_key = "imagen-key"
             mock_settings.google_api_key = "google-key"
 

@@ -32,7 +32,7 @@ class TestCRMClientsExtended:
 
     def test_get_client_by_email(self, authenticated_client):
         """Test GET /api/crm/clients/by-email/{email}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "email": "test@example.com"})
@@ -45,7 +45,7 @@ class TestCRMClientsExtended:
 
     def test_get_client_summary(self, authenticated_client):
         """Test GET /api/crm/clients/{client_id}/summary"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "full_name": "Test Client"})
@@ -59,7 +59,7 @@ class TestCRMClientsExtended:
 
     def test_get_clients_stats(self, authenticated_client):
         """Test GET /api/crm/clients/stats"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(
@@ -74,7 +74,7 @@ class TestCRMClientsExtended:
 
     def test_update_client(self, authenticated_client):
         """Test PATCH /api/crm/clients/{client_id}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "full_name": "Updated Client"})
@@ -92,7 +92,7 @@ class TestCRMClientsExtended:
 
     def test_update_client_invalid_field(self, authenticated_client):
         """Test updating client with invalid field"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_pool.acquire = MagicMock(return_value=mock_conn)
@@ -108,7 +108,7 @@ class TestCRMClientsExtended:
 
     def test_update_client_no_fields(self, authenticated_client):
         """Test updating client with no fields"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_pool.acquire = MagicMock(return_value=mock_conn)
@@ -134,7 +134,7 @@ class TestCRMClientsExtended:
 
     def test_delete_client(self, authenticated_client):
         """Test DELETE /api/crm/clients/{client_id}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1})
@@ -151,7 +151,7 @@ class TestCRMClientsExtended:
 
     def test_list_clients_with_filters(self, authenticated_client):
         """Test listing clients with various filters"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetch = AsyncMock(return_value=[])
@@ -172,7 +172,7 @@ class TestCRMClientsExtended:
 
     def test_get_client_by_id(self, authenticated_client):
         """Test GET /api/crm/clients/{client_id}"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(return_value={"id": 1, "full_name": "Test Client"})
@@ -185,7 +185,7 @@ class TestCRMClientsExtended:
 
     def test_get_client_summary_with_data(self, authenticated_client):
         """Test GET /api/crm/clients/{client_id}/summary with full data"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool = MagicMock()
             mock_conn = AsyncMock()
             mock_conn.fetchrow = AsyncMock(

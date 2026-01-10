@@ -23,7 +23,7 @@ class TestCollaboratorServiceIntegration:
 
     def test_collaborator_service_init(self):
         """Test CollaboratorService initialization"""
-        from services.collaborator_service import CollaboratorService
+        from backend.services.collaborator_service import CollaboratorService
 
         service = CollaboratorService()
         assert service is not None
@@ -48,7 +48,7 @@ class TestCollaboratorServiceIntegration:
                 ]
             )
 
-            from services.collaborator_service import CollaboratorService
+            from backend.services.collaborator_service import CollaboratorService
 
             service = CollaboratorService()
             assert len(service.members) > 0
@@ -73,7 +73,7 @@ class TestCollaboratorServiceIntegration:
                 ]
             )
 
-            from services.collaborator_service import CollaboratorService
+            from backend.services.collaborator_service import CollaboratorService
 
             service = CollaboratorService()
             # Test that service can be instantiated

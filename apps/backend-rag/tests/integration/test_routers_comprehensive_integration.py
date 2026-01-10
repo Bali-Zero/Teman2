@@ -28,7 +28,7 @@ class TestRootEndpointsIntegration:
         """Create test client"""
         from fastapi import FastAPI
 
-        from app.routers.root_endpoints import router
+        from backend.app.routers.root_endpoints import router
 
         app = FastAPI()
         app.include_router(router)
@@ -68,7 +68,7 @@ class TestIdentityRouterIntegration:
         """Create test client"""
         from fastapi import FastAPI
 
-        from app.modules.identity.router import router
+        from backend.app.modules.identity.router import router
 
         app = FastAPI()
         app.include_router(router)
@@ -92,7 +92,7 @@ class TestIdentityRouterIntegration:
         """Test successful login"""
         # Create test user
         async with db_pool.acquire() as conn:
-            from app.modules.identity.service import IdentityService
+            from backend.app.modules.identity.service import IdentityService
 
             service = IdentityService()
             pin_hash = service.get_password_hash("1234")
@@ -152,7 +152,7 @@ class TestLegalIngestRouterIntegration:
         """Create test client"""
         from fastapi import FastAPI
 
-        from app.routers.legal_ingest import router
+        from backend.app.routers.legal_ingest import router
 
         app = FastAPI()
         app.include_router(router)
@@ -199,7 +199,7 @@ class TestAgenticRagRouterIntegration:
         """Create test client"""
         from fastapi import FastAPI
 
-        from app.routers.agentic_rag import router
+        from backend.app.routers.agentic_rag import router
 
         app = FastAPI()
         app.include_router(router)
@@ -209,7 +209,7 @@ class TestAgenticRagRouterIntegration:
     async def test_query_agentic_rag(self, client):
         """Test agentic RAG query endpoint"""
         # Mock orchestrator
-        with patch("app.routers.agentic_rag.get_orchestrator") as mock_get:
+        with patch("backend.app.routers.agentic_rag.get_orchestrator") as mock_get:
             mock_orchestrator = MagicMock()
             mock_orchestrator.process_query = AsyncMock(
                 return_value={
@@ -242,7 +242,7 @@ class TestProductivityRouterIntegration:
         """Create test client"""
         from fastapi import FastAPI
 
-        from app.routers.productivity import router
+        from backend.app.routers.productivity import router
 
         app = FastAPI()
         app.include_router(router)
@@ -279,8 +279,8 @@ class TestDependenciesIntegration:
         """Test getting search service when available"""
         from fastapi import Request
 
-        from app.dependencies import get_search_service
-        from services.search.search_service import SearchService
+        from backend.app.dependencies import get_search_service
+        from backend.services.search.search_service import SearchService
 
         # Set up app state
         app.state.search_service = SearchService()
@@ -296,7 +296,7 @@ class TestDependenciesIntegration:
         """Test getting search service when unavailable"""
         from fastapi import Request
 
-        from app.dependencies import get_search_service
+        from backend.app.dependencies import get_search_service
 
         # Don't set up app state
         request = Request({"type": "http", "method": "GET", "path": "/"})
@@ -308,9 +308,9 @@ class TestDependenciesIntegration:
     def test_get_ai_client_available(self, app):
         """Test getting AI client when available"""
         from fastapi import Request
-        from llm.zantara_ai_client import ZantaraAIClient
+        from backend.llm.zantara_ai_client import ZantaraAIClient
 
-        from app.dependencies import get_ai_client
+        from backend.app.dependencies import get_ai_client
 
         app.state.ai_client = ZantaraAIClient()
 
@@ -324,7 +324,7 @@ class TestDependenciesIntegration:
         """Test getting database pool when available"""
         from fastapi import Request
 
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         app.state.db_pool = db_pool
 
@@ -340,8 +340,8 @@ class TestDependenciesIntegration:
         from fastapi.security import HTTPAuthorizationCredentials
         from jose import jwt
 
-        from app.core.config import settings
-        from app.dependencies import get_current_user
+        from backend.app.core.config import settings
+        from backend.app.dependencies import get_current_user
 
         # Create valid token
         token = jwt.encode(
@@ -363,7 +363,7 @@ class TestDependenciesIntegration:
         from fastapi import Request
         from fastapi.security import HTTPAuthorizationCredentials
 
-        from app.dependencies import get_current_user
+        from backend.app.dependencies import get_current_user
 
         request = Request({"type": "http", "method": "GET", "path": "/"})
         request.app = app
@@ -374,10 +374,10 @@ class TestDependenciesIntegration:
 
     def test_get_cache(self, app):
         """Test getting cache service"""
-        from core.cache import CacheService
+        from backend.core.cache import CacheService
         from fastapi import Request
 
-        from app.dependencies import get_cache
+        from backend.app.dependencies import get_cache
 
         app.state.cache_service = CacheService()
 
@@ -394,7 +394,7 @@ class TestServiceHealthIntegration:
 
     def test_service_registry_init(self):
         """Test service registry initialization"""
-        from app.core.service_health import ServiceRegistry
+        from backend.app.core.service_health import ServiceRegistry
 
         registry = ServiceRegistry()
         assert registry is not None
@@ -402,7 +402,7 @@ class TestServiceHealthIntegration:
 
     def test_register_service(self):
         """Test registering a service"""
-        from app.core.service_health import ServiceRegistry, ServiceStatus
+        from backend.app.core.service_health import ServiceRegistry, ServiceStatus
 
         registry = ServiceRegistry()
         registry.register("test_service", ServiceStatus.HEALTHY)
@@ -413,7 +413,7 @@ class TestServiceHealthIntegration:
 
     def test_register_critical_service(self):
         """Test registering a critical service"""
-        from app.core.service_health import ServiceRegistry, ServiceStatus
+        from backend.app.core.service_health import ServiceRegistry, ServiceStatus
 
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
@@ -423,7 +423,7 @@ class TestServiceHealthIntegration:
 
     def test_get_critical_failures(self):
         """Test getting critical failures"""
-        from app.core.service_health import ServiceRegistry, ServiceStatus
+        from backend.app.core.service_health import ServiceRegistry, ServiceStatus
 
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.UNAVAILABLE, error="Connection failed")
@@ -435,7 +435,7 @@ class TestServiceHealthIntegration:
 
     def test_has_critical_failures(self):
         """Test checking for critical failures"""
-        from app.core.service_health import ServiceRegistry, ServiceStatus
+        from backend.app.core.service_health import ServiceRegistry, ServiceStatus
 
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.UNAVAILABLE)
@@ -444,7 +444,7 @@ class TestServiceHealthIntegration:
 
     def test_get_status(self):
         """Test getting status report"""
-        from app.core.service_health import ServiceRegistry, ServiceStatus
+        from backend.app.core.service_health import ServiceRegistry, ServiceStatus
 
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.HEALTHY)
@@ -457,7 +457,7 @@ class TestServiceHealthIntegration:
 
     def test_format_failures_message(self):
         """Test formatting failures message"""
-        from app.core.service_health import ServiceRegistry, ServiceStatus
+        from backend.app.core.service_health import ServiceRegistry, ServiceStatus
 
         registry = ServiceRegistry()
         registry.register("search", ServiceStatus.UNAVAILABLE, error="Connection failed")

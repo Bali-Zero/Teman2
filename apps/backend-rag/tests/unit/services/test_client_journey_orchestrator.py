@@ -15,7 +15,7 @@ sys.path.insert(0, str(backend_path))
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from services.misc.client_journey_orchestrator import (
+from backend.services.misc.client_journey_orchestrator import (
     ClientJourney,
     ClientJourneyOrchestrator,
     JourneyStatus,
@@ -69,7 +69,7 @@ class TestClientJourneyOrchestratorInit:
 class TestCreateJourney:
     """Test create_journey method"""
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_create_journey_from_template_success(self, mock_datetime):
         """Test successful journey creation from template"""
         # Mock datetime
@@ -131,7 +131,7 @@ class TestCreateJourney:
         # Check builder service called correctly
         orchestrator.builder_service.build_journey_from_template.assert_called_once()
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_create_journey_with_custom_steps(self, mock_datetime):
         """Test journey creation with custom steps"""
         # Mock datetime
@@ -188,7 +188,7 @@ class TestCreateJourney:
         # Check builder service called correctly
         orchestrator.builder_service.build_custom_journey.assert_called_once()
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_create_journey_updates_distribution(self, mock_datetime):
         """Test that creating journeys updates type distribution correctly"""
         # Mock datetime
@@ -475,7 +475,7 @@ class TestCompleteStep:
 
         assert result is False
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_complete_step_completes_journey(self, mock_datetime):
         """Test that completing all steps marks journey as complete and updates stats"""
         # Mock datetime
@@ -893,7 +893,7 @@ class TestGetOrchestratorStats:
 class TestCompleteStepAverageCalculation:
     """Test average completion days calculation"""
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_average_completion_days_single_journey(self, mock_datetime):
         """Test average calculation with single completed journey"""
         # Mock datetime
@@ -936,7 +936,7 @@ class TestCompleteStepAverageCalculation:
 
         assert orchestrator.orchestrator_stats["avg_completion_days"] == 10.0
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_average_completion_days_multiple_journeys(self, mock_datetime):
         """Test average calculation with multiple completed journeys"""
         orchestrator = ClientJourneyOrchestrator()
@@ -1120,7 +1120,7 @@ class TestEdgeCases:
         # Stats should not be updated
         assert orchestrator.orchestrator_stats["completed_journeys"] == 0
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_complete_journey_without_started_at(self, mock_datetime):
         """Test completing journey when started_at is None"""
         orchestrator = ClientJourneyOrchestrator()
@@ -1240,7 +1240,7 @@ class TestBackwardCompatibility:
 class TestIntegrationScenarios:
     """Test integration scenarios"""
 
-    @patch("services.misc.client_journey_orchestrator.datetime")
+    @patch("backend.services.misc.client_journey_orchestrator.datetime")
     def test_full_journey_workflow(self, mock_datetime):
         """Test complete journey workflow from creation to completion"""
         # Mock datetime

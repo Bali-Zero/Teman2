@@ -48,12 +48,12 @@ class DummyGoldenAnswerService:
 # Setup module mocking before import
 services_pkg = types.ModuleType("services")
 services_pkg.__path__ = []
-routing_pkg = types.ModuleType("services.routing")
+routing_pkg = types.ModuleType("backend.services.routing")
 routing_pkg.__path__ = []
 
 app_module = types.ModuleType("app")
-app_core_module = types.ModuleType("app.core")
-app_config_module = types.ModuleType("app.core.config")
+app_core_module = types.ModuleType("backend.app.core")
+app_config_module = types.ModuleType("backend.app.core.config")
 
 # Mock settings
 settings_mock = SimpleNamespace(database_url="postgresql://test:test@localhost/test", redis_url='redis://localhost:6379')
@@ -62,10 +62,10 @@ app_config_module.settings = settings_mock
 sys.modules.update(
     {
         "services": services_pkg,
-        "services.routing": routing_pkg,
+        "backend.services.routing": routing_pkg,
         "app": app_module,
-        "app.core": app_core_module,
-        "app.core.config": app_config_module,
+        "backend.app.core": app_core_module,
+        "backend.app.core.config": app_config_module,
     }
 )
 
@@ -77,7 +77,7 @@ module_path = (
     / "routing"
     / "golden_router_service.py"
 )
-spec = importlib.util.spec_from_file_location("services.routing.golden_router_service", module_path)
+spec = importlib.util.spec_from_file_location("backend.services.routing.golden_router_service", module_path)
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)

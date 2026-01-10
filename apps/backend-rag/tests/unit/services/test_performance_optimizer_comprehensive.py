@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from services.misc.performance_optimizer import PerformanceMonitor, async_timed, perf_monitor, timed
+from backend.services.misc.performance_optimizer import PerformanceMonitor, async_timed, perf_monitor, timed
 
 
 class TestPerformanceMonitor:
@@ -93,7 +93,7 @@ class TestOptimizedSearchService:
     @pytest.fixture
     def optimized_service(self):
         """Create OptimizedSearchService instance"""
-        from services.misc.performance_optimizer import OptimizedSearchService
+        from backend.services.misc.performance_optimizer import OptimizedSearchService
 
         mock_search = MagicMock()
         return OptimizedSearchService(original_search_service=mock_search)

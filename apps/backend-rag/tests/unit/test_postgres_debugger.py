@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.utils.postgres_debugger import (
+from backend.app.utils.postgres_debugger import (
     FORBIDDEN_KEYWORDS,
     MAX_ROWS_LIMIT,
     PostgreSQLDebugger,
@@ -23,7 +23,7 @@ class TestPostgreSQLDebugger:
 
     def test_init_without_database_url(self):
         """Test initialization uses settings.database_url by default."""
-        with patch("app.utils.postgres_debugger.settings") as mock_settings:
+        with patch("backend.app.utils.postgres_debugger.settings") as mock_settings:
             mock_settings.database_url = "postgresql://default:default@localhost/default"
             debugger = PostgreSQLDebugger()
             assert debugger.database_url == "postgresql://default:default@localhost/default"
@@ -37,7 +37,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetchval = AsyncMock(side_effect=["PostgreSQL 14.0", "testdb", "testuser"])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             conn_info = await debugger.test_connection()
 
         assert conn_info.connected is True
@@ -53,7 +53,7 @@ class TestPostgreSQLDebugger:
         debugger = PostgreSQLDebugger(database_url="postgresql://test:test@localhost/test")
 
         with patch(
-            "app.utils.postgres_debugger.asyncpg.connect",
+            "backend.app.utils.postgres_debugger.asyncpg.connect",
             side_effect=Exception("Connection failed"),
         ):
             conn_info = await debugger.test_connection()
@@ -189,7 +189,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[mock_row1, mock_row2])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             result = await debugger.execute_query("SELECT * FROM users", limit=10)
 
         assert result["success"] is True
@@ -211,7 +211,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             await debugger.execute_query("SELECT * FROM users", limit=50)
 
         # Verify LIMIT was added to query
@@ -231,7 +231,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             await debugger.execute_query("SELECT * FROM users;", limit=10)
 
         call_args = mock_conn.fetch.call_args
@@ -250,7 +250,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             await debugger.execute_query("SELECT * FROM users", limit=5000)
 
         # Verify LIMIT was capped at MAX_ROWS_LIMIT
@@ -309,7 +309,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[mock_row1, mock_row2])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             tables = await debugger.get_tables(schema="public")
 
         assert len(tables) == 2
@@ -383,7 +383,7 @@ class TestPostgreSQLDebugger:
         )
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             table_info = await debugger.get_table_details(table_name="users", schema="public")
 
         assert table_info.schema == "public"
@@ -412,7 +412,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             indexes = await debugger.get_indexes()
 
         assert len(indexes) == 1
@@ -451,7 +451,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetchval = AsyncMock(return_value=100)  # row count
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             stats = await debugger.get_table_stats()
 
         assert len(stats) == 1
@@ -477,7 +477,7 @@ class TestPostgreSQLDebugger:
         )
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             stats = await debugger.get_database_stats()
 
         assert stats["database"] == "testdb"
@@ -497,7 +497,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetchval = AsyncMock(return_value=False)  # extension not exists
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             queries = await debugger.get_slow_queries()
 
         assert queries == []
@@ -537,7 +537,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             queries = await debugger.get_slow_queries(limit=10)
 
         assert len(queries) == 1
@@ -584,7 +584,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             locks = await debugger.get_active_locks()
 
         assert len(locks) == 1
@@ -610,7 +610,7 @@ class TestPostgreSQLDebugger:
         mock_conn.fetch = AsyncMock(return_value=[mock_state_row])
         mock_conn.close = AsyncMock()
 
-        with patch("app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
+        with patch("backend.app.utils.postgres_debugger.asyncpg.connect", return_value=mock_conn):
             stats = await debugger.get_connection_stats()
 
         assert stats["total"] == 10

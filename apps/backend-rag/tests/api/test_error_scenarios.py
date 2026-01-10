@@ -217,7 +217,7 @@ class TestServiceUnavailability:
     def test_database_unavailable(self, test_client, test_app):
         """Test endpoints when database is unavailable"""
 
-        from app.dependencies import get_database_pool
+        from backend.app.dependencies import get_database_pool
 
         mock_pool = MagicMock()
         mock_pool.acquire = MagicMock(side_effect=Exception("Database connection failed"))
@@ -237,7 +237,7 @@ class TestServiceUnavailability:
 
     def test_external_service_error(self, authenticated_client):
         """Test endpoints when external services fail"""
-        with patch("services.image_generation_service.ImageGenerationService") as mock_service:
+        with patch("backend.services.image_generation_service.ImageGenerationService") as mock_service:
             mock_instance = MagicMock()
             mock_instance.generate_image = AsyncMock(
                 side_effect=Exception("External service unavailable")

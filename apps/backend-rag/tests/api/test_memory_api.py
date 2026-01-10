@@ -27,8 +27,8 @@ class TestMemoryAPIIntegration:
     @pytest.fixture
     def mock_oracle_service(self):
         """Mock OracleService with memory orchestrator"""
-        from services.memory.models import MemoryContext, MemoryProcessResult
-        from services.memory.orchestrator import MemoryOrchestrator
+        from backend.services.memory.models import MemoryContext, MemoryProcessResult
+        from backend.services.memory.orchestrator import MemoryOrchestrator
 
         # Create mock memory orchestrator
         mock_orchestrator = AsyncMock(spec=MemoryOrchestrator)
@@ -55,7 +55,7 @@ class TestMemoryAPIIntegration:
         # This test verifies that when an oracle query is made,
         # the memory orchestrator's process_conversation is called
 
-        from services.oracle.oracle_service import OracleService
+        from backend.services.oracle.oracle_service import OracleService
 
         with patch.object(OracleService, "memory_orchestrator", mock_oracle_service):
             with patch.object(
@@ -83,7 +83,7 @@ class TestMemoryAPIIntegration:
     @pytest.mark.asyncio
     async def test_memory_facts_returned_in_response(self):
         """Test that memory facts are included in oracle response"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         # This tests that user_memory_facts field is populated from memory
         context = MemoryContext(
@@ -99,8 +99,8 @@ class TestMemoryAPIIntegration:
     @pytest.mark.asyncio
     async def test_agentic_rag_saves_memory(self):
         """Test that AgenticRAG saves memory facts"""
-        from services.memory.models import MemoryProcessResult
-        from services.memory.orchestrator import MemoryOrchestrator
+        from backend.services.memory.models import MemoryProcessResult
+        from backend.services.memory.orchestrator import MemoryOrchestrator
 
         # Mock orchestrator
         mock_orchestrator = AsyncMock(spec=MemoryOrchestrator)
@@ -113,7 +113,7 @@ class TestMemoryAPIIntegration:
         )
 
         # Test _save_conversation_memory method
-        from services.rag.agentic import AgenticRAGOrchestrator
+        from backend.services.rag.agentic import AgenticRAGOrchestrator
 
         # Create instance with mocked DB
         orchestrator = AgenticRAGOrchestrator(tools=[], db_pool=None)
@@ -135,7 +135,7 @@ class TestMemoryContextFormat:
 
     def test_empty_context_returns_empty_string(self):
         """Test that empty context produces empty system prompt"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(user_id="test@test.com")
         assert context.is_empty()
@@ -143,7 +143,7 @@ class TestMemoryContextFormat:
 
     def test_context_with_facts_formats_correctly(self):
         """Test that context with facts produces formatted prompt"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@test.com",
@@ -166,7 +166,7 @@ class TestMemoryContextFormat:
 
     def test_context_with_summary_only(self):
         """Test context with only summary"""
-        from services.memory.models import MemoryContext
+        from backend.services.memory.models import MemoryContext
 
         context = MemoryContext(
             user_id="test@test.com",
@@ -184,7 +184,7 @@ class TestMemoryEndpointSecurity:
     @pytest.mark.asyncio
     async def test_anonymous_user_no_memory_saved(self):
         """Test that anonymous users don't get memory saved"""
-        from services.rag.agentic import AgenticRAGOrchestrator
+        from backend.services.rag.agentic import AgenticRAGOrchestrator
 
         orchestrator = AgenticRAGOrchestrator(tools=[], db_pool=None)
 
@@ -205,7 +205,7 @@ class TestMemoryEndpointSecurity:
     @pytest.mark.asyncio
     async def test_empty_user_no_memory_saved(self):
         """Test that empty user_id doesn't get memory saved"""
-        from services.oracle.oracle_service import OracleService
+        from backend.services.oracle.oracle_service import OracleService
 
         service = OracleService()
         mock_orchestrator = AsyncMock()
@@ -230,8 +230,8 @@ class TestMemoryPersistenceRoundTrip:
         """Test saving facts and retrieving them"""
         from datetime import datetime
 
-        from services.memory.memory_service_postgres import UserMemory
-        from services.memory.orchestrator import MemoryOrchestrator
+        from backend.services.memory.memory_service_postgres import UserMemory
+        from backend.services.memory.orchestrator import MemoryOrchestrator
 
         # Create mock storage
         storage = {}
@@ -263,7 +263,7 @@ class TestMemoryPersistenceRoundTrip:
         # Create orchestrator with mock service
         orchestrator = MemoryOrchestrator()
         orchestrator._memory_service = mock_service
-        from services.memory_fact_extractor import MemoryFactExtractor
+        from backend.services.memory_fact_extractor import MemoryFactExtractor
 
         orchestrator._fact_extractor = MemoryFactExtractor()
         orchestrator._is_initialized = True

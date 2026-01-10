@@ -2,8 +2,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
-from core.plugins.registry import PluginRegistry
+from backend.core.plugins.plugin import Plugin, PluginCategory, PluginInput, PluginMetadata, PluginOutput
+from backend.core.plugins.registry import PluginRegistry
 
 
 class RegistryInput(PluginInput):
@@ -212,7 +212,7 @@ async def test_discover_plugins_import_failure(tmp_path):
     registry = PluginRegistry()
     plugin_file = tmp_path / "demo.py"
     plugin_file.write_text("x = 1", encoding="utf-8")
-    registry_module = importlib.import_module("core.plugins.registry")
+    registry_module = importlib.import_module("backend.core.plugins.registry")
 
     with patch.object(registry_module.importlib, "import_module", side_effect=ImportError("no")):
         result = await registry.discover_plugins(tmp_path)
@@ -228,7 +228,7 @@ async def test_discover_plugins_register_failure(tmp_path):
     plugin_file = tmp_path / "demo.py"
     plugin_file.write_text("x = 1", encoding="utf-8")
     module = SimpleNamespace()
-    registry_module = importlib.import_module("core.plugins.registry")
+    registry_module = importlib.import_module("backend.core.plugins.registry")
 
     with patch.object(registry_module.importlib, "import_module", return_value=module):
         with patch.object(
@@ -250,7 +250,7 @@ async def test_discover_plugins_success(tmp_path):
     plugin_file = tmp_path / "demo.py"
     plugin_file.write_text("x = 1", encoding="utf-8")
     module = SimpleNamespace()
-    registry_module = importlib.import_module("core.plugins.registry")
+    registry_module = importlib.import_module("backend.core.plugins.registry")
 
     with patch.object(registry_module.importlib, "import_module", return_value=module):
         with patch.object(

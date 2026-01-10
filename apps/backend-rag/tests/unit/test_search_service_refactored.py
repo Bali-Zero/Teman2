@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from services.ingestion.collection_manager import CollectionManager
-from services.misc.cultural_insights_service import CulturalInsightsService
-from services.routing.conflict_resolver import ConflictResolver
-from services.routing.query_router_integration import QueryRouterIntegration
-from services.search.search_service import SearchService
+from backend.services.ingestion.collection_manager import CollectionManager
+from backend.services.misc.cultural_insights_service import CulturalInsightsService
+from backend.services.routing.conflict_resolver import ConflictResolver
+from backend.services.routing.query_router_integration import QueryRouterIntegration
+from backend.services.search.search_service import SearchService
 
 
 class TestSearchServiceRefactored:
@@ -103,15 +103,15 @@ class TestSearchServiceRefactored:
     ):
         """Create SearchService with mocked dependencies"""
         # Patch at the core.embeddings module where create_embeddings_generator lives
-        with patch("core.embeddings.create_embeddings_generator", return_value=mock_embedder):
-            with patch("app.core.config.settings") as mock_settings:
+        with patch("backend.core.embeddings.create_embeddings_generator", return_value=mock_embedder):
+            with patch("backend.app.core.config.settings") as mock_settings:
                 mock_settings.qdrant_url = "http://test:6333"
                 mock_settings.enable_bm25 = False
                 mock_settings.bm25_vocab_size = 10000
                 mock_settings.bm25_k1 = 1.2
                 mock_settings.bm25_b = 0.75
                 with patch(
-                    "services.ingestion.collection_health_service.CollectionHealthService",
+                    "backend.services.ingestion.collection_health_service.CollectionHealthService",
                     return_value=Mock(),
                 ):
                     service = SearchService(
@@ -136,14 +136,14 @@ class TestSearchServiceRefactored:
 
     def test_initialization_without_dependencies(self):
         """Test SearchService creates dependencies if not provided"""
-        with patch("services.search.search_service.settings") as mock_settings:
+        with patch("backend.services.search.search_service.settings") as mock_settings:
             mock_settings.qdrant_url = "http://test:6333"
-            with patch("core.embeddings.create_embeddings_generator") as mock_create:
+            with patch("backend.core.embeddings.create_embeddings_generator") as mock_create:
                 mock_embedder = Mock()
                 mock_embedder.provider = "openai"
                 mock_embedder.dimensions = 1536
                 mock_create.return_value = mock_embedder
-                with patch("services.ingestion.collection_health_service.CollectionHealthService"):
+                with patch("backend.services.ingestion.collection_health_service.CollectionHealthService"):
                     service = SearchService()
                     assert service.collection_manager is not None
                     assert service.conflict_resolver is not None
@@ -208,7 +208,7 @@ class TestSearchServiceRefactored:
     @pytest.mark.asyncio
     async def test_search_with_tier_filter(self, search_service):
         """Test search with tier filter"""
-        from app.models import TierLevel
+        from backend.app.models import TierLevel
 
         result = await search_service.search(
             query="test", user_level=2, tier_filter=[TierLevel.S, TierLevel.A]
@@ -346,7 +346,7 @@ class TestSearchServiceRefactored:
         }
 
         # Default behavior: filters enabled (apply_filters=None)
-        with patch("core.cache.get_cache_service") as mock_cache:
+        with patch("backend.core.cache.get_cache_service") as mock_cache:
             mock_cache.return_value.get.return_value = None  # Cache miss
             await search_service.search(query=unique_query, user_level=2, limit=5)
 
@@ -390,7 +390,7 @@ class TestSearchServiceRefactored:
             "is_pricing": False,
         }
 
-        with patch("core.cache.get_cache_service") as mock_cache:
+        with patch("backend.core.cache.get_cache_service") as mock_cache:
             mock_cache.return_value.get.return_value = None  # Cache miss
             await search_service.search(
                 query=unique_query, user_level=2, limit=5, apply_filters=True
@@ -433,7 +433,7 @@ class TestSearchServiceRefactored:
             "is_pricing": False,
         }
 
-        with patch("core.cache.get_cache_service") as mock_cache:
+        with patch("backend.core.cache.get_cache_service") as mock_cache:
             mock_cache.return_value.get.return_value = None  # Cache miss
             await search_service.search(
                 query=unique_query, user_level=2, limit=5, apply_filters=False

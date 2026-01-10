@@ -25,7 +25,7 @@ class TestAutonomousSchedulerIntegration:
     @pytest_asyncio.fixture
     async def scheduler(self):
         """Create AutonomousScheduler instance"""
-        from services.autonomous_scheduler import AutonomousScheduler
+        from backend.services.autonomous_scheduler import AutonomousScheduler
 
         return AutonomousScheduler()
 

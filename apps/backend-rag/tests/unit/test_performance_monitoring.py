@@ -14,9 +14,9 @@ backend_path = Path(__file__).parent.parent.parent / "backend"
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.metrics import metrics_collector
-from services.ingestion.ingestion_logger import ingestion_logger
-from services.ingestion.performance_monitor import (
+from backend.app.metrics import metrics_collector
+from backend.services.ingestion.ingestion_logger import ingestion_logger
+from backend.services.ingestion.performance_monitor import (
     Alert,
     AlertSeverity,
     PerformanceMetric,

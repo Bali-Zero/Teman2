@@ -29,7 +29,7 @@ class TestEveryPossibleVariant:
 
     def test_all_endpoint_variants(self, authenticated_client, test_app):
         """Test all possible endpoint variants"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -61,7 +61,7 @@ class TestEveryPossibleVariant:
 
     def test_all_query_parameter_variants(self, authenticated_client, test_app):
         """Test all query parameter variants"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_conn.fetch = AsyncMock(return_value=[])
             mock_get_pool.return_value = mock_pool
@@ -92,7 +92,7 @@ class TestEveryPossibleVariant:
 
     def test_all_request_body_variants(self, authenticated_client, test_app):
         """Test all request body variants"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -141,7 +141,7 @@ class TestEveryCombinationVariant:
 
     def test_all_status_priority_combinations(self, authenticated_client, test_app):
         """Test all status and priority combinations"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -175,7 +175,7 @@ class TestEveryCombinationVariant:
 
     def test_all_interaction_type_channel_combinations(self, authenticated_client, test_app):
         """Test all interaction type and channel combinations"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
@@ -227,7 +227,7 @@ class TestEveryScenarioVariant:
 
     def test_all_workflow_variants(self, authenticated_client, test_app):
         """Test all workflow variants"""
-        with patch("app.dependencies.get_database_pool") as mock_get_pool:
+        with patch("backend.app.dependencies.get_database_pool") as mock_get_pool:
             mock_pool, mock_conn = self._create_mock_db_pool()
             mock_get_pool.return_value = mock_pool
 
