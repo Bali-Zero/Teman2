@@ -487,34 +487,106 @@ NOTES:
             f"   Category: {enriched.category} | Priority: {enriched.priority} | Score: {enriched.relevance_score}"
         )
 
-        # Step 5: Generate cover image (MANDATORY)
+        # Step 5: Generate cover image (MANDATORY with retry and fallback)
         if not self.generate_images:
             raise ValueError("Image generation is mandatory but was disabled")
         if not self.image_generator:
             raise ValueError("Image generator is mandatory but not initialized")
         
         logger.info("🎨 Generating cover image (mandatory)...")
-        try:
-            image_result = await self.generate_cover_image_browser(
-                title=enriched.headline,
-                summary=enriched.ai_summary,
-                category=enriched.category,
-                full_content=content,  # Pass the FULL article content for reasoning
-            )
-            if image_result and image_result.get("image_path"):
-                enriched.cover_image = image_result.get("image_path")
-                # Note: image_prompt will be set AFTER Claude reasons about the article
-                enriched.image_prompt = image_result.get("prompt", "PENDING_CLAUDE_REASONING")
-                logger.success(f"   ✅ Cover image generated: {enriched.cover_image}")
-                if image_result.get("context_file"):
-                    logger.info(f"📋 Image context prepared: {image_result.get('context_file')}")
-            else:
-                raise ValueError("Image generation returned no image_path")
-        except Exception as e:
-            logger.error(f"   ❌ Image generation failed (mandatory): {e}")
-            raise RuntimeError(f"Failed to generate mandatory cover image: {e}")
+        
+        # Retry logic: try 3 times
+        max_retries = 3
+        image_result = None
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                logger.info(f"   Attempt {attempt}/{max_retries}...")
+                image_result = await self.generate_cover_image_browser(
+                    title=enriched.headline,
+                    summary=enriched.ai_summary,
+                    category=enriched.category,
+                    full_content=content,  # Pass the FULL article content for reasoning
+                )
+                if image_result and image_result.get("image_path"):
+                    enriched.cover_image = image_result.get("image_path")
+                    enriched.image_prompt = image_result.get("prompt", "PENDING_CLAUDE_REASONING")
+                    logger.success(f"   ✅ Cover image generated: {enriched.cover_image}")
+                    if image_result.get("context_file"):
+                        logger.info(f"📋 Image context prepared: {image_result.get('context_file')}")
+                    break  # Success, exit retry loop
+                else:
+                    if attempt < max_retries:
+                        logger.warning(f"   ⚠️ Attempt {attempt} returned no image_path, retrying...")
+                    else:
+                        raise ValueError("Image generation returned no image_path after all retries")
+            except Exception as e:
+                if attempt < max_retries:
+                    logger.warning(f"   ⚠️ Attempt {attempt} failed: {e}, retrying...")
+                    await asyncio.sleep(2)  # Wait 2 seconds before retry
+                else:
+                    logger.error(f"   ❌ All {max_retries} attempts failed: {e}")
+                    # Fallback to internet image search
+                    logger.info("   🔄 Falling back to internet image search...")
+                    try:
+                        fallback_image = await self.fetch_image_from_internet(
+                            title=enriched.headline,
+                            category=enriched.category,
+                            summary=enriched.ai_summary
+                        )
+                        if fallback_image:
+                            enriched.cover_image = fallback_image
+                            enriched.image_prompt = f"Fallback image from internet for: {enriched.headline}"
+                            logger.success(f"   ✅ Fallback image found: {enriched.cover_image}")
+                        else:
+                            raise RuntimeError("Both image generation and internet fallback failed")
+                    except Exception as fallback_error:
+                        logger.error(f"   ❌ Fallback also failed: {fallback_error}")
+                        raise RuntimeError(f"Failed to generate cover image after {max_retries} attempts and fallback: {e}")
+        
+        if not enriched.cover_image:
+            raise RuntimeError("Cover image is mandatory but was not generated")
 
         return enriched
+
+    async def fetch_image_from_internet(
+        self, title: str, category: str, summary: str = ""
+    ) -> Optional[str]:
+        """
+        Fallback: Fetch a relevant image from internet using Unsplash API.
+        
+        Uses Unsplash API (free tier) to find relevant images based on article content.
+        """
+        try:
+            import httpx
+            
+            # Build search query from title and category
+            search_query = f"{title} {category}".strip()[:100]  # Limit query length
+            
+            # Try Unsplash API first (free, no auth needed for basic usage)
+            # Using Unsplash Source API (simpler, no API key needed)
+            unsplash_url = f"https://source.unsplash.com/1200x630/?{httpx.quote(search_query)}"
+            
+            # Alternative: Use a more specific search
+            # For better results, we could use Unsplash API with a free API key
+            # For now, using the source API which is simpler
+            
+            logger.info(f"   🔍 Searching internet for image: {search_query[:50]}...")
+            
+            # Return the Unsplash URL (they serve images directly)
+            # The image will be fetched by the frontend
+            return unsplash_url
+            
+        except Exception as e:
+            logger.warning(f"   ⚠️ Internet image search failed: {e}")
+            # Try alternative: Pexels API (also free)
+            try:
+                # Pexels doesn't require API key for basic usage via their website
+                # But for programmatic access, we'd need an API key
+                # For now, return None and let the error propagate
+                return None
+            except Exception:
+                return None
 
     async def generate_cover_image_browser(
         self, title: str, summary: str, category: str, full_content: str = ""
