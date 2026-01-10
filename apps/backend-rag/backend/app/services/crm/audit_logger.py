@@ -271,9 +271,16 @@ def audit_change(entity_type: str, change_type: str = "update"):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             # Extract user and entity info from kwargs
-            user_email = kwargs.get("user_email") or getattr(
-                kwargs.get("request", {}).state, "user", {}
-            ).get("email")
+            # Priority: user_email kwarg > current_user dict > request.state.user
+            user_email = kwargs.get("user_email")
+            if not user_email:
+                current_user = kwargs.get("current_user", {})
+                if isinstance(current_user, dict):
+                    user_email = current_user.get("email")
+            if not user_email:
+                request = kwargs.get("request")
+                if request and hasattr(request, "state"):
+                    user_email = getattr(request.state, "user", {}).get("email")
             entity_id = kwargs.get("client_id") or kwargs.get("case_id") or kwargs.get("id")
 
             # Get old state before change
