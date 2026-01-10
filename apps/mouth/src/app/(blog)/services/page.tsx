@@ -513,7 +513,7 @@ const CONTACT_INFO = [
 ];
 
 const TEAM_MEMBERS = [
-  { name: 'Zero', initials: 'ZE', role: 'CEO', gradient: 'bg-gradient-to-br from-[#2251ff] to-[#1a41cc]', image: '/images/team/zero.jpg' },
+  { name: 'Zero', initials: 'ZE', role: 'CEO', gradient: 'bg-gradient-to-br from-[#2251ff] to-[#1a41cc]', image: '/static/team/zero.jpg' },
   { name: 'Ruslana', initials: 'RS', role: 'Board', gradient: 'bg-gradient-to-br from-[#e85c41] to-[#d14832]' },
   { name: 'Anton', initials: 'AN', role: 'Consultant', gradient: 'bg-gradient-to-br from-emerald-500 to-teal-600' },
   { name: 'Vino', initials: 'VI', role: 'Consultant', gradient: 'bg-gradient-to-br from-violet-500 to-purple-600' },

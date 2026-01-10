@@ -115,7 +115,7 @@ export async function getArticleBySlug(
   const author = typeof frontmatter.author === 'object' ? frontmatter.author : {
     id: 'zantara-ai',
     name: 'Zantara AI',
-    avatar: '/images/zantara-avatar.png',
+    avatar: '/static/zantara-avatar.png',
     role: 'AI Research Assistant',
     isAI: true,
   };
@@ -127,7 +127,7 @@ export async function getArticleBySlug(
     subtitle: frontmatter.subtitle,
     excerpt: frontmatter.excerpt || '',
     content: content,
-    coverImage: frontmatter.coverImage || frontmatter.image?.src || `/images/blog/${actualFolderCategory}/${slug}.jpg`,
+    coverImage: frontmatter.coverImage || frontmatter.image?.src || `/static/blog/${actualFolderCategory}/${slug}.jpg`,
     coverImageAlt: frontmatter.coverImageAlt || frontmatter.image?.alt || frontmatter.title,
     category: normalizeCategory(frontmatter.category || category),
     tags: frontmatter.tags || [],

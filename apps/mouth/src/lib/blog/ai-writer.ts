@@ -77,7 +77,7 @@ export class ZantaraAIWriter {
       author: {
         id: 'zantara-ai',
         name: 'Zantara AI',
-        avatar: '/images/zantara-avatar.png',
+        avatar: '/static/zantara-avatar.png',
         role: 'AI Research Assistant',
         isAI: true,
       },
@@ -348,12 +348,12 @@ Important: Ensure all information is accurate and up-to-date. If uncertain about
 
   private static getDefaultCoverImage(category: ArticleCategory): string {
     const defaults: Record<ArticleCategory, string> = {
-      immigration: '/images/blog/default-immigration.jpg',
-      business: '/images/blog/default-business.jpg',
-      'tax-legal': '/images/blog/default-tax-legal.jpg',
-      property: '/images/blog/default-property.jpg',
-      lifestyle: '/images/blog/default-lifestyle.jpg',
-      tech: '/images/blog/default-tech.jpg',
+      immigration: '/static/blog/default-immigration.jpg',
+      business: '/static/blog/default-business.jpg',
+      'tax-legal': '/static/blog/default-tax-legal.jpg',
+      property: '/static/blog/default-property.jpg',
+      lifestyle: '/static/blog/default-lifestyle.jpg',
+      tech: '/static/blog/default-tech.jpg',
     };
     return defaults[category];
   }

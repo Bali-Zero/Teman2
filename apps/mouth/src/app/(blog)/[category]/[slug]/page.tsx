@@ -12,7 +12,8 @@ interface PageProps {
 }
 
 // Static file paths that should NOT be handled by this route
-const STATIC_PATHS = ['static', 'assets', 'fonts', '_next', 'api'];
+// 'images' included for backward compatibility (old URLs should 404, not render broken page)
+const STATIC_PATHS = ['static', 'assets', 'fonts', '_next', 'api', 'images', 'avatars', 'blueprints', 'videos'];
 
 // Valid blog categories
 const VALID_CATEGORIES = ['immigration', 'business', 'tax-legal', 'property', 'lifestyle', 'digital-nomad', 'tech'];

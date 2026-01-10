@@ -180,13 +180,13 @@ The Golden Visa program positions Indonesia, and particularly Bali, as a premier
 
 *Have questions about the Golden Visa? [Contact our team](/contact) for a free consultation.*
       `,
-      coverImage: '/images/blog/golden-visa.jpg',
+      coverImage: '/static/blog/golden-visa.jpg',
       category: 'immigration',
       tags: ['golden-visa', 'investment', 'residency', 'indonesia'],
       author: {
         id: 'zantara-ai',
         name: 'Zantara AI',
-        avatar: '/images/zantara-avatar.png',
+        avatar: '/static/zantara-avatar.png',
         role: 'AI Research Assistant',
         isAI: true,
       },
@@ -279,13 +279,13 @@ Under OSS-RBA, businesses are classified by risk level:
 
 *Need help with OSS registration? [Contact us](/contact) for professional assistance.*
       `,
-      coverImage: '/images/blog/oss-guide.jpg',
+      coverImage: '/static/blog/oss-guide.jpg',
       category: 'business',
       tags: ['oss', 'business-license', 'pt-pma', 'indonesia'],
       author: {
         id: '1',
         name: 'Legal Team',
-        avatar: '/images/team/legal.jpg',
+        avatar: '/static/team/legal.jpg',
         role: 'Legal Advisor',
         isAI: false,
       },
@@ -356,13 +356,13 @@ Stay compliant with Indonesia's tax requirements. The new **Coretax** system is 
 
 *Need tax assistance? [Schedule a consultation](/contact) with our tax experts.*
       `,
-      coverImage: '/images/blog/tax-calendar.jpg',
+      coverImage: '/static/blog/tax-calendar.jpg',
       category: 'tax-legal',
       tags: ['tax', 'deadlines', 'compliance', 'indonesia', 'coretax'],
       author: {
         id: 'zantara-ai',
         name: 'Zantara AI',
-        avatar: '/images/zantara-avatar.png',
+        avatar: '/static/zantara-avatar.png',
         role: 'AI Research Assistant',
         isAI: true,
       },

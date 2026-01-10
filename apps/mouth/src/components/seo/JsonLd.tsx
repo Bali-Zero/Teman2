@@ -15,7 +15,7 @@ export function OrganizationJsonLd() {
     name: 'Bali Zero',
     alternateName: 'Bali Zero Team',
     url: baseUrl,
-    logo: `${baseUrl}/images/balizero-logo-clean.png`,
+    logo: `${baseUrl}/static/balizero-logo-clean.png`,
     sameAs: [
       'https://instagram.com/balizero',
       'https://linkedin.com/company/balizero',
@@ -50,7 +50,7 @@ export function LocalBusinessJsonLd() {
     '@context': 'https://schema.org',
     '@type': 'ProfessionalService',
     name: 'Bali Zero',
-    image: `${baseUrl}/images/balizero-logo-clean.png`,
+    image: `${baseUrl}/static/balizero-logo-clean.png`,
     url: baseUrl,
     telephone: '+62-812-3456-7890',
     email: 'hello@balizero.com',
@@ -123,7 +123,7 @@ export function ArticleJsonLd({
   readingTime,
 }: ArticleJsonLdProps) {
   const articleUrl = `${baseUrl}/${category}/${slug}`;
-  const imageUrl = image?.startsWith('http') ? image : `${baseUrl}${image || '/images/og-image.jpg'}`;
+  const imageUrl = image?.startsWith('http') ? image : `${baseUrl}${image || '/static/og-image.jpg'}`;
 
   const schema = {
     '@context': 'https://schema.org',
@@ -149,7 +149,7 @@ export function ArticleJsonLd({
       name: 'Bali Zero',
       logo: {
         '@type': 'ImageObject',
-        url: `${baseUrl}/images/balizero-logo-clean.png`,
+        url: `${baseUrl}/static/balizero-logo-clean.png`,
         width: 200,
         height: 200,
       },

@@ -235,10 +235,10 @@
 
 ## Images Required
 
-All articles reference images at `/images/blog/{category}/{slug}.jpg`. The following images need to be created:
+All articles reference images at `/static/blog/{category}/{slug}.jpg`. The following images need to be created:
 
 ```
-/images/blog/
+/static/blog/
 ├── immigration/
 │   ├── complete-indonesia-visa-guide.jpg
 │   ├── visa-on-arrival.jpg
