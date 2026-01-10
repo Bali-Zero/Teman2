@@ -122,7 +122,7 @@ export function useConversations() {
     currentConversationId,
     setCurrentConversationId,
     loadConversationList: () => {
-      loadConversationList();
+      return loadConversationList();
     },
     deleteConversation,
     clearHistory,
