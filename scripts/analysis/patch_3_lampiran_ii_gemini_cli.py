@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PATCH 1/5 - Analizza Lampiran I.H con Gemini CLI
-Worker 1: 2.8 Lampiran I.H PP Nomor 28 Tahun 2025 (I.H.1-515)
+PATCH 3/5 - Analizza Lampiran II con Gemini CLI
+Worker 3: PP Nomor 28 Tahun 2025 - Lampiran II
 
 IMPORTANTE: Processa pagina per pagina, NON carica tutto il PDF.
 Ogni pagina viene estratta come immagine PNG e inviata separatamente a Gemini CLI.
@@ -27,8 +27,8 @@ OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "lampiran_analysis")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Configurazione
-PDF_NAME = "2.8 Lampiran I.H PP Nomor 28 Tahun 2025 (I.H.1-515)"
-PDF_FILENAME = "2.8 Lampiran I.H PP Nomor 28 Tahun 2025 (I.H.1-515).pdf"
+PDF_NAME = "PP Nomor 28 Tahun 2025 - Lampiran II"
+PDF_FILENAME = "PP Nomor 28 Tahun 2025 - Lampiran II.pdf"
 NUM_AGENTS = 3
 MIN_PAGES_PER_AGENT = 50
 DELAY_BETWEEN_PAGES = 2
@@ -265,7 +265,7 @@ def split_pages_for_agents(total_pages: int, num_agents: int) -> List[Tuple[int,
 async def main():
     """Main function."""
     print("=" * 70)
-    print(f"PATCH 1/5 - ANALISI: {PDF_NAME}")
+    print(f"PATCH 3/5 - ANALISI: {PDF_NAME}")
     print("=" * 70)
     print("⚠️  IMPORTANTE: Processando pagina per pagina, NON caricando tutto il PDF")
     print("=" * 70)
