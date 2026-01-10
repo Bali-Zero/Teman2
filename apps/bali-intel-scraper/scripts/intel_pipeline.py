@@ -595,7 +595,7 @@ class IntelPipeline:
                     enriched = article.enriched_article
                     if not enriched:
                         logger.warning("   ⚠️ Cannot submit: enriched_article is None")
-                        continue
+                        return article
                     
                     # Build enriched content from available fields
                     enriched_content = enriched.ai_summary or ""
