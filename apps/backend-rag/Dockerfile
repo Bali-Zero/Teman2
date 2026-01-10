@@ -88,8 +88,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Start uvicorn from root directory using module path
-# This matches the PYTHONPATH configuration and works both locally and in Docker
-# Use 0.0.0.0 (IPv4) for reliable binding (Fly.io proxy handles IPv6/IPv4 translation)
-# Use shell script to properly expand $PORT environment variable
-# Use 2 workers to leverage 2 CPUs per VM (Fly.io assigns 2 CPUs per machine)
-CMD ["sh", "-c", "uvicorn backend.app.main_cloud:app --host 0.0.0.0 --port ${PORT:-8080} --workers 2"]
+# Bind to :: (all interfaces, IPv4 and IPv6) for optimal Fly.io reachability
+# Use 2 workers to leverage 2 CPUs per VM
+CMD ["uvicorn", "backend.app.main_cloud:app", "--host", "::", "--port", "8080", "--workers", "2"]

@@ -224,3 +224,5 @@ docs/sessions/
 # Railway migration leftovers
 railway_ignore/
 env.production
+.vercel
+.env*.local

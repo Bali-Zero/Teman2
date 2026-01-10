@@ -231,12 +231,42 @@ class SemanticDeduplicator:
             json.dump(list(self.seen_hashes), f)
 
 
+# Indonesia relevance keywords - articles MUST mention at least one
+INDONESIA_KEYWORDS = {
+    # Countries/Regions
+    "indonesia", "indonesian", "bali", "balinese", "jakarta", "java", "sumatra",
+    "sulawesi", "kalimantan", "papua", "lombok", "surabaya", "bandung", "medan",
+    "yogyakarta", "jogja", "denpasar", "ubud", "canggu", "seminyak", "sanur",
+    # Government/Institutions
+    "imigrasi", "kemenkumham", "kemenkeu", "bkpm", "djp", "ojk", "bi", "kemenlu",
+    "dirjen", "kantor imigrasi", "rudenim",
+    # Visa/Immigration terms specific to Indonesia
+    "kitas", "kitap", "voa", "evoa", "itas", "itap", "telex", "sponsor",
+    "pt pma", "pt pmdn", "notaris", "akta", "npwp", "nik", "ktp",
+    # Indonesian words
+    "rupiah", "idr", "rp", "juta", "ribu",
+}
+
+
+def is_indonesia_relevant(title: str, content: str) -> bool:
+    """
+    Check if article is relevant to Indonesia/Bali.
+    Returns True only if at least one Indonesia keyword is found.
+    """
+    text = f"{title} {content}".lower()
+    for keyword in INDONESIA_KEYWORDS:
+        if keyword in text:
+            return True
+    return False
+
+
 class BaliZeroScraperV2:
     """
     Unified scraper v2 with:
     - Smart extraction (multi-layer + Llama fallback)
     - Pre-scoring (filter before save)
     - Semantic deduplication (Qdrant)
+    - Indonesia relevance filtering (MUST mention Indonesia/Bali)
     """
 
     def __init__(
@@ -283,6 +313,7 @@ class BaliZeroScraperV2:
             "filtered_duplicate": 0,
             "filtered_short": 0,
             "filtered_low_score": 0,
+            "filtered_irrelevant": 0,  # Not Indonesia-related
             "saved": 0,
             "extraction_methods": {
                 "css": 0,
@@ -481,6 +512,17 @@ class BaliZeroScraperV2:
 
                 if not result or len(result.get("content", "")) < 100:
                     self.stats["filtered_short"] += 1
+                    continue
+
+                # Step 6: INDONESIA RELEVANCE CHECK (MANDATORY)
+                # Filter out articles that don't mention Indonesia/Bali
+                extracted_title = result.get("title") or article["title"]
+                extracted_content = result["content"]
+                if not is_indonesia_relevant(extracted_title, extracted_content):
+                    self.stats["filtered_irrelevant"] += 1
+                    logger.debug(
+                        f"Filtered (not Indonesia): {extracted_title[:50]}..."
+                    )
                     continue
 
                 # Track extraction method
@@ -692,6 +734,7 @@ extraction_method: {item["extraction_method"]}
         logger.info(f"❌ Filtered (low score): {self.stats['filtered_low_score']}")
         logger.info(f"❌ Filtered (duplicate): {self.stats['filtered_duplicate']}")
         logger.info(f"❌ Filtered (short): {self.stats['filtered_short']}")
+        logger.info(f"❌ Filtered (not Indonesia): {self.stats['filtered_irrelevant']}")
         logger.info(f"🔧 Extraction methods: {self.stats['extraction_methods']}")
         logger.info(f"⏱️  Duration: {duration:.1f}s")
         logger.info("=" * 70)

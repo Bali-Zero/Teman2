@@ -1,0 +1,62 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-json
+      - id: check-merge-conflict
+      - id: debug-statements
+        language_version: python3
+
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+        files: ^apps/backend-rag/
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.1.8
+    hooks:
+      - id: ruff
+        files: ^apps/backend-rag/
+        args: [--fix, --exit-non-zero-on-fix]
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.56.0
+    hooks:
+      - id: eslint
+        files: ^apps/mouth/
+        types: [file]
+        types_or: [javascript, jsx, ts, tsx]
+        additional_dependencies:
+          - eslint@8.56.0
+          - "@typescript-eslint/eslint-plugin@6.19.0"
+          - "@typescript-eslint/parser@6.19.0"
+
+  - repo: local
+    hooks:
+      - id: no-print-statements
+        name: No print() statements
+        entry: bash -c 'if grep -r "print(" --include="*.py" $@; then echo "❌ Found print() statements. Use logger instead."; exit 1; fi'
+        language: system
+        files: ^apps/backend-rag/.*\.py$
+        pass_filenames: false
+
+      - id: no-console-statements
+        name: No console statements
+        entry: bash -c 'if grep -r "console\.\(log\|debug\|info\|warn\|error\)" --include="*.ts" --include="*.tsx" $@; then echo "❌ Found console statements. Use logger instead."; exit 1; fi'
+        language: system
+        files: ^apps/mouth/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: check-todos
+        name: Check TODO/FIXME
+        entry: bash -c 'if grep -r "TODO\|FIXME\|HACK\|BUG" --include="*.py" --include="*.ts" --include="*.tsx" $@; then echo "⚠️  Found TODO/FIXME. Consider creating GitHub issues."; fi'
+        language: system
+        files: ^apps/
+        pass_filenames: false

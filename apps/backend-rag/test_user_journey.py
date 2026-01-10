@@ -1,10 +1,17 @@
+import os
 import sys
 import uuid
 
 import requests
 
 BASE_URL = "http://127.0.0.1:8080"
-API_KEY = "dev_api_key_for_testing_only"
+API_KEY = os.getenv("API_KEY")
+
+if not API_KEY:
+    print("❌ ERROR: API_KEY environment variable is required")
+    print("   Set it with: export API_KEY=your_api_key")
+    sys.exit(1)
+
 HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 

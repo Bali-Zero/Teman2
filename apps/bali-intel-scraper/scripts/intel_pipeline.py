@@ -774,8 +774,18 @@ class IntelPipeline:
             processed = await self.process_article(article)
             results.append(processed)
 
-            # Rate limit between articles
-            await asyncio.sleep(1)
+            # Adaptive rate limiting - faster for successful processing
+            # Base: 0.5s, increases on errors, maxes at 3s
+            if processed.enriched:
+                delay = 0.5  # Fast for successful enrichment
+            elif processed.validation_approved:
+                delay = 0.3  # Very fast for validated but not enriched
+            elif processed.is_duplicate or processed.llama_score < self.min_llama_score:
+                delay = 0.2  # Near-instant for filtered articles
+            else:
+                delay = 1.0  # Default for other cases
+
+            await asyncio.sleep(delay)
 
         self.stats.duration_seconds = time.time() - start_time
 

@@ -15,9 +15,12 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 PAYLOAD_FILE = SCRIPT_DIR / "ready_to_curl.json"
 QDRANT_URL = os.getenv("QDRANT_URL", "https://nuzantara-qdrant.fly.dev")
-QDRANT_API_KEY = os.getenv(
-    "QDRANT_API_KEY", "QDD0rKHU2UMHqohUmn4iAI3umrZdQxoVI9sAufKaZyXWjZyeaBzCEpO5GlERjJHo"
-)
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
+if not QDRANT_API_KEY:
+    print("❌ ERROR: QDRANT_API_KEY environment variable is required")
+    print("   Set it with: export QDRANT_API_KEY=your_api_key")
+    sys.exit(1)
 
 BATCH_SIZE = 10
 VECTOR_SIZE = 1536  # text-embedding-3-small dimensions
