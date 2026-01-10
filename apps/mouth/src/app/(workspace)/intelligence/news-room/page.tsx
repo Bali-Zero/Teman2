@@ -391,10 +391,22 @@ export default function NewsRoomPage() {
                 </button>
               </div>
 
-              {/* Header Image Placeholder */}
+              {/* Header Image */}
               <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 opacity-50" />
-                <div className="absolute inset-0 flex items-center justify-center">
+                {item.cover_image ? (
+                  <img
+                    src={item.cover_image}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to placeholder on error
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`absolute inset-0 bg-gradient-to-br from-slate-200 to-slate-300 opacity-50 ${item.cover_image ? 'hidden' : ''}`} />
+                <div className={`absolute inset-0 flex items-center justify-center ${item.cover_image ? 'hidden' : ''}`}>
                   <span className="text-5xl">📰</span>
                 </div>
                 {item.is_critical && (
@@ -433,10 +445,16 @@ export default function NewsRoomPage() {
                     {item.title}
                   </h3>
                 </div>
-                <p className="text-sm text-[var(--foreground-muted)] line-clamp-3">
-                  Pending editorial review. Agent-detected immigration news awaiting
-                  approval.
-                </p>
+                {item.content ? (
+                  <div className="text-sm text-[var(--foreground-muted)] line-clamp-4 prose prose-sm max-w-none">
+                    <div dangerouslySetInnerHTML={{ __html: item.content.replace(/\n/g, '<br />') }} />
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--foreground-muted)] line-clamp-3">
+                    Pending editorial review. Agent-detected immigration news awaiting
+                    approval.
+                  </p>
+                )}
               </CardContent>
 
               <CardFooter className="p-5 pt-0 mt-auto">
@@ -459,16 +477,18 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    asChild
-                    title="View Source"
-                  >
-                    <a href={item.source} target="_blank" rel="noreferrer">
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </Button>
+                  {item.source && item.source.startsWith('http') && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      asChild
+                      title="View Original Source"
+                    >
+                      <a href={item.source} target="_blank" rel="noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  )}
                 </div>
               </CardFooter>
             </Card>
