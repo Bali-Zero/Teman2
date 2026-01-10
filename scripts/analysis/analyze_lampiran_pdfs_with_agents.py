@@ -32,9 +32,10 @@ LAMPIRAN_DIR = os.path.join(PROJECT_ROOT, "lampiran")
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "reports", "lampiran_analysis")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Configurazione agenti
-NUM_AGENTS_PER_PDF = 10  # 10 agenti per PDF
+# Configurazione agenti (ridotto per evitare quota limits)
+NUM_AGENTS_PER_PDF = 3  # 3 agenti per PDF (ridotto da 10)
 MIN_PAGES_PER_AGENT = 50  # Minimo 50 pagine per agente
+DELAY_BETWEEN_PAGES = 2  # Secondi tra pagine (aumentato da 1)
 
 
 def get_all_pdfs() -> List[Tuple[str, str]]:
@@ -187,9 +188,19 @@ async def analyze_pages_range(
                     break
                 except Exception as e:
                     error_str = str(e)
-                    if "503" in error_str or "UNAVAILABLE" in error_str or "overloaded" in error_str.lower():
+                    # Gestisci errori 429 (quota esaurita) con retry molto più lunghi
+                    if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "quota" in error_str.lower():
                         if attempt < max_retries - 1:
-                            delay = 2 * (2 ** attempt)
+                            delay = 60 * (2 ** attempt)  # 60s, 120s, 240s per quota
+                            print(f"  [Agent {agent_id}] ⚠️  Quota esaurita pagina {page_num}, retry {attempt + 1}/{max_retries} dopo {delay/60:.0f} minuti...")
+                            await asyncio.sleep(delay)
+                            continue
+                        else:
+                            print(f"  [Agent {agent_id}] ❌ Quota esaurita dopo {max_retries} tentativi per pagina {page_num}")
+                            raise
+                    elif "503" in error_str or "UNAVAILABLE" in error_str or "overloaded" in error_str.lower():
+                        if attempt < max_retries - 1:
+                            delay = 5 * (2 ** attempt)  # 5s, 10s, 20s per overload
                             print(f"  [Agent {agent_id}] ⚠️  API overloaded pagina {page_num}, retry {attempt + 1}/{max_retries} dopo {delay}s...")
                             await asyncio.sleep(delay)
                             continue
@@ -221,8 +232,8 @@ async def analyze_pages_range(
                     })
                     pages_analyzed += 1
             
-            # Rate limiting
-            await asyncio.sleep(1)  # 1 secondo tra pagine
+            # Rate limiting (aumentato per evitare quota limits)
+            await asyncio.sleep(DELAY_BETWEEN_PAGES)  # Delay configurabile tra pagine
             
             if page_num % 10 == 0:
                 print(f"  [Agent {agent_id}] Progress: {page_num - start_page + 1}/{end_page - start_page + 1} pagine")
@@ -325,7 +336,31 @@ async def analyze_pdf_with_agents(
     return pdf_resoconto
 
 
-async def main():
+def get_already_processed_pdfs() -> set:
+    """Ottiene lista PDF già processati."""
+    processed = set()
+    
+    if not os.path.exists(OUTPUT_DIR):
+        return processed
+    
+    for resoconto_file in Path(OUTPUT_DIR).glob("resoconto_*.json"):
+        try:
+            with open(resoconto_file) as f:
+                data = json.load(f)
+                pdf_name = data.get("pdf_name")
+                if pdf_name:
+                    # Verifica che sia completo
+                    total_pages = data.get("total_pages", 0)
+                    pages_analyzed = data.get("total_pages_analyzed", 0)
+                    if pages_analyzed >= total_pages * 0.9:  # 90% completato
+                        processed.add(pdf_name)
+        except:
+            pass
+    
+    return processed
+
+
+async def main(skip_processed: bool = True):
     """Main function - analizza un PDF alla volta."""
     print("=" * 70)
     print("ANALISI PDF LAMPIRAN CON AGENTI PARALLELI")
@@ -339,6 +374,15 @@ async def main():
         return
     
     print(f"\n📊 Trovati {len(pdfs)} PDF da analizzare")
+    
+    # Verifica PDF già processati
+    if skip_processed:
+        processed = get_already_processed_pdfs()
+        if processed:
+            print(f"📋 PDF già processati: {len(processed)}")
+            pdfs = [(name, path) for name, path in pdfs if name not in processed]
+            print(f"📊 PDF rimanenti: {len(pdfs)}")
+    
     print()
     
     # Inizializza Vision Service
@@ -364,10 +408,10 @@ async def main():
             if resoconto:
                 all_resoconti.append(resoconto)
             
-            # Pausa tra PDF (tranne l'ultimo)
+            # Pausa tra PDF (tranne l'ultimo) - aumentata per evitare quota limits
             if idx < len(pdfs):
-                print(f"\n⏸️  Pausa 10 secondi prima del prossimo PDF...\n")
-                await asyncio.sleep(10)
+                print(f"\n⏸️  Pausa 30 secondi prima del prossimo PDF...\n")
+                await asyncio.sleep(30)
             
         except Exception as e:
             print(f"❌ Errore analisi {pdf_name}: {e}")
@@ -394,4 +438,13 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--skip-processed", action="store_true", default=True,
+                       help="Skip PDF già processati (default: True)")
+    parser.add_argument("--process-all", action="store_true",
+                       help="Processa tutti i PDF anche se già processati")
+    args = parser.parse_args()
+    
+    skip_processed = not args.process_all
+    asyncio.run(main(skip_processed=skip_processed))
