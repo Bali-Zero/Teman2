@@ -172,21 +172,23 @@ class HealthMonitor:
         logger.info(f"✅ ALERT SENT: {service_name} RECOVERED")
 
     async def _check_qdrant(self, search_service) -> bool:
-        """Check if Qdrant is actually working"""
-        if search_service is None:
-            return False
+        """Check if Qdrant is actually working via HTTP"""
+        import httpx
+
+        from app.core.config import settings
 
         try:
-            # Try to get collection count (lightweight operation)
-            if hasattr(search_service, "client") and search_service.client:
-                # client might be async or sync depending on implementation
-                res = search_service.client.list_collections()
-                import inspect
+            headers = {}
+            if settings.qdrant_api_key:
+                headers["api-key"] = settings.qdrant_api_key
 
-                if inspect.isawaitable(res):
-                    await res
-                return True
-            return True  # Service exists
+            async with httpx.AsyncClient(
+                base_url=settings.qdrant_url,
+                headers=headers,
+                timeout=5.0,
+            ) as client:
+                response = await client.get("/collections")
+                return response.status_code == 200
         except Exception as e:
             logger.debug(f"Qdrant health check failed: {e}")
             return False

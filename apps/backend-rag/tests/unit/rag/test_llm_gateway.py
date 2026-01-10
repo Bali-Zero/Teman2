@@ -47,9 +47,9 @@ def create_mock_response(text="Test response", prompt_tokens=10, completion_toke
 @pytest.fixture
 def mock_settings():
     """Mock settings with fake API key."""
-    with patch("services.rag.agentic.llm_gateway.settings") as mock:
-        mock.google_api_key = "fake_google_api_key_for_testing"
-        yield mock
+    mock = MagicMock()
+    mock.google_api_key = "fake_google_api_key_for_testing"
+    return mock
 
 
 @pytest.fixture
@@ -71,10 +71,11 @@ def mock_genai_client():
     # Mock generate_content for health checks
     mock_client.generate_content = AsyncMock(return_value={"text": "pong"})
 
-    # Mock create_chat
+    # Mock create_chat and create_chat_session
     mock_chat = MagicMock()
     mock_chat.send_message = AsyncMock(return_value={"text": "Chat response"})
     mock_client.create_chat = MagicMock(return_value=mock_chat)
+    mock_client.create_chat_session = MagicMock(return_value=mock_chat)
 
     return mock_client
 
@@ -297,7 +298,7 @@ class TestLLMGatewayFallbackCascade:
         mock_genai_client._client.aio.models.generate_content = mock_generate_content
 
         # Should raise RuntimeError since OpenRouter is no longer automatic fallback
-        with pytest.raises(RuntimeError, match="All Gemini models unavailable"):
+        with pytest.raises(RuntimeError, match="All LLM models failed"):
             await llm_gateway.send_message(
                 chat=None,
                 message="Test query",
@@ -316,8 +317,7 @@ class TestLLMGatewayFallbackCascade:
 
         mock_genai_client._client.aio.models.generate_content = mock_generate_content
 
-        # Should raise RuntimeError when all Gemini models fail
-        with pytest.raises(RuntimeError, match="All Gemini models unavailable"):
+        with pytest.raises(RuntimeError, match="All LLM models failed"):
             await llm_gateway.send_message(
                 chat=None,
                 message="Test query",
@@ -522,7 +522,7 @@ class TestLLMGatewayCreateChatWithHistory:
         chat = llm_gateway.create_chat_with_history(history_to_use=None, model_tier=TIER_FLASH)
 
         assert chat is not None
-        mock_genai_client.create_chat.assert_called_once()
+        mock_genai_client.create_chat_session.assert_called_once()
 
     def test_create_chat_with_history(self, llm_gateway, mock_genai_client):
         """Test creating chat with conversation history."""
@@ -534,21 +534,23 @@ class TestLLMGatewayCreateChatWithHistory:
         chat = llm_gateway.create_chat_with_history(history_to_use=history, model_tier=TIER_FLASH)
 
         assert chat is not None
-        mock_genai_client.create_chat.assert_called_once()
+        mock_genai_client.create_chat_session.assert_called_once()
 
     def test_create_chat_different_tiers(self, llm_gateway, mock_genai_client):
-        """Test creating chat with different model tiers."""
-        # Pro tier (same as flash now)
-        llm_gateway.create_chat_with_history(model_tier=TIER_PRO)
-        call_args = mock_genai_client.create_chat.call_args
+        """Test creating chat sessions with different tiers."""
+        # Flash (default)
+        llm_gateway.create_chat_with_history(model_tier=TIER_FLASH)
+        call_args = mock_genai_client.create_chat_session.call_args
         assert call_args[1]["model"] == "gemini-3-flash-preview"
 
-        mock_genai_client.create_chat.reset_mock()
+        # Pro
+        llm_gateway.create_chat_with_history(model_tier=TIER_PRO)
+        call_args = mock_genai_client.create_chat_session.call_args
+        assert call_args[1]["model"] == "gemini-3-flash-preview"  # Both currently use same model
 
-        # Lite tier (uses same model as Flash)
+        # Lite
         llm_gateway.create_chat_with_history(model_tier=TIER_LITE)
-        call_args = mock_genai_client.create_chat.call_args
-        # TIER_LITE uses model_name_flash (gemini-3-flash-preview)
+        call_args = mock_genai_client.create_chat_session.call_args
         assert call_args[1]["model"] == "gemini-3-flash-preview"
 
 
@@ -623,7 +625,7 @@ class TestLLMGatewayCoverageImprovements:
 
                 gateway = LLMGateway(gemini_tools=[])
 
-                with pytest.raises(RuntimeError, match="No Gemini models available"):
+                with pytest.raises(RuntimeError, match="All LLM models failed"):
                     await gateway.send_message(
                         chat=None,
                         message="Test",
@@ -679,7 +681,7 @@ class TestLLMGatewayCoverageImprovements:
 
         mock_genai_client._client.aio.models.generate_content = mock_generate_content
 
-        with pytest.raises(RuntimeError, match="Gemini fallback failed"):
+        with pytest.raises(RuntimeError, match="All LLM models failed"):
             await llm_gateway.send_message(
                 chat=None,
                 message="Test",
@@ -707,7 +709,7 @@ class TestLLMGatewayCoverageImprovements:
         )
 
         # Should have been called with empty history
-        call_args = mock_genai_client.create_chat.call_args
+        call_args = mock_genai_client.create_chat_session.call_args
         assert call_args[1]["history"] == []
 
     def test_create_chat_non_dict_message(self, llm_gateway, mock_genai_client):
@@ -724,7 +726,7 @@ class TestLLMGatewayCoverageImprovements:
         )
 
         # Should filter out the invalid message
-        call_args = mock_genai_client.create_chat.call_args
+        call_args = mock_genai_client.create_chat_session.call_args
         assert len(call_args[1]["history"]) == 2
 
     @pytest.mark.asyncio

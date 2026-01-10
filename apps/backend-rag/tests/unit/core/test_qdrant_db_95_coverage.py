@@ -534,7 +534,7 @@ class TestQdrantDB95Coverage:
         mock_client.post = AsyncMock(side_effect=httpx.RequestError("Error"))
         client._http_client = mock_client
 
-        with pytest.raises(ConnectionError):
+        with pytest.raises(qdrant_db_module.QdrantConnectionError):
             await client.delete(["1"])
 
     async def test_peek_success(self):

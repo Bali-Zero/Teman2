@@ -203,7 +203,8 @@ class TestReActLoopExecution:
         chat = MagicMock()
 
         # Simulate vector_search returning rich content (> 500 chars)
-        rich_content = "This is a very detailed answer. " * 50  # > 500 chars
+        # Match keywords from query "What is KITAS?" to pass quality check
+        rich_content = "KITAS is a stay permit for Indonesia. " * 50  # > 500 chars
 
         with patch(
             "services.rag.agentic.reasoning.parse_tool_call",
@@ -216,9 +217,9 @@ class TestReActLoopExecution:
                     state=state,
                     llm_gateway=llm_gateway,
                     chat=chat,
-                    initial_prompt="What is KITAS?",
+                    initial_prompt="What is KITAS",
                     system_prompt="You are helpful",
-                    query="What is KITAS?",
+                    query="What is KITAS",
                     user_id="test_user",
                     model_tier=0,
                     tool_execution_counter={},
@@ -352,8 +353,8 @@ class TestCitationHandling:
         chat = MagicMock()
 
         # Simulate vector_search returning JSON with sources
-        # Content needs to be > 500 chars to trigger early exit
-        long_content = "This is detailed content about KITAS visas. " * 20  # Make it > 500 chars
+        # Content needs to be > 500 chars AND contain query keywords to trigger early exit
+        long_content = "This is a test content for KITAS visas. " * 20  # Make it > 500 chars
         vector_result = json.dumps(
             {
                 "content": long_content,
