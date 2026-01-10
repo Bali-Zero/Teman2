@@ -519,17 +519,16 @@ export default function NewsRoomPage() {
                       </>
                     )}
                   </Button>
-                  {/* VIEW BUTTON - CRITICAL FIX - MUST BE RENDERED */}
-                  <Button
-                    size="sm"
-                    variant="outline"
+                  {/* VIEW BUTTON - CRITICAL FIX - MUST BE RENDERED - VERSION 2.0 */}
+                  <button
+                    type="button"
                     onClick={() => {
                       console.log('VIEW BUTTON CLICKED', item.id);
                       handlePreview(item);
                     }}
                     disabled={previewLoading}
                     title="View Full Article"
-                    className="!flex !items-center !justify-center min-w-[80px] bg-red-500 border-4 border-yellow-500"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 h-8 rounded-md px-3 text-xs border border-[var(--border)] bg-transparent shadow-sm hover:bg-[var(--background-elevated)] hover:text-[var(--foreground)] !flex !items-center !justify-center min-w-[80px] bg-red-500 border-4 border-yellow-500"
                     style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
                   >
                     {previewLoading && previewItem?.id === item.id ? (
@@ -540,7 +539,7 @@ export default function NewsRoomPage() {
                         <span className="text-xs font-medium">VIEW</span>
                       </>
                     )}
-                  </Button>
+                  </button>
                   {item.source && item.source.startsWith('http') && (
                     <Button
                       size="sm"
