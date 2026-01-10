@@ -534,6 +534,10 @@ class IntelPipeline:
             logger.info("\n🎨 Step 4: Image Reasoning Prepared...")
             logger.info("   Image context saved for Claude to reason about")
             logger.info("   Claude will create unique prompt based on article content")
+            # Check if image was prepared in enricher
+            if article.enriched_article and article.enriched_article.cover_image:
+                self.stats.images_generated += 1
+                logger.success(f"   ✅ Image prepared: {article.enriched_article.cover_image}")
             # Actual image generation happens in enricher with browser automation
 
         # ═══════════════════════════════════════════════════════════════
