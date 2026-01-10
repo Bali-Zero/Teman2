@@ -20,7 +20,7 @@ export default function TeamPage() {
             <div className="flex-1">
               <div className="mb-8">
                 <Image
-                  src="/images/balizero-logo.png"
+                  src="/static/balizero-logo.png"
                   alt="Bali Zero"
                   width={80}
                   height={80}
@@ -172,7 +172,7 @@ export default function TeamPage() {
             <div className="relative">
               <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#2251ff] to-[#e85c41] flex items-center justify-center">
                 <Image
-                  src="/images/zantara-lotus.png"
+                  src="/static/zantara-lotus.png"
                   alt="Zantara AI"
                   width={100}
                   height={100}

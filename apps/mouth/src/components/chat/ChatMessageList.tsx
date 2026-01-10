@@ -39,7 +39,7 @@ export function ChatMessageList({
           className="relative mb-8"
         >
           <Image
-            src="/images/logo_zan.png"
+            src="/static/logo_zan.png"
             alt="Zantara Logo"
             width={140}
             height={140}
