@@ -94,7 +94,12 @@ from article_deep_enricher import ArticleDeepEnricher, EnrichedArticle
 from gemini_image_generator import GeminiImageGenerator
 from seo_aeo_optimizer import SEOAEOOptimizer, optimize_article as seo_optimize
 from telegram_approval import TelegramApproval
-from semantic_deduplicator import SemanticDeduplicator
+# Usa versione httpx per evitare problemi TLS con qdrant-client
+try:
+    from semantic_deduplicator_httpx import SemanticDeduplicator
+except ImportError:
+    # Fallback alla versione originale se httpx non disponibile
+    from semantic_deduplicator import SemanticDeduplicator
 
 # Configure logging
 Path("logs").mkdir(exist_ok=True)
