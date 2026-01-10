@@ -14,11 +14,56 @@ export function useDashboardData() {
     refetch,
   } = useQuery<DashboardData>({
     queryKey: ['dashboard'],
-    queryFn: () => dashboardApi.getDashboardSummary(),
+    queryFn: async () => {
+      try {
+        return await dashboardApi.getDashboardSummary();
+      } catch (err) {
+        // Detailed error logging for debugging
+        const errorDetails = {
+          message: err instanceof Error ? err.message : String(err),
+          name: err instanceof Error ? err.name : 'UnknownError',
+          stack: err instanceof Error ? err.stack : undefined,
+          timestamp: new Date().toISOString(),
+          endpoint: '/api/dashboard/summary',
+        };
+
+        // Log to console with full details
+        console.error('[Dashboard] Failed to load dashboard data:', errorDetails);
+
+        // Check for specific error types
+        if (err instanceof Error) {
+          if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+            console.error('[Dashboard] Authentication error - user may need to login again');
+          } else if (err.message.includes('403') || err.message.includes('Forbidden')) {
+            console.error('[Dashboard] Authorization error - user may not have permission');
+          } else if (err.message.includes('Network') || err.message.includes('fetch')) {
+            console.error('[Dashboard] Network error - backend may be unreachable');
+          } else if (err.message.includes('CORS')) {
+            console.error('[Dashboard] CORS error - backend CORS configuration may be incorrect');
+          }
+        }
+
+        // Re-throw to let React Query handle it
+        throw err;
+      }
+    },
     staleTime: 30_000, // Cache for 30 seconds
     refetchInterval: 60_000, // Auto-refresh every minute
     retry: 2, // Retry failed requests 2 times
   });
+
+  // Log error details when error occurs
+  if (error) {
+    console.error('[Dashboard] Error state detected:', {
+      error: error instanceof Error ? {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      } : error,
+      hasData: !!data,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   // Extract data with fallbacks
   const user = data?.user || { email: '', role: '', is_admin: false };

@@ -18,3 +18,4 @@ e2e/.auth/
 *.tsbuildinfo
 tsconfig.tsbuildinfo
 next-env.d.ts
+.vercel
